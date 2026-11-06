@@ -36,19 +36,6 @@ const PRO_STEP_ORDER = [
   "Configure AI",
 ];
 
-// Without modular embedding every Fine-tune step is locked, so AI -- the one
-// advanced step still reachable -- is promoted into the first section.
-const UNLICENSED_STEP_ORDER = [
-  "Connect a database",
-  "Create a dashboard",
-  "Get embed snippet",
-  "Configure AI",
-  "Configure data permissions and tenants",
-  "Set up SSO",
-  "Embed in production with SSO",
-  "Create a custom theme",
-];
-
 // Every plan sees every tab; the gem marks the ones its token can't unlock.
 // OSS and Starter lack all four gated features, so they expect the same.
 const TAB_GEMS_WITHOUT_PAID_FEATURES = [
@@ -189,30 +176,6 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       cy.signInAsAdmin();
     });
 
-    it("promotes AI into the first section and locks the Fine-tune steps", () => {
-      cy.visit("/embedding/get-started");
-
-      cy.findByTestId("embedding-hub-main").within(() => {
-        assertStepOrder(UNLICENSED_STEP_ORDER);
-
-        cy.log(
-          "the upsell banner is what stands in for the Fine-tune subtitle",
-        );
-        cy.findByText(
-          "Upgrade to Metabase Pro to configure advanced options.",
-        ).should("be.visible");
-
-        cy.log("a feature-locked step is inert, with no link to follow");
-        cy.findByRole("link", { name: "Set up SSO" }).should("not.exist");
-        cy.findByText("Set up SSO")
-          .closest(`[data-testid=${CARD}]`)
-          .should("have.attr", "aria-disabled", "true");
-
-        cy.log("AI is never locked -- the admin AI page needs no token");
-        cy.findByRole("button", { name: "Configure AI" }).should("be.visible");
-      });
-    });
-
     it("marks the embed step complete once a guest embed is published", () => {
       cy.visit("/embedding/get-started");
 
@@ -326,68 +289,6 @@ describe("scenarios > embedding > embedding hub > security", () => {
         name: "Standalone Metabase linked from your app toggle",
       }).should("be.checked");
     });
-
-    it("lists published guest embeds even after guest embeds are switched off", () => {
-      cy.log("Publish a dashboard as a guest embed");
-      // Publishing is itself gated on guest embeds being on, so this has to
-      // come before the dashboard is marked embeddable.
-      H.updateSetting("enable-embedding-modular", true);
-      H.createDashboard({ name: "Published dashboard" }).then(
-        ({ body: dashboard }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-            enable_embedding: true,
-          });
-        },
-      );
-
-      cy.visit("/embedding/security");
-
-      assertPublishedDashboardIsListed();
-
-      cy.log(
-        "Turning guest embeds off is exactly when an admin needs to audit what is already out there",
-      );
-      H.updateSetting("enable-embedding-modular", false);
-      cy.visit("/embedding/security");
-
-      assertPublishedDashboardIsListed();
-    });
-  });
-
-  describe("oss", { tags: "@OSS" }, () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.updateSetting("show-modular-embed-terms", false);
-    });
-
-    it("shows the Pro upsell banner and the CORS setting", () => {
-      cy.visit("/embedding/security");
-
-      cy.findByTestId("embedding-hub-main").within(() => {
-        cy.findByText(
-          "Upgrade to Metabase Pro to access the SDK for React and more advanced options.",
-        ).should("be.visible");
-        // OSS leaves PLUGIN_ADMIN_SETTINGS.useUpsellFlow without a trigger, so
-        // UpsellCta renders the store link; paid builds get a button that
-        // opens the in-app flow instead.
-        cy.findByRole("link", { name: "Try Metabase Pro" })
-          .should("be.visible")
-          .and(
-            "have.attr",
-            "href",
-            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
-          );
-
-        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
-      });
-    });
-
-    it("shows every hub tab, gemming the ones this plan lacks", () => {
-      cy.visit("/embedding/security");
-
-      assertHubTabs(TAB_GEMS_WITHOUT_PAID_FEATURES);
-    });
   });
 
   describe("starter", () => {
@@ -478,28 +379,6 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
       });
     });
   });
-
-  describe("unlicensed", { tags: "@EE" }, () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
-    it("upsells instead of exposing the form", () => {
-      cy.visit("/embedding/authentication");
-
-      // Card copy is unit-tested next to the component; this is what needs a
-      // real browser -- the upsell rendering in place of the real form.
-      H.main().within(() => {
-        cy.findByText("Secure your embeds with single sign-on").should(
-          "be.visible",
-        );
-
-        cy.log("nothing configurable renders below the paywall");
-        cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
-      });
-    });
-  });
 });
 
 describe("scenarios > embedding > embedding hub > permissions", () => {
@@ -585,23 +464,6 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
       H.activateToken("pro-self-hosted");
     });
 
-    it("offers the enable card while the multi-tenant strategy is off", () => {
-      H.updateSetting("use-tenants", false);
-
-      cy.visit("/embedding");
-
-      cy.findByTestId("embedding-hub-nav")
-        .findByRole("link", { name: "Tenancy" })
-        .click();
-
-      cy.url().should("include", "/embedding/tenancy");
-
-      cy.findByTestId("embedding-hub-main").within(() => {
-        cy.findByText("Enable multi-tenant user strategy").should("be.visible");
-        cy.findByRole("tab", { name: "Tenants" }).should("not.exist");
-      });
-    });
-
     it("carries the tenant surfaces once the strategy is on", () => {
       H.updateSetting("use-tenants", false);
 
@@ -630,23 +492,6 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
       cy.url().should("not.include", "/admin/people");
     });
   });
-
-  describe("oss", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
-    it("upsells rather than hiding the tab", () => {
-      cy.visit("/embedding/tenancy");
-
-      // Card copy is unit-tested next to the component; this just confirms
-      // the upsell renders in place of the real tenants surfaces.
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Use a multi-tenant user strategy")
-        .should("be.visible");
-    });
-  });
 });
 
 describe("scenarios > embedding > embedding hub > appearance", () => {
@@ -655,29 +500,6 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
-    });
-
-    it("carries the theme listing and the branding settings on one tab", () => {
-      cy.visit("/embedding");
-
-      cy.findByTestId("embedding-hub-nav")
-        .findByRole("link", { name: "Appearance" })
-        .click();
-
-      cy.url().should("include", "/embedding/appearance");
-
-      cy.findByTestId("embedding-hub-main").within(() => {
-        cy.findByRole("heading", { name: "Appearance" }).should("be.visible");
-        cy.findByRole("heading", { name: "Themes" }).should("be.visible");
-        cy.findByRole("heading", { name: "Branding elements" }).should(
-          "be.visible",
-        );
-        cy.findByText("Loading message").should("be.visible");
-        cy.findByText("When calculations return no results").should(
-          "be.visible",
-        );
-        cy.findByText("When no objects can be found").should("be.visible");
-      });
     });
 
     it("opens the theme editor inside the hub", () => {
@@ -730,14 +552,6 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
       cy.signInAsAdmin();
     });
 
-    it("upsells rather than hiding the tab", () => {
-      cy.visit("/embedding/appearance");
-
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Create custom themes")
-        .should("be.visible");
-    });
-
     it("sends a theme editor deep link back to the upsell", () => {
       // A themeId, not the bare `theme` path -- that one redirects from the
       // route table whatever the plan, so it would pass without the guard.
@@ -768,23 +582,6 @@ describe("scenarios > embedding > embedding hub > localization", () => {
         .should("be.visible");
     });
   });
-
-  describe("unlicensed", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
-    it("upsells rather than hiding the tab", () => {
-      cy.visit("/embedding/localization");
-
-      // Card copy is unit-tested next to the component; this just confirms
-      // the upsell renders in place of the real dictionary configuration.
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Translate your embedded content")
-        .should("be.visible");
-    });
-  });
 });
 
 function configureSaml() {
@@ -798,16 +595,4 @@ function configureSaml() {
       });
     },
   );
-}
-
-function assertPublishedDashboardIsListed() {
-  cy.findByTestId("embedding-hub-main").within(() => {
-    // The hub clips its content and scrolls it internally, so this card sits
-    // below the fold on a CI-sized viewport and Cypress reads it as hidden
-    // until it is scrolled in.
-    cy.findByText("Published guest embeds")
-      .scrollIntoView()
-      .should("be.visible");
-    cy.findByText("Published dashboard").should("be.visible");
-  });
 }

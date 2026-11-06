@@ -3,6 +3,9 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupAutoDashboardEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupDatabaseListEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
@@ -14,10 +17,22 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type { SetupGuideChecklist } from "metabase/embedding/setup-guide/api/setup-guide";
 import { Route } from "metabase/router";
+import type { RecentItem } from "metabase-types/api";
 import {
+  createMockCollection,
+  createMockDashboard,
+  createMockDashboardQueryMetadata,
+  createMockRecentTableDatabaseInfo,
+  createMockRecentTableItem,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -38,6 +53,7 @@ interface SetupOpts {
   checklist?: Partial<SetupGuideChecklist>;
   isLlmConfigured?: boolean;
   isEmbeddedMetabotEnabled?: boolean;
+  recentTables?: RecentItem[];
 }
 
 function setup({
@@ -47,6 +63,7 @@ function setup({
   checklist = {},
   isLlmConfigured = false,
   isEmbeddedMetabotEnabled = true,
+  recentTables = [],
 }: SetupOpts = {}) {
   const settings = createMockSettings({
     "token-features": createMockTokenFeatures({
@@ -67,7 +84,14 @@ function setup({
   setupSettingsEndpoints([]);
   setupSearchEndpoints([]);
   setupDatabaseListEndpoint([]);
-  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupRecentViewsAndSelectionsEndpoints(recentTables, ["selections"]);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root" })],
+  });
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection({ id: "root" }),
+    collectionItems: [],
+  });
   setupTokenStatusEndpoint({ valid: true });
 
   // The AI card opens AIProviderConfigurationModal, which loads both.
@@ -76,6 +100,7 @@ function setup({
 
   // Settings before plugins: the shared checklist drops the tenants step when
   // PLUGIN_TENANTS.isEnabled is false, and that registration reads the mock.
+  mockGetBoundingClientRect();
   const storeSettings = mockSettings(settings);
   setupEnterprisePlugins();
 
@@ -86,6 +111,7 @@ function setup({
     />,
     {
       withRouter: true,
+      withUndos: true,
       initialRoute: "/embedding/get-started",
       storeInitialState: createMockState({
         settings: storeSettings,
@@ -134,7 +160,103 @@ function isLocked(title: string) {
   return getCard(title).getAttribute("aria-disabled") === "true";
 }
 
+function expectStepOrder(titles: string[]) {
+  const cards = screen
+    .getAllByTestId("embedding-hub-checklist-card")
+    .map((card) => card.textContent ?? "");
+
+  expect(cards).toHaveLength(titles.length);
+  titles.forEach((title, index) => {
+    expect(cards[index]).toContain(title);
+  });
+}
+
+const UNLICENSED_STEP_ORDER = [
+  "Connect a database",
+  "Create a dashboard",
+  "Get embed snippet",
+  AI_CARD,
+  TENANTS_CARD,
+  SSO_CARD,
+  PRODUCTION_CARD,
+  THEME_CARD,
+];
+
 describe("EmbeddingHubGetStartedPage", () => {
+  it("promotes AI into the first section and locks the Fine-tune steps", async () => {
+    setup();
+
+    expect(await screen.findByText(SSO_CARD)).toBeInTheDocument();
+
+    expectStepOrder(UNLICENSED_STEP_ORDER);
+
+    // The upsell banner is what stands in for the Fine-tune subtitle.
+    expect(
+      screen.getByText(
+        "Upgrade to Metabase Pro to configure advanced options.",
+      ),
+    ).toBeInTheDocument();
+
+    // A feature-locked step is inert, with no link to follow.
+    expect(
+      screen.queryByRole("link", { name: SSO_CARD }),
+    ).not.toBeInTheDocument();
+    expect(isLocked(SSO_CARD)).toBe(true);
+
+    // AI is never locked: the admin AI page needs no token.
+    expect(screen.getByRole("button", { name: AI_CARD })).toBeVisible();
+  });
+
+  it('"Create a dashboard" card should save the x-ray and show a success toast without leaving the guide', async () => {
+    const xrayDashboard = createMockDashboard({
+      id: 10,
+      name: "A look at Foo Bar Table",
+    });
+    setupAutoDashboardEndpoints(
+      xrayDashboard,
+      createMockDashboardQueryMetadata(),
+    );
+
+    const { router } = setup({
+      recentTables: [
+        createMockRecentTableItem({
+          id: 10,
+          name: "foobar",
+          display_name: "Foo Bar Table",
+          database: createMockRecentTableDatabaseInfo({ id: 1 }),
+        }),
+      ],
+    });
+
+    await userEvent.click(await screen.findByText("Create a dashboard"));
+
+    const dialog = await screen.findByTestId("entity-picker-modal");
+    expect(
+      await within(dialog).findByText("Choose a table to generate a dashboard"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByText("Recent items"));
+    await userEvent.click(await within(dialog).findByText("Foo Bar Table"));
+
+    expect(
+      await screen.findByText("Your dashboard was saved"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("See it")).toBeInTheDocument();
+
+    const saveCalls = fetchMock.callHistory.calls("path:/api/dashboard/save", {
+      method: "POST",
+    });
+    expect(saveCalls).toHaveLength(1);
+    const body: unknown = await saveCalls[0].request?.json();
+    expect(body).toMatchObject({ name: "A look at Foo Bar Table" });
+    expect(body).not.toHaveProperty("id");
+
+    // Should remain on the setup guide.
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/embedding/get-started"),
+    );
+  });
+
   describe("per-feature locking", () => {
     it("locks every Fine-tune step when the instance licenses nothing", async () => {
       setup();

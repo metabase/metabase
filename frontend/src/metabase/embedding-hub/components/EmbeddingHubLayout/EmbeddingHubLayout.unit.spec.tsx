@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -22,6 +24,28 @@ jest.mock("metabase/embedding/themes/hooks", () => ({
 jest.mock("metabase/nav/components/AppSwitcher", () => ({
   AppSwitcher: () => null,
 }));
+
+const TAB_HREFS = {
+  "Get started": "/embedding/get-started",
+  Security: "/embedding/security",
+  Authentication: "/embedding/authentication",
+  Permissions: "/embedding/permissions",
+  Tenancy: "/embedding/tenancy",
+  Appearance: "/embedding/appearance",
+  Localization: "/embedding/localization",
+};
+
+// Every plan sees every tab; the gem marks the ones its token can't unlock.
+// OSS and Starter lack all four gated features, so they expect the same.
+const TAB_GEMS_WITHOUT_PAID_FEATURES = [
+  { label: "Get started", hasGem: false },
+  { label: "Security", hasGem: false },
+  { label: "Authentication", hasGem: true },
+  { label: "Permissions", hasGem: false },
+  { label: "Tenancy", hasGem: true },
+  { label: "Appearance", hasGem: true },
+  { label: "Localization", hasGem: true },
+];
 
 const TAB_LABELS = [
   "Get started",
@@ -64,6 +88,7 @@ function setup({
         />
       </Route>
       <Route path="security" element={<div>{"Security body"}</div>} />
+      <Route path="tenancy" element={<div>{"Tenancy body"}</div>} />
     </Route>,
     {
       withRouter: true,
@@ -118,6 +143,47 @@ describe("EmbeddingHubLayout", () => {
         await within(nav).findByRole("link", { name: "Permissions" }),
       ).queryByTestId("upsell-gem"),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows every hub tab, gemming the ones this plan lacks (oss)", async () => {
+    // The layout reads token features only, with no plugin: the default mock
+    // has none of the four gated features, same as an OSS build.
+    setup();
+
+    const nav = await findNav();
+    const links = within(nav).getAllByRole("link");
+
+    // Every tab is a link and nothing else in the nav is, so the count makes
+    // the list exhaustive.
+    expect(links).toHaveLength(TAB_GEMS_WITHOUT_PAID_FEATURES.length);
+
+    const gems = TAB_GEMS_WITHOUT_PAID_FEATURES.map(({ label }) => ({
+      label,
+      hasGem:
+        within(within(nav).getByRole("link", { name: label })).queryByTestId(
+          "upsell-gem",
+        ) != null,
+    }));
+
+    expect(gems).toEqual(TAB_GEMS_WITHOUT_PAID_FEATURES);
+  });
+
+  it("offers the enable card while the multi-tenant strategy is off (every tab links to its own path)", async () => {
+    const { router } = setup();
+
+    const nav = await findNav();
+
+    for (const [label, href] of Object.entries(TAB_HREFS)) {
+      expect(within(nav).getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        href,
+      );
+    }
+
+    await userEvent.click(within(nav).getByRole("link", { name: "Tenancy" }));
+
+    expect(await screen.findByText("Tenancy body")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/embedding/tenancy");
   });
 
   it("keeps Get started current on the setup wizard sub-pages", async () => {

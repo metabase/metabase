@@ -14,6 +14,7 @@ import {
   createMockDashboard,
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { EmbeddingHubSecurityPage } from "./EmbeddingHubSecurityPage";
@@ -36,13 +37,18 @@ function setup({
   const settings = createMockSettings({
     "enable-embedding-modular": isGuestEmbedsEnabled,
     "enable-embedding-interactive": isFullAppEmbeddingEnabled,
+    "active-users-count": 10,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,
       embedding: isFullAppEmbeddingEnabled,
     }),
   });
 
-  const state = createMockState({ settings: mockSettings(settings) });
+  // The upsell banner renders for admins only.
+  const state = createMockState({
+    settings: mockSettings(settings),
+    currentUser: createMockUser({ is_superuser: true }),
+  });
 
   // The plugin reads the token features at init, so the store has to be
   // populated before it registers the authorized-origins widget.
@@ -87,6 +93,42 @@ describe("EmbeddingHubSecurityPage", () => {
           screen.queryByText("Published guest embeds"),
         ).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("upsell banner", () => {
+    it("shows the Pro upsell banner and the CORS setting (oss)", async () => {
+      // No simple embedding and no enterprise plugin: an OSS build, where
+      // useUpsellFlow has no trigger, so the banner renders the store link.
+      setup({ hasSimpleEmbedding: false });
+
+      expect(
+        await screen.findByText(
+          "Upgrade to Metabase Pro to access the SDK for React and more advanced options.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Try Metabase Pro" }),
+      ).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
+      );
+
+      expect(
+        await screen.findByText("Cross-Origin Resource Sharing (CORS)"),
+      ).toBeInTheDocument();
+    });
+
+    it("hides the banner once simple embedding is licensed", async () => {
+      setup({ hasSimpleEmbedding: true });
+
+      await screen.findByText("Secret key for guest embeds");
+
+      expect(
+        screen.queryByText(
+          "Upgrade to Metabase Pro to access the SDK for React and more advanced options.",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 

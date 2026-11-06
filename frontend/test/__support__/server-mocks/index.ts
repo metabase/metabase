@@ -56,6 +56,7 @@ export * from "./session";
 export * from "./session-management";
 export * from "./settings";
 export * from "./setup";
+export * from "./setup-guide";
 export * from "./slack";
 export * from "./store";
 export * from "./support-access-grants";
