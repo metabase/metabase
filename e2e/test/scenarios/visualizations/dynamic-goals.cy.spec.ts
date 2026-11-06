@@ -256,7 +256,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
 
     cy.log(
-      "Gauge: search skips questions, as measures and metrics exist (GDGT-3457)",
+      "Gauge: questions are listed only for a search query, as measures and metrics exist (UIT-157)",
     );
     switchChartType("Gauge");
     H.openVizSettingsSidebar();
@@ -264,8 +264,11 @@ describe("scenarios > visualizations > dynamic goals", () => {
     openGoalMenu("Range 1 maximum");
     H.popover().findByText("Value from another question").click();
     H.miniPicker().within(() => {
+      cy.findByText(MEASURE_SOURCE.name).should("be.visible");
+      cy.findByText(METRIC_SOURCE.name).should("be.visible");
+      cy.findByText(SINGLE_COLUMN_SOURCE.name).should("not.exist");
       cy.findByPlaceholderText("Search…").type(SINGLE_COLUMN_SOURCE.name);
-      cy.findByText("No search results").should("be.visible");
+      cy.findByText(SINGLE_COLUMN_SOURCE.name).should("be.visible");
     });
 
     cy.log("Browse all offers the question, and a model is not a goal source");

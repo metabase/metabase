@@ -11,33 +11,22 @@ const MEASURE = createMockSearchResult({
   model: "measure",
   name: "Revenue",
 });
-const METRIC = createMockSearchResult({
-  id: 7,
-  model: "metric",
-  name: "Active users",
-});
-const QUESTION = createMockSearchResult({
-  id: 1,
-  model: "card",
-  name: "Orders",
-});
 
-function setup(enabled = true) {
+type SetupOpts = {
+  enabled?: boolean;
+};
+
+function setup({ enabled = true }: SetupOpts = {}) {
   return renderHookWithProviders(() => useEntityPickerSearch(enabled), {});
-}
-
-function getSearchCalls() {
-  return fetchMock.callHistory.calls("path:/api/search");
 }
 
 describe("useEntityPickerSearch", () => {
   it("does not probe for measures and metrics until enabled", () => {
     setupSearchEndpoints([MEASURE]);
 
-    const { result } = setup(false);
+    setup({ enabled: false });
 
     expect(getSearchCalls()).toHaveLength(0);
-    expect(result.current.models).toEqual(["measure", "metric"]);
   });
 
   it("probes with a count-only measure and metric search", async () => {
@@ -51,47 +40,15 @@ describe("useEntityPickerSearch", () => {
     expect(url.searchParams.get("limit")).toBe("0");
   });
 
-  it("searches measures and metrics, but not questions, when the instance has measures (GDGT-3457)", async () => {
-    setupSearchEndpoints([MEASURE, QUESTION]);
+  it("offers measures, metrics, and questions, but not models", () => {
+    setupSearchEndpoints([MEASURE]);
 
     const { result } = setup();
 
-    await waitFor(() => expect(getSearchCalls()).toHaveLength(1));
-    expect(result.current.models).toEqual(["measure", "metric"]);
-  });
-
-  it("searches measures and metrics, but not questions, when the instance has only metrics (GDGT-3457)", async () => {
-    setupSearchEndpoints([METRIC, QUESTION]);
-
-    const { result } = setup();
-
-    await waitFor(() => expect(getSearchCalls()).toHaveLength(1));
-    expect(result.current.models).toEqual(["measure", "metric"]);
-  });
-
-  it("searches measures and metrics, but not questions, when the instance has both (GDGT-3457)", async () => {
-    setupSearchEndpoints([MEASURE, METRIC, QUESTION]);
-
-    const { result } = setup();
-
-    await waitFor(() => expect(getSearchCalls()).toHaveLength(1));
-    expect(result.current.models).toEqual(["measure", "metric"]);
-  });
-
-  it("falls back to questions, but not models, when the instance has no measures or metrics", async () => {
-    setupSearchEndpoints([QUESTION]);
-
-    const { result } = setup();
-
-    await waitFor(() => expect(result.current.models).toEqual(["card"]));
-  });
-
-  it("caps results without filtering by ids, which the search API rejects for several models", async () => {
-    setupSearchEndpoints([QUESTION]);
-
-    const { result } = setup();
-
-    await waitFor(() => expect(result.current.models).toEqual(["card"]));
-    expect(result.current.searchParams).toEqual({ limit: 5 });
+    expect(result.current.models).toEqual(["measure", "metric", "card"]);
   });
 });
+
+function getSearchCalls() {
+  return fetchMock.callHistory.calls("path:/api/search");
+}
