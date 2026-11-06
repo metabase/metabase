@@ -12,11 +12,11 @@ import {
   useHistoryReviewStatus,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Button, Group, Loader, Radio, Stack, Text } from "metabase/ui";
+import { Group, Loader, Radio, Stack, Text } from "metabase/ui";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
-import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
+import { InferredActions, InferredIcon } from "../InferenceReview";
 
 import { countOf, getEntityNoun } from "./history-labels";
 
@@ -86,24 +86,16 @@ export function HistoryKindInput({
   onChange: (kind: HistoryKind) => void;
   onConfirmGuess: () => void;
 }) {
-  const { scdTypeInference, isScdTypeOverridden } = structure;
-  const isWeakGuess =
-    !isScdTypeOverridden && scdTypeInference.confidence === "low";
+  const { isScdTypeOverridden } = structure;
   const selectedKind = getTableHistoryKind(structure);
   const hasDateRange = getValidToForDates(fields, structure.history) != null;
+  // Sync's guess, until an admin confirms it or picks another kind. The
+  // options stay visible, locked until Confirm or Change, with the buttons
+  // below them rather than beside a single value.
+  const isInferred = !isScdTypeOverridden;
 
   return (
-    <Stack gap="sm" py="xs">
-      {isWeakGuess && (
-        <Group gap="xs">
-          <NeedsReviewBadge />
-          {!disabled && (
-            <Button size="compact-sm" variant="filled" onClick={onConfirmGuess}>
-              {t`Confirm`}
-            </Button>
-          )}
-        </Group>
-      )}
+    <Stack gap="sm" py="xs" data-testid="table-history-kind-input">
       <Radio.Group
         value={selectedKind}
         onChange={(value) => {
@@ -124,7 +116,7 @@ export function HistoryKindInput({
               label={
                 <Group gap="xs" wrap="nowrap">
                   {option.label}
-                  {option.value === selectedKind && !isScdTypeOverridden && (
+                  {isInferred && option.value === selectedKind && (
                     <InferredIcon
                       description={getInferenceDescription(structure)}
                     />
@@ -133,12 +125,16 @@ export function HistoryKindInput({
               }
               disabled={
                 disabled ||
+                isInferred ||
                 (option.value === "versions-with-dates" && !hasDateRange)
               }
             />
           ))}
         </Stack>
       </Radio.Group>
+      {isInferred && !disabled && (
+        <InferredActions onConfirm={onConfirmGuess} onChange={onConfirmGuess} />
+      )}
     </Stack>
   );
 }

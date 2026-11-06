@@ -1,12 +1,8 @@
 import { t } from "ttag";
 
+import { isMilestoneField } from "metabase/metadata/lifecycle";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import {
-  isBoolean,
-  isCategory,
-  isDate,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
+import { isBoolean, isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, SegmentId, Table } from "metabase-types/api";
 
 /** The segments every table has, built from its row-lifecycle columns */
@@ -29,6 +25,8 @@ export type Confidence = "high" | "low";
  */
 export type FieldCondition =
   | { fieldId: FieldId; operator: "="; value: boolean | string }
+  /** Any of several values, like a status bucket's */
+  | { fieldId: FieldId; operator: "in"; values: string[] }
   | { fieldId: FieldId; operator: "is-null" | "not-null" }
   | { fieldId: FieldId; operator: "last-days"; days: number };
 
@@ -61,6 +59,8 @@ export type RequiredFilterInference = {
 export type CohortProposal = {
   /** Stable across syncs, so a dismissal sticks */
   key: string;
+  /** A milestone date or flag; status buckets are segment group proposals */
+  kind: "milestone";
   name: string;
   condition: FieldCondition;
   signal: string;
@@ -333,8 +333,9 @@ export function inferRequiredFilter(
   };
 }
 
-// Past-tense steps a record goes through, from the spec's MilestoneTimestamp
-const MILESTONE_VERBS = [
+// Past-tense steps a milestone flag can name; milestone dates use the shared
+// MilestoneTimestamp rule instead
+const MILESTONE_FLAG_VERBS = [
   "canceled",
   "cancelled",
   "churned",
@@ -358,14 +359,10 @@ const MILESTONE_VERBS = [
   "verified",
   "confirmed",
 ];
-const MILESTONE_DATE_RE = new RegExp(
-  `^(${MILESTONE_VERBS.join("|")})_(at|on|date|time)$`,
-);
 const MILESTONE_FLAG_RE = new RegExp(
-  `^(is_|has_)?(${MILESTONE_VERBS.join("|")})$`,
+  `^(is_|has_)?(${MILESTONE_FLAG_VERBS.join("|")})$`,
 );
-const STATUS_RE = /(^|_)(status|state|stage)$/;
-const MAX_STATUS_COHORTS = 6;
+const MILESTONE_DATE_SUFFIX_RE = /_(at|on|date|time)$/;
 
 const humanize = (words: string) => {
   const text = words.replace(/_/g, " ");
@@ -374,28 +371,30 @@ const humanize = (words: string) => {
 
 /**
  * Cohorts from milestones: a milestone date that's set, or a milestone flag
- * that's true. Status cohorts need the status column's values; see
- * `getStatusCohortProposals`.
+ * that's true. A status column's buckets are proposed as one partition
+ * instead; see `getProcessPartitionProposal` in segment-groups.
  */
 export function getMilestoneCohortProposals(fields: Field[]): CohortProposal[] {
   return fields.flatMap((field): CohortProposal[] => {
-    const name = nameOf(field);
-    const dateMatch = isDate(field) ? MILESTONE_DATE_RE.exec(name) : null;
-    if (dateMatch) {
+    if (isMilestoneField(field)) {
       return [
         {
           key: `milestone:${idOf(field)}`,
-          name: humanize(dateMatch[1]),
+          kind: "milestone",
+          name: humanize(nameOf(field).replace(MILESTONE_DATE_SUFFIX_RE, "")),
           condition: { fieldId: idOf(field), operator: "not-null" },
           signal: t`${field.display_name} is a milestone date`,
         },
       ];
     }
-    const flagMatch = isBoolean(field) ? MILESTONE_FLAG_RE.exec(name) : null;
+    const flagMatch = isBoolean(field)
+      ? MILESTONE_FLAG_RE.exec(nameOf(field))
+      : null;
     if (flagMatch) {
       return [
         {
           key: `milestone:${idOf(field)}`,
+          kind: "milestone",
           name: humanize(flagMatch[2]),
           condition: { fieldId: idOf(field), operator: "=", value: true },
           signal: t`${field.display_name} is a milestone flag`,
@@ -404,24 +403,4 @@ export function getMilestoneCohortProposals(fields: Field[]): CohortProposal[] {
     }
     return [];
   });
-}
-
-/** Status-like columns whose values become cohorts, one per status bucket */
-export function getStatusFields(fields: Field[]): Field[] {
-  return fields.filter(
-    (field) =>
-      (isString(field) || isCategory(field)) && STATUS_RE.test(nameOf(field)),
-  );
-}
-
-export function getStatusCohortProposals(
-  field: Field,
-  values: string[],
-): CohortProposal[] {
-  return values.slice(0, MAX_STATUS_COHORTS).map((value) => ({
-    key: `status:${idOf(field)}:${value}`,
-    name: t`${field.display_name}: ${value}`,
-    condition: { fieldId: idOf(field), operator: "=", value },
-    signal: t`A status bucket of ${field.display_name}`,
-  }));
 }

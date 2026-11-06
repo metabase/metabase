@@ -34,6 +34,8 @@ import {
   useIsHistoryTable,
 } from "./FieldHistoryRoleInput";
 import { FieldSemanticsSection } from "./FieldSemanticsSection";
+import { GroupingsSection } from "./GroupingsSection";
+import { ValueOrderSection } from "./ValueOrderSection";
 
 interface FieldDetailsProps {
   field: Field;
@@ -146,6 +148,8 @@ export function FieldDetails({ field, table }: FieldDetailsProps) {
       </SidebarSection>
       <CustomFieldSection field={field} table={table} />
       <FieldSemanticsSection field={field} table={table} />
+      <ValueOrderSection field={field} table={table} />
+      <GroupingsSection field={field} table={table} />
       <SidebarSection title={t`Behavior`}>
         <BehaviorSection
           field={field}

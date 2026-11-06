@@ -1,5 +1,9 @@
 import { t } from "ttag";
 
+import {
+  getMilestoneFields,
+  getStatusFields,
+} from "metabase/metadata/lifecycle";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { isDate, isFK, isInteger, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -97,7 +101,6 @@ const VALID_TO_RE =
   /(^|_)(valid_to|effective_to|end_date|dbt_valid_to)$|^_fivetran_end$/;
 const CURRENT_FLAG_RE =
   /^(is_current|current_flag|is_latest|active|is_active)$|^_fivetran_active$/;
-const STATUS_RE = /(^|_)(status|state|stage)$/;
 const CREATED_RE = /^(created_at|created|created_on|inserted_at)$/;
 const UPDATED_RE =
   /^(updated_at|updated|updated_on|modified_at|last_modified)$/;
@@ -274,11 +277,11 @@ function inferFromColumns(fields: Field[]): RoleInference | null {
     };
   }
 
-  const milestones = dates.filter(
-    (field) => !matches(field, CREATED_RE) && !matches(field, UPDATED_RE),
-  );
-  const status = fields.find((field) => matches(field, STATUS_RE));
-  if (milestones.length >= 3 && status) {
+  // The shared lifecycle rules, so roles, processes, and cohorts agree on
+  // which columns are statuses and milestones
+  const milestones = getMilestoneFields(fields);
+  const status = getStatusFields(fields)[0];
+  if (milestones.length >= 2 && status) {
     return {
       role: "role/AccumulatingSnapshotFact",
       signal: t`Has ${milestones.length} milestone dates and ${status.name}`,

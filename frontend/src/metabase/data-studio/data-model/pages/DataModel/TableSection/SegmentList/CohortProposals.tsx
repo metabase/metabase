@@ -1,20 +1,13 @@
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useCreateSegmentMutation,
-  useGetFieldValuesQuery,
-} from "metabase/api";
+import { useCreateSegmentMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
   type CohortProposal,
   getMilestoneCohortProposals,
-  getStatusCohortProposals,
-  getStatusFields,
   useSegmentSettings,
   useTableSegments,
 } from "metabase/metadata/table-segments";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Button, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Table } from "metabase-types/api";
@@ -22,29 +15,18 @@ import type { Table } from "metabase-types/api";
 import { applyConditions, getFilterNames } from "../table-segments";
 
 /**
- * PROTOTYPE: mocked. Cohorts sync would propose from milestones and status
- * buckets, minus the ones an admin already accepted or dismissed.
+ * PROTOTYPE: mocked. Cohorts sync would propose from milestones, minus the
+ * ones an admin already accepted or dismissed. A status column's buckets are
+ * proposed as a segment group instead.
  */
 export function useCohortProposals(table: Table): CohortProposal[] {
   const { getTableSegmentsOverrides } = useTableSegments();
   const { getSegmentSettings } = useSegmentSettings();
   const isGenerating = getSegmentSettings(table.db_id, table.schema)
     .generateSegments.value;
-  const fields = isGenerating ? (table.fields ?? []) : [];
-  // One status column is enough to show the idea without a request per column
-  const statusField = getStatusFields(fields)[0];
-  const { data: statusValues } = useGetFieldValuesQuery(
-    statusField ? getRawTableFieldId(statusField) : skipToken,
-  );
-
-  const values = (statusValues?.values ?? [])
-    .map(([value]) => value)
-    .filter((value) => value != null && value !== "")
-    .map(String);
-  const proposals = [
-    ...getMilestoneCohortProposals(fields),
-    ...(statusField ? getStatusCohortProposals(statusField, values) : []),
-  ];
+  const proposals = isGenerating
+    ? getMilestoneCohortProposals(table.fields ?? [])
+    : [];
   const { resolvedCohortKeys } = getTableSegmentsOverrides(table);
   return proposals.filter(({ key }) => !resolvedCohortKeys.includes(key));
 }

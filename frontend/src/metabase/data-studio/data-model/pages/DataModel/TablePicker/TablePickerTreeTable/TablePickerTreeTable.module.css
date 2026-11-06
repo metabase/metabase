@@ -12,7 +12,7 @@
 .flag {
   position: absolute;
   top: 50%;
-  /* Same gap as the icon and text in the Visibility layer column */
+  /* Same gap as the icon and text in the Data layer column */
   right: calc(100% + var(--mantine-spacing-sm));
   transform: translateY(-50%);
 }

@@ -12,16 +12,16 @@ import { t } from "ttag";
 import { useListUsersQuery } from "metabase/api";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import {
+  DATA_LAYER_VISIBILITY_ICONS,
+  useDataLayers,
+} from "metabase/metadata/data-layers";
+import {
   getTableRoleLabel,
   useCustomPropertyParents,
   useHistoryReviewStatus,
   useTableFields,
   useTableStructures,
 } from "metabase/metadata/table-structure";
-import {
-  DATA_LAYER_ICONS,
-  getDataLayerLabel,
-} from "metabase/metadata/utils/data-layer";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
@@ -107,6 +107,7 @@ export function TablePickerTreeTable({
     typeof useTreeTableInstance<TablePickerTreeNode>
   > | null>(null);
 
+  const { getTableDataLayer } = useDataLayers();
   const { data: usersData } = useListUsersQuery();
   const ownerNameById = useMemo(() => {
     const users = usersData?.data ?? [];
@@ -285,20 +286,30 @@ export function TablePickerTreeTable({
       },
       {
         id: "data-layer",
-        header: t`Visibility layer`,
+        header: t`Data layer`,
         width: 150,
         cell: ({ row }) => {
-          if (row.original.type !== "table" || !row.original.table) {
+          const table = row.original.table;
+          if (row.original.type !== "table" || !table) {
             return null;
           }
-          const dataLayer = row.original.table.data_layer;
-          if (dataLayer == null) {
+          // PROTOTYPE: mocked. The table's layer, else its schema's, as the
+          // drawer's Data layer row shows it
+          const { layer } = getTableDataLayer(
+            table.db_id,
+            table.schema,
+            table.id,
+          );
+          if (layer == null) {
             return null;
           }
           return (
             <Group gap="sm" wrap="nowrap" data-testid="table-data-layer">
-              <Icon name={DATA_LAYER_ICONS[dataLayer]} c="text-secondary" />
-              <Box>{getDataLayerLabel(dataLayer)}</Box>
+              <Icon
+                name={DATA_LAYER_VISIBILITY_ICONS[layer.visibility]}
+                c="text-secondary"
+              />
+              <Box>{layer.name}</Box>
             </Group>
           );
         },
@@ -344,7 +355,7 @@ export function TablePickerTreeTable({
     }
 
     return columnDefs;
-  }, [isLibraryEnabled, ownerNameById, formatNumber]);
+  }, [isLibraryEnabled, ownerNameById, formatNumber, getTableDataLayer]);
 
   const expandedState = useMemo(
     () => Object.fromEntries([...expandedIds].map((id) => [id, true])),
