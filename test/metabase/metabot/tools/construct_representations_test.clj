@@ -3070,36 +3070,27 @@
                              results)))
                 (is (every? #(seq (mt/rows (qp/process-query %))) results))))))))))
 
-(deftest duplicate-fk-metric-dimension-drill-in-reference-executes-test
-  (testing "the drill-in on a column that a card reaches through two FK columns gives a Reference that runs"
-    (mt/with-temp [:model/Card {card-id :id, card-eid :entity_id}
+(deftest duplicate-fk-metric-dimension-drill-in-gives-no-route-test
+  (testing "the drill-in on a column that a card reaches through two visible FK columns names no route"
+    ;; Both routes share one field ID, so the drill-in cannot know which route the model means. A Reference of one
+    ;; route, copied for the other, groups by the wrong column with no error. The dimensions list has a Reference
+    ;; per route, see `duplicate-fk-metric-dimension-rows-execute-test`.
+    (mt/with-temp [:model/Card {card-id :id}
                    {:name "Venues with peer" :type :question :dataset_query (tools.tu/venues-self-join-query)}
-                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   :model/Card {metric-id :id}
                    {:name "Venue count" :type :metric :dataset_query (card-count-query card-id)}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [xml       (llm-shape/field-metadata->xml
-                         (:structured-output (field-stats/field-values {:entity-type "metric"
-                                                                        :entity-id   metric-id
-                                                                        :field-id    (mt/id :categories :name)
-                                                                        :limit       5})))
-              reference (some-> (re-find #"Reference \(copy into a field clause\): (.*)" xml) second json/decode)
-              result    (try
-                          (-> (construct/execute-representations-query
-                               (query-data
-                                {"lib/type" "mbql/query"
-                                 "stages"   [{"lib/type"    "mbql.stage/mbql"
-                                              "source-card" card-eid
-                                              "breakout"    [(reference->field-clause reference)]
-                                              "aggregation" [["metric" {} metric-eid]]}]}))
-                              (get-in [:structured-output :query]))
-                          (catch clojure.lang.ExceptionInfo e
-                            (ex-message e)))]
-          (testing "the drill-in names the FK column of its Reference"
-            (is (str/includes? xml "PUBLIC.CATEGORIES (via Category)")))
-          (testing "the Reference runs and joins through that FK column"
-            (is (map? result) (str "query failed: " result))
-            (when (map? result)
-              (is (str/includes? (:query (qp/compile result)) "ON \"__mb_source\".\"CATEGORY_ID\" =")))))))))
+        (let [xml (llm-shape/field-metadata->xml
+                   (:structured-output (field-stats/field-values {:entity-type "metric"
+                                                                  :entity-id   metric-id
+                                                                  :field-id    (mt/id :categories :name)
+                                                                  :limit       5})))]
+          (testing "the drill-in gives no Reference"
+            (is (not (str/includes? xml "Reference"))))
+          (testing "the drill-in names the table, without an FK column"
+            (is (str/includes? xml "Source table: PUBLIC.CATEGORIES\n")))
+          (testing "the drill-in still gives the values of the field"
+            (is (str/includes? xml (str "<field-metadata field_id=\"" (mt/id :categories :name) "\">")))))))))
 
 (deftest multi-stage-metric-over-model-breakout-executes-test
   (testing "every dimension listed for a multi-stage metric over a model works on the base table it must be used on"

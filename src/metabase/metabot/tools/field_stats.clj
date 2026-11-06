@@ -96,6 +96,16 @@
       (build-field-statistics fvs fp limit))
     (build-field-statistics nil (when (and fingerprint (not (query-statistics-restricted? query))) fingerprint) limit)))
 
+(defn- fk-route-count
+  "Return how many FK columns of `columns` reach the field of `col`.
+
+    (fk-route-count venues-with-peer-columns categories-name) ;=> 2, through CATEGORY_ID and Peer__CATEGORY_ID"
+  [columns col]
+  (->> columns
+       (filter #(and (:fk-field-id %) (= (:id col) (:id %))))
+       (into #{} (map (juxt :fk-field-id :fk-field-name)))
+       count))
+
 (defn- field-metadata-output
   "Build the `:field-metadata` tool result for `col`, one of `columns` of `query`. `all-columns` are the columns
   before the permission filter. Surfaces the column's portable FK + join label, or its `:reference`, as its
@@ -110,7 +120,11 @@
   `columns` are the columns after the permission filter and before the dedup to one column per field ID; they give
   the label of the column's own FK route. `all-columns` are the same columns before the permission filter; they
   decide whether a card reaches the column's table through two FK columns, so that the column gets the `:reference`
-  of its own route."
+  of its own route.
+
+  When `columns` reach the field through two or more FK columns, the result names only the table, as
+  `:source_table`, and has no reference: one field ID cannot tell which route the LLM means. The dimensions list
+  gives a `:reference` for each route."
   [query columns all-columns col field-id limit]
   (let [;; `field-id` is the field ID, maybe as a string, or a column alias. A column with a field ID that is found by
         ;; its alias is a later column of one field, see `column-field-ids`.
@@ -121,7 +135,12 @@
     {:structured-output (merge {:result-type    :field-metadata
                                 :field_id       field-id
                                 :value_metadata (field-statistics query col limit)}
-                               (select-keys result-col [:portable_fk :table_reference :reference])
+                               ;; Only a `:reference` row can have two routes: a card reaches its table through two
+                               ;; FK columns. The Reference of the first route, copied for the other route, groups
+                               ;; by the wrong column with no error.
+                               (if (and (:reference result-col) (< 1 (fk-route-count columns col)))
+                                 {:source_table (some->> (:portable_fk result-col) (take 3) vec)}
+                                 (select-keys result-col [:portable_fk :table_reference :reference]))
                                (when (and (nil? (:portable_fk result-col))
                                           (string? (:field_id result-col)))
                                  {:reference_name (:field_id result-col)}))}))
@@ -214,13 +233,14 @@
         col          (field-column query entity-type card-id field-id columns)]
     (check-curated-field-owner! card-id col)
     ;; Every FK route, the visible ones for the label and all of them for the count, so that a multi-FK column gets
-    ;; the Reference of its own route.
+    ;; the Reference of its own route, or no Reference when the user can see two routes.
     (field-metadata-output query (concat returned visible) (concat all-returned all-visible) col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query       (metabot.tools.u/metric-query metric-id)
-        ;; Every FK route that the user can see, so that a multi-FK column gets the Reference of its own route.
+        ;; Every FK route that the user can see, so that a multi-FK column gets the Reference of its own route, or
+        ;; no Reference when the user can see two routes.
         routes      (entity-details/metric-dimension-columns query metric-id)
         ;; The routes before the permission filter, for the count of FK routes. The explicitly joined columns that
         ;; `metric-dimension-columns` adds have no FK column, so they do not change the count.

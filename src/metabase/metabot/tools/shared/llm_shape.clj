@@ -972,12 +972,14 @@
    Matches Python GetFieldMetadataResultSchema.llm_representation exactly, plus an optional
    `source table` + `reference` (portable FK) when the caller supplies them — so a drilled-into
    field/dimension detail tells the LLM exactly how to reference the column. A `reference` field clause wins over
-   the portable FK. Without either, the reference is `reference_name`, the column's output name (like `\"NAME_2\"`)."
-  [{:keys [field_id value_metadata portable_fk reference reference_name table_reference]}]
+   the portable FK. Without either, the reference is `reference_name`, the column's output name (like `\"NAME_2\"`).
+   A field with only a `source_table` gets its source table and no reference."
+  [{:keys [field_id value_metadata portable_fk reference reference_name source_table table_reference]}]
   (render-llm-template
    :field_metadata
    {:field_metadata_field_id field_id
-    :field_metadata_source    (dimension-source-table {:portable_fk portable_fk
+    :field_metadata_source    (dimension-source-table {:portable_fk     portable_fk
+                                                       :source_table    source_table
                                                        :table_reference table_reference})
     ;; rendered with |safe — escape XML structural chars but keep the JSON's quotes readable,
     ;; like the `:reference` column in [[format-metric-dimensions-table]]
