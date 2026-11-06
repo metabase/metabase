@@ -93,16 +93,17 @@
 
 ;;; ---------------------------------------- Single-database operations -----------------------------------------------
 
-(defn refused-existing-user?
-  "Whether `t` is init refusing a workspace user that was already there, which may belong to another parent: see
-  [[driver/init-workspace-isolation!]]. Nothing in the warehouse is this workspace's to tear down after it."
+(defn- nothing-to-tear-down?
+  "Whether `t`, from init, says that nothing in the warehouse is this workspace's to tear down: see
+  [[driver/init-workspace-isolation!]]. A teardown could drop a user of the same name that another parent owns."
   [t]
   (false? (:workspace/cleanup? (ex-data t))))
 
 (defn provision-workspace-database!
   "Provision an isolated output schema and user for a `:provisioning`
   WorkspaceDatabase row. State transitions: `:provisioning` -> `:provisioned`
-  on success, or back to `:unprovisioned` on failure."
+  on success, or back to `:unprovisioned` on failure. A failure that leaves
+  nothing to tear down deletes the row instead."
   [workspace-database-id provisioner]
   (try
     (with-workspace-database-lock workspace-database-id
@@ -121,7 +122,7 @@
             (init! provisioner driver db ws-details)
             (grant! provisioner driver db ws-details schemas)
             (catch Throwable t
-              (when-not (refused-existing-user? t)
+              (when-not (nothing-to-tear-down? t)
                 (try
                   (destroy! provisioner driver db ws-details)
                   (catch Throwable destroy-t
@@ -133,7 +134,11 @@
                                              :database_details (:database_details ws-details)
                                              :status           :provisioned}))))
     (catch Throwable t
-      (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned})
+      (if (nothing-to-tear-down? t)
+        ;; the row is the record that warehouse objects may exist; there are none, and a later teardown of the row
+        ;; would drop the user init refused
+        (ws.db/delete-workspace-database! workspace-database-id)
+        (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned}))
       (throw t)))
   (ws.db/workspace-database workspace-database-id))
 

@@ -121,6 +121,26 @@
                 "destroy would drop the user init refused, which may belong to another parent")
             (is (not (t2/exists? :model/Workspace :name "Refused")))
             (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id)))))
+        (testing "provision-workspace! deletes a refused row without a teardown, so a later delete has nothing to drop"
+          (let [destroyed (atom 0)
+                refusing  (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   (throw (ex-info "user exists" {:status-code        409
+                                                                                 :workspace/cleanup? false})))
+                            (grant!   [_ _ _ _ _] nil)
+                            (destroy! [_ _ _ _]   (swap! destroyed inc)))
+                ws        (ws/create-workspace! {:name "Refused later" :creator_id (mt/user->id :crowberto)})]
+            (t2/insert! :model/WorkspaceDatabase {:workspace_id     (:id ws)
+                                                  :database_id      db-id
+                                                  :input_schemas    ["public"]
+                                                  :database_details {}
+                                                  :output_namespace ""
+                                                  :status           :unprovisioned})
+            (is (= 1 (provisioning/provision-workspace! (:id ws) refusing)))
+            (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id (:id ws))))
+            (with-redefs [provisioning/dispatching-provisioner refusing]
+              (is (nil? (ws/delete-workspace! (:id ws)))))
+            (is (zero? @destroyed))))
         (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})

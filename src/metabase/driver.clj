@@ -2265,10 +2265,12 @@
    The return value is unspecified; callers should persist the precomputed details,
    not anything returned from here.
 
-   An implementation that finds the user already there may throw `ex-info` with
-   `:workspace/cleanup? false` in its data and change nothing. That user may belong
-   to another parent, so the caller must not run [[destroy-workspace-isolation!]]
-   for this workspace after that error.
+   An implementation may throw `ex-info` with `:workspace/cleanup? false` in its data
+   when the failed init left nothing behind, or when it refused a user that was
+   already there, which may belong to another parent. The caller must not run
+   [[destroy-workspace-isolation!]] for this workspace after that error. The
+   `:status-code` in the error is the driver's: the workspace API reports every
+   provisioning failure as a 500.
 
    This is an enterprise feature. Drivers must also return true for
    (database-supports? driver :workspace database) to indicate support.
