@@ -299,7 +299,10 @@
 
 (defenterprise boot-initialize!
   "Read the config file from disk and run [[initialize!]] on it with `{{env VAR}}` templates expanded.
-  Does nothing when there is no config file."
+  Does nothing when there is no config file.
+  When the config contains a `:workspace` section, locks the workspace against
+  runtime mutation (see
+  [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
   :feature :none
   []
   (let [parsed (config-from-disk)
