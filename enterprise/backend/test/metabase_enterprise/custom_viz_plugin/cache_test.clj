@@ -79,6 +79,20 @@
       (is (thrown-with-msg? Exception #"must not contain \":\""
                             (cache/validate-bundle! bytes))))))
 
+(deftest validate-bundle-accepts-a-non-svg-icon-test
+  (testing "a bitmap icon doesn't invalidate a bundle -- an imported plugin keeps working, the icon just isn't served"
+    (is (=? {:manifest {:icon "icon.png"}}
+            (cache/validate-bundle! (cvp.tu/valid-bundle-bytes "thumbs" {:icon "icon.png"}))))))
+
+(deftest check-bundle-icon-test
+  (testing "an SVG icon, or none, passes through"
+    (doseq [manifest [{:name "thumbs" :icon "icon.svg"} {:name "thumbs"}]]
+      (is (= {:manifest manifest} (cache/check-bundle-icon! {:manifest manifest})))))
+  (testing "any other icon is a 400"
+    (let [e (is (thrown-with-msg? Exception #"Plugin icon \"icon.png\" must be an SVG file"
+                                  (cache/check-bundle-icon! {:manifest {:name "thumbs" :icon "icon.png"}})))]
+      (is (= 400 (:status-code (ex-data e)))))))
+
 (deftest validate-bundle-rejects-invalid-json-manifest-test
   (testing "non-JSON manifest is rejected"
     (let [bytes (cvp.tu/make-tgz-bytes
@@ -165,7 +179,13 @@
     (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
                                         :body    (json/encode {:name 123})})]
       (is (thrown-with-msg? Exception #"is invalid"
-                            (cache/fetch-dev-manifest "http://localhost:5174"))))))
+                            (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "rejects a non-SVG icon while developing, same as the upload path"
+    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
+                                        :body    (json/encode {:name "dev-viz" :icon "icon.png"})})]
+      (let [e (is (thrown-with-msg? Exception #"Plugin icon \"icon.png\" must be an SVG file"
+                                    (cache/fetch-dev-manifest "http://localhost:5174")))]
+        (is (= 400 (:status-code (ex-data e))))))))
 
 (deftest dev-fetch-surfaces-validation-errors-test
   (testing "a URL that fails validation surfaces as a 400, not as a silently-down dev server --

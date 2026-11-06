@@ -20,7 +20,7 @@ npm run build      # Compiles src/ → dist/, then packages it into a .tgz
 `npm run build` writes `<name>-<version>.tgz` to the project root. Upload that file in
 **Admin → Custom visualizations → Add** to register the plugin.
 
-> The packaged archive contains `metabase-plugin.json` plus the build output (`dist/index.js` and any whitelisted `dist/assets/*`). The `dist/` folder does not need to be committed.
+> The packaged archive contains `metabase-plugin.json` plus the build output (`dist/index.js` and the SVG icon under `dist/assets/`). Metabase serves only the icon, so nothing else under `dist/assets/` is packed. The `dist/` folder does not need to be committed.
 
 ### Project structure
 
@@ -255,6 +255,7 @@ The icon appears in the chart type picker and elsewhere in the Metabase UI.
 
 - Declared via `"icon"` in `metabase-plugin.json`.
 - Default location: `public/assets/icon.svg`.
+- **Must be an SVG file.** Metabase refuses a bundle whose icon is a bitmap (PNG, JPEG, …), and `npm run build` fails before packing one.
 - **Use `currentColor`** for fill/stroke so the icon adapts to light and dark themes.
 
 ```svg
