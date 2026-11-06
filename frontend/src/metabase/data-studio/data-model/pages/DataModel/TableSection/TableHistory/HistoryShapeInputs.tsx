@@ -72,6 +72,7 @@ function ShapeOptionItem({
       position="left"
       offset={OPTION_TOOLTIP_OFFSET}
       maw="none"
+      p="md"
     >
       <SelectItem selected={selected} disabled={disabled} w="100%">
         <Text c="inherit" lh="inherit" flex={1}>

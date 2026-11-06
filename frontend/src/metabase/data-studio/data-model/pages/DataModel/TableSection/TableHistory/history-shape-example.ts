@@ -129,7 +129,7 @@ export function getHistoryShapeExample(
           version.validFrom,
         ]),
         currentRowIndex: latestIndex,
-        note: t`The newest row is the current one.`,
+        note: null,
       };
     case "current-table":
       return {
