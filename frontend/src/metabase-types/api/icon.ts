@@ -107,6 +107,7 @@ export type IconName =
   | "filter"
   | "filter_plus"
   | "find_replace"
+  | "flag"
   | "bug"
   | "format_code"
   | "formula"

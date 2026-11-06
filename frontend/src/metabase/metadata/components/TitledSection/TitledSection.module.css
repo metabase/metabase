@@ -1,3 +1,10 @@
 .card {
   box-shadow: 0 2px 4px 0 hsla(0, 0%, 0%, 0.05) !important;
 }
+
+.outlined {
+  padding: var(--mantine-spacing-lg);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-lg);
+  background-color: var(--mb-color-background_page-primary);
+}

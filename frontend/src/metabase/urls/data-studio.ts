@@ -30,6 +30,9 @@ function getQueryString({ collectionId }: OptionalParams) {
 export const DATA_STUDIO_TABLE_METADATA_TABS = [
   "details",
   "field",
+  "properties",
+  // PROTOTYPE: a table's status lifecycle, shown when it has a process
+  "process",
   "segments",
   "measures",
 ] as const;
@@ -173,6 +176,16 @@ export function dataStudioDataModelSegment({
   segmentId,
 }: DataModelSegmentParams) {
   return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/${segmentId}`;
+}
+
+/** PROTOTYPE: a table's built-in segment, by role (e.g. `exclude_deleted`) */
+export function dataStudioDataModelSystemSegment({
+  databaseId,
+  schemaName,
+  tableId,
+  role,
+}: Omit<DataModelSegmentParams, "segmentId"> & { role: string }) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/system/${role}`;
 }
 
 export function dataStudioDataModelSegmentRevisions(

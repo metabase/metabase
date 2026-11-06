@@ -27,6 +27,7 @@ import { FilterPopover } from "./FilterPopover";
 import { SearchNew } from "./SearchNew";
 import S from "./TablePicker.module.css";
 import { Tree } from "./Tree";
+import { EMPTY_FILTERS } from "./constants";
 import type { ChangeOptions, FilterState, TreePath } from "./types";
 import { getFiltersCount } from "./utils";
 
@@ -49,14 +50,7 @@ export function TablePicker({
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
   const previousDebouncedQuery = usePrevious(debouncedQuery);
-  const [filters, setFilters] = useState<FilterState>({
-    dataLayer: null,
-    dataSource: null,
-    ownerEmail: null,
-    ownerUserId: null,
-    unusedOnly: null,
-    publishedOnly: null,
-  });
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
 

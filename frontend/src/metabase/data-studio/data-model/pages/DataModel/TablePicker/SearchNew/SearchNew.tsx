@@ -5,7 +5,13 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
 import { trackDataStudioTablePickerSearchPerformed } from "metabase/common/data-studio/analytics";
+import { useDataLayers } from "metabase/metadata/data-layers";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
+import {
+  getTableHiddenReason,
+  useTableStructures,
+  useTablesWithFields,
+} from "metabase/metadata/table-structure";
 import { Box, Flex, Loader, Text } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -121,6 +127,7 @@ export function SearchNew({
     "orphan-only": filters.ownerUserId === "unknown" ? true : undefined,
     "unused-only": filters.unusedOnly === true ? true : undefined,
     "published-only": filters.publishedOnly === true ? true : undefined,
+    include_hidden: filters.hiddenOnly === true ? true : undefined,
   });
   const { data: databases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
@@ -144,16 +151,59 @@ export function SearchNew({
     return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
   }, [allowedDatabaseIds, tables]);
 
-  const isLoading = isLoadingTables || isFetchingTables || isLoadingDatabases;
+  // PROTOTYPE: mocked. Structure filters need each table's fields and are
+  // applied here, since there's no API for them yet
+  const hasStructureFilters =
+    filters.needsReviewOnly === true ||
+    filters.hiddenOnly === true ||
+    filters.noMainDateOnly === true ||
+    filters.noRoleOnly === true;
+  const { tables: tablesWithFields, isLoading: isLoadingFields } =
+    useTablesWithFields(filteredTables, { isEnabled: hasStructureFilters });
+  const { getTableStructure } = useTableStructures();
+  const { getTableDataLayer } = useDataLayers();
+
+  const resultTables = useMemo(() => {
+    if (!hasStructureFilters) {
+      return filteredTables;
+    }
+    return tablesWithFields.filter((table) => {
+      const structure = getTableStructure(table);
+      const hiddenReason = getTableHiddenReason({
+        table,
+        role: structure.role,
+        dataLayer: getTableDataLayer(table.db_id, table.schema, table.id).layer,
+      });
+      return (
+        (filters.needsReviewOnly !== true || structure.needsReview) &&
+        (filters.noRoleOnly !== true || structure.role == null) &&
+        (filters.noMainDateOnly !== true || structure.mainDateField == null) &&
+        (filters.hiddenOnly !== true || hiddenReason != null)
+      );
+    });
+  }, [
+    filteredTables,
+    filters,
+    getTableDataLayer,
+    getTableStructure,
+    hasStructureFilters,
+    tablesWithFields,
+  ]);
+
+  const isLoading =
+    isLoadingTables ||
+    isFetchingTables ||
+    isLoadingDatabases ||
+    isLoadingFields;
 
   const resultTree = useMemo(
-    () => buildResultTree(filteredTables),
-    [filteredTables],
+    () => buildResultTree(resultTables),
+    [resultTables],
   );
 
   useEffect(() => {
-    filterSelectedTables(filteredTables.map((table) => table.id));
-  }, [filteredTables, filterSelectedTables]);
+    filterSelectedTables(resultTables.map((table) => table.id));
+  }, [resultTables, filterSelectedTables]);
 
   useEffect(() => {
     resetSelection();
@@ -177,7 +227,7 @@ export function SearchNew({
     );
   }
 
-  if (filteredTables.length === 0) {
+  if (resultTables.length === 0) {
     return (
       <Box p="xxl">
         <Text c="text-secondary">{t`No tables found`}</Text>

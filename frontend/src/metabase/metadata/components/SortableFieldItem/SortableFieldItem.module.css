@@ -1,6 +1,10 @@
 .sortableField {
   /* make border-radius of focus state match border-radius of .card */
   border-radius: var(--default-border-radius);
+
+  &.outlined {
+    border-radius: var(--mantine-radius-lg);
+  }
 }
 
 .active {
@@ -23,6 +27,12 @@
       color: var(--mb-color-core-brand);
     }
   }
+}
+
+/* Flat, rounder card to match the Data Studio drawer's sections */
+.card.outlined {
+  border-radius: var(--mantine-radius-lg);
+  box-shadow: none !important;
 }
 
 .icon {

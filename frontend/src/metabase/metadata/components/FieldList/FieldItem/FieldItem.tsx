@@ -10,6 +10,8 @@ import { Box, Card, Ellipsified, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
+import { useMetadataCardVariant } from "../../MetadataCardVariant";
+
 import S from "./FieldItem.module.css";
 
 type FieldItemProps = {
@@ -36,6 +38,7 @@ const FieldItemBase = ({
   const icon = useMemo(() => {
     return getColumnIcon(Lib.legacyColumnTypeInfo(field));
   }, [field]);
+  const isOutlined = useMetadataCardVariant() === "outlined";
 
   const handleNameChange = async (newValue: string) => {
     const newName = newValue.trim();
@@ -85,6 +88,7 @@ const FieldItemBase = ({
       c="text-secondary"
       className={cx(S.card, {
         [S.active]: active,
+        [S.outlined]: isOutlined,
       })}
       role="listitem"
       p={0}
@@ -97,9 +101,14 @@ const FieldItemBase = ({
         component={Link}
         direction="column"
         draggable={false} // this + onClick handler is required, otherwise interaction is broken on macOS
-        gap={rem(12)}
-        justify="space-between"
-        mih={rem(40)}
+        // Tighter in Data Studio, matching its segment and measure cards. The
+        // inputs' negative margins eat 7px, so 8px keeps their borders apart.
+        gap={isOutlined ? rem(8) : rem(12)}
+        // In Data Studio, 72px tall like its segment and measure cards: the
+        // card adds a 2px border and 1px bottom padding around this link, and
+        // short content stays centered rather than spreading apart
+        justify={isOutlined ? "center" : "space-between"}
+        mih={isOutlined ? rem(69) : rem(40)}
         pos="relative"
         px="lg"
         py={rem(12)}

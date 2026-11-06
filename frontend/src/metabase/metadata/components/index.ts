@@ -13,6 +13,7 @@ export * from "./FieldValuesModal";
 export * from "./FkTargetPicker";
 export * from "./LabeledValue";
 export * from "./LayerInput";
+export * from "./MetadataCardVariant";
 export * from "./NameDescriptionInput";
 export * from "./NoDatabasesEmptyState";
 export * from "./PreviewSection";

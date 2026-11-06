@@ -1,11 +1,9 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { useUpdateFieldMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { useFieldUpdateHandlers } from "metabase/metadata/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, type StackProps, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -39,56 +37,16 @@ const FieldSectionBase = ({
   onTrackMetadataChange,
   ...stackProps
 }: FieldSectionBaseProps & StackProps) => {
-  const id = getRawTableFieldId(field);
   const readOnly = !table.can_write;
-  const [updateField] = useUpdateFieldMutation();
-  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
-    useMetadataToasts();
+  const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
+    field,
+  });
   const {
     buttonsContainerRef,
     showButtonLabel,
     setFieldValuesButtonWidth,
     setPreviewButtonWidth,
   } = useResponsiveButtons();
-
-  const handleNameChange = async (name: string) => {
-    const { error } = await updateField({ id, display_name: name });
-
-    if (error) {
-      sendErrorToast(t`Failed to update name of ${field.display_name}`);
-    } else {
-      sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
-        const { error } = await updateField({
-          id,
-          display_name: field.display_name,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleDescriptionChange = async (description: string) => {
-    const { error } = await updateField({
-      id,
-      // API does not accept empty strings
-      description: description.length === 0 ? null : description,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update description of ${field.display_name}`);
-    } else {
-      sendSuccessToast(
-        t`Description of ${field.display_name} updated`,
-        async () => {
-          const { error } = await updateField({
-            id,
-            description: field.description ?? "",
-          });
-          sendUndoToast(error);
-        },
-      );
-    }
-  };
 
   return (
     <Stack data-testid="field-section" gap={0} pb="xl" {...stackProps}>

@@ -2,68 +2,53 @@ import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
-import {
-  FieldOrderPicker,
-  NameDescriptionInput,
-} from "metabase/metadata/components";
-import { ResponsiveButton } from "metabase/metadata/components/ResponsiveButton";
+import { FieldOrderPicker } from "metabase/metadata/components";
 import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useTableUpdateHandlers } from "metabase/metadata/hooks";
 import {
-  PLUGIN_DEPENDENCIES,
-  PLUGIN_LIBRARY,
-  PLUGIN_REMOTE_SYNC,
-} from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+  isRoleA,
+  usePropertyRegistry,
+  useTableStructures,
+} from "metabase/metadata/table-structure";
 import { useNavigate } from "metabase/router";
-import {
-  Box,
-  Button,
-  Group,
-  Icon,
-  Loader,
-  Stack,
-  Tabs,
-  Tooltip,
-} from "metabase/ui";
+import { Box, Button, Icon, Loader, Stack, Tabs } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
-import { dependencyGraph } from "metabase/urls/dependencies";
-import {
-  type FieldId,
-  type Table,
-  isConcreteTableId,
+import type {
+  Field,
+  FieldId,
+  Table,
+  TableFieldOrder,
 } from "metabase-types/api";
 
+import {
+  ListSearchBar,
+  ListSearchEmptyState,
+  matchesListSearch,
+} from "./ListSearchBar";
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
-import { TableActionsMenu } from "./TableActionsMenu";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
-import { TableMetadata } from "./TableMetadata";
+import { TableFiltering } from "./TableFiltering";
+import { TableMetadata, TableStats } from "./TableMetadata";
+import { TableProcess, useHasProcess } from "./TableProcess";
+import { TablePropertyList } from "./TablePropertyList";
 import S from "./TableSection.module.css";
-import { TableSectionGroup } from "./TableSectionGroup";
+import { TableStructure } from "./TableStructure";
 
 interface Props {
   table: Table;
   activeFieldId?: FieldId;
   activeTab: DataStudioTableMetadataTab;
-  canPublish: boolean;
-  hasLibrary: boolean;
   onUpdate: () => void;
 }
-
-type TableModalType = "library" | "publish" | "unpublish";
 
 const TableSectionBase = ({
   table,
   activeFieldId,
   activeTab,
-  canPublish,
-  hasLibrary,
   onUpdate,
 }: Props) => {
   const {
@@ -73,15 +58,15 @@ const TableSectionBase = ({
     handleCustomFieldOrderChange,
     isUpdatingSorting,
   } = useTableUpdateHandlers({ table, onNameUpdated: onUpdate });
-  const [modalType, setModalType] = useState<TableModalType>();
-  const [isSorting, setIsSorting] = useState(false);
-  const hasFields = Boolean(table.fields && table.fields.length > 0);
   const readOnly = !table.can_write;
-  const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
-  const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
-  const remoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+  const structure = useTableStructures().getTableStructure(table);
+  const isCustomPropertyTable =
+    structure.role != null &&
+    isRoleA(structure.role, "role/CustomPropertyTable");
+  const hasProcess = useHasProcess(table);
+  // A link to the Process tab of a table without one lands on Details
+  const visibleTab =
+    activeTab === "process" && !hasProcess ? "details" : activeTab;
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -112,177 +97,67 @@ const TableSectionBase = ({
     },
     [table.db_id, table.schema, table.id, navigate],
   );
-
-  const handlePublishToggle = () => {
-    if (!hasLibrary) {
-      setModalType("library");
-    } else {
-      setModalType(table.is_published ? "unpublish" : "publish");
-    }
-  };
-
-  const handleCloseModal = () => {
-    setModalType(undefined);
-  };
-
-  const handleSuccessCloseModal = () => {
-    onUpdate();
-    handleCloseModal();
-  };
-
-  const registerDependencyGraphTrackingEvent = () => {
-    if (isConcreteTableId(table.id)) {
-      trackDependencyEntitySelected({
-        entityId: table.id,
-        triggeredFrom: "data-structure",
-        eventDetail: "table",
-      });
-    }
-  };
-
   return (
-    <Stack data-testid="table-section" gap="lg" pb="xxl">
+    <Stack data-testid="table-section" gap="lg">
+      {isCustomPropertyTable && <KeepPropertyRegistryLoaded table={table} />}
       <Box>
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List mb="lg">
+        <Tabs value={visibleTab} onChange={handleTabChange}>
+          {/* Bleeds into the panel's padding so the border spans the drawer */}
+          <Tabs.List mb="xl" mx="-xl" px="xl">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
+            {isCustomPropertyTable && (
+              <Tabs.Tab value="properties">{t`Custom properties`}</Tabs.Tab>
+            )}
+            {hasProcess && <Tabs.Tab value="process">{t`Process`}</Tabs.Tab>}
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="details">
-            <Stack gap="lg">
-              <Box className={S.header}>
-                <NameDescriptionInput
-                  description={table.description ?? ""}
-                  descriptionPlaceholder={t`Give this table a description`}
-                  name={table.display_name}
-                  nameIcon="table2"
-                  nameMaxLength={254}
-                  namePlaceholder={t`Give this table a name`}
-                  readOnly={readOnly}
-                  onNameChange={handleNameChange}
-                  onDescriptionChange={handleDescriptionChange}
-                />
-              </Box>
-
-              <Group justify="stretch" gap="sm">
-                {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
-                  <Button
-                    flex="1"
-                    variant={table.is_published ? "default" : "filled"}
-                    leftSection={
-                      <Icon
-                        name={table.is_published ? "unpublish" : "publish"}
-                      />
-                    }
-                    onClick={handlePublishToggle}
-                  >
-                    {table.is_published ? t`Unpublish` : t`Publish`}
-                  </Button>
-                )}
-
-                {isDependencyGraphEnabled && (
-                  <Tooltip label={t`Dependency graph`}>
-                    <Button
-                      component={ForwardRefLink}
-                      to={dependencyGraph({
-                        entry: { id: Number(table.id), type: "table" },
-                      })}
-                      flex="0 1 auto"
-                      leftSection={<Icon name="dependencies" />}
-                      aria-label={t`Dependency graph`}
-                      onClickCapture={registerDependencyGraphTrackingEvent}
-                      onAuxClick={registerDependencyGraphTrackingEvent}
-                    />
-                  </Tooltip>
-                )}
-
-                <Box style={{ flexGrow: 0 }}>
-                  <TableLink table={table} />
-                </Box>
-                <TableActionsMenu table={table} />
-              </Group>
+            <Stack gap="xxl">
+              <TableMetadata
+                table={table}
+                readOnly={readOnly}
+                onNameChange={handleNameChange}
+                onDescriptionChange={handleDescriptionChange}
+              />
 
               <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
 
-              <TableSectionGroup title={t`Metadata`}>
-                <TableMetadata table={table} />
-              </TableSectionGroup>
+              <TableStructure table={table} readOnly={readOnly} />
+
+              <TableFiltering table={table} readOnly={readOnly} />
 
               {table.is_published && <TableCollection table={table} />}
+
+              <TableStats table={table} />
             </Stack>
           </Tabs.Panel>
 
           <Tabs.Panel value="field">
-            <Stack gap="lg">
-              <Group gap="lg" justify="flex-start" wrap="nowrap">
-                {!isSorting && hasFields && !readOnly && (
-                  <ResponsiveButton
-                    icon="sort_arrows"
-                    showLabel
-                    onClick={() => setIsSorting(true)}
-                  >{t`Sorting`}</ResponsiveButton>
-                )}
-
-                {isSorting && (
-                  <FieldOrderPicker
-                    value={table.field_order}
-                    onChange={handleFieldOrderTypeChange}
-                  />
-                )}
-
-                {isSorting && (
-                  <ResponsiveButton
-                    icon="check"
-                    showLabel
-                    onClick={() => setIsSorting(false)}
-                  >{t`Done`}</ResponsiveButton>
-                )}
-
-                {isUpdatingSorting && <Loader size="xs" />}
-              </Group>
-
-              {!hasFields && (
-                <EmptyState
-                  className={S.EmptyState}
-                  message={t`This table has no fields`}
-                  spacing="sm"
-                />
-              )}
-
-              {hasFields && (
-                <>
-                  <Box
-                    style={{
-                      display: isSorting ? "block" : "none",
-                    }}
-                    aria-hidden={!isSorting}
-                  >
-                    <TableSortableFieldList
-                      activeFieldId={activeFieldId}
-                      table={table}
-                      onChange={handleCustomFieldOrderChange}
-                    />
-                  </Box>
-
-                  <Box
-                    style={{
-                      display: isSorting ? "none" : "block",
-                    }}
-                    aria-hidden={isSorting}
-                  >
-                    <TableFieldList
-                      table={table}
-                      activeFieldId={activeFieldId}
-                      getFieldHref={getFieldHref}
-                    />
-                  </Box>
-                </>
-              )}
-            </Stack>
+            <FieldsTab
+              table={table}
+              activeFieldId={activeFieldId}
+              readOnly={readOnly}
+              isUpdatingSorting={isUpdatingSorting}
+              getFieldHref={getFieldHref}
+              onFieldOrderTypeChange={handleFieldOrderTypeChange}
+              onCustomFieldOrderChange={handleCustomFieldOrderChange}
+            />
           </Tabs.Panel>
+
+          {isCustomPropertyTable && (
+            <Tabs.Panel value="properties">
+              <TablePropertyList table={table} />
+            </Tabs.Panel>
+          )}
+
+          {hasProcess && (
+            <Tabs.Panel value="process">
+              <TableProcess table={table} readOnly={readOnly} />
+            </Tabs.Panel>
+          )}
 
           <Tabs.Panel value="segments">
             <SegmentList table={table} />
@@ -293,48 +168,115 @@ const TableSectionBase = ({
           </Tabs.Panel>
         </Tabs>
       </Box>
-
-      <PLUGIN_LIBRARY.CreateLibraryModal
-        title={t`First, let's create your semantic layer`}
-        explanatorySentence={t`This is where published tables will go.`}
-        isOpened={modalType === "library"}
-        onCreate={() => setModalType("publish")}
-        onClose={handleCloseModal}
-      />
-      <PLUGIN_LIBRARY.PublishTablesModal
-        isOpened={modalType === "publish"}
-        tableIds={[table.id]}
-        onPublish={handleSuccessCloseModal}
-        onClose={handleCloseModal}
-      />
-      <PLUGIN_LIBRARY.UnpublishTablesModal
-        isOpened={modalType === "unpublish"}
-        tableIds={[table.id]}
-        onUnpublish={handleSuccessCloseModal}
-        onClose={handleCloseModal}
-      />
     </Stack>
   );
 };
 
-function TableLink({ table }: { table: Table }) {
-  const url =
-    Urls.modelToUrl({
-      id: Number(table.id),
-      name: table.name,
-      model: "table",
-      database: { id: table.db_id },
-    }) ?? "#";
+// Ad-hoc query results are dropped as soon as nothing reads them, so the
+// Properties tab would re-profile on every visit. Reading the registry here,
+// where it outlives tab switches, keeps it loaded while the table is open.
+function KeepPropertyRegistryLoaded({ table }: { table: Table }) {
+  usePropertyRegistry(table);
+  return null;
+}
+
+interface FieldsTabProps {
+  table: Table;
+  activeFieldId?: FieldId;
+  readOnly: boolean;
+  isUpdatingSorting: boolean;
+  getFieldHref: (fieldId: FieldId) => string;
+  onFieldOrderTypeChange: (fieldOrder: TableFieldOrder) => void;
+  onCustomFieldOrderChange: (fieldOrder: FieldId[]) => void;
+}
+
+/** The table's fields, searchable, with sorting beside the search */
+function FieldsTab({
+  table,
+  activeFieldId,
+  readOnly,
+  isUpdatingSorting,
+  getFieldHref,
+  onFieldOrderTypeChange,
+  onCustomFieldOrderChange,
+}: FieldsTabProps) {
+  const [isSorting, setIsSorting] = useState(false);
+  const [query, setQuery] = useState("");
+  const fields = table.fields ?? [];
+
+  const filterField = useCallback(
+    (field: Field) => matchesListSearch(query, field.display_name, field.name),
+    [query],
+  );
+  const hasMatches = fields.some(filterField);
+
+  if (fields.length === 0) {
+    return (
+      <EmptyState
+        className={S.EmptyState}
+        message={t`This table has no fields`}
+        spacing="sm"
+      />
+    );
+  }
 
   return (
-    <Tooltip label={t`Go to this table`} position="top">
-      <Button
-        component={ForwardRefLink}
-        to={url}
-        aria-label={t`Go to this table`}
-        leftSection={<Icon name="external" size={16} />}
-      />
-    </Tooltip>
+    <Stack gap="lg">
+      {/* Sorting drags the full list, so search waits until it's done */}
+      <ListSearchBar
+        value={query}
+        placeholder={t`Search fields`}
+        disabled={isSorting}
+        onChange={setQuery}
+      >
+        {!isSorting && !readOnly && (
+          <Button
+            leftSection={<Icon name="sort_arrows" />}
+            onClick={() => setIsSorting(true)}
+          >{t`Sorting`}</Button>
+        )}
+        {isSorting && (
+          <FieldOrderPicker
+            value={table.field_order}
+            onChange={onFieldOrderTypeChange}
+          />
+        )}
+        {isSorting && (
+          <Button
+            leftSection={<Icon name="check" />}
+            onClick={() => setIsSorting(false)}
+          >{t`Done`}</Button>
+        )}
+        {isUpdatingSorting && <Loader size="xs" />}
+      </ListSearchBar>
+
+      <Box
+        style={{ display: isSorting ? "block" : "none" }}
+        aria-hidden={!isSorting}
+      >
+        <TableSortableFieldList
+          activeFieldId={activeFieldId}
+          table={table}
+          onChange={onCustomFieldOrderChange}
+        />
+      </Box>
+
+      <Box
+        style={{ display: isSorting ? "none" : "block" }}
+        aria-hidden={isSorting}
+      >
+        {hasMatches ? (
+          <TableFieldList
+            table={table}
+            activeFieldId={activeFieldId}
+            filterField={filterField}
+            getFieldHref={getFieldHref}
+          />
+        ) : (
+          <ListSearchEmptyState>{t`No fields match "${query}"`}</ListSearchEmptyState>
+        )}
+      </Box>
+    </Stack>
   );
 }
 

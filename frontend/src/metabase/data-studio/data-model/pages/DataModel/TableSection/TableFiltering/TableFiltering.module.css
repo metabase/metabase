@@ -1,0 +1,9 @@
+/* A cell input rendered as a button that opens a menu or popover */
+.buttonInput.buttonInput {
+  text-align: start;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+}

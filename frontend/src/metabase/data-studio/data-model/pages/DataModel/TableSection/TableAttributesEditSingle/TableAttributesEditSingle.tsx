@@ -2,25 +2,26 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { DataSourceInput, UserInput } from "metabase/metadata/components";
 import {
-  DataSourceInput,
-  EntityTypeInput,
-  LayerInput,
-  UserInput,
-} from "metabase/metadata/components";
-import { Box, Icon, Text } from "metabase/ui";
+  DATA_LAYER_VISIBILITY_ICONS,
+  useDataLayers,
+} from "metabase/metadata/data-layers";
+import { Box, Icon, Select, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  Table,
-  TableDataLayer,
-  TableDataSource,
-  UserId,
-} from "metabase-types/api";
+import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
-import S from "../TableAttributes.module.css";
-import { TableSectionGroup } from "../TableSectionGroup";
+import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
+import { TableRowNounRow, TableSubjectRow } from "../TableSubject";
+
+import S from "./TableAttributesEditSingle.module.css";
 
 interface Props {
   table: Table;
@@ -85,33 +86,6 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
     }
   };
 
-  const handleLayerChange = async (dataLayer: TableDataLayer | null) => {
-    if (dataLayer == null) {
-      return; // should never happen as the input is not clearable here
-    }
-
-    const { error } = await updateTable({
-      id: table.id,
-      data_layer: dataLayer,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table visibility layer`);
-    } else {
-      onUpdate();
-      sendSuccessToast(t`Table visibility layer updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          data_layer: table.data_layer,
-        });
-        if (!error) {
-          onUpdate();
-        }
-        sendUndoToast(error);
-      });
-    }
-  };
-
   const handleDataSourceChange = async (
     dataSource: TableDataSource | "unknown" | null,
   ) => {
@@ -137,92 +111,164 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
     }
   };
 
-  const handleEntityTypeChange = async (entityType: Table["entity_type"]) => {
-    const { error } = await updateTable({
-      id: table.id,
-      entity_type: entityType,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update entity type`);
-    } else {
-      sendSuccessToast(t`Entity type updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          entity_type: table.entity_type,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
   const isOwnerSpecified = table.owner_email || table.owner_user_id;
   const readOnly = !table.can_write;
 
   return (
-    <TableSectionGroup title={t`Attributes`}>
-      <div className={S.container}>
-        <UserInput
-          email={table.owner_email}
+    <SidebarSection title={t`Attributes`}>
+      <DetailsTable>
+        <DetailsRow
           label={t`Owner`}
-          userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
-          disabled={readOnly}
-          onEmailChange={handleOwnerEmailChange}
-          onUserIdChange={handleOwnerUserIdChange}
-          className={S.gridLabelInput}
-          unknownUserLabel={t`No owner`}
-          classNames={{
-            input: cx(S.input, !isOwnerSpecified && S.unset),
-            label: S.label,
-          }}
+          fillValue
+          value={
+            <UserInput
+              email={table.owner_email}
+              label={undefined}
+              aria-label={t`Owner`}
+              userId={isOwnerSpecified ? table.owner_user_id : "unknown"}
+              disabled={readOnly}
+              onEmailChange={handleOwnerEmailChange}
+              onUserIdChange={handleOwnerUserIdChange}
+              unknownUserLabel={t`No owner`}
+              classNames={{
+                ...DETAILS_CELL_INPUT_CLASS_NAMES,
+                input: cx(
+                  DETAILS_CELL_INPUT_CLASS_NAMES.input,
+                  !isOwnerSpecified && S.unset,
+                ),
+              }}
+            />
+          }
         />
 
-        <LayerInput
-          value={table.data_layer ?? "hidden"}
-          disabled={readOnly}
-          onChange={handleLayerChange}
-          classNames={{ input: S.input, label: S.label }}
-          className={S.gridLabelInput}
-        />
+        <TableDataLayerRow table={table} disabled={readOnly} />
 
-        <EntityTypeInput
-          value={table.entity_type ?? "entity/GenericTable"}
-          disabled={readOnly}
-          onChange={handleEntityTypeChange}
-          classNames={{ input: S.input, label: S.label }}
-          className={S.gridLabelInput}
-        />
+        <TableSubjectRow table={table} disabled={readOnly} />
 
-        <DataSourceInput
-          disabled={readOnly || table.data_source === "metabase-transform"}
-          value={table.data_source ?? "unknown"}
-          onChange={handleDataSourceChange}
-          classNames={{ input: S.input, label: S.label }}
-          className={S.gridLabelInput}
+        <TableRowNounRow table={table} disabled={readOnly} form="singular" />
+
+        <TableRowNounRow table={table} disabled={readOnly} form="plural" />
+
+        <DetailsRow
+          label={t`Source`}
+          fillValue
+          value={
+            <DataSourceInput
+              disabled={readOnly || table.data_source === "metabase-transform"}
+              value={table.data_source ?? "unknown"}
+              label={undefined}
+              aria-label={t`Source`}
+              onChange={handleDataSourceChange}
+              classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+            />
+          }
         />
 
         {table.data_source === "metabase-transform" && (
-          <TransformLink table={table} />
+          <DetailsRow
+            label={t`Transform`}
+            value={<TransformLink table={table} />}
+          />
         )}
-      </div>
-    </TableSectionGroup>
+      </DetailsTable>
+    </SidebarSection>
   );
 }
+
+// Select value for "no override": the table uses its schema's layer
+const SCHEMA_LAYER_VALUE = "schema-layer";
+
+/**
+ * PROTOTYPE: mocked. A table uses its schema's data layer unless it overrides
+ * it. The real `data_layer` column defaults to "internal", so it can't mean
+ * "inherit"; the override lives in the mocked layer store instead.
+ */
+function TableDataLayerRow({
+  table,
+  disabled,
+}: {
+  table: Table;
+  disabled: boolean;
+}) {
+  const {
+    getDataLayers,
+    getSchemaDataLayer,
+    getTableDataLayer,
+    setTableDataLayerId,
+  } = useDataLayers();
+  const schemaLayer = getSchemaDataLayer(table.db_id, table.schema);
+  const { layer, isInherited } = getTableDataLayer(
+    table.db_id,
+    table.schema,
+    table.id,
+  );
+
+  const options = [
+    {
+      value: SCHEMA_LAYER_VALUE,
+      label: schemaLayer
+        ? t`Schema's layer (${schemaLayer.name})`
+        : t`Schema's layer`,
+    },
+    ...getDataLayers(table.db_id).map(({ id, name }) => ({
+      value: id,
+      label: name,
+    })),
+  ];
+
+  const handleChange = (value: string | null) => {
+    if (value === SCHEMA_LAYER_VALUE) {
+      setTableDataLayerId(table.db_id, table.id, null);
+    } else if (value != null) {
+      setTableDataLayerId(table.db_id, table.id, value);
+    }
+  };
+
+  return (
+    <DetailsRow
+      label={t`Data layer`}
+      fillValue
+      labelNote={
+        !isInherited && (
+          <Text size="sm" c="text-secondary">
+            {t`Overrides the ${table.schema} schema's layer`}
+          </Text>
+        )
+      }
+      value={
+        <Select
+          aria-label={t`Data layer`}
+          data={options}
+          value={isInherited ? SCHEMA_LAYER_VALUE : (layer?.id ?? null)}
+          allowDeselect={false}
+          leftSection={
+            layer && (
+              <Icon name={DATA_LAYER_VISIBILITY_ICONS[layer.visibility]} />
+            )
+          }
+          disabled={disabled}
+          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+          onChange={handleChange}
+          data-testid="table-data-layer-input"
+        />
+      }
+    />
+  );
+}
+
 function TransformLink({ table }: { table: Table }) {
   const { transform } = table;
 
   if (!transform) {
     return (
-      <Box
-        c="feedback-negative"
-        className={S.transformLink}
-        fz="sm"
-      >{t`Transform does not exist anymore`}</Box>
+      <Box c="feedback-negative" fz="sm">
+        {t`Transform does not exist anymore`}
+      </Box>
     );
   }
 
   return (
-    <Box className={S.transformLink}>
+    <Box>
       <Box
         component={Link}
         to={Urls.transform(transform.id)}

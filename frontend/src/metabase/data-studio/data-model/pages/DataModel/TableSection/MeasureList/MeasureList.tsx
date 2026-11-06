@@ -1,24 +1,71 @@
+import { useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
+import { useMeasureGroups } from "metabase/metadata/measure-groups";
 import { useSelector } from "metabase/redux";
-import { Button, Group, Icon, Stack } from "metabase/ui";
+import { Button, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
-import S from "../TableSection.module.css";
+import {
+  ListSearchBar,
+  ListSearchEmptyState,
+  matchesListSearch,
+} from "../ListSearchBar";
+import { ListEmptyItem, ListSection } from "../ListSection";
 
+import { MeasureGroupModal } from "./MeasureGroupModal";
+import {
+  MeasureGroupItem,
+  MeasureGroupProposalItem,
+  getMemberNames,
+  useMeasureGroupProposals,
+} from "./MeasureGroups";
 import { MeasureItem } from "./MeasureItem";
 
 type MeasureListProps = {
   table: Table;
 };
 
+/**
+ * The table's measure groups, its measures, and groups sync suggests. Groups
+ * only organize measures; they don't change what they compute.
+ */
 export function MeasureList({ table }: MeasureListProps) {
   const measures = table.measures ?? [];
+  const [query, setQuery] = useState("");
+  // `null` is a new group; `undefined` means the editor is closed
+  const [editingGroupId, setEditingGroupId] = useState<string | null>();
+  const { getMeasureGroups, saveMeasureGroup, deleteMeasureGroup } =
+    useMeasureGroups();
+  const groupProposals = useMeasureGroupProposals(table);
+  const isSearching = query.trim() !== "";
+
+  const measureGroups = getMeasureGroups(table).filter((group) =>
+    matchesListSearch(
+      query,
+      group.name,
+      ...getMemberNames(group.measureIds, measures),
+    ),
+  );
+  const matchingMeasures = measures.filter((measure) =>
+    matchesListSearch(query, measure.name),
+  );
+  const matchingProposals = groupProposals.proposals.filter((proposal) =>
+    matchesListSearch(query, proposal.name),
+  );
+  const hasMatches =
+    measureGroups.length > 0 ||
+    matchingMeasures.length > 0 ||
+    matchingProposals.length > 0;
+  const editingGroup =
+    editingGroupId != null
+      ? getMeasureGroups(table).find(({ id }) => id === editingGroupId)
+      : undefined;
+
   const getMeasureHref = (measureId: number) =>
     Urls.dataStudioDataModelMeasure({
       databaseId: table.db_id,
@@ -40,41 +87,120 @@ export function MeasureList({ table }: MeasureListProps) {
   });
 
   return (
-    <Stack gap="lg" data-testid="table-measures-page">
-      {canWriteMeasures && (
-        <Group gap="lg" justify="flex-start" wrap="nowrap">
-          <Button
-            component={ForwardRefLink}
-            leftSection={<Icon name="add" />}
-            onAuxClick={onNewMeasureClick}
-            onClickCapture={onNewMeasureClick}
-            to={newMeasureUrl}
-          >
-            {t`New measure`}
-          </Button>
-        </Group>
+    <Stack gap="xl" data-testid="table-measures-page">
+      <ListSearchBar
+        value={query}
+        placeholder={t`Search measures`}
+        onChange={setQuery}
+      />
+
+      {isSearching && !hasMatches && (
+        <ListSearchEmptyState>{t`No measures match "${query}"`}</ListSearchEmptyState>
       )}
 
-      {measures.length === 0 ? (
-        <EmptyState
-          className={S.EmptyState}
-          spacing="sm"
-          illustrationElement={
-            <Icon name="ruler" size={32} c="text-secondary" />
+      {(!isSearching || measureGroups.length > 0) && (
+        <ListSection
+          title={t`Measure groups`}
+          description={t`Named sets of measures, listed together under a heading. They don't change what a measure computes.`}
+          action={
+            canWriteMeasures && (
+              <Button
+                size="compact-sm"
+                variant="subtle"
+                leftSection={<Icon name="add" />}
+                onClick={() => setEditingGroupId(null)}
+              >
+                {t`New group`}
+              </Button>
+            )
           }
-          title={t`No measures yet`}
-          message={t`Create a measure to define a reusable aggregation for this table.`}
-        />
-      ) : (
-        <Stack gap="sm" role="list">
-          {measures.map((measure) => (
-            <MeasureItem
-              key={measure.id}
-              measure={measure}
-              href={getMeasureHref(measure.id)}
+        >
+          {measureGroups.length > 0 ? (
+            measureGroups.map((group) => (
+              <MeasureGroupItem
+                key={group.id}
+                group={group}
+                measures={measures}
+                onOpen={
+                  canWriteMeasures
+                    ? () => setEditingGroupId(group.id)
+                    : undefined
+                }
+              />
+            ))
+          ) : (
+            <ListEmptyItem>{t`No measure groups yet`}</ListEmptyItem>
+          )}
+        </ListSection>
+      )}
+
+      {(!isSearching || matchingMeasures.length > 0) && (
+        <ListSection
+          title={t`Measures`}
+          action={
+            canWriteMeasures && (
+              <Button
+                component={ForwardRefLink}
+                to={newMeasureUrl}
+                size="compact-sm"
+                variant="subtle"
+                leftSection={<Icon name="add" />}
+                onAuxClick={onNewMeasureClick}
+                onClickCapture={onNewMeasureClick}
+              >
+                {t`New measure`}
+              </Button>
+            )
+          }
+        >
+          {matchingMeasures.length > 0 ? (
+            matchingMeasures.map((measure) => (
+              <MeasureItem
+                key={measure.id}
+                measure={measure}
+                href={getMeasureHref(measure.id)}
+              />
+            ))
+          ) : (
+            <ListEmptyItem>{t`No measures yet`}</ListEmptyItem>
+          )}
+        </ListSection>
+      )}
+
+      {matchingProposals.length > 0 && (
+        <ListSection
+          title={t`Proposed groups`}
+          description={t`Measures grouped by what they measure. Accept one to make it a group.`}
+        >
+          {matchingProposals.map((proposal) => (
+            <MeasureGroupProposalItem
+              key={proposal.key}
+              proposal={proposal}
+              measures={measures}
+              canAccept={canWriteMeasures}
+              onAccept={() => groupProposals.accept(proposal)}
+              onDismiss={() => groupProposals.dismiss(proposal)}
             />
           ))}
-        </Stack>
+        </ListSection>
+      )}
+
+      {editingGroupId !== undefined && (
+        <MeasureGroupModal
+          // Fresh state per group
+          key={editingGroupId ?? "new"}
+          group={editingGroup}
+          measures={measures}
+          onSave={(group) => {
+            saveMeasureGroup(table, group);
+            setEditingGroupId(undefined);
+          }}
+          onDelete={(groupId) => {
+            deleteMeasureGroup(table, groupId);
+            setEditingGroupId(undefined);
+          }}
+          onClose={() => setEditingGroupId(undefined)}
+        />
       )}
     </Stack>
   );

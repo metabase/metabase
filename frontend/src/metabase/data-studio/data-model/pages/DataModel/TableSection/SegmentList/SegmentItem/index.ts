@@ -1,1 +1,1 @@
-export { SegmentItem } from "./SegmentItem";
+export { DefaultSegmentBadge, SegmentItem } from "./SegmentItem";

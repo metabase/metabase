@@ -10,8 +10,9 @@ import {
   LayerInput,
   UserInput,
 } from "metabase/metadata/components";
-import { Button, Checkbox, Group, Stack } from "metabase/ui";
+import { Button, Checkbox, Group, Stack, Text } from "metabase/ui";
 
+import { EMPTY_FILTERS } from "../constants";
 import type { FilterState } from "../types";
 
 interface Props {
@@ -25,14 +26,7 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
 
   const handleReset = () => {
     trackDataStudioTablePickerFiltersCleared();
-    onSubmit({
-      dataLayer: null,
-      dataSource: null,
-      ownerEmail: null,
-      ownerUserId: null,
-      unusedOnly: null,
-      publishedOnly: null,
-    });
+    onSubmit(EMPTY_FILTERS);
   };
 
   return (
@@ -106,6 +100,41 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
             }
           />
         )}
+
+        <Stack gap="md">
+          <Text fw="bold">{t`Structure`}</Text>
+          <Checkbox
+            label={t`Needs review`}
+            checked={form.needsReviewOnly === true}
+            onChange={(e) =>
+              setForm((form) => ({
+                ...form,
+                needsReviewOnly: e.target.checked,
+              }))
+            }
+          />
+          <Checkbox
+            label={t`No role`}
+            checked={form.noRoleOnly === true}
+            onChange={(e) =>
+              setForm((form) => ({ ...form, noRoleOnly: e.target.checked }))
+            }
+          />
+          <Checkbox
+            label={t`Hidden`}
+            checked={form.hiddenOnly === true}
+            onChange={(e) =>
+              setForm((form) => ({ ...form, hiddenOnly: e.target.checked }))
+            }
+          />
+          <Checkbox
+            label={t`No main date`}
+            checked={form.noMainDateOnly === true}
+            onChange={(e) =>
+              setForm((form) => ({ ...form, noMainDateOnly: e.target.checked }))
+            }
+          />
+        </Stack>
 
         <Group justify="space-between" wrap="nowrap">
           <Button flex={1} onClick={handleReset}>{t`Clear filters`}</Button>
