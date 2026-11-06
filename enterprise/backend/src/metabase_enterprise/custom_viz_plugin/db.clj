@@ -3,13 +3,14 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private non-blob-columns
   "Columns to select for normal plugin reads, excluding the bundle blob."
-  [:model/CustomVizPlugin :id :identifier :display_name :icon :status :error_message :enabled
+  [:model/CustomVizPlugin :id :entity_id :identifier :display_name :icon :status :error_message :enabled
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
@@ -28,15 +29,36 @@
   []
   (t2/select non-blob-columns :status :active :enabled true {:order-by [[:display_name :asc]]}))
 
-(mu/defn plugin-by-identifier
-  "The CustomVizPlugin with `identifier`, or nil."
-  [identifier :- :string]
-  (t2/select-one :model/CustomVizPlugin :identifier identifier))
+(mu/defn plugin-identifier-ignoring-case :- [:maybe :string]
+  "The identifier of a plugin other than `except-id` (nil for none) that equals `identifier` ignoring case, or nil."
+  [identifier :- :string
+   except-id  :- [:maybe ms/PositiveInt]]
+  (t2/select-one-fn :identifier :model/CustomVizPlugin
+                    {:where (cond-> [:and [:= [:lower :identifier] (u/lower-case-en identifier)]]
+                              except-id (conj [:not= :id except-id]))}))
 
-(mu/defn plugin-identifier-exists?
-  "Whether a CustomVizPlugin with `identifier` exists."
-  [identifier :- :string]
-  (t2/exists? :model/CustomVizPlugin :identifier identifier))
+(defn- with-bundles-where
+  "Build the filter for plugins with stored bundles."
+  [filter-column filter-ids]
+  (let [bundled [:not= :bundle_hash nil]]
+    (if filter-column
+      [:and bundled [:in filter-column filter-ids]]
+      bundled)))
+
+(mu/defn plugin-identifiers-with-bundles :- [:sequential :string]
+  "Identifiers of plugins with stored bundles."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
+  (vec (t2/select-fn-vec :identifier :model/CustomVizPlugin {:where (with-bundles-where filter-column filter-ids)})))
+
+(mu/defn reducible-plugins-with-bundles
+  "A reducible of plugins with stored bundles, including bundle bytes."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns :- [:maybe [:sequential :keyword]]]
+  (t2/reducible-select [:model/CustomVizPlugin :*]
+                       (cond-> {:where (with-bundles-where filter-column filter-ids)}
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn plugin-bundle
   "The bundle bytes of the CustomVizPlugin with `plugin-id`."

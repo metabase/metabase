@@ -451,7 +451,7 @@
   "Models whose change forces a full import on the incremental fast-path: Collection (a rename moves every
   descendant's file, a delete cascades to its contents) and the feature models (their presence drives the
   remote-sync-transforms / library settings, which need whole-snapshot knowledge to toggle correctly)."
-  #{"Collection" "DataApp" "Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"})
+  #{"Collection" "CustomVizPlugin" "DataApp" "Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"})
 
 (defn- managed-path?
   "True for a file under a managed directory."

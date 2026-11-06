@@ -47,10 +47,24 @@
 
 (defn identifier-error
   "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom:<identifier>:<setting id>`
-   viz-settings keys, so an identifier containing it could read another plugin's settings."
+   viz-settings keys, so an identifier containing it could read another plugin's settings. Serving enforces only this
+   rule, so legacy plugins keep working; [[directory-name-error]] is stricter."
   [identifier]
   (when (and (string? identifier) (str/includes? identifier ":"))
     (format "Plugin identifier \"%s\" must not contain \":\"" identifier)))
+
+(def ^:private directory-name-pattern
+  "Directory-safe names, matching the identifier schema in `@metabase/representations`."
+  #"[A-Za-z0-9](?:[A-Za-z0-9 ._-]*[A-Za-z0-9._-])?")
+
+(defn directory-name-error
+  "Validate directory names for registration and export; serving legacy plugins is unaffected."
+  [identifier]
+  (or (identifier-error identifier)
+      (when (and (string? identifier) (not (re-matches directory-name-pattern identifier)))
+        (format (str "Plugin identifier \"%s\" must be letters, digits, spaces, \".\", \"_\" or \"-\", starting with a "
+                     "letter or digit and not ending with a space")
+                identifier))))
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 

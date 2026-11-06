@@ -108,8 +108,9 @@
 
 (def shared-top-level-paths
   "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
-  source code, to the name of the entity files in them."
-  {"data_apps" "data_app.yaml"})
+  or a custom viz plugin's source code, to the name of the entity files in them."
+  {"data_apps"          "data_app.yaml"
+   "custom_viz_plugins" "custom_viz_plugin.yaml"})
 
 (def replaced-top-level-paths
   "The [[legal-top-level-paths]] a full export may replace wholesale."

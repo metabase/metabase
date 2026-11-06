@@ -6,12 +6,14 @@
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.server.streaming-response :as sr]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]
@@ -45,6 +47,13 @@
       (throw (ex-info (format "Bundle must be less than %dMB." cache/max-bundle-mib)
                       {:status-code 413})))
     tempfile))
+
+(defn- check-identifier-free!
+  "Throw a 400 when a plugin already has `identifier`, or has it in another case: a repository names a plugin's
+   directory by its identifier, and case-insensitive filesystems would merge the two."
+  [identifier]
+  (custom-viz-plugin/check-identifier-free!
+   identifier nil (format "A custom visualization with identifier \"%s\" already exists." identifier)))
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
@@ -94,10 +103,17 @@
   [plugin]
   (nil? (:bundle_hash plugin)))
 
-(defn- plugin-warnings
-  "Warnings for a plugin. Dev-only plugins get no version warnings."
+(defn- check-editable!
+  "Throws a 403 when `plugin` is read-only under remote sync: a bundled plugin on a read-only instance comes from
+  the repository, so it can only change there. Dev-only plugins are never synced and stay editable."
   [plugin]
-  (cond-> (if (dev-only-plugin? plugin)
+  (api/check-403 (remote-sync/model-editable? :model/CustomVizPlugin plugin)))
+
+(defn- plugin-warnings
+  "Warnings for a plugin. Dev-only plugins get no version warnings, nor do error plugins: they have no manifest to
+   derive them from."
+  [plugin]
+  (cond-> (if (or (dev-only-plugin? plugin) (= :error (keyword (:status plugin))))
             []
             (manifest/warnings plugin))
     ;; a legacy pre-validation identifier; /list skips such plugins entirely
@@ -149,10 +165,11 @@
     (try
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
             validated    (cache/check-bundle-icon! (cache/validate-bundle! bundle-bytes))
+            _            (check-editable! {:bundle_hash (:hash validated)})
             identifier   (get-in validated [:manifest :name])
-            _            (api/check-400
-                          (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
-                          (format "A custom visualization with identifier \"%s\" already exists." identifier))
+            _            (when-let [error (manifest/directory-name-error identifier)]
+                           (throw (ex-info error {:status-code 400})))
+            _            (check-identifier-free! identifier)
             plugin       (cache/insert-bundle! identifier validated)]
         (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
                                                                 :user-id api/*current-user-id*})
@@ -178,11 +195,9 @@
                                            "metabase-plugin.json is missing a \"name\" field."
                                            "Could not fetch metabase-plugin.json from the dev server.")
                                          {:status-code 400})))
-        _            (when-let [error (manifest/identifier-error identifier)]
+        _            (when-let [error (manifest/directory-name-error identifier)]
                        (throw (ex-info error {:status-code 400})))
-        _            (api/check-400
-                      (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
-                      (format "A custom visualization with identifier \"%s\" already exists." identifier))
+        _            (check-identifier-free! identifier)
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])
@@ -226,8 +241,8 @@
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
+    (check-editable! plugin)
     (custom-viz-plugin.db/delete-plugin! id)
-    (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
                                                             :user-id api/*current-user-id*})
     nil))
@@ -258,6 +273,7 @@
    _query-params
    {:keys [file]} :- BundleUploadParts]
   (let [existing (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
+        _        (check-editable! existing)
         _        (api/check-400 (nil? (manifest/identifier-error (:identifier existing)))
                                 (format (str "This plugin's identifier (\"%s\") contains \":\", which is no longer allowed. "
                                              "Delete the plugin and upload the bundle under a name without \":\".")

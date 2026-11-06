@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isLibraryCollection } from "metabase/common/collections/utils";
-import { dataStudioDataApps, transformList } from "metabase/urls";
+import { customViz, dataStudioDataApps, transformList } from "metabase/urls";
 import type {
   Collection,
   CollectionId,
@@ -22,6 +22,11 @@ export const TRANSFORMS_ROOT_ID = -1;
  * Sentinel value for the virtual Data apps root collection.
  */
 const DATA_APPS_ROOT_ID = -2;
+
+/**
+ * Sentinel value for the virtual Custom visualizations root collection.
+ */
+const CUSTOM_VIZ_PLUGINS_ROOT_ID = -3;
 
 /**
  * A synthetic root collection for a group whose entities have no real one.
@@ -113,6 +118,17 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     },
     icon: "app",
     priority: 70,
+  },
+  {
+    id: "custom-viz-plugins",
+    models: new Set(["customvizplugin"]),
+    virtualRoot: {
+      id: CUSTOM_VIZ_PLUGINS_ROOT_ID,
+      name: () => t`Custom visualizations`,
+      url: customViz,
+    },
+    icon: "lineandbar",
+    priority: 60,
   },
   {
     id: "tables",

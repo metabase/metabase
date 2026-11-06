@@ -24,6 +24,7 @@
 (mr/def ::custom-viz-plugin.update
   "What an update (or insert) of a CustomVizPlugin accepts: every column of `:custom_viz_plugin` except `id`, all optional."
   [:map {:closed true}
+   [:entity_id        {:optional true} [:maybe :string]]
    [:identifier       {:optional true} [:maybe :string]]
    [:display_name     {:optional true} [:maybe :string]]
    [:status           {:optional true} [:maybe [:or :keyword :string]]]
@@ -39,10 +40,12 @@
    [:dev_bundle_url   {:optional true} [:maybe :string]]])
 
 (mr/def ::external-custom-viz-plugin
-  "A CustomVizPlugin as serialization writes it, with portable references in place of ids."
+  "A CustomVizPlugin as serialization writes it, with portable references in place of ids, the paths of its bundle
+  files, and those files as resources."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::custom-viz-plugin [:display_name :identifier :enabled :icon :manifest :metabase_version
-                                       :bundle_hash :bundle]]
+    [:select-keys ::custom-viz-plugin [:entity_id :identifier]]
     [:map {:closed true}
-     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+     [:serdes/meta      {:optional true} ::models.schema/external-meta]
+     [:files            {:optional true} [:sequential :string]]
+     [:serdes/resources {:optional true} [:map-of :string :string]]]]])

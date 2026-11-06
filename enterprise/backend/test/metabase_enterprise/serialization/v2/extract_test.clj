@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
@@ -2621,29 +2622,21 @@
 
 (deftest custom-viz-plugin-test
   (mt/with-empty-h2-app-db!
-    (t2/delete! :model/CustomVizPlugin)
-    (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:display_name "Test Plugin"
-                                                               :identifier   "test-plugin"
-                                                               :status       :active
-                                                               :manifest     "{}"
-                                                               :bundle       (.getBytes "pretend tgz bytes" "UTF-8")
-                                                               :bundle_hash  "deadbeef"}]
-      ;; Uncomment to regenerate baseline:
-      ;; (round-trip-test/add-to-baseline!)
-      (testing "custom viz plugin extraction"
-        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
-          (is (=? {:serdes/meta [{:model "CustomVizPlugin"
-                                  :id    "test-plugin"}]
-                   :display_name "Test Plugin"
-                   :identifier   "test-plugin"
-                   :manifest     {}
-                   :bundle_hash  "deadbeef"
-                   :bundle       string?}
+    (let [files {"metabase-plugin.json" (json/encode {:name "test-plugin"})
+                 "dist/index.js"        "{}"}]
+      (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id entity-id :entity_id} {:display_name "Test Plugin"
+                                                                                      :identifier   "test-plugin"
+                                                                                      :status       :active
+                                                                                      :bundle       (cv.tu/make-tgz-bytes files)}]
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one [:model/CustomVizPlugin :*] :id plugin-id))]
+          (is (=? {:serdes/meta [{:model "CustomVizPlugin" :id entity-id :label "test_plugin"}]
+                   :entity_id   entity-id
+                   :identifier  "test-plugin"
+                   :files       ["dist/index.js" "metabase-plugin.json"]}
                   ser))
-          (is (not (contains? ser :id)))
-          (is (not (contains? ser :status)))
-          (testing "has no dependencies"
-            (is (empty? (serdes/deserialization-dependencies ser)))))))))
+          (is (= #{:serdes/meta :entity_id :identifier :files :serdes/resources} (set (keys ser))))
+          (is (= files (:serdes/resources ser)))
+          (is (empty? (serdes/deserialization-dependencies ser))))))))
 
 (deftest ^:parallel export-parameters-sorts-by-id-test
   (let [params [{:id "zebra" :name "Z param" :type :category}
