@@ -9,6 +9,7 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-repair :as query-repair]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -162,11 +163,14 @@
   "Resolve a metabase://{type}/{id} link to a proper URL, for the types of [[link-type-paths]].
   The frontend reads the ID with `parseInt`, so a leading digit selects an entity. Thus only a value that matches
   [[entity-id-pattern]] goes to an entity page, and the page gets the numeric ID alone.
+  A canonical UUID never goes to an entity page: chart IDs are UUIDs, and a UUID can match the slug form of
+  [[entity-id-pattern]] when it starts with eight digits.
   A bare numeric ID is an entity, also when a chart seeded from that entity has the same ID. The model can also put
   the ID of a query or chart from this conversation in such a link, so any other ID that is in the conversation opens
   the ad-hoc query. Any other ID resolves to nil."
   [entity-type entity-id charts-state queries-state]
-  (let [numeric-id       (second (re-matches entity-id-pattern entity-id))
+  (let [numeric-id       (when-not (re-matches u/uuid-regex entity-id)
+                           (second (re-matches entity-id-pattern entity-id)))
         in-conversation? (or (contains? charts-state entity-id)
                              (contains? queries-state entity-id))]
     (if (and numeric-id

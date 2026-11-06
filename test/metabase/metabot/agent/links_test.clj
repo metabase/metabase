@@ -269,12 +269,16 @@
           (doseq [id ["157-orders-by-month" "157/fields" "157/sources?page=2" "157?page=2" "157#tab"]]
             (is (= (str path "/157") (resolve-id id)) id)))
         (testing "the ID of a query or a chart from this conversation opens it"
-          (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0" "12-abcdefghijklmnopq"]]
+          (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0" "12-abcdefghijklmnopq"
+                      "12345678-9abc-def0-1234-56789abcdef0"]]
             (is (str/starts-with? (resolve-id id {id query}) "/question#") id)
             (is (str/starts-with? (resolve-id id {} {id chart}) "/question#") id)))
         (testing "an unknown ID that is not numeric does not resolve, because the frontend reads a leading digit as the ID"
-          (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0" "12-VDPycvL8DIo3fryAg" "card__157"]]
-            (is (nil? (resolve-id id)) id)))))))
+          (doseq [id ["TQVDPycvL8DIo3fryAgS0" "3QVDPycvL8DIo3fryAgS0" "12-VDPycvL8DIo3fryAg" "card__157"
+                      "12345678-9abc-def0-1234-56789abcdef0"]]
+            (is (nil? (resolve-id id)) id)))
+        (testing "a slug made only of hex groups that do not form a canonical UUID stays a slug"
+          (is (= (str path "/157") (resolve-id "157-bad-cafe-dead-beef"))))))))
 
 (deftest ^:parallel resolve-metabase-uri-table-link-test
   (testing "resolves table links to the table page"
