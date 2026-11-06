@@ -134,12 +134,17 @@
           edge)))
 
 (defn- chain
-  "The vars `sym` leads to through `edges` from [[alias-edges]], starting with `sym`, stopping before a repeat."
+  "The vars `sym` leads to through `edges` from [[alias-edges]], starting with `sym`.
+  Throws on a cycle, whose vars would each count under another."
   [edges sym]
+  ;; Code that loads has no re-export cycle, but [[alias-edges]] merges the `:clj` and `:cljs` edges of a `.cljc`
+  ;; file, and those can form one that neither language loads.
   (loop [sym sym, seen []]
-    (if (or (nil? sym) (some #{sym} seen))
-      seen
-      (recur (edges sym) (conj seen sym)))))
+    (cond
+      (nil? sym)         seen
+      (some #{sym} seen) (let [path (conj seen sym)]
+                           (throw (ex-info (str "Re-export cycle: " (str/join " -> " path)) {:cycle path})))
+      :else              (recur (edges sym) (conj seen sym)))))
 
 (defn source-aliases
   "A map from each of `vars` that is another of them under a second name to the one it counts under, following

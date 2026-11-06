@@ -583,8 +583,11 @@
     (testing "a chain through an unconfigured var ends at the last configured one"
       (is (= '{a/f c/f}
              (kondo-ratchet/source-aliases '{a/f b/f, b/f c/f} '#{a/f c/f}))))
-    (testing "a cycle stops instead of looping"
-      (is (= {} (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f}))))
+    (testing "a cycle throws, naming its vars"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Re-export cycle: a/f -> b/f -> a/f"
+                            (kondo-ratchet/source-aliases '{a/f b/f, b/f a/f} '#{a/f})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Re-export cycle: x/f -> a/f -> b/f -> a/f"
+                            (kondo-ratchet/source-aliases '{x/f a/f, a/f b/f, b/f a/f} '#{x/f}))))
     (testing "a var whose source isn't configured counts under itself"
       (is (= {} (kondo-ratchet/source-aliases edges '#{lib.core/g}))))))
 
