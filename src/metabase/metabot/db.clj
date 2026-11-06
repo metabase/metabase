@@ -836,6 +836,12 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
 
+(mu/defn cards-for-read-check
+  "The ID, Collection ID, and Document ID of the unarchived Cards with `card-ids`, which is what `mi/can-read?` needs
+  to check a Card without another query."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select [:model/Card :id :collection_id :document_id] :id [:in card-ids] :archived false))
+
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]

@@ -10,8 +10,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
@@ -116,33 +118,44 @@
     {:output "current user not found"}))
 
 (defn- person
-  "The name and email of `user`, a map with `:first_name`, `:last_name` and `:email`, or nil."
-  [{:keys [first_name last_name email] :as user}]
-  (when user
-    {:name  (str/trim (str first_name " " last_name))
-     :email email}))
+  "`{:name ...}` for `user`, a map with `:first_name`, `:last_name` and `:email`, or nil when it has none of them.
+  A user without a first or last name goes by their email, as `:common_name` does."
+  [{:keys [first_name last_name email]}]
+  (when-let [person-name (or (not-empty (str/trim (str first_name " " last_name))) (not-empty email))]
+    {:name person-name}))
 
 (defn- dashboard-collection
   "The collection with `collection-id`, nil for the root collection, with the path to it the current user can see."
   [collection-id]
-  (let [collection (if collection-id
-                     (metabot.db/collection-with-ancestors collection-id)
-                     (collection/root-collection-with-ui-details nil))]
-    (when collection
-      {:id   collection-id
-       :name (:name collection)
-       :path (str/join " / " (map :name (concat (:effective_ancestors collection) [collection])))})))
+  (if-not collection-id
+    (let [root-name (:name (collection/root-collection-with-ui-details nil))]
+      {:id nil, :name root-name, :path root-name})
+    (when-let [collection (metabot.db/collection-with-ancestors collection-id)]
+      ;; As the Agent API's `collection-path` does, a personal subtree starts at the personal collection rather than the
+      ;; root, and a personal collection shows the name the current user sees it by.
+      (let [ancestors (cond->> (:effective_ancestors collection)
+                        (collection/is-personal-collection-or-descendant-of-one? collection)
+                        (remove #(= "root" (:id %))))
+            chain     (collection/personal-collections-with-ui-details
+                       (conj (vec ancestors) (dissoc collection :effective_ancestors)))]
+        {:id   collection-id
+         :name (:name (last chain))
+         :path (str/join " / " (map :name chain))}))))
 
 (defn- visible-dashcards
   "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,
-  and charts whose question they can read."
+  and charts whose question they can read.
+  When the session may only reach curated content, charts also need a curated question, as in the dashboard's items."
   [dashboard-id]
   (let [dashcards (metabot.db/dashcards dashboard-id)
         card-ids  (into #{} (keep #(when-not (:action_id %) (:card_id %))) dashcards)
         readable  (if (seq card-ids)
-                    (into #{} (comp (filter mi/can-read?) (map :id)) (metabot.db/unarchived-card-summaries card-ids))
-                    #{})]
-    (filter #(or (:action_id %) (nil? (:card_id %)) (contains? readable (:card_id %))) dashcards)))
+                    (into #{} (comp (filter mi/can-read?) (map :id)) (metabot.db/cards-for-read-check card-ids))
+                    #{})
+        visible   (if (shared/curated-only?)
+                    (into #{} (map second) (curation/curated-ids (for [id readable] ["card" id])))
+                    readable)]
+    (filter #(or (:action_id %) (nil? (:card_id %)) (contains? visible (:card_id %))) dashcards)))
 
 (defn- with-filter-connections
   "Each of `parameters` with the ids of the `dashcards` it filters, as `:connected_dashcards`."
@@ -172,7 +185,8 @@
                       :last_edited_by (person last-edit)
                       :last_edited_at (:timestamp last-edit)
                       :collection     (dashboard-collection (:collection_id dashboard)))
-               (update :parameters with-filter-connections (visible-dashcards dashboard-id)))}))
+               (cond-> (seq (:parameters dashboard))
+                 (update :parameters with-filter-connections (visible-dashcards dashboard-id))))}))
     {:output "dashboard not found"}))
 
 (defn- get-field-values
