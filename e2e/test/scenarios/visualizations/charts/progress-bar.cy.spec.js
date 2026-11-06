@@ -165,7 +165,7 @@ describe("scenarios > visualizations > progress chart", () => {
     });
   });
 
-  it("should allow value field selection with multiple numeric columns and switching the goal between custom value and column reference", () => {
+  it("should allow value field selection with multiple numeric columns and switching the goal between custom value and column reference (metabase#85219)", () => {
     const questionDetails = {
       name: "Custom Value Toggle Test",
       query: {
