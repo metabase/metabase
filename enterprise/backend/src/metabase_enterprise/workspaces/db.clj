@@ -208,6 +208,12 @@
   []
   (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
 
+(mu/defn table-remapping-database-ids :- [:set ::lib.schema.id/database]
+  "The ids of the Databases that have a TableRemapping."
+  []
+  ;; `select-fn-set` returns nil, not #{}, when there are no rows
+  (set (t2/select-fn-set :database_id :model/TableRemapping)))
+
 (mu/defn table-remappings-exist?
   "Whether the Database with `database-id` has a TableRemapping."
   [database-id :- ::lib.schema.id/database]
