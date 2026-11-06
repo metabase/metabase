@@ -161,11 +161,12 @@
    :requires-restart? false
    :applicable?       (constantly true)
    :run               (fn []
-                        ;; Each of these settings has a `:feature`, so it reads as off on a token without it.
+                        ;; Each of these settings has a `:feature`, so it reads as off on a token without it, and each
+                        ;; reads as off until its provider is configured.
                         (let [on (cond-> []
-                                   (setting/get :saml-enabled) (conj (item :pass (tru "SAML is on")))
-                                   (setting/get :oidc-enabled) (conj (item :pass (tru "OIDC is on")))
-                                   (setting/get :jwt-enabled)  (conj (item :pass (tru "JWT is on"))))]
+                                   (setting/get :saml-enabled)               (conj (item :pass (tru "SAML is on")))
+                                   (setting/get :oidc-enabled)               (conj (item :pass (tru "OIDC is on")))
+                                   (setting/get :jwt-enabled-and-configured) (conj (item :pass (tru "JWT is on"))))]
                           (if (seq on)
                             on
                             [(item :fail (tru "None of SAML, OIDC or JWT is on"))])))})

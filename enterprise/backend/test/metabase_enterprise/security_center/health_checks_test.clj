@@ -194,11 +194,18 @@
 
 ;;; The SSO and SCIM checks
 
+(def ^:private jwt-configured-settings
+  "The settings that make JWT configured, next to `jwt-enabled`."
+  {:jwt-shared-secret         (apply str (repeat 64 "a"))
+   :jwt-identity-provider-uri "https://idp.example.com"})
+
 (deftest sso-login-test
   (is (true? (health-checks/applicable? (health-checks/check-by-id :sso-login))))
   (testing "passes with one item per provider that is on"
     (mt/with-premium-features #{:sso-jwt}
-      (mt/with-temporary-setting-values [jwt-enabled true]
+      (mt/with-temporary-setting-values [jwt-enabled               true
+                                         jwt-shared-secret         (:jwt-shared-secret jwt-configured-settings)
+                                         jwt-identity-provider-uri (:jwt-identity-provider-uri jwt-configured-settings)]
         (is (=? {:status :pass, :items [{:status :pass, :message "JWT is on"}]}
                 (run-check-by-id :sso-login))))))
   (testing "fails when none of SAML, OIDC and JWT is on"
@@ -206,9 +213,15 @@
       (mt/with-temporary-setting-values [jwt-enabled false]
         (is (=? {:status :fail, :items [{:status :fail, :message "None of SAML, OIDC or JWT is on"}]}
                 (run-check-by-id :sso-login))))))
+  (testing "a provider that is on but not configured reads as off"
+    (mt/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [jwt-enabled true, jwt-shared-secret nil]
+        (is (= :fail (:status (run-check-by-id :sso-login)))))))
   (testing "a provider whose feature is not in the token reads as off"
     (mt/with-premium-features #{:sso-jwt}
-      (mt/with-temporary-setting-values [jwt-enabled true]
+      (mt/with-temporary-setting-values [jwt-enabled               true
+                                         jwt-shared-secret         (:jwt-shared-secret jwt-configured-settings)
+                                         jwt-identity-provider-uri (:jwt-identity-provider-uri jwt-configured-settings)]
         (mt/with-premium-features #{}
           (is (= :fail (:status (run-check-by-id :sso-login)))))))))
 
