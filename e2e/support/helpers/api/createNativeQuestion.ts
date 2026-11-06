@@ -14,7 +14,6 @@ export type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
    */
   database?: DatabaseId | null;
   // e2e tests still pass hand-written legacy MBQL; migrate them to the Lib test spec and drop `any`
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   native: any;
 };
 

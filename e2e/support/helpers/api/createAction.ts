@@ -23,7 +23,6 @@ type BaseCreateActionOpts = {
 type CreateQueryActionOpts = BaseCreateActionOpts & {
   type: "query";
   // e2e tests still pass hand-written legacy MBQL; migrate them to the Lib test spec and drop `any`
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dataset_query: any;
 };
 

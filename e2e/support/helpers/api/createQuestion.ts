@@ -5,7 +5,6 @@ import { visitMetric, visitModel, visitQuestion } from "../e2e-misc-helpers";
 
 export type QuestionDetails = {
   // e2e tests still pass hand-written legacy MBQL; migrate them to the Lib test spec and drop `any`
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dataset_query: any;
   /**
    * Defaults to "test question".
@@ -53,7 +52,6 @@ export type StructuredQuestionDetails = Omit<
    */
   database?: DatabaseId | null;
   // e2e tests still pass hand-written legacy MBQL; migrate them to the Lib test spec and drop `any`
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query: any;
 };
 
@@ -63,7 +61,6 @@ export type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
    */
   database?: DatabaseId | null;
   // e2e tests still pass hand-written legacy MBQL; migrate them to the Lib test spec and drop `any`
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   native: any;
 };
 
