@@ -171,15 +171,17 @@
       (str argument " " (str/join "; " texts) "; received " (json-type-name (get-in arguments in)) "."))))
 
 (defn- reported-path
-  "The argument path to report the Malli `error` under: the path of the outermost `:or` the error is inside, or else
-  the error's own path."
+  "The argument path to report the Malli `error` under: the data path of the outermost `:or` the error is inside, with
+  the error's own list indexes, or else the error's own path."
   [schema {:keys [in path]}]
   ;; An `:or` that fails reports the errors of every alternative, which contradict each other below it, so they all
   ;; go under the `:or`'s own path.
   (or (some (fn [n]
               (let [prefix (subvec (vec path) 0 n)]
                 (when (#{:or :orn} (some-> (mut/get-in schema prefix) mc/type))
-                  (mut/path->in schema prefix))))
+                  ;; The schema path has no list indexes, so the error's own data path is cut to the `:or`'s depth.
+                  (let [in (vec in)]
+                    (subvec in 0 (min (count in) (count (mut/path->in schema prefix))))))))
             (range (inc (count path))))
       in))
 

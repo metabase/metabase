@@ -1027,7 +1027,16 @@
                             [:map {:closed true} [:collection_id :int]]
                             [:map {:closed true} [:dashboard_id :int]]]]]]
       (is (re-find #"^Invalid tool arguments: `target` "
-                   (validation-error schema {:target {:document_id 1}}))))))
+                   (validation-error schema {:target {:document_id 1}})))))
+  (testing "an `:or` inside a list keeps the index of each element that failed"
+    (let [schema [:map {:closed true}
+                  [:ops [:sequential [:or
+                                      [:map {:closed true} [:card_id :int]]
+                                      [:map {:closed true} [:text :string]]]]]]
+          error  (validation-error schema {:ops [{:card_id 1} {:nope 1} {:text "ok"} {:nope 2}]})]
+      (is (re-find #"`ops\[1\]` " error))
+      (is (re-find #"`ops\[3\]` " error))
+      (is (not (re-find #"`ops` |`ops\[0\]`" error))))))
 
 (deftest ^:parallel tool-unparseable-arguments-test
   (testing "arguments the provider streamed as invalid JSON are reported as such"
