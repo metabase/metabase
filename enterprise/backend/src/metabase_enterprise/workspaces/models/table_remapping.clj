@@ -11,8 +11,11 @@
 
    Inserts and deletes invalidate the QP cache for the affected database —
    Phase 2's SQL rewriter doesn't run on cache hits, so a stale canonical-
-   identifier result post-remap would silently breach workspace isolation."
+   identifier result post-remap would silently breach workspace isolation.
+   They also drop this process's [[database-ids-with-remappings]] cache."
   (:require
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.app-db.core :as app-db]
    [metabase.cache.core :as cache]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -46,7 +49,36 @@
 (t2/define-before-update :model/TableRemapping [row]    (coerce-sentinels true  row))
 (t2/define-before-select :model/TableRemapping [query]  (update query :kv-args #(coerce-sentinels false %)))
 
-(defn- invalidate! [row] (cache/invalidate-config! {:databases [(:database_id row)]}))
+;; `:generation` counts invalidations, so a read that raced a write never caches what it read.
+(defonce ^:private database-ids-cache (atom {:generation 0, :database-ids nil}))
+
+(defn- invalidate-database-ids! []
+  (swap! database-ids-cache (fn [{:keys [generation]}] {:generation (inc generation), :database-ids nil})))
+
+(defn database-ids-with-remappings
+  "The set of Database ids that have a TableRemapping, as this process last read it. Reads the app DB on first use
+  and after every insert or delete this process commits; every other call costs no query.
+
+  Inside a transaction it queries and leaves the cache alone: that transaction may have written rows it later rolls
+  back, and a rollback runs no hook to drop what it cached.
+
+  A write on another node does not invalidate it, so it is only safe where no other node can insert rows: outside
+  workspace mode, where nothing in production inserts them."
+  []
+  (let [{:keys [generation database-ids]} @database-ids-cache]
+    (cond
+      (app-db/in-transaction?) (ws.db/table-remapping-database-ids)
+      database-ids             database-ids
+      :else
+      (let [ids (ws.db/table-remapping-database-ids)]
+        (swap! database-ids-cache #(cond-> % (= generation (:generation %)) (assoc :database-ids ids)))
+        ids))))
+
+(defn- invalidate! [row]
+  (cache/invalidate-config! {:databases [(:database_id row)]})
+  ;; After commit, not now: a read by another thread before the commit can't see the write, and a rollback must
+  ;; leave the cache as it was. The writing transaction's own reads bypass the cache.
+  (app-db/do-after-commit invalidate-database-ids!))
 
 (t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)
 (t2/define-before-delete :model/TableRemapping [row] (invalidate! row))
