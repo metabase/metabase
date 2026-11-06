@@ -128,6 +128,25 @@
                       [:= :t.active true]
                       [:not= :t.db_id [:auto/param audit-database-id]]]}))
 
+(mu/defn raw-universe-tables-with-user-settings
+  "[[raw-universe-tables]] with the values users set in `metabase_table_user_settings` applied, by the rules the
+  `ceygl0` changeset uses to copy them back into `metabase_table`.
+  For an appdb whose user values are only in the settings table: 64.0–64.5.1 and 65.0–65.3.1."
+  [audit-database-id :- ::lib.schema.id/database]
+  (t2/query {:select    [:t.id :t.name :t.db_id
+                         [[:case [:is-not :s.is_published nil] :s.is_published :else :t.is_published] :is_published]
+                         [[:case [:is-not :s.is_published nil] :s.collection_id :else :t.collection_id] :collection_id]
+                         [[:case [:= :s.visibility_type_set true] :s.visibility_type :else :t.visibility_type]
+                          :visibility_type]
+                         [[:case [:= :s.data_layer_set true] :s.data_layer :else :t.data_layer] :data_layer]
+                         [[:case [:is-not :s.data_authority nil] :s.data_authority :else :t.data_authority]
+                          :data_authority]]
+             :from      [[:metabase_table :t]]
+             :left-join [[:metabase_table_user_settings :s] [:= :s.table_id :t.id]]
+             :where     [:and
+                         [:= :t.active true]
+                         [:not= :t.db_id [:auto/param audit-database-id]]]}))
+
 (mu/defn probe-score-columns
   "Select the columns the CLI writes from `data_complexity_score`, matching no rows.
   Throws when the table or one of the columns is missing."

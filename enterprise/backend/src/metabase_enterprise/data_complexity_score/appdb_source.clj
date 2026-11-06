@@ -6,26 +6,53 @@
   hooks and transforms touch none of the columns the CLI reads."
   (:require
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
+   [metabase.app-db.core :as mdb]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
+
+;;; ---------------------------------------- appdb version ----------------------------------------
+
+(def ^:private user-settings-reset-changeset-id
+  "The v64 changeset that moved user-set Table values into `metabase_table_user_settings` and reset them in
+  `metabase_table`."
+  "v64.2026-09-11T00:00:06")
+
+(def ^:private user-settings-copy-back-changeset-id
+  "The changeset that copies user-set Table values back into `metabase_table`: in 64.5.2, 65.3.2 and later."
+  "ceygl0")
+
+(defn- changeset-ran?
+  [changeset-id]
+  (some? (mdb/changelog-by-id (mdb/app-db) changeset-id)))
+
+(defn- user-values-only-in-settings-table?
+  "True when user-set Table values live only in `metabase_table_user_settings`: 64.0–64.5.1 and 65.0–65.3.1."
+  []
+  ;; The settings table outlives the copy-back and is still written, so its existence alone doesn't say which
+  ;; table holds the user's values.
+  (and (changeset-ran? user-settings-reset-changeset-id)
+       (not (changeset-ran? user-settings-copy-back-changeset-id))))
 
 ;;; -------------------------------------------- reads --------------------------------------------
 
 (defn- normalize-table-row
   "Return `table-row` with `:is_published` as a boolean."
   [table-row]
-  ;; MySQL and MariaDB return `is_published` as `0` or `1`, and `0` is truthy. `:model/Table` coerces it with
-  ;; `mi/transform-boolean`.
+  ;; MySQL and MariaDB return `is_published`, and the `CASE` over it, as `0` or `1`, and `0` is truthy.
+  ;; `:model/Table` coerces it with `mi/transform-boolean`.
   (u/update-if-exists table-row :is_published #(or (true? %) (= 1 %))))
 
 (defn reads
   "The universe reads for [[metabase-enterprise.data-complexity-score.complexity/complexity-scores]]'s `:reads`, as
-  raw queries."
+  raw queries chosen for this appdb's version."
   []
-  {:universe-cards-fn  data-complexity-score.db/raw-universe-cards
-   :universe-tables-fn #(mapv normalize-table-row (data-complexity-score.db/raw-universe-tables %))})
+  (let [read-tables (if (user-values-only-in-settings-table?)
+                      data-complexity-score.db/raw-universe-tables-with-user-settings
+                      data-complexity-score.db/raw-universe-tables)]
+    {:universe-cards-fn  data-complexity-score.db/raw-universe-cards
+     :universe-tables-fn #(mapv normalize-table-row (read-tables %))}))
 
 ;;; -------------------------------------------- write --------------------------------------------
 
