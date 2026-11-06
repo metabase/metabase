@@ -971,6 +971,52 @@
       (is (= #{[1 ::pool-1] [2 ::pool-2]}
              (set @destroyed))))))
 
+(deftest ^:synchronized pools-write-while-a-halt-waits-test
+  (testing "a write that starts the pools while a halt waits behind another start finishes instead of deadlocking"
+    (let [^java.util.concurrent.locks.ReentrantReadWriteLock admission @#'system/admission
+          blocker   (system/mutable-component-handle ::blocker (constantly nil))
+          go        (promise)
+          result    (promise)
+          ;; holds the admission read lock through its start, which then writes the pools
+          start     (fn []
+                      @go
+                      (#'sql-jdbc.conn/swap-pools-state! identity)
+                      :started)
+          starter   (Thread. ^Runnable #(system/ensure-started! blocker start (constantly nil)))
+          ;; queues for the write lock behind the starter
+          halter    (Thread. ^Runnable #(#'system/close-admission!))
+          writer    (Thread. ^Runnable #(deliver result (try
+                                                          (#'sql-jdbc.conn/swap-pools-state! identity)
+                                                          :wrote
+                                                          (catch Throwable e
+                                                            e))))
+          wait-for  (fn [ready?]
+                      (loop [tries 0]
+                        (when (and (not (ready?)) (< tries 500))
+                          (Thread/sleep 10)
+                          (recur (inc tries)))))]
+      ;; daemons, so a deadlock fails this test without keeping the JVM alive
+      (doseq [^Thread thread [starter halter writer]]
+        (.setDaemon thread true))
+      (system/stop! @#'sql-jdbc.conn/pools-component)
+      (try
+        (.start starter)
+        (wait-for #(pos? (.getReadLockCount admission)))
+        (.start halter)
+        (wait-for #(.hasQueuedThread admission halter))
+        (.start writer)
+        (wait-for #(.hasQueuedThread admission writer))
+        (deliver go true)
+        (is (= :wrote (deref result 10000 ::deadlocked)))
+        (finally
+          (deliver go true)
+          (.join starter 10000)
+          (.join halter 10000)
+          (system/reopen!)
+          ;; a starter still alive holds the blocker's slot lock, which stopping it would wait for
+          (when-not (.isAlive starter)
+            (system/stop! blocker)))))))
+
 (deftest pool-that-cannot-be-cached-is-destroyed-test
   (testing "a new pool that cannot be cached, as while the pools state is stopping, is destroyed and the error rethrown"
     (let [destroyed (atom [])]
