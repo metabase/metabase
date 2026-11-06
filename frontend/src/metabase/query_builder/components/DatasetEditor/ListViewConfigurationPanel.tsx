@@ -11,12 +11,7 @@ import {
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import {
-  type IconName,
-  type RawSeries,
-  type Series,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { IconName, RawSeries, Series } from "metabase-types/api";
 
 import { updateQuestion as updateQuestionAction } from "../../actions";
 
@@ -62,12 +57,9 @@ export const ListViewConfigurationPanel = ({
     return data.cols.map((col) => Lib.fromLegacyColumn(query, -1, col));
   }, [data, question]);
 
-  // A saved question's virtual table has no entity type, so only a real table
-  // is worth asking for.
   const sourceTableId = useMemo(() => {
     try {
-      const id = Lib.sourceTableOrCardId(question.query());
-      return id != null && isConcreteTableId(id) ? id : undefined;
+      return Lib.primarySourceTableId(question.query()) ?? undefined;
     } catch {
       return undefined;
     }

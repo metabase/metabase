@@ -10,7 +10,6 @@ import type {
 import {
   createMockCollection,
   createMockRemoteSyncEntity,
-  createMockStructuredDatasetQuery,
   createMockTemplateTag,
   createMockTransform,
   createMockTransformOwner,
@@ -333,7 +332,7 @@ describe("getIncrementalWarning", () => {
       source_type: "native",
       source: {
         type: "query",
-        query: createMockStructuredDatasetQuery(),
+        query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       },
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
@@ -357,7 +356,7 @@ describe("getIncrementalWarning", () => {
       source_type: "native",
       source: {
         type: "query",
-        query: createMockStructuredDatasetQuery(),
+        query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
         "source-incremental-strategy": {
           type: "checkpoint",
           "checkpoint-filter-field-id": 99,
@@ -386,7 +385,7 @@ describe("getIncrementalWarning", () => {
       source_type: "mbql",
       source: {
         type: "query",
-        query: createMockStructuredDatasetQuery(),
+        query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
         "source-incremental-strategy": {
           type: "checkpoint",
           "checkpoint-filter-field-id": 99,

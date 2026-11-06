@@ -8,21 +8,22 @@ import {
   setupDatabasesEndpoints,
   setupFieldValuesEndpoint,
   setupSearchEndpoints,
-  setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card, Table } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
-  createMockField,
+  createMockColumn,
   createMockFieldValues,
-  createMockTable,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS,
   SAMPLE_DB_ID,
   createOrdersQuantityField,
   createOrdersTable,
@@ -52,17 +53,13 @@ const MODEL = createMockCard({
   type: "model",
   description: "A model of the Products table",
   collection_id: COLLECTION.id,
-});
-
-const MODEL_TABLE = createMockTable({
-  id: `card__${MODEL.id}`,
-  db_id: SAMPLE_DB_ID,
-  name: MODEL.name,
-  display_name: MODEL.name,
-  fields: [
-    createMockField({
-      id: ["field", "RENAMED_ID", { "base-type": "type/BigInteger" }],
-      table_id: `card__${MODEL.id}`,
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "SELECT ID AS RENAMED_ID FROM PRODUCTS",
+  }),
+  result_metadata: [
+    createMockColumn({
+      id: PRODUCTS.ID,
       name: "RENAMED_ID",
       display_name: "RENAMED_ID",
       base_type: "type/BigInteger",
@@ -94,20 +91,15 @@ function setup({
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: ORDERS.QUANTITY, values: [] }),
   );
+  setupFieldValuesEndpoint(
+    createMockFieldValues({ field_id: PRODUCTS.ID, values: [] }),
+  );
   setupCollectionByIdEndpoint({ collections: [COLLECTION] });
   cards.forEach((card) => {
-    const virtualTable =
-      card.id === MODEL.id
-        ? MODEL_TABLE
-        : createMockTable({ id: `card__${card.id}`, fields: [] });
     setupCardEndpoints(card);
-    setupTableQueryMetadataEndpoint(virtualTable);
     setupCardQueryMetadataEndpoint(
       card,
-      createMockCardQueryMetadata({
-        databases: [database],
-        tables: [virtualTable],
-      }),
+      createMockCardQueryMetadata({ databases: [database] }),
     );
   });
 

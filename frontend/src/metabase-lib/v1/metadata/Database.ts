@@ -1,7 +1,5 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import type { NativeQuery, NormalizedDatabase } from "metabase-types/api";
-
-import Question from "../Question";
+import type { NormalizedDatabase } from "metabase-types/api";
 
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
@@ -126,25 +124,6 @@ class Database {
 
   hasDatabaseRoutingEnabled() {
     return !!this.router_user_attribute;
-  }
-
-  nativeQuestion(native: Partial<NativeQuery> = {}) {
-    return Question.create({
-      metadata: this.metadata,
-      dataset_query: {
-        database: this.id,
-        type: "native",
-        native: {
-          query: "",
-          "template-tags": {},
-          ...native,
-        },
-      },
-    });
-  }
-
-  nativeQuery(native: Partial<NativeQuery>) {
-    return this.nativeQuestion(native).legacyNativeQuery();
   }
 
   savedQuestionsDatabase() {

@@ -2,7 +2,7 @@ import type { NodeProps } from "@xyflow/react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { queryIcon, renderWithProviders, screen } from "__support__/ui";
-import type { ConcreteTableId, TableVisibilityType } from "metabase-types/api";
+import type { TableId, TableVisibilityType } from "metabase-types/api";
 import {
   createMockErdNode,
   createMockErdResponse,
@@ -44,8 +44,8 @@ function setup({
   const [node] = toFlowGraph(createMockErdResponse({ nodes: [erdNode] })).nodes;
 
   const value = {
-    visibleTableIds: new Set<ConcreteTableId>(),
-    expandingTableIds: new Set<ConcreteTableId>(),
+    visibleTableIds: new Set<TableId>(),
+    expandingTableIds: new Set<TableId>(),
     expandToTable: jest.fn(),
     selectedNodeId: null,
     selectNode: jest.fn(),

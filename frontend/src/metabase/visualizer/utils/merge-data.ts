@@ -3,7 +3,6 @@ import _ from "underscore";
 import type {
   Dataset,
   DatasetColumn,
-  Field,
   RowValues,
   VisualizerColumnValueSource,
   VisualizerDataSource,
@@ -105,7 +104,6 @@ export function mergeVisualizerData({
     insights,
     results_timezone: sourceData?.results_timezone,
     requested_timezone: sourceData?.requested_timezone,
-    // this is incorrect - `data.cols` are not the same as `data.results_metadata.columns`
-    results_metadata: { columns: columns as unknown as Field[] },
+    results_metadata: { columns },
   };
 }

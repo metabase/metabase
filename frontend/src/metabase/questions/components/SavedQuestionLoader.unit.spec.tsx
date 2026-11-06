@@ -12,7 +12,7 @@ import type { Card, CardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
-  createMockField,
+  createMockColumn,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -46,7 +46,7 @@ function setupQuestion({ id, name, hasAccess }: SetupQuestionOptions): Card {
   const card = createMockCard({
     id,
     name,
-    result_metadata: [createMockField()],
+    result_metadata: [createMockColumn()],
   });
   const q = new Question(card);
 

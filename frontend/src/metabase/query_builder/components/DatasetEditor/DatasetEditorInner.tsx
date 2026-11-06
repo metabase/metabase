@@ -338,8 +338,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const fields = useMemo(
     () =>
       getSortedModelFields(
-        // Unjustified type cast. FIXME
-        (resultsMetadata?.columns as unknown as Field[]) ?? [],
+        resultsMetadata?.columns ?? [],
         visualizationSettings ?? {},
       ),
     [resultsMetadata, visualizationSettings],
@@ -412,7 +411,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
     if (!focusedFieldName) {
       return -1;
     }
-    return fields.findIndex((field: Field) => field.name === focusedFieldName);
+    return fields.findIndex((field) => field.name === focusedFieldName);
   }, [focusedFieldName, fields]);
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);

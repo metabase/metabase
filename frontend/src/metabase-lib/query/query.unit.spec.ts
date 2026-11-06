@@ -1,11 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery } from "metabase-types/api";
 import {
   createMockCard,
   createMockMeasure,
   createMockSegment,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -24,14 +22,6 @@ import {
 const METRIC_ID = 42;
 const QUESTION_ID = 43;
 
-const DEFAULT_QUERY: DatasetQuery = {
-  database: SAMPLE_DATABASE.id,
-  type: "query",
-  query: {
-    "source-table": ORDERS_ID,
-  },
-};
-
 describe("fromJsQuery", () => {
   // this is a very important optimization that the FE heavily relies upon
   it("should return the same object for the same database id, query, and metadata", () => {
@@ -39,8 +29,9 @@ describe("fromJsQuery", () => {
       SAMPLE_DATABASE.id,
       SAMPLE_METADATA,
     );
-    const query1 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
-    const query2 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
+    const jsQuery = Lib.createTestJsQuery(metadataProvider, DEFAULT_TEST_QUERY);
+    const query1 = Lib.fromJsQuery(metadataProvider, jsQuery);
+    const query2 = Lib.fromJsQuery(metadataProvider, jsQuery);
     expect(query1 === query2).toBe(true);
   });
 });
@@ -48,7 +39,10 @@ describe("fromJsQuery", () => {
 describe("toLegacyQuery", () => {
   it("should serialize a query", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-    expect(Lib.toLegacyQuery(query)).toEqual(DEFAULT_QUERY);
+    const legacyQuery = Lib.toLegacyQuery(query);
+    const restoredQuery = Lib.fromJsQuery(SAMPLE_PROVIDER, legacyQuery);
+    expect(legacyQuery.database).toBe(SAMPLE_DATABASE.id);
+    expect(Lib.primarySourceTableId(restoredQuery)).toBe(ORDERS_ID);
   });
 });
 
@@ -95,7 +89,7 @@ describe("createTestQuery", () => {
           },
         ],
       });
-      expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
+      expect(Lib.primarySourceTableId(query)).toBe(PRODUCTS_ID);
     });
 
     it("should create a query with a card source", () => {
@@ -107,11 +101,8 @@ describe("createTestQuery", () => {
             createMockCard({
               id: QUESTION_ID,
               name: "Orders question",
-              dataset_query: createMockStructuredDatasetQuery({
-                database: SAMPLE_DATABASE.id,
-                query: {
-                  "source-table": ORDERS_ID,
-                },
+              dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [{ source: { type: "table", id: ORDERS_ID } }],
               }),
             }),
           ],
@@ -129,13 +120,7 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(Lib.toJsQuery(query)).toMatchObject({
-        stages: [
-          {
-            "source-card": QUESTION_ID,
-          },
-        ],
-      });
+      expect(Lib.primarySourceCardId(query)).toBe(QUESTION_ID);
     });
 
     it("should create a query with a metric aggregation", () => {
@@ -148,12 +133,13 @@ describe("createTestQuery", () => {
               id: METRIC_ID,
               name: "Revenue",
               type: "metric",
-              dataset_query: createMockStructuredDatasetQuery({
-                database: SAMPLE_DATABASE.id,
-                query: {
-                  "source-table": ORDERS_ID,
-                  aggregation: [["count"]],
-                },
+              dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    aggregations: [{ type: "operator", operator: "count" }],
+                  },
+                ],
               }),
             }),
           ],
@@ -172,7 +158,7 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(Lib.sourceTableOrCardId(query)).toBe(ORDERS_ID);
+      expect(Lib.primarySourceTableId(query)).toBe(ORDERS_ID);
       expect(
         Lib.displayInfo(query, 0, Lib.aggregations(query, 0)[0]),
       ).toMatchObject({
@@ -492,11 +478,22 @@ describe("createTestQuery", () => {
             createMockSegment({
               id: SEGMENT_ID,
               table_id: PRODUCTS_ID,
-              definition: createMockStructuredDatasetQuery({
-                query: {
-                  "source-table": PRODUCTS_ID,
-                  filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Widget"],
-                },
+              definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: PRODUCTS_ID },
+                    filters: [
+                      {
+                        type: "operator",
+                        operator: "=",
+                        args: [
+                          { type: "column", fieldId: PRODUCTS.CATEGORY },
+                          { type: "literal", value: "Widget" },
+                        ],
+                      },
+                    ],
+                  },
+                ],
               }),
             }),
           ],
@@ -514,9 +511,9 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(Lib.toLegacyQuery(query)).toMatchObject({
-        query: { filter: ["segment", SEGMENT_ID] },
-      });
+      const filters = Lib.filters(query, 0);
+      expect(filters).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, filters[0]).displayName).toBe("Segment");
     });
 
     it("should create a query with filters", () => {
@@ -587,17 +584,11 @@ describe("createTestQuery", () => {
         ],
       });
 
-      expect(Lib.toLegacyQuery(query)).toMatchObject({
-        query: {
-          aggregation: [
-            [
-              "aggregation-options",
-              expect.anything(),
-              { "display-name": "Measure" },
-            ],
-          ],
-        },
-      });
+      const aggregations = Lib.aggregations(query, 0);
+      expect(aggregations).toHaveLength(1);
+      expect(Lib.displayInfo(query, 0, aggregations[0]).displayName).toBe(
+        "Measure",
+      );
     });
 
     it("should create a query with aggregations", () => {

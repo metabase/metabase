@@ -2,11 +2,11 @@ jest.doMock("metabase/utils/dom");
 
 import { createMockMetadata } from "__support__/metadata";
 import * as iframeUtils from "metabase/utils/iframe";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import {
-  createEmptyAdHocNativeCard,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createMockUnsavedCard } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { NativeQueryClickFallback } from "./NativeQueryClickFallback";
 
@@ -14,7 +14,14 @@ function getQuestion() {
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],
   });
-  return new Question(createEmptyAdHocNativeCard(), metadata);
+  return new Question(
+    createMockUnsavedCard({
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: "",
+      }),
+    }),
+    metadata,
+  );
 }
 
 describe("NativeQueryClickFallback", () => {

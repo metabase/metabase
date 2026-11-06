@@ -5,20 +5,17 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 import {
+  createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockNativeCard,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
 } from "metabase-types/api/mocks";
-import {
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { QUERY_COMPLETED } from "../store/actions";
 
@@ -26,13 +23,11 @@ import { queryCompleted } from "./querying";
 
 const DATABASE = createSampleDatabase();
 
-const CARD = createMockNativeCard({
+const CARD = createMockCard({
   display: "table",
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: createMockNativeQuery({
-      query: "select 1 as visible, 2 as hidden",
-    }),
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select 1 as visible, 2 as hidden",
   }),
   visualization_settings: {
     "table.columns": [

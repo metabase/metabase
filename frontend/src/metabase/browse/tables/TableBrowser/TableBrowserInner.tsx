@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { useGetDatabaseQuery } from "metabase/api";
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { DatabaseQuickLinksMenu } from "metabase/browse/components/DatabaseQuickLinksMenu";
@@ -12,12 +12,9 @@ import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { ConcreteTableId, DatabaseId, Table } from "metabase-types/api";
+import type { DatabaseId, Table, TableId } from "metabase-types/api";
 
 import {
   trackBrowseXRayClicked,
@@ -26,7 +23,6 @@ import {
 } from "../analytics";
 
 import S from "./TableBrowser.module.css";
-import { getTableUrl } from "./selectors";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 type TableBrowserProps = {
@@ -44,9 +40,7 @@ export const TableBrowserInner = ({
   xraysEnabled,
   showSchemaInHeader = true,
 }: TableBrowserProps) => {
-  const { data: database } = useGetDatabaseQuery(
-    dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID ? skipToken : { id: dbId },
-  );
+  const { data: database } = useGetDatabaseQuery({ id: dbId });
   const isAdmin = useSelector(getUserIsAdmin);
   const databaseCrumb = useDatabaseCrumb(dbId);
   const canEditTables =
@@ -94,25 +88,23 @@ const TableBrowserItem = ({
   xraysEnabled,
   canEditTables,
 }: TableBrowserItemProps) => {
-  const tableUrl = useSelector((state) => getTableUrl(state, table));
-  const isVirtual = isVirtualCardId(table.id);
+  const tableId = table.id;
   const isLoading = isSyncInProgress(table);
   const isTableWritable = table.is_writable;
+  const tableUrl = Urls.table({ id: tableId, name: table.display_name });
 
   return (
     <BrowseCard
-      to={!isSyncInProgress(table) ? tableUrl : ""}
+      to={!isLoading ? tableUrl : ""}
       icon="table"
       title={table.display_name || table.name}
-      // Unjustified type cast. FIXME
-      onClick={() => trackTableClick(table.id as ConcreteTableId)}
+      onClick={() => trackTableClick(tableId)}
     >
       <>
         {isLoading && <Loader size="xs" />}
-        {!isLoading && !isVirtual && (
+        {!isLoading && (
           <TableBrowserItemButtons
-            // Unjustified type cast. FIXME
-            tableId={table.id as ConcreteTableId}
+            tableId={tableId}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
             canEditTables={canEditTables && isTableWritable}
@@ -124,7 +116,7 @@ const TableBrowserItem = ({
 };
 
 type TableBrowserItemButtonsProps = {
-  tableId: ConcreteTableId;
+  tableId: TableId;
   dbId: DatabaseId;
   xraysEnabled?: boolean;
   canEditTables?: boolean;
