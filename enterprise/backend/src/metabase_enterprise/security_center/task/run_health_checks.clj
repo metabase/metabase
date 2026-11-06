@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time.api :as t]
    [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.metrics :as metrics]
    [metabase.premium-features.core :as premium-features]
@@ -26,7 +25,7 @@
     (let [timer  (u/start-timer)
           checks (health-checks/refresh-and-run-checks)]
       (metrics/set-health-check-gauges! checks)
-      (metrics/set-health-checks-last-run! (t/offset-date-time))
+      (metrics/set-health-checks-last-run!)
       (log/infof "Ran %d health checks in %sms: %s"
                  (count checks) (u/since-ms timer) (frequencies (map :status checks))))))
 

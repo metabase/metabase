@@ -428,6 +428,15 @@
   (run! refresh-check! (background-checks))
   (run-checks))
 
+(defn last-refreshed-at
+  "When the newest stored refresh of a background check ran, or nil while no refresh has stored a result."
+  []
+  (some->> (all-checks)
+           (filter :refresh)
+           (keep (comp stored-checked-at :id))
+           seq
+           (apply t/max)))
+
 (defn background-check-without-result?
   "Whether a background check that applies has no stored result yet."
   []
