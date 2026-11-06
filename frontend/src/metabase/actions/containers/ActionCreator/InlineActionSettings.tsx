@@ -152,6 +152,9 @@ export function InlineActionSettings({
             id={`${id}-message`}
             value={formSettings.successMessage ?? ""}
             placeholder={t`Action ran successfully`}
+            autosize
+            minRows={5}
+            maxRows={10}
             disabled={!isEditable}
             onChange={handleSuccessMessageChange}
           />

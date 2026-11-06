@@ -43,6 +43,10 @@
 .ModalTextAreaInput {
   height: 100%;
   resize: none;
+
+  &[readonly] {
+    background-color: var(--mb-color-background_page-secondary);
+  }
 }
 
 .ModalHelpMessage {
