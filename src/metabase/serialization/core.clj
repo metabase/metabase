@@ -23,8 +23,10 @@
     Fields the store lacks when asked to (see [[metabase.serialization.resolve]])."
   (:refer-clojure :exclude [import load])
   (:require
+   [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
    [metabase.serialization.export :as serialization.export]
+   [metabase.serialization.load :as serialization.load]
    [metabase.serialization.mbql :as serialization.mbql]
    [metabase.serialization.parameters :as serialization.parameters]
    [metabase.serialization.protocol.app-db :as protocol.app-db]
@@ -37,6 +39,17 @@
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
+ [serialization.dependencies
+  export-dependencies
+  export-escapes
+  export-mbql-dependencies
+  export-parameters-dependencies
+  export-visualization-settings-dependencies
+  import-dependencies
+  import-escapes
+  import-mbql-dependencies
+  import-parameters-dependencies
+  import-visualization-settings-dependencies]
  [serialization.entity
   entity-ref
   key-of
@@ -47,6 +60,16 @@
   export
   export-batch
   with-export-transaction]
+ [serialization.load
+  after-load
+  before-load
+  import
+  load
+  load-all
+  load-error
+  load-error?
+  load-order
+  local-rows]
  [serialization.storage
   batch-storage-paths
   collection-namespace-folder

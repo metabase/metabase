@@ -2643,6 +2643,7 @@
            lib
            lib.legacy-mbql
            lib.schema
+           models
            util
            util.config}
    :model-imports #{:model/Card
