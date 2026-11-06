@@ -220,9 +220,12 @@ export interface ClickActionsMode {
   ): ClickAction[];
 
   /**
-   * Leaving this undefined hides the add-column shortcut.
+   * Leaving this and onAddColumn undefined hides the add-column shortcut.
    */
   hasColumnShortcutActions?(props: ClickActionProps): boolean;
+
+  /** Opens a custom column editor instead of the column shortcuts menu. */
+  onAddColumn?: () => void;
 }
 
 export const isCustomClickAction = (

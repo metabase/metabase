@@ -9,10 +9,32 @@ import {
   setSearchQuery,
 } from "@codemirror/search";
 import type { EditorView } from "@codemirror/view";
-import { act, render, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useMemo, useState } from "react";
 
 import { CodeMirror } from "./CodeMirror";
+
+type SetupOpts = { indentWithTab?: boolean };
+
+async function setup({ indentWithTab }: SetupOpts = {}) {
+  let onEditorCreate = (_view: EditorView) => {};
+  const created = new Promise<EditorView>((resolve) => {
+    onEditorCreate = resolve;
+  });
+  render(
+    <>
+      <CodeMirror
+        value="value"
+        autoFocus
+        indentWithTab={indentWithTab}
+        onCreateEditor={onEditorCreate}
+      />
+      <button>Next</button>
+    </>,
+  );
+  return { view: await created };
+}
 
 function SearchReplaceHarness({
   initialValue,
@@ -43,6 +65,20 @@ function SearchReplaceHarness({
 }
 
 describe("CodeMirror", () => {
+  it("indents with Tab by default", async () => {
+    const { view } = await setup();
+    await userEvent.tab();
+    expect(view.state.doc.toString()).toBe("  value");
+    expect(view.hasFocus).toBe(true);
+  });
+
+  it("moves focus with Tab when indentation is disabled", async () => {
+    const { view } = await setup({ indentWithTab: false });
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Next" })).toHaveFocus();
+    expect(view.state.doc.toString()).toBe("value");
+  });
+
   it("keeps the find/replace panel open while matches remain and closes after the last replace", async () => {
     const initialValue = "test1, test2, test1, test3";
     let editorView: EditorView | undefined;

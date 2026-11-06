@@ -829,16 +829,13 @@ describe("issue 43294", () => {
     // popover().button("Done").click();
 
     cy.log("extract action");
-    cy.button("Add column").click();
-    H.popover().findByText("Extract part of column").click();
-    H.popover().within(() => {
-      cy.findByText("Created At: Month").click();
-      cy.findByText("Year").click();
-    });
+    H.tableHeaderClick("Created At: Month");
+    H.popover().findByText("Extract day, month…").click();
+    H.popover().findByText("Year").click();
     cy.wait("@dataset");
 
     cy.log("combine action");
-    cy.button("Add column").click();
+    H.tableHeaderClick("Created At: Month");
     H.popover().findByText("Combine columns").click();
     H.popover().button("Done").click();
     cy.wait("@dataset");
