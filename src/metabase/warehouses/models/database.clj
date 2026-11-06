@@ -445,8 +445,9 @@
     ;; older re-index that may already have read a soon-to-be-deleted card.
     (when (or (seq gone) (seq cascading))
       (search/after-commit! "database delete"
-                            ;; One call for the whole database; `update!` removes the documents 1,000 at a time.
-                            (fn [] (search/delete! :model/Card gone))
+                            ;; One tombstone per 1,000 cards, so a failed ingestion batch loses only the chunks in it.
+                            (fn [] (doseq [chunk (partition-all 1000 gone)]
+                                     (search/delete! :model/Card chunk)))
                             (fn [] (search/reconcile-cascading-documents! cascading)))))
   (try
     (driver/notify-database-updated driver (driver.u/ensure-lib-database database))

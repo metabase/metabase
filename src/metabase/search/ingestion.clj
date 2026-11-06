@@ -280,7 +280,8 @@
 ;; and this enumeration happens on the caller's thread inside its transaction, so past the ceiling the documents are
 ;; left to the convergence backstop rather than held in heap.
 (def max-enumerated-documents
-  "Ceiling on how many documents one delete may enumerate before it runs, across every statement it issues."
+  "Ceiling on how many documents one statement may enumerate before it runs.
+  A batched delete also stops enumerating further batches once it holds this many."
   10000)
 
 (defn doc-ids

@@ -317,7 +317,8 @@
 (defn add-cascading-documents
   "Merge what [[cascading-documents]] enumerates for `instances` into `cascading`, an earlier result or nil.
   Once `cascading` holds [[search.ingestion/max-enumerated-documents]] documents, `instances` are not enumerated, and
-  the documents they cascade to are left to the reindex."
+  the documents they cascade to are left to the reindex.
+  The batch that reaches the ceiling is kept whole, so the result can pass it by up to one batch's worth."
   [cascading instances]
   (if (<= search.ingestion/max-enumerated-documents (document-count cascading))
     cascading
