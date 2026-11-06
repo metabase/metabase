@@ -1798,7 +1798,7 @@
         ;; never touches can keep their default ACLs.
         ;; read-only probes — one connection, no transaction needed
         _              (sql-jdbc.execute/do-with-connection-with-options
-                        driver database nil
+                        driver (driver.u/ensure-lib-database database) nil
                         (fn [^Connection conn]
                           (let [check-conn {:connection conn}]
                             (doseq [s source-schemas]
