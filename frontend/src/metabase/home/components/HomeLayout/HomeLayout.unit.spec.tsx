@@ -1,9 +1,21 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupDatabaseListEndpoint,
+  setupEnginesEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
-import type { IllustrationSettingValue, User } from "metabase-types/api";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import type {
+  EmbeddingHomepageStatus,
+  IllustrationSettingValue,
+  User,
+} from "metabase-types/api";
 import {
+  createMockEngines,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -20,21 +32,42 @@ const ILLUSTRATION_URL =
 interface SetupOpts {
   currentUser?: User;
   landingPageIllustration?: IllustrationSettingValue;
+  embeddingHomepage?: EmbeddingHomepageStatus;
+  hasSimpleEmbedding?: boolean;
 }
 
-const setup = ({ currentUser, landingPageIllustration }: SetupOpts = {}) => {
+const setup = ({
+  currentUser,
+  landingPageIllustration,
+  embeddingHomepage,
+  hasSimpleEmbedding = false,
+}: SetupOpts = {}) => {
   const state = createMockState({
     currentUser,
-    ...(landingPageIllustration && {
+    ...((landingPageIllustration || embeddingHomepage) && {
       settings: mockSettings({
-        "landing-page-illustration": landingPageIllustration,
-        "landing-page-illustration-custom": ILLUSTRATION_URL,
-        "token-features": createMockTokenFeatures({ whitelabel: true }),
+        ...(landingPageIllustration && {
+          "landing-page-illustration": landingPageIllustration,
+          "landing-page-illustration-custom": ILLUSTRATION_URL,
+        }),
+        ...(embeddingHomepage && { "embedding-homepage": embeddingHomepage }),
+        "token-features": createMockTokenFeatures({
+          whitelabel: Boolean(landingPageIllustration),
+          embedding_simple: hasSimpleEmbedding,
+        }),
       }),
     }),
   });
   if (landingPageIllustration) {
     setupEnterpriseOnlyPlugin("whitelabel");
+  }
+  if (embeddingHomepage) {
+    setupDatabaseListEndpoint([]);
+    setupEnginesEndpoint(createMockEngines());
+    fetchMock.get("path:/api/embedding-hub/checklist", {
+      checklist: {},
+      "data-isolation-strategy": null,
+    });
   }
 
   renderWithProviders(<HomeLayout />, {
@@ -88,5 +121,52 @@ describe("HomeLayout", () => {
         screen.queryByTestId("lighthouse-illustration"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  describe("embedding homepage", () => {
+    it("embedding checklist should show up on the embedding homepage", async () => {
+      setup({
+        currentUser: createMockUser({ is_superuser: true }),
+        embeddingHomepage: "visible",
+        hasSimpleEmbedding: true,
+      });
+
+      expect(
+        (await screen.findAllByText("Get started with modular embedding"))[0],
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("home-page")).not.toBeInTheDocument();
+
+      expect(screen.getByText("Create a dashboard")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Connect a database"));
+
+      // Sanity check: add data modal should open
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole("dialog")).getByRole("heading", {
+            name: "Add data",
+          }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it.each([
+      ["the setting is hidden", "hidden", true, true],
+      ["simple embedding is not available", "visible", false, true],
+      ["the user is not an admin", "visible", true, false],
+    ] as const)(
+      "should show the regular homepage when %s",
+      (_name, embeddingHomepage, hasSimpleEmbedding, isAdmin) => {
+        setup({
+          currentUser: createMockUser({ is_superuser: isAdmin }),
+          embeddingHomepage,
+          hasSimpleEmbedding,
+        });
+
+        expect(screen.getByTestId("home-page")).toBeInTheDocument();
+        expect(
+          screen.queryByText("Get started with modular embedding"),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 });

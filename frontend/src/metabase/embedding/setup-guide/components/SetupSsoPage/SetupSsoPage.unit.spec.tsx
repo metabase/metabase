@@ -7,9 +7,13 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
-import { createMockSettings } from "metabase-types/api/mocks";
+import type { TokenStatus } from "metabase-types/api";
+import {
+  createMockSettings,
+  createMockTokenStatus,
+} from "metabase-types/api/mocks";
 
 import type { SetupGuideChecklist } from "../../api/setup-guide";
 
@@ -34,10 +38,12 @@ const defaultChecklist: SetupGuideChecklist = {
 
 const setup = ({
   checklist = {},
+  tokenStatus = null,
 }: {
   checklist?: Partial<SetupGuideChecklist>;
+  tokenStatus?: TokenStatus | null;
 } = {}) => {
-  const settings = createMockSettings();
+  const settings = createMockSettings({ "token-status": tokenStatus });
 
   setupPropertiesEndpoints(settings);
   setupUpdateSettingsEndpoint();
@@ -128,6 +134,50 @@ describe("SetupSsoPage", () => {
       "jwt-shared-secret": "test-signing-key",
       "jwt-enabled": true,
       "jwt-group-sync": true,
+    });
+  });
+
+  describe("troubleshooting help link", () => {
+    const openTroubleshooting = async () => {
+      const testJwtStep = await screen.findByRole("listitem", {
+        name: "Test that JWT authentication is working correctly",
+      });
+      await waitFor(() =>
+        expect(testJwtStep).toHaveAttribute("data-locked", "false"),
+      );
+      await userEvent.click(testJwtStep);
+      await userEvent.click(
+        screen.getByRole("button", { name: "No, I couldn't log in" }),
+      );
+      expect(await screen.findByText("Troubleshooting")).toBeVisible();
+    };
+
+    it("shows /help-premium troubleshooting link for pro-cloud plan in sso setup", async () => {
+      setup({
+        checklist: { "sso-configured": true },
+        tokenStatus: createMockTokenStatus({ valid: true }),
+      });
+
+      await openTroubleshooting();
+
+      expect(
+        screen.getByRole("link", { name: "Contact customer support" }),
+      ).toHaveAttribute(
+        "href",
+        expect.stringContaining("metabase.com/help-premium"),
+      );
+    });
+
+    it("links to /help instead of /help-premium without a paid plan", async () => {
+      setup({ checklist: { "sso-configured": true } });
+
+      await openTroubleshooting();
+
+      const href = screen
+        .getByRole("link", { name: "Contact customer support" })
+        .getAttribute("href");
+      expect(href).toContain("metabase.com/help?");
+      expect(href).not.toContain("help-premium");
     });
   });
 });

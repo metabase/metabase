@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.tenants.api-test]}}}}}}
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
+   [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -276,6 +277,33 @@
                   "key2" "value2"
                   "environment" "production"}
                  (:attributes created-tenant))))))))
+
+(deftest tenant-attributes-round-trip-through-api-test
+  (testing "Attributes POSTed to /api/ee/tenant come back from POST, GET /:id and the list"
+    (mt/with-model-cleanup [:model/Tenant]
+      (doseq [[attr-key attr-value] [["organization_id" "org-123"]
+                                     ["database_role" "analyst_role"]
+                                     ["database_slug" "tenant_db_slug"]]
+              :let [tenant-name (str "Tenant " attr-key)
+                    attributes  {attr-key attr-value}]]
+        (testing attr-key
+          (let [created (mt/user-http-request :crowberto :post 200 "ee/tenant/"
+                                              {:name       tenant-name
+                                               :slug       (str "slug-" (name (gensym "")))
+                                               :attributes attributes})
+                id      (:id created)]
+            (is (= attributes (update-keys (:attributes created) name)))
+            (is (= attributes (update-keys (:attributes (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id))) name)))
+            (is (= attributes (->> (mt/user-http-request :crowberto :get 200 "ee/tenant/")
+                                   :data
+                                   (m/find-first #(= id (:id %)))
+                                   :attributes
+                                   (#(update-keys % name)))))))))
+    (testing "positive control: a tenant created without attributes has none"
+      (mt/with-model-cleanup [:model/Tenant]
+        (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/tenant/"
+                                                 {:name "No Attrs Tenant" :slug "no-attrs-tenant"})]
+          (is (empty? (:attributes (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id))))))))))
 
 (deftest can-create-tenant-with-keyword-attributes-test
   (testing "Can create tenant with keyword attributes (converted to strings)"

@@ -100,6 +100,25 @@ describe("EmbeddingHubAppearancePage", () => {
     expect(screen.queryByText("Create custom themes")).not.toBeInTheDocument();
   });
 
+  it("carries the theme listing and the branding settings on one tab", async () => {
+    setup({ hasSimpleEmbedding: true });
+
+    expect(
+      await screen.findByRole("heading", { name: "Appearance" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Themes" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Branding elements" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Loading message")).toBeInTheDocument();
+    expect(
+      screen.getByText("When calculations return no results"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("When no objects can be found"),
+    ).toBeInTheDocument();
+  });
+
   it("hides the full-app banner when full-app embedding is off", async () => {
     setup({ hasSimpleEmbedding: true, isFullAppEmbeddingEnabled: false });
 
