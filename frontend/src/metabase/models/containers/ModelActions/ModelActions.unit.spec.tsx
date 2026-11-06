@@ -24,6 +24,8 @@ import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Card,
@@ -37,6 +39,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockQueryAction as _createMockQueryAction,
+  createMockCard,
   createMockCardQueryMetadata,
   createMockDatabase,
   createMockField,
@@ -44,16 +47,10 @@ import {
   createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createNativeModelCard as _createNativeModelCard,
-  createStructuredModelCard as _createStructuredModelCard,
-  createSavedStructuredCard,
-} from "metabase-types/api/mocks/presets";
+import { createSavedStructuredCard } from "metabase-types/api/mocks/presets";
 
 import ActionCreatorModal from "../ActionCreatorModal";
 
@@ -116,6 +113,11 @@ const TEST_DATABASE = createMockDatabase({
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
 });
 
+const TEST_PROVIDER = createMetadataProvider({
+  databaseId: TEST_DATABASE_ID,
+  metadata: createMockMetadata({ databases: [TEST_DATABASE] }),
+});
+
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   ...TEST_DATABASE,
   settings: { "database-enable-actions": true },
@@ -132,28 +134,32 @@ const TEST_DATABASE_WITH_ACTIONS_LIST_ITEM = createMockDatabase({
 });
 
 function createStructuredModelCard(card?: Partial<Card>) {
-  return _createStructuredModelCard({
+  return createMockCard({
+    type: "model",
+    display: "table",
     can_write: true,
     ...card,
     result_metadata: TEST_FIELDS,
-    dataset_query: createMockStructuredDatasetQuery({
-      database: TEST_DATABASE_ID,
-      query: createMockStructuredQuery({ "source-table": TEST_TABLE_ID }),
-    }),
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(TEST_PROVIDER, {
+        stages: [{ source: { type: "table", id: TEST_TABLE_ID } }],
+      }),
+    ),
   });
 }
 
 function createNativeModelCard(card?: Partial<Card>) {
-  return _createNativeModelCard({
+  return createMockCard({
+    type: "model",
+    display: "table",
     can_write: true,
     ...card,
     result_metadata: TEST_FIELDS,
-    dataset_query: createMockNativeDatasetQuery({
-      database: TEST_DATABASE_ID,
-      native: createMockNativeQuery({
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestNativeQuery(TEST_PROVIDER, {
         query: `SELECT * FROM ${TEST_TABLE.name}`,
       }),
-    }),
+    ),
   });
 }
 
