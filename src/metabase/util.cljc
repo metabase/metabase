@@ -605,8 +605,11 @@
   "True if `s` is a string in the canonical 8-4-4-4-12 hex form of a UUID, in either case."
   [s]
   ;; Not `parse-uuid` or `UUID/fromString`: on the JVM they accept any five dash-separated groups of hex digits,
-  ;; such as `1-2-3-4-5`. Case is ignored because the ClickHouse driver checks filter values that users type.
-  (boolean (and (string? s) (re-matches uuid-regex (lower-case-en s)))))
+  ;; such as `1-2-3-4-5`. Case is ignored because some callers check values that users type, such as ClickHouse
+  ;; filter values. The length check rejects long input before it is lower-cased.
+  (boolean (and (string? s)
+                (= 36 (count s))
+                (re-matches uuid-regex (lower-case-en s)))))
 
 (defn one-or-many
   "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
