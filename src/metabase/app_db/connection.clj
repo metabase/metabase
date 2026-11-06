@@ -182,6 +182,11 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *transaction-connection*
+  "The connection of the transaction tree this thread is in, so that a transaction on another connection starts its own."
+  nil)
+
 (defn- pending-callbacks
   "Return `cbs`, the value of the after-commit callbacks atom, if they are still waiting to run, else nil.
   Once the transaction has ended the atom holds `::committed` or `::rolled-back`, so read its value through this."
@@ -300,7 +305,8 @@
             *before-commit-callbacks*     nil
             *transaction-state*           nil
             *rollback-required*           nil
-            *open-savepoints*             nil]
+            *open-savepoints*             nil
+            *transaction-connection*      nil]
     (thunk)))
 
 (defn do-before-commit
@@ -553,7 +559,7 @@
                          "nested transaction has no savepoint to roll back to")
                     {:options options})))
   ;; Read the depth once: the outer transaction can commit on another thread between two reads.
-  (let [depth (live-transaction-depth)]
+  (let [depth (if (identical? connection *transaction-connection*) (live-transaction-depth) 0)]
     (cond
       (and (pos? depth)
            (= nested-transaction-rule :ignore))
@@ -575,6 +581,7 @@
                         *transaction-state*       (if outermost? (atom {}) *transaction-state*)
                         *rollback-required*       (if outermost? (atom false) *rollback-required*)
                         *open-savepoints*         (if outermost? (atom []) *open-savepoints*)
+                        *transaction-connection*  (if outermost? connection *transaction-connection*)
                         *after-commit-callbacks*  callbacks]
                 (do-transaction connection rollback-only f))
               (catch Throwable e

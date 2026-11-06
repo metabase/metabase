@@ -664,6 +664,32 @@
       (is (= [[:set 1] [:set 2] [:set 3] [:rollback 2] [:commit]]
              @calls)))))
 
+(deftest inherited-thread-transaction-on-other-connection-is-its-own-tree-test
+  (testing "a thread that inherited a transaction and opens one on another connection keeps its savepoints there"
+    (let [calls       (atom [])
+          other-calls (atom [])
+          other       (recording-connection other-calls)
+          other-in    (promise)
+          outer-in    (promise)
+          other-out   (promise)]
+      (binding [t2.connection/*current-connectable* (recording-connection calls)]
+        (t2/with-transaction [_]
+          (let [thread (future
+                         (t2/with-transaction [_ other]
+                           (t2/with-transaction [_]
+                             (deliver other-in true)
+                             (await-step outer-in)))
+                         (deliver other-out true))]
+            (await-step other-in)
+            (t2/with-transaction [_]
+              (deliver outer-in true)
+              (await-step other-out))
+            (await-step thread))))
+      (is (= [[:set 1] [:set 2] [:release 2] [:commit]]
+             @calls))
+      (is (= [[:set 1] [:set 2] [:release 2] [:commit]]
+             @other-calls)))))
+
 (deftest released-savepoint-preserves-rollback-semantics-test
   (let [user-1       (mt/random-email)
         user-2       (mt/random-email)
