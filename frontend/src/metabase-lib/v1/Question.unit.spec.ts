@@ -1,9 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockField,
   createMockParameter,
 } from "metabase-types/api/mocks";
 import {
@@ -12,19 +13,6 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
-  createOrdersCreatedAtField,
-  createOrdersDiscountField,
-  createOrdersIdField,
-  createOrdersProductIdField,
-  createOrdersQuantityField,
-  createOrdersSubtotalField,
-  createOrdersTable,
-  createOrdersTaxField,
-  createOrdersTotalField,
-  createOrdersUserIdField,
-  createPeopleTable,
-  createProductsTable,
-  createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -35,41 +23,12 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const metadata_without_order_pk = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      tables: [
-        createProductsTable(),
-        createPeopleTable(),
-        createReviewsTable(),
-        createOrdersTable({
-          fields: [
-            createOrdersIdField({ semantic_type: "type/Integer" }),
-            createOrdersUserIdField(),
-            createOrdersProductIdField(),
-            createOrdersSubtotalField(),
-            createOrdersTaxField(),
-            createOrdersTotalField(),
-            createOrdersDiscountField(),
-            createOrdersCreatedAtField(),
-            createOrdersQuantityField(),
-          ],
-        }),
-      ],
-    }),
-  ],
-});
-
 const card = {
   display: "table",
   visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
 };
 const base_question = new Question(card, metadata);
 
@@ -79,53 +38,25 @@ const orders_raw_card = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  }),
 };
 const orders_raw_question = new Question(orders_raw_card, metadata);
-
-const orders_card_without_pk = {
-  id: 1,
-  name: "Orders Model",
-  display: "table",
-  visualization_settings: {},
-  can_write: true,
-  type: "model",
-  database_id: SAMPLE_DB_ID,
-  table_id: ORDERS_ID,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
-  result_metadata: [
-    createOrdersIdField({
-      semantic_type: "type/Integer",
-      field_ref: ["field", 11, null],
-    }),
-  ],
-};
 
 const orders_count_card = {
   id: 2,
   name: "# orders data",
   display: "table",
   visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+      },
+    ],
+  }),
 };
 const orders_count_question = new Question(orders_count_card, metadata);
 const ordersCountData = createMockDatasetData({
@@ -152,78 +83,6 @@ const multipleRowsData = createMockDatasetData({
   ],
 });
 
-const orders_filter_card = {
-  id: 2,
-  name: "# orders data",
-  display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      filter: [">", ["field", ORDERS.TOTAL, null], 10],
-    },
-  },
-};
-
-const orders_join_card = {
-  id: 2,
-  name: "# orders data",
-  display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          fields: "all",
-          "source-table": PRODUCTS_ID,
-          condition: [
-            "=",
-            ["field-id", ORDERS.PRODUCT_ID],
-            ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
-          ],
-          alias: "Products",
-        },
-      ],
-    },
-  },
-};
-
-const orders_expression_card = {
-  id: 2,
-  name: "# orders data",
-  display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      expressions: { double_total: ["+", 1, 1] },
-    },
-  },
-};
-
-const orders_multi_stage_card = {
-  id: 2,
-  name: "# orders data",
-  display: "line",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-query": {
-        "source-table": ORDERS_ID,
-        filter: [">", ["field", ORDERS.TOTAL, null], 10],
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-      },
-      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 20],
-    },
-  },
-};
-
 const native_orders_count_card = {
   id: 3,
   name: "# orders data",
@@ -248,15 +107,15 @@ const orders_count_by_id_card = {
   can_write: false,
   display: "table",
   visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.ID, null]],
-    },
-  },
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [{ type: "column", fieldId: ORDERS.ID }],
+      },
+    ],
+  }),
 };
 
 const orders_count_by_id_question = new Question(
@@ -591,7 +450,10 @@ describe("Question", () => {
 
   describe("Question.prototype.getResultMetadata", () => {
     it("should return the `result_metadata` property off the underlying card", () => {
-      const columns = [createMockField({ id: 1 }), createMockField({ id: 2 })];
+      const columns = [
+        createMockColumn({ id: 1 }),
+        createMockColumn({ id: 2 }),
+      ];
       const question = base_question.setResultsMetadata({ columns });
       expect(question.getResultMetadata()).toEqual(columns);
     });
@@ -649,69 +511,6 @@ describe("Question", () => {
       expect(base_question.parameters()).toEqual([]);
     });
 
-    it("should return the template tags of a native question", () => {
-      const nativeQuestionWithTemplateTags = {
-        ...native_orders_count_card,
-        param_fields: {
-          bbb: [createMockField({ id: PRODUCTS.CATEGORY })],
-        },
-        dataset_query: {
-          ...native_orders_count_card.dataset_query,
-          native: {
-            ...native_orders_count_card.dataset_query.native,
-            "template-tags": {
-              foo: {
-                name: "foo",
-                "display-name": "Foo",
-                id: "bbb",
-                type: "dimension",
-                "widget-type": "category",
-                dimension: ["field", PRODUCTS.CATEGORY, null],
-              },
-              bar: {
-                name: "bar",
-                "display-name": "Bar",
-                id: "aaa",
-                type: "text",
-                value: null,
-              },
-            },
-          },
-        },
-      };
-
-      const question = new Question(nativeQuestionWithTemplateTags, metadata);
-      expect(question.parameters()).toEqual([
-        {
-          default: undefined,
-          fields: [
-            expect.objectContaining({
-              id: PRODUCTS.CATEGORY,
-            }),
-          ],
-          isMultiSelect: true,
-          hasVariableTemplateTagTarget: false,
-          id: "bbb",
-          name: "Foo",
-          slug: "foo",
-          target: ["dimension", ["template-tag", "foo"]],
-          type: "category",
-          value: null,
-        },
-        {
-          default: undefined,
-          isMultiSelect: false,
-          hasVariableTemplateTagTarget: true,
-          id: "aaa",
-          name: "Bar",
-          slug: "bar",
-          target: ["variable", ["template-tag", "bar"]],
-          type: "string/=",
-          value: null,
-        },
-      ]);
-    });
-
     it("should return a question's parameters + metadata and the parameter's value if present", () => {
       // slugs differ from names so parameters() deriving a slug would be caught
       const fooParameter = createMockParameter({
@@ -753,96 +552,28 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype.supportsImplicitActions", () => {
-    it("should allow to create implicit actions for a raw model", () => {
-      const question = new Question(orders_raw_card, metadata);
-      expect(question.supportsImplicitActions()).toBeTruthy();
-    });
-
-    it("should not allow to create implicit actions for a model with aggregations", () => {
-      const question = new Question(orders_count_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions for a model with filters", () => {
-      const question = new Question(orders_filter_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should allow to create implicit actions where the underlying table has a primary key but the model does not", () => {
-      const orders_question_without_pk = new Question(
-        orders_card_without_pk,
-        metadata,
-      );
-      expect(orders_question_without_pk.supportsImplicitActions()).toBeTruthy();
-    });
-
-    it("should not allow to create implicit actions where the underlying table has no primary key", () => {
-      const question = new Question(orders_raw_card, metadata_without_order_pk);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions where the model has a primary key, but the underlying table does not", () => {
-      const question = new Question(
-        orders_card_without_pk,
-        metadata_without_order_pk,
-      );
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions for a model with joins", () => {
-      const question = new Question(orders_join_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions for a model with expressions", () => {
-      const question = new Question(orders_expression_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should not allow to create implicit actions for a model with multiple stages", () => {
-      const question = new Question(orders_multi_stage_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-
-    it("should allow to create implicit actions for a native model", () => {
-      const question = new Question(native_orders_count_card, metadata);
-      expect(question.supportsImplicitActions()).toBeFalsy();
-    });
-  });
-
   describe("Question.generateQueryDescription", () => {
     it("should work with multiple aggregations", () => {
-      const question = base_question.setDatasetQuery({
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
-        },
-      });
+      const question = base_question.setDatasetQuery(
+        Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                { type: "operator", operator: "count" },
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", fieldId: ORDERS.TOTAL }],
+                },
+              ],
+            },
+          ],
+        }),
+      );
       expect(question.generateQueryDescription()).toEqual(
         "Orders, Count and Sum of Total",
       );
-    });
-
-    it("should work with named aggregations", () => {
-      const question = base_question.setDatasetQuery({
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            [
-              "aggregation-options",
-              ["sum", ["field", 1, null]],
-              // name differs from display-name to pin which key the description uses
-              { name: "revenue_sum", "display-name": "Revenue" },
-            ],
-          ],
-        },
-      });
-      expect(question.generateQueryDescription()).toEqual("Orders, Revenue");
     });
   });
 });

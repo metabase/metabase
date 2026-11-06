@@ -14,6 +14,8 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { CardId } from "metabase-types/api";
 import {
   createMockCard,
@@ -48,7 +50,11 @@ const TEST_DATASET = createMockDataset({
 });
 
 const TEST_CARD_ID: CardId = 1 as const;
-const TEST_CARD = createMockCard({ id: TEST_CARD_ID, name: "My Question" });
+const TEST_CARD = createMockCard({
+  id: TEST_CARD_ID,
+  name: "My Question",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+});
 
 // A card with a different object reference than TEST_CARD, used as nextCard
 // so runQuestionOnNavigateSdk doesn't bail out early on reference equality.

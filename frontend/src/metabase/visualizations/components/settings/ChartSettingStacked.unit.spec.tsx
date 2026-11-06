@@ -2,6 +2,8 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Series } from "metabase-types/api";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
 
@@ -11,15 +13,11 @@ function getSeries(metrics: string[]): Series {
   return [
     createMockSingleSeries(
       {
-        dataset_query: {
-          type: "native",
-          native: {
-            query:
-              "select 'dogs' as pets, 50 as male, 45 as female union all select 'cats', 45, 20",
-            "template-tags": {},
-          },
-          database: 1,
-        },
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+          query:
+            "select 'dogs' as pets, 50 as male, 45 as female union all select 'cats', 45, 20",
+        }),
+        query_type: "native",
         display: "bar",
         displayIsLocked: true,
         parameters: [],

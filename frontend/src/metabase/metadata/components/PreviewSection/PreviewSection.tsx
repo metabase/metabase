@@ -1,7 +1,6 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Box,
@@ -39,7 +38,7 @@ const PreviewSectionBase = ({
   onPreviewTypeChange,
   onClose,
 }: PreviewSectionBaseProps) => {
-  const fieldId = getRawTableFieldId(field);
+  const fieldId = field.id;
   const tableId = table.id;
   const databaseId = table.db_id;
   const data = useMemo(() => getPreviewTypeData(), []);

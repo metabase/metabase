@@ -10,7 +10,6 @@ import {
   within,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { createMockField } from "metabase-types/api/mocks";
 
 import { DiscardFieldValuesButton } from "./DiscardFieldValuesButton";
@@ -22,7 +21,7 @@ function setup() {
 
   renderWithProviders(
     <>
-      <DiscardFieldValuesButton fieldId={getRawTableFieldId(field)} />
+      <DiscardFieldValuesButton fieldId={field.id} />
       <UndoListing />
     </>,
   );

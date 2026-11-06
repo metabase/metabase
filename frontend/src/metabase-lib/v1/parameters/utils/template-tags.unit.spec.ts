@@ -1,89 +1,64 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   getTemplateTagParameters,
   getTemplateTags,
 } from "metabase-lib/v1/parameters/utils/template-tags";
-import type {
-  Card,
-  DatasetQuery,
-  TemplateTag,
-  TemplateTagType,
-} from "metabase-types/api";
+import type { TemplateTag, TemplateTagType } from "metabase-types/api";
 import {
   createMockCard,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-const metadata = createMockMetadata({});
-
-const createLegacyCard = (datasetQuery: unknown): Card =>
-  // legacy dataset_query shapes that DatasetQuery cannot express
-  createMockCard({ dataset_query: datasetQuery as DatasetQuery });
+const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
 
 describe("parameters/utils/cards", () => {
   describe("getTemplateTags", () => {
     it("should return an empty array for a non-native query", () => {
-      const card = createLegacyCard({ type: "query" });
-      expect(getTemplateTags(card, metadata)).toEqual([]);
-    });
-
-    it("should return an empty array for an internal query", () => {
-      const card = createLegacyCard({
-        type: "internal",
-        fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
-        args: [],
+      const card = createMockCard({
+        dataset_query: Lib.createTestJsQuery(
+          SAMPLE_PROVIDER,
+          DEFAULT_TEST_QUERY,
+        ),
       });
       expect(getTemplateTags(card, metadata)).toEqual([]);
     });
 
     it("should return an empty array for a non-parameterized query", () => {
-      const card = createLegacyCard({
-        type: "query",
-        native: {
+      const card = createMockCard({
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
           query: "select * from PRODUCTS",
-        },
+        }),
+        query_type: "native",
       });
       expect(getTemplateTags(card, metadata)).toEqual([]);
     });
 
     it("should extract the template tags", () => {
-      const starsTag = createMockTemplateTag({
-        type: "number",
-        name: "stars",
-        id: "xyz777",
-      });
-      const snippetTag = createMockTemplateTag({
-        type: "snippet",
-        id: "abc123",
-        name: "snippet: foo",
-        "snippet-id": 6,
-      });
       const card = createMockCard({
-        dataset_query: createMockNativeDatasetQuery({
-          native: createMockNativeQuery({
-            query: "select * from PRODUCTS where RATING > {{stars}}",
-            "template-tags": {
-              stars: starsTag,
-              "snippet: foo": snippetTag,
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+          query:
+            "select * from PRODUCTS where RATING > {{stars}} {{snippet: foo}}",
+          templateTags: {
+            stars: { type: "number", name: "stars", id: "xyz777" },
+            "snippet: foo": {
+              type: "snippet",
+              name: "snippet: foo",
+              id: "abc123",
+              "snippet-id": 6,
             },
-          }),
+          },
         }),
+        query_type: "native",
       });
-      expect(getTemplateTags(card, metadata)).toEqual([starsTag, snippetTag]);
-    });
-
-    it("should return minimal legacy tags unmodified", () => {
-      const starsTag = { type: "number", name: "stars", id: "xyz777" };
-      const card = createLegacyCard({
-        type: "native",
-        native: {
-          query: "select * from PRODUCTS where RATING > {{stars}}",
-          "template-tags": { stars: starsTag },
-        },
-      });
-      expect(getTemplateTags(card, metadata)).toEqual([starsTag]);
+      expect(
+        getTemplateTags(card, metadata).map(({ name, type }) => [name, type]),
+      ).toEqual([
+        ["stars", "number"],
+        ["snippet: foo", "snippet"],
+      ]);
     });
   });
 

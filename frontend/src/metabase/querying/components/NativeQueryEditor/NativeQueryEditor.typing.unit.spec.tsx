@@ -12,18 +12,13 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import {
-  createMockCard,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-} from "metabase-types/api/mocks";
-import {
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";
 
@@ -87,10 +82,10 @@ function TestEditor({
     createMockCard({
       id: 1,
       name: "Native",
-      dataset_query: createMockNativeDatasetQuery({
-        database: SAMPLE_DB_ID,
-        native: createMockNativeQuery({ query: QUERY_TEXT }),
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: QUERY_TEXT,
       }),
+      query_type: "native",
     }),
   );
 

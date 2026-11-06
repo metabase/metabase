@@ -36,7 +36,8 @@ export function JoinDraft({
   onJoinChange,
 }: JoinDraftProps) {
   const tc = useTranslateContent();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
+  const sourceTableId = Lib.primarySourceTableId(query);
+  const sourceCardId = Lib.primarySourceCardId(query);
   const [strategy, setStrategy] = useState(
     () => initialStrategy ?? getDefaultJoinStrategy(query, stageIndex),
   );
@@ -104,7 +105,7 @@ export function JoinDraft({
   const handleResetRef = useLatest(handleReset);
   useLayoutEffect(
     () => handleResetRef.current(),
-    [sourceTableId, handleResetRef],
+    [sourceTableId, sourceCardId, handleResetRef],
   );
 
   return (
