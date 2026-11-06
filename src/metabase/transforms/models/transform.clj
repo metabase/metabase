@@ -10,7 +10,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
@@ -442,108 +441,13 @@
       (assoc transform :table
              (get id->table (:target_table_id transform))))))
 
-(mu/defn- import-maybe-int-database-fk :- [:maybe ms/PositiveInt]
-  "Import a database reference back to an ID. Tolerates raw numeric IDs from older exports
-  where source-tables database_id values were serialized without conversion."
-  [v :- [:maybe [:or ms/PositiveInt :string]]]
-  (if (pos-int? v) v (serdes/*import-database-fk* v)))
-
-(mu/defn- import-maybe-int-table-fk :- [:maybe ms/PositiveInt]
-  "Import a table reference back to an ID. Tolerates raw numeric IDs from older exports
-  where source-tables table_id values were serialized without conversion."
-  [v :- [:maybe [:or ms/PositiveInt [:tuple :string [:maybe :string] :string]]]]
-  (if (pos-int? v) v (serdes/*import-table-fk* v)))
-
-(mu/defn- import-maybe-int-field-fk :- [:maybe ms/PositiveInt]
-  [v :- [:maybe [:or ms/PositiveInt [:cat :string [:maybe :string] :string [:+ :string]]]]]
-  (if (pos-int? v) v (some-> v serdes/*import-field-fk*)))
-
-(defn- export-checkpoint-field
-  "`strategy` with its checkpoint field as a portable ref, or without it when the field no longer exists, since a
-  local id names nothing on another instance."
-  [strategy]
-  (let [field-id (:checkpoint-filter-field-id strategy)]
-    (cond
-      (nil? field-id)                        strategy
-      (transforms.db/field-exists? field-id) (update strategy :checkpoint-filter-field-id serdes/*export-field-fk*)
-      :else                                  (dissoc strategy :checkpoint-filter-field-id))))
-
 (defn- drop-merge-key-field-ids
   "`target` without the `:field-id`s of its merge unique key. The merge reads only the column names, and
-  [[resolve-merge-key-field-ids]] fills the ids from the target table once it syncs, so a portable id would only make
+  [[resolve-merge-key-field-ids]] fills the ids from the target table once it syncs, so a reference would only make
   the import stub out a table the transform has yet to create."
   [target]
   (m/update-existing-in target [:target-incremental-strategy :unique-key]
                         (fn [unique-key] (mapv #(dissoc % :field-id) unique-key))))
-
-(defmethod serdes/make-spec "Transform"
-  [_model-name opts]
-  {:schema    ::transforms.schema/external-transform
-   :copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
-   :transform {:creator_id         (serdes/fk :model/User)
-               :owner_user_id      (serdes/fk :model/User)
-               :collection_id      (serdes/fk :model/Collection)
-               :source_database_id (serdes/fk :model/Database)
-               :source             {:export
-                                    (fn [source]
-                                      (-> source
-                                          (m/update-existing :query serdes/export-mbql)
-                                          (m/update-existing :source-database serdes/*export-database-fk*)
-                                          (m/update-existing :source-tables
-                                                             (fn [entries]
-                                                               (->> (transforms-base.u/normalize-source-tables entries)
-                                                                    (mapv #(-> %
-                                                                               (m/update-existing :table_id serdes/*export-table-fk*)
-                                                                               (m/update-existing :database_id serdes/*export-database-fk*))))))
-                                          (m/update-existing :source-incremental-strategy export-checkpoint-field)))
-                                    :import
-                                    (fn [source]
-                                      (lib/normalize
-                                       ::transforms.schema/transform-source
-                                       (-> source
-                                           (m/update-existing :query serdes/import-mbql)
-                                           (m/update-existing :source-database import-maybe-int-database-fk)
-                                           (m/update-existing :source-tables
-                                                              (fn [entries]
-                                                                (let [import-entry #(-> %
-                                                                                        (m/update-existing :table_id import-maybe-int-table-fk)
-                                                                                        (m/update-existing :database_id import-maybe-int-database-fk))]
-                                                                  (if (map? entries)
-                                                                    (update-vals entries #(if (map? %) (import-entry %) (import-maybe-int-table-fk %)))
-                                                                    (mapv import-entry entries)))))
-                                           (m/update-existing-in [:source-incremental-strategy :checkpoint-filter-field-id]
-                                                                 import-maybe-int-field-fk))))}
-               :target             {:export #(serdes/export-mbql (drop-merge-key-field-ids (dissoc % :table_id)))
-                                    :import #(serdes/import-mbql (drop-merge-key-field-ids %))}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :entity_id)} opts))
-               :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
-
-(defmethod serdes/deserialization-dependencies "Transform"
-  [{:keys [collection_id source tags]}]
-  (set
-   (concat
-    (when collection_id
-      [[{:model "Collection" :id collection_id}]])
-    (for [{tag-id :tag_id} tags]
-      [{:model "TransformTag" :id tag-id}])
-    (when-not (:serdes/unresolved source)
-      (serdes/mbql-deps false source)))))
-
-(defmethod serdes/load-one! "Transform"
-  [ingested maybe-local]
-  (if (get-in ingested [:source :serdes/unresolved])
-    (log/warnf "Skipping transform %s, since an export from before 66 left it without its deleted source database"
-               (:entity_id ingested))
-    (serdes/default-load-one! ingested maybe-local)))
-
-(defmethod serdes/storage-path "Transform" [transform ctx]
-  (serdes/storage-default-collection-path transform ctx "transforms"))
-
-(defmethod serdes/required "Transform"
-  [_model id]
-  (when-let [collection-id (transforms.db/transform-collection-id id)]
-    {["Collection" collection-id] {"Transform" id}}))
 
 (defn- walk-export-source
   "The exported `source` of a transform, its ids replaced by the references `visit` resolves them to. A checkpoint

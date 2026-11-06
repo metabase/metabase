@@ -3,11 +3,11 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -685,62 +685,20 @@
           (is (contains? hydrated :can_query))
           (is (boolean? (:can_query hydrated))))))))
 
-(deftest serdes-descendants-includes-fields-and-segments-test
-  (testing "Table descendants includes Fields and Segments"
-    (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
-                   :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
-                   :model/Field    {field1-id :id}  {:name "Field 1" :table_id table-id :base_type :type/Integer}
-                   :model/Field    {field2-id :id}  {:name "Field 2" :table_id table-id :base_type :type/Text}
-                   :model/Segment  {segment-id :id} {:name "Test Segment" :table_id table-id :definition {}}]
-      (let [descendants (serdes/descendants "Table" table-id {})]
-        (testing "Fields are included"
-          (is (contains? descendants ["Field" field1-id]))
-          (is (contains? descendants ["Field" field2-id])))
-        (testing "Segments are included"
-          (is (contains? descendants ["Segment" segment-id]))))))
-  (testing "Table with no fields or segments returns empty map"
-    (mt/with-temp [:model/Database {db-id :id}    {:name "Test DB"}
-                   :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
-      (is (= {} (serdes/descendants "Table" table-id {}))))))
-
-(deftest serdes-descendants-skip-archived-segments-test
-  (testing "Table descendants respects skip-archived option for Segments"
-    (mt/with-temp [:model/Database {db-id :id}           {:name "Test DB"}
-                   :model/Table    {table-id :id}        {:name "Test Table" :db_id db-id}
-                   :model/Field    {field-id :id}        {:name "Test Field" :table_id table-id :base_type :type/Integer}
-                   :model/Segment  {active-seg-id :id}   {:name "Active Segment" :table_id table-id :definition {} :archived false}
-                   :model/Segment  {archived-seg-id :id} {:name "Archived Segment" :table_id table-id :definition {} :archived true}]
-      (testing "archived segments are excluded when skip-archived: true"
-        (let [descendants (serdes/descendants "Table" table-id {:skip-archived true})]
-          (is (contains? descendants ["Field" field-id])
-              "Fields are still included")
-          (is (contains? descendants ["Segment" active-seg-id])
-              "Active segments are included")
-          (is (not (contains? descendants ["Segment" archived-seg-id]))
-              "Archived segments are excluded")))
-      (testing "archived segments are included when skip-archived: false"
-        (let [descendants (serdes/descendants "Table" table-id {:skip-archived false})]
-          (is (contains? descendants ["Segment" active-seg-id]))
-          (is (contains? descendants ["Segment" archived-seg-id]))))
-      (testing "archived segments are included when skip-archived is not specified"
-        (let [descendants (serdes/descendants "Table" table-id {})]
-          (is (contains? descendants ["Segment" active-seg-id]))
-          (is (contains? descendants ["Segment" archived-seg-id])))))))
-
 (deftest data-layer-legacy-serdes-round-trip-test
   (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"
     (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
                    :model/Table {table-id :id} {:db_id db-id}]
       (let [table      (t2/select-one :model/Table :id table-id)
-            extracted  (serdes/extract-one "Table" {} table)]
+            extracted  (first (serialization/export-batch :model/Table [table]))]
         (doseq [[legacy-value expected] {"copper" "hidden"
                                          "bronze" "final"
                                          "silver" "final"
                                          "gold"   "final"}]
           (testing (format "legacy data_layer %s -> %s" legacy-value expected)
             ;; simulate a v58 export by substituting the legacy value
-            (let [ingested (assoc extracted :data_layer legacy-value)]
-              (serdes/load-one! ingested table)
+            (let [entity (assoc extracted :data_layer legacy-value)]
+              (serialization/load :model/Table [entity])
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
 

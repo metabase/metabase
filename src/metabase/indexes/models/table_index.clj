@@ -11,7 +11,6 @@
    [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -140,17 +139,6 @@
   "True when `transform-id` already has a request for `index-name`."
   [transform-id index-name]
   (indexes.db/table-index-exists-for-transform? transform-id index-name))
-
-;; Inlined into the owning transform's serialization (see the Transform make-spec's `:indexes`). Only the index
-;; definition travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds
-;; physical column names (no portable refs), so it copies verbatim. `:created_by` is skipped: a nested child's own
-;; FKs aren't declared in the transform's `dependencies`, so the user may not resolve on import.
-(defmethod serdes/make-spec "TableIndex"
-  [_model-name _opts]
-  {:schema    ::schema/external-table-index
-   :copy      [:index_name :structured]
-   :skip      [:status :error_message :last_executed_at :created_by]
-   :transform {:transform_id (serdes/parent-ref)}})
 
 ;; Nested in its parent transform's entity (see the Transform spec's `:children`). Only the index definition
 ;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical

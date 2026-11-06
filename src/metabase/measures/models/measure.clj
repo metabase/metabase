@@ -14,7 +14,6 @@
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
@@ -212,36 +211,6 @@
   [_model _key measures]
   (for [measure measures]
     (assoc measure :definition_description (definition-description measure))))
-
-;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serdes/deserialization-dependencies "Measure" [{:keys [definition]}]
-  (serdes/mbql-deps false definition))
-
-(defmethod serdes/storage-path "Measure" [measure _ctx]
-  (let [table-path (-> measure :definition serdes/serialized-query-source-table)]
-    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
-          [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
-
-(defn- import-measure-definition
-  "Import a measure definition from serialization format.
-  Converts portable IDs back to numeric IDs, then converts MBQL4 to MBQL5."
-  [exported]
-  (let [with-ids (serdes/import-mbql exported)]
-    (if (seq with-ids)
-      (lib-be/normalize-query with-ids)
-      with-ids)))
-
-(defmethod serdes/make-spec "Measure" [_model-name _opts]
-  {:schema    ::measures.schema/external-measure
-   :copy [:name :archived :description :entity_id]
-   :skip [;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings
-          ;; always re-derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
-   :transform {:creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import import-measure-definition}}
-   :defaults {:archived false}})
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 

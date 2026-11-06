@@ -24,7 +24,7 @@
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/discourage-dynamic-vars                          323
+                                :metabase/discourage-dynamic-vars                          322
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          23
                                 :metabase/namespace-name                                   3
@@ -51,7 +51,7 @@
                                 :clojure.tools.logging 3
                                 :grouper.core          1
                                 :legacy-mbql.normalize 14
-                                :legacy-mbql.schema    15
+                                :legacy-mbql.schema    14
                                 :legacy-mbql.util      2
                                 :query-processor.store 8
                                 :toucan2.core          4

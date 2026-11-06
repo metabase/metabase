@@ -9,7 +9,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
@@ -156,29 +155,6 @@
   (when-not mi/*deserializing?*
     (events/publish-event! :event/transform-test-delete {:object transform-test}))
   transform-test)
-
-;;; ------------------------------------------------- Serialization ------------------------------------------------
-
-(defmethod serdes/make-spec "TransformTest"
-  [_model-name _opts]
-  {:schema    ::transform-testing.schema/external-transform-test
-   :copy      [:entity_id :name :description :inputs :expectations]
-   :transform {:transform_id (serdes/fk :model/Transform)
-               :creator_id   (serdes/fk :model/User)}})
-
-(defmethod serdes/deserialization-dependencies "TransformTest"
-  [{:keys [transform_id]}]
-  #{[{:model "Transform" :id transform_id}]})
-
-(defmethod serdes/storage-path "TransformTest" [transform-test ctx]
-  (let [{:keys [transform]} (t2/hydrate (transform-testing.db/transform-test-by-entity-id (:entity_id transform-test))
-                                        :transform)]
-    (conj (serdes/storage-path {:serdes/meta   [{:model "Transform" :id (:entity_id transform)}]
-                                :name          (:name transform)
-                                :entity_id     (:entity_id transform)
-                                :collection_id (serdes/*export-fk* (:collection_id transform) :model/Collection)}
-                               ctx)
-          {:label (:name transform-test) :key (:entity_id transform-test)})))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 

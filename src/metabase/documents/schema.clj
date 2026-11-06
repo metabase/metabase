@@ -62,7 +62,7 @@
   "[[lib.schema.id/external-registry]], plus the serdes paths serialization writes in place of the ids a document's
   nodes refer to, or the id it keeps when the entity is gone."
   (assoc lib.schema.id/external-registry
-         ::prose-mirror/node.entity-id [:maybe [:or :int :string ::models.schema/external-meta]]))
+         ::prose-mirror/node.entity-id [:maybe [:or :int :string ::external-path]]))
 
 (mr/def ::external-document
   "A Document as serialization writes it, with portable references in place of ids."
