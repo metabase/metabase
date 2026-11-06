@@ -26,6 +26,7 @@
    [metabase.util.performance :refer [get-in mapv select-keys]]
    [potemkin :as p])
   (:import
+   (com.google.common.cache Cache CacheBuilder RemovalNotification)
    (com.mchange.v2.c3p0 C3P0ProxyConnection ConnectionCustomizer DataSources PooledDataSource)
    (java.sql Connection SQLException)
    (java.util.concurrent TimeUnit)
@@ -435,8 +436,8 @@
   nil)
 
 (mu/defn invalidate-pool-for-db!
-  "Invalidates all connection pools for the Database with `db-id` (all connection types) by closing
-  them and removing from cache."
+  "Invalidates all connection pools for the Database with `db-id` (canonical -- all connection types -- and swapped) by
+  closing them and removing from cache."
   [db-id :- ::lib.schema.id/database]
   (let [canonical-keys  (mapv (fn [conn-type] [db-id conn-type])
                               driver.conn/connection-types)
@@ -616,12 +617,19 @@
   "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource` for the Lib metadata `db` of a Database.
   These connection pools are cached so we don't create multiple ones for the same DB and connection type. The
   connection type follows the current connection context — use [[driver.conn/with-write-connection]] to get a write
-  connection pool."
+  connection pool.
+
+  When [[metabase.driver/with-swapped-connection-details]] is active for a database, the database details are
+  modified before creating the connection pool. Swapped pools are stored in a separate Guava cache with TTL-based
+  eviction (see [[swapped-pool-ttl-minutes]]), while canonical pools are stored in the main atom cache."
   [db :- ::lib.schema.metadata/database]
   (driver-api/check-allowed-access! db)
   (let [db           (driver.conn/connection-database db)
         cache-key    (pool-cache-key db)
-        ;; Calculate hash from effective details (includes write-connection merge)
+        ;; Check for workspace detail swaps (for pool routing: canonical atom vs Guava TTL cache).
+        ;; The actual swap is applied inside effective-details, not here.
+        has-swap?    (driver.w/has-connection-swap? (:id db))
+        ;; Calculate hash from effective details (includes write-connection merge + workspace swap)
         details-hash (jdbc-spec-hash db)]
     (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))
     (cond
@@ -634,6 +642,11 @@
       (throw (ex-info (tru "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled.")
                       {:database-id (:id db)}))
 
+      ;; Swapped pool: use Guava cache with TTL
+      has-swap?
+      (get-swapped-pool db)
+
+      ;; Canonical pool: use atom cache
       :else
       (or
        ;; we have an existing valid pool for this database, so use it
