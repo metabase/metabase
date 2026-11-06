@@ -143,7 +143,7 @@ When you split:
 6. **Check, combine and commit.** In each worktree, run the changed Jest specs as whole files, and check that each named cover exists. Read each worker report critically: verify the covers it names. Then merge the work branches into the PR branch, and run every changed Jest spec there again. Commit only if the user asked for commits. Otherwise give the commands.
 7. **Finish.**
    - Report a table: spec, tests moved, and why the other tests stay.
-   - For each PR branch, write the title to `pr-<branch>.title`, in the form `test: rework <folder> e2e specs to jest`, and the body to `pr-<branch>.md` in the scratchpad.
+   - For each PR branch, write the title to `pr-<branch>.title`, in the form `e2e2unit: <Folder>`, for example `e2e2unit: Search` (no `test:` prefix; for a split PR, add the part: `e2e2unit: Admin databases`), and the body to `pr-<branch>.md` in the scratchpad.
    - Write one script, `open-<folder>-prs.sh`, in the scratchpad. It starts with `set -euo pipefail`. For each PR branch it runs `git push -u origin <branch>` and `gh pr create --head <branch> --base <base> --title "$(cat <title file>)" --body-file <body file>`. It prints `done` at the end.
    - Check the script with `bash -n`. Do not run it. Give the user the command with the absolute path.
    - Say that the edited Cypress specs did not run, and list them for CI.
