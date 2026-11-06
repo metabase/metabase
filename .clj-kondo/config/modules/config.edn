@@ -4037,9 +4037,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Pulse
-                    :model/Table
-                    :model/Timeline}}
+                    :model/Table}}
 
   enterprise/mcp
   {:team    "Metabot"

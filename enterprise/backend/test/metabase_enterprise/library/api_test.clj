@@ -50,13 +50,13 @@
                (is (= "Library" (:name response)))
                (is (= ["metric" "table"] (:below response)))
                (is (= ["collection"] (:here response))))))
-         (testing "Dashboards and their questions show up as dashboards"
-           (let [dashboards-id (t2/select-one-pk :model/Collection :type collection/library-dashboards-collection-type)]
-             (mt/with-temp [:model/Dashboard dashboard {:collection_id dashboards-id}
-                            :model/Card      _         {:collection_id dashboards-id
-                                                        :dashboard_id  (:id dashboard)
-                                                        :type          :question}]
-               (is (= ["dashboard"] (:below (mt/user-http-request :crowberto :get 200 "ee/library"))))))))))))
+         (testing "Dashboards and questions in a Dashboards collection show up"
+           (mt/with-temp [:model/Collection dashboards {:name     "Dashboards"
+                                                        :type     collection/library-dashboards-collection-type
+                                                        :location (str "/" (t2/select-one-pk :model/Collection :type collection/library-collection-type) "/")}
+                          :model/Dashboard  _          {:collection_id (:id dashboards)}
+                          :model/Card       _          {:collection_id (:id dashboards) :type :question}]
+             (is (= ["card" "dashboard"] (:below (mt/user-http-request :crowberto :get 200 "ee/library")))))))))))
 
 (deftest disallow-cross-type-collection-move-via-api-test
   (mt/with-premium-features #{:library}

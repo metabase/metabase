@@ -1000,14 +1000,6 @@
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
 
-(defn- library-content-type
-  "The content type a Library collection checks `card` against, counting a question as a dashboard question when `dashboard-pending?`."
-  [card dashboard-pending?]
-  (if (and (= :question (keyword (:type card)))
-           (or (:dashboard_id card) dashboard-pending?))
-    :dashboard-question
-    (:type card)))
-
 (defn- data-app-card-error
   "A 400 error for a card in a data app's collection, with `message`."
   [message]
@@ -1072,7 +1064,7 @@
         populate-query-fields
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
+    (collection/check-allowed-content (:type <>) (:collection_id <>))
     (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
@@ -1087,13 +1079,6 @@
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
     card))
-
-(defn- check-allowed-content
-  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection or dashboard."
-  [card changes]
-  (when (some #(contains? changes %) [:collection_id :dashboard_id])
-    (let [card (apply-dashboard-question-updates card changes)]
-      (collection/check-allowed-content (library-content-type card mi/*deserializing?*) (:collection_id card)))))
 
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
@@ -1137,7 +1122,7 @@
         card     (normalize-card card)]
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
-    (check-allowed-content card changes)
+    (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
@@ -1687,13 +1672,6 @@
           base))
 
       :else base)))
-
-(defmethod serdes/load-one! "Card" [ingested maybe-local]
-  (u/prog1 (serdes/default-load-one! ingested maybe-local)
-    (collection/check-allowed-content
-     (library-content-type <> (and (some? (:dashboard_id ingested))
-                                   (contains? (::serdes/strip ingested) :dashboard_id)))
-     (:collection_id <>))))
 
 ;; A data app's resource collection holds the saved questions and metric copies the app runs.
 (defmethod collection/allowed-namespaces :model/Card
