@@ -1,5 +1,6 @@
 (ns build.uberjar
   (:require
+   [build.uber :as uber]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
@@ -8,11 +9,9 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
    [metabuild-common.core :as u]
-   [metabuild-common.misc :as misc]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
   (:import
-   (java.io File OutputStream)
-   (java.nio.file Files OpenOption StandardOpenOption)
+   (java.io File)
    (java.util.jar Manifest)))
 
 (set! *warn-on-reflection* true)
@@ -205,16 +204,6 @@
          gson-conflict-handler
          slf4j-conflict-handler))
 
-(defn- create-uberjar! [basis]
-  (u/step "Create uberjar"
-    (with-duration-ms [duration-ms]
-      (b/uber {:class-dir         class-dir
-               :uber-file         uberjar-filename
-               :conflict-handlers conflict-handlers
-               :basis             basis
-               :exclude           dependency-ignore-patterns})
-      (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
-
 (def ^:private manifest-entries
   {"Manifest-Version" "1.0"
    "Multi-Release"    "true"
@@ -234,41 +223,29 @@
   (doto (Manifest.)
     (build.zip/fill-manifest! manifest-entries)))
 
-(defn- write-manifest! [^OutputStream os]
-  (.write (manifest) os)
-  (.flush os))
-
-(defn- add-non-aot-driver-sources!
-  "Inject source files for drivers excluded from AOT directly into the uberjar.
-  These drivers can't be AOT-compiled (their ns forms reference JDBC classes not bundled due to licensing), so they
-  ship as source and are compiled lazily at runtime. We add them after b/uber because uber strips all .clj files from
-  class-dir."
+(defn- non-aot-driver-sources
+  "`[path file]` for the source files of drivers excluded from AOT. These drivers can't be AOT-compiled (their ns forms
+  reference JDBC classes not bundled due to licensing), so they ship as source and are compiled lazily at runtime. The
+  uberjar's exclusions strip every Metabase `.clj` file, so these go in on their own."
   []
-  (u/step "Add non-AOT driver sources to uberjar"
-    (u/with-open-jar-file-system [fs uberjar-filename]
-      (doseq [driver drivers-excluded-from-aot
-              :let [src-dir (io/file (u/filename u/project-root-directory "modules" "drivers" driver "src"))]
-              :when (.isDirectory src-dir)]
-        (u/step (format "Add source for %s" driver)
-          (doseq [^File f (file-seq src-dir)
-                  :when (.isFile f)]
-            (let [rel-path (.toString (.relativize (.toPath src-dir) (.toPath f)))
-                  target   (u/get-path-in-filesystem fs rel-path)]
-              (Files/createDirectories (.getParent target) (misc/varargs java.nio.file.attribute.FileAttribute))
-              (Files/copy (.toPath f) target (misc/varargs java.nio.file.CopyOption)))))))))
+  (for [driver drivers-excluded-from-aot
+        :let   [src-dir (io/file (u/filename u/project-root-directory "modules" "drivers" driver "src"))]
+        :when  (.isDirectory src-dir)
+        ^File f (file-seq src-dir)
+        :when  (.isFile f)]
+    [(str/replace (str (.relativize (.toPath src-dir) (.toPath f))) \\ \/) f]))
 
-(defn update-manifest!
-  "Start a build step that updates the manifest.
-  The customizations we need to make are not currently supported by tools.build -- see
-  https://ask.clojure.org/index.php/10827/ability-customize-manifest-created-clojure-tools-build-uber -- so we need
-  to do it by hand for the time being."
-  []
-  (u/step "Update META-INF/MANIFEST.MF"
-    (u/with-open-jar-file-system [fs uberjar-filename]
-      (let [manifest-path (u/get-path-in-filesystem fs "META-INF" "MANIFEST.MF")]
-        (with-open [os (Files/newOutputStream manifest-path (into-array OpenOption [StandardOpenOption/WRITE
-                                                                                    StandardOpenOption/TRUNCATE_EXISTING]))]
-          (write-manifest! os))))))
+(defn- create-uberjar! [basis]
+  (u/step "Create uberjar"
+    (with-duration-ms [duration-ms]
+      (uber/uber {:class-dir         class-dir
+                  :uber-file         uberjar-filename
+                  :conflict-handlers conflict-handlers
+                  :basis             basis
+                  :exclude           dependency-ignore-patterns
+                  :manifest          (manifest)
+                  :extra-files       (non-aot-driver-sources)})
+      (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (defn compile!
   "Clean the build output and AOT-compile the Clojure sources for `edition`. Returns the basis to pass to
@@ -284,8 +261,6 @@
   (with-duration-ms [duration-ms]
     (copy-resources! basis)
     (create-uberjar! basis)
-    (add-non-aot-driver-sources!)
-    (update-manifest!)
     (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0))))
 
 (defn uberjar
@@ -298,21 +273,22 @@
     (package! (compile! edition))))
 
 (defn detect-class-conflicts
-  "Run `b/uber` against `basis` (no AOT, no resources) and return a seq of
+  "Run [[uber/uber]] against `basis` (no AOT, no resources) and return a seq of
    `{:path ... :lib ...}` for every `.class` file conflict not already handled
    by our conflict handlers."
   [basis]
   (let [conflicts (atom [])]
     (clean!)
-    (b/uber {:class-dir         class-dir
-             :uber-file         uberjar-filename
-             :conflict-handlers (merge conflict-handlers
-                                       {:default (fn [{:keys [lib path]}]
-                                                   (when (str/ends-with? path ".class")
-                                                     (swap! conflicts conj {:path path :lib lib}))
-                                                   nil)})
-             :basis             basis
-             :exclude           dependency-ignore-patterns})
+    (uber/uber {:class-dir         class-dir
+                :uber-file         uberjar-filename
+                :conflict-handlers (merge conflict-handlers
+                                          {:default (fn [{:keys [lib path]}]
+                                                      (when (str/ends-with? path ".class")
+                                                        (swap! conflicts conj {:path path :lib lib}))
+                                                      nil)})
+                :basis             basis
+                :exclude           dependency-ignore-patterns
+                :manifest          (manifest)})
     @conflicts))
 
 (defn audit-conflicts
