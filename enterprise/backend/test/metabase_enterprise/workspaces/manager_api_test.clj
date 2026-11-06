@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.workspaces.connection :as ws.connection]
    [metabase-enterprise.workspaces.status :as ws.status]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
@@ -468,7 +469,8 @@
                    :databases [{:name    db-name
                                 :engine  "postgres"
                                 :details expected-details
-                                :schemas (update-keys scratch keyword)}]}
+                                :schemas (update-keys scratch keyword)
+                                :failed_schemas []}]}
                   connection))
            (is (= connection (mt/user-http-request :crowberto :get 200 (connection-url ws-id) :format "json")))
            (testing "never the parent's login or the provisioning login"
@@ -496,9 +498,14 @@
          (mt/user-http-request :crowberto :get 400 (connection-url ws-id) :format "xml"))
        (testing "only active schemas, and only provisioned databases with one"
          (set-schema-status! "finance" :failed)
-         (is (=? {:databases [{:schemas                          {:sales (scratch "sales")}
-                               :details {:schema-filters-patterns (str "sales," (scratch "sales"))}}]}
+         (is (=? {:databases [{:schemas        {:sales (scratch "sales")}
+                               :failed_schemas [{:main_schema "finance", :error "failed for the test"}]
+                               :details        {:schema-filters-patterns (str "sales," (scratch "sales"))}}]}
                  (mt/user-http-request :crowberto :get 200 (connection-url ws-id))))
+         (testing "the YAML carries only the active schemas"
+           (is (= {(keyword db-name) {:schemas {:sales (scratch "sales")}}}
+                  (-> (mt/user-http-request :crowberto :get 200 (connection-url ws-id) :format "yaml")
+                      yaml/parse-string :config :workspace :databases))))
          (set-schema-status! "sales" :failed)
          (is (= [] (:databases (mt/user-http-request :crowberto :get 200 (connection-url ws-id)))))
          (set-schema-status! "sales" :active)
@@ -520,12 +527,10 @@
                         :auth-provider                 "oauth"
                         :oauth-token-url               "https://idp.example/PARENT-token-url"
                         :oauth-token-headers           "{\"client_secret\":\"PARENT-oauth-secret\"}"
-                        :tunnel-enabled                true
-                        :tunnel-host                   "bastion.example"
-                        :tunnel-auth-option            "ssh-key"
+                        :tunnel-enabled                false
+                        :tunnel-host                   "PARENT-bastion"
+                        :tunnel-user                   "PARENT-tunnel-user"
                         :tunnel-pass                   "PARENT-tunnel-pass"
-                        :tunnel-private-key            "PARENT-tunnel-key"
-                        :tunnel-private-key-passphrase "PARENT-tunnel-passphrase"
                         :ssl                           true
                         :ssl-mode                      "verify-full"
                         :ssl-use-client-auth           true
@@ -552,6 +557,48 @@
                     (:password details)))
              (when-let [parent-password (not-empty (:password (superuser-details)))]
                (is (not-any? #{parent-password} (vals details))))
-             (is (not (re-find #"auth-provider|ssl-use-client-auth|ssl-key|ssl-client-cert|ssl-root-cert-id|tunnel-pass|tunnel-private-key|additional-options" body)))
+             (is (not (re-find #"auth-provider|ssl-use-client-auth|ssl-key|ssl-client-cert|ssl-root-cert-id|tunnel-|additional-options" body)))
              (testing "the root certificate, which is public, goes as its value"
                (is (str/includes? body "-----BEGIN CERTIFICATE-----"))))))))))
+
+(deftest connection-refuses-a-tunneled-database-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 url (create-body db-id ["sales"]))]
+       (t2/update! :model/Database :id db-id {:details (merge (superuser-details)
+                                                              {:tunnel-enabled     true
+                                                               :tunnel-host        "bastion.example"
+                                                               :tunnel-user        "parent-tunnel-user"
+                                                               :tunnel-auth-option "password"
+                                                               :tunnel-pass        "ParentTunnelPassw0rd"})})
+       (doseq [response-format ["json" "yaml"]]
+         (testing response-format
+           (is (= "SSH tunnels are not supported for workspaces."
+                  (mt/user-http-request :crowberto :get 400 (connection-url ws-id) :format response-format)))))))))
+
+(deftest connection-unreadable-ssl-root-cert-is-409-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 url (create-body db-id ["sales"]))
+           db-name     (t2/select-one-fn :name :model/Database :id db-id)]
+       (t2/update! :model/Database :id db-id {:details (merge (superuser-details)
+                                                              {:ssl                   true
+                                                               :ssl-mode              "verify-full"
+                                                               :ssl-root-cert-options "local"
+                                                               :ssl-root-cert-path    "/nonexistent/mbcws-13/root.crt"})})
+       (is (= (format "The SSL root certificate of database %s cannot be read on this instance." (pr-str db-name))
+              (mt/user-http-request :crowberto :get 409 (connection-url ws-id))))))))
+
+(deftest connection-response-check-never-quotes-the-password-test
+  (testing "when the response fails its schema (checked in dev and test), the 400 names the problem, not the details"
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-dynamic-fn-redefs [ws.connection/workspace-connection
+                                  (constantly {:workspace {:id 1, :name "w"}
+                                               :databases [{:name           nil
+                                                            :engine         "postgres"
+                                                            :details        {:user "u", :password "NeverQuotedPassw0rd"}
+                                                            :schemas        {"sales" "s"}
+                                                            :failed_schemas []}]})]
+        (let [body (mt/user-http-request :crowberto :get 400 (connection-url 1))]
+          (is (some? body))
+          (is (not (str/includes? (pr-str body) "NeverQuotedPassw0rd"))))))))

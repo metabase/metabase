@@ -120,13 +120,14 @@
         (is (= [] (leaked parent)))
         (is (= {:host "h", :ssl true, :ssl-mode "verify-full"}
                (select-keys out (keys parent)))))))
-  (testing "SSH tunnel credentials (Postgres, Redshift, SQL Server, MySQL, ClickHouse): the host and user stay"
-    (doseq [auth-option ["password" "ssh-key"]]
+  (testing "SSH tunnel properties (Postgres, Redshift, SQL Server, MySQL, ClickHouse): workspaces do not support
+            tunnels, so none goes, not even the bastion's host and user"
+    (doseq [[tunnel-enabled auth-option] [[true "password"] [true "ssh-key"] [false "ssh-key"]]]
       (let [parent {:host                          "h"
-                    :tunnel-enabled                true
-                    :tunnel-host                   "bastion"
+                    :tunnel-enabled                tunnel-enabled
+                    :tunnel-host                   "PARENT-bastion"
                     :tunnel-port                   22
-                    :tunnel-user                   "tunnel-user"
+                    :tunnel-user                   "PARENT-tunnel-user"
                     :tunnel-auth-option            auth-option
                     :tunnel-pass                   "PARENT-tunnel-pass"
                     :tunnel-private-key            "PARENT-tunnel-key"
@@ -134,9 +135,7 @@
                     :tunnel-known-hosts-id         31}
             out    (details-for parent)]
         (is (= [] (leaked parent)))
-        (is (= {:host "h", :tunnel-enabled true, :tunnel-host "bastion", :tunnel-port 22, :tunnel-user "tunnel-user"
-                :tunnel-auth-option auth-option}
-               (select-keys out (keys parent)))))))
+        (is (= {:host "h"} (select-keys out (keys parent)))))))
   (testing "free-form JDBC options and the impersonation role (MySQL, SQL Server)"
     (let [parent {:host "h", :additional-options "PARENT-sslpassword=x&user=parent", :role "PARENT-role"}]
       (is (= [] (leaked parent)))
@@ -160,7 +159,6 @@
     "json-unfolding" "auto_run_queries" "refingerprint" "let-user-control-scheduling"
     "schedules.metadata_sync" "schedules.cache_field_values"
     "schema-filters-type" "schema-filters-patterns" "db-filters-type" "db-filters-patterns"
-    "tunnel-enabled" "tunnel-host" "tunnel-port" "tunnel-user" "tunnel-auth-option"
     "clickhouse-settings" "max-open-connections" "enable-multiple-db" "use-no-proxy"})
 
 (defn- flatten-properties
@@ -184,6 +182,7 @@
   [engine]
   (try
     (driver/the-initialized-driver engine)
+    (driver/connection-properties engine)
     true
     (catch Throwable _
       false)))
@@ -209,9 +208,10 @@
                                  :engine  "postgres"
                                  :details {:host "h", :port 5432, :user "mb__isolation_k3f9q2xa", :password "pw: #1"}
                                  :schemas {"sales"   "mb__isolation_k3f9q2xa_s42_sales"
-                                           "finance" "mb__isolation_k3f9q2xa_s43_finance"}}]}]
+                                           "finance" "mb__isolation_k3f9q2xa_s43_finance"}
+                                 :failed_schemas [{:main_schema "marketing", :error "failed"}]}]}]
     (testing "the config.yml a sidecar applies: the database under config.databases, the workspace map under
-              config.workspace"
+              config.workspace, and no failed schemas"
       (is (= {:version 1
               :config  {:databases [{:name    "analytics"
                                      :engine  "postgres"

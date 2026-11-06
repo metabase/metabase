@@ -127,14 +127,15 @@
   (ws.manager/delete-workspace! id)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :get "/:id/connection" :- [:or
-                                                   ::ws.connection/workspace-connection
-                                                   [:map {:closed true}
-                                                    [:status  [:= 200]]
-                                                    [:headers [:map-of :string :string]]
-                                                    [:body    :string]]]
+(api.macros/defendpoint :get "/:id/connection" :- [:multi {:dispatch #(if (contains? % :body) :config-yml :json)}
+                                                   [:json ::ws.connection/workspace-connection]
+                                                   [:config-yml [:map {:closed true}
+                                                                 [:status  [:= 200]]
+                                                                 [:headers [:map-of :string :string]]
+                                                                 [:body    :string]]]]
   "What a sidecar needs to work in the workspace with `id`: for each of its provisioned databases, the connection
-  details of the workspace user, password included, and its active schemas, main -> scratch. The only endpoint that
+  details of the workspace user, password included, its active schemas, main -> scratch, and its failed schemas (JSON
+  only). A database behind an SSH tunnel is a 400: workspaces do not support tunnels. The only endpoint that
   returns a warehouse password, and never the parent's own login. JSON by default; with `format=yaml`, the config.yml
   a sidecar applies. Only the workspace's creator may fetch it."
   {:scope api-scope/workspace-manager}

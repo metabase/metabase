@@ -23,8 +23,12 @@
                 [:map {:closed true}
                  [:name    :string]
                  [:engine  :string]
-                 [:details :map]
-                 [:schemas [:map-of :string :string]]]]]])
+                 ;; never a leaf of the schema, so a failed response check cannot quote the password
+                 [:details [:map-of :keyword :any]]
+                 [:schemas [:map-of :string :string]]
+                 [:failed_schemas [:sequential [:map {:closed true}
+                                                [:main_schema :string]
+                                                [:error {:optional true} :string]]]]]]]])
 
 ;;; ---------------------------------------------- Parent's login ----------------------------------------------
 
@@ -40,22 +44,26 @@
     identity; `:domain` qualifies the user name.
   - `:role`: the role or user the parent's login switches to (MySQL, SQL Server impersonation).
   - `:ssl-use-client-auth`: Postgres client-certificate login; its certificate and key are secrets below.
-  - SSH tunnel credentials: the parent's login on the bastion.
   - `:additional-options`: free-form JDBC options, which can name a user, password, key file or integrated login."
   #{:user :password
     :use-auth-provider :auth-provider :azure-managed-identity-client-id :oauth-token-url :oauth-token-headers
     :auth-mode :ad-client-id :ad-client-secret :ad-managed-identity-client-id :domain
     :role
     :ssl-use-client-auth
-    :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase
     :additional-options})
 
 (def ^:private parent-login-secret-properties
   "`:secret` connection properties that are the parent's credentials: Postgres client certificate and key, SQL Server
-  AD certificate and key, and the tunnel's known hosts, which only serve the tunnel credentials dropped above."
+  AD certificate and key."
   ["ssl-client-cert" "ssl-key" "ssl-key-password"
-   "ad-client-certificate" "ad-client-certificate-password" "ad-client-key" "ad-client-key-password"
-   "tunnel-known-hosts"])
+   "ad-client-certificate" "ad-client-certificate-password" "ad-client-key" "ad-client-key-password"])
+
+(defn- tunnel-property?
+  "Whether `k` is an SSH tunnel connection property (`metabase.driver.common/ssh-tunnel-preferences`, and the known
+  hosts Secret). Workspaces do not support tunnels, so none of them is ever sent: not the parent's bastion credentials,
+  and not its bastion host and user either."
+  [k]
+  (str/starts-with? (name k) "tunnel-"))
 
 (def ^:private secret-property-suffixes
   "The keys a `:secret` connection property is stored under in `:details`, its own name included: the value, a file
@@ -82,8 +90,8 @@
 
 (defn connection-details
   "The `details` a sidecar connects to a workspace database with: the parent Database's `parent-details` without the
-  parent's login (see [[parent-login-properties]]), with the workspace user's `workspace-details` (its user, password
-  and any engine extras), a schema filter for exactly the main and scratch schemas of `schemas` (main -> scratch), and
+  parent's login (see [[parent-login-properties]]) or any tunnel property, with the workspace user's
+  `workspace-details` (its user, password and any engine extras), a schema filter for exactly the main and scratch schemas of `schemas` (main -> scratch), and
   the SSL root certificate as its value, `root-cert`, when the parent reads it from a Secret or a file. The sidecar's
   config.yml loader carries no sync schedules, so the database's schedules are not left to the user.
 
@@ -91,6 +99,7 @@
   password in its message."
   [parent-details workspace-details schemas root-cert]
   (-> (apply dissoc parent-details (concat parent-login-keys ssl-root-cert-reference-keys))
+      (->> (into {} (remove (comp tunnel-property? key))))
       (cond-> root-cert (assoc :ssl-root-cert-options "uploaded"
                                :ssl-root-cert-value   root-cert))
       (merge workspace-details
@@ -119,11 +128,23 @@
       (assoc :status (ws.status/effective-status (:status row) (:stale row)))
       (dissoc :stale)))
 
+(defn- check-no-tunnel!
+  [{:keys [details] database-name :name database-id :id}]
+  (when (:tunnel-enabled details)
+    (throw (ex-info (tru "SSH tunnels are not supported for workspaces.")
+                    {:status-code 400, :database_id database-id, :database_name database-name}))))
+
+(defn- present-failed-schema
+  [{:keys [main_schema error]}]
+  (cond-> {:main_schema main_schema}
+    error (assoc :error error)))
+
 (defn workspace-connection
   "The `WorkspaceConnection` of the Workspace with `id` for the User with `user-id`: for each of its provisioned
   databases with an active schema, the Database's name and engine, the [[connection-details]] of the workspace user,
-  and its active schemas, main -> scratch. Throws a 404 when there is no such Workspace, a 403 unless `user-id`
-  created it, and a 409 when a database's SSL root certificate cannot be read."
+  its active schemas, main -> scratch, and its failed schemas with their errors. Throws a 404 when there is no such
+  Workspace, a 403 unless `user-id` created it, a 400 when a database uses an SSH tunnel, and a 409 when a database's
+  SSL root certificate cannot be read."
   [id user-id]
   (let [workspace (or (ws.db/workspace id)
                       (throw (ex-info (tru "Workspace {0} not found." (str id)) {:status-code 404, :id id})))
@@ -133,15 +154,14 @@
         wsds      (filter #(= :provisioned (:status %))
                           (map effective (ws.db/workspace-databases-of-workspaces [id] (ws.status/staleness :database))))
         schemas   (when (seq wsds)
-                    (group-by :workspace_database_id
-                              (filter #(= :active (:status %))
-                                      (map effective (ws.db/workspace-schemas-of-workspace-databases
-                                                      (mapv :id wsds) (ws.status/staleness :schema))))))]
+                    (group-by (juxt :workspace_database_id :status)
+                              (map effective (ws.db/workspace-schemas-of-workspace-databases
+                                              (mapv :id wsds) (ws.status/staleness :schema)))))]
     {:workspace (select-keys workspace [:id :name])
      :databases (vec (for [wsd   wsds
-                           :let  [active (schemas (:id wsd))]
+                           :let  [active (get schemas [(:id wsd) :active])]
                            :when (seq active)
-                           :let  [database   (ws.db/database (:database_id wsd))
+                           :let  [database   (doto (ws.db/database (:database_id wsd)) check-no-tunnel!)
                                   schema-map (into {} (map (juxt :main_schema :scratch_namespace)) active)]]
                        {:name    (:name database)
                         :engine  (name (:engine database))
@@ -149,7 +169,8 @@
                                                      (:database_details (ws.db/workspace-database (:id wsd)))
                                                      schema-map
                                                      (ssl-root-cert database))
-                        :schemas schema-map}))}))
+                        :schemas schema-map
+                        :failed_schemas (mapv present-failed-schema (get schemas [(:id wsd) :failed]))}))}))
 
 (defn config-yml
   "`connection`, a `WorkspaceConnection`, as the config.yml a sidecar applies: each database under `config.databases`,
