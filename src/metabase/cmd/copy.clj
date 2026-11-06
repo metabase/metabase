@@ -174,6 +174,8 @@
       :model/ContentDiagnosticsFinding
       :model/TransformTest
       :model/TransformTestRun
+      :model/Workspace
+      :model/WorkspaceDatabase
       :model/TableRemapping])))
 
 (defn- objects->columns+values

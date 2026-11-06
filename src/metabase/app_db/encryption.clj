@@ -41,6 +41,7 @@
    [:channel :details]
    [:api_key :key]
    [:auth_identity :credentials]
+   [:workspace_database :database_details]
    [:exploration_query_result :chart_stats]
    [:exploration_query_result :metric_description]
    [:exploration_query_result :chart_description]

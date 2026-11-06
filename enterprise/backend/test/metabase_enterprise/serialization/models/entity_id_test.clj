@@ -164,7 +164,12 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction})
+    :model/CommentReaction
+    ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
+    ;; provisioning state, not portable content. Same rationale as TableRemapping above.
+    :model/Workspace
+    :model/WorkspaceDatabase
+    :model/WorkspaceInstance})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)
