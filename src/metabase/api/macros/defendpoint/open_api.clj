@@ -175,15 +175,14 @@
    [:description {:optional true} :string]
    [:content     {:optional true} [:map-of :string :metabase.api.macros/schema-form-or-instance]]])
 
-(defn- body-obj
-  "The OpenAPI media type object for a body matching the Malli schema `body-schema`."
-  [body-schema]
-  {:schema (fix-json-schema (mjs-collect-definitions body-schema))})
-
 (mu/defn- response-override->responses :- :metabase.api.open-api/path-item.responses
+  "The OpenAPI responses map for one `::response-override`.
+  Without a `:description`, it takes the description of the first body schema that has one."
   [{:keys [status description content]} :- ::response-override]
-  {(or status "2XX") (cond-> {:description (or description "Successful response")}
-                       (seq content) (assoc :content (update-vals content body-obj)))})
+  (let [bodies (update-vals content mjs-collect-definitions)]
+    {(or status "2XX")
+     (cond-> {:description (or description (some :description (vals bodies)) "Successful response")}
+       (seq bodies) (assoc :content (update-vals bodies (fn [body] {:schema (fix-json-schema body)}))))}))
 
 (mu/defn- schema->response-obj :- [:maybe :metabase.api.open-api/path-item.responses]
   "The OpenAPI success response for the `:response-schema` of a [[metabase.api.macros/defendpoint]].
@@ -197,11 +196,9 @@
     A streaming response uses it to describe the JSON it streams."
   [schema :- :metabase.api.macros/schema-form-or-instance]
   (let [properties (mc/properties (mr/resolve-schema schema))]
-    (if-let [override (:openapi/response properties)]
-      (response-override->responses override)
-      {"2XX" (let [jss-schema (mjs-collect-definitions (or (:openapi/response-schema properties) schema))]
-               {:description (or (:description jss-schema) "Successful response")
-                :content     {"application/json" {:schema (fix-json-schema jss-schema)}}})})))
+    (response-override->responses
+     (or (:openapi/response properties)
+         {:content {"application/json" (or (:openapi/response-schema properties) schema)}}))))
 
 (comment
 
