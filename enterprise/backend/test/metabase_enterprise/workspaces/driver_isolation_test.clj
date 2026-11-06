@@ -1102,7 +1102,8 @@
   ;; per provisioning attempt, so init must reset the surviving user's password
   ;; — engines whose `CREATE USER IF NOT EXISTS` silently no-ops need an
   ;; explicit ALTER, or the persisted password stops matching the warehouse.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+  ;; Postgres refuses the surviving user instead: see [[reinit-refuses-the-surviving-user-test]].
+  (mt/test-drivers (filter #(and (isa? driver/hierarchy % :sql-jdbc) (not= % :postgres))
                            (mt/normal-drivers-with-feature :workspace))
     (testing "re-running init for the same workspace id resets the user's password"
       (let [driver    driver/*driver*
@@ -1130,6 +1131,37 @@
             (try (driver/destroy-workspace-isolation! driver database second-ws)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during password-reset test cleanup"
+                              driver)))))))))
+
+(deftest ^:synchronized reinit-refuses-the-surviving-user-test
+  ;; Identifiers are deterministic, so a second init for the same workspace id finds the user the first one made. That
+  ;; user may belong to another parent restored from the same backup, so init refuses it with a 409 that tells the
+  ;; caller not to clean up, and leaves it as it was. A user that survived a failed teardown is removed by running
+  ;; destroy again, not by re-provisioning over it.
+  (mt/test-drivers (filter #{:postgres} (mt/normal-drivers-with-feature :workspace))
+    (testing "re-running init for the same workspace id refuses the existing user and leaves it unchanged"
+      (let [driver    driver/*driver*
+            database  (mt/db)
+            details   (:details database)
+            run-id    (random-suffix)
+            workspace {:id   (Long/parseLong run-id 16)
+                       :name (str "wsd-repw-" run-id)}
+            ;; same deterministic identifiers, two different random passwords
+            first-ws  (with-isolation-details driver database workspace)
+            second-ws (with-isolation-details driver database workspace)]
+        (try
+          (driver/init-workspace-isolation! driver database first-ws)
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! driver database second-ws)))]
+            (is (= {:status-code 409, :workspace/cleanup? false}
+                   (select-keys (ex-data e) [:status-code :workspace/cleanup?]))))
+          (testing "the credentials persisted by the first init still authenticate"
+            (is (= [{:one 1}]
+                   (jdbc/query (workspace-user-spec driver details first-ws)
+                               ["SELECT 1 AS one"]))))
+          (finally
+            (try (driver/destroy-workspace-isolation! driver database first-ws)
+                 (catch Throwable t
+                   (log/warnf t "destroy-workspace-isolation! failed for %s during re-init test cleanup"
                               driver)))))))))
 
 (deftest ^:synchronized grant-failure-is-not-a-batch-envelope-test
