@@ -32,6 +32,7 @@ export {
   type GroupingSource,
   type PartitionDefinition,
   type PartitionValueGroup,
+  type RelatedDefinition,
   TIME_EXTRACTS,
   TIME_UNITS,
   type TimeDefinition,

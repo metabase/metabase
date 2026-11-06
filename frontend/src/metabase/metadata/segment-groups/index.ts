@@ -1,3 +1,4 @@
+export { getSegmentFieldIds, isPartitionOnField } from "./columns";
 export {
   type SegmentGroupProposal,
   type SegmentGroupProposalMember,

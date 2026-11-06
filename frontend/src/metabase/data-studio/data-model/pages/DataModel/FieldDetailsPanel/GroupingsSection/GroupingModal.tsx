@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetFieldValuesQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetFieldValuesQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
 import {
   ELAPSED_UNITS,
   type ElapsedUnit,
@@ -16,7 +20,9 @@ import {
   getGroupingKind,
   getTimeExtractLabel,
   getTimeUnitLabel,
+  useResolvedGroupings,
 } from "metabase/metadata/groupings";
+import { isPartitionOnField } from "metabase/metadata/segment-groups";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
@@ -34,8 +40,14 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import { isDate, isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
-import type { Field, Table } from "metabase-types/api";
+import { singularize } from "metabase/utils/formatting";
+import {
+  isDate,
+  isDateWithoutTime,
+  isFK,
+  isPK,
+} from "metabase-lib/v1/types/utils/isa";
+import type { Field, FieldId, Segment, Table } from "metabase-types/api";
 
 type TimeMode = "unit" | "extract" | "elapsed";
 
@@ -59,7 +71,7 @@ type BinsDraft = {
   edges: EdgeRow[];
 };
 
-type PartitionMode = "value-map" | "segment-group" | "process";
+type PartitionMode = "related" | "value-map" | "segment-group" | "process";
 
 type PartitionDraft = {
   mode: PartitionMode;
@@ -67,7 +79,14 @@ type PartitionDraft = {
   labels: Record<string, string>;
   segmentGroupId: string | null;
   processLevel: "order" | "buckets";
+  /** A foreign key's grouping: a column of the table it points to */
+  targetFieldId: FieldId | null;
+  /** One of the target column's groupings; `null` is its values */
+  targetGroupingName: string | null;
 };
+
+/** A foreign key to a table's column, like Account ID to Accounts */
+const isRelatable = (field: Field) => isFK(field) && field.target != null;
 
 interface GroupingModalProps {
   field: Field;
@@ -102,7 +121,7 @@ export function GroupingModal({
     getBinsDraft(field, grouping),
   );
   const [partitionDraft, setPartitionDraft] = useState(() =>
-    getPartitionDraft(grouping),
+    getPartitionDraft(field, grouping),
   );
   const { data: fieldValues, isLoading: isLoadingValues } =
     useGetFieldValuesQuery(
@@ -166,11 +185,17 @@ export function GroupingModal({
         {kind === "partition" && (
           <PartitionEditor
             field={field}
+            segments={table.segments ?? []}
             context={context}
             values={values}
             isLoadingValues={isLoadingValues}
             draft={partitionDraft}
             onChange={setPartitionDraft}
+            onSuggestName={(suggestion) =>
+              setName((current) =>
+                current.trim() === "" ? suggestion : current,
+              )
+            }
           />
         )}
       </Stack>
@@ -248,13 +273,27 @@ function getBinsDraft(field: Field, grouping: Grouping | undefined): BinsDraft {
   }
 }
 
-function getPartitionDraft(grouping: Grouping | undefined): PartitionDraft {
+function getPartitionDraft(
+  field: Field,
+  grouping: Grouping | undefined,
+): PartitionDraft {
   const draft: PartitionDraft = {
-    mode: "value-map",
+    // A foreign key's new grouping most likely reads the table it points to
+    mode: isRelatable(field) ? "related" : "value-map",
     labels: {},
     segmentGroupId: null,
     processLevel: "order",
+    targetFieldId: null,
+    targetGroupingName: null,
   };
+  if (grouping?.kind === "related") {
+    return {
+      ...draft,
+      mode: "related",
+      targetFieldId: grouping.definition.targetFieldId,
+      targetGroupingName: grouping.definition.groupingName,
+    };
+  }
   if (grouping?.kind !== "partition") {
     return draft;
   }
@@ -350,6 +389,16 @@ function buildPartitionGrouping(
   values: string[],
 ): GroupingDefinition | null {
   switch (draft.mode) {
+    case "related":
+      return draft.targetFieldId != null
+        ? {
+            kind: "related",
+            definition: {
+              targetFieldId: draft.targetFieldId,
+              groupingName: draft.targetGroupingName,
+            },
+          }
+        : null;
     case "process":
       return {
         kind: "partition",
@@ -604,29 +653,38 @@ function BinsEditor({
 
 function PartitionEditor({
   field,
+  segments,
   context,
   values,
   isLoadingValues,
   draft,
   onChange,
+  onSuggestName,
 }: {
   field: Field;
+  segments: Segment[];
   context: GroupingInferenceContext;
   values: string[];
   isLoadingValues: boolean;
   draft: PartitionDraft;
   onChange: (draft: PartitionDraft) => void;
+  onSuggestName: (name: string) => void;
 }) {
+  const fieldId = getRawTableFieldId(field);
   const isStatus =
     context.statusField != null &&
-    getRawTableFieldId(context.statusField) === getRawTableFieldId(field);
-  const partitions = context.segmentGroups.filter(
-    ({ kind }) => kind === "partition",
+    getRawTableFieldId(context.statusField) === fieldId;
+  // Only groups that split this column's values, not other columns'
+  const partitions = context.segmentGroups.filter((group) =>
+    isPartitionOnField(group, fieldId, segments),
   );
   const modes: SegmentedControlItem<PartitionMode>[] = [
     { value: "value-map", label: t`Value groups` },
     { value: "segment-group", label: t`Segment group` },
   ];
+  if (isRelatable(field)) {
+    modes.unshift({ value: "related", label: t`Related column` });
+  }
   if (isStatus) {
     modes.push({ value: "process", label: t`Status order` });
   }
@@ -639,6 +697,14 @@ function PartitionEditor({
         value={draft.mode}
         onChange={(mode) => onChange({ ...draft, mode })}
       />
+      {draft.mode === "related" && field.target != null && (
+        <RelatedEditor
+          targetTableId={field.target.table_id}
+          draft={draft}
+          onChange={onChange}
+          onSuggestName={onSuggestName}
+        />
+      )}
       {draft.mode === "value-map" &&
         (isLoadingValues ? (
           <Loader size="sm" />
@@ -682,11 +748,12 @@ function PartitionEditor({
       {draft.mode === "segment-group" &&
         (partitions.length === 0 ? (
           <Text c="text-secondary">
-            {t`No partitions on this table yet. Make one in Segments.`}
+            {t`No partitions on this column yet. In Segments, make a partition whose segments filter on ${field.display_name}.`}
           </Text>
         ) : (
           <Select<string | null>
             label={t`Segment group`}
+            description={t`Partitions whose segments filter on ${field.display_name}.`}
             data={partitions.map(({ id, name }) => ({
               value: id,
               label: name,
@@ -712,5 +779,108 @@ function PartitionEditor({
         />
       )}
     </Stack>
+  );
+}
+
+// Picker values for "group by the column's own values"
+const BY_VALUES = "__values__";
+
+/** Picks a column of the table a foreign key points to, and how to group it */
+function RelatedEditor({
+  targetTableId,
+  draft,
+  onChange,
+  onSuggestName,
+}: {
+  targetTableId: Table["id"];
+  draft: PartitionDraft;
+  onChange: (draft: PartitionDraft) => void;
+  onSuggestName: (name: string) => void;
+}) {
+  const { data: targetTable, isLoading } = useGetTableQueryMetadataQuery({
+    id: targetTableId,
+  });
+  if (isLoading || !targetTable) {
+    return <Loader size="sm" />;
+  }
+  // Its key is what the foreign key already holds
+  const columns = (targetTable.fields ?? []).filter((column) => !isPK(column));
+  const targetField = columns.find(
+    (column) => getRawTableFieldId(column) === draft.targetFieldId,
+  );
+
+  return (
+    <Stack gap="md">
+      <Select<string | null>
+        label={t`Column of ${targetTable.display_name}`}
+        description={t`Rows group by this column of the row they point to.`}
+        data={columns.map((column) => ({
+          value: String(getRawTableFieldId(column)),
+          label: column.display_name,
+        }))}
+        value={draft.targetFieldId != null ? String(draft.targetFieldId) : null}
+        placeholder={t`Pick a column`}
+        searchable
+        allowDeselect={false}
+        onChange={(value) => {
+          const column = columns.find(
+            (known) => String(getRawTableFieldId(known)) === value,
+          );
+          if (!column) {
+            return;
+          }
+          onChange({
+            ...draft,
+            targetFieldId: getRawTableFieldId(column),
+            targetGroupingName: null,
+          });
+          // "Account plan"
+          onSuggestName(
+            `${singularize(targetTable.display_name)} ${column.display_name.toLowerCase()}`,
+          );
+        }}
+      />
+      {targetField && (
+        <TargetGroupingSelect
+          targetField={targetField}
+          targetTable={targetTable}
+          value={draft.targetGroupingName}
+          onChange={(targetGroupingName) =>
+            onChange({ ...draft, targetGroupingName })
+          }
+        />
+      )}
+    </Stack>
+  );
+}
+
+/** The target column's own values, or one of its groupings */
+function TargetGroupingSelect({
+  targetField,
+  targetTable,
+  value,
+  onChange,
+}: {
+  targetField: Field;
+  targetTable: Table;
+  value: string | null;
+  onChange: (groupingName: string | null) => void;
+}) {
+  const { groupings, builtIns } = useResolvedGroupings(
+    targetField,
+    targetTable,
+  );
+  const names = [...groupings, ...builtIns].map(({ name }) => name);
+  return (
+    <Select<string>
+      label={t`Grouped by`}
+      data={[
+        { value: BY_VALUES, label: t`Its values` },
+        ...names.map((name) => ({ value: name, label: name })),
+      ]}
+      value={value ?? BY_VALUES}
+      allowDeselect={false}
+      onChange={(next) => onChange(next === BY_VALUES ? null : next)}
+    />
   );
 }

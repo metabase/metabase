@@ -7,13 +7,14 @@ import {
 } from "metabase/metadata/lifecycle";
 import type { SegmentGroup } from "metabase/metadata/segment-groups";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import type { Field } from "metabase-types/api";
+import type { Field, Table } from "metabase-types/api";
 
 import type {
   BinsDefinition,
   ElapsedUnit,
   Grouping,
   PartitionDefinition,
+  RelatedDefinition,
   TimeDefinition,
   TimeExtract,
   TimeUnit,
@@ -121,11 +122,13 @@ export type GroupingSummaryContext = {
   segmentGroups: SegmentGroup[];
   /** The status column's values in order, for process partitions */
   valueOrder: OrderedValue[];
+  /** The table a foreign key points to, with its columns, for related groupings */
+  relatedTable?: Pick<Table, "display_name" | "fields">;
 };
 
 /**
  * A one-line summary of what a grouping makes, like "By month" or
- * "Open · Won · Lost". `null` when its segment group is gone.
+ * "Open · Won · Lost". `null` when what it points to is gone.
  */
 export function getGroupingSummary(
   grouping: Grouping,
@@ -138,7 +141,25 @@ export function getGroupingSummary(
       return getBinsSummary(grouping.definition);
     case "partition":
       return getPartitionSummary(grouping.definition, context);
+    case "related":
+      return getRelatedSummary(grouping.definition, context.relatedTable);
   }
+}
+
+/** "Accounts › Plan", or "Accounts › Plan › Tier" by one of Plan's groupings */
+function getRelatedSummary(
+  { targetFieldId, groupingName }: RelatedDefinition,
+  relatedTable: GroupingSummaryContext["relatedTable"],
+): string | null {
+  const target = relatedTable?.fields?.find(
+    (field) => getRawTableFieldId(field) === targetFieldId,
+  );
+  if (!relatedTable || !target) {
+    return null;
+  }
+  return [relatedTable.display_name, target.display_name, groupingName]
+    .filter(Boolean)
+    .join(" › ");
 }
 
 function getTimeSummary(definition: TimeDefinition, fields: Field[]): string {
@@ -191,10 +212,8 @@ function getPartitionSummary(
   switch (definition.type) {
     case "process": {
       if (definition.level === "order") {
-        // Open states lead, then the ends
-        const open = valueOrder.filter(({ bucket }) => bucket === "open");
-        const rest = valueOrder.filter(({ bucket }) => bucket !== "open");
-        return [...open, ...rest].map(({ value }) => value).join(" → ");
+        // Exactly the order set in the column's Values section
+        return valueOrder.map(({ value }) => value).join(" → ");
       }
       const present = new Set(valueOrder.map(({ bucket }) => bucket));
       return VALUE_BUCKETS.filter((bucket) => present.has(bucket))

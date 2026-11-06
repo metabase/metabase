@@ -12,6 +12,7 @@ import {
   type StatusHistoryBinding,
   TRANSITION_KINDS,
   type TransitionKind,
+  type ValueBucket,
   getProcessEncodingLabel,
   getTransitionKindLabel,
   getValueBucketLabel,
@@ -21,7 +22,15 @@ import {
   useLifecycle,
 } from "metabase/metadata/lifecycle";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { List, Select, Stack, Text } from "metabase/ui";
+import {
+  Badge,
+  type BadgeProps,
+  Group,
+  List,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -102,12 +111,35 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
               />
             }
           />
+          {/* Separate children, not a fragment: DetailsTable divides its direct children */}
           {history && (
             <DetailsRow
-              label={t`Status history columns`}
+              label={t`History table entity key`}
               value={
-                <HistoryColumnsValue
-                  binding={history}
+                <HistoryColumnValue
+                  fieldId={history.entityKeyFieldId}
+                  historyTable={historyTable}
+                />
+              }
+            />
+          )}
+          {history && (
+            <DetailsRow
+              label={t`History table Status column`}
+              value={
+                <HistoryColumnValue
+                  fieldId={history.stateFieldId}
+                  historyTable={historyTable}
+                />
+              }
+            />
+          )}
+          {history && (
+            <DetailsRow
+              label={t`History table Changed At column`}
+              value={
+                <HistoryColumnValue
+                  fieldId={history.changedAtFieldId}
                   historyTable={historyTable}
                 />
               }
@@ -295,33 +327,19 @@ function StatusHistoryValue({
   );
 }
 
-/** The history table's entity key, status, and changed-at columns */
-function HistoryColumnsValue({
-  binding,
+/** One of the history table's bound columns, by name */
+function HistoryColumnValue({
+  fieldId,
   historyTable,
 }: {
-  binding: StatusHistoryBinding;
+  fieldId: FieldId | null;
   historyTable: Table | undefined;
 }) {
-  const nameOf = (fieldId: FieldId | null) =>
-    historyTable?.fields?.find((field) => idOf(field) === fieldId)
-      ?.display_name ?? t`Not found`;
-  const columns = [
-    { label: t`Entity key`, fieldId: binding.entityKeyFieldId },
-    { label: t`Status`, fieldId: binding.stateFieldId },
-    { label: t`Changed at`, fieldId: binding.changedAtFieldId },
-  ];
-  return (
-    <Stack gap={0} py="xs">
-      {columns.map(({ label, fieldId }) => (
-        <Text key={label}>
-          <Text span c="text-secondary">
-            {t`${label}: `}
-          </Text>
-          {nameOf(fieldId)}
-        </Text>
-      ))}
-    </Stack>
+  const column = historyTable?.fields?.find((field) => idOf(field) === fieldId);
+  return column ? (
+    column.display_name
+  ) : (
+    <Text c="text-disabled">{t`Not found`}</Text>
   );
 }
 
@@ -343,16 +361,22 @@ function StatesValue({
       {order.values.length === 0 ? (
         <Text c="text-secondary">{t`No cached values`}</Text>
       ) : (
-        // In lifecycle order; final states say how they end
-        <List type="ordered" size="md" spacing={0}>
+        // In lifecycle order; final states carry how they end as a badge
+        <List type="ordered" size="md" spacing={4}>
           {order.values.map(({ value, bucket }) => (
             <List.Item key={value}>
-              {value}
-              {isTerminalBucket(bucket) && (
-                <Text span c="text-secondary">
-                  {` · ${getValueBucketLabel(bucket)}`}
-                </Text>
-              )}
+              <Group gap="xs" wrap="nowrap" display="inline-flex">
+                {value}
+                {isTerminalBucket(bucket) && (
+                  <Badge
+                    variant="light"
+                    color={BUCKET_BADGE_COLORS[bucket]}
+                    flex="0 0 auto"
+                  >
+                    {getValueBucketLabel(bucket)}
+                  </Badge>
+                )}
+              </Group>
             </List.Item>
           ))}
         </List>
@@ -373,6 +397,15 @@ function StatesValue({
     </Stack>
   );
 }
+
+// Good, bad, and neither: a final state's badge says which
+const BUCKET_BADGE_COLORS: Record<ValueBucket, BadgeProps["color"]> = {
+  open: "neutral",
+  won: "positive",
+  lost: "negative",
+  cancelled: "neutral",
+  other: "neutral",
+};
 
 function TransitionKindValue({
   row,

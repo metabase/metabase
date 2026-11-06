@@ -7,7 +7,7 @@ import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMeasureGroups } from "metabase/metadata/measure-groups";
 import { useSelector } from "metabase/redux";
-import { Button, type ButtonProps, Icon, Stack, Text } from "metabase/ui";
+import { Button, type ButtonProps, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
@@ -16,7 +16,7 @@ import {
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
-import { ListSection } from "../ListSection";
+import { ListEmptyItem, ListSection } from "../ListSection";
 import S from "../TableSection.module.css";
 
 import { MeasureGroupModal } from "./MeasureGroupModal";
@@ -170,7 +170,7 @@ export function MeasureList({ table }: MeasureListProps) {
               />
             ))
           ) : (
-            <Text c="text-secondary">{t`No measure groups yet.`}</Text>
+            <ListEmptyItem>{t`No measure groups yet`}</ListEmptyItem>
           )}
         </ListSection>
       )}
