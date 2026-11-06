@@ -125,6 +125,8 @@
                       (version-properties/current-snapshot-version edition))
          timer    (u/start-timer)
          ;; AOT compilation doesn't need the frontend, so it starts with the frontend step and `:uberjar` waits for it.
+         ;; Not any earlier: `:translations` rewrites `resources/locales.clj`, which the compile reads while it looks for
+         ;; namespaces, and a half-written file fails the build.
          compiled (when (every? (set (map u/parse-as-keyword steps)) [:frontend :uberjar])
                     (delay (future (uberjar/compile! edition))))]
      (u/step (format "Running build steps for %s version %s: %s"
