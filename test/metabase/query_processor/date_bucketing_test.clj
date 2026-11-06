@@ -1023,6 +1023,68 @@
                       (map first)
                       (take 3)))))))))
 
+(def ^:private week-of-year-test-ranges
+  ;; Each year starts on a different day of the week, so the first week falls differently in each.
+  ;; 2016 is a leap year ending on a Saturday, so a week that starts on its day 366 is week 53.
+  [["2016-12-25" "2017-01-08"]
+   ["2017-12-25" "2018-01-08"]
+   ["2018-12-25" "2019-01-08"]
+   ["2019-12-25" "2020-01-08"]])
+
+(defn- check-week-of-year-labels!
+  "Checks, for every first day of the week, that a week-of-year filter's name is the week its query returns.
+  With `check-days?`, the query must return exactly the days in [[week-of-year-test-ranges]].
+  Otherwise it must return at least those days."
+  [check-days?]
+  (doseq [start-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]]
+    (mt/with-temporary-setting-values [start-of-week start-of-week]
+      (testing start-of-week
+        (let [mp           (mt/metadata-provider)
+              orders       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              created-at   (lib.metadata/field mp (mt/id :orders :created_at))
+              week-of-year (lib/with-temporal-bucket created-at :week-of-year)
+              query        (-> orders
+                               (lib/filter (apply lib/or (for [[start end] week-of-year-test-ranges]
+                                                           (lib/between created-at start end))))
+                               (lib/breakout (lib/with-temporal-bucket created-at :day))
+                               (lib/breakout week-of-year))
+              ;; Some drivers return the week as a decimal, such as 52.0.
+              rows         (for [[day week] (mt/rows (qp/process-query query))]
+                             [(subs (str day) 0 10) (str (long week))])
+              days         (for [[start end] week-of-year-test-ranges
+                                 day         (t/iterate t/plus (t/local-date start) (t/days 1))
+                                 :while      (not (t/after? day (t/local-date end)))]
+                             (str day))]
+          (if check-days?
+            (is (= days (map first rows)))
+            ;; Bucketing in UTC adds days at the edges of each range but must not drop any.
+            (is (every? (set (map first rows)) days)))
+          (is (= (for [[day _] rows]
+                   [day (lib/filter-args-display-name query -1 (lib/= week-of-year day))])
+                 rows))
+          ;; A filter on a date selects the week holding that date, which each driver works out from the literal.
+          (doseq [day ["2017-01-01" "2018-01-01" "2019-01-01" "2020-01-01"]
+                  :let [week     (lib/= week-of-year day)
+                        filtered (-> orders (lib/filter week) (lib/breakout week-of-year))]]
+            (testing day
+              (is (= [(lib/filter-args-display-name filtered -1 week)]
+                     (for [[week-number] (mt/rows (qp/process-query filtered))]
+                       (str (long week-number))))))))))))
+
+(deftest week-of-year-label-matches-query-test
+  (testing "a week-of-year filter's name is the week its query returns"
+    (mt/test-drivers (mt/normal-drivers)
+      (check-week-of-year-labels! true))))
+
+(deftest week-of-year-label-matches-query-report-timezone-test
+  (testing "week numbers count days in the report time zone"
+    (mt/test-drivers (mt/normal-drivers-with-feature :set-timezone)
+      ;; Ahead of UTC, so a week that starts at local midnight on Jan 1 is still Dec 31 in UTC.
+      (mt/with-report-timezone-id! "Asia/Kathmandu"
+        ;; These drivers bucket days in UTC rather than the report time zone (#5789), so the days they return differ.
+        ;; Their week numbers still match their own days, which is what the labels must agree with.
+        (check-week-of-year-labels! (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*)))))))
+
 ;;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;;; difference is how the beginning of hte month is represented, since we always return times with our dates
 

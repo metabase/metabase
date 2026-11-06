@@ -37,7 +37,8 @@
                                :quarter-of-year (tru "Q{0}" (u.date/extract options dt :quarter-of-year))
                                :minute-of-hour  (u.date/extract options dt :minute-of-hour)
                                :day-of-month    (u.date/extract options dt :day-of-month)
-                               :week-of-year    (u.date/extract options dt :week-of-year)}]
+                               ;; Numbered the way queries group weeks: Sunday, Sep 9 starts the 36th week of 1990.
+                               :week-of-year    36}]
         (testing (format "unit = %s" unit)
           (is (= (str expected)
                  (str (#'names/humanize-datetime t-str unit)))))))))
@@ -59,7 +60,15 @@
                                  :week-of-year    t}]
           (testing (format "unit = %s" unit)
             (is (= (str expected)
-                   (str (#'names/humanize-datetime t unit))))))))))
+                   (str (#'names/humanize-datetime t unit))))))
+        (testing "every week number names itself"
+          (doseq [week (range 1 54)]
+            (is (= (str week) (str (#'names/humanize-datetime week :week-of-year))))))
+        (testing "a date names the week queries group it into"
+          (are [date week] (= (str week) (str (#'names/humanize-datetime date :week-of-year)))
+            "2018-12-30" 52
+            "2019-01-01" 52
+            "2019-01-06" 1))))))
 
 (deftest ^:parallel pluralize-test
   (are [expected n] (= (str expected)
