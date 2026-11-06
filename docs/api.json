@@ -3669,134 +3669,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "name", "type", "model_id" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -4019,13 +3891,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -4085,20 +3950,6 @@
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "created_at" : { },
             "public_uuid" : {
               "oneOf" : [ {
@@ -4111,9 +3962,6 @@
             },
             "model_id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
             },
             "parameters" : {
               "oneOf" : [ {
@@ -4165,136 +4013,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "id" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.id"
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -4521,13 +4239,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -4590,20 +4301,6 @@
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "created_at" : { },
             "public_uuid" : {
               "oneOf" : [ {
@@ -4616,9 +4313,6 @@
             },
             "model_id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
             },
             "parameters" : {
               "oneOf" : [ {
@@ -4823,45 +4517,6 @@
           } ]
         }
       },
-      "metabase.actions.schema..http-action.json-query" : {
-        "description" : "must be a valid json-query, something like '.item.title'",
-        "type" : "string"
-      },
-      "metabase.actions.schema..http-action.template" : {
-        "type" : "object",
-        "properties" : {
-          "body" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "headers" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "method" : {
-            "type" : "string",
-            "enum" : [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
-          },
-          "parameters" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "url" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "method", "url" ],
-        "additionalProperties" : false
-      },
       "metabase.actions.schema..implicit-action.kind" : {
         "description" : "Unsupported implicit action kind",
         "type" : "string",
@@ -4881,144 +4536,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "entity_id" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "id" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.id"
-            },
-            "creator" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.users.schema.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "made_public_by_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "updated_at" : { },
-            "legacy_query" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "created_at" : { },
-            "public_uuid" : {
-              "oneOf" : [ {
-                "description" : "value must be a valid UUID.",
-                "type" : "string",
-                "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "model_id" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "creator_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "public_uuid_prefix" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "id" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -5261,13 +4778,6 @@
                 "type" : "null"
               } ]
             },
-            "response_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -5337,20 +4847,6 @@
             "type" : {
               "$ref" : "#/components/schemas/metabase.actions.schema.type"
             },
-            "template" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "error_handle" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "created_at" : { },
             "public_uuid" : {
               "oneOf" : [ {
@@ -5363,9 +4859,6 @@
             },
             "model_id" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            },
-            "disabled" : {
-              "type" : "boolean"
             },
             "parameters" : {
               "oneOf" : [ {
@@ -5432,7 +4925,7 @@
       "metabase.actions.schema.type" : {
         "description" : "Unsupported action type",
         "type" : "string",
-        "enum" : [ "http", "implicit", "query" ]
+        "enum" : [ "implicit", "query" ]
       },
       "metabase.actions.types..scope.raw" : {
         "type" : "object",
@@ -8327,15 +7820,7 @@
             } ]
           },
           "id" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "string"
-              } ]
-            }, {
-              "type" : "null"
-            } ]
+            "$ref" : "#/components/schemas/metabase.documents.prose-mirror..node.entity-id"
           },
           "chart_href" : {
             "oneOf" : [ {
@@ -8357,15 +7842,7 @@
             } ]
           },
           "entityId" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "string"
-              } ]
-            }, {
-              "type" : "null"
-            } ]
+            "$ref" : "#/components/schemas/metabase.documents.prose-mirror..node.entity-id"
           },
           "child_target_id" : {
             "oneOf" : [ {
@@ -8382,6 +7859,18 @@
             } ]
           }
         }
+      },
+      "metabase.documents.prose-mirror..node.entity-id" : {
+        "description" : "The id of the entity a `cardEmbed` (`\"id\"`) or `smartLink` (`\"entityId\"`) node refers to.",
+        "oneOf" : [ {
+          "anyOf" : [ {
+            "type" : "integer"
+          }, {
+            "type" : "string"
+          } ]
+        }, {
+          "type" : "null"
+        } ]
       },
       "metabase.documents.prose-mirror.ast" : {
         "description" : "Schema for a prose-mirror document AST as it arrives at the API or is read back from the application database: a\n  node in the shape ProseMirror's `Node.toJSON` emits, whose children and marks are nodes too.",
@@ -13119,6 +12608,11 @@
       },
       "metabase.lib.schema.id.dimension" : {
         "description" : "Valid Dimension ID",
+        "type" : "integer",
+        "minimum" : 1
+      },
+      "metabase.lib.schema.id.document" : {
+        "description" : "Valid Document ID",
         "type" : "integer",
         "minimum" : 1
       },
@@ -23513,9 +23007,7 @@
                 },
                 "made_public_by_id" : {
                   "oneOf" : [ {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
                   }, {
                     "type" : "null"
                   } ]
@@ -23633,7 +23125,7 @@
                 },
                 "document_id" : {
                   "oneOf" : [ {
-                    "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.document"
                   }, {
                     "type" : "null"
                   } ]
@@ -25147,9 +24639,7 @@
                 },
                 "made_public_by_id" : {
                   "oneOf" : [ {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
                   }, {
                     "type" : "null"
                   } ]
@@ -25267,7 +24757,7 @@
                 },
                 "document_id" : {
                   "oneOf" : [ {
-                    "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.document"
                   }, {
                     "type" : "null"
                   } ]
@@ -27151,9 +26641,7 @@
           },
           "made_public_by_id" : {
             "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
             }, {
               "type" : "null"
             } ]
@@ -27263,7 +26751,7 @@
           },
           "document_id" : {
             "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.document"
             }, {
               "type" : "null"
             } ]
@@ -27930,7 +27418,7 @@
           },
           "database_id" : {
             "oneOf" : [ {
-              "type" : "integer"
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
             }, {
               "type" : "null"
             } ]
@@ -27947,7 +27435,7 @@
           },
           "table_id" : {
             "oneOf" : [ {
-              "type" : "integer"
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
             }, {
               "type" : "null"
             } ]
@@ -27955,10 +27443,6 @@
         },
         "required" : [ "alias" ],
         "additionalProperties" : false
-      },
-      "metabase.transforms-rest.api.transform.run-trigger" : {
-        "type" : "string",
-        "enum" : [ "none", "global-schedule" ]
       },
       "metabase.transforms.schema.append-config" : {
         "type" : "object",
@@ -28040,25 +27524,57 @@
         },
         "additionalProperties" : false
       },
-      "metabase.transforms.schema.orphaned-query" : {
-        "description" : "The MBQL 5 query of a transform whose source database was deleted, kept as a breadcrumb with its `:database` nulled.",
+      "metabase.transforms.schema.python-source" : {
+        "description" : "The `:source` of a Python transform: its script and the tables it reads.",
         "type" : "object",
         "properties" : {
-          "database" : {
-            "type" : "null"
+          "body" : {
+            "type" : "string"
           },
-          "lib/metadata" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.metadata.metadata-provider"
+          "source-database" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            }, {
+              "type" : "null"
+            } ]
           },
-          "lib/type" : {
-            "const" : "mbql/query"
+          "source-incremental-strategy" : {
+            "$ref" : "#/components/schemas/metabase.transforms.schema.source-incremental-strategy"
           },
-          "stages" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.stages"
+          "source-tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
+            }
+          },
+          "type" : {
+            "const" : "python"
           }
         },
-        "required" : [ "lib/type", "database", "stages" ],
+        "required" : [ "source-tables", "type", "body" ],
         "additionalProperties" : false
+      },
+      "metabase.transforms.schema.query-source" : {
+        "description" : "The `:source` of a query transform: its MBQL 5 query, normalized from legacy MBQL where a client or a serdes export\n  still writes it.",
+        "type" : "object",
+        "properties" : {
+          "query" : {
+            "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
+          },
+          "source-incremental-strategy" : {
+            "$ref" : "#/components/schemas/metabase.transforms.schema.source-incremental-strategy"
+          },
+          "type" : {
+            "const" : "query"
+          }
+        },
+        "required" : [ "type", "query" ],
+        "additionalProperties" : false
+      },
+      "metabase.transforms.schema.run-trigger" : {
+        "description" : "What starts a Transform run: nothing, or the global schedule.",
+        "type" : "string",
+        "enum" : [ "none", "global-schedule" ]
       },
       "metabase.transforms.schema.source-incremental-strategy" : {
         "oneOf" : [ {
@@ -28070,7 +27586,7 @@
         "properties" : {
           "database" : {
             "oneOf" : [ {
-              "type" : "integer"
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
             }, {
               "type" : "null"
             } ]
@@ -28101,7 +27617,7 @@
         "properties" : {
           "database" : {
             "oneOf" : [ {
-              "type" : "integer"
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
             }, {
               "type" : "null"
             } ]
@@ -28132,49 +27648,11 @@
         } ]
       },
       "metabase.transforms.schema.transform-source" : {
+        "description" : "The `:source` of a transform, by its `:type`.",
         "oneOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "query" : {
-              "anyOf" : [ {
-                "$ref" : "#/components/schemas/metabase.transforms.schema.orphaned-query"
-              }, {
-                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
-              } ]
-            },
-            "source-incremental-strategy" : {
-              "$ref" : "#/components/schemas/metabase.transforms.schema.source-incremental-strategy"
-            },
-            "type" : {
-              "const" : "query"
-            }
-          },
-          "required" : [ "type", "query" ],
-          "additionalProperties" : false
+          "$ref" : "#/components/schemas/metabase.transforms.schema.query-source"
         }, {
-          "type" : "object",
-          "properties" : {
-            "body" : {
-              "type" : "string"
-            },
-            "source-database" : {
-              "type" : "integer"
-            },
-            "source-incremental-strategy" : {
-              "$ref" : "#/components/schemas/metabase.transforms.schema.source-incremental-strategy"
-            },
-            "source-tables" : {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
-              }
-            },
-            "type" : {
-              "const" : "python"
-            }
-          },
-          "required" : [ "source-tables", "type", "body" ],
-          "additionalProperties" : false
+          "$ref" : "#/components/schemas/metabase.transforms.schema.python-source"
         } ]
       },
       "metabase.transforms.schema.transform-target" : {
@@ -56657,7 +56135,18 @@
                           "minLength" : 1
                         },
                         "mapping_target" : {
-                          "$ref" : "#/components/schemas/metabase.lib-metric.schema..dimension-mapping.target"
+                          "type" : "array",
+                          "prefixItems" : [ {
+                            "const" : "field"
+                          }, {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.ref..field.options"
+                          }, {
+                            "anyOf" : [ {
+                              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+                            }, {
+                              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+                            } ]
+                          } ]
                         }
                       },
                       "required" : [ "id", "mapping_target" ],
@@ -67696,7 +67185,7 @@
                     "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
                   },
                   "run_trigger" : {
-                    "$ref" : "#/components/schemas/metabase.transforms-rest.api.transform.run-trigger"
+                    "$ref" : "#/components/schemas/metabase.transforms.schema.run-trigger"
                   },
                   "description" : {
                     "oneOf" : [ {
@@ -71223,7 +70712,7 @@
                     "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
                   },
                   "run_trigger" : {
-                    "$ref" : "#/components/schemas/metabase.transforms-rest.api.transform.run-trigger"
+                    "$ref" : "#/components/schemas/metabase.transforms.schema.run-trigger"
                   },
                   "description" : {
                     "oneOf" : [ {
