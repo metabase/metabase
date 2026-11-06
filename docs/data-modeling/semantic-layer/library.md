@@ -71,20 +71,20 @@ The **+ New** menu has options to:
 
 - **Published table**: [Publish a table](published-tables.md#publish-a-table-from-the-semantic-layer) to the Library.
 - **Metric**: [Create a metric](#metrics) in the Library.
-- **Snippet**: [Create a SQL snippet](#sql-snippets).
-- **Collection**: [Create a subcollection or snippet folder](#library-organization).
+- **Collection**: [Create a subcollection](#library-organization).
 
-To manage the glossary, see [Glossary](glossary.md).
+To add a snippet, see [SQL snippets](#sql-snippets). To manage the glossary, see [Glossary](glossary.md).
 
 ## Library organization
 
 ![Library organization](./images/library-org.png)
 
-The semantic layer lives in a special collection called Library, which has three root sections:
+The semantic layer lives in a special collection called Library, which has two root sections:
 
 - **Data**: For [published tables](published-tables.md).
 - **Metrics**: For [official metrics](#metrics).
-- **SQL snippets**: For all the [SQL snippets](#sql-snippets) on your instance.
+
+[SQL snippets](#sql-snippets) are part of your semantic layer, but they don't live in this collection. They have their own page at **Data Studio > SQL snippets**.
 
 These root sections are predefined. You can't rename or archive them, but you can use [permissions](#library-permissions) to control who sees them.
 
@@ -123,7 +123,9 @@ To create a new Library metric, go to **Data Studio > Semantic layer** and selec
 
 ## SQL snippets
 
-[SQL snippets](../../questions/native-editor/snippets.md) are reusable bits of code. All snippets in your Metabase are available to the library, including snippets created elsewhere in your Metabase. You can also create snippet folders in the Library.
+[SQL snippets](../../questions/native-editor/snippets.md) are reusable bits of code. All snippets in your Metabase are available to the library, including snippets created elsewhere in your Metabase.
+
+To create a snippet or a snippet folder, go to **Data Studio > SQL snippets** and click **+ New**.
 
 ## Versioning the Library
 
@@ -181,7 +183,7 @@ There are some caveats though, depending on which part of the Library you're wor
 
   - Snippet management is controlled by [snippet permissions](../../permissions/snippets.md) - not regular collection permissions.
 
-The root sections (Data, Metrics, SQL snippets) have fixed properties and can't be renamed or deleted. Subcollections you create follow the normal collection permission rules.
+The root sections (Data and Metrics) have fixed properties and can't be renamed or deleted. Subcollections you create follow the normal collection permission rules.
 
 ## Permissions to use Library content
 

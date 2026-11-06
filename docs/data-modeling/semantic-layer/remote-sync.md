@@ -306,12 +306,6 @@ Content in other Metabases that depended on this item may break, because the dep
 
 Everything an item in the Library needs must be synced too. For example, Metabase won't let you move a metric to a synced Library if the metric is built on a saved question or model. The Library can't hold questions or models, so build the metric on a table instead.
 
-- Questions that reference other questions
-- Dashboards with questions
-- Click behaviors linking to other items
-- Filters that pick values from other questions
-- @ mentions of other items in documents
-
 ## What Metabase syncs
 
 Remote sync uses the same serialization format as the [Metabase CLI serialization feature](../../installation-and-operation/serialization.md), storing your content as YAML files in your Git repository.
@@ -321,13 +315,13 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - The Library's collection structure
 - Published tables with their segments and measures
 - Metrics
-- Dashboards and their cards
-- Documents
 - [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's manifest, bundle, and collection, but ignores the app's source code. You (or your agent) commit all of these to the same repository, including the source code, so that you can edit the app over time.
 - SQL snippets
 - [Data actions](../data-actions.md)
 - The glossary
 - Transforms, including tags, tests, folders, and Python libraries
+
+If you [sync other collections](#syncing-other-collections), Metabase also syncs the questions, models, dashboards, documents, timelines, and events in those collections.
 
 **What doesn't sync:**
 
@@ -455,7 +449,13 @@ If you can, publish the tables and move the metrics you want to version into the
 
 ### Items in synced collections must be self-contained
 
-The same rule that applies to the Library applies to any synced collection. Everything a dashboard or question needs must be inside one of the synced collections. See [Library content must be self-contained](#library-content-must-be-self-contained) for the list of dependencies.
+The same rule that applies to the [Library](#library-content-must-be-self-contained) applies to any synced collection. Everything a dashboard or question needs must be inside one of the synced collections. This includes:
+
+- Questions that reference other questions
+- Dashboards with questions
+- Click behaviors linking to other items
+- Filters that pick values from other questions
+- @ mentions of other items in documents
 
 ### Moving and deleting content in synced collections
 
