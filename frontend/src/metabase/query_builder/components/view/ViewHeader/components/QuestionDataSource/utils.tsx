@@ -1,16 +1,14 @@
 import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
-import {
-  getQuestionIdFromVirtualTableId,
-  getQuestionVirtualTableId,
-  isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { IconName } from "metabase-types/api";
 
@@ -25,8 +23,39 @@ type DataSourceBadgePart = {
   name?: string;
   href?: string;
   icon?: IconName;
-  model?: "database" | "schema" | "table" | "question" | "model" | "metric";
+  model?: DataSourceModel;
 };
+
+type DataSourceModel =
+  | "database"
+  | "schema"
+  | "table"
+  | "question"
+  | "model"
+  | "metric";
+
+type TableDataSourceItem = {
+  type: "table";
+  key: string;
+  name: string;
+  href: string;
+  table: Table;
+};
+
+type CardDataSourceItem = {
+  type: "card";
+  key: string;
+  name: string;
+  href: string;
+  model: CardDataSourceModel;
+};
+
+type CardDataSourceModel = Extract<
+  DataSourceModel,
+  "question" | "model" | "metric"
+>;
+
+type DataSourceItem = TableDataSourceItem | CardDataSourceItem;
 
 export function getDataSourceParts({
   question,
@@ -67,67 +96,73 @@ export function getDataSourceParts({
     });
   }
 
-  const table = !isNative
-    ? metadata.table(Lib.sourceTableOrCardId(query))
-    : // Unjustified type cast. FIXME
-      (question.legacyNativeQuery() as NativeQuery).table();
-  if (table?.schema_name && hasMultipleSchemas) {
-    const isBasedOnSavedQuestion = isVirtualCardId(table.id);
-    if (database != null && !isBasedOnSavedQuestion) {
-      parts.push({
-        model: "schema",
-        name: table.schema_name,
-        href: database.id >= 0 ? Urls.browseSchema(table) : undefined,
-      });
+  const hasTableLink = subHead || isObjectDetail;
+
+  if (isNative) {
+    // Unjustified type cast. FIXME
+    const table = (question.legacyNativeQuery() as NativeQuery).table();
+    if (table == null) {
+      return filterParts(parts);
     }
+    return [
+      {
+        name: table.displayName(),
+        href: hasTableLink ? getTableURL(table) : "",
+      },
+    ];
   }
 
-  if (table) {
-    const hasTableLink = subHead || isObjectDetail;
-    if (isNative) {
-      return [
-        {
-          name: table.displayName(),
-          href: hasTableLink ? getTableURL(table) : "",
-        },
-      ];
+  const items = [
+    getPrimarySourceMetadata(query),
+    ...Lib.joins(query, -1).map((join) => Lib.joinedThing(query, join)),
+  ]
+    .filter(isNotNull)
+    .map((source) => getDataSourceItem(query, metadata, source))
+    .filter(isNotNull);
+
+  const [sourceItem] = items;
+  if (sourceItem != null) {
+    if (sourceItem.type === "table") {
+      pushSchemaPart(parts, database, sourceItem.table, hasMultipleSchemas);
     }
-
-    const allTables = [
-      table,
-      ...Lib.joins(query, -1)
-        .map((join) => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
-        .map((pickerInfo) => {
-          if (pickerInfo?.tableId != null) {
-            return metadata.table(pickerInfo.tableId);
-          }
-
-          if (pickerInfo?.cardId != null) {
-            return metadata.table(getQuestionVirtualTableId(pickerInfo.cardId));
-          }
-
-          return undefined;
-        }),
-    ].filter(isNotNull);
 
     const part: DataSourcePart = formatTableAsComponent ? (
       <QuestionTableBadges
-        tables={allTables}
+        items={items}
         subHead={subHead}
         hasLink={hasTableLink}
         isLast={!isObjectDetail}
       />
     ) : (
       {
-        name: table.displayName(),
-        href: hasTableLink ? getTableURL(table) : "",
-        model: table.type ?? "table",
+        name: sourceItem.name,
+        href: hasTableLink ? sourceItem.href : "",
+        model: sourceItem.type === "table" ? "table" : sourceItem.model,
       }
     );
 
     parts.push(part);
   }
 
+  return filterParts(parts);
+}
+
+function pushSchemaPart(
+  parts: DataSourcePart[],
+  database: Database | null | undefined,
+  table: Table,
+  hasMultipleSchemas: boolean,
+) {
+  if (table.schema_name && hasMultipleSchemas && database != null) {
+    parts.push({
+      model: "schema",
+      name: table.schema_name,
+      href: database.id >= 0 ? Urls.browseSchema(table) : undefined,
+    });
+  }
+}
+
+function filterParts(parts: DataSourcePart[]): DataSourcePart[] {
   return parts.filter(
     (part) =>
       isValidElement(part) ||
@@ -136,15 +171,58 @@ export function getDataSourceParts({
   );
 }
 
+function getDataSourceItem(
+  query: Lib.Query,
+  metadata: Metadata,
+  source: Lib.TableMetadata | Lib.CardMetadata,
+): DataSourceItem | undefined {
+  const pickerInfo = Lib.pickerInfo(query, source);
+
+  if (pickerInfo?.cardId != null) {
+    const sourceInfo = Lib.displayInfo(query, -1, source);
+    return {
+      type: "card",
+      key: `card:${pickerInfo.cardId}`,
+      name: sourceInfo.displayName,
+      href: Urls.card({ id: pickerInfo.cardId, name: sourceInfo.displayName }),
+      model: getCardModel(sourceInfo),
+    };
+  }
+
+  const table =
+    pickerInfo?.tableId != null ? metadata.table(pickerInfo.tableId) : null;
+  if (table == null) {
+    return undefined;
+  }
+
+  return {
+    type: "table",
+    key: `table:${table.id}`,
+    name: table.displayName(),
+    href: getTableURL(table),
+    table,
+  };
+}
+
+function getCardModel(cardInfo: Lib.CardDisplayInfo): CardDataSourceModel {
+  if (cardInfo.isModel) {
+    return "model";
+  }
+  if (cardInfo.isMetric) {
+    return "metric";
+  }
+  return "question";
+}
+
 type QuestionTableBadgesProps = {
-  tables: Table[];
+  items: DataSourceItem[];
   subHead?: boolean;
   hasLink?: boolean;
   isLast?: boolean;
 };
 
 function QuestionTableBadges({
-  tables,
+  items,
   subHead,
   hasLink,
   isLast,
@@ -152,18 +230,18 @@ function QuestionTableBadges({
   const badgeInactiveColor =
     isLast && !subHead ? "text-primary" : "text-secondary";
 
-  const parts = tables.map((table) => (
+  const parts = items.map((item) => (
     <HeadBreadcrumbs.Breadcrumb
-      key={table.id}
-      to={hasLink ? getTableURL(table) : ""}
+      key={item.key}
+      to={hasLink ? item.href : ""}
       color={badgeInactiveColor}
     >
       <span>
-        {table.displayName()}
-        {!subHead && (
+        {item.name}
+        {!subHead && item.type === "table" && (
           <span className={S.IconWrapper}>
             <TableInfoIcon
-              table={table}
+              table={item.table}
               icon="info"
               size={16}
               position="bottom"
@@ -186,11 +264,5 @@ function QuestionTableBadges({
 }
 
 function getTableURL(table: Table) {
-  if (isVirtualCardId(table.id)) {
-    const cardId = getQuestionIdFromVirtualTableId(table.id);
-    if (cardId != null) {
-      return Urls.card({ id: cardId, name: table.displayName() });
-    }
-  }
   return Urls.question(table.newQuestion());
 }
