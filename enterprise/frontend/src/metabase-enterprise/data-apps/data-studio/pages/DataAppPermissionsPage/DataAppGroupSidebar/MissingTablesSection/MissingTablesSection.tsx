@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { getDatabaseFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getDatabaseFocusPermissionsUrl } from "metabase/permissions";
 import {
   Badge,
   Box,

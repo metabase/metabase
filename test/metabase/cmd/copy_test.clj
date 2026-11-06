@@ -147,13 +147,13 @@
     :model/ContentTranslation
     :model/DashboardFavorite
     :model/DataApp
-    :model/DataAppGroupAssignment
     :model/DataComplexityScore
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
     :model/EmbeddingSdkReact18Host
     :model/ExplorationQueryResult
+    :model/ImpersonationQueryCache
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog

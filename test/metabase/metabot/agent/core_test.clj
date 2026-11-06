@@ -1,6 +1,7 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.ai-tracing.core :as ait]
@@ -8,12 +9,15 @@
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.channel.settings :as channel.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
@@ -21,15 +25,23 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.features :as features]
+   [metabase.metabot.self.google.stream-generate-content :as gemini]
+   [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.util :as metabot.u]
+   [metabase.native-query-snippets.core :as snippets]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -186,16 +198,27 @@
           (is (contains? tools "edit_sql_query"))
           (is (contains? tools "replace_sql_query")))))))
 
+(defn- metabot-row
+  "The Metabot whose entity ID is `entity-id`."
+  [entity-id]
+  (t2/select-one :model/Metabot :entity_id entity-id))
+
+(defn- internal-metabot
+  "The internal Metabot, which offers run_query."
+  []
+  (metabot-row metabot.config/internal-metabot-id))
+
 (defn- run-query-offered-at-turn-start
   "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
    whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
    running a turn. The bindings stand in for the ones the agent loop makes."
-  [conversation-id capabilities]
+  [conversation-id capabilities metabot profile-id]
   (let [{:keys [tools system-msg]}
         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
                   scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
           (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
-                               :profile-id      :internal
+                               :metabot         metabot
+                               :profile-id      profile-id
                                :conversation-id conversation-id
                                :context         {:capabilities capabilities}}))]
     {:tool?       (contains? tools "run_query")
@@ -209,17 +232,19 @@
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
-        (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
-          (is (not (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))
-      (testing "the same request gets run_query once the admin turns it on"
-        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-          (is (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))))
+    (let [offered? #(:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]
+                                                             (internal-metabot) :internal))]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+            (is (not (offered?)))))
+        (testing "the same request gets run_query once the admin turns it on"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+            (is (offered?))))))))
 
 (deftest run-query-not-offered-where-others-can-read-the-conversation-test
   (let [rasta   (mt/user->id :rasta)
-        offered #(run-query-offered-at-turn-start % [])]
+        offered #(run-query-offered-at-turn-start % [] (internal-metabot) :internal)]
     (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
                    :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
                    :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
@@ -234,6 +259,22 @@
               (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
           (testing "no conversation does none of them"
             (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
+
+(deftest run-query-not-offered-to-embedded-metabot-test
+  ;; The request names the profile, so an embedded Metabot can ask for one that offers run_query.
+  (let [rasta    (mt/user->id :rasta)
+        embedded (metabot-row metabot.config/embedded-metabot-id)
+        internal (internal-metabot)]
+    (mt/with-temp [:model/MetabotConversation {own :id} {:user_id rasta}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (doseq [profile-id [:nlq :internal]]
+            (testing profile-id
+              (testing "the internal Metabot offers run_query"
+                (is (:tool? (run-query-offered-at-turn-start own [] internal profile-id))))
+              (testing "the embedded Metabot does not, and its prompt does not promise results"
+                (is (=? {:tool? false, :prompt? false}
+                        (run-query-offered-at-turn-start own [] embedded profile-id)))))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
@@ -264,25 +305,40 @@
              user-message (assoc-in [:error :user-message] user-message))})
 
 (deftest terminal-error-message-test
-  (let [denial [{:type :tool-input :id "a" :function "create_sql_query"}
-                (unrecoverable-part "a" "No native permission.")]]
+  (let [denial     [{:type :tool-input :id "a" :function "create_sql_query"}
+                    (unrecoverable-part "a" "No native permission.")]
+        undeclared {:type :tool-output :id "d" :result mut/internal-failure}]
     (testing "reads the user-facing message off an unrecoverable failure"
-      (is (= "No native permission." (#'agent/terminal-error-message denial))))
+      (is (= "No native permission." (#'agent/terminal-error-message {} denial 0))))
     (testing "a recoverable failure is not terminal — the model can still self-correct"
       (is (nil? (#'agent/terminal-error-message
+                 {}
                  [{:type :tool-output :id "b" :result {:output "syntax error"
-                                                       :error {:class :recoverable :code :x}}}]))))
+                                                       :error {:class :recoverable :code :x}}}]
+                 0))))
     (testing "and neither is a success"
       (is (nil? (#'agent/terminal-error-message
-                 [{:type :tool-output :id "b" :result {:output "fine"}}]))))
+                 {}
+                 [{:type :tool-output :id "b" :result {:output "fine"}}]
+                 0))))
     (testing "an unrecoverable failure with no :user-message gets the generic one, so the user is
              always told something"
       (is (= "Something went wrong."
-             (#'agent/terminal-error-message [(unrecoverable-part "c" nil)]))))
+             (#'agent/terminal-error-message {} [(unrecoverable-part "c" nil)] 0))))
     (testing "the first denial wins when an iteration produces several"
       (is (= "first" (#'agent/terminal-error-message
+                      {}
                       [(unrecoverable-part "a" "first")
-                       (unrecoverable-part "b" "second")]))))
+                       (unrecoverable-part "b" "second")]
+                      0))))
+    (testing "a failure no tool declared is terminal only once it is the turn's second"
+      (is (nil? (#'agent/terminal-error-message {} [undeclared] 1)))
+      (is (= "Something went wrong." (#'agent/terminal-error-message {} [undeclared] 2)))
+      (testing "or its first, in a profile that requires a tool call"
+        (is (= "Something went wrong."
+               (#'agent/terminal-error-message {:required-tool-call? true} [undeclared] 1))))
+      (testing "and a denial in the same iteration still shows its own message"
+        (is (= "No native permission." (#'agent/terminal-error-message {} (into [undeclared] denial) 2)))))
     (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
       (is (#'agent/should-continue? 0 20 #{} denial)))))
 
@@ -295,42 +351,107 @@
   [{:type    "code_editor"
     :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
 
-(defn- run-sql-denial-turn!
-  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
-  `viewing`, by default a SQL editor."
-  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
-  (let [call-count (atom 0)]
+(defn- run-turn!
+  "Run one turn of `profile-id` that starts with the user's `message`. The LLM returns `responses` in order and then
+  answers \"Sorry.\" in text. `context` is the request's context. `writer`, when given, receives the turn as SSE lines,
+  the way the chat endpoint streams it. Return the LLM requests and the turn's parts."
+  [profile-id message responses & {:keys [context writer]}]
+  (let [requests (atom [])]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
       ;; the tool executor lives inside `call-llm`, so redef the transport to let the tool run
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
-                                                          (if (= 1 (swap! call-count inc))
-                                                            (mut/mock-llm-response
-                                                             [{:type      :tool-input
-                                                               :id        "t1"
-                                                               :function  "create_sql_query"
-                                                               :arguments {:database_id database-id
-                                                                           :sql_query   "SELECT 1"
-                                                                           :title       "Results"}}])
-                                                            (mut/mock-llm-response [{:type :text :text "Sorry."}])))]
-        (let [parts (into [] (run-agent-loop
-                              {:messages   [{:role :user :content "Query that database"}]
-                               :state      {}
-                               :profile-id profile-id
-                               :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing viewing}}))]
-          {:llm-calls @call-count :parts parts})))))
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [request]
+                                                          (mut/mock-llm-response
+                                                           (get responses (dec (count (swap! requests conj request)))
+                                                                [{:type :text :text "Sorry."}])))]
+        (let [turn  (run-agent-loop
+                     {:messages   [{:role :user :content message}]
+                      :state      {}
+                      :profile-id profile-id
+                      :context    context})
+              parts (if writer
+                      (let [streamed (atom [])]
+                        (transduce (comp (u/tee-xf streamed) (self.core/parts->aisdk-sse-xf)) writer turn)
+                        @streamed)
+                      (into [] turn))]
+          {:llm-calls (count @requests) :requests @requests :parts parts})))))
+
+(defn- run-sql-turn!
+  "Run one turn whose LLM responses call `create_sql_query` against `database-id` and then answer in text, while the
+  user views `viewing`, by default a SQL editor. `calls` holds the call IDs of each response, by default one response
+  with one call. `writer` is as for [[run-turn!]]."
+  [profile-id database-id & {:keys [viewing calls writer] :or {viewing sql-editor-viewing, calls [["t1"]]}}]
+  (run-turn! profile-id
+             "Query that database"
+             (mapv (fn [ids]
+                     (mapv (fn [id]
+                             {:type      :tool-input
+                              :id        id
+                              :function  "create_sql_query"
+                              :arguments {:database_id database-id
+                                          :sql_query   "SELECT 1"
+                                          :title       "Results"}})
+                           ids))
+                   calls)
+             :context {:capabilities    ["permission:write_sql_queries"]
+                       :user_is_viewing viewing}
+             :writer  writer))
+
+(defn- run-tool-call-turn!
+  "Run one `profile-id` turn with `context`, whose first LLM response calls `function` with `arguments`.
+  Every later response is text."
+  [profile-id context function arguments]
+  (run-turn! profile-id
+             "Go ahead"
+             [[{:type :tool-input :id "t1" :function function :arguments arguments}]]
+             :context context))
+
+(defn- turn-outcome
+  "The LLM call count, the finish reason and the text the user saw, for a turn that [[run-tool-call-turn!]] ran."
+  [{:keys [llm-calls parts]}]
+  {:llm-calls     llm-calls
+   :finish-reason (:finish-reason (last parts))
+   :text          (str/join (keep #(when (= :text (:type %)) (:text %)) parts))})
 
 (deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
   (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql db-id :viewing [])]
+        (let [{:keys [llm-calls parts]} (run-sql-turn! :sql db-id :viewing [])]
           (is (= 1 llm-calls))
           (is (= :terminal-error (:finish-reason (last parts))))
           (is (some #(and (= :text (:type %))
                           (str/includes? (:text %) "No active SQL editor was found"))
                     parts)))))))
+
+(def ^:private sql-drafts
+  "SQL queries with no database selected yet, by how each is built.
+  The legacy form checks that the shape a client can still send gets the same answer."
+  (let [query (lib/prepare-for-serialization (lib/native-query meta/metadata-provider "SELECT 1"))]
+    {"no database key" (dissoc query :database)
+     "nil database"    (assoc query :database nil)
+     "legacy form"     {:database nil :type "native" :native {:query "SELECT 1" :template-tags {}}}}))
+
+(deftest sql-edit-without-a-database-ends-the-turn-test
+  (testing "an edit of a SQL query with no database ends the turn and asks the user to select one"
+    (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [[label draft] sql-drafts
+                profile       [:sql :internal :internal-sql]]
+          (testing (str label " " profile)
+            (is (= {:llm-calls     1
+                    :finish-reason :terminal-error
+                    :text          "No database is selected for this query. Select a database and try again."}
+                   (turn-outcome
+                    (run-tool-call-turn! profile
+                                         {:capabilities    ["permission:write_sql_queries"]
+                                          :user_is_viewing (conj sql-editor-viewing
+                                                                 {:type "adhoc" :id "draft" :query draft})}
+                                         "edit_sql_query"
+                                         {:query_id  "draft"
+                                          :checklist "Checked"
+                                          :title     "Results"
+                                          :edits     [{:old_string "1" :new_string "2"}]}))))))))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
   (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
@@ -344,8 +465,8 @@
       (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
       (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
       (mt/with-current-user (mt/user->id :rasta)
-        (testing ":sql forbids the model from answering in text, so the loop stops on the denial"
-          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql builder-db)]
+        (testing ":sql has no notebook builder to fall back to, so the loop stops on the denial"
+          (let [{:keys [llm-calls parts]} (run-sql-turn! :sql builder-db)]
             (is (= 1 llm-calls)
                 "one call, not the profile's 20 iterations")
             (is (= :terminal-error (:finish-reason (last parts))))
@@ -355,21 +476,22 @@
                 "the refusal is emitted as assistant text — a tool result is not rendered to the user")
             (is (some #(= :data (:type %)) parts)
                 "state data part still closes the turn")))
-        (testing (str ":internal stops on the same denial. The class decides, not the profile: only "
-                      "the user can grant this permission, so there is nothing for the agent to do "
-                      "with the turn. This used to continue, and the model paraphrased the refusal "
-                      "in its own words — nicer wording, bought with an extra LLM call, a profile "
-                      "exception, and a model that might have said something else entirely.")
-          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
-            (is (= 1 llm-calls)
-                "one call, where the profile gate used to allow a second")
-            (is (= :terminal-error (:finish-reason (last parts))))
-            (is (some #(and (= :text (:type %))
-                            (str/includes? (:text %) "do not have permission"))
-                      parts)
-                "the tool's own `:user-message`, which is authored and specific")))
+        (testing (str ":internal has the notebook builder, so the agent is told to build the question "
+                      "there and the turn continues")
+          (let [{:keys [llm-calls parts]} (run-sql-turn! :internal builder-db)]
+            (is (= 2 llm-calls))
+            (is (=? {:type   :tool-output
+                     :result {:error  {:class :recoverable}
+                              :output #"(?s).*Build the question with `construct_notebook_query`.*"}}
+                    (some #(when (= :tool-output (:type %)) %) parts)))
+            (is (not= :terminal-error (:finish-reason (last parts))))))
+        (testing ":internal-sql is :internal without the notebook builder, so the turn stops on the denial"
+          (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+            (let [{:keys [llm-calls parts]} (run-sql-turn! :internal-sql builder-db)]
+              (is (= 1 llm-calls))
+              (is (= :terminal-error (:finish-reason (last parts)))))))
         (testing "a database the user cannot read at all stops the turn the same way"
-          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
+          (let [{:keys [llm-calls parts]} (run-sql-turn! :sql unreadable-db)]
             (is (= 1 llm-calls)
                 "the read-check denial is terminal too -- otherwise the stricter permission loops")
             (is (= :terminal-error (:finish-reason (last parts))))
@@ -377,11 +499,129 @@
                             (str/includes? (:text %) "do not have access to this database"))
                       parts))))
         (testing "a database the user can query natively is not denied"
-          (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
+          (let [{:keys [parts]} (run-sql-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
 
+(deftest slack-dead-ends-end-the-turn-test
+  (mt/with-temp [:model/Card      {card-id :id} {}
+                 :model/Dashboard {dash-id :id} {}]
+    (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [schedule    {:frequency "daily" :hour 9}
+              slack-calls [[:slackbot "create_alert"
+                            {:card_id card-id :send_condition "has_result" :schedule schedule}]
+                           [:slackbot "create_dashboard_subscription"
+                            {:dashboard_id dash-id :schedule schedule}]]
+              chat-calls  (for [profile [:internal :internal-sql]]
+                            [profile "create_dashboard_subscription"
+                             {:dashboard_id dash-id :slack_channel "data-team" :schedule schedule}])
+              outcome     (fn [[profile function arguments]]
+                            (turn-outcome
+                             (run-tool-call-turn! profile
+                                                  (if (= :slackbot profile) {:slack_channel_id "D0123"} {})
+                                                  function
+                                                  arguments)))]
+          (testing "every alert and subscription tool ends the turn when Slack isn't connected"
+            (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
+              (doseq [[profile function :as call] (concat slack-calls chat-calls)]
+                (is (= {:llm-calls     1
+                        :finish-reason :terminal-error
+                        :text          "Slack isn't connected to Metabase. An admin can connect it in Admin settings."}
+                       (outcome call))
+                    (str profile " " function)))))
+          (testing "the Slack tools end the turn in a conversation that Metabase can't post to, such as a DM"
+            (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)
+                                        channel.settings/slack-cached-channels-and-usernames
+                                        (constantly {:channels []})]
+              (doseq [[_ function :as call] slack-calls]
+                (is (=? {:llm-calls     1
+                         :finish-reason :terminal-error
+                         :text          #"Metabase can't send alerts or subscriptions to this conversation\..*"}
+                        (outcome call))
+                    function)))))))))
+
+(deftest a-turn-survives-one-undeclared-failure-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                (fn [_] (throw (ex-info "Connection reset by peer" {})))]
+      (testing "the model reads only that the call failed, and answers"
+        (let [{:keys [llm-calls requests parts]} (run-sql-turn! :internal (mt/id))]
+          (is (= 2 llm-calls))
+          (is (some #{(:output mut/internal-failure)} (tree-seq coll? seq (:input (second requests)))))
+          (is (= :stop (:finish-reason (last parts))))))
+      (testing "the turn ends with the generic message"
+        (doseq [[label profile-id calls] [["on the second, in a later iteration" :internal [["t1"] ["t2"]]]
+                                          ["on the second, in the same iteration" :internal [["t1" "t2"]]]
+                                          ["on the first, in a profile that requires a tool call" :sql [["t1"]]]]]
+          (testing label
+            (let [{:keys [llm-calls parts]} (run-sql-turn! profile-id (mt/id) :calls calls)]
+              (is (= (count calls) llm-calls))
+              (is (= :terminal-error (:finish-reason (last parts))))
+              (is (some #(= "Something went wrong." (:text %)) parts)))))))))
+
+(deftest a-jvm-error-or-an-interrupt-ends-the-turn-at-once-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [throwable [(StackOverflowError.) (InterruptedException.)]]
+      (testing (.getSimpleName (class throwable))
+        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (fn [_] (throw throwable))]
+          (let [{:keys [llm-calls parts]} (run-sql-turn! :internal (mt/id))]
+            (is (= 1 llm-calls))
+            (is (= :terminal-error (:finish-reason (last parts))))
+            (is (some #(= "Something went wrong." (:text %)) parts))))))))
+
+(defn- note-tool
+  "A tool named `save_note` that fails on every call with an exception no tool declared. Its declaration says it
+  writes when `writes?` is true."
+  [writes?]
+  (reify tools.core/Tool
+    (declaration [_]
+      (cond-> {:name "save_note" :description "Saves a note." :args [:map {:closed true}]}
+        writes? (assoc :metabot/writes? true)))
+    (handle [_ _args _ctx]
+      (throw (ex-info "Connection reset after the commit" {})))))
+
+(deftest a-tool-that-writes-gets-no-second-try-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [get-profile (mt/original-fn #'profiles/get-profile)]
+      (doseq [[label writes? expected-calls finish-reason text]
+              [["a tool that writes ends the turn at once, since the write may have happened" true 1 :terminal-error
+                "Something went wrong. The change may have been saved, so check before you try again."]
+               ["a tool that only reads keeps its second try" false 2 :stop "Sorry."]]]
+        (testing label
+          (mt/with-dynamic-fn-redefs [profiles/get-profile (fn [profile-id]
+                                                             (assoc (get-profile profile-id)
+                                                                    :tools [(note-tool writes?)]))]
+            (let [{:keys [llm-calls parts]}
+                  (run-turn! :internal "Save a note" [[{:type :tool-input :id "t1" :function "save_note"
+                                                        :arguments {}}]])]
+              (is (= expected-calls llm-calls))
+              (is (= finish-reason (:finish-reason (last parts))))
+              (is (= text (apply str (keep #(when (= :text (:type %)) (:text %)) parts)))
+                  "what the user reads"))))))))
+
+(deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [create-sql-query (mt/original-fn #'create-sql-query-tools/create-sql-query)]
+      (doseq [[outcome call] {"succeeds"                           create-sql-query
+                              "fails with an undeclared exception" (fn [_] (throw (ex-info "Connection reset" {})))}]
+        (testing (str "the client leaves while a tool call runs, and the call " outcome)
+          (let [canceled-chan (a/promise-chan)
+                canceled?     (volatile! false)]
+            (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (fn [args]
+                                                                                  (a/>!! canceled-chan :canceled)
+                                                                                  (call args))]
+              (let [{:keys [llm-calls parts]}
+                    (run-sql-turn! :internal (mt/id)
+                                   :writer (#'metabot.api/streaming-writer-rf
+                                            (java.io.ByteArrayOutputStream.) canceled-chan canceled?))]
+                (is @canceled?)
+                (is (= 1 llm-calls))
+                (is (not-any? #(= :finish (:type %)) parts)
+                    "the turn stops where the client left, without finishing")))))))))
+
 (deftest blank-replacement-after-edit-test
-  (mt/as-admin
+  ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections
                                          llm-metabot-provider test-provider]
@@ -420,6 +660,84 @@
               (is (= "SELECT 3" (metabot.u/extract-sql-content (get-in final-state [:queries "q1"]))))
               (is (= (if (= profile :sql) :terminal-tool :stop) (:finish-reason (last replaced)))))))))))
 
+(defn- edit-viewed-sql!
+  "Run an agent turn in which the mocked LLM edits the query on screen with `edit_sql_query`.
+  The LLM changes `1` to `2` in the query whose ID the viewing context in `context` shows first. Return that query ID
+  and the parts of the turn."
+  [context]
+  (let [shown-id (atom nil)
+        calls    (atom 0)
+        parts    (mt/with-dynamic-fn-redefs
+                   [openrouter/openrouter
+                    (fn [request]
+                      (if (= 1 (swap! calls inc))
+                        (let [query-id (second (re-find #"Query ID: ([^\s\\\"]+)" (pr-str request)))]
+                          (reset! shown-id query-id)
+                          (mut/mock-llm-response
+                           [{:type      :tool-input
+                             :id        "edit"
+                             :function  "edit_sql_query"
+                             :arguments {:query_id  query-id
+                                         :checklist "Checked"
+                                         :title     "Results"
+                                         :edits     [{:old_string "1" :new_string "2"}]}}]))
+                        (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                   (into [] (run-agent-loop {:messages   [{:role :user :content "Select 2 instead"}]
+                                             :state      {}
+                                             :profile-id :internal
+                                             :context    context})))]
+    {:shown-id @shown-id
+     :parts    parts}))
+
+(deftest edit-viewed-saved-sql-card-test
+  ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (doseq [card-type ["question" "model"]]
+          (testing (str "a saved SQL " card-type " on screen")
+            (let [card-id                  157
+                  {:keys [shown-id parts]} (edit-viewed-sql!
+                                            {:capabilities    ["permission:write_sql_queries"]
+                                             :user_is_viewing [{:type  card-type
+                                                                :id    card-id
+                                                                :query {:lib/type :mbql/query
+                                                                        :database db-id
+                                                                        :stages   [{:lib/type :mbql.stage/native
+                                                                                    :native   "SELECT 1"}]}}]})
+                  edit-result              (some #(when (and (= :tool-output (:type %)) (= "edit" (:id %)))
+                                                    (:result %))
+                                                 parts)
+                  state                    (some #(when (= "state" (:data-type %)) (:data %)) parts)]
+              (testing "the viewing context shows a query ID for the card's SQL"
+                (is (some? shown-id)))
+              (testing "edit_sql_query edits the SQL of the card on screen"
+                (is (nil? (:error edit-result)) (:output edit-result))
+                (is (= "SELECT 2" (metabot.u/extract-sql-content (get-in state [:queries shown-id])))))
+              (testing "the card's own ID is not a query ID, so run_query still runs the saved card"
+                (is (not= (str card-id) shown-id))
+                (is (not (contains? (:queries state) (str card-id))))))))))))
+
+(deftest edit-sql-model-in-model-editor-test
+  (testing "an edit of a SQL model's query goes to the SQL editor of the model editor"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [{:keys [parts]} (edit-viewed-sql!
+                               {:capabilities    ["permission:write_sql_queries"]
+                                :user_is_viewing [{:type  "model"
+                                                   :id    157
+                                                   :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                  {:type    "code_editor"
+                                                   :buffers [{:id     "qb"
+                                                              :source {:language "sql" :database_id (mt/id)}
+                                                              :cursor {:line 1 :column 1}}]}]})
+              data-parts      (into {} (comp (filter :data-type) (map (juxt :data-type :data))) parts)]
+          (is (=? {:buffer_id "qb" :mode "rewrite" :value "SELECT 2"}
+                  (get data-parts "code_edit")))
+          (is (not (contains? data-parts "generated_entity"))))))))
+
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
@@ -444,11 +762,10 @@
                                                       (reset! captured llm-opts)
                                                       (mut/mock-llm-response
                                                        [{:type :text :text "Hello"}]))]
-            (into [] (run-agent-loop
-                      {:messages   [{:role :user :content "Hi"}]
-                       :state      {}
-                       :profile-id :sql
-                       :context    {}}))
+            (run-agent-loop! {:messages   [{:role :user :content "Hi"}]
+                              :state      {}
+                              :profile-id :sql
+                              :context    {}})
             (is (= {:tool-choice "required"} @captured)))))
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
@@ -532,7 +849,7 @@
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
-      (let [get-profile profiles/get-profile
+      (let [get-profile (mt/original-fn #'profiles/get-profile)
             call-count  (atom 0)
             tool-call   (fn [n]
                           [{:type      :tool-input
@@ -561,6 +878,209 @@
           (let [finish (run-loop [tool-call (constantly [{:type :text :text "Done"}])])]
             (is (= 2 @call-count))
             (is (= {:type :finish :finish-reason :stop} finish))))))))
+
+(def ^:private step-limit-text
+  "Metabot reached its step limit before it could finish. Try a more specific request.")
+
+(def ^:private read-calls
+  "The name and arguments of a tool call that reads, for each profile that the step-limit tests run."
+  {:document-generate-content ["list_available_fields" {:table_ids [] :model_ids [] :metric_ids []}]
+   :sql                       ["list_snippets" {}]
+   :internal                  ["search" {}]
+   :slackbot                  ["search" {}]})
+
+(defn- step-limit-turn!
+  "Run a turn of `profile-id` whose model reads until a step limit of 2, each call reporting 100 prompt and 20
+  completion tokens, and answers any later call with the stream `(last-response)` returns, which may throw. Return
+  the requests that the model got and the turn's parts."
+  [profile-id last-response & {:keys [request-canceled-chan]}]
+  (let [get-profile          (mt/original-fn #'profiles/get-profile)
+        [function arguments] (read-calls profile-id)
+        requests             (atom [])]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
+                                  metabot-search/search (constantly [])
+                                  snippets/list-native-query-snippets
+                                  (constantly [])
+                                  openrouter/openrouter (fn [request]
+                                                          (let [n (count (swap! requests conj request))]
+                                                            (if (<= n 2)
+                                                              (mut/mock-llm-response
+                                                               [{:type      :tool-input
+                                                                 :id        (str "t" n)
+                                                                 :function  function
+                                                                 :arguments arguments}
+                                                                {:type  :usage
+                                                                 :usage {:promptTokens 100 :completionTokens 20}}])
+                                                              (last-response))))]
+        {:parts    (into [] (run-agent-loop
+                             (cond-> {:messages   [{:role :user :content "Chart revenue by month"}]
+                                      :profile-id profile-id
+                                      :context    (if (= :slackbot profile-id) {:slack_channel_id "D0123"} {})}
+                               request-canceled-chan (assoc :request-canceled-chan request-canceled-chan))))
+         :requests @requests}))))
+
+(deftest step-limit-reply-test
+  (mt/as-admin
+    (testing "in a profile that requires a tool call, a turn at the step limit ends with the reply of one last call
+             that can call no tool"
+      (doseq [profile-id [:document-generate-content :sql]]
+        (testing profile-id
+          (let [reply "The customer table has no link to orders, so I couldn't chart revenue by customer segment."
+                {:keys [parts requests]} (step-limit-turn! profile-id
+                                                           #(mut/mock-llm-response [{:type :text :text reply}]))
+                last-request             (last requests)]
+            (is (= 3 (count requests)))
+            (is (=? {:tool_choice "none" :tools seq} last-request))
+            (is (=? {:role :user :content #(str/includes? % "step limit")} (last (:input last-request))))
+            (is (= reply (str/join (keep #(when (= :text (:type %)) (:text %)) parts))))
+            (is (=? [{:type :text}
+                     {:type :data :data-type "state"}
+                     {:type :finish :finish-reason :max-iterations}]
+                    (take-last 3 parts)))))))
+    (testing "the web chat and Slack profiles end at the step limit with no other call"
+      (doseq [profile-id [:internal :slackbot]]
+        (testing profile-id
+          (let [{:keys [parts requests]} (step-limit-turn! profile-id
+                                                           #(mut/mock-llm-response [{:type :text :text "Unexpected"}]))]
+            (is (= 2 (count requests)))
+            (is (=? [{:type :tool-output}
+                     {:type :data :data-type "state"}
+                     {:type :finish :finish-reason :max-iterations}]
+                    (take-last 3 parts)))))))))
+
+(deftest step-limit-reply-fallback-test
+  (mt/as-admin
+    (testing "a last call that fails, throws or answers with no text leaves the fixed reply"
+      (doseq [[ending last-response] [["fails" #(mut/mock-llm-response [{:type :error :errorText "Overloaded"}])]
+                                      ["throws" #(throw (ex-info "The provider closed the stream" {}))]
+                                      ["answers with no text" #(mut/mock-llm-response [])]]]
+        (testing ending
+          (let [{:keys [parts requests]} (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                                           (step-limit-turn! :document-generate-content last-response))]
+            (is (= 3 (count requests)))
+            (is (=? [{:type :text :text step-limit-text}
+                     {:type :data :data-type "state"}
+                     {:type :finish :finish-reason :max-iterations}]
+                    (take-last 3 parts)))
+            (is (not-any? #(= :error (:type %)) parts)
+                "the last call's failure is not the turn's")))))
+    (testing "a canceled request makes no last call"
+      (let [canceled (a/promise-chan)]
+        (a/>!! canceled true)
+        (let [{:keys [parts requests]} (step-limit-turn! :document-generate-content
+                                                         #(mut/mock-llm-response [{:type :text :text "Unexpected"}])
+                                                         :request-canceled-chan canceled)]
+          (is (= 2 (count requests)))
+          (is (=? {:type :text :text step-limit-text}
+                  (last (filter #(= :text (:type %)) parts)))))))))
+
+(deftest step-limit-reply-usage-test
+  (testing "the usage that the last call reports before its stream breaks counts toward the turn's saved usage"
+    (mt/as-admin
+      (let [broken-stream   #(eduction (openrouter/openrouter->aisdk-chunks-xf)
+                                       (chat-completions/usage-once
+                                        (reify clojure.lang.IReduceInit
+                                          (reduce [_ rf init]
+                                            (rf init {:usage {:prompt_tokens 700 :completion_tokens 30}})
+                                            (throw (java.io.IOException. "Connection reset after the usage chunk"))))))
+            {:keys [parts]} (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                              (step-limit-turn! :document-generate-content broken-stream))]
+        (is (=? {:type :text :text step-limit-text}
+                (last (filter #(= :text (:type %)) parts))))
+        (is (= {test-provider {:prompt 900 :completion 70}}
+               (metabot.persistence/extract-usage parts)))
+        (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
+
+(def ^:private partial-reply
+  "The text that the last call streams before it stops."
+  "I couldn't chart revenue by customer segment because")
+
+(defn- claude-stream
+  "A Claude stream of [[partial-reply]] that stops with `stop-reason`, through the Claude adapter."
+  [stop-reason]
+  (eduction (claude/claude->aisdk-chunks-xf)
+            [{:type "message_start" :message {:id "msg-1" :usage {:input_tokens 50 :output_tokens 0}}}
+             {:type "content_block_start" :index 0 :content_block {:type "text" :text ""}}
+             {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text partial-reply}}
+             {:type "content_block_stop" :index 0}
+             {:type "message_delta" :delta {:stop_reason stop-reason} :usage {:output_tokens 8}}
+             {:type "message_stop"}]))
+
+(defn- chat-completions-stream
+  "A Chat Completions stream of [[partial-reply]] that stops with `finish-reason`, through `xf`."
+  [xf finish-reason]
+  (eduction xf
+            [{:id "msg-1" :choices [{:delta {:content partial-reply}}]}
+             {:id      "msg-1"
+              :choices [{:delta {} :finish_reason finish-reason}]
+              :usage   {:prompt_tokens 50 :completion_tokens 8}}]))
+
+(deftest step-limit-reply-stop-reason-test
+  (mt/as-admin
+    (doseq [[label stream reply]
+            [["a Claude refusal" (claude-stream "refusal") step-limit-text]
+             ["a Gemini recitation stop"
+              (eduction (gemini/->aisdk-chunks-xf)
+                        [{:responseId "msg-1"
+                          :candidates [{:content {:role "model" :parts [{:text partial-reply}]}}]}
+                         {:candidates    [{:finishReason "RECITATION"}]
+                          :usageMetadata {:promptTokenCount 50 :candidatesTokenCount 8 :totalTokenCount 58}}])
+              step-limit-text]
+             ["an OpenAI content filter"
+              (eduction (openai/openai->aisdk-chunks-xf)
+                        [{:type "response.output_item.added" :item {:type "message" :id "out-1"}}
+                         {:type "response.content_part.added" :item_id "out-1" :part {:type "output_text" :text ""}}
+                         {:type "response.output_text.delta" :item_id "out-1" :delta partial-reply}
+                         {:type     "response.incomplete"
+                          :response {:id                 "msg-1"
+                                     :incomplete_details {:reason "content_filter"}
+                                     :usage              {:input_tokens 50 :output_tokens 8 :total_tokens 58}}}])
+              step-limit-text]
+             ["a Chat Completions content filter"
+              (chat-completions-stream (chat-completions/chat-completions->aisdk-chunks-xf) "content_filter")
+              step-limit-text]
+             ["a Z.AI sensitive-content stop" (chat-completions-stream (zai/zai->aisdk-chunks-xf) "sensitive")
+              step-limit-text]
+             ["a stop reason the adapter doesn't know"
+              (chat-completions-stream (chat-completions/chat-completions->aisdk-chunks-xf)
+                                       "insufficient_system_resource")
+              step-limit-text]
+             ["a Z.AI network error" (chat-completions-stream (zai/zai->aisdk-chunks-xf) "network_error")
+              step-limit-text]
+             ["a normal Claude stop" (claude-stream "end_turn") partial-reply]]]
+      (testing label
+        (let [{:keys [parts]} (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                                (step-limit-turn! :document-generate-content (constantly stream)))]
+          (is (= reply (str/join (keep #(when (= :text (:type %)) (:text %)) parts))))
+          (is (= {test-provider {:prompt 250 :completion 48}}
+                 (metabot.persistence/extract-usage parts)))
+          (is (not-any? #(= :error (:type %)) parts))
+          (is (= {:type :finish :finish-reason :max-iterations} (last parts))))))))
+
+(deftest step-limit-reply-history-failure-test
+  (testing "a failure while the last call's history is built leaves the fixed reply and the earlier usage"
+    (mt/as-admin
+      (let [build-history (mt/original-fn #'messages/build-message-history)
+            builds        (atom 0)
+            third-fails   (fn [& args]
+                            (if (= 3 (swap! builds inc))
+                              (throw (ex-info "The viewing context is gone" {}))
+                              (apply build-history args)))
+            {:keys [parts requests]}
+            (mt/with-dynamic-fn-redefs [messages/build-message-history third-fails]
+              (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                (step-limit-turn! :document-generate-content
+                                  #(mut/mock-llm-response [{:type :text :text "Unexpected"}]))))]
+        (is (= [3 2] [@builds (count requests)]))
+        (is (=? [{:type :text :text step-limit-text}
+                 {:type :data :data-type "state"}
+                 {:type :finish :finish-reason :max-iterations}]
+                (take-last 3 parts)))
+        (is (= {test-provider {:prompt 200 :completion 40}}
+               (metabot.persistence/extract-usage parts)))
+        (is (not-any? #(= :error (:type %)) parts))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj
@@ -963,7 +1483,7 @@
                                           claude/claude
                                           (fn [opts]
                                             (if (= 1 (count (swap! requests conj (claude/claude-request-body opts))))
-                                              (do (t2/update! :model/Dashboard dashboard-id {:name "Ops updated"})
+                                              (do (t2/update! :model/Dashboard :id dashboard-id {:name "Ops updated"})
                                                   (metabot.settings/metabot-chat-system-prompt! "Use American spelling.")
                                                   (reset! semantic-search false)
                                                   (mut/mock-llm-response [{:type      :tool-input
@@ -971,12 +1491,11 @@
                                                                            :function  "load_skill"
                                                                            :arguments {:ids ["read-resource"]}}]))
                                               (mut/mock-llm-response [{:type :text :text "Done."}])))]
-                (into [] (run-agent-loop
-                          {:messages   [{:role :user :content "Help me with this dashboard."}]
-                           :state      {}
-                           :profile-id :internal
-                           :context    {:current_user_time "2026-10-05T12:00:00Z"
-                                        :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}}))
+                (run-agent-loop! {:messages   [{:role :user :content "Help me with this dashboard."}]
+                                  :state      {}
+                                  :profile-id :internal
+                                  :context    {:current_user_time "2026-10-05T12:00:00Z"
+                                               :user_is_viewing   [{:type "dashboard" :id dashboard-id}]}})
                 (let [[{system-1 :system tools-1 :tools messages-1 :messages}
                        {system-2 :system tools-2 :tools messages-2 :messages}] @requests]
                   (is (str/includes? (pr-str system-1) "Use British spelling."))
@@ -1491,8 +2010,12 @@
                                   :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000002"}})
                 (let [events (snowplow-test/pop-event-data-and-user-id!)
                       tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
-                  (is (=? [{:data {"event"  "agent_used_tool"
-                                   "result" "error"}}]
+                  (is (=? [{:data {"event"         "agent_used_tool"
+                                   "result"        "error"
+                                   "event_details" {"tool_name"   "search"
+                                                    "step"        1
+                                                    "error_class" "validation"
+                                                    "error_code"  "invalid-arguments"}}}]
                           tool-events)))))))))))
 
 (deftest token-usage-snowplow-test
@@ -1561,7 +2084,9 @@
                       :timeline_events []}
         memory (-> (#'agent/init-agent {:profile-id :internal
                                         :context {:user_is_viewing
-                                                  [{:chart_configs [chart-config]}]}})
+                                                  [{:type          "adhoc"
+                                                    :query         query
+                                                    :chart_configs [chart-config]}]}})
                    :memory-atom
                    deref)
 
@@ -1571,8 +2096,10 @@
         chart-key (first (keys charts))]
     (testing "Loaded charts from chart configs into memory"
       (is (string? chart-key))
-      ;; :query_id must match :chart_id — it's how edit_chart later carries a
-      ;; query-id through for this chart (see chart-config->chart, extract-charts).
+      ;; :query_id is the ID that seed-state stores the ad hoc item's query under, which is the item ID.
+      ;; It is how edit_chart later carries a query-id through for this chart (see chart-config->chart,
+      ;; extract-charts).
+      (is (contains? (get-in memory [:state :queries]) chart-key))
       (is (=? {chart-key {:chart_id chart-key
                           :query_id chart-key
                           :timeline_events []
@@ -1583,6 +2110,66 @@
       (is (every? string? (keys chart-configs)))
       (is (=? {chart-configs-key chart-config}
               chart-configs)))))
+
+(deftest edit-chart-of-viewed-saved-card-test
+  ;; A real user, not `mt/as-admin`: tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (let [card-id  157
+              query    {:lib/type :mbql/query
+                        :database db-id
+                        :stages   [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+              run-turn (fn [card-type]
+                         (let [shown-id (atom nil)
+                               calls    (atom 0)
+                               parts    (mt/with-dynamic-fn-redefs
+                                          [openrouter/openrouter
+                                           (fn [request]
+                                             (if (= 1 (swap! calls inc))
+                                               (do (reset! shown-id (second (re-find #"Query ID: ([^\s\\\"]+)"
+                                                                                     (pr-str request))))
+                                                   (mut/mock-llm-response
+                                                    [{:type      :tool-input
+                                                      :id        "edit"
+                                                      :function  "edit_chart"
+                                                      :arguments {:chart_id         (str card-id)
+                                                                  :new_viz_settings {:chart_type "table"}
+                                                                  :title            "Results"
+                                                                  :description      "All rows."}}]))
+                                               (mut/mock-llm-response [{:type :text :text "Done."}])))]
+                                          (into [] (run-agent-loop
+                                                    {:messages   [{:role :user :content "Show it as a table"}]
+                                                     :state      {}
+                                                     :profile-id :internal
+                                                     :context    {:user_is_viewing
+                                                                  [{:type          card-type
+                                                                    :id            card-id
+                                                                    :query         query
+                                                                    :chart_configs [{:title        "Results"
+                                                                                     :query        query
+                                                                                     :display_type "bar"}]}]}})))]
+                           {:shown-id @shown-id
+                            :result   (some #(when (and (= :tool-output (:type %)) (= "edit" (:id %))) (:result %))
+                                            parts)
+                            :state    (some #(when (= "state" (:data-type %)) (:data %)) parts)}))]
+          (doseq [card-type ["question" "model"]]
+            (testing (str "a saved " card-type "'s chart points at the query on screen")
+              (let [{:keys [shown-id result state]} (run-turn card-type)]
+                (is (nil? (:error result)) (:output result))
+                (is (some? shown-id))
+                (is (= shown-id (get-in state [:charts (str card-id) :query_id])))
+                (is (str/includes? (:output result) (str "query-id=\"" shown-id "\"")))
+                (testing "and the card ID stays free for run_query to run the saved card"
+                  (is (not (contains? (:queries state) (str card-id))))))))
+          (testing "a saved metric's query is not seeded, so its chart points at no query"
+            (let [{:keys [result state]} (run-turn "metric")]
+              (is (nil? (:error result)) (:output result))
+              (is (nil? (get-in state [:charts (str card-id) :query_id])))
+              (is (not (contains? (:queries state) (str card-id))))
+              (testing "and the chart in the tool output has no query-id attribute"
+                (is (not (str/includes? (:output result) "query-id=")))))))))))
 
 (deftest viewing-context-item-id-persists-once-stored-test
   (let [query  {:database 1 :type :query :query {:source-table 1}}

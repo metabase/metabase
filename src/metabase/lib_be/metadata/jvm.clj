@@ -24,7 +24,6 @@
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -165,13 +164,38 @@
   (t2/resolve-model :model/Database) ; for side-effects
   model)
 
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/database
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  "Qualify unqualified kv-args when fetching a `:metadata/database`."
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "database" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/database
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
-  (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details
-                   :admin_details :timezone :default_schema :router_database_id]}))
+  (merge
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:database/id
+                :database/engine
+                :database/name
+                :database/dbms_version
+                :database/settings
+                :database/is_audit
+                :database/is_attached_dwh
+                :database/details
+                :database/write_data_details
+                :database/timezone
+                :database/default_schema
+                :database/router_database_id
+                [:router/user_attribute :router_user_attribute]]
+    :from      [[(t2/table-name :model/Database) :database]]
+    :left-join [[:db_router :router]
+                [:= :router/database_id :database/id]]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -198,7 +222,7 @@
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
          {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
-          :from   [(warehouse-schema-overlay/table-query)]}))
+          :from   [(t2/table-name :model/Table)]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -267,7 +291,7 @@
                 :dimension/type
                 :values/human_readable_values
                 :values/values]
-    :from      [(warehouse-schema-overlay/field-query {:alias :field})]
+    :from      [[(t2/table-name :model/Field) :field]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :field/table_id :table/id]
                 [(t2/table-name :model/Dimension) :dimension]

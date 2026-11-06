@@ -16,8 +16,8 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.driver.settings :as driver.settings]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -53,7 +53,6 @@
             (f))))
 
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections
   test-helpers/clean-remote-sync-state
   (fn [f]
     (mt/with-premium-features #{:remote-sync}
@@ -1023,7 +1022,7 @@
        (let [task (pull!)]
          (is (remote-sync.task/successful? task))
          (is (= "pulled" (get-in task [:outcome :kind]))))
-       (is (not (t2/exists? :model/Card (:id model))))
+       (is (not (t2/exists? :model/Card :id (:id model))))
        (is (false? (remote-sync.object/dirty?)))
        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
@@ -1036,7 +1035,7 @@
        (let [task (pull!)]
          (is (remote-sync.task/successful? task))
          (is (= "pulled" (get-in task [:outcome :kind]))))
-       (is (= :question (t2/select-one-fn :type :model/Card (:id model))))
+       (is (= :question (t2/select-one-fn :type :model/Card :id (:id model))))
        (is (false? (remote-sync.object/dirty?)))
        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
@@ -1088,8 +1087,8 @@
          (testing "a normal pull after another instance's change keeps the action"
            (commit-remote! {:upsert {model-path (str/replace (repo-file model-path) "name: Venues Model" "name: Renamed Model")}})
            (is (remote-sync.task/successful? (pull!)))
-           (is (= "Renamed Model" (t2/select-one-fn :name :model/Card (:id model))))
-           (is (t2/exists? :model/Action action-id))))))))
+           (is (= "Renamed Model" (t2/select-one-fn :name :model/Card :id (:id model))))
+           (is (t2/exists? :model/Action :id action-id))))))))
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
@@ -2291,6 +2290,54 @@
                                  :remote-sync-type  :read-write
                                  :collections       {coll-id true}})
           (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
+
+(defn- do-with-setup-redefs! [thunk]
+  (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                              source/source-from-settings (constantly (test-helpers/create-mock-source))]
+    (mt/with-temporary-setting-values [remote-sync-url    nil
+                                       remote-sync-branch nil
+                                       remote-sync-type   :read-only]
+      (collections.tu/with-library-not-synced
+        (collections.tu/with-library [{:keys [library data metrics]}]
+          (thunk (mapv :id [library data metrics])))))))
+
+(defn- synced-states [collection-ids]
+  (t2/select-fn-vec :is_remote_synced :model/Collection :id [:in collection-ids] {:order-by [:id]}))
+
+(deftest settings-syncs-existing-library-test
+  (testing "ENG-14338: setting up read-write sync with an existing Library marks it synced, and existing transforms are tracked"
+    (mt/with-temp [:model/Transform {transform-id :id} {:name "Existing Transform"}]
+      (do-with-setup-redefs!
+       (fn [[library-id :as library-ids]]
+         (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                               {:remote-sync-url        "https://github.com/test/repo.git"
+                                :remote-sync-branch     "main"
+                                :remote-sync-type       :read-write
+                                :remote-sync-transforms true
+                                :collections            {library-id true}})
+         (is (= [true true true] (synced-states library-ids)))
+         (is (contains? (dirty-ids "transform") transform-id)))))))
+
+(deftest settings-leaves-library-unsynced-test
+  (testing "The Library stays unsynced unless the request syncs it"
+    (do-with-setup-redefs!
+     (fn [library-ids]
+       (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                             {:remote-sync-url    "https://github.com/test/repo.git"
+                              :remote-sync-branch "main"
+                              :remote-sync-type   :read-write})
+       (is (= [false false false] (synced-states library-ids)))))))
+
+(deftest settings-disable-leaves-library-untracked-test
+  (testing "Disabling read-write sync doesn't mark the Library synced or track it on the way out"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                       remote-sync-branch "main"
+                                       remote-sync-type   :read-write]
+      (collections.tu/with-library-not-synced
+        (collections.tu/with-library [{:keys [library]}]
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:remote-sync-url ""})
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id library))))
+          (is (not (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id (:id library)))))))))
 
 ;; ---------- API-level guard sweep --------------------------------------------------------------
 ;;

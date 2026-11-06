@@ -18,6 +18,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+(set! *warn-on-reflection* true)
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
@@ -66,7 +68,7 @@
   metabase-enterprise.audit-app.permissions
   [query]
   (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
-                  query)))
+                  {:type qp.error-type/disabled-feature, :query query})))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."

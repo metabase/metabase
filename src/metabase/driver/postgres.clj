@@ -28,6 +28,7 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -96,6 +97,7 @@
                               :rename                         true
                               :schemas                        true
                               :split-part                     true
+                              :stage-ctes                     true
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
@@ -492,10 +494,6 @@
 (defmethod driver.sql/json-field-length :postgres
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
-
-(defmethod sql.qp/use-ctes-for-stages? :postgres
-  [_driver]
-  true)
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
@@ -1211,7 +1209,7 @@
                                         :quoted true
                                         :dialect (sql.qp/quote-style driver))))
                    sorted-rename-map)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^java.sql.Statement stmt ^String sql))
@@ -1300,7 +1298,7 @@
 
 (defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
           dialect      (sql.qp/quote-style driver)
           [sql & _] (sql/format {::copy       (keyword table-name)

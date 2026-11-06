@@ -2,8 +2,9 @@
   "Guards the one gap `with-pipeline-errors` cannot close by itself.
 
   The converter maps a pipeline `:error` code onto a declaration by name. A code with no declaration
-  is not converted, so it becomes unrecoverable and ends the turn — silently, and only in production.
-  This test reads the pipeline's own sources and fails while the gap is still cheap to close."
+  is not converted, so it becomes `:internal` and the model never reads the pipeline's message. That
+  happens silently, and only in production. This test reads the pipeline's own sources and fails
+  while the gap is still cheap to close."
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -70,7 +71,7 @@
     (is (empty? missing)
         (str "These representations-pipeline :error codes have no declaration in "
              "metabase.metabot.tools.recoverable.pipeline, so `tools.core/with-pipeline-errors` "
-             "will not convert them and they will end the turn instead of teaching the agent: "
+             "will not convert them, and the agent will read a fixed sentence instead of what went wrong: "
              (pr-str (sort missing))
              ". Add a `defpipeline-error` for each, or decide it really is unrecoverable and say so "
              "in a comment there."))))
@@ -282,6 +283,41 @@
           (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
           (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
 
+(def ^:private cross-database-recovery
+  (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a notebook "
+       "query or in SQL. Tell the user that you can't combine data from these two databases in one query, and say "
+       "what you can do instead."))
+
+(deftest table-in-another-database-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {other-db :name} {:name "Other Database"}]
+      (let [db           (:name (mt/db))
+            by-user-name (fn [users-db]
+                           {"source-table" [db "PUBLIC" "ORDERS"]
+                            "aggregation"  [["count" {}]]
+                            "breakout"     [["field" {} [users-db "PUBLIC" "USERS" "NAME"]]]})]
+        (testing "a column of a table in another database tells the agent that no query can combine the two"
+          (is (= {:code ::pipeline/cross-database-table
+                  :text (str "Portable table FK " (pr-str [other-db "PUBLIC" "USERS"]) " references database "
+                             (pr-str other-db) ", but this query targets database " (pr-str db) ". "
+                             "Cross-database queries are not supported.\n"
+                             cross-database-recovery)}
+                 (select-keys (construct-failure (by-user-name other-db)) [:code :text]))))
+        (testing "a database name that names no database is an unknown table"
+          (is (= ::pipeline/unknown-table (:code (construct-failure (by-user-name "Othr Database"))))))))))
+
+(deftest both-surfaces-name-the-same-ids-test
+  (testing "for every pipeline code, the Agent API hint names an id exactly when Metabot's payload carries it"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [data {:table-id 424242 :source-table 424242 :database-id (mt/id)}]
+        (doseq [code  (pipeline-codes)
+                :let  [{:keys [table-id database-id]} (pipeline/payload code (ex-info "" (assoc data :error code)))
+                       hint (v1-hints/recovery-hint (assoc data :error code))]
+                :when hint]
+          (testing code
+            (is (= (some? table-id) (str/includes? hint "metabase://table/424242/")))
+            (is (= (some? database-id) (str/includes? hint (str "metabase://database/" (mt/id) "/"))))))))))
+
 (deftest ^:parallel structural-paths-payload-test
   (doseq [[paths expected-class] [["stages[0].filters: invalid type" :recoverable]
                                   [nil :unrecoverable]
@@ -358,7 +394,7 @@
                  :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
                  :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
                  :unknown-segment :unknown-segment-id :unknown-database :ambiguous-database-name
-                 :cross-database-card :cross-database-measure :cross-database-segment
+                 :cross-database-card :cross-database-measure :cross-database-segment :cross-database-table
                  :missing-source-in-first-stage]]
       (doseq [code codes]
         (testing code
@@ -388,12 +424,9 @@
          (pipeline-error-text! :ambiguous-field))))
 
 (deftest ^:parallel cross-database-recovery-test
-  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
+  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
-      (is (= (str "Query failed.\n"
-                  "A query can only reference saved questions, models, metrics, measures and segments "
-                  "from its own database. Use one from that database, or change the source to a table "
-                  "in the referenced item's database.")
+      (is (= (str "Query failed.\n" cross-database-recovery)
              (pipeline-error-text! error))))))
 
 (deftest ^:parallel ambiguous-database-name-recovery-test

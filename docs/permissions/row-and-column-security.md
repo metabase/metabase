@@ -209,22 +209,22 @@ If you want to give someone access to multiple user IDs (e.g., the person should
 
 1. Create a SQL question that parses the comma-separated string and filters the table:
 
-    ```sql
-    {%raw%}
-    SELECT *
-    FROM users_with_values
-    WHERE user_id = ANY(STRING_TO_ARRAY(REGEXP_REPLACE(TRIM({{user_id}}), '\\s*,\\s*', ','), ','))
-    {% endraw %}
-    ```
-    
-    This query:
-    
-    - Trims whitespace from the user attribute value
-    - Replaces any spaces around commas with just commas
-    - Converts the comma-separated string to an array
-    - Filters rows where the user_id matches any value in the array
-    
-    The `STRING_TO_ARRAY()` and `REGEXP_REPLACE()` functions are PostgreSQL-specific. To see which functions your database supports, see your database's documentation.
+   ```sql
+   {%raw%}
+   SELECT *
+   FROM users_with_values
+   WHERE user_id = ANY(STRING_TO_ARRAY(REGEXP_REPLACE(TRIM({{user_id}}), '\\s*,\\s*', ','), ','))
+   {% endraw %}
+   ```
+
+   This query:
+
+   - Trims whitespace from the user attribute value
+   - Replaces any spaces around commas with just commas
+   - Converts the comma-separated string to an array
+   - Filters rows where the user_id matches any value in the array
+
+   The `STRING_TO_ARRAY()` and `REGEXP_REPLACE()` functions are PostgreSQL-specific. To see which functions your database supports, see your database's documentation.
 
 2. Set up the row and column security using this SQL question. See [setting up column security](#setting-up-column-security).
 
@@ -322,6 +322,12 @@ Use a [transform](../data-modeling/transforms/transforms-overview.md) to create 
 ### People with row and column security can't create Slack subscriptions or alerts
 
 People in groups with row and column security can't create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md). Email alerts and subscriptions are still available. See [Notification permissions](./notifications.md).
+
+### People with row and column security can't run actions
+
+If row and column security applies to a person on any table in a database, that person can't run [actions](../data-modeling/data-actions.md) on that database. Actions write to tables directly, so they would get around the row and column security.
+
+[Public action forms](../data-modeling/data-actions.md#share-a-data-action-as-a-public-form) don't check row and column security. An admin can make any action public, even on a database where row and column security applies to some groups, and anyone with the link can then run the action. Before you make an action public, make sure that it's OK for anyone to make that change to your data.
 
 ## Further reading
 

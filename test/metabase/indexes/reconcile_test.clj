@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver]
    [metabase.indexes.reconcile :as reconcile]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]))
 
 (def ^:private managed-btree
@@ -131,14 +132,14 @@
   (testing "delegates to the driver method"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [_driver _db _schema _table] [wh-btree])]
       (is (= [wh-btree]
-             (reconcile/fetch-warehouse-indexes (mt/db) "public" "t")))))
+             (reconcile/fetch-warehouse-indexes (lib.metadata/database (mt/metadata-provider)) "public" "t")))))
   (testing "preserves a successful empty warehouse response"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
-      (is (= [] (reconcile/fetch-warehouse-indexes (mt/db) "public" "t")))))
+      (is (= [] (reconcile/fetch-warehouse-indexes (lib.metadata/database (mt/metadata-provider)) "public" "t")))))
   (testing "lets driver/connection errors through, so callers can report the reason"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] (throw (ex-info "boom" {})))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                            (reconcile/fetch-warehouse-indexes (mt/db) "public" "t"))))))
+                            (reconcile/fetch-warehouse-indexes (lib.metadata/database (mt/metadata-provider)) "public" "t"))))))
 
 (deftest ^:parallel driver-error-message-test
   (testing "a driver with no trimming of its own passes the message through"

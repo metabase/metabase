@@ -5,7 +5,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
-   [metabase.timeline.schema]
+   [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -56,7 +56,8 @@
     #{[{:model "Collection" :id collection_id}]}))
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
-  {:copy      [:archived :default :description :entity_id :icon :name]
+  {:schema    ::timeline.schema/external-timeline
+   :copy      [:archived :default :description :entity_id :icon :name]
    :skip      []
    :transform {:collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

@@ -12,10 +12,10 @@
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
-   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -90,7 +90,7 @@
                        ~(wrap-destinations (rest dests) body)))))))]
     ;; Router: a normal synced DB, exactly as `with-temp-dbs!` builds one.
     `(with-temp-dbs! [~router-binding]
-       (sync/sync-database! ~router-binding)
+       (sync/sync-database! (:id ~router-binding))
        ~(wrap-destinations destinations body))))
 
 (deftest destination-databases-get-used
@@ -211,12 +211,9 @@
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"(?i)cannot query a destination database directly"
-                   (common/check-allowed-access! dest-id))))
-            (testing "destination access is allowed inside a routing-on context (legit routed query)"
-              (is (nil? (database-routing/with-database-routing-on
-                          (common/check-allowed-access! dest-id)))))
+                   (common/check-allowed-access! (driver.u/lib-database dest-id)))))
             (testing "the router database itself is not treated as a forbidden destination"
-              (is (nil? (common/check-allowed-access! router-id))))))))))
+              (is (nil? (common/check-allowed-access! (driver.u/lib-database router-id)))))))))))
 
 (deftest an-error-is-thrown-if-user-attribute-is-missing-or-no-match
   (mt/with-premium-features #{:database-routing}
@@ -424,11 +421,11 @@
       ;; Router: a normal synced DB that owns the Table/Field rows (matches prod + the H2 `with-routing-setup!`).
       (mt/dataset (router-dataset driver/*driver*)
         (let [router (mt/db)]
-          (t2/update! :model/Database (u/the-id router)
+          (t2/update! :model/Database :id (u/the-id router)
                       {:details (merge (:details router)
                                        (router-dataset-details driver/*driver*))})
           (let [router (t2/select-one :model/Database :id (u/the-id router))]
-            (sync/sync-database! router {:scan :schema})
+            (sync/sync-database! (:id router) {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal
             ;; `:model/Database` row `mt/dataset` registers. The destination is inserted prod-shaped below.
             (let [[routed-name routed-details]
@@ -483,10 +480,10 @@
                                            [["us-east-1-foo"]
                                             ["us-east-1-bar"]]]])
         (let [router (mt/db)]
-          (t2/update! :model/Database (u/the-id router)
+          (t2/update! :model/Database :id (u/the-id router)
                       {:details (assoc (:details router) :dbname nil)})
           (let [router (t2/select-one :model/Database :id (u/the-id router))]
-            (sync/sync-database! router {:scan :schema})
+            (sync/sync-database! (:id router) {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal
             ;; `:model/Database` row `mt/dataset` registers. The destination is inserted prod-shaped below.
             (let [[routed-name routed-details]

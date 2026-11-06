@@ -14,15 +14,12 @@ export const EditDashboardButton = () => {
     }
   };
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-edit",
-        perform: onBeginEditing,
-      },
-    ],
-    [dashboard],
-  );
+  useRegisterShortcut([
+    {
+      id: "dashboard-edit",
+      perform: onBeginEditing,
+    },
+  ]);
 
   return (
     <ToolbarButton

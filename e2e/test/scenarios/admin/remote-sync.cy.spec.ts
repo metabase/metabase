@@ -40,7 +40,6 @@ const setup = (snapshot = "default") => {
   H.resetSnowplow();
   cy.signInAsAdmin();
   H.activateToken("pro-self-hosted");
-  H.updateSetting("remote-sync-custom-collections-enabled", true);
   H.setupGitSync();
   H.interceptTask();
 };
@@ -1190,16 +1189,21 @@ describe("Remote Sync", () => {
 
       it("flags a new term on the Glossary tab and pushes it to the repository", () => {
         // Glossary entries ride with the Library, so sync the Library rather than a plain collection.
-        H.createLibrary().then(({ body: library }) => {
-          H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
+        H.createLibrary().then(({ libraryCollectionId }) => {
+          H.configureGit("read-write", LOCAL_GIT_URL, {
+            [libraryCollectionId]: true,
+          });
         });
 
         visitDataStudioGlossary();
+        cy.intercept("POST", "/api/glossary").as("createGlossaryTerm");
         cy.findByRole("button", { name: /new term/i }).click();
         cy.findByPlaceholderText(/boat/i).type(GLOSSARY_TERM);
-        cy.findByPlaceholderText(/a small vessel.*/i).type(GLOSSARY_DEFINITION);
-        cy.findByLabelText("Save").click();
-        cy.get("table").findByText(GLOSSARY_TERM).should("be.visible");
+        cy.findByPlaceholderText(/a small vessel.*/i).type(
+          `${GLOSSARY_DEFINITION}{enter}`,
+        );
+        cy.wait("@createGlossaryTerm");
+        cy.get("table").findByDisplayValue(GLOSSARY_TERM).should("be.visible");
 
         cy.log("The Glossary tab shows unsynced changes");
         glossaryTab().findByTestId("remote-sync-status").should("be.visible");
@@ -1250,7 +1254,7 @@ describe("Remote Sync", () => {
         cy.get("table").within(() => {
           cy.findByText(GLOSSARY_TERM).should("be.visible");
           cy.findByText(GLOSSARY_DEFINITION).should("be.visible");
-          cy.findByLabelText("Delete").should("not.exist");
+          cy.findByRole("button", { name: /delete/i }).should("not.exist");
         });
         cy.findByRole("button", { name: /new term/i }).should("not.exist");
 

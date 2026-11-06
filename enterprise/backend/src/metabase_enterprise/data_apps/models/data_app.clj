@@ -2,9 +2,8 @@
   (:require
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
-   [metabase-enterprise.data-apps.resources :as data-app.resources]
-   [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.api.common :as api]
+   [metabase.data-apps.schema :as data-apps.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -66,7 +65,7 @@
     (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
 
 (defn- prepare
-  "The DataApp `row` normalized and validated against `schema`, with the hash of any bundle it sets."
+  "The DataApp `row` normalized and validated against `schema`."
   [schema row]
   (->> row
        (lib/normalize schema)
@@ -74,9 +73,9 @@
        with-bundle-hash))
 
 (defn- check-resource-collection
-  "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`: a
-  top-level collection of data apps, not archived, official, typed or the sample, that no other app has; remote sync may
-  sync it."
+  "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`, nil for a
+  new app: a top-level collection of data apps, not archived, official, typed or the sample, that no other app has;
+  remote sync may sync it."
   [collection-id app-id]
   (let [collection (data-apps.db/resource-collection collection-id)]
     (when-not (and collection
@@ -92,24 +91,23 @@
 
 (t2/define-before-insert :model/DataApp
   [data-app]
-  ;; Every app owns a resource collection from its first moment: one it is given (an import names the collection
-  ;; its manifest references) or one created here, so the column is never null.
   (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
-    (some-> (:resource_collection_id row) (check-resource-collection nil))
-    (cond-> row
-      (nil? (:resource_collection_id row))
-      (assoc :resource_collection_id (:id (data-app.resources/create-resource-collection! row))))))
+    (if-let [collection-id (:resource_collection_id row)]
+      (do (check-resource-collection collection-id nil)
+          row)
+      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:name row))))))
 
 (t2/define-before-update :model/DataApp
   [data-app]
   (let [changes (t2/changes data-app)]
-    ;; A missing collection (the column is nullable, so the row survives its collection's deletion) may be set
-    ;; again; one the app has is never replaced or cleared.
-    (when (and (contains? changes :resource_collection_id)
-               (some? (:resource_collection_id (t2/original data-app))))
-      (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
+    (when (contains? changes :resource_collection_id)
+      (when (some? (:resource_collection_id (t2/original data-app)))
+        (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
+                        {:status-code 400, :data-app-id (:id data-app)})))
+      (check-resource-collection (:resource_collection_id changes) (:id data-app)))
+    (when (contains? changes :bundle_hash)
+      (throw (ex-info (tru "A data app''s bundle hash is computed from its bundle.")
                       {:status-code 400, :data-app-id (:id data-app)})))
-    (some-> (:resource_collection_id changes) (check-resource-collection (:id data-app)))
     (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
@@ -126,8 +124,10 @@
   ([_model pk]
    (and (premium-features/has-feature? :data-apps)
         (or api/*is-superuser?*
-            (and (some? api/*current-user-id*)
-                 (data-apps.db/readable-data-app? api/*current-user-id* pk))))))
+            (let [{:keys [enabled resource_collection_id]} (data-apps.db/data-app pk)]
+              (and (true? enabled)
+                   (some? resource_collection_id)
+                   (mi/can-read? :model/Collection resource_collection_id)))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -137,15 +137,11 @@
   [_model _instance]
   api/*is-superuser?*)
 
-(t2/define-after-insert :model/DataApp
-  [app]
-  (merge app (data-app.resources/ensure-resources! app)))
-
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.
 (t2/define-before-delete :model/DataApp
   [app]
-  (data-app.resources/delete-resources! app)
+  (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!)
   (search/delete! :model/DataApp [(str (:id app))]))
 
 (search/define-spec "data-app"
@@ -180,7 +176,8 @@
 
 (defmethod serdes/make-spec "DataApp"
   [_model-name _opts]
-  {:copy      [:entity_id :description :version :allowed_hosts]
+  {:schema    ::data-apps.schema/external-data-app
+   :copy      [:entity_id :description :version :allowed_hosts]
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
@@ -226,19 +223,6 @@
 
 (defmethod serdes/resource-paths "DataApp" [ingested]
   [(ingested-bundle-path ingested)])
-
-(defmethod serdes/load-one! "DataApp"
-  [ingested maybe-local]
-  ;; an app made on the instance keeps its slug: the unique index would refuse the insert anyway, but with an error
-  ;; that doesn't say what to do
-  (when (and (nil? maybe-local) (data-apps.db/data-app-exists? (:slug ingested)))
-    (throw (ex-info (tru "A data app named \"{0}\" already exists on this instance. Delete it, or give the app in the repository another slug."
-                         (:slug ingested))
-                    {:status-code 400})))
-  (let [app (serdes/default-load-one! ingested maybe-local)]
-    (when maybe-local
-      (data-app.resources/ensure-resources! app))
-    app))
 
 (defenterprise data-app-collection-ids
   "The resource collections of the data apps, which hold the copies an app runs."

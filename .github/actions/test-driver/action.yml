@@ -225,7 +225,8 @@ runs:
       if: always() && steps.run-test.outcome != 'success'
       uses: actions/upload-artifact@v7
       with:
-        name: ${{ format('test-logs-{0}{1}', github.job, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
+        # junit-name tells apart versions of one database, which share the job and the shard
+        name: ${{ format('test-logs-{0}-{1}{2}', github.job, inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
         # Glob: a single-JVM run writes `logs/test-log.json`; a multi-JVM run merges one
         # `logs/test-log-p<index>.json` per JVM.
         path: logs/test-log*.json

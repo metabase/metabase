@@ -126,7 +126,8 @@
 ;; Serves every embedded surface — the SDK `MetabotQuestion`, modular embedding, data apps, and full-app
 ;; iframe embeds — and has no SQL tools in any of them. The prompt decides per request whether there is
 ;; a Metabase UI around it to hand off to (see [[embedding-system-prompt-context]]).
-;; TODO (Chris 2026-10-14) -- Offer run_query here once embedded Metabot has its own query execution setting.
+;; TODO (Chris 2026-10-14) -- Offer run_query here once embedded Metabot has its own query execution setting,
+;; and replace the embedded Metabot checks in `init-agent` and `run-query` with it.
 ;; Queries run as the signed-in user, so sandboxing and impersonation apply,
 ;; but the rows are the embedding customer's end users' data, and they go to the LLM provider.
 ;; An admin should be able to show results to their own staff without showing them in every embed.
@@ -202,6 +203,8 @@
                          "ask_for_sql_clarification"}
   :tools               [#'tools/sql-search-tool
                         #'tools/read-resource-tool
+                        #'tools/list-snippets-tool
+                        #'tools/get-snippet-details-tool
                         #'tools/create-sql-query-code-edit-tool
                         #'tools/edit-sql-query-tool
                         #'tools/replace-sql-query-tool
@@ -243,7 +246,10 @@
   ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
   ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
   :terminal-tools  #{"document_construct_model_chart" "document_construct_sql_chart"}
+  ;; `list_available_data_sources` lists only the models and metrics in the Metabot's scope. `read_resource` lets the
+  ;; model find a database and its tables, for example for a SQL chart when the user mentioned no database.
   :tools           [#'tools/list-available-data-sources-tool
+                    #'tools/read-resource-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool
                     #'tools/document-schema-collect-tool

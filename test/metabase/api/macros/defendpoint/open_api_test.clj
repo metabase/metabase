@@ -63,7 +63,9 @@
   (binding [defendpoint.open-api/*definitions* (atom [])]
     (is (=? {:properties {"value" {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
             (#'defendpoint.open-api/mjs-collect-definitions [:map [:value ::lib.schema.common/non-blank-string]])))
-    (is (= [{"metabase.lib.schema.common.non-blank-string" {:type :string, :minLength 1}}]
+    (is (= [{"metabase.lib.schema.common.non-blank-string" {:type        :string
+                                                            :minLength   1
+                                                            :description "Schema for a string that cannot be blank."}}]
            @@#'defendpoint.open-api/*definitions*))))
 
 (deftest ^:parallel deprecated-endpoint-test

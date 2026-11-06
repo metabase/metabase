@@ -32,7 +32,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -84,7 +84,9 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :table-privileges                       true}]
+                              :table-privileges                       true
+                              :stage-ctes                             true
+                              :stage-ctes/nested                      false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :sqlserver
@@ -268,11 +270,20 @@
                          (not (str/blank? key-password))  (assoc :clientKeyPassword key-password)))
 
                      ;; https://learn.microsoft.com/en-us/sql/connect/jdbc/connecting-using-azure-active-directory-authentication?view=sql-server-ver17#connect-using-activedirectorymanagedidentity-authentication-mode
+                     ;; Managed identity pulls a token from the Azure Instance Metadata Service of the Metabase
+                     ;; host, i.e. it authenticates as the host's cloud identity rather than something the admin
+                     ;; chose. Metabase Cloud runs on AWS, where the endpoint does not exist at all; even on an
+                     ;; Azure host it would be ambient-authority auth.
                      ;; Missing :user = default identity; set :user for user-assigned managed identity.
                      "ad-managed-identity"
-                     (cond-> {:authentication "ActiveDirectoryManagedIdentity"}
-                       (not (str/blank? ad-managed-identity-client-id))
-                       (assoc :user ad-managed-identity-client-id))
+                     (do
+                       (when (driver-api/is-hosted?)
+                         (throw (ex-info (tru (str "Azure AD managed identity is not available on Metabase Cloud. "
+                                                   "Use an Azure AD service principal or SQL Server authentication."))
+                                         {:auth-mode auth-mode})))
+                       (cond-> {:authentication "ActiveDirectoryManagedIdentity"}
+                         (not (str/blank? ad-managed-identity-client-id))
+                         (assoc :user ad-managed-identity-client-id)))
 
                      ;; "sql" (default), nil (legacy connections without auth-mode), or any unknown value.
                      ;; apparently specifying `domain` with the official SQLServer driver is done like
@@ -1293,7 +1304,7 @@
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
+    [(sql-tools/add-insert-clause driver sql-query table-name) sql-params]))
 
 (defmethod driver/run-transform! [:sqlserver :table-incremental]
   [driver transform-details opts]
@@ -1329,7 +1340,7 @@
 
 (defmethod driver/rename-table! :sqlserver
   [_driver db-id old-table-name new-table-name]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (let [sql (format "EXEC sp_rename %s, %s;"
                         (sql.u/quote-literal (name old-table-name) :ansi)

@@ -11,6 +11,6 @@
   [database :- i/DatabaseInstance]
   (let [driver         (driver.u/database->driver database)
         default-schema (driver.sql/default-schema driver database)]
-    (when-not (= default-schema (:default_schema database))
+    (when-not (= default-schema (:default-schema database))
       (sync.db/update-database! (:id database) {:default_schema default-schema}))
     {:default-schema default-schema}))

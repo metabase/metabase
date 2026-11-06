@@ -451,7 +451,7 @@
 (defn- wipe-dimensions!
   "Simulate a metric row whose dimensions were never synced, bypassing Card transforms/hooks."
   [metric-id]
-  (t2/update! (t2/table-name :model/Card) metric-id {:dimensions nil :dimension_mappings nil}))
+  (t2/update! (t2/table-name :model/Card) :id metric-id {:dimensions nil :dimension_mappings nil}))
 
 (deftest exploration-data-heals-missing-dimensions-test
   (testing "a metric on an MBQL model with NULL dimensions is synced and persisted on read"
@@ -504,7 +504,7 @@
                                         :database_id   (mt/id)
                                         :dataset_query (mt/native-query
                                                         {:query "SELECT ID, NAME FROM VENUES"})}]
-        (t2/update! (t2/table-name :model/Card) (:id model) {:result_metadata nil})
+        (t2/update! (t2/table-name :model/Card) :id (:id model) {:result_metadata nil})
         (mt/with-temp [:model/Card metric {:name          "Metric on metadata-less model"
                                            :type          :metric
                                            :database_id   (mt/id)

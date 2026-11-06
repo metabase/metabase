@@ -144,6 +144,15 @@ change touches DDL or JSON columns. On H2, in a fresh JVM:
 MB_DB_TYPE=h2 ./bin/test-agent :only '[metabase.app-db.schema-migrations-test/glossary-entity-id-test]'
 ```
 
+## The app DB snapshot
+
+Test app DBs, and migration tests that start after the snapshot boundary, load a checked-in dump of a migrated app DB
+from `test_resources/app_db_snapshots/` instead of replaying the whole changelog. A new changeset needs no extra step,
+since it runs after the snapshot loads wherever it sits in the changelog, before the boundary included. Editing a
+changeset, or the code of a custom migration, that the snapshot already records changes what the snapshot should
+hold, and the drift test in `metabase.app-db.snapshot-test` then fails. Regenerating and moving the boundary are
+described in the namespace docstring of `metabase.app-db.snapshot-test-util.generate`.
+
 ## Running and rolling back in development
 
 Every `migrate up` run is recorded as its own Liquibase deployment. Use the dev tooling (in the REPL,

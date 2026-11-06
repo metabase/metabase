@@ -430,6 +430,66 @@
         (is (re-find #"(?i)orders" result))
         (is (re-find #"(?i)field" result))))))
 
+(deftest format-saved-card-query-id-test
+  (let [notebook-query {:database (mt/id) :type :query :query {:source-table (mt/id :orders)}}
+        sql-query      (lib/native-query (mt/metadata-provider) "SELECT * FROM ORDERS")]
+    (doseq [card-type ["question" "model"]]
+      (testing (str "a saved notebook " card-type " shows the query ID of the query on screen")
+        (mt/with-test-user :rasta
+          (mt/with-temp [:model/Card {card-id :id} {:name          "Orders"
+                                                    :type          card-type
+                                                    :database_id   (mt/id)
+                                                    :dataset_query notebook-query}]
+            (let [result (user-context/format-viewing-context
+                          {:user_is_viewing [{:type card-type :id card-id :query notebook-query :query_id "q-1"}]})]
+              (is (str/includes? result "Orders"))
+              (is (str/includes? result "Query ID: q-1"))
+              (is (not (str/includes? result "Current SQL query"))))))))
+    (testing "a saved SQL question shows its own ID and the query ID apart"
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type     "question"
+                                        :id       absent-entity-id
+                                        :query    {:database (mt/id) :type :native :native {:query "SELECT 1"}}
+                                        :query_id "q-1"}]})]
+        (is (str/includes? result (str "Question ID: " absent-entity-id)))
+        (is (str/includes? result "Query ID: q-1"))
+        (is (not (str/includes? result (str "Query ID: " absent-entity-id))))))
+    (testing "a saved SQL model shows its own ID and saved SQL, and the query ID, SQL and error of the query on screen"
+      (mt/with-test-user :rasta
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Orders"
+                                                  :type          "model"
+                                                  :database_id   (mt/id)
+                                                  :dataset_query sql-query}]
+          (let [screen-query (lib/native-query (mt/metadata-provider) "SELECT TOTAL FROM ORDERS")
+                result       (user-context/format-viewing-context
+                              {:user_is_viewing [{:type     "model"
+                                                  :id       card-id
+                                                  :query    screen-query
+                                                  :query_id "q-1"
+                                                  :error    "Column 'TOTAL' not found"}]})]
+            (is (str/includes? result (str "<metabase-model id=\"" card-id "\"")))
+            (is (str/includes? result "SELECT * FROM ORDERS"))
+            (is (str/includes? result "Query ID: q-1"))
+            (is (str/includes? result "Current SQL query:\n```sql\nSELECT TOTAL FROM ORDERS\n```"))
+            (is (str/includes? result "Query error: \"Column 'TOTAL' not found\""))))))
+    (doseq [[label card-type query] [["notebook question" "question" notebook-query]
+                                     ["SQL model"         "model"    sql-query]]]
+      (testing (str "a saved " label " the user cannot read renders nothing")
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card       {card-id :id} {:name          "Hidden Orders"
+                                                          :type          card-type
+                                                          :collection_id coll-id
+                                                          :database_id   (mt/id)
+                                                          :dataset_query query}]
+            (mt/with-test-user :rasta
+              (is (= "" (user-context/format-viewing-context
+                         {:user_is_viewing [{:type     card-type
+                                             :id       card-id
+                                             :query    query
+                                             :query_id "q-1"
+                                             :error    "Column 'TOTAL' not found"}]}))))))))))
+
 (deftest format-entity-rejects-destination-database-table-test
   (testing "a table on a destination (routed) database in the viewing context is not surfaced with its
             real details -- a destination database is a routing internal, not a resource users should

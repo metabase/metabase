@@ -139,6 +139,10 @@ describe("file-paths.yaml", () => {
     // The SDK component and host-app suites boot a Metabase instance, so their CI entry points
     // have to build one.
     ".github/workflows/embedding-sdk.yml",
+    "cross-version/test.sh",
+    "cross-version/docker-compose.head.yml",
+    ".github/scripts/build-cross-version-matrix.js",
+    "release/src/cross-version-helpers.ts",
   ])("builds the uberjar for %s", (path) => {
     expect(matches("build_uberjar", path)).toBe(true);
   });
@@ -181,6 +185,26 @@ describe("file-paths.yaml", () => {
     ).toBe(false);
   });
 
+  // The e2e Metabase Track sink lives outside frontend/ and e2e/, so nothing else would pull it
+  // into either gate: without these entries a sink-only change runs no tests at all. The e2e gate
+  // reaches it through e2e_infra, so a sink-only change also forces a full e2e run.
+  it("covers the e2e Metabase Track sink in both the e2e and the frontend unit gates", () => {
+    expect(matches("e2e_all", "metaplow/sink.js")).toBe(true);
+    expect(matches("e2e_infra", "metaplow/sink.js")).toBe(true);
+    expect(matches("frontend_specs", "metaplow/sink.unit.spec.js")).toBe(true);
+  });
+
+  // e2e-containers.unit.spec.ts asserts over these, and it runs in the ci-scripts suite.
+  it.each([
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/embedding-sdk-component-tests.yml",
+    ".github/actions/e2e-prepare-containers/action.yml",
+    "metaplow/docker-compose.yml",
+    "deps.edn",
+  ])("runs the CI script tests for %s, which a spec asserts over", (path) => {
+    expect(matches("ci_scripts", path)).toBe(true);
+  });
+
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
@@ -195,6 +219,23 @@ describe("file-paths.yaml", () => {
       ),
     ).toBe(true);
   });
+
+  it.each([
+    ".clj-kondo/config/modules/config.edn",
+    ".clj-kondo/src/hooks/common/modules.clj",
+    ".github/CODEOWNERS",
+    ".github/team.json",
+    "mage/src/mage/modules.clj",
+  ])("checks the generated CODEOWNERS block when %s changes", (path) => {
+    expect(matches("project_codeowners_checks", path)).toBe(true);
+  });
+
+  it.each(["src/metabase/search/core.clj", "dev/src/dev/module_explorer.clj"])(
+    "does not check the CODEOWNERS block when %s changes",
+    (path) => {
+      expect(matches("project_codeowners_checks", path)).toBe(false);
+    },
+  );
 
   it.each([
     "loki.config.js",
@@ -241,12 +282,11 @@ describe("file-paths.yaml", () => {
     ".github/workflows/e2e-test.yml",
     ".github/workflows/run-tests.yml",
     ".github/actions/prepare-cypress/action.yml",
-    ".github/scripts/build-e2e-matrix.js",
+    ".github/scripts/build-e2e-matrix.ts",
     ".github/file-paths.yaml",
     "frontend/build/shared/esbuild/side-effect-free-modules-plugin.js",
     "rspack.main.config.js",
     "bun.lock",
-    "locales/fr.po",
     "snowplow/events/event.yaml",
     "patches/@cypress+grep+6.0.0.patch",
   ])("runs all E2E specs when %s changes", (file) => {
@@ -273,6 +313,16 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", file)).toBe(true);
   });
 
+  it.each(["locales/translations.pin"])(
+    "only lints i18n when %s changes",
+    (file) => {
+      const matched = Object.keys(filters).filter((name) =>
+        matches(name, file),
+      );
+      expect(matched).toEqual(["all_changed", "i18n"]);
+    },
+  );
+
   it("runs the module cycles test when a cluster is named", () => {
     expect(
       matches(
@@ -280,5 +330,36 @@ describe("file-paths.yaml", () => {
         ".clj-kondo/config/modules/cycle-clusters.edn",
       ),
     ).toBe(true);
+  });
+
+  it.each([
+    "bb.edn",
+    "bin/mage",
+    "deps.edn",
+    "mage/src/mage/modules.clj",
+    "mage/test/mage/module_explorer_state_test.js",
+    ".clj-kondo/config/modules/config.edn",
+    ".clj-kondo/ratchets.edn",
+    "src/metabase/queries/core.clj",
+    "resources/migrations/001_update_migrations.yaml",
+    ".github/workflows/backend.yml",
+    ".github/CODEOWNERS",
+  ])("runs the Mage tests when %s changes", (file) => {
+    expect(matches("mage_tests", file)).toBe(true);
+  });
+
+  it.each([
+    "frontend/src/metabase/App.tsx",
+    "docs/README.md",
+    "e2e/test/scenarios/a.cy.spec.ts",
+  ])("skips the Mage tests when only %s changes", (file) => {
+    expect(matches("mage_tests", file)).toBe(false);
+  });
+
+  it.each([
+    ".github/actions/create-backport/kondo-ratchets.sh",
+    ".github/actions/create-backport/create-backport-test.sh",
+  ])("lints and tests %s", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
   });
 });
