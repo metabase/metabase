@@ -30,15 +30,19 @@
    [:query_ids       {:optional true} [:maybe [:sequential :int]]]
    [:explore_filters {:optional true} [:maybe [:sequential [:ref ::card-embed.explore-filter]]]]])
 
+(mr/def ::node.entity-id
+  "The id of the entity a `cardEmbed` (`\"id\"`) or `smartLink` (`\"entityId\"`) node refers to."
+  [:maybe [:or :int :string]])
+
 (mr/def ::node.attrs
   "The `attrs` of a ProseMirror node: the ones this code reads by name, the ones `metabase.explorations` writes onto a
   static card embed, and whatever else the editor put there -- every node type has its own attributes and the editor
   owns that set. Every key, declared or not, is a string, so the map never mixes keyword and string keys."
   (ms/string-keyed-object
-   ["id"               {:optional true} [:maybe [:or :int :string]]]
+   ["id"               {:optional true} ::node.entity-id]
    ["_id"              {:optional true} [:maybe [:or :string :uuid]]]
    ["model"            {:optional true} [:maybe :string]]
-   ["entityId"         {:optional true} [:maybe [:or :int :string]]]
+   ["entityId"         {:optional true} ::node.entity-id]
    ["label"            {:optional true} [:maybe :string]]
    ["stored_result_id" {:optional true} [:maybe :int]]
    ["chart_href"       {:optional true} [:maybe :string]]

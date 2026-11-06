@@ -6,6 +6,7 @@
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -61,8 +62,8 @@
    [:database_type ::lib.schema.common/non-blank-string]])
 
 (mr/def ::row
-  "A row of inline test data, keyed by column name."
-  (ms/string-keyed-map [:maybe [:or :boolean number? :string]]))
+  "A row of inline test data, keyed by column name, with `:string` first so request decoding keeps every cell as sent."
+  (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
 
 (mr/def ::sql-data
   "Test data returned by a SQL query run against the transform's source database."
@@ -162,7 +163,7 @@
     [:entity_id    :string]
     [:transform_id ::lib.schema.id/transform]
     [:creator_id   ::lib.schema.id/user]
-    [:description  [:maybe :string]]
+    [:description  {:optional true} [:maybe :string]]
     [:created_at   ms/TemporalInstant]
     [:updated_at   ms/TemporalInstant]]])
 
@@ -267,3 +268,11 @@
    [:map {:closed true}
     [:client     (ms/InstanceOfClass Object)]
     [:session-id :string]]])
+
+(mr/def ::external-transform-test
+  "A TransformTest as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::transform-test [:entity_id :name :description :inputs :expectations :transform_id :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

@@ -889,6 +889,7 @@
            api-scope
            lib.be
            lib.schema
+           models
            premium-features
            util}}
 
@@ -1018,6 +1019,7 @@
            api
            app-db
            batch-processing
+           lib.schema
            models
            premium-features
            server
@@ -1790,6 +1792,7 @@
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
+           metabase.models.schema
            metabase.models.serialization
            metabase.models.serialization.resolve
            metabase.models.serialization.resolve.mp
@@ -1804,7 +1807,8 @@
            lib.schema
            parameters.schema
            util
-           util.classloader}
+           util.classloader
+           util.config}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel
@@ -1868,6 +1872,7 @@
            collections
            events
            lib
+           lib.be
            lib.schema
            models
            permissions
@@ -1937,6 +1942,7 @@
    :api  #{metabase.osi.ai-context.api}
    :uses #{api
            app-db
+           lib.schema
            models
            request
            search.entity-retrieval
@@ -3554,7 +3560,6 @@
   enterprise/advanced-config
   {:team "UX West"
    :api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.file
            metabase-enterprise.advanced-config.init
            metabase-enterprise.advanced-config.settings}
    :uses #{api
@@ -3823,6 +3828,7 @@
    :uses #{api
            api-scope
            events
+           lib.schema
            models
            premium-features
            server
@@ -4294,7 +4300,6 @@
   {:team       "Data Apps"
    :codeowners true
    :api  #{metabase-enterprise.remote-sync.api
-           metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
    :uses #{analytics.interface
            api
@@ -4438,8 +4443,9 @@
    :model-imports #{:model/User}}
 
   enterprise/serialization
-  {:team "Graphy"
-   :api  #{metabase-enterprise.serialization.api
+  {:team       "Data Apps"
+   :codeowners true
+   :api #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
            metabase-enterprise.serialization.dump

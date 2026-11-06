@@ -102,7 +102,8 @@
 
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
-  {:copy [:entity_id :built_in_type]
+  {:schema    ::transforms.schema/external-transform-tag
+   :copy [:entity_id :built_in_type]
    :transform {:name {:export str :import identity}}})
 
 (defmethod serdes/storage-path "TransformTag" [tt _ctx]

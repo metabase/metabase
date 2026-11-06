@@ -209,7 +209,8 @@
 
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
-  {:copy [:entity_id :built_in_type :schedule :ui_display_type]
+  {:schema    ::transforms.schema/external-transform-job
+   :copy [:entity_id :built_in_type :schedule :ui_display_type]
    :skip [;; admin-owned state of this instance
           :active]
    :transform {:name {:export str :import identity}

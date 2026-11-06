@@ -90,6 +90,7 @@ export interface User extends BaseUser {
     | "oidc"
     | "slack"
     | null;
+  has_used_password?: boolean;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;

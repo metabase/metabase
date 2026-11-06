@@ -122,6 +122,8 @@
                                                     #{:permission-write-sql-queries}))]
     (is (map? tools))
     (is (contains? tools "list_available_data_sources"))
+    (is (contains? tools "read_resource")
+        "the model can find a database and its tables, which list_available_data_sources does not list")
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))

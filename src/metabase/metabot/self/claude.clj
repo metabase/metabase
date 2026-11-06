@@ -545,7 +545,8 @@
       (and all-tools tool_choice)
       (assoc :tool_choice (case (name tool_choice)
                             "auto"     {:type "auto"}
-                            "required" (if forced? {:type "any"} {:type "auto"})))
+                            "required" (if forced? {:type "any"} {:type "auto"})
+                            "none"     {:type "none"}))
 
       thinking          (assoc :thinking thinking)
 

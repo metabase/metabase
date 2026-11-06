@@ -308,13 +308,13 @@
 
 (mu/defn run-test! :- ::transform-testing.schema/run-result
   "Run `transform-test` against `transform` on temp tables and report what each expectation found, recording the run
-  under `transform-test-id`.
+  under `transform-test-id`, or under no test when it is nil.
 
   Throws a typed refusal from [[metabase-enterprise.transform-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [transform                                        :- ::transforms.schema/transform.definition
    {:keys [inputs expectations]}                    :- ::transform-testing.schema/transform-test.definition
-   transform-test-id                                :- ms/PositiveInt]
+   transform-test-id                                :- [:maybe ms/PositiveInt]]
   (let [{:keys [driver database input->table output-table labels replacements compiled]}
         (validated-plan transform inputs expectations)
         {run-id :id} (transform-testing.run-tracking/start-run! transform-test-id api/*current-user-id*)
