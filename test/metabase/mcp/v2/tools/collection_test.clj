@@ -31,8 +31,8 @@
 
 (defn- call-tool!
   "Drive `collection_write` as `user` (test-user keyword or user id) with bearer-style `scopes`
-   (nil = internal caller, which bypasses the scope gate)."
-  ([user args] (call-tool! user nil args))
+   (defaults to `v2.tu/all-scopes`, which exercises the tool rather than its scope gate)."
+  ([user args] (call-tool! user v2.tu/all-scopes args))
   ([user scopes args]
    (mt/with-current-user (if (keyword? user) (mt/user->id user) user)
      (registry/call-tool scopes nil "collection_write" args))))
@@ -421,8 +421,8 @@
       (is (re-find #"^Insufficient scope to call tool: \"collection_write\"\."
                    (tool-error (call-tool! :crowberto #{"agent:collection:create"}
                                            {:method "create" :name "x"})))))
-    ;; GHY-4225: the metabot permission wildcards no longer bear on v2 — in-app callers use
-    ;; the unrestricted sentinel and OAuth tokens draw scopes from the tool registry.
+    ;; GHY-4225: the metabot permission wildcards no longer bear on v2 — OAuth tokens draw scopes
+    ;; from the tool registry.
     ))
 
 (deftest write-scope-grantable-test

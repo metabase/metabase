@@ -1,12 +1,14 @@
 import type { StoryFn } from "@storybook/react";
-import { Fragment } from "react";
+import { type ComponentType, Fragment, useEffect, useRef } from "react";
 
+import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import {
   Box,
   Icon,
   SegmentedControl,
   type SegmentedControlItem,
   type SegmentedControlProps,
+  Stack,
 } from "metabase/ui";
 import {
   StoryBoard,
@@ -30,6 +32,32 @@ const TEXT_AND_ICON_DATA = [
 const ICON_DATA = [
   { ariaLabel: "Code", icon: "embed", value: "code" },
   { ariaLabel: "Preview", icon: "eye_filled", value: "preview" },
+] satisfies SegmentedControlItem<string>[];
+
+const ICON_TOOLTIP_DATA = [
+  { ariaLabel: "Code", icon: "embed", value: "code", withTooltip: true },
+  {
+    ariaLabel: "Preview",
+    icon: "eye_filled",
+    value: "preview",
+    withTooltip: true,
+  },
+] satisfies SegmentedControlItem<string>[];
+
+const LONG_LABEL_DATA = [
+  { label: "On", value: "on" },
+  { label: "Only when the value is above the goal line", value: "above" },
+  { label: "Off", value: "off" },
+] satisfies SegmentedControlItem<string>[];
+
+const LONG_LABEL_AND_ICON_DATA = [
+  { label: "On", icon: "check", value: "on" },
+  {
+    label: "Only when the value is above the goal line",
+    icon: "line",
+    value: "above",
+  },
+  { label: "Off", icon: "close", value: "off" },
 ] satisfies SegmentedControlItem<string>[];
 
 const ICON_ELEMENT_DATA = [
@@ -57,9 +85,26 @@ export const IconOnly = {
   args: { data: ICON_DATA },
 };
 
+export const IconOnlyWithTooltip = {
+  name: "Icon only with tooltip",
+  args: { data: ICON_TOOLTIP_DATA },
+};
+
 export const FullWidth = {
   name: "Full width",
   args: { data: TEXT_AND_ICON_DATA, fullWidth: true },
+};
+
+export const LongLabels = {
+  name: "Long labels",
+  args: { data: LONG_LABEL_DATA, defaultValue: "on" },
+  decorators: [
+    (Story: ComponentType) => (
+      <Box w="20rem">
+        <Story />
+      </Box>
+    ),
+  ],
 };
 
 export const Disabled = {
@@ -113,6 +158,23 @@ const withSecondItemDisabled = (data: SegmentedControlItem<string>[]) =>
 const labelSelectorFor = (id: string) =>
   `[data-state-row="${id}"] .${S.SegmentedControlLabel}`;
 
+function HoveredTooltipExample() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const targets = ref.current?.querySelectorAll(
+      `.${S.SegmentedControlItemBody}`,
+    );
+    targets?.[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  }, []);
+
+  return (
+    <Box ref={ref}>
+      <SegmentedControl data={ICON_TOOLTIP_DATA} defaultValue="code" />
+    </Box>
+  );
+}
+
 const gridStyle = {
   display: "grid",
   gridTemplateColumns: `9rem repeat(${CONTENT_KINDS.length}, max-content)`,
@@ -155,6 +217,38 @@ const OverviewTemplate: StoryFn = () => (
       </Box>
     </StorySection>
 
+    <StorySection title="Tooltip">
+      <StoryJsx>
+        {
+          '<SegmentedControl data={[{ ariaLabel: "Preview", icon: "eye_filled", withTooltip: true }, …]} />'
+        }
+      </StoryJsx>
+      <Box mt="3rem">
+        <HoveredTooltipExample />
+      </Box>
+    </StorySection>
+
+    <StorySection title="Long labels">
+      <StoryJsx>
+        {
+          '<SegmentedControl data={[…, { label: "Only when the value is above the goal line" }, …]} />'
+        }
+      </StoryJsx>
+      <Stack mt="sm" gap="md">
+        {[LONG_LABEL_DATA, LONG_LABEL_AND_ICON_DATA].map((data, index) => (
+          <Stack key={index} gap="sm" align="flex-start">
+            <SegmentedControl data={data} defaultValue="on" />
+            <Box w="20rem">
+              <SegmentedControl data={data} defaultValue="on" />
+            </Box>
+            <Box w="9rem">
+              <SegmentedControl data={data} defaultValue="on" />
+            </Box>
+          </Stack>
+        ))}
+      </Stack>
+    </StorySection>
+
     <StorySection title="Full width">
       <Box w="24rem">
         <StoryJsx>{"<SegmentedControl fullWidth />"}</StoryJsx>
@@ -171,6 +265,9 @@ const OverviewTemplate: StoryFn = () => (
 
 export const Overview = {
   render: OverviewTemplate,
+  // The tooltip fades in over 200ms (Tooltip config); wait well past that
+  // before Loki captures, with margin for slow CI runners.
+  decorators: [createWaitForResizeToStopDecorator(500)],
   parameters: {
     pseudo: {
       hover: [labelSelectorFor("hover")],

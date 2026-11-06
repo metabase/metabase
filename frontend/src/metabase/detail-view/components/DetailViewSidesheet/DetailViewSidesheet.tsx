@@ -28,13 +28,12 @@ import {
 } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/redux";
 import {
+  ActionIcon,
   Box,
-  Button,
   Divider,
   Group,
   Icon,
   Menu,
-  Modal,
   Stack,
   Tooltip,
   rem,
@@ -243,35 +242,27 @@ export function DetailViewSidesheet({
             {isNavEnabled && (
               <>
                 <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                  <Button
+                  <ActionIcon
                     aria-label={t`Previous row`}
                     disabled={!onPreviousClick}
-                    leftSection={<Icon name="chevronup" />}
                     size="sm"
                     variant="subtle"
-                    color="neutral"
-                    style={{
-                      opacity: onPreviousClick ? undefined : 0.5,
-                    }}
                     onClick={onPreviousClick}
-                  />
+                  >
+                    <Icon name="chevronup" />
+                  </ActionIcon>
                 </Tooltip>
 
                 <Tooltip disabled={!onNextClick} label={t`Next row`}>
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                  <Button
+                  <ActionIcon
                     aria-label={t`Next row`}
                     disabled={!onNextClick}
-                    leftSection={<Icon name="chevrondown" />}
                     size="sm"
                     variant="subtle"
-                    color="neutral"
-                    style={{
-                      opacity: onNextClick ? undefined : 0.5,
-                    }}
                     onClick={onNextClick}
-                  />
+                  >
+                    <Icon name="chevrondown" />
+                  </ActionIcon>
                 </Tooltip>
 
                 <Divider orientation="vertical" />
@@ -286,15 +277,14 @@ export function DetailViewSidesheet({
               >
                 <Menu.Target>
                   <Tooltip label={t`Actions`}>
-                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                    <Button
+                    <ActionIcon
                       aria-label={t`Actions`}
                       data-testid="actions-menu"
-                      leftSection={<Icon name="ellipsis" />}
                       size="sm"
                       variant="subtle"
-                      color="neutral"
-                    />
+                    >
+                      <Icon name="ellipsis" />
+                    </ActionIcon>
                   </Tooltip>
                 </Menu.Target>
                 <Menu.Dropdown>
@@ -316,31 +306,29 @@ export function DetailViewSidesheet({
                 <Tooltip
                   label={linkCopied ? t`Copied!` : t`Copy link to this record`}
                 >
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                  <Button
+                  <ActionIcon
                     aria-label={
                       linkCopied ? t`Copied!` : t`Copy link to this record`
                     }
-                    leftSection={<Icon name="link" />}
                     size="sm"
                     variant="subtle"
-                    color="neutral"
                     onClick={handleCopyLink}
-                  />
+                  >
+                    <Icon name="link" />
+                  </ActionIcon>
                 </Tooltip>
 
                 <Tooltip label={t`Open in full page`}>
                   <Box>
-                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                    <Button
+                    <ActionIcon
                       aria-label={t`Open in full page`}
                       component={Link}
-                      leftSection={<Icon name="expand" />}
                       size="sm"
                       variant="subtle"
-                      color="neutral"
                       to={url}
-                    />
+                    >
+                      <Icon name="expand" />
+                    </ActionIcon>
                   </Box>
                 </Tooltip>
               </>
@@ -406,20 +394,13 @@ export function DetailViewSidesheet({
         onSuccess={handleActionSuccess}
       />
 
-      <Modal
+      <DeleteObjectModal
         opened={isDeleteModalOpen}
+        actionId={deleteActionId}
+        objectId={rowId}
         onClose={handleDeleteModalClose}
-        size="lg"
-        withCloseButton={false}
-        padding={0}
-      >
-        <DeleteObjectModal
-          actionId={deleteActionId}
-          objectId={rowId}
-          onClose={handleDeleteModalClose}
-          onSuccess={handleDeleteSuccess}
-        />
-      </Modal>
+        onSuccess={handleDeleteSuccess}
+      />
     </>
   );
 }

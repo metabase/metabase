@@ -11,6 +11,17 @@
       ]
     },
     {
+      "name": "Data Apps",
+      "label": ".Team/DataApps",
+      "codeowner": "@metabase/data-apps",
+      "members": [
+        "ranquild",
+        "heypoom",
+        "sanex3339",
+        "NevRA"
+      ]
+    },
+    {
       "name": "Graphy",
       "label": ".Team/Graphy",
       "members": [
@@ -55,12 +66,10 @@
     {
       "name": "Metabot",
       "label": ".Team/Metabot",
+      "codeowner": "@metabase/metabot",
       "members": [
-        "retro",
-        "sloansparger",
         "lbrdnk",
         "crisptrutski",
-        "undrfined",
         "andreis",
         "prascuna",
         "Krever",
@@ -87,14 +96,12 @@
       "members": [
         "eliotmetabase",
         "npfitz",
-        "johnswanson",
         "nvoxland",
         "bshepherdson",
         "deniskaber",
         "andsalves",
         "kevinkelleher12",
         "AndreyChernykh",
-        "bowbahdoe",
         "appleby"
       ]
     },
@@ -115,7 +122,8 @@
         "olehk-mb",
         "annatomka",
         "brybacki",
-        "BillyBobFry"
+        "BillyBobFry",
+        "radex"
       ]
     },
     {
@@ -133,7 +141,9 @@
       "name": "Security Engineering",
       "label": ".Team/SecurityEngineering",
       "members": [
-        "enthym-aa"
+        "bowbahdoe",
+        "enthym-aa",
+        "johnswanson"
       ]
     }
   ]

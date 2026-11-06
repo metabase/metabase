@@ -358,7 +358,8 @@
 (mr/def ::parameter.value.scalar
   "A single scalar parameter value."
   [:fn
-   {:error/message "Valid parameter value (cannot be a collection)"}
+   {:error/message "Valid parameter value (cannot be a collection)"
+    :json-schema   {:anyOf [{:type "string"} {:type "number"} {:type "boolean"} {:type "null"}]}}
    (complement coll?)])
 
 (defn- normalize-parameter-value

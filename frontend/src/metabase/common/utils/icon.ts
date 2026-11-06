@@ -65,6 +65,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   glossary: "glossary",
   exploration: "telescope",
   dataapp: "app",
+  "data-app": "app",
   transformtest: "test_tube",
 };
 

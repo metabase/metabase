@@ -8,6 +8,7 @@ import type { DatasetColumn } from "metabase-types/api";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
+  VisualizationTheme,
 } from "../../../types";
 import { CHART_STYLE } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
@@ -19,6 +20,7 @@ import type {
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   TimeSeriesXAxisModel,
+  WaterfallXAxisModel,
   YAxisModel,
 } from "../model/types";
 
@@ -27,8 +29,18 @@ import { getPaddedAxisLabel } from "./utils";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
-export const getAxisNameGap = (ticksWidth: number): number => {
-  return ticksWidth + CHART_STYLE.axisNameMargin;
+export const getXAxisNameGap = (
+  ticksHeight: number,
+  theme: VisualizationTheme,
+): number => {
+  return ticksHeight + theme.cartesian.axisTitle.marginX;
+};
+
+export const getYAxisNameGap = (
+  ticksWidth: number,
+  theme: VisualizationTheme,
+): number => {
+  return ticksWidth + theme.cartesian.axisTitle.marginY;
 };
 
 const getCustomAxisRange = (
@@ -79,8 +91,8 @@ export const getAxisNameDefaultOption = (
   nameRotate: rotate,
   nameTextStyle: {
     color: getColor("text-primary"),
-    fontSize: theme.cartesian.label.fontSize,
-    fontWeight: CHART_STYLE.axisName.weight,
+    fontSize: theme.cartesian.axisTitle.fontSize,
+    fontWeight: theme.cartesian.axisTitle.fontWeight,
     fontFamily,
   },
 });
@@ -93,7 +105,7 @@ export const getTicksDefaultOption = ({
   return {
     hideOverlap: true,
     color: getColor("text-primary"),
-    fontSize: theme.cartesian.label.fontSize,
+    fontSize: theme.cartesian.ticks.fontSize,
     fontWeight: CHART_STYLE.axisTicks.weight,
     fontFamily,
   };
@@ -106,6 +118,7 @@ export const getDimensionTicksDefaultOption = (
   return {
     ...getTicksDefaultOption(renderingContext),
     show: !!settings["graph.x_axis.axis_enabled"],
+    showMinLabel: true,
     rotate: getRotateAngle(settings),
   };
 };
@@ -116,7 +129,7 @@ const getHistogramTicksOptions = (
   chartLayout: ChartLayout,
   { theme }: RenderingContext,
 ) => {
-  const { fontSize } = theme.cartesian.label;
+  const { fontSize } = theme.cartesian.ticks;
 
   if (settings["graph.x_axis.scale"] !== "histogram") {
     return {};
@@ -130,7 +143,7 @@ const getHistogramTicksOptions = (
     return {
       ...options,
       padding: [0, topOffset, 0, 0],
-      margin: -histogramDimensionWidth / 2 + CHART_STYLE.axisTicksMarginX,
+      margin: -histogramDimensionWidth / 2 + theme.cartesian.ticks.marginX,
     };
   } else if (settings["graph.x_axis.axis_enabled"] === "rotate-90") {
     const rightOffset = histogramDimensionWidth / 2 - fontSize / 2;
@@ -160,9 +173,11 @@ const getCommonDimensionAxisOptions = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
-  const nameGap = getAxisNameGap(chartLayout.ticksDimensions.xTicksHeight);
+  const nameGap = getXAxisNameGap(
+    chartLayout.ticksDimensions.xTicksHeight,
+    renderingContext.theme,
+  );
   const { getColor } = renderingContext;
-  const isSplitPanels = chartLayout.panelHeight != null;
   return {
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -182,9 +197,7 @@ const getCommonDimensionAxisOptions = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: getColor(
-          isSplitPanels ? "border-neutral-strong" : "border-neutral",
-        ),
+        color: getColor("chart-axis"),
       },
     },
   };
@@ -253,7 +266,7 @@ export const buildNumericDimensionAxis = (
     type: "value",
     scale: true,
     axisLabel: {
-      margin: CHART_STYLE.axisTicksMarginX,
+      margin: renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
         if (isPadded && (rawValue < min || rawValue > max)) {
@@ -274,13 +287,13 @@ export const buildNumericDimensionAxis = (
 };
 
 export const buildTimeSeriesDimensionAxis = (
-  xAxisModel: TimeSeriesXAxisModel,
+  xAxisModel: TimeSeriesXAxisModel & Pick<WaterfallXAxisModel, "totalXValue">,
   hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
   chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): XAXisOption => {
-  const { formatter, maxInterval, minInterval, canRender, xDomainPadded } =
+  const { formatter, minInterval, customValues, canRender, xDomainPadded } =
     getTicksOptions(xAxisModel, chartLayout);
 
   return {
@@ -289,8 +302,9 @@ export const buildTimeSeriesDimensionAxis = (
     axisLabel: {
       margin: hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
-        : CHART_STYLE.axisTicksMarginX,
+        : renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
+      customValues,
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
         if (canRender(value)) {
@@ -304,7 +318,6 @@ export const buildTimeSeriesDimensionAxis = (
     min: xDomainPadded[0],
     max: xDomainPadded[1],
     minInterval,
-    maxInterval,
   };
 };
 
@@ -330,7 +343,7 @@ export const buildCategoricalDimensionAxis = (
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "category",
     axisLabel: {
-      margin: CHART_STYLE.axisTicksMarginX,
+      margin: renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       ...getHistogramTicksOptions(
         datasetLength,
@@ -367,9 +380,22 @@ export const buildMetricAxis = (
   renderingContext: RenderingContext,
 ): YAXisOption => {
   const shouldFlipAxisName = position === "right";
-  const nameGap = getAxisNameGap(ticksWidth);
+  const nameGap = getYAxisNameGap(ticksWidth, renderingContext.theme);
 
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
+  const rangeMin = "min" in range ? range.min : undefined;
+  // When the axis starts at or above zero the x-axis line sits on the bottom
+  // gridline, and stacking the two translucent lines renders darker than the
+  // other gridlines, so we skip the duplicated min gridline.
+  const hasXAxisLineAtMin =
+    !!settings["graph.x_axis.axis_enabled"] &&
+    axisModel.extent[0] >= 0 &&
+    (rangeMin == null || rangeMin === 0);
+  const lineStyle = {
+    type: "solid" as const,
+    opacity: hasSplitLine ? 1 : 0,
+    ...renderingContext.theme.cartesian.splitLine.lineStyle,
+  };
 
   const {
     type: _omitType,
@@ -391,13 +417,7 @@ export const buildMetricAxis = (
     ...range,
     ...axisNameOptions,
     splitLine: settings["graph.y_axis.axis_enabled"]
-      ? {
-          lineStyle: {
-            type: "solid",
-            opacity: hasSplitLine ? 1 : 0,
-            ...renderingContext.theme.cartesian.splitLine.lineStyle,
-          },
-        }
+      ? { lineStyle, showMinLine: !hasXAxisLineAtMin }
       : undefined,
     position,
     axisLine: {
@@ -407,7 +427,7 @@ export const buildMetricAxis = (
       show: false,
     },
     axisLabel: {
-      margin: CHART_STYLE.axisTicksMarginY,
+      margin: renderingContext.theme.cartesian.ticks.marginY,
       show: !!settings["graph.y_axis.axis_enabled"],
       ...getTicksDefaultOption(renderingContext),
       formatter: (rawValue) =>

@@ -103,6 +103,8 @@ describe("scenarios > dashboard cards > sections", () => {
 
     // Ensure parameter mapping is persisted
     H.editDashboard();
+    // Empty placeholders still exist, but only edit mode shows their button
+    H.dashboardGrid().findAllByText("Select question").should("have.length", 3);
     filterPanel().findByText("Category").click();
     H.getDashboardCard(1).findByText("Product.Category").should("exist");
   });

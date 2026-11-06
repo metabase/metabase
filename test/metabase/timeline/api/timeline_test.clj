@@ -66,6 +66,20 @@
         (is (= '()
                (->> (collection-timelines-request coll-c true) first :events)))))))
 
+(deftest timeline-events-archived-test
+  (testing "GET /api/timeline/:id?include=events"
+    (mt/with-temp [:model/Timeline      tl        {:name "Timeline"}
+                   :model/TimelineEvent _event    {:name "event" :timeline_id (u/the-id tl)}
+                   :model/TimelineEvent _event-old {:name "event-old" :timeline_id (u/the-id tl) :archived true}]
+      (testing "without `archived` returns only un-archived events"
+        (is (= #{"event"}
+               (event-names [(mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl))
+                                                   :include "events")]))))
+      (testing "with `archived=true` returns archived and un-archived events"
+        (is (= #{"event" "event-old"}
+               (event-names [(mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl))
+                                                   :include "events" :archived true)])))))))
+
 (deftest collection-archived-timelines-test
   (testing "GET /api/timeline/collection/:id?archived=true returns only archived timelines"
     (mt/with-temp [:model/Collection coll-b {:name "Collection B"}

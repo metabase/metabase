@@ -37,7 +37,7 @@
 
                           :update
                           #(mt/with-temp [:model/PulseChannel {pulse-channel-id :id} {:pulse_id pulse-id}]
-                             (t2/update! :model/PulseChannel pulse-channel-id {:details {:emails emails}})))]
+                             (t2/update! :model/PulseChannel :id pulse-channel-id {:details {:emails emails}})))]
               (if fail?
                 (testing "should fail"
                   (is (thrown-with-msg?

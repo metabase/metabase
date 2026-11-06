@@ -6,7 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
 import { dayjs } from "metabase/dayjs";
-import { Box, Card, Flex, Text } from "metabase/ui";
+import { Box, Card, Flex, Stack, Text } from "metabase/ui";
 import type { UserLoginHistoryItem } from "metabase-types/api";
 
 interface FormattedLoginItem extends UserLoginHistoryItem {
@@ -43,8 +43,8 @@ const LoginHistoryGroup = ({
   items: FormattedLoginItem[];
   date: string;
 }) => (
-  <Box py="lg">
-    <Label>{date}</Label>
+  <Box pb="lg">
+    <Label mb="xl">{date}</Label>
     <div>
       {items.map((item) => (
         <LoginHistoryItem key={item.timestamp} item={item} />
@@ -81,11 +81,11 @@ function LoginHistoryList({
   }
 
   return (
-    <div>
+    <Stack gap="lg">
       {_.map(groups, (items, date) => (
         <LoginHistoryGroup items={items} date={date} key={date} />
       ))}
-    </div>
+    </Stack>
   );
 }
 

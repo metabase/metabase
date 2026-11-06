@@ -25,11 +25,6 @@
 
 .actionsContainer {
   flex-shrink: 0;
-
-  .commentsIcon:hover {
-    color: var(--mb-color-text-brand-hover);
-    background-color: var(--mb-color-background_surface-hover);
-  }
 }
 
 @media print {

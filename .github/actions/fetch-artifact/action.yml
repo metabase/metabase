@@ -41,7 +41,6 @@ runs:
           const fs = require('fs');
 
           const isRelease = "${{ inputs.release }}" === "true";
-          const failOnMiss = "${{ inputs.fail-on-fetch-miss }}" !== "false";
           const shouldDownload = "${{ inputs.download }}" !== "false";
           const prefix = isRelease ? "metabase-release" : "metabase";
           const artifactName = `${prefix}-${{ inputs.edition }}-${{ inputs.commit }}-uberjar`;
@@ -54,16 +53,25 @@ runs:
             per_page: 1,
           });
 
-          const artifact_id = artifacts.data?.artifacts?.[0]?.id;
+          const artifact = artifacts.data?.artifacts?.[0];
+          const artifact_id = artifact && !artifact.expired ? artifact.id : undefined;
 
-          if (!artifact_id) {
-            core.setOutput('fetch-hit', 'false');
-          } else {
-            core.setOutput('fetch-hit', 'true');
-          }
+          core.setOutput('fetch-hit', artifact_id ? 'true' : 'false');
 
           if (!shouldDownload) {
             console.log(`skipping download (download: false)`);
+            return;
+          }
+
+          // Nothing to download, so fail now rather than retrying a request for no artifact.
+          if (!artifact_id) {
+            const reason = artifact
+              ? `it expired on ${artifact.expires_at}`
+              : `no workflow uploaded it for commit ${{ inputs.commit }}`;
+            const hint = isRelease
+              ? ' Release artifacts come from "Release 1 - Tag Release Artifact"; check it ran for this exact commit.'
+              : '';
+            core.setFailed(`Artifact ${artifactName} not found: ${reason}.${hint}`);
             return;
           }
 

@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent, JSX, ReactNode } from "react";
 import { useCallback } from "react";
 
 import { FormSwitch } from "metabase/forms";

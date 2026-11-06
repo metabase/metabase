@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { isReturningToDataStudio } from "metabase/common/data-studio/utils/return-to";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
 import {
   cancelEditingDashboard,
@@ -77,13 +78,15 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   };
 
   const onConfirmCancel = () => {
-    dispatch(
-      fetchDashboard({
-        dashId: dashboard.id,
-        queryParams: parameterQueryParams ?? {},
-        options: { preserveParameters: true },
-      }),
-    );
+    if (!isReturningToDataStudio(location)) {
+      dispatch(
+        fetchDashboard({
+          dashId: dashboard.id,
+          queryParams: parameterQueryParams ?? {},
+          options: { preserveParameters: true },
+        }),
+      );
+    }
     dispatch(cancelEditingDashboard(location));
     closeModal();
   };

@@ -10,13 +10,14 @@ import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortc
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
+import { closeNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import type { ModalState } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { WritebackAction } from "metabase-types/api";
+import type { Dashboard, WritebackAction } from "metabase-types/api";
 
 const getCurrentOpenModalState = <TProps,>(state: State) =>
   // Unjustified type cast. FIXME
@@ -49,26 +50,32 @@ export const NewModals = () => {
     dispatch(closeModal());
   }, [dispatch]);
 
+  const handleDashboardCreated = useCallback(
+    (dashboard: Dashboard) => {
+      dispatch(closeModal());
+      dispatch(closeNavbar());
+      navigate(Urls.dashboard(dashboard, { editMode: true }));
+    },
+    [dispatch, navigate],
+  );
+
   useEffect(() => {
     // Hide the modals on location change
     handleModalClose();
   }, [handleModalClose, pathname]);
 
-  useRegisterShortcut(
-    [
-      {
-        id: "shortcuts-modal",
-        perform: () => {
-          if (currentNewModalId) {
-            handleModalClose();
-          } else {
-            dispatch(setOpenModal("help"));
-          }
-        },
+  useRegisterShortcut([
+    {
+      id: "shortcuts-modal",
+      perform: () => {
+        if (currentNewModalId) {
+          handleModalClose();
+        } else {
+          dispatch(setOpenModal("help"));
+        }
       },
-    ],
-    [currentNewModalId],
-  );
+    },
+  ]);
 
   switch (currentNewModalId) {
     case "collection": {
@@ -88,6 +95,7 @@ export const NewModals = () => {
         <CreateDashboardModal
           opened
           onClose={handleModalClose}
+          onCreate={handleDashboardCreated}
           collectionId={collectionId}
         />
       );

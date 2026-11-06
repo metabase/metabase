@@ -1,5 +1,5 @@
+import bridgeImage from "assets/img/bridge.svg?url";
 import noResultsSource from "assets/img/no_results.svg";
-import bridgeImage from "img/bridge.svg?url";
 import type { IllustrationValue } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import {

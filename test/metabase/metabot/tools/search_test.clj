@@ -3,8 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
@@ -18,6 +21,200 @@
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn- invoke-search
+  ([tool-list args] (invoke-search tool-list args nil nil))
+  ([tool-list args metabot profile-id]
+   (binding [scope/*current-user-scope* #{scope/agent-search}]
+     ((get-in (metabot.tools/->entries tool-list (atom {}) metabot profile-id) ["search" :fn]) args))))
+
+(def ^:private missing-query-result
+  {:error {:class :recoverable :code ::search/missing-query}
+   :output (str "Provide at least one query. Every query must be non-blank.\n"
+                "Remove blank entries from every query list, then call `search` again "
+                "with non-blank queries in `keyword_queries`.")})
+
+(defn- do-with-search-stub!
+  "Call `thunk` with the engines set to `engines`, `ranked-results` answering each search string from
+  `string->ranked`, and `search-results` paginating whatever ranking it is handed. A search string that
+  `string->ranked` has no entry for throws, as a failing query would."
+  [engines string->ranked thunk]
+  (with-redefs [perms/impersonated-user?     (constantly false)
+                perms/sandboxed-user?        (constantly false)
+                search.engine/active-engines (constantly engines)
+                search.engine/disjunction    (fn [_ terms] terms)
+                search-core/ranked-results   (fn [{:keys [search-string]}]
+                                               (or (string->ranked search-string)
+                                                   (throw (ex-info "Search index unavailable" {}))))
+                search-core/search-results   (fn [{:keys [limit-int]} _ ranked]
+                                               {:data  (vec (cond->> ranked limit-int (take limit-int)))
+                                                :total (count ranked)})]
+    (thunk)))
+
+(defn- result-notes
+  "The lines a search output adds after its results, up to `</result>`."
+  [output]
+  (->> (str/split-lines output)
+       (drop-while #(not= "</search-results>" %))
+       rest
+       (take-while #(not= "</result>" %))
+       (remove str/blank?)))
+
+(def ^:private failed-note
+  (str "The search failed for \"broken\", so these results may be incomplete. "
+       "If what you need isn't listed, tell the user the search was incomplete."))
+
+(def ^:private retry-note
+  (str "Retry once with shorter `keyword_queries`: one or two words each, with synonyms as separate entries. "
+       "If that also finds nothing, tell the user instead of searching again."))
+
+(deftest ^:parallel search-requires-query-test
+  (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]
+    (doseq [[tool-var extra-args] [[#'search/search-tool {}]
+                                   [#'search/sql-search-tool {:database_id 1}]
+                                   [#'search/nlq-search-tool {}]]
+            queries [{}
+                     {:keyword_queries [] :semantic_queries []}
+                     {:keyword_queries ["" "  "] :semantic_queries ["\n"]}
+                     {:keyword_queries ["" "orders"] :semantic_queries []}
+                     {:keyword_queries ["orders" "  "]}
+                     {:keyword_queries ["orders"] :semantic_queries [""]}]]
+      (is (= missing-query-result
+             (invoke-search [tool-var] (merge extra-args queries)))))))
+
+(deftest sql-search-checks-database-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-test-user :rasta
+      (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]
+        (doseq [database-id [Integer/MAX_VALUE (mt/id) 0 -1]]
+          (is (= {:error {:class :recoverable :code ::search/unavailable-database}
+                  :output (str "Database " database-id
+                               " was not found. It may not exist, or you may not have access to it.\n"
+                               "Use the database currently selected in the SQL editor.\n"
+                               "Call `read_resource` with `metabase://databases` to find an accessible database ID.")}
+                 (invoke-search [#'search/sql-search-tool #'metabot.tools/read-resource-tool]
+                                {:database_id database-id :keyword_queries ["orders"]}))))))))
+
+(deftest sql-search-non-admin-database-access-test
+  (search.tu/with-legacy-search
+    (let [args {:database_id (mt/id) :keyword_queries ["orders"] :entity_types ["table"]}
+          search-as-rasta (fn []
+                            (mt/with-test-user :rasta
+                              (is (false? api/*is-superuser?*))
+                              (is (= (mt/user->id :rasta) api/*current-user-id*))
+                              (invoke-search [#'search/sql-search-tool] args)))]
+      (testing "a non-admin with database access can search"
+        (let [result (search-as-rasta)]
+          (is (nil? (:error result)))
+          (is (= :search (get-in result [:structured-output :result-type])))
+          (is (some #(= (mt/id :orders) (:id %)) (get-in result [:structured-output :data])))))
+      (testing "the same non-admin is refused without database access"
+        (mt/with-no-data-perms-for-all-users!
+          (let [result (search-as-rasta)]
+            (is (= {:class :recoverable :code ::search/unavailable-database} (:error result)))
+            (is (= (str "Database " (mt/id)
+                        " was not found. It may not exist, or you may not have access to it.\n"
+                        "Use the database currently selected in the SQL editor.")
+                   (:output result)))))))))
+
+(deftest ^:parallel sql-search-database-recovery-follows-profile-test
+  (mt/with-dynamic-fn-redefs [search/search (constantly [])]
+    (is (= {:error {:class :recoverable :code ::search/unavailable-database}
+            :output (str "Database " Integer/MAX_VALUE
+                         " was not found. It may not exist, or you may not have access to it.\n"
+                         "Use the database currently selected in the SQL editor.")}
+           (invoke-search [#'search/sql-search-tool]
+                          {:database_id Integer/MAX_VALUE :keyword_queries ["orders"]})))))
+
+(deftest search-query-and-context-test
+  (mt/with-test-user :crowberto
+    (let [metabot {:entity_id "configured-search-bot" :collection_id 42 :use_verified_content true}]
+      (doseq [[tool-var extra-args search-opts]
+              [[#'search/search-tool {} {}]
+               [#'search/sql-search-tool {:database_id (mt/id)} {:database-id (mt/id)}]
+               [#'search/nlq-search-tool {} {:profile-id "nlq"}]]
+              queries [{:keyword_queries ["orders"]}
+                       {:semantic_queries ["order revenue"]}]]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [search/search (fn [opts] (reset! captured opts) [])]
+            (is (=? {:structured-output {:result-type :search :data [] :total_count 0}
+                     :data-parts [{:type :data :data-type "search_results"
+                                   :data {:results [] :total_count 0}}]}
+                    (invoke-search [tool-var] (merge extra-args queries) metabot "internal")))
+            (is (=? (merge {:metabot metabot} search-opts) @captured))))))))
+
+(deftest search-result-notes-test
+  (mt/with-test-user :rasta
+    (do-with-search-stub!
+     [:search.engine/appdb]
+     {"orders"  (for [id [1 2 3]] {:id id :model "card" :name (str "Orders " id)})
+      "reports" (for [id (range 1 1001)] {:id id :model "card" :name (str "Report " id)})}
+     (fn []
+       (testing "a page cut short gives the total as a lower bound, since search caps the ranked pool"
+         (is (= ["Showing 1 of at least 1000 results. To see more, raise `limit` (max 50) or make the queries more specific."]
+                (result-notes (:output (invoke-search [#'search/search-tool]
+                                                      {:keyword_queries ["reports"] :limit 1}))))))
+       (testing "a page that holds every match gives the total"
+         (is (= ["Total results: 3"]
+                (result-notes (:output (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]}))))))
+       (testing "a query that fails is named, and the other query's results are kept"
+         (let [result (invoke-search [#'search/search-tool] {:keyword_queries ["orders" "broken"]})]
+           (is (nil? (:error result)))
+           (is (= [1 2 3] (map :id (get-in result [:structured-output :data]))))
+           (is (= ["Total results: 3" failed-note] (result-notes (:output result))))))
+       (testing "a search whose every query fails is a search failure the agent can recover from"
+         (is (= {:class :recoverable :code ::search/search-failed}
+                (:error (invoke-search [#'search/search-tool] {:keyword_queries ["broken" "also broken"]})))))))))
+
+(deftest empty-search-explains-itself-test
+  (let [explain (fn [tool-var args metabot]
+                  (let [{:keys [output structured-output]} (invoke-search [tool-var] args metabot nil)]
+                    {:empty_reason (:empty_reason structured-output)
+                     :notes        (result-notes output)}))]
+    (mt/with-dynamic-fn-redefs [search/search (constantly [])]
+      (testing "nothing narrowed the search"
+        (is (= {:empty_reason "no_match"
+                :notes        ["Total results: 0" "<no-results>" retry-note "</no-results>"]}
+               (explain #'search/search-tool {:keyword_queries ["zzz"]} nil)))
+        (is (= {:empty_reason "no_match"
+                :notes        ["Total results: 0" "<no-results>" retry-note "</no-results>"]}
+               (explain #'search/nlq-search-tool {:keyword_queries ["zzz"]
+                                                  :entity_types    (vec @#'search/general-entity-types)}
+                        nil))
+            "every type the tool accepts narrows nothing, even beyond the tool's defaults"))
+      (testing "the entity types the model picked, curated content only and a confined collection are named"
+        (is (= {:empty_reason "restricted"
+                :notes        ["Total results: 0"
+                               "<no-results>"
+                               "Only these entity types were searched: dashboard, metric. If other types could match, add them to `entity_types`."
+                               "This Metabot searches only curated content, such as verified items and items in official collections."
+                               "This Metabot searches only inside its own collection."
+                               retry-note
+                               "</no-results>"]}
+               (explain #'search/nlq-search-tool
+                        {:keyword_queries ["zzz"] :entity_types ["metric" "dashboard"]}
+                        {:collection_id 7 :use_verified_content true})))))
+    (mt/with-dynamic-fn-redefs [search/search (constantly (with-meta [] {:total 0 :failed-queries ["broken"]}))]
+      (testing "a failed query comes first among the reasons"
+        (is (= {:empty_reason "incomplete"
+                :notes        ["Total results: 0"
+                               failed-note
+                               "<no-results>"
+                               "This Metabot searches only curated content, such as verified items and items in official collections."
+                               retry-note
+                               "</no-results>"]}
+               (explain #'search/search-tool {:keyword_queries ["zzz" "broken"]} {:use_verified_content true})))))))
+
+(deftest ^:parallel unsupported-search-entity-types-test
+  (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search must not run" {})))]
+    (doseq [[tool-var extra-args entity-type]
+            [[#'search/search-tool {} "database"]
+             [#'search/sql-search-tool {:database_id 1} "metric"]
+             [#'search/nlq-search-tool {} "transform"]]]
+      (let [result (invoke-search [tool-var] (merge extra-args {:keyword_queries ["orders"]
+                                                                :entity_types [entity-type]}))]
+        (is (= {:class :validation :code :invalid-arguments} (:error result)))
+        (is (str/includes? (:output result) "entity_types"))))))
 
 (deftest ^:parallel search-display-test
   (testing "joins keyword and semantic queries into the search object (client owns the verb/tense)"
@@ -53,7 +250,13 @@
             :moderated_status "verified"}
            (#'search/search-result->item
             {:id 7 :type "question" :name "Revenue" :display :line
-             :moderated_status "verified"})))))
+             :moderated_status "verified"}))))
+  (testing "carries the base table of a measure or segment, which the client needs to link to it"
+    (is (= [{:id 8 :type "measure" :name "Revenue" :database_id 2 :table_id 10}
+            {:id 9 :type "segment" :name "Big orders" :database_id 2 :table_id 10}]
+           (map #'search/search-result->item
+                [{:id 8 :type "measure" :name "Revenue" :database_id 2 :base_table_id 10}
+                 {:id 9 :type "segment" :name "Big orders" :database_id 2 :base_table_id 10}])))))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
@@ -184,6 +387,46 @@
           ;; three distinct items survive fusion; total counts them once, not 2+2=4
           (is (= 3 (:total (meta results))))
           (is (= #{1 2 3} (set (map :id results)))))))))
+
+(deftest partial-results-test
+  (mt/with-test-user :rasta
+    (doseq [[engines queries] [[[:search.engine/appdb]
+                                {:term-queries ["orders" "broken"]}]
+                               [[:search.engine/semantic :search.engine/appdb]
+                                {:term-queries ["orders"] :semantic-queries ["broken"]}]]]
+      (testing (str "engines " engines)
+        (do-with-search-stub!
+         engines
+         {"orders" [{:id 1 :model "card" :name "Orders"}]}
+         (fn []
+           (let [search* #(search/search (merge queries {:entity-types ["question"]} %))]
+             (testing "partial-results? keeps the other queries' results, lists the failed ones and logs the failure"
+               (mt/with-log-messages-for-level [logs [metabase.metabot.tools.search :error]]
+                 (let [results (search* {:partial-results? true})]
+                   (is (= [1] (map :id results)))
+                   (is (= {:total 1 :failed-queries ["broken"]} (meta results)))
+                   (is (=? [{:level :error :e #(= "Search index unavailable" (ex-message %))}] (logs))))))
+             (testing "without partial-results?, any failure fails the search"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable" (search* {}))))
+             (testing "a search where every query fails still fails"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
+                                     (search* {:term-queries     ["broken" "also broken"]
+                                               :semantic-queries []
+                                               :partial-results? true})))))))))
+    (testing "a failed search that folded several queries into one lists every one of them"
+      (do-with-search-stub!
+       [:search.engine/semantic :search.engine/appdb]
+       {"orders" [{:id 1 :model "card" :name "Orders"}]}
+       (fn []
+         (with-redefs [search.engine/disjunction (fn [engine terms]
+                                                   (if (= :search.engine/appdb engine)
+                                                     [(str/join " OR " terms)]
+                                                     terms))]
+           (is (= {:total 1 :failed-queries ["a" "b"]}
+                  (meta (search/search {:semantic-queries ["orders"]
+                                        :term-queries     ["a" "b"]
+                                        :entity-types     ["question"]
+                                        :partial-results? true}))))))))))
 
 (deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
@@ -392,28 +635,29 @@
                     :created_at "2024-01-06"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
-(deftest search-native-query-test
-  (mt/with-test-user :rasta
-    (with-redefs [perms/impersonated-user? (fn [] false)
-                  perms/sandboxed-user? (fn [] false)
-                  api/*current-user-id* 1]
-      (testing ":search-native-query is included in context when true"
-        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
-                                                                 (is (true? (:search-native-query context)))
-                                                                 [])]
-          (search/search {:term-queries ["test"]
-                          :entity-types ["card"]
-                          :search-native-query true})))
-      (testing ":search-native-query is not included in context when nil or false"
-        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
-                                                                 (is (not (contains? context :search-native-query)))
-                                                                 [])]
-          (search/search {:term-queries ["test"]
-                          :entity-types ["card"]
-                          :search-native-query false})
-          (search/search {:term-queries ["test"]
-                          :entity-types ["card"]
-                          :search-native-query nil}))))))
+(deftest ^:parallel postprocess-search-result-measure-segment-test
+  (testing "measure and segment results carry their base table from the index row, and no collection fields"
+    (doseq [model ["measure" "segment"]]
+      (is (= {:id                5
+              :type              model
+              :name              "Big Orders"
+              :description       "desc"
+              :updated_at        "2024-01-05"
+              :created_at        "2024-01-05"
+              :database_id       2
+              :base_table_id     10
+              :base_table_name   "ORDERS"
+              :base_table_schema "PUBLIC"}
+             (#'search/postprocess-search-result {:model        model
+                                                  :id           5
+                                                  :name         "Big Orders"
+                                                  :description  "desc"
+                                                  :updated_at   "2024-01-05"
+                                                  :created_at   "2024-01-05"
+                                                  :database_id  2
+                                                  :table_id     10
+                                                  :table_name   "ORDERS"
+                                                  :table_schema "PUBLIC"}))))))
 
 (deftest tool-default-entity-types-test
   (testing "tool variants restrict default entity types to their allowed set"
@@ -421,13 +665,19 @@
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
                     api/*current-user-id* 1]
-        (testing "nlq-search-tool with no entity_types searches only table/model/metric/question"
+        (testing "nlq-search-tool with no entity_types searches only the queryable types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                      (reset! captured (:models context))
                                                                      [])]
-              (search/nlq-search-tool {:keyword_queries ["x"]}))
-            (is (= #{"table" "dataset" "metric" "card"} @captured))
+              (invoke-search [#'search/nlq-search-tool] {:keyword_queries ["x"]}))
+            (is (= #{"card"
+                     "dataset"
+                     "measure"
+                     "metric"
+                     "segment"
+                     "table"}
+                   @captured))
             (is (not (contains? @captured "dashboard")))
             (is (not (contains? @captured "transform")))
             (is (not (contains? @captured "database")))))
@@ -436,29 +686,36 @@
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                      (reset! captured (:models context))
                                                                      [])]
-              (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
+              (invoke-search [#'search/sql-search-tool] {:keyword_queries ["x"] :database_id (mt/id)}))
             (is (= #{"table" "dataset"} @captured))))
         (testing "general search includes documents in its default entity types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                      (reset! captured (:models context))
                                                                      [])]
-              (search/search-tool {:keyword_queries ["x"]}))
+              (invoke-search [#'search/search-tool] {:keyword_queries ["x"]}))
             (is (contains? @captured "document"))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                      (reset! captured (:models context))
                                                                      [])]
-              (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
+              (invoke-search [#'search/nlq-search-tool] {:keyword_queries ["x"] :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))
+        (testing "agent-supplied measure and segment types reach the engine unchanged"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (reset! captured (:models context))
+                                                                     [])]
+              (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :entity_types ["measure" "segment"]}))
+            (is (= #{"measure" "segment"} @captured))))
         (testing "NLQ search accepts document and dashboard destination types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
                                                                      (reset! captured (:models context))
                                                                      [])]
-              (search/nlq-search-tool {:keyword_queries ["plan"]
-                                       :entity_types    ["document" "dashboard"]}))
+              (invoke-search [#'search/nlq-search-tool] {:keyword_queries ["plan"]
+                                                         :entity_types    ["document" "dashboard"]}))
             (is (= #{"document" "dashboard"} @captured))))))))
 
 (deftest tool-limit-test
@@ -475,7 +732,7 @@
                                         search-core/search-results (fn [context _ _]
                                                                      (reset! captured (:limit-int context))
                                                                      {:data [] :total 0})]
-              (search/search-tool {:keyword_queries ["x"]}))
+              (invoke-search [#'search/search-tool] {:keyword_queries ["x"]}))
             (is (= 10 @captured))))
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
@@ -483,20 +740,52 @@
                                         search-core/search-results (fn [context _ _]
                                                                      (reset! captured (:limit-int context))
                                                                      {:data [] :total 0})]
-              (search/search-tool {:keyword_queries ["x"] :limit 25}))
+              (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit 25}))
             (is (= 25 @captured))))
-        (testing "limit above 50 is rejected by schema validation"
-          (is (thrown? Exception
-                       (search/search-tool {:keyword_queries ["x"] :limit 75}))))
-        (testing "limit below 1 is rejected by schema validation"
-          (is (thrown? Exception
-                       (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
+        (testing "limits below 1 or above 50 are rejected by schema validation"
+          (doseq [limit [0 75]]
+            (is (=? {:error {:class :validation :code :invalid-arguments}}
+                    (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit limit})))))))))
 
-(deftest ^:parallel search-failure-throws-test
-  (testing "an exception from search propagates out of the tool (BOT-2199)"
-    (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search index unavailable" {})))]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
-                            (search/search-tool {:keyword_queries ["x"]}))))))
+(deftest ^:parallel search-failure-test
+  (testing "a failing search backend lets the agent browse what the search was limited to (BOT-2540)"
+    (mt/with-test-user :crowberto
+      (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found." {})))]
+        (let [instance-step (str "Find the data with `read_resource` instead: read `metabase://collections` for "
+                                 "metrics, models, questions and dashboards, or `metabase://databases`, then "
+                                 "`metabase://database/{id}/tables`, for tables.")
+              no-retry-step (str "Do not call `search` again in this turn. If you cannot find the data another "
+                                 "way, tell the user that search is unavailable right now.")
+              confined      {:entity_id metabot.config/embedded-metabot-id :collection_id 42}]
+          (doseq [[scope tool-var extra-args metabot profile-id step]
+                  [["the instance" #'search/search-tool {} nil "internal" instance-step]
+                   ["the instance" #'search/nlq-search-tool {} nil "nlq" instance-step]
+                   ["one database" #'search/sql-search-tool {:database_id (mt/id)} nil "sql"
+                    (str "Find the data with `read_resource` instead: read `metabase://database/" (mt/id)
+                         "/tables` and `metabase://database/" (mt/id) "/models`.")]
+                   ["a confined collection" #'search/search-tool {} confined "internal"
+                    "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
+                   ["a confined collection" #'search/nlq-search-tool {} {:collection_id 42} "nlq"
+                    "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
+                   ;; `read_resource` shows only verified content here too, so the browse step stays
+                   ["verified content" #'search/search-tool {} {:use_verified_content true} "internal" instance-step]
+                   ;; Profiles exempt from curation, where `read_resource` shows unverified content
+                   ["verified content" #'search/nlq-search-tool {} {:use_verified_content true} "nlq-fallback" nil]
+                   ["verified content" #'search/sql-search-tool {:database_id (mt/id)} {:use_verified_content true}
+                    "sql" nil]
+                   ["verified content" #'search/nlq-search-tool {} (assoc confined :use_verified_content true)
+                    "nlq" nil]]]
+            (testing (str tool-var " limited to " scope " under " profile-id)
+              (is (= {:error  {:class :recoverable :code ::search/search-failed}
+                      :output (str/join "\n" (remove nil? ["Search failed." step no-retry-step]))}
+                     (invoke-search [tool-var #'metabot.tools/read-resource-tool]
+                                    (merge extra-args {:keyword_queries ["orders"]})
+                                    metabot
+                                    profile-id)))))
+          (testing "a profile without `read_resource`, like slackbot, is still told to stop searching"
+            (is (= {:error  {:class :recoverable :code ::search/search-failed}
+                    :output (str "Search failed.\n" no-retry-step)}
+                   (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]})))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
@@ -515,8 +804,7 @@
   (testing "every search tool variant rejects a scalar the same way"
     (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
                                    [#'metabot.tools/sql-search-tool {:database_id 1}]
-                                   [#'metabot.tools/nlq-search-tool {}]
-                                   [#'metabot.tools/transform-search-tool {}]]]
+                                   [#'metabot.tools/nlq-search-tool {}]]]
       (testing (str tool-var)
         (is (= "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."
                (test-util/tool-boundary-error "search" tool-var
@@ -658,6 +946,45 @@
               (is (some? dash-res) "expected the dashboard to appear in search results")
               (is (not (contains? dash-res :portable_entity_id))))))))))
 
+(deftest measure-segment-search-test
+  (testing "measure and segment hits carry a portable entity id and their base table's portable FK, as metrics do"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Measure
+                       {measure-id :id measure-eid :entity_id}
+                       {:name     "MeasureSearch Sample Revenue"
+                        :table_id (mt/id :orders)}
+
+                       :model/Segment
+                       {segment-id :id segment-eid :entity_id}
+                       {:name     "MeasureSearch Sample Big Orders"
+                        :table_id (mt/id :orders)}]
+          (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                by-key  (into {} (map (juxt (juxt :type :id) identity))
+                              (search/search {:term-queries ["MeasureSearch Sample"]}))]
+            (is (=? {:type                   "measure"
+                     :name                   "MeasureSearch Sample Revenue"
+                     :database_id            (mt/id)
+                     :database_name          db-name
+                     :portable_entity_id     measure-eid
+                     :base_table_id          (mt/id :orders)
+                     :base_table_portable_fk [db-name "PUBLIC" "ORDERS"]}
+                    (get by-key ["measure" measure-id])))
+            (is (=? {:type                   "segment"
+                     :name                   "MeasureSearch Sample Big Orders"
+                     :database_id            (mt/id)
+                     :database_name          db-name
+                     :portable_entity_id     segment-eid
+                     :base_table_id          (mt/id :orders)
+                     :base_table_portable_fk [db-name "PUBLIC" "ORDERS"]}
+                    (get by-key ["segment" segment-id])))
+            (testing "the XML the agent sees carries a read_resource uri and the portable ids"
+              (let [xml (llm-shape/search-results->xml (vals by-key))]
+                (is (str/includes? xml (str "<measure id=\"" measure-id "\" uri=\"metabase://measure/" measure-id "\"")))
+                (is (str/includes? xml (str "<segment id=\"" segment-id "\" uri=\"metabase://segment/" segment-id "\"")))
+                (is (str/includes? xml (str "portable_entity_id=\"" measure-eid "\"")))
+                (is (str/includes? xml "base_table_fully_qualified_name=\"PUBLIC.ORDERS\""))))))))))
+
 (deftest entity-refs->search-results-test
   (testing "hydrates {:model :id} refs (as stored by the semantic layer) into enriched search records"
     (mt/with-test-user :crowberto
@@ -718,7 +1045,14 @@
             (mt/with-test-user :rasta
               (is (empty? (search/entity-refs->search-results refs))))))))))
 
-(deftest enrich-with-metric-base-tables-test
+(def ^:private metric-source-keys
+  "Every key [[metabase.metabot.tools.util/metric-source-fields]] can set, so `select-keys` over it asserts presence and
+  absence in one comparison."
+  [:base_table_id :base_table_name :base_table_schema :base_table_portable_fk
+   :source_card_id :source_card_name :source_card_portable_entity_id
+   :source_unavailable])
+
+(deftest enrich-with-metric-sources-base-table-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
                 "`source-table:` without a separate read_resource call. We look up\n"
                 "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
@@ -750,7 +1084,7 @@
               (is (= [db-name (:schema orders-t) (:name orders-t)]
                      (:base_table_portable_fk metric-res))))))))))
 
-(deftest enrich-with-metric-base-tables-respects-table-permissions-test
+(deftest enrich-with-metric-sources-respects-table-permissions-test
   (testing "a readable metric does not reveal metadata for an unreadable base table"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-test-user :rasta
@@ -772,6 +1106,30 @@
                              :base_table_schema
                              :base_table_portable_fk])))))))))
 
+(deftest embedded-metabot-search-test
+  (mt/with-test-user :crowberto
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Embedded sources" :authority_level "official"}
+                     :model/Collection {elsewhere-id :id} {:name "Other sources" :authority_level "official"}
+                     :model/Collection {drafts-id :id} {:name "Embedded drafts"
+                                                        :location (collection/location-path collection-id)}
+                     :model/Dashboard {included-id :id} {:name "Embedded report" :collection_id collection-id}
+                     :model/Dashboard {draft-id :id} {:name "Embedded report draft" :collection_id drafts-id}
+                     :model/Dashboard _ {:name "Embedded report elsewhere" :collection_id elsewhere-id}]
+        (mt/with-temp-vals-in-db :model/Metabot
+                                 (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))
+                                 {:collection_id collection-id :use_verified_content true}
+          (doseq [request-id [metabot.config/embedded-metabot-id "c61bf5f5-1025-47b6-9298-bf1827105bb6"]]
+            (let [metabot (metabot.config/resolve-metabot request-id)
+                  search-args {:term-queries ["Embedded report"]
+                               :entity-types ["dashboard"]
+                               :collection-id elsewhere-id
+                               :metabot metabot}]
+              (is (= #{included-id draft-id}
+                     (into #{} (map :id) (search/search (assoc-in search-args [:metabot :use_verified_content] false)))))
+              (is (= [included-id]
+                     (mapv :id (search/search search-args)))))))))))
+
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
             containment boundary, not a default. An explicit collection-id, which the v2 search tool
@@ -780,8 +1138,8 @@
     (mt/with-test-user :crowberto
       (mt/with-temp [:model/Collection {confined-id :id}  {:name "Bot's collection"}
                      :model/Collection {elsewhere-id :id} {:name "Somewhere else"}
-                     :model/Metabot {metabot-eid :entity_id} {:name          "confined bot"
-                                                              :collection_id confined-id}]
+                     :model/Metabot metabot {:name          "confined bot"
+                                             :collection_id confined-id}]
         (let [collection-for (fn [search-args]
                                (let [captured (atom ::unset)]
                                  (mt/with-dynamic-fn-redefs [search-core/ranked-results
@@ -791,7 +1149,7 @@
                                    (search/search (merge {:term-queries ["anything"]
                                                           :entity-types ["dashboard"]
                                                           :profile-id   "nlq"
-                                                          :metabot-id   metabot-eid}
+                                                          :metabot      metabot}
                                                          search-args)))
                                  @captured))]
           (testing "with no collection-id, the metabot's own collection scopes the search"
@@ -799,8 +1157,8 @@
           (testing "an explicit collection-id elsewhere cannot escape the confinement"
             (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
           (testing "an unconfined metabot still honours an explicit collection-id"
-            (mt/with-temp [:model/Metabot {open-eid :entity_id} {:name "open bot" :collection_id nil}]
-              (is (= elsewhere-id (collection-for {:metabot-id    open-eid
+            (mt/with-temp [:model/Metabot open-metabot {:name "open bot" :collection_id nil}]
+              (is (= elsewhere-id (collection-for {:metabot       open-metabot
                                                    :collection-id elsewhere-id}))))))))))
 
 (deftest transform-visibility-is-superuser-only-test
@@ -853,6 +1211,67 @@
                 (is (not (contains? models "transform")))
                 (is (contains? models "dashboard")
                     "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))))
+
+(deftest enrich-with-metric-source-cards-test
+  (testing "Search offers the source card required by a single-stage card metric"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                       {:name          "SourceCard Sample Question"
+                        :type          :question
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :orders)}}}
+                       :model/Card {metric-id :id}
+                       {:name          "SourceCard Sample Metric"
+                        :type          :metric
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (str "card__" question-id)
+                                                   :aggregation  [[:count]]}}}]
+          (let [results    (search/search {:term-queries ["SourceCard Sample Metric"]})
+                metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+            (is (= {:source_card_id                 question-id
+                    :source_card_name               "SourceCard Sample Question"
+                    :source_card_portable_entity_id question-eid}
+                   (select-keys metric-res metric-source-keys))
+                "the source card includes its entity ID and the base table is not offered")))))))
+
+(deftest enrich-with-metric-source-cards-respects-card-permissions-test
+  (testing "Search does not reveal an unreadable source card or offer its base table"
+    (mt/with-test-user :rasta
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Private SourceCard Collection"}
+                       :model/Card {question-id :id}
+                       {:name          "Restricted SourceCard Question"
+                        :type          :question
+                        :collection_id coll-id
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :orders)}}}
+                       :model/Card {metric-id :id}
+                       {:name          "Restricted SourceCard Metric"
+                        :type          :metric
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (str "card__" question-id)
+                                                   :aggregation  [[:count]]}}}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+          (let [results    (search/search {:term-queries ["Restricted SourceCard Metric"]})
+                metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+            (is (some? metric-res) "collection access still makes the metric searchable")
+            (is (= {:source_unavailable true}
+                   (select-keys metric-res metric-source-keys))
+                "the source is marked unavailable, as it is in metric details")))))))
+
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
     (mt/with-premium-features #{:transforms-basic}
@@ -860,7 +1279,7 @@
         (let [mp (lib-be/application-database-metadata-provider db-id)]
           (mt/with-temp [:model/Transform {transform-id :id}
                          {:name   "Test Transform"
-                          :source {:type  "query"
+                          :source {:type  :query
                                    :query (lib/native-query mp "SELECT 1")}}]
             (let [mock-results [{:id transform-id :type "transform" :name "Test Transform"}
                                 {:id 999 :type "dashboard" :name "Some Dashboard"}]]
@@ -904,3 +1323,68 @@
         (let [[result] (search/entity-refs->search-results [{:model "metric" :id card-id}])]
           (is (= "model" (:type result)))
           (is (string? (:type result))))))))
+
+(deftest enrich-with-metric-sources-mixed-results-test
+  (testing "Search reports the source required by each metric in a mixed result set"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                       {:name "MixedSources Question" :type :question :database_id (mt/id)
+                        :table_id (mt/id :orders)
+                        :dataset_query {:database (mt/id) :type :query
+                                        :query {:source-table (mt/id :orders)}}}
+                       :model/Card {card-metric-id :id}
+                       {:name "MixedSources CardMetric" :type :metric :database_id (mt/id)
+                        :table_id (mt/id :orders)
+                        :dataset_query {:database (mt/id) :type :query
+                                        :query {:source-table (str "card__" question-id)
+                                                :aggregation  [[:count]]}}}
+                       :model/Card {table-metric-id :id}
+                       {:name "MixedSources TableMetric" :type :metric :database_id (mt/id)
+                        :table_id (mt/id :orders)
+                        :dataset_query {:database (mt/id) :type :query
+                                        :query {:source-table (mt/id :orders)
+                                                :aggregation  [[:count]]}}}
+                       :model/Card {multi-metric-id :id}
+                       {:name "MixedSources MultiStageCardMetric" :type :metric :database_id (mt/id)
+                        :table_id (mt/id :orders)
+                        :dataset_query {:database (mt/id) :type :query
+                                        :query {:source-query {:source-table (str "card__" question-id)}
+                                                :aggregation  [[:count]]}}}]
+          (let [results (search/search {:term-queries ["MixedSources"]})
+                by-id   (into {} (map (juxt :id identity)) results)
+                card-m  (get by-id card-metric-id)
+                table-m (get by-id table-metric-id)
+                multi-m (get by-id multi-metric-id)
+                orders-fields {:base_table_id          (mt/id :orders)
+                               :base_table_name        "ORDERS"
+                               :base_table_schema      "PUBLIC"
+                               :base_table_portable_fk [(:database_name table-m) "PUBLIC" "ORDERS"]}]
+            (is (= {:card  {:source_card_id                 question-id
+                            :source_card_name               "MixedSources Question"
+                            :source_card_portable_entity_id question-eid}
+                    :table orders-fields
+                    ;; Its definition names a card in stage 0, but its last stage does not, so the QP only
+                    ;; accepts the base table.
+                    :multi orders-fields}
+                   (update-vals {:card card-m, :table table-m, :multi multi-m}
+                                #(select-keys % metric-source-keys)))
+                "each metric carries only its own source's fields")))))))
+
+(deftest enrich-with-metric-sources-marks-unreadable-base-table-unavailable-test
+  (testing "A table metric with no queryable source is marked unavailable in search"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card {metric-id :id}
+                         {:name "Unreadable Base Table Metric" :type :metric :database_id (mt/id)
+                          :table_id (mt/id :orders)
+                          :dataset_query {:database (mt/id) :type :query
+                                          :query {:source-table (mt/id :orders)
+                                                  :aggregation  [[:count]]}}}]
+            (let [results (search/search {:term-queries ["Unreadable Base Table Metric"]})
+                  metric  (first (filter #(= metric-id (:id %)) results))]
+              (is (some? metric) "the metric is still readable via its collection")
+              (is (= {:source_unavailable true}
+                     (select-keys metric metric-source-keys))
+                  "the source is explicitly marked unavailable"))))))))

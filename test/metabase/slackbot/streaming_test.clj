@@ -6,6 +6,7 @@
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
@@ -391,11 +392,18 @@
                                       :type    "clojure.lang.ExceptionInfo"
                                       :data    {:status-code 400 :api-error true :error-code :llm-not-configured}}})]
       (is (str/includes? text "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."))))
-  (testing "a provider failure the customer can fix keeps the message the agent loop wrote for it"
-    (doseq [code ["ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"]]
+  (testing "a provider failure the agent loop explained keeps the message it wrote for it"
+    (doseq [code ["ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth" "ai_provider_unavailable"]]
       (let [text (dm-error-part-appended-text!
                   {:type :error :error {:message "Ask your administrator to check the AI provider." :error-code code}})]
         (is (str/includes? text "Ask your administrator to check the AI provider.") code))))
+  (testing "a full conversation gets Slack copy that asks for a new thread, not the web copy"
+    (let [text (dm-error-part-appended-text!
+                {:type :error :error {:message    "This conversation has reached its maximum length and can't continue. Please start a new chat."
+                                      :error-code "ai_provider_context_full"}})]
+      (is (str/includes? text "This conversation has reached its maximum length and can't continue. Please start a new thread."))
+      (is (not (str/includes? text "new chat")))
+      (is (not (str/includes? text "Something went wrong")))))
   (testing "an unrecognized error keeps the generic copy and leaks nothing from the provider"
     (let [text (dm-error-part-appended-text!
                 {:type :error :error {:message "upstream rejected key sk-ant-oops"}})]
@@ -478,6 +486,21 @@
                          :timeout-ms 5000})))
             (testing "start-turn! received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}] @start-opts)))))))))
+
+(deftest ^:synchronized slackbot-streaming-internal-metabot-test
+  (tu/with-slackbot-setup
+    (let [event-body tu/base-dm-event]
+      (tu/with-slackbot-mocks
+        {:ai-text "Hello!"}
+        (fn [{:keys [ai-request-calls stop-stream-calls]}]
+          (mt/client :post 200 "metabot/slack/events"
+                     (tu/slack-request-options event-body)
+                     event-body)
+          (u/poll {:thunk #(pos? (count @stop-stream-calls))
+                   :done? true?
+                   :timeout-ms 5000})
+          (is (= (t2/select-one :model/Metabot :entity_id metabot.config/internal-metabot-id)
+                 (:metabot (last @ai-request-calls)))))))))
 
 (deftest ^:synchronized slackbot-streaming-seeds-state-from-db-test
   (testing "a turn seeds the agent loop with the state earlier turns in the thread persisted (BOT-522)"
@@ -767,6 +790,26 @@
   "A tool call and its result, which the DM path shows as a task update."
   [{:type :tool-input :id "call-1" :function "search" :arguments {:term_queries ["orders"]}}
    {:type :tool-output :id "call-1" :result {:output "No results."}}])
+
+(deftest ^:synchronized slackbot-dm-tool-outcome-status-test
+  (doseq [[outcome status] [[{:output "OK"} "complete"]
+                            [{:output "OK" :error nil} "complete"]
+                            [{:output "Invalid arguments: private detail"
+                              :error  {:class :validation :code :invalid-arguments}} "error"]
+                            [{:output "Card 123 not found: private detail"
+                              :error  {:class :recoverable :code :test/not-found}} "error"]
+                            [{:output "This call failed (:internal)"
+                              :error  {:class :unrecoverable :code :internal
+                                       :user-message "Private detail"}} "error"]]]
+    (testing (pr-str outcome)
+      (let [{:keys [appended task-updates]}
+            (dm-turn-with-parts! [{:type :tool-input :id "call-1" :function "static_viz"
+                                   :arguments {:entity_id 123}}
+                                  {:type :tool-output :id "call-1" :result outcome}])]
+        (is (= [{:type "task_update" :id "call-1" :title "Running query" :status "in_progress"}
+                {:type "task_update" :id "call-1" :title "Running query" :status status}]
+               task-updates))
+        (is (= "\n\n" appended))))))
 
 (deftest ^:synchronized slackbot-dm-textless-reply-with-tool-progress-has-no-fallback-test
   (testing "a reply that showed tool progress is not an empty reply -- no fallback copy"

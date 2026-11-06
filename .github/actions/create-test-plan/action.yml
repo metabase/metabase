@@ -2,6 +2,10 @@ name: Create frontend test plan
 description: Compute the affected-tests plan for the changed files.
 
 inputs:
+  diff-base:
+    description: The test gate's `diff-base`, the commit to diff against instead of the PR's base.
+    required: false
+    default: ''
   stats-url:
     description: Endpoint that stores the affected-tests stats row.
     required: false
@@ -24,7 +28,9 @@ runs:
       id: changes
       uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
       with:
-        token: ${{ github.token }}
+        # An empty token switches paths-filter to git, which is the only way to honor `base`.
+        token: ${{ inputs.diff-base == '' && github.token || '' }}
+        base: ${{ inputs.diff-base }}
         list-files: csv
         filters: .github/file-paths.yaml
     - name: Prepare front-end environment

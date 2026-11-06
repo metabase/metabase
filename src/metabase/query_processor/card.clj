@@ -283,7 +283,8 @@
                                                             (pr-str parameter-name))
                                                        {:type               qp.error-type/invalid-parameter
                                                         :invalid-parameter  request-parameter
-                                                        :allowed-parameters (keys template-tags)})))]
+                                                        :allowed-parameters (keys template-tags)
+                                                        :response/keys      #{:invalid-parameter :allowed-parameters}})))]
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 
@@ -434,7 +435,11 @@
                         (assoc :viz-settings merged-viz)
                         (update :middleware (fn [middleware]
                                               (merge
-                                               {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                               {:js-int-to-string?      true
+                                                :ignore-cached-results? ignore-cache
+                                                ;; a visualizer dashcard renders as its own display, not the card's
+                                                :display                (or (some-> dash-viz :visualization :display keyword)
+                                                                            (:display card))}
                                                middleware))))
         info        (cond-> {:executed-by            api/*current-user-id*
                              :context                context

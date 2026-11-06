@@ -7,6 +7,7 @@ import { buildAuditViewsFixture } from "./audit-views-fixture";
 import { summarize } from "./query-summary";
 import {
   type StatsFilters,
+  buildCountQuery,
   buildGroupBreakoutQuery,
   buildSourceBreakoutQuery,
   buildTenantBreakoutQuery,
@@ -114,6 +115,16 @@ describe("buildSourceBreakoutQuery", () => {
         ...filtersFor("tokens", ALL_FILTERS),
         ...dataSources("tokens"),
         breakoutColumn: "source_name",
+      }),
+    ));
+});
+
+describe("buildCountQuery", () => {
+  it("all filters", () =>
+    snapshotQuery(
+      buildCountQuery({
+        ...filtersFor("tokens", ALL_FILTERS),
+        ...dataSources("tokens"),
       }),
     ));
 });

@@ -66,6 +66,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
               {({ tooltip, isDisabled }) => (
                 <Tooltip label={tooltip ?? t`Find and replace`}>
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Replace data source`}
                     disabled={isDisabled}
                     onClick={openReplaceModal}
@@ -76,7 +77,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
               )}
             </PLUGIN_REPLACEMENT.SourceReplacementButton>
           )}
-          <ActionIcon aria-label={t`Close`} onClick={onClose}>
+          <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
             <FixedSizeIcon name="close" />
           </ActionIcon>
         </Group>

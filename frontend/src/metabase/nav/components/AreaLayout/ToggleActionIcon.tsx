@@ -26,6 +26,7 @@ export function ToggleActionIcon({
   return (
     <Tooltip label={label} openDelay={TOOLTIP_OPEN_DELAY}>
       <ActionIcon
+        variant="subtle"
         aria-label={label}
         className={S.toggle}
         onClick={() => onNavbarToggle(!isNavbarOpened)}

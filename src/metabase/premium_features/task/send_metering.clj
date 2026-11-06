@@ -24,8 +24,9 @@
     (max min-interval-ms (min max-interval-ms v))
     default-interval-ms))
 
-(task/defjob ^{:doc "Send metering events for billing purposes"}
-  SendMeteringEvents
+(task/defjob SendMeteringEvents
+  "Send metering events for billing purposes"
+  {:saved-class "metabase.premium_features.task.send_metering.SendMeteringEvents"}
   [_]
   (log/debug "Running metering events task")
   (token-check/send-metering-events!))

@@ -9,6 +9,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.stale-test :as stale-test]
+   [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -96,7 +98,7 @@
                                    :document_id document-id
                                    :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (t2/update! :model/Document document-id {:collection_id new-collection-id})
+      (t2/update! :model/Document :id document-id {:collection_id new-collection-id})
       ;; Verify that associated cards were updated to match the new collection
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card2-id)))))))
@@ -111,7 +113,7 @@
                                   :document_id document-id
                                   :collection_id collection-id}]
       ;; Move document to no collection (nil)
-      (t2/update! :model/Document document-id {:collection_id nil})
+      (t2/update! :model/Document :id document-id {:collection_id nil})
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
@@ -135,7 +137,7 @@
        :model/Card {regular-card-id :id} {:name "Regular Card"
                                           :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (t2/update! :model/Document document-id {:collection_id new-collection-id})
+      (t2/update! :model/Document :id document-id {:collection_id new-collection-id})
       ;; Verify only the correct card was updated
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id in-document-card-id))))
       ;; Verify other cards were NOT updated
@@ -157,14 +159,14 @@
           (testing "moving document to personal collection moves associated cards"
             (mt/with-current-user user-id
               ;; As the personal collection owner, update should succeed
-              (t2/update! :model/Document document-id {:collection_id personal-coll-id})
+              (t2/update! :model/Document :id document-id {:collection_id personal-coll-id})
               ;; Verify both document and card moved to personal collection
               (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
               (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
           (testing "moving document from personal collection works"
             (mt/with-current-user user-id
               ;; Move back to regular collection
-              (t2/update! :model/Document document-id {:collection_id regular-collection-id})
+              (t2/update! :model/Document :id document-id {:collection_id regular-collection-id})
               ;; Verify both document and card moved back
               (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
               (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))
@@ -221,34 +223,35 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
-(deftest validate-collection-move-permissions-allows-move-from-root-test
-  (testing "allows move when old collection is nil (moving from root)"
+(deftest validate-collection-move-permissions-move-from-root-test
+  (testing "moving from root (old collection nil) requires write permission on root"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {new-collection-id :id} {:name "New Collection"}
                      :model/User {user-id :id} {}]
         (mt/with-current-user user-id
-          ;; Grant write permission to new collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
-          ;; Should not throw any exception when old collection is nil
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (document/validate-collection-move-permissions nil new-collection-id)))
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
           (is (some? (document/validate-collection-move-permissions nil new-collection-id))))))))
 
-(deftest validate-collection-move-permissions-allows-move-to-root-test
-  (testing "allows move when new collection is nil (moving to root)"
+(deftest validate-collection-move-permissions-move-to-root-test
+  (testing "moving to root (new collection nil) requires write permission on root"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
                      :model/User {user-id :id} {}]
         (mt/with-current-user user-id
-          ;; Grant write permission to old collection
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
-          ;; Should not throw any exception when new collection is nil
-          (is (nil? (document/validate-collection-move-permissions old-collection-id nil))))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (document/validate-collection-move-permissions old-collection-id nil)))
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+          (is (some? (document/validate-collection-move-permissions old-collection-id nil))))))))
 
 (deftest validate-collection-move-permissions-allows-move-both-nil-test
-  (testing "allows move when both collections are nil"
+  (testing "allows move when both collections are nil and the user can write root"
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id
-        ;; Should not throw any exception when both collections are nil
-        (is (nil? (document/validate-collection-move-permissions nil nil)))))))
+        (is (some? (document/validate-collection-move-permissions nil nil)))))))
 
 (deftest validate-collection-move-permissions-throws-400-nonexistent-collection-test
   (testing "throws 400 when new collection does not exist"
@@ -417,11 +420,11 @@
         (testing "collection_position is stored and retrieved correctly"
           (is (= 5 (:collection_position document)))))
       (testing "collection_position can be updated"
-        (t2/update! :model/Document document-id {:collection_position 10})
+        (t2/update! :model/Document :id document-id {:collection_position 10})
         (let [updated-document (t2/select-one :model/Document :id document-id)]
           (is (= 10 (:collection_position updated-document)))))
       (testing "collection_position can be set to nil"
-        (t2/update! :model/Document document-id {:collection_position nil})
+        (t2/update! :model/Document :id document-id {:collection_position nil})
         (let [updated-document (t2/select-one :model/Document :id document-id)]
           (is (nil? (:collection_position updated-document))))))))
 
@@ -433,9 +436,7 @@
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
       (is (= [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder] (:skip spec)))
-      (is (contains? (:transform spec) :created_at))
       (is (contains? (:transform spec) :document))
-      (is (contains? (:transform spec) :updated_at))
       (is (contains? (:transform spec) :collection_id))
       (is (contains? (:transform spec) :creator_id))
       (testing "foreign key transformers are properly configured"
@@ -797,14 +798,32 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
           (testing "events fire normally"
-            (t2/update! :model/Document doc-id {:name "Updated Name"})
+            (t2/update! :model/Document :id doc-id {:name "Updated Name"})
             (is (= 1 (count @events-published)))
             (is (= :event/document-update (ffirst @events-published))))
           (reset! events-published [])
           (testing "events are suppressed during deserialization"
             (binding [mi/*deserializing?* true]
-              (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
+              (t2/update! :model/Document :id doc-id {:name "Deserialized Name"}))
             (is (empty? @events-published))))))))
+
+(deftest never-viewed-document-reports-null-activity-anchor
+  (testing "a never-viewed document's activity anchor is NULL, not its last_viewed_at storage default
+            (NOT NULL default current_timestamp) — the never-used arm (view_count = 0) stays
+            distinguishable downstream"
+    (mt/with-temp [:model/Document {viewed-id :id} (stale-test/stale-document {:name       "viewed long ago"
+                                                                               :view_count 5})
+                   :model/Document {never-id :id} {:name       "never viewed"
+                                                   :created_at (stale-test/datetime-months-ago 7)}]
+      (let [rows   (t2/query (staleness/find-stale-query
+                              :model/Document
+                              {:collection-ids #{nil}
+                               :cutoff-date    (stale-test/date-months-ago 6)}))
+            anchor (fn [id] (:last_used_at (first (filter #(= id (:id %)) rows))))]
+        (testing "a viewed-but-stale document keeps its real anchor"
+          (is (some? (anchor viewed-id))))
+        (testing "a never-viewed document (flagged via the never-used arm) reports NULL"
+          (is (nil? (anchor never-id))))))))
 
 (defn- export-document-ast
   "Run a document row through the serdes `:document` export transform and return the exported AST."

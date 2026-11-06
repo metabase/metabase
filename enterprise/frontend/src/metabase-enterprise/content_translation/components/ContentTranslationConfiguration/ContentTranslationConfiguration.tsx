@@ -275,7 +275,7 @@ const UploadForm = ({
       if (errorMessages.length) {
         return sendToast({
           message: t`Could not upload dictionary`,
-          icon: "warning",
+          variant: "negative",
         });
       }
     },

@@ -33,7 +33,6 @@ export const FormTenantWidget = ({ name, ...props }: FormTenantWidget) => {
       onChange={(val) => setValue(parseInt(val))}
       data={options}
       label={t`Tenant`}
-      mb="1rem"
       {...props}
     ></Select>
   );

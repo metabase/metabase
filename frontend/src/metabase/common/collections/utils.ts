@@ -131,6 +131,12 @@ export function isInstanceAnalyticsCustomCollection(
   );
 }
 
+export function isDataAppCollection(
+  collection: Pick<Collection, "namespace">,
+): boolean {
+  return collection.namespace === "data-apps";
+}
+
 export function isSyncedCollection(collection: Partial<Collection>): boolean {
   return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
 }

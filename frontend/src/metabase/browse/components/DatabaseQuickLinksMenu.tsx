@@ -29,9 +29,9 @@ export const DatabaseQuickLinksMenu = ({
     <Menu position="bottom-end">
       <Menu.Target>
         <ActionIcon
+          variant="subtle"
           className={className}
           size="sm"
-          color="text-secondary"
           aria-label={t`Database options`}
         >
           <Icon name="ellipsis" />

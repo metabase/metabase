@@ -13,7 +13,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
@@ -138,6 +137,11 @@
              :type :metric
              {:order-by [[:name :asc]]}))
 
+(mu/defn document-collection-and-exploration
+  "The Document with `document-id` narrowed to `:id`, `:collection_id` and `:exploration_id`, or nil."
+  [document-id :- ms/PositiveInt]
+  (t2/select-one [:model/Document :id :collection_id :exploration_id] :id document-id))
+
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
   [document-id :- ms/PositiveInt]
@@ -152,7 +156,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -254,14 +258,14 @@
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
              :from      [[:metabase_field :field]]
-             :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
+             :left-join [[(t2/table-name :model/Table) :table]
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
 (mu/defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."
@@ -292,7 +296,7 @@
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
@@ -359,21 +363,17 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
-(mu/defn move-actions-of-models!
-  "Move the Actions of the Cards with `model-ids` to the Collection with `collection-id`, returning the number
+(mu/defn move-actions-of-model!
+  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
   updated."
-  [model-ids     :- [:set ::lib.schema.id/card]
+  [model-id      :- ::lib.schema.id/card
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
+  (t2/update! :model/Action {:model_id model-id} {:collection_id collection-id}))
 
-(mu/defn set-actions-of-model-archived!
-  "Archive the unarchived Actions of the Card with `model-id` along with it, or unarchive the ones archived along with
-  it, returning the number updated."
-  [model-id  :- ms/PositiveInt
-   archived? :- :boolean]
-  (if archived?
-    (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false})
-    (t2/update! :model/Action {:model_id model-id, :archived true, :archived_directly false} {:archived false})))
+(mu/defn delete-actions-of-model!
+  "Delete the Actions of the Card with `model-id`, returning the number deleted."
+  [model-id :- ms/PositiveInt]
+  (t2/delete! :model/Action :model_id model-id))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -384,25 +384,6 @@
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
-
-(mu/defn delete-dashcards-for-model-actions!
-  "Delete the DashboardCards of the Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action :model_id model-id))]
-    (t2/delete! :model/DashboardCard :action_id [:in action-ids])
-    0))
-
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the unarchived non-implicit Actions of the model Card with `model-id` directly, returning the number
-  updated."
-  [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id, :type [:not= :implicit], :archived false}
-              {:archived true, :archived_directly true}))
-
-(mu/defn delete-implicit-actions-for-model!
-  "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id :type :implicit))
 
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
@@ -582,22 +563,15 @@
   (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
                                       :card_id          card-id}))
 
-(mu/defn stored-results-for-card
-  "The StoredResults used by the Card with `card-id`."
+(mu/defn stored-result-gate-inputs-for-card
+  "The StoredResults used by the Card with `card-id`, narrowed to the columns the cached-result gate reads."
   [card-id :- ::lib.schema.id/card]
-  (t2/select :model/StoredResult
+  (t2/select [:model/StoredResult
+              :id
+              :database_id
+              :dataset_query
+              :data_access_token
+              :resolved_source_ids]
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
-
-(defn card-ids-outside-collection
-  "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."
-  [card-ids collection-id]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
-
-(defn other-cards-in-collection
-  "The cards in the collection with `collection-id`, leaving out the card with `card-id`."
-  [collection-id card-id]
-  (t2/select :model/Card :collection_id collection-id :id [:not= card-id]))

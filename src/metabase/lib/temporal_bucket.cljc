@@ -400,11 +400,8 @@
   [query stage-number option]
   (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)
           :short-name (u/qualified-name (raw-temporal-bucket option))
-          :is-temporal-extraction (let [bucket (raw-temporal-bucket option)]
-                                    (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units
-                                                    bucket)
-                                         (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units
-                                                         bucket))))}
+          :is-temporal-extraction (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units
+                                             (raw-temporal-bucket option))}
          (select-keys option [:default :selected])))
 
 (defmulti available-temporal-buckets-method
@@ -474,7 +471,7 @@
   ;; we want to remove it later. We will record this with the key `:lib/original-effective-type`. Note that changing the
   ;; unit multiple times should keep the original first value of `:lib/original-effective-type`.
   (if unit
-    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units unit)
           original-effective-type ((some-fn :lib/original-effective-type :effective-type :base-type)
                                    options)
           new-effective-type      (if extraction-unit?

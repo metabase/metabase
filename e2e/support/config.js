@@ -31,7 +31,7 @@ import {
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
 import {
-  buildDataApp,
+  copyDataAppsFixture,
   removeDataAppPaths,
   writeDataAppFiles,
 } from "./helpers/e2e-data-app-tasks";
@@ -311,7 +311,7 @@ const defaultConfig = {
       stopMockOidcServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
-      buildDataApp,
+      copyDataAppsFixture,
       writeDataAppFiles,
       removeDataAppPaths,
       ...perTestCaptureTasks,
@@ -367,7 +367,12 @@ const defaultConfig = {
       // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
       if (results && results.video) {
         // Do we have test failures?
-        if (results && results.video && results.stats.failures === 0) {
+        if (
+          results &&
+          results.video &&
+          results.stats.failures === 0 &&
+          process.env.CYPRESS_KEEP_VIDEOS !== "true"
+        ) {
           // delete the video if the spec passed
           fs.unlinkSync(results.video);
         }

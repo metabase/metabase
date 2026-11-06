@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.api.document :as api.document]
+   [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
@@ -122,6 +124,22 @@
         (mt/user-http-request :crowberto
                               :get 404 "document/99999")))))
 
+(deftest get-document-runs-content-gate-once-test
+  (testing "one GET /api/document/:id adjudicates the document's content once"
+    (mt/with-temp [:model/Collection {coll-id :id}     {}
+                   :model/Document   {document-id :id} {:name          "Test Document"
+                                                        :collection_id coll-id
+                                                        :document      (documents.test-util/text->prose-mirror-ast "Doc 1")}]
+      (let [gate  @#'m.document/doc-content-visibility-fn
+            orig  @gate
+            calls (atom 0)]
+        (try
+          (reset! gate (fn [_doc] (swap! calls inc) true))
+          (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
+          (is (= 1 @calls))
+          (finally
+            (reset! gate orig)))))))
+
 (defn- recent-view
   "The RecentViews row, if any, for `user-id` viewing document `document-id`. Document reads record a recent
   view (asynchronously via grouper, so these tests force synchronous batching), giving us a reliable signal
@@ -208,7 +226,7 @@
                                                          :dataset_query (mt/mbql-query venues)
                                                          :archived true}]
         ;; Ensure the source document embeds the cards we expect to be copied (and one archived card that should not).
-        (t2/update! :model/Document doc-id
+        (t2/update! :model/Document :id doc-id
                     {:document {:type "doc"
                                 :content [{:type "cardEmbed" :attrs {:id card-1-id :name nil}}
                                           {:type "paragraph"}
@@ -1426,6 +1444,29 @@
               ;; Verify document wasn't moved
               (is (= write-col (:collection_id (t2/select-one :model/Document :id doc-id)))))))))))
 
+(deftest document-move-to-or-from-root-requires-root-write-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms/grant-collection-read-permissions! (perms/all-users-group) collection/root-collection)
+    (mt/with-temp [:model/Collection {write-col :id} {:name "Write Collection"}
+                   :model/Document   {doc-id :id}      {:name          "In a writable collection"
+                                                        :document      (documents.test-util/text->prose-mirror-ast "x")
+                                                        :collection_id write-col}
+                   :model/Document   {root-doc-id :id} {:name     "In root"
+                                                        :document (documents.test-util/text->prose-mirror-ast "x")}]
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-col)
+      (testing "moving a document into root without root write perms is forbidden"
+        (mt/user-http-request :rasta :put 403 (format "document/%s" doc-id) {:collection_id nil})
+        (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+      (testing "moving a document out of root without root write perms is forbidden"
+        (mt/user-http-request :rasta :put 403 (format "document/%s" root-doc-id) {:collection_id write-col})
+        (is (nil? (t2/select-one-fn :collection_id :model/Document :id root-doc-id))))
+      (testing "an update that doesn't mention collection_id doesn't move the document"
+        (mt/user-http-request :rasta :put 200 (format "document/%s" doc-id) {:name "Renamed"})
+        (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+      (testing "a user with root write perms can move a document into root"
+        (mt/user-http-request :crowberto :put 200 (format "document/%s" doc-id) {:collection_id nil})
+        (is (nil? (t2/select-one-fn :collection_id :model/Document :id doc-id)))))))
+
 (deftest rasta-document-read-permissions-test
   (testing "Document read permissions for non-admin user :rasta"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -1778,10 +1819,10 @@
       ;; Simulate a failure during card archiving
       (testing "failure during card archiving rolls back document archiving"
         (let [orig-update! (mt/original-fn #'t2/update!)]
-          (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
-                                                   (if (and (= model :model/Card) (:archived updates))
+          (mt/with-dynamic-fn-redefs [t2/update! (fn [model & args]
+                                                   (if (and (= model :model/Card) (:archived (last args)))
                                                      (throw (ex-info "Simulated card archive failure" {}))
-                                                     (orig-update! model id updates)))]
+                                                     (apply orig-update! model args)))]
             (mt/user-http-request :crowberto
                                   :put 500 (format "document/%s" doc-id)
                                   {:archived true})
@@ -2238,7 +2279,7 @@
             (is (= 200
                    (:status (mt/client-full-response :get (str "public/document/" uuid))))))
           (testing "Document is not accessible after archiving"
-            (t2/update! :model/Document (:id document) {:archived true})
+            (t2/update! :model/Document :id (:id document) {:archived true})
             (is (= "Not found."
                    (mt/client :get 404 (str "public/document/" uuid))))))))))
 
@@ -2270,7 +2311,7 @@
                                                    :document {:type "doc"
                                                               :content [{:type "cardEmbed"
                                                                          :attrs {:id card-id}}]}}]
-        (t2/update! :model/Card card-id {:document_id doc-id})
+        (t2/update! :model/Card :id card-id {:document_id doc-id})
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
           (testing "Read-only users can download"
             (perms/grant-collection-read-permissions! group coll-id)
@@ -2303,7 +2344,7 @@
                                      :format_rows false
                                      :pivot_results false})))
           (testing "Archived document returns 404"
-            (t2/update! :model/Document doc-id {:archived true})
+            (t2/update! :model/Document :id doc-id {:archived true})
             (mt/user-http-request :rasta
                                   :post 404
                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
@@ -2326,7 +2367,7 @@
                                                       :document {:type "doc"
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id card-id}}]}}]
-           (t2/update! :model/Card card-id {:document_id doc-id})
+           (t2/update! :model/Card :id card-id {:document_id doc-id})
            (let [all-users-group (perms/all-users-group)]
              ;; Grant collection read permissions so user can access the document
              (perms/grant-collection-read-permissions! all-users-group coll-id)
@@ -2335,9 +2376,7 @@
                (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
                (is (malli= [:map
                             [:status [:= "failed"]]
-                            [:error_type [:= "missing-required-permissions"]]
-                            [:ex-data [:map
-                                       [:permissions-error? [:= true]]]]]
+                            [:error_type [:= "missing-required-permissions"]]]
                            (mt/user-http-request :rasta
                                                  :post 403
                                                  (format "document/%s/card/%s/query/csv" doc-id card-id)
@@ -2759,7 +2798,7 @@
                                                          :dataset_query (mt/native-query
                                                                          {:query "SELECT COUNT(*) FROM VENUES"})
                                                          :display       :scalar}]
-          (t2/update! :model/Document doc-id {:document (card-embed-ast native-card-id)})
+          (t2/update! :model/Document :id doc-id {:document (card-embed-ast native-card-id)})
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (mt/with-restored-data-perms!
             (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
@@ -2784,7 +2823,7 @@
                                                   :document_id            doc-id
                                                   :dataset_query          (mt/mbql-query venues)
                                                   :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}]
-          (t2/update! :model/Document doc-id {:document (card-embed-ast card-id)})
+          (t2/update! :model/Document :id doc-id {:document (card-embed-ast card-id)})
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
           (perms/revoke-collection-permissions! (perms/all-users-group) timeline-coll-id)
           (let [result      (mt/user-http-request :rasta :post 200 (format "document/%d/copy" doc-id)
@@ -2878,3 +2917,28 @@
                                                 :collection_id coll-id
                                                 :document      (card-embed-ast mbql-card-id)})]
               (is (t2/exists? :model/Card :document_id (:id result))))))))))
+
+(defn- embedded-card-ids [ast]
+  (->> (tree-seq map? :content ast)
+       (filter #(= prose-mirror/card-embed-type (:type %)))
+       (map #(get-in % [:attrs "id"]))))
+
+(deftest add-card-to-document-test
+  (mt/with-temp [:model/Document {document-id :id} {:name           "Test Document"
+                                                    :document       (documents.test-util/text->prose-mirror-ast "Doc")
+                                                    :is_placeholder true}
+                 :model/Card     {card-1 :id}      {:document_id document-id}
+                 :model/Card     {card-2 :id}      {:document_id document-id}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "add-card-to-document! returns the hydrated document"
+        (let [result (api.document/add-card-to-document! document-id card-1 nil)]
+          (is (=? {:id document-id :is_placeholder false :can_write true :creator map?} result))
+          (is (= [card-1] (embedded-card-ids (:document result))))))
+      (testing "add-card-to-document-row! returns the plain row, without hydrating it"
+        (let [result (api.document/add-card-to-document-row! document-id card-2 nil
+                                                             :extra-attrs {"chart_href" "/x"})]
+          (is (=? {:id document-id :is_placeholder false} result))
+          (is (not-any? #(contains? result %) [:can_write :creator]))
+          (is (= [card-1 card-2]
+                 (embedded-card-ids (:document result))
+                 (embedded-card-ids (t2/select-one-fn :document :model/Document :id document-id)))))))))

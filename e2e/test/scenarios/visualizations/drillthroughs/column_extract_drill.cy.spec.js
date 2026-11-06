@@ -21,16 +21,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
   });
 
   describe("date columns", () => {
-    describe("should add a new column after the selected column", () => {
-      it("ad-hoc question", () => {
-        H.openOrdersTable();
-        extractColumnAndCheck({
-          column: "Created At",
-          option: "Year",
-          extraction: "Extract day, month…",
-        });
-      });
-
+    describe("should add the new column as the last column", () => {
       it("saved question without viz settings", () => {
         H.visitQuestion(ORDERS_QUESTION_ID);
         extractColumnAndCheck({
@@ -87,25 +78,6 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       });
     });
 
-    it("should be able to modify the expression in the notebook editor", () => {
-      H.openOrdersTable({ limit: 1 });
-      extractColumnAndCheck({
-        column: "Created At",
-        option: "Year",
-        value: "2,028",
-        extraction: "Extract day, month…",
-      });
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Year").click();
-      H.enterCustomColumnDetails({
-        formula: "year([Created At]) + 2",
-        format: true,
-      });
-      H.popover().button("Update").should("not.be.disabled").click();
-      H.visualize();
-      cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
-    });
-
     it("should use current user locale for string expressions", () => {
       cy.request("GET", "/api/user/current").then(({ body: user }) => {
         cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
@@ -123,9 +95,6 @@ describe("extract action", { viewportWidth: 1600 }, () => {
 
   describe("url columns", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-
       // Make the Email column a URL column for these tests, to avoid having to create a new model
       cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
         semantic_type: "type/URL",
@@ -192,6 +161,8 @@ describe("extract action", { viewportWidth: 1600 }, () => {
         // this is the way to open model definition with columns
         cy.visit(`/model/${modelId}/query`);
         cy.findByTestId("dataset-edit-bar").findByText("Cancel").click();
+        // the model editor has no navbar; close it once we're back on the model
+        H.closeNavigationSidebar();
       });
 
       cy.findByTestId("table-scroll-container").scrollTo("right");
@@ -226,7 +197,6 @@ function extractColumnAndCheck({
   H.tableHeaderClick(column);
 
   H.popover().findByText(extraction).click();
-  cy.wait(1);
 
   if (example) {
     H.popover().findByText(option).should("contain", example);
@@ -258,10 +228,8 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should create a snowplow event for the column extraction action", () => {
+  it("should create a snowplow event for the column extraction action and allow editing and renaming the expression in the notebook editor", () => {
     H.openOrdersTable({ limit: 1 });
-
-    cy.wait(1);
 
     extractColumnAndCheck({
       column: "Created At",
@@ -275,5 +243,18 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       custom_expressions_used: ["get-year"],
       database_id: SAMPLE_DB_ID,
     });
+
+    cy.log("Modify the expression in the notebook editor");
+    H.openNotebook();
+    H.getNotebookStep("expression").findByText("Year").click();
+    H.enterCustomColumnDetails({
+      name: "custom formula",
+      formula: "year([Created At]) + 2",
+      format: true,
+    });
+    H.popover().button("Update").should("not.be.disabled").click();
+    H.visualize();
+    H.tableHeaderColumn("custom formula").should("be.visible");
+    cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
   });
 });

@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import type { RemoteSyncDependencyErrorResponse } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -58,13 +58,15 @@ describe("useRemoteSyncSubmit", () => {
 
     expect(result.current.unsyncedDependenciesError).toBeUndefined();
 
-    await result.current
-      .handleSubmit({
-        [TYPE_KEY]: "read-write",
-        [URL_KEY]: "https://github.com/test/repo.git",
-        [COLLECTIONS_KEY]: { 14: true },
-      })
-      .catch(() => undefined);
+    await act(() =>
+      result.current
+        .handleSubmit({
+          [TYPE_KEY]: "read-write",
+          [URL_KEY]: "https://github.com/test/repo.git",
+          [COLLECTIONS_KEY]: { 14: true },
+        })
+        .catch(() => undefined),
+    );
 
     await waitFor(() => {
       expect(result.current.unsyncedDependenciesError).toEqual(

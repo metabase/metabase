@@ -112,7 +112,12 @@ function ErrorListItem({ item }: ErrorListItemProps) {
           {item}
         </Box>
         {/* The click bubbles up to the row, which does the copying */}
-        <ActionIcon className={S.copyIcon} aria-label={t`Copy`}>
+        <ActionIcon
+          variant="subtle"
+          size="sm"
+          className={S.copyIcon}
+          aria-label={t`Copy`}
+        >
           <FixedSizeIcon name="copy" />
         </ActionIcon>
         <span role="status" className={visuallyHidden.visuallyHidden}>

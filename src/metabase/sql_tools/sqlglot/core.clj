@@ -41,6 +41,7 @@
     :presto-jdbc         "presto"
     :starburst           "trino"
     :clickhouse          "clickhouse"
+    :druid-jdbc          "druid"
     :vertica             nil
     :h2                  nil
     ;; Default: try using the driver name as dialect
@@ -62,9 +63,7 @@
           table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
           db-tables (lib.metadata/bulk-metadata query :metadata/table table-ids)
           db-transforms (lib.metadata/transforms query)]
-      (into #{}
-            (keep #(sql-tools.common/find-table-or-transform driver (lib.metadata/database query) db-tables db-transforms %))
-            specs))
+      (sql-tools.common/resolve-table-specs driver (lib.metadata/database query) db-tables db-transforms specs))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
       (if (sql-parsing/parse-error? e)
@@ -168,6 +167,10 @@
 (defmethod sql-tools/add-into-clause-impl :sqlglot
   [_parser driver sql table-name]
   (sql-parsing/add-into-clause (driver->dialect driver) sql table-name))
+
+(defmethod sql-tools/add-insert-clause-impl :sqlglot
+  [_parser driver sql table-name]
+  (sql-parsing/add-insert-clause (driver->dialect driver) sql table-name))
 
 (defmethod sql-tools/replace-names-impl :sqlglot
   [_parser driver sql-string replacements _opts]

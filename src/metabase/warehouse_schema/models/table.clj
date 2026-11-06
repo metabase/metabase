@@ -15,10 +15,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -94,6 +93,7 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -114,9 +114,10 @@
             (let [kw (keyword value)]
               (when-not (contains? writable-data-authority-types kw)
                 (throw (ex-info (str "Illegal value for data_authority: " kw)
-                                {:field       :data_authority
-                                 :value       value
-                                 :status-code 400})))
+                                {:field         :data_authority
+                                 :value         value
+                                 :status-code   400
+                                 :response/keys #{:field}})))
               (name kw))))})
 
 (def legacy-data-layer->current
@@ -146,11 +147,7 @@
 
 (mi/define-batched-hydration-method with-table
   :table
-  "Hydrate the Table of each of `instances` from its `table_id`.
-
-  Batched rather than automagic because automagic hydration selects the model's own row, which shows what sync wrote:
-  `mi/can-read?`/`can-query?` read `is_published` and `collection_id` off the hydrated Table to decide access through
-  a published collection, and those are user values."
+  "Hydrate the Table of each of `instances` from its `table_id`, with one query for all of them."
   [instances]
   (let [table-ids (into #{} (keep :table_id) instances)
         id->table (when (seq table-ids)
@@ -240,7 +237,8 @@
   [table]
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (warehouse-schema.db/delete-fields-for-table! (:id table)))
+  (warehouse-schema.db/delete-fields-for-table! (:id table))
+  (warehouse-schema.db/delete-implicit-actions-for-table! (:id table)))
 
 (t2/define-before-update :model/Table
   [table]
@@ -254,13 +252,12 @@
       (cond
         ;; active: true -> false (table being deactivated)
         (and (true? current-active) (false? new-active))
-        (assoc changes :deactivated_at (mi/now))
+        (merge table changes {:deactivated_at (mi/now)})
 
         ;; active: false -> true (table being reactivated)
         (and (false? current-active) (true? new-active))
-        (assoc changes
-               :deactivated_at nil
-               :archived_at nil)
+        (merge table changes {:deactivated_at nil
+                              :archived_at    nil})
 
         :else (merge table changes)))))
 
@@ -612,17 +609,21 @@
       (warehouse-schema.db/table-by-name db-id schema-name table-name))))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
-  {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-               :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
+  {:schema    ::warehouse-schema.schema/external-table
+   :copy      [:name :description :entity_type :active :display_name :visibility_type :schema
+               :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count :transform_target]
-   :transform {:created_at     (serdes/date)
-               :archived_at    (serdes/date)
+               :data_source :owner_email :is_published]
+   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target]
+   :transform {:archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
+               ;; older exports copied the local user id; re-importing those files on the same instance, e.g. a
+               ;; remote sync pull before the first new export, keeps the right owner, where nil would drop it
+               :owner_user_id  (update (serdes/fk :model/User) :import
+                                       (fn [import-user] #(if (int? %) % (import-user %))))
                :transform_id   (serdes/fk :model/Transform)}
    :defaults {:is_defective_duplicate  false
               :is_published            false
@@ -637,7 +638,6 @@
 
 (search.spec/define-spec "table"
   {:model        :model/Table
-   :source       #(warehouse-schema-overlay/table-query {:alias :this})
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived        false
@@ -647,8 +647,7 @@
                   :database-id     :db_id
                   :view-count      true
                   :created-at      true
-                  :updated-at      [:case [:> :settings.updated_at :this.updated_at] :settings.updated_at
-                                    :else :this.updated_at]
+                  :updated-at      true
                   :is-published        :is_published
                   :collection-type     :collection.type
                   :collection-location :collection.location
@@ -677,5 +676,4 @@
                   [:= :db.router_database_id nil]
                   [:not= :this.db_id [:inline audit/audit-db-id]]]
    :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                  :settings   [:model/TableUserSettings [:= :settings.table_id :this.id]]
                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})

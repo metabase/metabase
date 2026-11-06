@@ -2,18 +2,28 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase-enterprise.impersonation.models]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (comment
   metabase-enterprise.impersonation.models/keep-me)
+
+(use-fixtures :once
+  (fixtures/initialize :db)
+  (fn [thunk]
+    (doseq [model (keys models.resolution/model->namespace)]
+      (t2/resolve-model model))
+    (thunk)))
 
 (defn- parse-default-value
   "Parse a default value string into a Clojure value.
@@ -38,6 +48,52 @@
         (is (= (set known-models)
                (set (map name (keys models.resolution/model->namespace)))))))))
 
+(deftest ^:parallel timestamps-are-skipped-test
+  (testing "No serialized model exports or loads created_at or updated_at, so an entity serializes the same way on every
+           instance"
+    (doseq [m      (-> (methods serdes/make-spec) (dissoc :default) keys)
+            :let   [{:keys [copy skip transform]} (serdes/make-spec m nil)]
+            column [:created_at :updated_at]]
+      (testing (format "%s.%s" m (name column))
+        (is (not (some #{column} copy)))
+        (is (not (some #{column} skip)) "always skipped, so leave it out of :skip")
+        (is (not (contains? transform column)))))))
+
+(defn- schema-keys
+  "The keys `schema` declares, across every branch of a `:multi`."
+  [schema]
+  (let [schema (mc/deref-all (mr/resolve-schema schema))]
+    (set (if (= :multi (mc/type schema))
+           (for [[_ _ branch] (mc/children schema)
+                 [k]          (mc/entries (mc/deref-all branch))]
+             k)
+           (map first (mc/entries schema))))))
+
+(defn- entity-id-collation
+  "The collation of `table`'s entity_id column in the schema the `schema-fn` SQL function names."
+  [table schema-fn]
+  (first (vals (t2/query-one {:select [:collation_name]
+                              :from   [:information_schema.columns]
+                              :where  [:and
+                                       [:= :table_schema [schema-fn]]
+                                       [:= :table_name table]
+                                       [:= :column_name "entity_id"]]}))))
+
+(deftest entity-id-binary-collation-test
+  (testing "entity_id columns compare byte by byte, so every app DB orders exported entities, and names same-named
+           files, the same way"
+    (when-let [[expected schema-fn] (case (mdb/db-type)
+                                      :postgres ["C" :current_schema]
+                                      :mysql    ["utf8mb4_bin" :database]
+                                      nil)]
+      (doseq [model (keys models.resolution/model->namespace)
+              :when (isa? model :hook/entity-id)
+              :let  [table (name (t2/table-name model))]]
+        (testing table
+          (is (= expected (entity-id-collation table schema-fn))
+              (str "Create the entity_id column with type ${entity_id.type}, and re-state that type in any "
+                   "modifyDataType or addNotNullConstraint on it")))))))
+
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db!
     ;; When serialization spec is defined, it describes every column
@@ -50,7 +106,7 @@
               fields (u.conn/app-db-column-types (mdb/app-db) t)
               spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
                                 (zipmap (:skip spec) (repeat :skip))
-                                (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
+                                (zipmap [:id :created_at :updated_at] (repeat :skip)) ; always skipped
                                 (:transform spec))
                          ;; `nil`s are mostly fields which differ on `opts`
                          (dissoc nil))]
@@ -95,6 +151,12 @@
               (testing (format "%s has %s declared as `parent-ref`" model backward-fk)
                 (is (= (serdes/parent-ref)
                        (get-in inner-spec [:transform backward-fk]))))))
+          (testing "Every serialized key is declared in :schema\n"
+            (let [serialized (concat (:copy spec)
+                                     (for [[k transform] (:transform spec)
+                                           :when (not= (serdes/parent-ref) transform)]
+                                       (:as transform k)))]
+              (is (empty? (remove (schema-keys (:schema spec)) serialized)))))
           (testing ":defaults match actual DB field defaults"
             (let [serialized-fields (set (concat (:copy spec) (keys (:transform spec))))
                   declared-defaults (or (:defaults spec) {})]

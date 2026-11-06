@@ -7,20 +7,27 @@ import {
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import type { SettingKey } from "metabase-types/api";
+import { dayjs } from "metabase/dayjs";
+import type { SettingKey, VersionInfo } from "metabase-types/api";
 import {
+  createMockMajorVersionSupport,
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
+  createMockVersionInfo,
 } from "metabase-types/api/mocks";
 
 import { UpdatesSettingsPage } from "./UpdatesSettingsPage";
+
+const FUTURE_EOL = "2099-06-01";
 
 const setup = async (props: {
   isHosted: boolean;
   versionTag: string;
   isPro?: boolean;
+  checkForUpdates?: boolean;
+  versionInfo?: VersionInfo;
 }) => {
   // having any SSO feature is how we detect if you have a pro plan
   const tokenFeatures = createMockTokenFeatures(
@@ -29,7 +36,7 @@ const setup = async (props: {
 
   const updatesSettings = {
     "is-hosted?": props.isHosted,
-    "check-for-updates": true,
+    "check-for-updates": props.checkForUpdates ?? true,
     version: {
       date: "2025-03-19",
       src_hash: "4df5cf3e5e86b0cc7421d80e2a8835e2ce3afa7d",
@@ -44,7 +51,7 @@ const setup = async (props: {
   setupUpdateSettingEndpoint();
   setupSettingEndpoint({
     settingKey: "version-info",
-    settingValue: {
+    settingValue: props.versionInfo ?? {
       latest: {
         version: "v1.53.8",
         released: "2025-03-25",
@@ -86,8 +93,8 @@ describe("UpdatesSettingsPage", () => {
 
     expect(screen.getByText("Check for updates")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "You're running Metabase 1.53.8 which is the latest and greatest!",
+      await screen.findByText(
+        "You're running Metabase 1.53.8, which is the latest and greatest.",
       ),
     ).toBeInTheDocument();
   });
@@ -130,5 +137,51 @@ describe("UpdatesSettingsPage", () => {
     expect(
       screen.queryByText("Migrate to Metabase Cloud"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should show the version notice and eol notice when checking for updates", async () => {
+    await setup({
+      isHosted: false,
+      versionTag: "v1.53.8",
+      versionInfo: createMockVersionInfo({
+        latest: {
+          version: "v1.53.8",
+          released: "2025-03-25",
+          patch: true,
+        },
+        major_version_support: [
+          createMockMajorVersionSupport({ major: 53, eol: FUTURE_EOL }),
+        ],
+      }),
+    });
+
+    expect(
+      await screen.findByText(
+        "You're running Metabase 1.53.8, which is the latest and greatest.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(dayjs.utc(FUTURE_EOL).format("ll")),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show the eol notice when check for updates is off", async () => {
+    await setup({
+      isHosted: false,
+      versionTag: "v1.53.8",
+      checkForUpdates: false,
+      versionInfo: createMockVersionInfo({
+        latest: {
+          version: "v1.53.8",
+          released: "2025-03-25",
+          patch: true,
+        },
+        major_version_support: [
+          createMockMajorVersionSupport({ major: 53, eol: FUTURE_EOL }),
+        ],
+      }),
+    });
+
+    expect(screen.queryByText(/end-of-life/)).not.toBeInTheDocument();
   });
 });

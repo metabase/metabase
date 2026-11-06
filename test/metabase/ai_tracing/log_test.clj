@@ -4,7 +4,6 @@
    ;; needed to install a recording logger factory for the MDC-routing probe; no util.log equivalent
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging.impl]
    [metabase.ai-tracing.core :as ait]
    [metabase.ai-tracing.log :as ait.log]

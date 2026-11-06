@@ -1,4 +1,5 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { TablePicker } = H.DataModel;
@@ -14,17 +15,8 @@ interface TablesActionsResponse {
   message: string;
 }
 
-interface Table {
-  display_name: string;
-  id: number;
-}
-
 describe("bulk table operations", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/data-studio/table/sync-schema").as("syncSchema");
     cy.intercept("POST", "/api/data-studio/table/rescan-values").as(
       "rescanValues",
@@ -44,21 +36,17 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     "syncs, edits attributes, publishes and unpublishes multiple tables",
     { tags: ["@external"] },
     () => {
+      // Not `postgres-writable`: restoring it empties the warehouse but keeps
+      // the old table metadata, so any sync deactivates the tables we use here.
+      H.restore("postgres-12");
+      signInWithToken();
       H.DataModel.visitDataStudio();
-      TablePicker.expandDatabase("Writable Postgres12");
+      TablePicker.expandDatabase("QA Postgres12");
 
-      // Capture the expected table IDs from a direct API request rather than the
-      // intercepted UI response: under stress the intercepted response body is
-      // occasionally a non-array (e.g. an error map), which made `tables.find`
-      // throw `TypeError: tables.find is not a function`. A `cy.request`
-      // deterministically returns the table list.
-      cy.request<Table[]>(
-        `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
-      ).then(({ body: tables }) => {
-        const ordersTableId = getTableId(tables, "Orders");
-        const productsTableId = getTableId(tables, "Products");
-
-        cy.wrap([ordersTableId, productsTableId]).as("tableIds");
+      getTableId("Orders").then((ordersTableId) => {
+        getTableId("Products").then((productsTableId) => {
+          cy.wrap([ordersTableId, productsTableId]).as("tableIds");
+        });
       });
 
       TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
@@ -188,7 +176,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "data_studio_table_unpublished",
       });
-      H.DataStudio.nav().findByLabelText("Library").click();
+      H.DataStudio.nav().findByLabelText("Semantic layer").click();
 
       H.DataStudio.Library.libraryPage().within(() => {
         cy.findByText("Reviews").should("be.visible");
@@ -203,6 +191,8 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     { tags: ["@external"] },
     () => {
       beforeEach(() => {
+        H.restore("postgres-writable");
+        signInWithToken();
         H.createLibrary();
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -275,15 +265,17 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
   );
 
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
+    H.restore("postgres-12");
+    signInWithToken();
     H.createLibrary();
     H.DataModel.visitDataStudio();
 
     cy.log(
       "Expand the rows up front - we'll need them later for the assertion",
     );
-    TablePicker.expandDatabase("Writable Postgres12");
+    TablePicker.expandDatabase("QA Postgres12");
 
-    TablePicker.getDatabase("Writable Postgres12")
+    TablePicker.getDatabase("QA Postgres12")
       .find('input[type="checkbox"]')
       .check();
 
@@ -318,6 +310,8 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
   });
 
   it("allows to edit attributes for schema", { tags: ["@external"] }, () => {
+    H.restore("postgres-writable");
+    signInWithToken();
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.DataModel.visitDataStudio();
@@ -354,6 +348,14 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
   });
 });
 
-function getTableId(tables: Table[], tableName: string) {
-  return tables.find((table: Table) => table.display_name === tableName)?.id;
+function signInWithToken() {
+  H.resetSnowplow();
+  cy.signInAsAdmin();
+  H.activateToken("pro-self-hosted");
+}
+
+function getTableId(tableName: string): Cypress.Chainable<TableId> {
+  return TablePicker.getTable(tableName)
+    .invoke("attr", "data-table-id")
+    .then((tableId: unknown) => Number(tableId));
 }

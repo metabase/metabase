@@ -2,7 +2,6 @@ import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
 import { App } from "metabase/AppComponent";
 import { getAccountRoutes } from "metabase/account/routes";
-import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
@@ -20,12 +19,14 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
+import { getEmbeddingHubRoutes } from "metabase/embedding-hub/routes";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
+import { CollectionPermissionsModal } from "metabase/permissions";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_APPS,
@@ -89,8 +90,10 @@ export function LegacyBrowseRedirect() {
  * them is visited.
  *
  * A `lazy` route makes that first navigation asynchronous: the router resolves
- * the module before it commits the location. It resolves the route in place, so
- * every later navigation to the query builder is synchronous again.
+ * the module before it commits the location, or gives up waiting for it and
+ * shows a spinner in the page's place (see `withChunkFallback`). It resolves the
+ * route in place, so every later navigation to the query builder is synchronous
+ * again.
  */
 const queryBuilder = () =>
   loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
@@ -382,7 +385,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       {modalRoute("archive", ArchiveCollectionModal, {
                         noWrap: true,
                       })}
-                      {modalRoute("permissions", CollectionPermissionsModal)}
+                      {modalRoute("permissions", CollectionPermissionsModal, {
+                        noWrap: true,
+                      })}
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,
@@ -408,6 +413,11 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       name: "tab",
                       resourceType: "dashboard-tab",
                       type: "search",
+                    },
+                    {
+                      name: "scrollTo",
+                      resourceType: "dashboard-card",
+                      type: "hash",
                     },
                   ],
                 }),
@@ -456,7 +466,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               },
 
               // MODELS
-              ...toRouteObjects(getModelRoutes()),
+              ...toRouteObjects(getModelRoutes(IsAdmin)),
 
               {
                 path: "/model",
@@ -541,6 +551,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               // MONITOR
               ...toRouteObjects(getMonitorRoutes()),
+
+              // EMBEDDING HUB
+              ...toRouteObjects(getEmbeddingHubRoutes()),
             ],
           },
         ],

@@ -7,6 +7,7 @@
    [metabase.agent-api.query-guards :as agent-api.query-guards]
    [metabase.ai-tracing.api]
    [metabase.analytics.api]
+   [metabase.analytics.api.metaplow-proxy]
    [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
    [metabase.api.docs]
@@ -27,18 +28,20 @@
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
+   [metabase.embedding-hub.api]
    [metabase.embedding-rest.api]
    [metabase.explorations.api]
    [metabase.frontend-errors.api]
-   [metabase.geojson.api]
+   [metabase.geojson.rest.api]
    [metabase.glossary.api]
    [metabase.health-inspector.api]
    [metabase.indexed-entities.api]
    [metabase.indexes-rest.api]
    [metabase.llm.api]
-   [metabase.logger.api]
+   [metabase.logger.rest.api]
    [metabase.login-history.api]
    [metabase.mcp.callback-api]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.api]
    [metabase.measures.api]
    [metabase.metabot.api]
@@ -54,6 +57,7 @@
    [metabase.pulse.api]
    [metabase.queries-rest.api]
    [metabase.query-processor.api]
+   [metabase.request.core :as request]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.rest.api]
@@ -71,7 +75,6 @@
    [metabase.transforms-rest.api.transform]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
-   [metabase.typed-schemas-rest.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
@@ -85,6 +88,7 @@
          metabase.agent-api.api/keep-me
          metabase.ai-tracing.api/keep-me
          metabase.analytics.api/keep-me
+         metabase.analytics.api.metaplow-proxy/keep-me
          metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
@@ -100,11 +104,11 @@
          metabase.eid-translation.api/keep-me
          metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
-         metabase.geojson.api/keep-me
+         metabase.geojson.rest.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.indexes-rest.api/keep-me
-         metabase.logger.api/keep-me
+         metabase.logger.rest.api/keep-me
          metabase.login-history.api/keep-me
          metabase.mcp.callback-api/keep-me
          metabase.mcp.v2.api/keep-me
@@ -127,7 +131,6 @@
          metabase.transforms-rest.api.transform/keep-me
          metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me
-         metabase.typed-schemas-rest.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users-rest.api/keep-me
@@ -174,6 +177,17 @@
 (def ^:private ^{:arglists '([handler])} +sanitize-streaming-errors
   (routes.common/wrap-middleware-for-open-api-spec-generation sanitize-streaming-errors))
 
+(defn- without-current-user
+  "Middleware that runs `handler` with no current user, keeping only the request's locale: guest embeds and public links
+  are authorized by their signed token or public UUID, never by the visitor's session."
+  [handler]
+  (fn [request respond raise]
+    (request/do-with-current-user (select-keys request [:user-locale])
+                                  #(handler request respond raise))))
+
+(def ^:private ^{:arglists '([handler])} +without-current-user
+  (routes.common/wrap-middleware-for-open-api-spec-generation without-current-user))
+
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
 (defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (+sanitize-streaming-errors (->handler handler))))
 (defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (+sanitize-streaming-errors (->handler handler))))
@@ -194,7 +208,7 @@
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
-   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
+   "/analytics-proxy"      (+public-exceptions metabase.analytics.api.proxy/routes)
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
@@ -211,33 +225,36 @@
    "/database"             (+auth 'metabase.warehouses-rest.api)
    ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
    ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
-   ;; token's scopes as a signed claim (unrestricted only when minted from an unrestricted session: a cookie or
-   ;; API-key session, or an `mb:full` bearer token), and the guard
-   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL. The spec-generation
+   ;; token's scopes as a signed claim, and the guard
+   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL, and MCP's group
+   ;; policy to stop a user denied `execute_sql`. The spec-generation
    ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
    ;; fails openapi.json generation for the whole /api tree.
    "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
-                                    agent-api.query-guards/+refuse-unscoped-native-sql)
+                                    (partial agent-api.query-guards/+refuse-unscoped-native-sql
+                                             #'mcp/check-execute-sql-allowed!))
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                (+auth metabase.channel.rest.api/email-routes)
-   "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
+   "/embed"                (+message-only-exceptions (+without-current-user metabase.embedding-rest.api/embedding-routes))
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
+   "/embedding-hub"        metabase.embedding-hub.api/routes
+   "/embedding-sdk"        (+auth metabase.embedding-rest.api/sdk-routes)
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
-   "/geojson"              'metabase.geojson.api
+   "/geojson"              'metabase.geojson.rest.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/health-inspector"     (+auth 'metabase.health-inspector.api)
    "/index"                (+auth 'metabase.indexes-rest.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
-   "/logger"               (+auth 'metabase.logger.api)
+   "/logger"               (+auth 'metabase.logger.rest.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with
    ;; existing clients. See [[metabase.mcp.paths/endpoint-paths]].
@@ -245,6 +262,7 @@
    "/measure"              (+auth 'metabase.measures.api)
    "/metabase-mcp"         (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/metabot"              metabase.metabot.api/routes
+   "/metaplow-proxy"       (+public-exceptions metabase.analytics.api.metaplow-proxy/routes)
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
@@ -256,7 +274,7 @@
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
-   "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
+   "/public"               (+public-exceptions (+without-current-user metabase.public-sharing-rest.api/routes))
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
@@ -275,7 +293,6 @@
    "/transform-dag-run"    (+auth metabase.transforms-rest.api.transform/transform-dag-run-routes)
    "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
    "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
-   "/typed-schemas"        (+auth 'metabase.typed-schemas-rest.api)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
@@ -293,6 +310,9 @@
   "Ring routes for API endpoints."
   ;; EE routes defined in [[metabase-enterprise.api-routes.routes/routes]] always get the first chance to handle a
   ;; request, if they exist. If they don't exist, this handler returns `nil` which means we will try the next handler.
+  ;; This could be a zero-arity `defenterprise` that returns the EE routes, with `pass-thru-handler` as its OSS
+  ;; body, which would take this namespace off the OSS-to-EE allowlist in `metabase.core.modules-test`. The EE body
+  ;; would have to return the var `#'routes`, not its value, or REPL reloads of the EE routes stop reaching this table.
   (handlers/routes
    (if (and config/ee-available? (not *compile-files*))
      (requiring-resolve 'metabase-enterprise.api-routes.routes/routes)

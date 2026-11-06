@@ -44,12 +44,13 @@ import {
 } from "metabase/dashboard/actions";
 import {
   createNewTab,
-  deleteTab,
   moveTab,
   renameTab,
-  undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
-import { duplicateTab } from "metabase/dashboard/actions/tabs-thunks";
+import {
+  deleteTab,
+  duplicateTab,
+} from "metabase/dashboard/actions/tabs-thunks";
 import { connect } from "metabase/redux";
 import {
   initialize,
@@ -169,7 +170,6 @@ export const mapDispatchToProps = {
   moveTab,
   renameTab,
   selectTab,
-  undoDeleteTab,
 };
 
 export const connector = connect(mapStateToProps, mapDispatchToProps, null, {

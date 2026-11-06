@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { TableFieldOrder } from "metabase-types/api";
 
 import { FieldOrderPicker } from "./FieldOrderPicker";
@@ -38,8 +38,7 @@ describe("FieldOrderPicker", () => {
     setup();
 
     for (const label of TOOLTIP_LABELS) {
-      const option = screen.getByLabelText(label);
-      await userEvent.hover(within(option).getByRole("img"));
+      await userEvent.hover(screen.getByRole("img", { name: label }));
 
       await waitFor(() => {
         expect(

@@ -6,7 +6,7 @@ import {
   lazyModalRouteElement,
   modalRoute,
 } from "metabase/common/components/ModalRoute";
-import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
+import { canAccessDependencyDiagnostics } from "metabase/common/monitor/selectors";
 // From the file rather than the barrel beside it: the barrel also re-exports
 // the page this file loads lazily, so importing the modal through it would hold
 // the page in the initial bundle.
@@ -30,8 +30,9 @@ import {
   CanAccessAiAuditing,
   CanAccessAlertsManagement,
   CanAccessApiKeyUsage,
+  CanAccessContentDiagnostics,
+  CanAccessDependencyDiagnostics,
   CanAccessMonitor,
-  CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools,
   CanAccessSessionManagement,
 } from "./route-guards";
@@ -66,6 +67,20 @@ const dependencyDiagnosticsUpsellPage = () =>
     /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage"
   ).then(({ DependencyDiagnosticsUpsellPage }) => ({
     Component: DependencyDiagnosticsUpsellPage,
+  }));
+
+const contentDiagnosticsSectionLayout = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout"
+  ).then(({ ContentDiagnosticsSectionLayout }) => ({
+    Component: ContentDiagnosticsSectionLayout,
+  }));
+
+const contentDiagnosticsUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage"
+  ).then(({ ContentDiagnosticsUpsellPage }) => ({
+    Component: ContentDiagnosticsUpsellPage,
   }));
 
 const apiKeyUsageUpsellPage = () =>
@@ -119,7 +134,7 @@ export function getMonitorRoutes() {
     <Route element={<CanAccessMonitor />}>
       <Route path="monitor" lazy={monitorLayout}>
         <Route index element={<MonitorIndexRedirect />} />
-        <Route element={<CanAccessMonitorDiagnostics />}>
+        <Route element={<CanAccessDependencyDiagnostics />}>
           {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
             <Route
               path="dependency-diagnostics"
@@ -135,13 +150,31 @@ export function getMonitorRoutes() {
           )}
         </Route>
 
+        <Route element={<CanAccessContentDiagnostics />}>
+          {PLUGIN_MONITOR.isContentDiagnosticsEnabled ? (
+            <Route
+              path="content-diagnostics"
+              lazy={contentDiagnosticsSectionLayout}
+            >
+              {PLUGIN_MONITOR.getContentDiagnosticsRoutes()}
+            </Route>
+          ) : (
+            <Route path="content-diagnostics">
+              <Route index lazy={contentDiagnosticsUpsellPage} />
+              <Route path="*" lazy={contentDiagnosticsUpsellPage} />
+            </Route>
+          )}
+        </Route>
+
         <Route element={<CanAccessMonitoringTools />}>
           <Route path="tasks">{getTasksRoutes()}</Route>
           <Route path="jobs" lazy={jobInfoApp}>
             <Route path=":jobKey" />
           </Route>
           <Route path="logs" lazy={logs}>
-            {lazyModalRouteElement("levels", logLevelsModal)}
+            {lazyModalRouteElement("levels", logLevelsModal, {
+              noWrap: true,
+            })}
           </Route>
           <Route
             path="errors"
@@ -150,7 +183,9 @@ export function getMonitorRoutes() {
             )}
           />
           <Route path="model-persistence-log" lazy={modelPersistenceLogPage}>
-            {modalRoute(":jobId", ModelPersistenceLogJobModal)}
+            {modalRoute(":jobId", ModelPersistenceLogJobModal, {
+              noWrap: true,
+            })}
           </Route>
         </Route>
 
@@ -201,10 +236,10 @@ export function getMonitorRoutes() {
   );
 }
 
-// Diagnostics for analysts/admins; otherwise the Tools pages for users who only
-// hold the monitoring application permission.
+// Content diagnostics requires an additional feature token, so Tasks remains
+// the accessible fallback for users who lack dependency diagnostics access.
 function getMonitorIndexPath(state: State) {
-  return canAccessMonitorDiagnostics(state)
+  return canAccessDependencyDiagnostics(state)
     ? Urls.dependencyDiagnostics()
     : Urls.monitorTasks();
 }

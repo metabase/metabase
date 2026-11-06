@@ -7,8 +7,6 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
 
       // JWT requires a valid license to use, so we expect customers to use API keys when testing.
       enabledAuthMethods: ["api-key"],
-
-      signOut: true,
     });
   });
 
@@ -53,6 +51,7 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
         },
       });
 
+      frame.findByText("Pick your starting data").should("be.visible");
       frame
         .findByText("A valid license is required for embedding.")
         .should("not.exist");

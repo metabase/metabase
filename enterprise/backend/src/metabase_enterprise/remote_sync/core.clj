@@ -27,17 +27,12 @@
   ->ingestable])
 
 (defenterprise collection-editable?
-  "Determines if a remote-synced collection should be editable.
-
-  Takes a collection to check for editability.
-
-  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  "Whether `collection` and what it holds can be edited: always on a read-write instance or on OSS; otherwise not for a
+  remote-synced collection, nor for a data app's collection while remote sync is on."
   :feature :none
   [collection]
   (or (= (settings/remote-sync-type) :read-write)
       (not (or (collections/remote-synced-collection? collection)
-               ;; a data app's collection is synced with the app; without remote sync nothing writes its files
                (and (settings/remote-sync-enabled)
                     (spec/data-apps-namespace-collection?
                      {:namespace (if (and (map? collection) (contains? collection :namespace))
@@ -459,10 +454,6 @@
                                                            (remote-sync.db/collections sync-on)))
                                        (update :sync-off #(when-let [sync-off (seq %)]
                                                             (remote-sync.db/collections sync-off))))]
-    ;; a data app's collection is synced with its app, and a pull refuses its file once it says remote-synced
-    (when (some spec/data-apps-namespace-collection? sync-on)
-      (throw (ex-info (tru "A data app''s collection is synced with its app and can''t be marked as synced.")
-                      {:status-code 400})))
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)

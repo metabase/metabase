@@ -5,7 +5,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.metabot.query-repair :as query-repair]
    [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.models.schema :as models.schema]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -34,12 +36,15 @@
   [:string {:decode/normalize lib.schema.common/normalize-string-key}])
 
 (mr/def ::query
-  "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn state."
-  ::lib.util/query-like)
+  "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn
+  state. Normalizing repairs a structured query that lost its `:lib/*` keys, so every tool reads a valid MBQL 5 query;
+  see [[query-repair/repair-stripped-query]]."
+  [:schema {:decode/normalize query-repair/repair-stripped-query}
+   ::lib.util/query-like])
 
 (mr/def ::todo
-  "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item
-  between the turn that creates it and the turn that fills in its details."
+  "A todo item in conversation state persisted while Metabot had todo tools. `:todos` stays in [[::state]], a
+  closed map, so those conversations still validate."
   [:map {:closed true}
    [:id :string]
    [:content  {:optional true} [:maybe :string]]
@@ -209,7 +214,7 @@
    ["errored"
     [:map
      [:type  [:= "errored"]]
-     ;; the decoded `error` column, or its raw text when it isn't JSON
+     ;; the decoded `error` column, or its raw text when it isn't JSON; a stored error-code is also its type
      [:error [:or
               :string
               [:map
@@ -416,3 +421,20 @@
    [:message_id {:optional true} [:maybe ms/PositiveInt]]
    [:table_id   {:optional true} [:maybe ::lib.schema.id/table]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::external-metabot
+  "A Metabot as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::metabot [:name :description :entity_id :use_verified_content :collection_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]
+     [:prompts {:optional true} [:maybe [:sequential [:ref ::external-metabot-prompt]]]]]]])
+
+(mr/def ::external-metabot-prompt
+  "A MetabotPrompt as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::metabot-prompt [:entity_id :prompt :model :card_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

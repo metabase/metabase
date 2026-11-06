@@ -21,6 +21,7 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
@@ -85,7 +86,10 @@
   (when target-field-id
     (check-field-in-same-database! source-field-id target-field-id param-name)
     (when (not= target-field-id current-target-field-id)
-      (api/write-check :model/Field target-field-id))))
+      (-> (warehouse-schema-rest.db/field target-field-id)
+          :table_id
+          warehouse-schema-rest.db/table
+          schema.table/check-data-model-perms))))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
@@ -151,17 +155,16 @@
     :as body} :- [:map {:closed true}
                   [:caveats            {:optional true} [:maybe ms/NonBlankString]]
                   [:description        {:optional true} [:maybe ms/NonBlankString]]
-                  [:display_name       {:optional true} [:maybe ms/NonBlankString]]
+                  [:display_name       {:optional true} ms/NonBlankString]
                   [:fk_target_field_id {:optional true} [:maybe ms/PositiveInt]]
                   [:points_of_interest {:optional true} [:maybe ms/NonBlankString]]
                   [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
                   [:coercion_strategy  {:optional true} [:maybe ms/CoercionStrategyKeywordOrString]]
-                  [:visibility_type    {:optional true} [:maybe FieldVisibilityType]]
+                  [:visibility_type    {:optional true} FieldVisibilityType]
                   [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
-                  [:has_field_values   {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
+                  [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
                   [:settings           {:optional true} [:maybe ms/VisualizationSettings]]
-                  [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-                  [:json_unfolding     {:optional true} [:maybe :boolean]]]]
+                  [:json_unfolding     {:optional true} :boolean]]]
   (let [field             (-> (warehouse-schema-rest.db/field id)
                               api/write-check
                               (t2/hydrate :dimensions))
@@ -182,7 +185,8 @@
                                     {:status-code 400
                                      :base-type (:base_type field)
                                      :coercion-strategy coercion-strategy
-                                     :effective-type effective}))))))
+                                     :effective-type effective
+                                     :response/keys #{:base-type :coercion-strategy :effective-type}}))))))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
     ;; validate that fk_target_field_id is a valid Field in the same database
@@ -195,7 +199,7 @@
       (when removed-fk?
         (clear-dimension-on-fk-change! field))
       (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-      (schema.field-user-settings/upsert-user-settings
+      (schema.field-user-settings/upsert-field-user-settings!
        field
        (cond-> body
          (or removed-fk? (contains? body :fk_target_field_id))
@@ -210,7 +214,7 @@
     (let [updated (warehouse-schema-rest.db/field id)]
       (u/prog1 (-> updated
                    (t2/hydrate :dimensions :has_field_values)
-                   (field/hydrate-target-with-write-perms))
+                   (schema.field/hydrate-target-with-data-model-perms))
         (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
         (when (not= effective-type (:effective_type field))
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})

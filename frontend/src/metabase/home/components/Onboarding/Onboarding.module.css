@@ -136,7 +136,7 @@
 
   /* Shared by the leaves that sit proud of the frame. */
   --media-leaf-elevation: 0 calc(6 * var(--media-unit))
-    calc(24 * var(--media-unit)) var(--mb-color-shadow);
+    calc(24 * var(--media-unit)) var(--mb-color-shadow-default);
 
   aspect-ratio: 560 / 316;
   background-color: var(--mb-color-illustration-secondary-brand);

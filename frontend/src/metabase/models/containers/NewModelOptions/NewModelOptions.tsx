@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import notebookModeIllustration from "img/notebook_mode_illustration.png";
-import notebookModeIllustration2x from "img/notebook_mode_illustration@2x.png";
-import sqlIllustration from "img/sql_illustration.png";
-import sqlIllustration2x from "img/sql_illustration@2x.png";
+import notebookModeIllustration from "assets/img/notebook_mode_illustration.png";
+import notebookModeIllustration2x from "assets/img/notebook_mode_illustration@2x.png";
+import sqlIllustration from "assets/img/sql_illustration.png";
+import sqlIllustration2x from "assets/img/sql_illustration@2x.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";

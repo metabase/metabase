@@ -22,7 +22,7 @@ What data Metabase sends to AI providers and MCP clients, and what Metabase coll
 
 ## [AI usage controls](./usage-controls.md)
 
-Control who can use Metabot, and set token and message limits.
+Control who can use Metabot, which MCP tools each group can use, and set token and message limits.
 
 ## [AI customization](./customization.md)
 

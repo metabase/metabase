@@ -12,7 +12,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { ActionFormProps } from "./ActionVizForm";
-import ActionVizForm from "./ActionVizForm";
+import { ActionVizForm } from "./ActionVizForm";
 
 const idParameter = createMockActionParameter({ id: "id" });
 
@@ -107,6 +107,8 @@ describe("Actions > ActionVizForm", () => {
 
     await userEvent.click(screen.getByText("Click me"));
 
-    expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Choose a record to update/i),
+    ).toBeInTheDocument();
   });
 });

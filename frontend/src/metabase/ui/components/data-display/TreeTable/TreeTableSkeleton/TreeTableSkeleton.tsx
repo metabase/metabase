@@ -21,7 +21,7 @@ export function TreeTableSkeleton({
   const getColumnWidth = (index: number) => `${columnWidths[index] * 100}%`;
 
   return (
-    <Stack gap={0} flex={1} mih={0}>
+    <Stack gap={0} flex={1} mih={0} data-testid="tree-table-skeleton">
       <Flex h={HEADER_HEIGHT} align="center" className={S.header}>
         {showCheckboxes && (
           <Box w={CHECKBOX_COLUMN_WIDTH} className={S.checkboxColumn} />

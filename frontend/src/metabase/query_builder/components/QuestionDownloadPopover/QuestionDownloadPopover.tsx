@@ -42,7 +42,7 @@ const BaseQuestionDownloadPopover = ({
   dashboardId,
   dashcardId,
   visualizationSettings,
-  variant,
+  variant = "subtle",
   floating,
   formatPreference,
 }: BaseQuestionDownloadPopoverProps) => {

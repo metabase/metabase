@@ -31,6 +31,7 @@
   instance-analytics-collection-type
   library-collection
   library-collection-type
+  library-collection-types
   library-dashboards-collection-type
   library-dashboards-collection?
   library-data-collection-type
@@ -43,8 +44,11 @@
   remote-synced-collection
   remote-synced-collection?
   remote-synced-dependents
+  root-collection-type-by-id
   shared-tenant-collection?
+  slugify
   transforms-ns
+  trash-collection-id
   data-apps-ns
   data-actions-ns
   default-allowed-namespaces]

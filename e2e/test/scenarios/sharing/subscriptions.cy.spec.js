@@ -469,7 +469,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     it("should not display 'null' day of the week (metabase#14405)", () => {
       assignRecipient();
-      H.sidebar().findByText("To:").click();
+      H.sidebar().findByText("To").click();
 
       cy.findByTestId("select-frequency").click();
       H.popover().findByText("monthly").click();

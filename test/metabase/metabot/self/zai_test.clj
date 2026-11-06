@@ -155,6 +155,22 @@
                                                        :input  input
                                                        :schema {:type "object"}})))))))
 
+(deftest ^:parallel request-body-glm-5-3-flash-test
+  (let [input [{:role :user :content "hi"}]
+        body  #(zai/zai-request-body (assoc % :model "glm-5.3-flash" :input input))]
+    (testing "glm-5.3-flash is thinking-only (error 1210 on the disable): no directive, max effort"
+      (let [chat-body (body {})]
+        (is (not (contains? chat-body :thinking)))
+        (is (= "max" (:reasoning_effort chat-body)))))
+    (testing "a schema drops the effort to low"
+      (is (= "low" (:reasoning_effort (body {:schema {:type "object"}})))))
+    (testing "the forced-call floor raises a cap below 2048 and keeps a cap at or above it"
+      (are [opts expected] (= expected (:max_tokens (body opts)))
+        {:schema {:type "object"} :max-tokens 512}  2048
+        {:schema {:type "object"} :max-tokens 2048} 2048
+        {:schema {:type "object"} :max-tokens 4096} 4096
+        {:max-tokens 512}                           512))))
+
 (deftest ^:parallel reasoning-model?-test
   (are [model expected] (= expected (zai/reasoning-model? model))
     "glm-5.2" true
@@ -229,6 +245,27 @@
                    {:choices [{:delta {:content "4"}}]}
                    {:choices [{:delta {} :finish_reason "stop"}]
                     :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}])))))
+
+(deftest ^:parallel zai-context-window-exceeded-is-a-length-stop-test
+  (letfn [(usage-chunk [finish-reason]
+            (->> (into [] (zai/zai->aisdk-chunks-xf)
+                       [{:id      "20260723-3"
+                         :model   "glm-5.2"
+                         :choices [{:delta {:role "assistant" :content "Partial"}}]}
+                        {:choices [{:delta {} :finish_reason finish-reason}]
+                         :usage   {:prompt_tokens 199000 :completion_tokens 1000 :total_tokens 200000}}])
+                 (filter #(= :usage (:type %)))
+                 first))]
+    (testing "a stop at the context window reads as a length stop, so the \"full\" path can run"
+      (is (=? {:finish-reason "length" :raw-finish-reason "model_context_window_exceeded"}
+              (usage-chunk "model_context_window_exceeded"))))
+    (testing "the other Z.AI finish reasons keep their mapping"
+      (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
+                                   (usage-chunk raw))
+        "length"        "length"
+        "stop"          "stop"
+        "sensitive"     "content-filter"
+        "network_error" "error"))))
 
 (deftest ^:parallel zai-whole-tool-call-conv-test
   (testing "a tool call arriving whole in one delta (tool_stream false) is mapped correctly"
@@ -388,9 +425,12 @@
                                                {:status 200 :body {:data [{:id "glm-4.7"}
                                                                           {:id "glm-5.2"}
                                                                           {:id "glm-5.3"}
+                                                                          {:id "glm-5.3-flash"}
+                                                                          {:id "glm-5.3-flashx"}
                                                                           {:id "some-other-model"}]}})]
       (is (= {:models [{:id "glm-5.2" :display_name "GLM-5.2"}
-                       {:id "glm-5.3" :display_name "GLM-5.3"}]}
+                       {:id "glm-5.3" :display_name "GLM-5.3"}
+                       {:id "glm-5.3-flash" :display_name "GLM-5.3-Flash"}]}
              (zai/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-prefers-catalog-display-name-test

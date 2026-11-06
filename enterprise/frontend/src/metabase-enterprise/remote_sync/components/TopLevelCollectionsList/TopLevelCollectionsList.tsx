@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListCollectionItemsQuery } from "metabase/api";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -62,7 +62,7 @@ export const TopLevelCollectionsList = ({
       error={error ? t`Failed to load collections` : null}
       isLoading={isLoading || isLoadingLibrary}
       showTransformsRow={PLUGIN_TRANSFORMS.isEnabled}
-      showLibraryPlaceholder={skipCollections && !libraryCollection}
+      showLibraryPlaceholder={PLUGIN_LIBRARY.isEnabled && !libraryCollection}
     />
   );
 };

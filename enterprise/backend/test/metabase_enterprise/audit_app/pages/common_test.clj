@@ -21,20 +21,20 @@
   {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
               [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/query
-              {:union-all [{:select [[[:inline a1] :A]
-                                     [[:inline 2] :B]]}
-                           {:select [[[:inline 3] :A]
-                                     [[:inline 4] :B]]}]})})
+              {:union-all [^:allow-subquery {:select [[[:inline a1] :A]
+                                                      [[:inline 2] :B]]}
+                           ^:allow-subquery {:select [[[:inline 3] :A]
+                                                      [[:inline 4] :B]]}]})})
 
 (defmethod audit.i/internal-query ::reducible-format-query-fn
   [_ a1]
   {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
               [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/reducible-query
-              {:union-all [{:select [[[:inline a1] :A]
-                                     [[:inline 2] :B]]}
-                           {:select [[[:inline 3] :A]
-                                     [[:inline 4] :B]]}]})
+              {:union-all [^:allow-subquery {:select [[[:inline a1] :A]
+                                                      [[:inline 2] :B]]}
+                           ^:allow-subquery {:select [[[:inline 3] :A]
+                                                      [[:inline 4] :B]]}]})
    :xform    (map #(update (vec %) 0 inc))})
 
 (deftest transform-results-test

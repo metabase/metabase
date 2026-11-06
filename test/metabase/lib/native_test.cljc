@@ -508,6 +508,18 @@
                              :display-name "foo"
                              :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
                    :question))
+  (testing "a required tag without a default value does not block running or saving"
+    (let [query (lib/with-template-tags
+                  (lib/native-query meta/metadata-provider "select * {{foo}}")
+                  {"foo" {:type :dimension
+                          :id "1"
+                          :name "foo"
+                          :widget-type :id
+                          :display-name "foo"
+                          :required true
+                          :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})]
+      (is (lib/can-run query :question))
+      (is (lib/can-save? query :question))))
   (is (lib/can-run (lib.tu/venues-query) :question))
   (mu/disable-enforcement
     (is (not (lib/can-run (lib/native-query meta/metadata-provider "") :question)))
@@ -901,6 +913,15 @@
                                             :display-name "State"
                                             :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"}}
                renames))))))
+
+(deftest ^:parallel rename-template-tags-in-text-one-pass-test
+  (testing "a new name that is another tag's old name is not renamed again"
+    (is (= "{{#2}} {{#1-orders}} {{#2}}"
+           (lib.native/rename-template-tags-in-text "{{ #1 }} {{#2-orders}} {{#1}}" {"#1" "#2", "#2-orders" "#1-orders"})))
+    (is (= "{{#1}} {{#2}}"
+           (lib.native/rename-template-tags-in-text "{{#2}} {{#1}}" {"#1" "#2", "#2" "#1"})))
+    (is (= "{{#7}} {{#9}} {{#70}}"
+           (lib.native/rename-template-tags-in-text "{{#ent}} {{#7}} {{#70}}" {"#ent" "#7", "#7" "#9"})))))
 
 (deftest ^:parallel replace-template-tag-names-noop-test
   (let [query (card-tag-query "select * from {{#133-some-old-slug}}"

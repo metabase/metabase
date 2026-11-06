@@ -11,8 +11,6 @@ export type SchemaColumn = {
   description?: string;
   displayName?: string;
   jsType?: SchemaJavaScriptType;
-  baseType?: string;
-  effectiveType?: string;
 };
 
 /**
@@ -21,10 +19,13 @@ export type SchemaColumn = {
 export type FieldSchema = SchemaColumn & {
   type: "column";
   id?: string | number;
-  sourceName?: string;
   fieldId?: number;
   tableId?: number;
   sourceFieldId?: number;
+};
+
+export type TableFieldSchema = FieldSchema & {
+  slug: string;
 };
 
 export type SegmentSchema<TTableId extends number = number> = {
@@ -44,7 +45,7 @@ export type TableSchema = {
   type: "table";
   id: number;
   columns?: readonly SchemaColumn[];
-  fields?: Record<string, FieldSchema>;
+  fields?: Record<string, TableFieldSchema>;
   segments?: Record<string, SegmentSchema>;
   measures?: Record<string, MeasureSchema>;
 };
@@ -52,7 +53,6 @@ export type TableSchema = {
 export type MetricSchema = {
   type: "metric";
   id: number;
-  databaseId?: number;
   sourceTableId?: number;
   sourceCardId?: number;
   mappedTableIds?: readonly number[];
@@ -60,10 +60,12 @@ export type MetricSchema = {
   dimensions?: Record<string, Record<string, FieldSchema>>;
 };
 
+/**
+ * A saved question, by its id or by its entity ID.
+ */
 export type QuestionSchema = {
   type: "card";
-  id: number;
   name?: string;
   display?: string;
   columns?: readonly SchemaColumn[];
-};
+} & ({ id: number; entityId?: string } | { id?: never; entityId: string });

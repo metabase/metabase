@@ -19,6 +19,7 @@
      subscription reads cover live Pulse rows and rows migrated to the notification API."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.comments.core :as comments]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -394,6 +395,15 @@
                             u/remove-nils))
                       dashcards)}))
 
+(defn- dashboard-parameters
+  "The `parameters` include: each stored parameter with every property, and the ids of the dashcards wired to it.
+   The concise row shows only some of those properties."
+  [row]
+  (let [dash                   (::dashboard row)
+        param-id->dashcard-ids (projections/parameter-dashcard-ids dash)]
+    {:parameters (mapv #(m/assoc-some % :dashcard_ids (param-id->dashcard-ids (u/qualified-name (:id %))))
+                       (:parameters dash))}))
+
 ;;; ----------------------------------------------------- alert ----------------------------------------------------
 
 (defn- fetch-notification
@@ -508,7 +518,7 @@
    "segment"      {:fetch #(fetch-measure-or-segment :model/Segment %)
                    :includes {"definition" (definition-include #(measure-or-segment-definition :segment %))}}
    "dashboard"    {:fetch fetch-dashboard
-                   :includes {"parameters" (fn [row] {:parameters (vec (:parameters row))})
+                   :includes {"parameters" dashboard-parameters
                               "layout"     (fn [row] {:layout (dashboard-layout row)})}}
    "document"     {:fetch fetch-document
                    :includes {"layout"   (fn [row] {:layout (document-layout row)})
@@ -612,10 +622,11 @@
 
 (registry/deftool get-content
   "Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim), and materialized parameters (the same tags viewed as parameters); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins). include adds sections on demand — definition returns the stored query (numeric ids) in the shape execute_query and question_write accept; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown."
-  {:name         "get_content"
-   :scope        metabot.scope/agent-content-read
-   :annotations  {:readOnlyHint true :idempotentHint true}
-   :args         get-content-args-schema}
+  {:name           "get_content"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-read
+   :annotations    {:readOnlyHint true :idempotentHint true}
+   :args           get-content-args-schema}
   [{:keys [items include] :as args} _]
   (when (> (count items) max-items)
     (common/throw-teaching-error

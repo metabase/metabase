@@ -41,7 +41,7 @@ type UpsellBannerPropsBase = {
   campaign: string;
   location: string;
   large?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   style?: React.CSSProperties;
   onClick?: () => void;
 };
@@ -77,27 +77,32 @@ export const UpsellBannerInner: React.FC<UpsellBannerProps> = ({
       ? props
       : { dismissible: false, onDismiss: () => {} };
   const gemSize = large ? 24 : undefined;
+  // Without body text there is only the single title line, so top-aligning the
+  // row would leave the gem and the button sitting above it.
+  const hasBody = Boolean(children);
 
   // Use onClick if provided, otherwise use upgrade action
   const handleClick = onClick ?? upgradeOnClick;
 
   return (
     <Box
-      className={cx(S.UpsellBannerComponent, large && S.Large)}
+      className={cx(S.UpsellBannerComponent, large && hasBody && S.Large)}
       data-testid="upsell-banner"
       bg="background_page-primary"
       {...domProps}
     >
-      <Flex align="flex-start" gap="sm" wrap="nowrap">
-        <UpsellGem size={gemSize} mt="1px" />
+      <Flex align={hasBody ? "flex-start" : "center"} gap="sm" wrap="nowrap">
+        <UpsellGem size={gemSize} mt={hasBody ? "1px" : undefined} />
 
         <Stack gap="xxs">
           <Title lh={1.25} order={3} size="md">
             {title}
           </Title>
-          <Text lh="1rem" size="sm" c="text-secondary">
-            {children}
-          </Text>
+          {children && (
+            <Text lh="1rem" size="sm" c="text-secondary">
+              {children}
+            </Text>
+          )}
         </Stack>
       </Flex>
 

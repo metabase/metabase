@@ -1,5 +1,6 @@
 (ns metabase.mcp.v2.tools.content-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -7,13 +8,17 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
+   [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.metrics.core :as metrics]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -22,9 +27,8 @@
 
 (defn- call-content
   "Invoke get_content through the registry — the same seam the JSON-RPC route uses, so scope
-   gating and argument validation are exercised. `token-scopes` of nil means an internal
-   caller, which satisfies every scope check."
-  ([args] (call-content nil args))
+   gating and argument validation are exercised. The 1-arity holds every MCP scope."
+  ([args] (call-content v2.tu/all-scopes args))
   ([token-scopes args]
    ;; `call-tool` answers `{:result …}` after dispatch, or `{:error …}` when the registry rejects
    ;; the call before it. Present a rejection in the same `{:isError true}` shape a handler error
@@ -38,7 +42,7 @@
 (defn- content-results
   "The `:results` vector from a successful get_content call. Throws when the call was rejected
    before per-item work, so a tool-level error can never masquerade as an empty batch."
-  ([args] (content-results nil args))
+  ([args] (content-results v2.tu/all-scopes args))
   ([token-scopes args]
    (let [result (call-content token-scopes args)]
      (when (:isError result)
@@ -48,12 +52,12 @@
      (:results (json/decode+kw (-> result :content first :text v2.tu/strip-data-boundary))))))
 
 (defn- content-one
-  ([args] (content-one nil args))
+  ([args] (content-one v2.tu/all-scopes args))
   ([token-scopes args] (first (content-results token-scopes args))))
 
 (defn- content-error
   "The tool-level error text for calls rejected before any per-item work."
-  ([args] (content-error nil args))
+  ([args] (content-error v2.tu/all-scopes args))
   ([token-scopes args] (-> (call-content token-scopes args) :content first :text)))
 
 (defn- venues-query
@@ -140,6 +144,73 @@
             (is (nil? (:error row)))
             (is (re-find #"hello" (:content_markdown row)))))))))
 
+(deftest get-content-fields-name-a-card-foreign-key-for-source-field-name-test
+  (testing "the `fields` include gives each column the name `source-field-name` takes on a stage built on the card"
+    (let [mp        (mt/metadata-provider)
+          orders    (lib.metadata/table mp (mt/id :orders))
+          field     #(lib.metadata/field mp (mt/id :orders %))
+          ;; O2 is the order whose ID is this order's PRODUCT_ID, so the card's two USER_ID columns differ.
+          self-join (-> (lib/join-clause orders [(lib/= (field :product_id) (field :id))])
+                        (lib/with-join-alias "O2")
+                        (lib/with-join-fields :all))
+          by-source (fn [stage]
+                      (-> (v2.queries/execute-representations-query
+                           {:lib/type "mbql/query"
+                            :stages   [(merge stage {:lib/type    "mbql.stage/mbql"
+                                                     :aggregation [["count" {}]]})]})
+                          (get-in [:structured-output :query])
+                          qp/process-query
+                          mt/rows))]
+      (doseq [card-type [:question :model]]
+        (mt/with-temp [:model/Card {card-id :id} {:type          card-type
+                                                  :dataset_query (lib/join (lib/query mp orders) self-join)}]
+          (mt/with-test-user :crowberto
+            (testing card-type
+              (let [user-id-cols (->> (content-one {:items [{:type (name card-type) :id card-id}] :include ["fields"]})
+                                      :result_metadata
+                                      (filterv #(= (mt/id :orders :user_id) (:id %))))
+                    via          (fn [fk-name]
+                                   (by-source {:source-card card-id
+                                               :breakout    [["field" {:source-field      (mt/id :orders :user_id)
+                                                                       :source-field-name fk-name}
+                                                              (mt/id :people :source)]]}))]
+                (is (= ["USER_ID" "O2__USER_ID"] (mapv :lib/desired-column-alias user-id-cols))
+                    (pr-str user-id-cols))
+                (testing "and each name picks its own foreign key"
+                  (is (= (by-source {:source-table (mt/id :orders)
+                                     :breakout     [["field" {} (mt/id :people :source)]]})
+                         (via "USER_ID")))
+                  (is (not= (via "USER_ID") (via "O2__USER_ID"))))))))))))
+
+(deftest card-column-error-hint-lists-the-card-columns-test
+  (testing "a column the card does not return gets a hint naming the get_content call that lists the ones it does"
+    (let [mp    (mt/metadata-provider)
+          field #(lib.metadata/field mp (mt/id :orders %))]
+      (mt/with-temp [:model/Card {card-id :id} {:type          :model
+                                                :dataset_query (lib/with-fields
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                 [(field :id) (field :total)])}]
+        (mt/with-test-user :crowberto
+          (let [e    (try
+                       (v2.queries/execute-representations-query
+                        {:lib/type "mbql/query"
+                         :stages   [{:lib/type    "mbql.stage/mbql"
+                                     :source-card card-id
+                                     :aggregation [["count" {}]]
+                                     :breakout    [["field" {} (mt/id :orders :quantity)]]}]})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e e))
+                items (some->> (ex-message e)
+                               (re-find #"Call \"get_content\" with items (\[.*?\]) and include \[\"fields\"\]")
+                               second
+                               json/decode+kw)]
+            (is (=? {:error :column-not-returned} (ex-data e)))
+            (is (= [{:type "model" :id card-id}] items)
+                (ex-message e))
+            (is (= ["ID" "TOTAL"]
+                   (mapv :name (:result_metadata (content-one {:items items :include ["fields"]}))))
+                "and that call lists the columns the model returns")))))))
+
 (deftest get-content-dashboard-skeleton-test
   (testing "GHY-4140: a dashboard returns the editing skeleton, never the raw REST dashcards array"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category" :slug "category"
@@ -162,15 +233,39 @@
           (is (= [{:id tab-id :name "Tab 1"}] (:tabs row)))
           (testing "each parameter names the dashcards it is wired to"
             (let [expected [{:id "_CAT_" :name "Category" :type "category" :dashcard_ids [dc-id]}]]
-              (is (= expected (:parameters row)))
-              (is (= expected
-                     (:parameters (content-one {:items   [{:type "dashboard" :id dash-id}]
-                                                :include ["parameters"]}))))))
+              (is (= expected (:parameters row)))))
+          (testing "the parameters include returns each stored parameter with its wired dashcard ids"
+            (is (= [{:id "_CAT_" :name "Category" :slug "category" :type "category" :dashcard_ids [dc-id]}]
+                   (:parameters (content-one {:items   [{:type "dashboard" :id dash-id}]
+                                              :include ["parameters"]})))))
           (testing "one summary row per dashcard, with the card reference resolved"
             (is (= [{:id dc-id :kind "card" :card {:id card-id :name "Embedded"}
                      :dashboard_tab_id tab-id :row 0 :col 0}]
                    (mapv #(select-keys % [:id :kind :card :dashboard_tab_id :row :col])
                          (:dashcards row))))))))))
+
+(deftest get-content-dashboard-parameters-include-test
+  (testing "BOT-2524: the parameters include shows the properties the concise row leaves out"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [{:id   "state"
+                                                                 :name "State"
+                                                                 :slug "state"
+                                                                 :type "string/="}
+                                                                {:id                  "city"
+                                                                 :name                "City"
+                                                                 :slug                "city"
+                                                                 :type                "string/="
+                                                                 :values_query_type   "list"
+                                                                 :isMultiSelect       false
+                                                                 :filteringParameters ["state"]}]}]
+      (mt/with-test-user :crowberto
+        (let [city   (fn [opts]
+                       (-> (content-one (merge {:items [{:type "dashboard" :id dash-id}]} opts))
+                           :parameters
+                           second
+                           (select-keys [:values_query_type :isMultiSelect :filteringParameters])))]
+          (is (= {} (city {})))
+          (is (= {:values_query_type "list" :isMultiSelect false :filteringParameters ["state"]}
+                 (city {:include ["parameters"]}))))))))
 
 (defn- dashcard-refs
   "dashcard id -> its projected `:card` and `:series` references, for the redaction assertions."
@@ -421,10 +516,8 @@
       (mt/with-temp-env-var-value! [mb-transforms-enabled true]
         (mt/with-temp [:model/Transform {id :id} {:name   "t1"
                                                   :source {:type  :query
-                                                           :query {:database (mt/id)
-                                                                   :type     "query"
-                                                                   :query    {:source-table (mt/id :venues)}}}
-                                                  :target {:type   :table
+                                                           :query (venues-query)}
+                                                  :target {:type   "table"
                                                            :schema (t2/select-one-fn :schema :model/Table
                                                                                      :id (mt/id :venues))
                                                            :name   "t1_out"}}]
@@ -1021,7 +1114,7 @@
           (is (nil? (:error row)))
           (is (re-find #"hello" (:content_markdown row))
               "the read still returns the body")))
-      (is (= 0 (t2/select-one-fn :view_count :model/Document doc-id))
+      (is (= 0 (t2/select-one-fn :view_count :model/Document :id doc-id))
           "and left view_count alone"))))
 
 (deftest get-content-dimensions-respects-a-curated-metric-test
@@ -1041,7 +1134,7 @@
       (metrics/sync-dimensions! :metadata/metric metric-id)
       (let [seeded (t2/select-one-fn :dimensions :model/Card :id metric-id)]
         (is (seq seeded) "the metric must seed at least one dimension for this to prove anything")
-        (t2/update! :model/Card metric-id {:dimensions (vec (take 1 seeded))})
+        (t2/update! :model/Card :id metric-id {:dimensions (vec (take 1 seeded))})
         (mt/with-test-user :crowberto
           (let [row   (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})
                 again (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})]
@@ -1114,7 +1207,7 @@
         (metrics/sync-dimensions! :metadata/metric metric-id)
         (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id metric-id)
               orphan-id (:id (first dimensions))]
-          (t2/update! :model/Card metric-id
+          (t2/update! :model/Card :id metric-id
                       {:dimension_mappings (mapv #(cond-> %
                                                     (= orphan-id (:dimension-id %))
                                                     (assoc-in [:target 2] (mt/id :users :name)))
@@ -1155,6 +1248,41 @@
             each had a competing registration whose winner was decided by load order"
     (is (contains? (set (projections/catalog :metric)) "query_summary"))
     (is (contains? (set (projections/catalog :document)) "content_markdown"))))
+
+(deftest dashboard-catalog-covers-parameter-value-sources-test
+  (testing "BOT-2524: get_content can select every key a dashboard parameter's value source config can hold"
+    (let [catalog     (set (projections/catalog :dashboard))
+          config-keys (mu/map-schema-keys ::parameters.schema/values-source-config)
+          paths       (into #{} (map #(str "parameters.values_source_config." (name %))) config-keys)]
+      (is (seq config-keys))
+      (is (= #{} (set/difference paths catalog))))))
+
+(deftest get-content-dashboard-parameter-value-sources-test
+  (testing "BOT-2524: a fields selection reaches into a static list and a card source"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Countries"}]
+      (let [field-ref   [:field (mt/id :venues :name) nil]
+            static-list {:id                   "country"
+                         :name                 "Country"
+                         :slug                 "country"
+                         :type                 "string/="
+                         :values_source_type   "static-list"
+                         :values_source_config {:values ["US" "CA"]}}
+            card-source {:id                   "region"
+                         :name                 "Region"
+                         :slug                 "region"
+                         :type                 "string/="
+                         :values_source_type   "card"
+                         :values_source_config {:card_id card-id, :value_field field-ref}}]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:parameters [static-list card-source]}]
+          (mt/with-test-user :crowberto
+            (is (=? {:parameters [{:values_source_config {:values ["US" "CA"]}}
+                                  {:values_source_config {:card_id     card-id
+                                                          :value_field ["field" (mt/id :venues :name) nil]}}]}
+                    (content-one {:items [{:type   "dashboard"
+                                           :id     dash-id
+                                           :fields ["parameters.values_source_config.values"
+                                                    "parameters.values_source_config.card_id"
+                                                    "parameters.values_source_config.value_field"]}]})))))))))
 
 (deftest get-content-subscription-fields-covers-notification-shape-test
   (testing "GHY-4140: the subscription fields catalog covers the notification-backed shape, not

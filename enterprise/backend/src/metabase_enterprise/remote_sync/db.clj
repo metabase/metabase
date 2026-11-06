@@ -2,18 +2,18 @@
   "Application database queries for the remote-sync module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :model_id :archived :archived_at])
+  [:enum :exploration_id :built_in_type :is_default :entity_id :collection_id :model_id :archived :archived_at])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
@@ -30,18 +30,9 @@
    [:removal-conditions    Conditions]])
 
 (def ^:private ModelId
-  "A `:model_id`: the primary key of the referenced entity, or the `-1` sentinel
-  (`metabase-enterprise.remote-sync.settings/transforms-root-id`) standing in for the virtual Transforms root
-  Collection."
+  "A `:model_id`: the primary key of the referenced entity, or `-1` for the legacy Transforms root Collection row that
+  startup converts."
   [:maybe [:or ms/PositiveInt [:= -1]]])
-
-(def ^:private Path
-  "A `{:db_name :schema :table_name :field_name}` path used to locate a Table or Field."
-  [:map {:closed true}
-   [:db_name    :string]
-   [:schema     {:optional true} [:maybe :string]]
-   [:table_name :string]
-   [:field_name {:optional true} :string]])
 
 (mu/defn eligible-children
   "The instances of `model-key` whose `fk` column equals `model-id`, additionally matching `conditions` (a map of
@@ -52,12 +43,27 @@
    conditions  :- Conditions]
   (apply t2/select model-key fk model-id (mapcat identity conditions)))
 
+(mu/defn row-exists? :- :boolean
+  "Whether a `model` row has `column` equal to `id`."
+  [model  :- :keyword
+   column :- :keyword
+   id     :- ms/PositiveInt]
+  (t2/exists? model column id))
+
 (mu/defn ids-where
   "The IDs of the instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
   operator-vector value, or nil for every instance)."
   [model-key  :- :keyword
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
+
+(mu/defn existing-ids :- [:set ms/PositiveInt]
+  "The IDs among `ids` of the existing instances of `model-key`."
+  [model-key :- :keyword
+   ids       :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select-pks-set model-key :id [:in ids])
+    #{}))
 
 (mu/defn instances-where
   "The instances of `model-key` matching `conditions` (a map of column to value or Toucan 2 operator-vector value,
@@ -163,23 +169,18 @@
                                         :limit limit}))
 
 (mu/defn instance
-  "The instance of `model` with `id`, or nil; a Table is read through the overlay."
+  "The instance of `model` with `id`, or nil."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/select-one model :id id (if (= model :model/Table)
-                                {:from [(warehouse-schema-overlay/table-query)]}
-                                {})))
+  (t2/select-one model :id id))
 
 (mu/defn instance-with-columns
-  "The `columns` of the instance of `model` with `id`, or nil; a Table is read through the overlay."
+  "The `columns` of the instance of `model` with `id`, or nil."
   [model   :- :keyword
    columns :- [:sequential :keyword]
    id      :- ms/PositiveInt]
   (t2/select-one (into [model] columns)
-                 :id id
-                 (if (= model :model/Table)
-                   {:from [(warehouse-schema-overlay/table-query)]}
-                   {})))
+                 :id id))
 
 (mu/defn instance-names
   "The `:id` and `:name` of the instances of `model` with `ids`."
@@ -217,31 +218,37 @@
   (t2/delete! model :id [:in ids]))
 
 (defn- tracking-select-parts
-  "The SELECT/FROM/JOIN joining a `model-key` instance (Field, Segment, or Measure) to its Table for sync tracking,
-  plus the `alias` its own table is joined under (so callers can address its `:id` and `:entity_id` columns).
+  "The SELECT/FROM/JOIN of a `model-key` instance (TableUserSettings, FieldUserSettings, Dimension, Segment, or
+  Measure) with its Table for sync tracking, plus the `alias` the row its id refers to is under (so callers can
+  address its `:id` and `:entity_id` columns). The user settings are keyed by the id of their Table or Field.
   Segment and Measure share alias \"s\" — both are looked up the same way by [[tracking-details-by-entity-ids]]."
   [model-key]
   (case model-key
-    :model/Field   {:alias  "f"
-                    :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
-                    :from   [[:metabase_field :f]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
+    :model/TableUserSettings {:alias  "t"
+                              :select [:t.name [:t.id :table_id] :t.collection_id [:t.name :table_name]]
+                              :from   [[(t2/table-name :model/Table) :t]]}
+    (:model/FieldUserSettings :model/Dimension)
+    {:alias  "f"
+     :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+     :from   [[:metabase_field :f]]
+     :join   [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]}
     :model/Segment {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}
+                    :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]}
     :model/Measure {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:measure :s]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}))
+                    :join   [[(t2/table-name :model/Table) :t] [:= :s.table_id :t.id]]}))
 
 (mu/defn tracking-details-by-id
-  "The name, table id, collection id, and table name of the `model-key` (Field, Segment, or Measure) instance with
-  `model-id`, or nil."
+  "The name, table id, collection id, and table name of the `model-key` (TableUserSettings, FieldUserSettings,
+  Dimension, Segment, or Measure) instance with `model-id`, or nil."
   [model-key :- :keyword
    model-id  :- ms/PositiveInt]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)]
-    (first (t2/query {:select select :from from :join join :where [:= (keyword alias "id") model-id]}))))
+    (first (t2/query (m/assoc-some {:select select :from from :where [:= (keyword alias "id") model-id]}
+                                   :join join)))))
 
 (mu/defn tracking-details-by-entity-ids
   "The `:id`, name, table id, collection id, and table name of the `model-key` (Segment or Measure) instances with
@@ -279,62 +286,20 @@
    entity-ids :- [:set :string]]
   (t2/select-pks-vec model :entity_id [:in entity-ids]))
 
-(defn- path-expr
-  "Matches the Tables (aliased `t` in a Database aliased `db`) at `paths`, and their Fields (aliased `f`) when
-  `has-field?`."
-  [paths has-field?]
-  (into [:or]
-        (for [path paths]
-          (let [{:keys [db_name schema table_name field_name]} path]
-            (cond-> [:and
-                     [:= :db.name db_name]
-                     (if schema [:= :t.schema schema] [:is :t.schema nil])
-                     [:= :t.name table_name]]
-              (and has-field? field_name)
-              (conj [:= :f.name field_name]))))))
-
-(mu/defn tables-at-paths
-  "The `:id`, `:name`, and `:collection_id` rows of the Tables at `paths` (`{:db_name :schema :table_name}`)."
-  [paths :- [:sequential Path]]
-  (t2/query {:select [:t.id :t.name :t.collection_id]
-             :from   [[:metabase_table :t]]
-             :join   [[:metabase_database :db] [:= :db.id :t.db_id]]
-             :where  (path-expr paths false)}))
-
-(mu/defn fields-at-paths
-  "The `:id`, `:name`, `:table_id`, `:collection_id`, and `:table_name` rows of the Fields at `paths`
-  (`{:db_name :schema :table_name :field_name}`)."
-  [paths :- [:sequential Path]]
-  (t2/query {:select [:f.id :f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
-             :from   [[:metabase_field :f]]
-             :join   [[:metabase_table :t] [:= :t.id :f.table_id]
-                      [:metabase_database :db] [:= :db.id :t.db_id]]
-             :where  (path-expr paths true)}))
-
 (mu/defn card-types
   "The `:id`, `:type`, and `:display` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :display] :id [:in card-ids]))
 
-(mu/defn table-user-settings-exist? :- :boolean
-  "Whether the Table with `table-id` has a TableUserSettings row."
-  [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings :table_id table-id))
-
-(mu/defn field-user-settings-exist? :- :boolean
-  "Whether the Field with `field-id` has a FieldUserSettings row."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings :field_id field-id))
-
-(mu/defn dimension-exists-for-field? :- :boolean
-  "Whether the Field with `field-id` has a Dimension."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Dimension :field_id field-id))
+(mu/defn card-counts-by-type :- [:map-of :keyword :int]
+  "The number of Cards with `card-ids`, by `:type`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-fn->fn :type :count [:model/Card :type [:%count.* :count]] :id [:in card-ids] {:group-by [:type]}))
 
 (mu/defn published-table-ids :- [:set ::lib.schema.id/table]
   "The ids of the Tables published in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (set (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query {:alias :t})]
+  (set (t2/select-pks-set :model/Table {:from  [[(t2/table-name :model/Table) :t]]
                                         :where [:and [:= :t.is_published true] [:in :t.collection_id collection-ids]]})))
 
 (mu/defn table-ids-with-user-settings
@@ -348,7 +313,7 @@
   (t2/select-fn-vec :field_id :model/FieldUserSettings
                     {:select [:u.field_id]
                      :from   [[(t2/table-name :model/FieldUserSettings) :u]]
-                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :u.field_id]]
+                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
                      :where  [:in :f.table_id table-ids]}))
 
 (mu/defn field-ids-with-dimensions
@@ -357,18 +322,8 @@
   (t2/select-fn-vec :field_id :model/Dimension
                     {:select [:d.field_id]
                      :from   [[(t2/table-name :model/Dimension) :d]]
-                     :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :d.field_id]]
+                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :d.field_id]]
                      :where  [:in :f.table_id table-ids]}))
-
-(mu/defn delete-table-user-settings!
-  "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/TableUserSettings :table_id [:in table-ids]))
-
-(mu/defn delete-field-user-settings!
-  "Delete the FieldUserSettings of the Fields with `field-ids`, returning the number deleted."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/FieldUserSettings :field_id [:in field-ids]))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions of the Fields with `field-ids`, returning the number deleted."
@@ -376,14 +331,14 @@
   (t2/delete! :model/Dimension :field_id [:in field-ids]))
 
 (mu/defn tables-tracking-details
-  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`, read through the overlay."
+  "The `:id`, `:name`, and `:collection_id` of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :name :collection_id] :id [:in table-ids]))
 
 (mu/defn fields-tracking-details
   "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (let [{:keys [select from join]} (tracking-select-parts :model/Field)]
+  (let [{:keys [select from join]} (tracking-select-parts :model/FieldUserSettings)]
     (t2/query {:select (into [:f.id] select) :from from :join join :where [:in :f.id field-ids]})))
 
 (mu/defn snippets
@@ -514,6 +469,18 @@
   [collections :- [:sequential ::collections.schema/collection]]
   (t2/select-pks-set :model/Collection {:where (subtree-expr collections)}))
 
+(mu/defn collection-content-exists? :- :boolean
+  "Whether a Card, Dashboard, Document, Timeline, or Action is in the Collections with `collection-ids`, or a Table is
+  published to one."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (boolean
+   (or (t2/exists? :model/Card :collection_id [:in collection-ids])
+       (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
+       (t2/exists? :model/Document :collection_id [:in collection-ids])
+       (t2/exists? :model/Timeline :collection_id [:in collection-ids])
+       (t2/exists? :model/Action :collection_id [:in collection-ids])
+       (t2/exists? :model/Table {:where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."
   [collections :- [:sequential ::collections.schema/collection]]
@@ -608,22 +575,31 @@
   (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
 
 (mu/defn dirty-rso-exists?
-  "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced."
+  "Whether a RemoteSyncObject is not synced, counting those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/exists? :model/RemoteSyncObject
               {:where [:and
                        [:not= :status "synced"]
                        (when (seq excluded-model-types)
-                         [:not-in :model_type excluded-model-types])]}))
+                         [:or
+                          [:not-in :model_type excluded-model-types]
+                          [:in :status ["removed" "delete"]]])]}))
 
 (mu/defn dirty-rsos
-  "The RemoteSyncObjects of model types other than `excluded-model-types` that are not synced."
+  "The RemoteSyncObjects that are not synced, including those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/select :model/RemoteSyncObject
              {:where [:and
                       [:not= :status "synced"]
                       (when (seq excluded-model-types)
-                        [:not-in :model_type excluded-model-types])]}))
+                        [:or
+                         [:not-in :model_type excluded-model-types]
+                         [:in :status ["removed" "delete"]]])]}))
+
+(mu/defn rsos-of-types
+  "The RemoteSyncObjects of `model-types`."
+  [model-types :- [:sequential :string]]
+  (t2/select :model/RemoteSyncObject :model_type [:in model-types]))
 
 (mu/defn tracked-model-ids
   "The model IDs of the RemoteSyncObjects of `model-type`."
@@ -680,7 +656,7 @@
   "Apply `changes` to the RemoteSyncObject with `rso-id`."
   [rso-id  :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-object.update]
-  (t2/update! :model/RemoteSyncObject rso-id changes))
+  (t2/update! :model/RemoteSyncObject :id rso-id changes))
 
 (mu/defn set-rsos-status!
   "Set the status of the RemoteSyncObjects with `rso-ids` to `status` as of `timestamp`."
@@ -724,7 +700,7 @@
 (mu/defn delete-rso!
   "Delete the RemoteSyncObject with `rso-id`."
   [rso-id :- ms/PositiveInt]
-  (t2/delete! :model/RemoteSyncObject rso-id))
+  (t2/delete! :model/RemoteSyncObject :id rso-id))
 
 (mu/defn delete-rsos!
   "Delete the RemoteSyncObjects with `rso-ids`."
@@ -761,7 +737,7 @@
 (mu/defn task
   "The RemoteSyncTask with `task-id`, or nil."
   [task-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncTask task-id))
+  (t2/select-one :model/RemoteSyncTask :id [:auto/param task-id]))
 
 (mu/defn lock-task
   "The RemoteSyncTask with `task-id`, locked for update, or nil."
@@ -823,19 +799,19 @@
   "Apply `changes` to the RemoteSyncTask with `task-id`."
   [task-id :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask task-id changes))
+  (t2/update! :model/RemoteSyncTask :id task-id changes))
 
 (mu/defn end-task!
   "Apply `changes` to the RemoteSyncTask with `task-id` and mark it ended now."
   [task-id :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask task-id (assoc changes :ended_at :%now)))
+  (t2/update! :model/RemoteSyncTask :id task-id (assoc changes :ended_at :%now)))
 
 (mu/defn report-task-progress!
   "Record `progress` for the RemoteSyncTask with `task-id`, stamping the progress report time."
   [task-id  :- ms/PositiveInt
    progress :- number?]
-  (t2/update! :model/RemoteSyncTask task-id {:progress progress, :last_progress_report_at :%now}))
+  (t2/update! :model/RemoteSyncTask :id task-id {:progress progress, :last_progress_report_at :%now}))
 
 (mu/defn touch-task!
   "Stamp the heartbeat time of the RemoteSyncTask with `task-id` if it has not ended, returning the number of rows

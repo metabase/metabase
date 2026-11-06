@@ -17,9 +17,10 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(use-fixtures :each (fn [thunk]
-                      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-                        (thunk))))
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (thunk))))
 
 (defn- metric-query []
   (let [mp (mt/metadata-provider)]
@@ -34,7 +35,7 @@
   (t2/insert! :model/RemoteSyncObject
               {:model_type        "Card"
                :model_id          card-id
-               :model_name        (t2/select-one-fn :name :model/Card card-id)
+               :model_name        (t2/select-one-fn :name :model/Card :id card-id)
                :status            "synced"
                :content_hash      (source/row->content-hash {:model_type "Card" :model_id card-id})
                :status_changed_at (t/offset-date-time)}))

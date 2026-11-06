@@ -925,6 +925,20 @@
       driver
       clause))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :case]
+  [driver clause]
+  ;; Bigquery requires all case expressions to have the same type, so coerce all temporal expressions to the same type
+  (let [[tag & args :as form] ((get-method sql.qp/->honeysql [:sql :case]) driver clause)]
+    (if-let [target-type (temporal-type form)]
+      (into [tag]
+            (map-indexed (fn [i arg]
+                           (let [arg-type (when (odd? i) (temporal-type arg))]
+                             (if (and arg-type (not= arg-type target-type))
+                               (->temporal-type target-type arg)
+                               arg))))
+            args)
+      form)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -990,13 +1004,10 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
-  ;; `timestamp_add()` doesn't support month/quarter/year, so cast it to `datetime` so we can use `datetime_add()`
-  ;; instead in those cases.
-  (let [hsql-form (cond->> hsql-form
-                    (and (= (temporal-type hsql-form) :timestamp)
-                         (not (contains? (temporal-type->supported-units :timestamp) unit)))
-                    (h2x/cast :datetime))]
-    (add-interval-form hsql-form amount unit)))
+  ;; `timestamp_add()` doesn't support month/quarter/year, `add-interval-form` casts it to
+  ;; `datetime` so we can use `datetime_add()` instead in those cases. We then cast it back
+  ;; to the original temporal type if needed.
+  (->temporal-type (temporal-type hsql-form) (add-interval-form hsql-form amount unit)))
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver outer-query]

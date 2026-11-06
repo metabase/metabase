@@ -74,12 +74,15 @@
             :status-code 403}
            cause))
 
+(defonce ^:private default-credentials-provider
+  (delay (.build (DefaultCredentialsProvider/builder))))
+
 (defn- chain-credentials
   "Credentials resolved from the AWS SDK default provider chain
-  (https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html). The SDK's shared
-  chain caches what it resolves, so short-lived role credentials rotate without a restart."
+  (https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html). The chain is built
+  once and caches what it resolves, so short-lived role credentials rotate without a restart."
   ^AwsCredentialsIdentity []
-  (.resolveCredentials (DefaultCredentialsProvider/create)))
+  (.resolveCredentials ^DefaultCredentialsProvider @default-credentials-provider))
 
 (defn- aws-identity
   "The AWS credentials identity to sign with: the connection's access key pair, carrying the session token when one
@@ -328,6 +331,7 @@
    "anthropic.claude-opus-4-7"   {:display-name "Claude Opus 4.7"       :context-window 1000000}
    "anthropic.claude-sonnet-5-5" {:display-name "Claude Sonnet 5.5"     :context-window 1000000}
    "anthropic.claude-sonnet-5"   {:display-name "Claude Sonnet 5"       :context-window 1000000}
+   "anthropic.claude-haiku-5-5"  {:display-name "Claude Haiku 5.5"      :context-window 1000000}
    "anthropic.claude-haiku-4-5"  {:display-name "Claude Haiku 4.5"      :context-window 200000}
    ;; Astra's input window is its 1,050,000 token context minus up to 128,000 output tokens.
    "openai.gpt-6-astra"          {:display-name "GPT-6 Astra"           :context-window 922000}

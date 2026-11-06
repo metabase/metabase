@@ -143,11 +143,12 @@ export function JoinDraft({
       {rhsTable && (
         <>
           <Flex className={S.JoinConditionOn}>
-            <Text c="core-brand" fw="bold">{t`on`}</Text>
+            <Text c="text-brand-strong" fw="bold">{t`on`}</Text>
           </Flex>
           <NotebookCell
             className={S.JoinConditionCell}
             color={color}
+            align="flex-start"
             data-testid="new-join-condition"
             p={rem("6px")}
           >

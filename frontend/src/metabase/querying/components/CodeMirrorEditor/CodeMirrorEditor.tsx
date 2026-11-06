@@ -21,7 +21,9 @@ import type { CardId } from "metabase-types/api";
 import type { SelectionRange } from "../../editor/types";
 
 import S from "./CodeMirrorEditor.module.css";
+import { DiffControls } from "./DiffControls";
 import { useExtensions } from "./extensions";
+import { useDiffControls } from "./use-diff-controls";
 import {
   getPlaceholderText,
   getSelectedRanges,
@@ -43,6 +45,8 @@ export type CodeMirrorEditorProps = {
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange[]) => void;
   onBlur?: () => void;
+  onAcceptProposed?: () => void;
+  onRejectProposed?: () => void;
 };
 
 export interface CodeMirrorEditorRef {
@@ -69,10 +73,23 @@ export const CodeMirrorEditor = forwardRef<
     onCursorMoveOverCardTag,
     onFormatQuery,
     onBlur,
+    onAcceptProposed,
+    onRejectProposed,
   },
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
+  const hasDiffControls =
+    !!proposedQuery && !readOnly && !!onAcceptProposed && !!onRejectProposed;
+  const {
+    extensions: diffControlsExtensions,
+    portalTarget,
+    shortcuts,
+  } = useDiffControls({
+    isEnabled: hasDiffControls,
+    onAcceptProposed,
+    onRejectProposed,
+  });
   const placeholder =
     placeholderProp ??
     getPlaceholderText(Lib.engine(query), hasSqlGenerationAccess);
@@ -83,11 +100,12 @@ export const CodeMirrorEditor = forwardRef<
   });
 
   const extensions = useMemo(() => {
-    if (customExtensions?.length) {
-      return [...baseExtensions, ...customExtensions];
-    }
-    return baseExtensions;
-  }, [baseExtensions, customExtensions]);
+    return [
+      ...baseExtensions,
+      ...diffControlsExtensions,
+      ...(customExtensions ?? []),
+    ];
+  }, [baseExtensions, customExtensions, diffControlsExtensions]);
 
   useImperativeHandle(ref, () => {
     return {
@@ -156,23 +174,33 @@ export const CodeMirrorEditor = forwardRef<
   }, [proposedQuery, query]);
 
   return (
-    <CodeMirror
-      ref={editorRef}
-      data-testid="native-query-editor"
-      className={S.editor}
-      editable={!readOnly}
-      extensions={extensions}
-      value={value}
-      readOnly={readOnly}
-      onChange={onChange}
-      height="100%"
-      onUpdate={handleUpdate}
-      autoFocus
-      autoCorrect="off"
-      placeholder={placeholder}
-      highlightRanges={highlightedRanges}
-      onFormat={onFormatQuery}
-      onBlur={onBlur}
-    />
+    <>
+      <CodeMirror
+        ref={editorRef}
+        data-testid="native-query-editor"
+        className={S.editor}
+        editable={!readOnly}
+        extensions={extensions}
+        value={value}
+        readOnly={readOnly}
+        onChange={onChange}
+        height="100%"
+        onUpdate={handleUpdate}
+        autoFocus
+        autoCorrect="off"
+        placeholder={placeholder}
+        highlightRanges={highlightedRanges}
+        onFormat={onFormatQuery}
+        onBlur={onBlur}
+      />
+      {hasDiffControls && (
+        <DiffControls
+          portalTarget={portalTarget}
+          shortcuts={shortcuts}
+          onAcceptProposed={onAcceptProposed}
+          onRejectProposed={onRejectProposed}
+        />
+      )}
+    </>
   );
 });

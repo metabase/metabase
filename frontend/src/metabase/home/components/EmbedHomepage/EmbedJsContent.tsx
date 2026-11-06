@@ -23,7 +23,7 @@ export const EmbedJsContent = ({
 }: EmbedJsContentProps) => {
   const cta = match({ variant, hasEmbeddingFeature })
     .with({ variant: "ee", hasEmbeddingFeature: true }, () => (
-      <Button component={Link} to={"/admin/embedding/setup-guide"}>
+      <Button component={Link} to={"/embedding/get-started"}>
         {t`Go to setup guide`}
       </Button>
     ))

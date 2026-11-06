@@ -6,13 +6,15 @@
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(defn- unknown-dispatch
+(mu/defn- unknown-dispatch :- fn?
   "An `:error/fn` for a `:multi` dispatching on `dispatch-key`: says what the value named and what the schema
   knows, where Malli would say only \"invalid dispatch value\"."
-  [dispatch-key]
+  [dispatch-key :- :keyword]
   (fn [{:keys [schema value]} _options]
     (let [known (str/join ", " (sort (map (comp name first) (mc/children schema))))]
       (if (map? value)
@@ -60,8 +62,8 @@
    [:database_type ::lib.schema.common/non-blank-string]])
 
 (mr/def ::row
-  "A row of inline test data, keyed by column name."
-  (ms/string-keyed-map [:maybe [:or :boolean number? :string]]))
+  "A row of inline test data, keyed by column name, with `:string` first so request decoding keeps every cell as sent."
+  (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
 
 (mr/def ::sql-data
   "Test data returned by a SQL query run against the transform's source database."
@@ -136,29 +138,34 @@
       (let [names (map :name expectations)]
         (or (empty? names) (apply distinct? names))))]])
 
-(mr/def ::transform-test
-  "A saved transform test: the transform it covers, the inputs that stand in for its source
-  tables, and the expectations checked against its output."
+(mr/def ::transform-test.definition
+  "A transform test as a client writes it, without the transform it covers."
   [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:entity_id    :string]
-   [:transform_id ::lib.schema.id/transform]
-   [:creator_id   ::lib.schema.id/user]
-   [:name         :string]
-   [:description  [:maybe :string]]
-   [:inputs       ::inputs]
-   [:expectations ::expectations]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]])
-
-(mr/def ::transform-test.create
-  "What a client sends to create a transform test."
-  [:map {:closed true}
-   [:transform_id ::lib.schema.id/transform]
    [:name         ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
    [:inputs       ::inputs]
    [:expectations ::expectations]])
+
+(mr/def ::transform-test.create
+  "What a client sends to create a transform test."
+  [:merge
+   [:map {:closed true}
+    [:transform_id ::lib.schema.id/transform]]
+   ::transform-test.definition])
+
+(mr/def ::transform-test
+  "A saved transform test: the transform it covers, the inputs that stand in for its source
+  tables, and the expectations checked against its output."
+  [:merge
+   ::transform-test.definition
+   [:map {:closed true}
+    [:id           ms/PositiveInt]
+    [:entity_id    :string]
+    [:transform_id ::lib.schema.id/transform]
+    [:creator_id   ::lib.schema.id/user]
+    [:description  {:optional true} [:maybe :string]]
+    [:created_at   ms/TemporalInstant]
+    [:updated_at   ms/TemporalInstant]]])
 
 (mr/def ::transform-test.update
   "What a client sends to update a transform test. Omitted fields are left unchanged."
@@ -184,6 +191,37 @@
    [:end_time          [:maybe ms/TemporalInstant]]
    [:status            ::run-status]
    [:last_heartbeat    ms/TemporalInstant]])
+
+(mr/def ::user
+  "The user who started a run."
+  [:map {:closed true}
+   [:id          ::lib.schema.id/user]
+   [:email       :string]
+   [:first_name  [:maybe :string]]
+   [:last_name   [:maybe :string]]
+   [:common_name {:optional true} [:maybe :string]]])
+
+(mr/def ::transform-test-run.response
+  "A transform test run as the API returns it, with the user who started it."
+  [:merge
+   ::transform-test-run
+   [:map {:closed true}
+    [:initiated_by_user [:maybe ::user]]]])
+
+(mr/def ::transform-test-runs.response
+  "A page of transform test runs."
+  [:map {:closed true}
+   [:data   [:sequential ::transform-test-run.response]]
+   [:limit  pos-int?]
+   [:offset :int]
+   [:total  :int]])
+
+(mr/def ::transform-test.response
+  "A transform test as the read endpoints return it, with its newest run."
+  [:merge
+   ::transform-test
+   [:map {:closed true}
+    [:last_run [:maybe ::transform-test-run]]]])
 
 (mr/def ::status
   "The outcome of a transform test run, or of one of its expectations.
@@ -230,3 +268,11 @@
    [:map {:closed true}
     [:client     (ms/InstanceOfClass Object)]
     [:session-id :string]]])
+
+(mr/def ::external-transform-test
+  "A TransformTest as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::transform-test [:entity_id :name :description :inputs :expectations :transform_id :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

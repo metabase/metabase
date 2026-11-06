@@ -3,7 +3,7 @@
   off a separate `response` module."
   (:require
    [clojure.string :as str]
-   [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -58,12 +58,7 @@ x.com")
   :export?    true
   :setter     (fn [new-value]
                 (let [disabling? (not (cond-> new-value (string? new-value) setting/string->boolean))]
-                  (when (and disabling?
-                             config/ee-available?
-                             (when-let [custom-viz-enabled?
-                                        (requiring-resolve
-                                         'metabase-enterprise.custom-viz-plugin.settings/custom-viz-enabled)]
-                               (custom-viz-enabled?)))
+                  (when (and disabling? (premium-features/enable-custom-viz?))
                     (throw (ex-info (tru "Cannot disable the image CSP setting while Custom Visualizations are enabled.")
                                     {:status-code 400})))
                   (setting/set-value-of-type! :boolean :csp-img-enabled new-value))))
@@ -84,7 +79,7 @@ x.com")
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting health-check-logging-enabled
-  (deferred-tru "Whether to log health check requests from session middleware.")
+  "Whether to log health check requests from session middleware."
   :type       :boolean
   :default    true
   :visibility :internal
@@ -120,7 +115,7 @@ x.com")
   (thread-interrupt-escalation-timeout-ms))
 
 (defsetting max-unauthenticated-request-body-bytes
-  (deferred-tru "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read.")
+  "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
   :type       :integer
   :visibility :internal
   :setter     :none
@@ -145,7 +140,7 @@ x.com")
   (setting/get-value-of-type :string :metabot-slack-signing-secret))
 
 (defsetting slack-connect-signing-secret-version
-  (deferred-tru "Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.")
+  "Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility."
   :type       :integer
   :visibility :internal
   :default    0

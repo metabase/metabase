@@ -2,7 +2,7 @@ import { type RefObject, useLayoutEffect, useRef } from "react";
 import _ from "underscore";
 
 type UseScrollToTopProps = {
-  ref: RefObject<HTMLElement>;
+  ref: RefObject<HTMLElement | null>;
   keys: unknown[];
   skip?: boolean;
 };

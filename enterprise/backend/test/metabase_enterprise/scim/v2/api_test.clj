@@ -11,9 +11,10 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :test-users))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *scim-api-key* nil)
 
 (defn with-scim-setup-impl!
@@ -101,7 +102,7 @@
                 :emails   [{:value "scim-test@metabase.com"}]
                 :active   true
                 :locale   nil
-                :groups   [{:value   (t2/select-one-fn :entity_id :model/PermissionsGroup (:id group))
+                :groups   [{:value   (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
                             :display "Test Group"}]
                 :meta     {:resourceType "User"}}
                response)))))
@@ -378,7 +379,7 @@
                {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
                 :id          entity-id
                 :displayName "Test Group"
-                :members     [{:value (t2/select-one-fn :entity_id :model/User (mt/user->id :rasta))
+                :members     [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
                                :display "rasta@metabase.com"}]
                 :meta        {:resourceType "Group"}}
                response)))))

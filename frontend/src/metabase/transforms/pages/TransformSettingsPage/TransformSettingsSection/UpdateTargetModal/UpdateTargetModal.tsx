@@ -20,15 +20,7 @@ import {
 } from "metabase/forms";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { sourceDatabaseId } from "metabase/transforms/utils";
-import {
-  Box,
-  Button,
-  FocusTrap,
-  Group,
-  Modal,
-  Radio,
-  Stack,
-} from "metabase/ui";
+import { Button, FocusTrap, Modal, Radio, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
@@ -45,9 +37,9 @@ export function UpdateTargetModal({
 }: UpdateTargetModalProps) {
   return (
     <Modal
+      density="relaxed"
       title={t`Change the target for this transform`}
       opened
-      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -175,19 +167,17 @@ function UpdateTargetForm({
                 </Stack>
               </Radio.Group>
             )}
-            <Group>
-              <Box flex={1}>
-                <FormErrorMessage />
-              </Box>
-              <Button onClick={onClose}>{t`Cancel`}</Button>
-              <FormSubmitButton
-                label={getSubmitButtonLabel(shouldDeleteTarget)}
-                color={getSubmitButtonColor(shouldDeleteTarget)}
-                variant="filled"
-                disabled={!dirty}
-              />
-            </Group>
           </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
+            <Button onClick={onClose}>{t`Cancel`}</Button>
+            <FormSubmitButton
+              label={getSubmitButtonLabel(shouldDeleteTarget)}
+              color={getSubmitButtonColor(shouldDeleteTarget)}
+              variant="filled"
+              disabled={!dirty}
+            />
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

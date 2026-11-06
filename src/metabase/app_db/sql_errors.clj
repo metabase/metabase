@@ -1,6 +1,9 @@
 (ns metabase.app-db.sql-errors
   "Classification of SQL errors raised by the supported application databases.
-  [[error-kind]] names the class of error an exception represents; [[table-not-found?]] is its common special case."
+  [[error-kind]] names the class of error an exception represents; [[table-not-found?]] is its common special case.
+  [[row-rejected?]] tells a bad row apart from a failure of the database itself."
+  (:require
+   [clojure.string :as str])
   (:import
    (java.sql SQLException)))
 
@@ -82,3 +85,15 @@
   "Whether `e` was caused by querying a table that does not exist."
   [e]
   (= :table-not-found (error-kind e)))
+
+(defn row-rejected?
+  "Whether `e` was caused by the app DB rejecting a row's data: a data exception (SQLSTATE class 22, e.g. a value too
+  long for its column) or an integrity-constraint violation (class 23). Other failures, such as a lost connection or
+  a pool checkout timeout, are not about any one row. Walks the full cause and JDBC next-exception chains."
+  [e]
+  (boolean
+   (some #(when (instance? SQLException %)
+            (when-let [state (.getSQLState ^SQLException %)]
+              (or (str/starts-with? state "22")
+                  (str/starts-with? state "23"))))
+         (exception-chain e))))

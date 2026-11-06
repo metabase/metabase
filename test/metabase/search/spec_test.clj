@@ -98,7 +98,7 @@
 (deftest ^:parallel search-model-hooks-test-2
   ;; TODO replace real specs with frozen test ones once things have stabilized
   (is (= #:model{:Table      #{{:search-model "segment",
-                                :fields       #{:description :schema :name :db_id :display_name}
+                                :fields       #{:collection_id :db_id :description :display_name :is_published :name :schema}
                                 :where        [:= :updated.id :this.table_id]}
                                {:search-model "table",
                                 :fields
@@ -118,14 +118,31 @@
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
                                 :fields       #{:authority_level :name :type :location}
-                                :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}}
-                 :TableUserSettings #{{:search-model "table"
-                                       :fields       #{:updated_at}
-                                       :where        [:= :updated.table_id :this.id]}}}
+                                :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}
+                               {:search-model "segment"
+                                :fields       #{:location :type}
+                                :where        [:and [:= :table.is_published true] [:= :updated.id :table.collection_id]]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
            (#'search.spec/search-model-hooks (search.spec/spec "segment"))
            (#'search.spec/search-model-hooks (search.spec/spec "collection"))]))))
+
+(deftest ^:parallel measure-parent-table-hooks-test
+  (testing "a measure is reindexed when its parent table or its collection changes"
+    (is (= #:model{:Table      #{{:search-model "measure"
+                                  :fields       #{:collection_id
+                                                  :db_id
+                                                  :description
+                                                  :display_name
+                                                  :is_published
+                                                  :name
+                                                  :schema}
+                                  :where        [:= :updated.id :this.table_id]}}
+                   :Collection #{{:search-model "measure"
+                                  :fields       #{:location :type}
+                                  :where        [:and [:= :table.is_published true] [:= :updated.id :table.collection_id]]}}}
+           (select-keys (#'search.spec/merge-hooks [(#'search.spec/search-model-hooks (search.spec/spec "measure"))])
+                        [:model/Table :model/Collection :model/TableUserSettings])))))
 
 (deftest ^:parallel search-models-to-update-test
   (is (= #{}

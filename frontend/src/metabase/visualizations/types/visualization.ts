@@ -54,11 +54,11 @@ export interface VisualizationProps {
   dashcard?: DashboardCard;
   card: SeriesCard;
   getHref?: () => string | undefined;
+  getCardHref?: (nextCard: SeriesCard) => string | undefined;
   data: DatasetData;
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
-  autoAdjustSettings?: boolean;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;

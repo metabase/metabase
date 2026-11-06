@@ -7,6 +7,7 @@
   scope grants."
   (:require
    [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -73,10 +74,6 @@
   (deferred-tru "Create metrics"))
 (api-scope/defscope agent-metric-update "agent:metric:update"
   (deferred-tru "Update metrics"))
-
-;; Transforms
-(api-scope/defscope agent-transforms-read "agent:transforms:read"
-  (deferred-tru "View transforms"))
 
 ;; Snippets
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
@@ -160,12 +157,6 @@
 (api-scope/defscope agent-resource-read "agent:resource:read"
   (deferred-tru "Read MCP resources"))
 
-;; Todo
-(api-scope/defscope agent-todo-read "agent:todo:read"
-  (deferred-tru "View todos"))
-(api-scope/defscope agent-todo-write "agent:todo:write"
-  (deferred-tru "Create and edit todos"))
-
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
 ;;; ──────────────────────────────────────────────────────────────────
@@ -228,7 +219,7 @@
 (def ^:private perm-type->scopes
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
-  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
+  {:permission/metabot-sql-generation #{"agent:sql:*" "agent:snippets:*"}
    ;; NLQ grants `agent:content:read` (not the `agent:content:*` wildcard): an NLQ-only user reads
    ;; content and data structure, but content *writes* are an other-tools capability. Granting the
    ;; wildcard here would satisfy `agent:content:write` too, over-granting NLQ-only users.
@@ -258,7 +249,7 @@
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
-  #{"agent:search" "agent:resource:*" "agent:todo:*" "agent:metadata:*"})
+  #{"agent:search" "agent:resource:*" "agent:metadata:*"})
 
 (def all-yes-permissions
   "Permissions map granting all permissions. Used for superuser context."
@@ -312,3 +303,14 @@
        acc))
    always-granted-scopes
    (or perms perm-type-defaults)))
+
+(defn sql-execution-allowed?
+  "Whether Metabot may run SQL for the current user: SQL execution is on, the user has Metabot's SQL
+  generation permission, and the request's scope satisfies `agent:sql:run`, the scope MCP's `execute_sql` requires.
+  NLQ alone grants `agent:query:run`, which is all `run_query` itself needs, so running SQL checks this too.
+  Native query permission on the query's database is checked separately, per query."
+  []
+  (boolean
+   (and (metabot.settings/metabot-sql-execution-enabled?)
+        (= :yes (:permission/metabot-sql-generation (or *current-user-metabot-permissions* perm-type-defaults)))
+        (api-scope/scope-matches? *current-user-scope* agent-sql-run))))

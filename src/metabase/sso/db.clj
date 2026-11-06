@@ -2,6 +2,7 @@
   "Application database queries for the SSO module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [java-time.api :as t]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -34,6 +35,26 @@
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+
+(mu/defn used-password-exists?
+  "Whether the User with `user-id` has a `password` AuthIdentity that has been used to log in and has not expired."
+  [user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/AuthIdentity
+              :user_id      user-id
+              :provider     "password"
+              :last_used_at [:not= nil]
+              {:where [:or [:= :expires_at nil] [:> :expires_at [:auto/param (t/offset-date-time)]]]}))
+
+(mu/defn slack-connect-identity
+  "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/AuthIdentity :provider_id :metadata]
+                 :user_id [:auto/param (long user-id)] :provider "slack-connect"))
+
+(mu/defn delete-slack-connect-identity!
+  "Delete the user's Slack identity, returning the number deleted."
+  [user-id :- ::lib.schema.id/user]
+  (t2/delete! :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider "slack-connect"))
 
 (mu/defn insert-auth-identity!
   "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`."

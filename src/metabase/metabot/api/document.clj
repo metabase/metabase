@@ -9,6 +9,7 @@
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli.schema :as ms]))
@@ -61,16 +62,15 @@
        :parameters             []
        :visualization_settings {}})))
 
-(defn- last-tool-output-message
+(defn- last-tool-failure-message
+  "Return the text a user reads for the last failed tool call in `parts`, or nil when no call failed. Never returns a
+  tool's `:output`, which is written for the model."
   [parts]
   (some->> parts
-           reverse
-           (keep (fn [part]
-                   (when (= :tool-output (:type part))
-                     (or (get-in part [:result :output])
-                         (some-> part :error :message)))))
-           (remove str/blank?)
-           first))
+           (keep #(when (= :tool-output (:type %))
+                    (get-in % [:result :error])))
+           last
+           tools.error/step-failure-text))
 
 (defn- last-agent-message
   [parts]
@@ -86,27 +86,27 @@
                                    (remove str/blank?)
                                    first)]
     (or last-text-message
-        (last-tool-output-message parts))))
+        (last-tool-failure-message parts))))
 
 (api.macros/defendpoint :post "/generate-content" :- generate-content-response-schema
   "Create a new piece of content to insert into the document. Kept for backwards compatibility; now uses the native Clojure agent."
   [_route-params
    _query-params
    {:keys [instructions references]} :- generate-content-body-schema]
-  (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)]
-    (metabot.config/check-metabot-enabled! metabot-id)
+  (let [metabot (metabot.config/resolve-metabot nil)]
+    (metabot.config/check-metabot-enabled! metabot)
     (metabot.usage/check-metabase-managed-free-limit!)
     (let [context      (assoc
                         ;; a request, not a grant: `enforce-permissions` drops it unless the user
                         ;; really can write native queries
                         (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}}
-                                                        {:metabot-id metabot-id
+                                                        {:metabot    metabot
                                                          :profile-id :document-generate-content})
                         :references references)
           parts        (into [] (metabot.agent/run-agent-loop
                                  {:messages      [{:role    :user
                                                    :content instructions}]
-                                  :metabot-id    metabot-id
+                                  :metabot       metabot
                                   :profile-id    :document-generate-content
                                   :state         {}
                                   :context       context

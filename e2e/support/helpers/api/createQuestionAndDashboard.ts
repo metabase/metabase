@@ -30,7 +30,7 @@ export const createQuestionAndDashboard = ({
                   // Add sane defaults for the dashboard card size
                   row: 0,
                   col: 0,
-                  size_x: 11,
+                  size_x: 12,
                   size_y: 6,
                   ...cardDetails,
                 },

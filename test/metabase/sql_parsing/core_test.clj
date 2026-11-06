@@ -96,13 +96,16 @@
                  (sort (keep :column (:returned-fields result))))
               (pr-str sql)))))))
 
-;;; --------------------------------------------- is-single-stmt-of-type? ------------------------------------------
+;;; ------------------------------------------ single-stmt classification ------------------------------------------
 
-(deftest ^:parallel is-single-stmt-of-type?-test
+(deftest ^:parallel single-stmt-classification-test
   (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
     (doseq [{:keys [name sql dialect stmt-type expected]} (cases "single_stmt")]
       (testing name
-        (is (=? expected (sql-parsing/is-single-stmt-of-type? dialect sql stmt-type))
+        (is (=? expected (sql-parsing/validate-executable-stmt dialect sql stmt-type))
+            (pr-str sql))
+        (is (= (sql-parsing/validate-executable-stmt dialect sql stmt-type)
+               (sql-parsing/classify-stmt dialect sql stmt-type))
             (pr-str sql))))))
 
 ;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
@@ -175,6 +178,14 @@
       (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
       (is (= [[nil nil "accounts" "id"] [nil nil "accounts" "name"]]
              (sort (sql-parsing/referenced-fields "postgres" sql))))))
-  (testing "and is one statement still"
-    (let [sql (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 20000)) ")")]
-      (is (=? {:is-single-stmt? true} (sql-parsing/is-single-stmt-of-type? "postgres" sql "read"))))))
+  (testing "but a classification never answers about a stripped rewrite"
+    ;; Analysis can read a stripped query because it only needs the shape. A classification's answer has to
+    ;; hold for the string the caller holds, so it parses the original and reports SQL over its ceiling as
+    ;; unchecked rather than answering about a rewrite.
+    (let [under (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 150)) ")")
+          over  (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 20000)) ")")]
+      (testing "a list the analysis threshold would strip still validates as one statement"
+        (is (=? {:verdict :allowed} (sql-parsing/validate-executable-stmt "postgres" under "read"))))
+      (testing "a list past the ceiling comes back unchecked, not stripped and vouched for"
+        (is (= {:verdict :unknown, :reason "large-literal-list", :sql over}
+               (sql-parsing/validate-executable-stmt "postgres" over "read")))))))

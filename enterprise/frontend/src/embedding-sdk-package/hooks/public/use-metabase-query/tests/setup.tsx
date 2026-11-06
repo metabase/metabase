@@ -10,7 +10,7 @@ import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
-import { fetchTableMetadata } from "metabase/redux/tables";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -48,8 +48,8 @@ jest.mock("metabase/api/utils/run-rtk-endpoint", () => ({
 }));
 
 jest.mock("metabase/redux/tables", () => ({
-  fetchTableMetadata: jest.fn(({ id }) => ({
-    type: "fetchTableMetadata",
+  fetchTableMetadataAndForeignKeys: jest.fn(({ id }) => ({
+    type: "fetchTableMetadataAndForeignKeys",
     payload: id,
   })),
 }));
@@ -58,7 +58,9 @@ jest.mock("metabase/metadata-store", () => ({
   selectMetadataProviderUnfiltered: jest.fn(),
 }));
 
-export const mockFetchTableMetadata = jest.mocked(fetchTableMetadata);
+export const mockFetchTableMetadataAndForeignKeys = jest.mocked(
+  fetchTableMetadataAndForeignKeys,
+);
 export const mockSelectCard = jest.mocked(selectCard);
 export const mockSelectTableQueryMetadata = jest.mocked(
   selectTableQueryMetadata,
@@ -98,9 +100,12 @@ export const TEST_DATASET_QUERY = createMockDatasetQuery([
   { "source-table": 1 },
 ]);
 
-export const mockPropsStore = (reduxStore: SdkStore) =>
+export const mockPropsStore = (
+  reduxStore: SdkStore,
+  dataApp?: { name: string; isDev?: boolean },
+) =>
   mockUseMetabaseProviderPropsStore.mockReturnValue({
-    state: { internalProps: { reduxStore }, props: null },
+    state: { internalProps: { reduxStore, dataApp }, props: null },
     store: ensureMetabaseProviderPropsStore(),
   });
 

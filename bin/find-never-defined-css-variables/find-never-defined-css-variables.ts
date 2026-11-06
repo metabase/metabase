@@ -47,6 +47,7 @@ const knownIssues = [
   "--mantine-shadow-xs_outline",
   "--mantine-shadow-sm_outline",
   "--mantine-shadow-lg_outline",
+  "--mantine-shadow-xs_on_dark",
 ];
 
 interface UsageMap {
@@ -56,7 +57,9 @@ interface UsageMap {
 
 const findFiles = (): string[] => {
   return glob
-    .sync("{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}")
+    .sync(
+      "{frontend,enterprise/frontend,.storybook}/**/*.{css,module.css,js,jsx,ts,tsx}",
+    )
     .filter((f) => !/\.(unit\.spec|spec|test)\.(js|jsx|ts|tsx)$/.test(f));
 };
 

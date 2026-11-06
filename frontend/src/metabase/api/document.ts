@@ -46,7 +46,13 @@ export const documentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         !error
-          ? [listTag("document"), idTag("document", id), listTag("revision")]
+          ? [
+              listTag("document"),
+              idTag("document", id),
+              listTag("revision"),
+              // archiving a document resolves any content-diagnostics finding for it
+              listTag("content-diagnostics-finding"),
+            ]
           : [],
       async onQueryStarted(_props, { dispatch, queryFulfilled }) {
         const { data } = await queryFulfilled;

@@ -1,7 +1,11 @@
-import { act, render, screen } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 
-import { createMockMediaQueryList } from "__support__/ui";
+import {
+  act,
+  createMockMediaQueryList,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 
 import { EChartsRenderer } from "./EChartsRenderer";
 
@@ -21,7 +25,7 @@ describe("EChartsRenderer", () => {
     jest.spyOn(window, "matchMedia").mockReturnValue(printMediaQuery);
     const onInit = jest.fn<void, [EChartsType]>();
 
-    render(
+    renderWithProviders(
       <EChartsRenderer option={{}} width={300} height={200} onInit={onInit} />,
     );
     const chartElement = screen.getByTestId("chart-container");

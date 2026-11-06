@@ -21,11 +21,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- call
-  "Invoke the document_write handler directly (unrestricted scopes) and return the decoded
+  "Invoke the document_write handler directly with every v2 scope and return the decoded
    payload map. Teaching errors surface as thrown ex-infos, matching how the registry treats
    handler exceptions."
   [args]
-  (-> (v2.document/document-write-tool args {:token-scopes nil})
+  (-> (v2.document/document-write-tool args {:token-scopes v2.tu/all-scopes})
       (get-in [:content 0 :text])
       v2.tu/strip-data-boundary
       json/decode+kw))
@@ -211,7 +211,7 @@
         (let [doc-id (:id (created! (call {:method           "create"
                                            :name             "Old name"
                                            :content_markdown "Stable body."})))]
-          (t2/update! :model/Document doc-id {:document unrenderable-body})
+          (t2/update! :model/Document :id doc-id {:document unrenderable-body})
           (testing "a metadata-only update lands and is reported as the success it is — the write
                    commits before the response is built, so a body this tool can't render must not
                    turn a completed write into a failed call"
@@ -344,7 +344,7 @@
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
    arguments the schema is meant to reject."
   [args]
-  (error-text (registry/call-tool nil "test-session" "document_write" args)))
+  (error-text (registry/call-tool v2.tu/all-scopes "test-session" "document_write" args)))
 
 (deftest markdown-tables-are-rejected-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -435,7 +435,7 @@
 (defn- read-with-layout
   "The `get_content` result for document `doc-id` with the `layout` include, as the decoded result row."
   [doc-id]
-  (-> (registry/call-tool nil "test-session" "get_content"
+  (-> (registry/call-tool v2.tu/all-scopes "test-session" "get_content"
                           {:items [{:type "document" :id doc-id}] :include ["layout"]})
       (get-in [:result :content 0 :text])
       v2.tu/strip-data-boundary
@@ -563,6 +563,23 @@
             (testing "values the write path can actually use are untouched"
               (is (nil? (write-error {:method "update" :id doc-id :edits [] :collection_position 2})))
               (is (nil? (write-error {:method "update" :id doc-id :edits [] :collection_id "root"}))))))))))
+
+(deftest move-to-or-from-root-requires-root-write-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
+    (mt/with-temp [:model/Collection {write-col :id} {}
+                   :model/Document   {doc-id :id}      {:name "In a writable collection" :collection_id write-col}
+                   :model/Document   {root-doc-id :id} {:name "In root"}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) write-col)
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "moving a document into root without root write perms is forbidden"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (call {:method "update" :id doc-id :edits [] :collection_id "root"})))
+          (is (= write-col (t2/select-one-fn :collection_id :model/Document :id doc-id))))
+        (testing "moving a document out of root without root write perms is forbidden"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (call {:method "update" :id root-doc-id :edits [] :collection_id write-col})))
+          (is (nil? (t2/select-one-fn :collection_id :model/Document :id root-doc-id))))))))
 
 (def ^:private cost-model-line
   "A line with several occurrences of a common letter — many matches per KB, which is what makes

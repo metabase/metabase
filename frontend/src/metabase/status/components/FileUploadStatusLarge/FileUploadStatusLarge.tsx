@@ -12,7 +12,7 @@ import {
   isUploadCompleted,
   isUploadInProgress,
 } from "../../utils";
-import StatusLarge from "../StatusLarge";
+import { StatusLarge } from "../StatusLarge";
 
 const UPLOAD_MESSAGE_UPDATE_INTERVAL = 30 * 1000;
 

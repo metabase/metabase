@@ -13,7 +13,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Box, Button, Group, Modal, Stack } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import * as Lib from "metabase-lib";
 import type { Card, CreateCardRequest } from "metabase-types/api";
@@ -42,7 +42,12 @@ export function CreateMetricModal({
   onClose,
 }: CreateMetricModalProps) {
   return (
-    <Modal title={t`Save your metric`} opened padding="xxl" onClose={onClose}>
+    <Modal
+      density="relaxed"
+      title={t`Save your metric`}
+      opened
+      onClose={onClose}
+    >
       <CreateMetricForm
         query={query}
         defaultValues={defaultValues}
@@ -106,14 +111,12 @@ function CreateMetricForm({
             title={t`Where do you want to save this?`}
             entityType="metric"
           />
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
-            <FormSubmitButton label={t`Save`} variant="filled" />
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
+          <FormSubmitButton label={t`Save`} variant="filled" />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

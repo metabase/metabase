@@ -324,7 +324,12 @@ describe("QueryBuilder > timeline events", () => {
       getQuestion(store.getState()),
     ).setCollectionId(checkNotNull(DESTINATION_COLLECTION.entity_id));
 
-    const savePromise = store.dispatch(apiCreateQuestion(question));
+    // The save cannot be awaited yet, because the card POST must be inspected
+    // while the timelines request is still in flight.
+    let savePromise!: Promise<unknown>;
+    act(() => {
+      savePromise = store.dispatch(apiCreateQuestion(question));
+    });
 
     await waitFor(() => {
       expect(fetchMock.callHistory.called("path:/api/timeline")).toBe(true);

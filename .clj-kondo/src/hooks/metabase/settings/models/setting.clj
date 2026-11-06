@@ -204,8 +204,7 @@
                          (hooks/string-node "Docstring.")
                          (hooks/vector-node [(hooks/token-node '_value-or-nil)]))
                         hooks/list-node
-                        (with-meta (meta node))
-                        common/add-lsp-ignore-unused-public-var-metadata)]
+                        (with-meta (meta node)))]
     (-> (hooks/list-node
          (list
           (hooks/token-node 'let)

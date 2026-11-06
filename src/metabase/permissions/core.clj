@@ -143,6 +143,7 @@
   impersonated-user?
   impersonation-enforced-for-db?
   log-permissions-changes
+  routed-user?
   sandboxed-or-impersonated-user?
   sandboxed-user?
   sandboxed-user-for-db?
@@ -167,8 +168,11 @@
 (p/import-vars
  [metabase.permissions.data-access-token
   data-access-token
+  digest
   data-access-compatible?
-  data-access-token-transform])
+  data-access-token-transform
+  data-access-token-reader
+  routing-token-for-db])
 
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)

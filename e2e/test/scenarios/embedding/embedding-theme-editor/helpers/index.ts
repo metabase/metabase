@@ -15,10 +15,10 @@ export function deleteAllThemes() {
   });
 }
 
-export const getThemeCard = (themeName: string) =>
+const getThemeCard = (themeName: string) =>
   main().findByText(themeName).parent();
 
-export function openThemeActionMenu(themeName: string) {
+function openThemeActionMenu(themeName: string) {
   getThemeCard(themeName).findByLabelText("Duplicate and delete").click();
 }
 

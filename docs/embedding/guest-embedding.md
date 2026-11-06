@@ -8,6 +8,8 @@ redirect_from:
 
 # Guest embeds
 
+Guest embeds are available on every Metabase plan. On the Open Source and Starter plans, guest embeds show a ["Powered by Metabase" banner](#removing-the-powered-by-metabase-banner). Guest viewers don't sign in to Metabase, so they don't count as users, and you aren't billed for them. To show each customer only its own data, sign the customer's ID into the embed's token as a [locked parameter](#locked-parameters).
+
 Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
 
 > Looking for static embedding? It's [deprecated in favor of guest embeds](./introduction.md#static-embedding-is-deprecated).
@@ -20,12 +22,8 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 
 ## Turning on guest embedding in Metabase
 
-The path to embedding settings depends on your Metabase version:
-
-- **OSS**: **Admin > Embedding**
-- **Starter/Pro/Enterprise**: **Admin > Embedding > Guest embeds**
-
-Toggle **Enable guest embeds**.
+1. Go to **Embedding hub > Security**.
+2. Toggle on **Enable embedding** (called **Modular embedding** on Pro and Enterprise). The same switch covers guest embeds and modular embedding.
 
 ## Creating a guest embed
 
@@ -111,8 +109,8 @@ You can set different attributes to enable/disable UI. Here are some example att
 | `token`                 | Required. The signed JWT token from your server.                                                                                                                                                                                                                                 |
 | `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                                                                                                                                                                                                           |
 | `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                                                                                                                                                                                                      |
-| `initial-parameters`    | JSON string of starting parameter values (uncontrolled). Example: `'{"category":["Gizmo"]}'`. See [Embedding parameters](./parameters.md#set-starting-values).                                                                                                        |
-| `parameters`            | JSON string of parameter values (controlled). Example: `'{"category":["Gizmo"]}'`. See [Embedding parameters](./parameters.md#control-values-from-your-app).                                                                                                          |
+| `initial-parameters`    | JSON string of starting parameter values (uncontrolled). Example: `'{"category":["Gizmo"]}'`. See [Embedding parameters](./parameters.md#set-starting-values).                                                                                                                   |
+| `parameters`            | JSON string of parameter values (controlled). Example: `'{"category":["Gizmo"]}'`. See [Embedding parameters](./parameters.md#control-values-from-your-app).                                                                                                                     |
 | `hidden-parameters`     | JSON array of slugs whose widgets to hide. Only **Editable** parameters have a widget on a guest embed, so the wizard won't generate this for you. Hiding a widget doesn't restrict the value. See [Hide parameter widgets](./parameters.md#hide-parameter-widgets).             |
 | `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                                                                                                                                                                                               |
 | `custom-context`        | Forwarded to your [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) endpoint as `customContext`. Either a string (e.g., `"gadgets-tab"`), or a JSON-stringified object like `initial-parameters` (e.g., `'{"tab":"gadgets","region":"us-east"}'`). |
@@ -139,7 +137,7 @@ Locked parameters are how you restrict data in a guest embed. Your server puts t
 
 ## Refreshing or initializing the JWT from your server
 
-JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data. Swapping in a new token from your page reloads the embed. That resets any selections the viewer made in Metabase's widgets. Values your page holds in the [`parameters` attribute](./parameters.md#control-values-from-your-app) are applied again. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand.
+JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data. Swapping in a new token from your page reloads the embed. That resets any selections the viewer made in Metabase's widgets. Values your page holds in the [`parameters` attribute](./parameters.md#control-values-from-your-app) are applied again. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand. Token refresh is available on every plan.
 
 The endpoint can serve two flows:
 
@@ -301,7 +299,7 @@ If you change an embed's settings in the wizard, like a parameter's visibility o
 4. Select **Guest embedding**
 5. Click **Unpublish**.
 
-Admins can find a list of embedded items in **Admin > Embedding** (on Pro and Enterprise plans, check the **Guest embeds** tab).
+Admins can find a list of embedded items in **Embedding hub > Security** under **Published guest embeds**. You'll only see the list once you've published something.
 
 ## Removing the "Powered by Metabase" banner
 
@@ -311,10 +309,10 @@ Metabase adds the banner to guest embeds (both charts and dashboards) on the OSS
 
 ## Regenerating the embedding secret key
 
-Your embedding secret key is used to sign JWTs for all of your embeds.
+Your embedding secret key is used to sign JWTs for all of your embeds. If you don't have a key yet, Metabase generates one for you when you turn on embedding.
 
-1. Go to **Admin > Embedding**. On Pro and Enterprise plans, check the **Guest embeds** tab.
-2. Under **Regenerate secret key**, click **Regenerate key**.
+1. Go to **Embedding hub > Security**.
+2. Under **Secret key for guest embeds**, click **Regenerate key**.
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 
@@ -338,7 +336,7 @@ To translate an embed, set the `locale` in `window.metabaseConfig`:
 </script>
 ```
 
-The `locale` setting works for all modular embeds (guest, SSO, and SDK). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a [translation dictionary](./translations.md).
+The `locale` setting works for all modular embeds (guest, SSO, and SDK) on every plan. Metabase translates UI elements (like menus and buttons) automatically. On Pro and Enterprise plans, you can also translate content (like dashboard titles and filter labels) by uploading a [translation dictionary](./translations.md).
 
 ## How guest embedding works
 

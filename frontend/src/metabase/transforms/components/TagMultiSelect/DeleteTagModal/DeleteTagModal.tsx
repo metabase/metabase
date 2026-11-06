@@ -7,7 +7,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, FocusTrap, Modal, Text } from "metabase/ui";
 import type { TransformTag } from "metabase-types/api";
 
 type DeleteTagModalProps = {
@@ -22,12 +22,7 @@ export function DeleteTagModal({
   onClose,
 }: DeleteTagModalProps) {
   return (
-    <Modal
-      title={t`Delete the ${tag.name} tag?`}
-      opened
-      padding="xxl"
-      onClose={onClose}
-    >
+    <Modal title={t`Delete the ${tag.name} tag?`} opened onClose={onClose}>
       <FocusTrap.InitialFocus />
       <DeleteTagForm tag={tag} onDelete={onDelete} onClose={onClose} />
     </Modal>
@@ -51,20 +46,16 @@ function DeleteTagForm({ tag, onDelete, onClose }: DeleteTagFormProps) {
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       <Form>
-        <Stack gap="xl">
-          <Text>{t`The tag will be deleted from transforms and jobs that use it.`}</Text>
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              label={t`Delete tag`}
-              variant="filled"
-              color="negative"
-            />
-          </Group>
-        </Stack>
+        <Text>{t`The tag will be deleted from transforms and jobs that use it.`}</Text>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <FormSubmitButton
+            label={t`Delete tag`}
+            variant="filled"
+            color="negative"
+          />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

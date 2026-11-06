@@ -109,10 +109,10 @@
                                           {:name     (or (:function part)
                                                          (id->name (:id part))
                                                          "unknown_function")
-                                           :response {:output (or (get-in part [:result :output])
-                                                                  (when-let [err (:error part)]
-                                                                    (str "Error: " (:message err)))
-                                                                  (pr-str (:result part)))}}}]}
+                                           ;; Gemini reads a failure under `error` and a result under `output`.
+                                           :response {(if (get-in part [:result :error]) :error :output)
+                                                      (or (get-in part [:result :output])
+                                                          (pr-str (:result part)))}}}]}
                    ;; Reasoning is display-only: thought summaries never go back to Gemini. The
                    ;; model keeps its reasoning continuity through the functionCall
                    ;; thoughtSignatures replayed above. The empty :parts vector is dropped by
@@ -204,7 +204,8 @@
       (and fdecls tool_choice)
       (assoc :toolConfig {:functionCallingConfig {:mode (case (name tool_choice)
                                                           "auto"     "AUTO"
-                                                          "required" "ANY")}})
+                                                          "required" "ANY"
+                                                          "none"     "NONE")}})
 
       ;; Structured output: force a call to one tool that carries the schema. The Claude and Chat Completions adapters
       ;; do the same, thus the shared :tool-input extraction in call-llm-structured works.

@@ -32,7 +32,7 @@ Let us know your plans with Metabase so that we can best guide you.
 - A bit of both
 - Not sure yet
 
-Don't worry about picking the wrong option. If you say you're interested in embedding, Metabase will display a card with a link to the embedding settings when you (the admin) first log in to your instance. Just a little convenience thing, that's all.
+Don't worry about picking the wrong option. If you say you're interested in embedding, Metabase will display a card about embedding when you (the admin) first log in to your instance. On Pro and Enterprise plans, Metabase displays the embedding setup guide instead. Just a little convenience thing, that's all.
 
 ## Gathering your database info
 

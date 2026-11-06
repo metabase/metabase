@@ -31,7 +31,7 @@
   position: absolute;
   overflow: hidden;
   background-color: var(--mb-color-bg-dashboard-card);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.75rem;
   left: calc(
     (var(--skeleton-col-width) + var(--grid-margin-x)) * var(--skeleton-col)

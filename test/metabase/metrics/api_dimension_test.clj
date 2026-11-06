@@ -81,7 +81,7 @@
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/values"))]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              GET /api/metric/:id/dimension/:key/search/:query                                  |
@@ -121,7 +121,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search")
                                            :query "test")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               GET /api/metric/:id/dimension/:key/remapping                                     |
@@ -161,7 +161,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/remapping")
                                            :value "1")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 (deftest dimension-remapping-requires-value-param-test
   (testing "GET /api/metric/:id/dimension/:key/remapping requires value parameter"
@@ -274,7 +274,7 @@
                                (assoc-in % [:target 2] (mt/id :users :name))
                                %)
                             dimension_mappings)]
-        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (t2/update! :model/Card :id (:id metric) {:dimension_mappings mappings})
         (let [response (mt/user-http-request :crowberto :get 200
                                              (str "metric/" (:id metric) "/dimension"))]
           (is (not (some #(= orphan-id (:id %)) (:added response)))))
@@ -342,6 +342,72 @@
               "the addition is persisted")
           (is (= [default-id] (mapv :id (filter :default resp)))
               "the existing default is preserved"))))))
+
+(defn- do-with-removed-model-expression-dimension!
+  "Create a metric on a model with the custom column \"Is Cheap\", remove that column's dimension so it becomes
+   addable, and call `f` with the metric's id and the addable entry from GET."
+  [f]
+  (let [mp    (mt/metadata-provider)
+        price (lib.metadata/field mp (mt/id :venues :price))
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                  (lib/expression "Is Cheap" (lib/case [[(lib/< price 2) true]] false)))]
+    (mt/with-temp [:model/Card model  {:name          "Venues Model"
+                                       :type          :model
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query query}
+                   :model/Card metric {:name          "Model Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
+                                                          (lib/aggregate (lib/count)))}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (mt/user-http-request :crowberto :post 200 (str "metric/" (:id metric) "/dimension/remove")
+                            {:dimension_ids [(get-dimension-id (t2/select-one :model/Card :id (:id metric))
+                                                               "Is Cheap")]})
+      (let [addable (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")
+                                               :with-addable true)
+                         :addable
+                         (mapcat :dimensions)
+                         (m/find-first #(= "Is Cheap" (:name %))))]
+        (is (some? addable))
+        (when (some? addable)
+          (f (:id metric) addable))))))
+
+(defn- add-dimensions! [metric-id status dimensions]
+  (mt/user-http-request :crowberto :post status (str "metric/" metric-id "/dimension/add") {:dimensions dimensions}))
+
+(defn- added-dimensions-named [dimension-name dimensions]
+  (filter #(= dimension-name (:name %)) dimensions))
+
+(deftest add-model-expression-dimension-echoed-from-addable-test
+  (testing "POST /api/metric/:id/dimension/add accepts an addable model custom column (#85634)"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (is (= ["field" {} "Is Cheap"] (:mapping_target addable))
+           "the addable mapping target is the type-less target key")
+       (is (=? [{:id (:id addable)
+                 :name "Is Cheap"
+                 :effective_type "type/Boolean"}]
+               (added-dimensions-named "Is Cheap" (add-dimensions! metric-id 200 [addable]))))))))
+
+(deftest add-model-expression-dimension-with-typed-target-test
+  (testing "POST /api/metric/:id/dimension/add still accepts a full field ref carrying type options"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (let [typed (assoc addable :mapping_target ["field"
+                                                   {:base-type "type/Boolean" :effective-type "type/Boolean"}
+                                                   "Is Cheap"])]
+         (is (=? [{:id (:id addable)
+                   :name "Is Cheap"}]
+                 (added-dimensions-named "Is Cheap" (add-dimensions! metric-id 200 [typed])))))))))
+
+(deftest add-dimension-rejects-non-field-target-test
+  (testing "POST /api/metric/:id/dimension/add rejects a mapping target that isn't a :field target key"
+    (do-with-removed-model-expression-dimension!
+     (fn [metric-id addable]
+       (add-dimensions! metric-id 400 [(assoc addable :mapping_target ["expression" {} "Is Cheap"])])))))
 
 (deftest add-dimension-validation-test
   (testing "POST /api/metric/:id/dimension/add validates names and descriptions"
@@ -518,7 +584,7 @@
             a        (:id (first added))
             b        (:id (second added))
             defaults (fn [resp] (into #{} (comp (filter :default) (map :id)) resp))]
-        (t2/update! :model/Card (:id metric)
+        (t2/update! :model/Card :id (:id metric)
                     {:dimensions (mapv #(assoc % :default true)
                                        (t2/select-one-fn :dimensions :model/Card :id (:id metric)))})
         (is (= #{a} (defaults (mt/user-http-request :crowberto :post 200
@@ -790,7 +856,7 @@
                 "would become permanent.")
     (legacy-curated-metric!
      (fn [metric-id]
-       (t2/update! :model/Card metric-id {:name "Renamed"})
+       (t2/update! :model/Card :id metric-id {:name "Renamed"})
        (let [{:keys [card_schema dimensions]} (stored-card metric-id)
              stored-names (display-name-by-field-id dimensions)]
          (is (= "Renamed" (t2/select-one-fn :name :model/Card :id metric-id))
@@ -812,10 +878,10 @@
     (legacy-curated-metric!
      (fn [metric-id]
        ;; `:dataset_query` is a migration trigger: upgrade 24 derives a metric's dimensions from it.
-       (t2/update! :model/Card metric-id {:dataset_query (people-metric-query)})
+       (t2/update! :model/Card :id metric-id {:dataset_query (people-metric-query)})
        (let [{:keys [card_schema dimensions]} (stored-card metric-id)
              stored-names (display-name-by-field-id dimensions)]
-         (is (= @#'card/current-schema-version card_schema)
+         (is (= card/current-card-schema-version card_schema)
              "the vintage advances alongside the migrated columns")
          (testing "the dimensions written alongside that bump are the modernized ones"
            (is (= "Product - ID" (stored-names (mt/id :products :id))))
@@ -829,10 +895,10 @@
     (legacy-curated-metric!
      (fn [metric-id]
        (let [modernized (:dimensions (t2/select-one :model/Card :id metric-id))]
-         (t2/update! :model/Card metric-id {:dimensions modernized})
+         (t2/update! :model/Card :id metric-id {:dimensions modernized})
          (let [{:keys [card_schema dimensions]} (stored-card metric-id)
                stored-names (display-name-by-field-id dimensions)]
-           (is (= @#'card/current-schema-version card_schema))
+           (is (= card/current-card-schema-version card_schema))
            (is (= "Product - ID" (stored-names (mt/id :products :id))))
            (is (= "User - ID" (stored-names (mt/id :people :id))))
            (doseq [[field-id display-name] stored-names]

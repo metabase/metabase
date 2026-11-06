@@ -146,7 +146,7 @@
 ;; FKs aren't declared in the transform's `dependencies`, so the user may not resolve on import.
 (defmethod serdes/make-spec "TableIndex"
   [_model-name _opts]
-  {:copy      [:index_name :structured]
+  {:schema    ::schema/external-table-index
+   :copy      [:index_name :structured]
    :skip      [:status :error_message :last_executed_at :created_by]
-   :transform {:transform_id (serdes/parent-ref)
-               :created_at   (serdes/date)}})
+   :transform {:transform_id (serdes/parent-ref)}})

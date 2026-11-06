@@ -101,6 +101,7 @@ export function TableSelector({
         {!disabled && (
           <Tooltip label={t`Remove this table`}>
             <ActionIcon
+              variant="subtle"
               onClick={onRemove}
               mr="sm"
               aria-label={t`Remove this table`}

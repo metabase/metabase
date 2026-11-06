@@ -5,7 +5,7 @@ export function getLinkedIssues(body: string) {
   );
 
   if (matches) {
-    return matches.map(m => {
+    return matches.map((m) => {
       const numberMatch = m.match(/\d+/);
       return numberMatch ? numberMatch[0] : null;
     });
@@ -14,18 +14,18 @@ export function getLinkedIssues(body: string) {
   return null;
 }
 
-export const issueNumberRegex = /\(#(\d+)\)/g
+export const issueNumberRegex = /\(#(\d+)\)/g;
 
 export function getPRsFromCommitMessage(message: string) {
   if (!message) return null;
-  const firstLine = message.split('\n\n')[0];
-  const result = [ ...firstLine.matchAll(issueNumberRegex) ];
+  const firstLine = message.split("\n\n")[0];
+  const result = [...firstLine.matchAll(issueNumberRegex)];
   if (!result.length) {
-    console.log('No pr found in commit message', message);
+    console.log("No pr found in commit message", message);
     return null;
   }
 
-  return result.map(r => Number(r[1]));
+  return result.map((r) => Number(r[1]));
 }
 
 // backport PRs just have a pr number in the body without a keyword

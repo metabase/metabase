@@ -4,13 +4,14 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
-   [metabase.measures.schema]
+   [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -26,6 +27,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/Measure [_model] :measure)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :measure] [_original-model _k] :model/Measure)
@@ -55,7 +58,8 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
@@ -228,13 +232,13 @@
       with-ids)))
 
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
-  {:copy [:name :archived :description :entity_id]
+  {:schema    ::measures.schema/external-measure
+   :copy [:name :archived :description :entity_id]
    :skip [;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; always re-derived from definition by before-insert via lib/primary-source-table-id
           :table_id]
-   :transform {:created_at (serdes/date)
-               :creator_id (serdes/fk :model/User)
+   :transform {:creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}
    :defaults {:archived false}})
 
@@ -247,14 +251,27 @@
            :creator-id true
            :database-id :table.db_id
            :created-at true
-           :updated-at true}
+           :updated-at true
+           ;; A measure on a Library table inherits the table's library ranking boost and curated status.
+           :root-collection-type {:fn collection/table-root-collection-type}}
    :search-terms [:name :description]
-   :render-terms {:table-id :table_id
-                  :table_description :table.description
-                  :table_name :table.name
-                  :table_display_name :table.display_name
-                  :table_schema :table.schema}
-   :joins {:table [:model/Table [:= :table.id :this.table_id]]}})
+   :render-terms {:table-id                  :table_id
+                  :table_description         :table.description
+                  :table_name                :table.name
+                  :table_display_name        :table.display_name
+                  :table_schema              :table.schema
+                  ;; The parent table's collection, for [[collection/table-root-collection-type]].
+                  ;; Listing these terms also reindexes a measure when its table moves into or out of the Library.
+                  :table-collection-id       :table.collection_id
+                  :table-is-published        :table.is_published
+                  :table-collection-location :collection.location
+                  :table-collection-type     :collection.type}
+   ;; Only published tables count as library content, matching the table spec's own collection join.
+   :joins {:table      [:model/Table [:= :table.id :this.table_id]]
+           :collection [:model/Collection
+                        [:and
+                         [:= :table.is_published true]
+                         [:= :collection.id :table.collection_id]]]}})
 
 ;;; ------------------------------------------------- Dimension Persistence --------------------------------------------------
 

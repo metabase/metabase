@@ -1,5 +1,11 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
+exports[`buildCountQuery all filters 1`] = `
+"filters: ["created_at is in the previous 30 days or today", "user_id is 42", "tenant_id is 7", "group_id is 5"]
+joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]
+aggregations: ["count()"]"
+`;
+
 exports[`buildGroupBreakoutQuery all filters 1`] = `
 "filters: ["created_at is in the previous 30 days or today", "user_id is 42", "tenant_id is 7", "group_id is not 1", "group_id is 5"]
 joins: ["inner-join v_group_members on user_id = v_group_members.user_id"]

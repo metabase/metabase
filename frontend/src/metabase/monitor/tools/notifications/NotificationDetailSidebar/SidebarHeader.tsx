@@ -78,9 +78,9 @@ export const SidebarHeader = ({
           <Menu position="bottom-end" withinPortal>
             <Menu.Target>
               <ActionIcon
+                variant="subtle"
                 aria-label={t`More actions`}
                 size="lg"
-                c="icon-primary"
                 disabled={isBulkLoading}
               >
                 <Icon name="ellipsis" />
@@ -105,18 +105,18 @@ export const SidebarHeader = ({
             </Menu.Dropdown>
           </Menu>
           <ActionIcon
+            variant="subtle"
             aria-label={t`Edit`}
             size="lg"
-            c="icon-primary"
             disabled={isEditDisabled}
             onClick={!isEditDisabled ? onEdit : undefined}
           >
             {isQuestionLoading ? <Loader size="sm" /> : <Icon name="pencil" />}
           </ActionIcon>
           <ActionIcon
+            variant="subtle"
             aria-label={t`Close`}
             size="lg"
-            c="icon-primary"
             onClick={onClose}
           >
             <Icon name="close" />

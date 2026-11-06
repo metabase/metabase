@@ -328,13 +328,23 @@ describe("dataAppSandboxDevPlugin", () => {
       expect(mockedBuild).toHaveBeenCalledTimes(3);
     });
 
-    it("ignores changes outside src/", async () => {
+    it("ignores changes outside the app's src/", async () => {
       const { server } = await setup();
 
       await server.watcher.emit(
         "all",
         "change",
+        path.join("/app", "queries", "orders.query.ts"),
+      );
+      await server.watcher.emit(
+        "all",
+        "change",
         path.join("/app", "README.md"),
+      );
+      await server.watcher.emit(
+        "all",
+        "change",
+        path.join("/app", "node_modules", "some-package", "src", "index.js"),
       );
 
       expect(mockedBuild).toHaveBeenCalledTimes(1);

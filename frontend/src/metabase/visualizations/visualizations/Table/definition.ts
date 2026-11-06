@@ -78,6 +78,15 @@ export const TABLE_DEFINITION = {
       widget: "toggle",
       getDefault: () => false,
     },
+    "table.striped": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Striped rows`;
+      },
+      inline: true,
+      widget: "toggle",
+      getDefault: () => false,
+    },
     "table.freeze_columns": {
       getSection: () => t`Display`,
       get title() {
@@ -147,7 +156,7 @@ export const TABLE_DEFINITION = {
       },
       widget: "toggle",
       inline: true,
-      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
+      getHidden: ([{ data }]: Series) => data && data.cols.length < 3,
       getDefault: ([series]: Series) => {
         const { card, data } = series;
         let native: boolean;
@@ -168,13 +177,6 @@ export const TABLE_DEFINITION = {
         }
 
         return getDefaultPivotColumn(series) != null;
-      },
-      isValid: (
-        [{ data }]: Series,
-        settings: ComputedVisualizationSettings,
-      ) => {
-        const isInvalid = settings["table.pivot"] && data?.cols.length !== 3; // must have exactly 3 columns to pivot
-        return !isInvalid;
       },
       persistDefault: true,
     },
@@ -260,7 +262,7 @@ export const TABLE_DEFINITION = {
           rows,
           cols,
           settings[DataGrid.COLUMN_FORMATTING_SETTING] ?? [],
-          settings["table.pivot"],
+          settings["table.pivot"] ?? false,
         );
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],

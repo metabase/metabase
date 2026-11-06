@@ -5,7 +5,9 @@
   A refusal and a failure are different outcomes, and a caller that confuses them either gives up
   on a real bug or chases one that does not exist. Everything here is a refusal: the run did not
   happen, or could not be completed. A failing expectation is not an error — it is a result, and
-  it rides back on the expectation that produced it.")
+  it rides back on the expectation that produced it."
+  (:require
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,9 +40,9 @@
   "Every declared `:error-type`."
   (set (keys error-types)))
 
-(defn checked
+(mu/defn checked :- :keyword
   "Return `error-type` iff it is a member of [[all]]; otherwise throw."
-  [error-type]
+  [error-type :- :keyword]
   (when-not (contains? all error-type)
     (throw (ex-info (str error-type " is not a declared transform-test error type; see"
                          " metabase-enterprise.transform-testing.errors/all.")
@@ -59,25 +61,26 @@
          `(ex-info ~msg (assoc ~data :error-type ~error-type) ~cause))
      `(ex-info ~msg (assoc ~data :error-type (checked ~error-type)) ~cause))))
 
-(defn code
+(mu/defn code :- :string
   "The public wire spelling of `error-type` — the vocabulary a client switches on.
 
   Derived from the keyword's name so the two cannot drift, and prefixed so that the Clojure
   namespace this vocabulary happens to live in is not what gets published."
-  [error-type]
+  [error-type :- :keyword]
   (str "transform-test." (name error-type)))
 
-(defn status-code
+(mu/defn status-code :- :int
   "The HTTP status for `error-type`, or 500 for an untyped or unknown one."
-  [error-type]
+  [error-type :- [:maybe :keyword]]
   (get error-types error-type 500))
 
-(defn remap-message
+(mu/defn remap-message :- [:maybe :string]
   "`message` with every temp-table name in `temp->logical` replaced by the name the author wrote.
 
   Matching ignores case because Snowflake and H2 upper-case the generated names. A nil message
   stays nil."
-  [message temp->logical]
+  [message       :- [:maybe :string]
+   temp->logical :- [:map-of :string :string]]
   (when message
     (reduce (fn [^String msg [temp logical]]
               (.replaceAll msg (str "(?i)\\b" (java.util.regex.Pattern/quote temp) "\\b")

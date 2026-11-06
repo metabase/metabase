@@ -19,7 +19,10 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -45,7 +48,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not
@@ -79,7 +83,7 @@
   #{})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *cache*
+(def ^:dynamic *content-gate-cache*
   "Cache atom bound by [[with-content-gate-cache]], or nil to adjudicate on every call."
   nil)
 
@@ -93,7 +97,7 @@
   such a loop; everywhere else reads through."
   {:style/indent 0}
   [& body]
-  `(binding [*cache* (or *cache* (atom {}))]
+  `(binding [*content-gate-cache* (or *content-gate-cache* (atom {}))]
      ~@body))
 
 (defn content-visible?
@@ -110,11 +114,11 @@
                     false
                     (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
                       (boolean (@doc-content-visibility-fn document)))))]
-    (if (and id *cache*)
-      (if-some [cached (get @*cache* k)]
+    (if (and id *content-gate-cache*)
+      (if-some [cached (get @*content-gate-cache* k)]
         cached
         (let [verdict (adjudge)]
-          (swap! *cache* assoc k verdict)
+          (swap! *content-gate-cache* assoc k verdict)
           verdict))
       (adjudge))))
 
@@ -152,11 +156,14 @@
    when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
-  (when old-collection-id
-    (api/write-check :model/Collection old-collection-id))
-  (when new-collection-id
-    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
-    (api/write-check :model/Collection new-collection-id)))
+  (if old-collection-id
+    (api/write-check :model/Collection old-collection-id)
+    (api/write-check collection/root-collection))
+  (if new-collection-id
+    (do
+      (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
+      (api/write-check :model/Collection new-collection-id))
+    (api/write-check collection/root-collection)))
 
 ;;; ------------------------------------------------ Write orchestration -------------------------------------------
 
@@ -549,6 +556,35 @@
                   :collection-type            :collection.type
                   :archived-directly          true}})
 
+;;; ------------------------------------------------- Staleness ---------------------------------------------------
+
+(defmethod staleness/find-stale-query :model/Document
+  [_model args]
+  ^:allow-subquery
+  {:select [:document.id
+            [(h2x/literal "Document") :model]
+            [:document.name :name]
+            ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
+            ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
+            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
+            :document.collection_id]
+   :from :document
+   :left-join [:collection [:= :collection.id :document.collection_id]]
+   :where [:and
+           [:= :document.archived false]
+           ;; stale = not viewed since the cutoff, OR never viewed and created before the cutoff.
+           [:or
+            [:<= :document.last_viewed_at (-> args :cutoff-date)]
+            [:and
+             [:= :document.view_count 0]
+             [:<= :document.created_at (-> args :cutoff-date)]]]
+           ;; only regular user collections (type nil), not system collections like
+           ;; `instance-analytics`, `trash`, or the `library` collections.
+           [:= :collection.type nil]
+           (when (setting/get :enable-public-sharing)
+             [:= :document.public_uuid nil])
+           (staleness/collection-filter :document.collection_id args)]})
+
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
 (defn- ast-model->entity
@@ -631,11 +667,10 @@
 
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
+  {:schema    ::documents.schema/external-document
+   :copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
    :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder]
-   :transform {:created_at (serdes/date)
-               :updated_at (serdes/date)
-               :document {:export-with-context export-document-content
+   :transform {:document {:export-with-context export-document-content
                           :import-with-context import-document-content}
                :collection_id (serdes/fk :model/Collection)
                :creator_id (serdes/fk :model/User)}

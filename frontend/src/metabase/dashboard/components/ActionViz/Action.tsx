@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
+import { getActionDisplayType } from "metabase/actions/utils";
 import {
   executeRowAction,
   reloadDashboardCards,
@@ -11,10 +11,9 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { useQuestionFromCard } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
-import { Tooltip } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
@@ -24,9 +23,8 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import { FullContainer } from "./ActionButton.styled";
 import ActionButtonView from "./ActionButtonView";
-import ActionVizForm from "./ActionVizForm";
+import { ActionVizForm } from "./ActionVizForm";
 import {
   getDashcardParamValues,
   getMappedActionParameters,
@@ -59,14 +57,10 @@ const ActionComponent = ({
   parameterValues,
   isEditingDashcard,
 }: ActionProps) => {
-  const { data: card } = useGetCardQuery(
-    dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
+  const actionDisplayType = getActionDisplayType(
+    settings?.actionDisplayType,
+    dashcard.action,
   );
-  const model = useQuestionFromCard(card);
-
-  const actionSettings = dashcard.action?.visualization_settings;
-  const actionDisplayType =
-    settings?.actionDisplayType ?? actionSettings?.type ?? "button";
 
   const dashcardParamValues = useMemo(
     () => getDashcardParamValues(dashcard, parameterValues),
@@ -101,8 +95,6 @@ const ActionComponent = ({
     shouldConfirm
   );
 
-  const canWrite = Boolean(model?.canWriteActions());
-
   const onSubmit = useCallback(
     async (parameters: ParametersForActionExecution) => {
       const result = await executeRowAction({
@@ -135,7 +127,7 @@ const ActionComponent = ({
       isSettings={isSettings}
       shouldDisplayButton={shouldDisplayButton}
       isEditingDashcard={isEditingDashcard}
-      canEditAction={canWrite}
+      canEditAction={dashcard.action?.can_write === true}
       onSubmit={onSubmit}
     />
   );
@@ -155,24 +147,27 @@ function ActionFn(props: ActionProps) {
   const { action } = dashcard;
 
   const hasActionsEnabled = getActionIsEnabledInDatabase(dashcard);
+  const isArchived = action?.archived === true;
 
-  if (!action || !hasActionsEnabled) {
+  if (!action || !hasActionsEnabled || isArchived) {
     const tooltip = getErrorTooltip({
       hasActionAssigned: !!action,
       hasActionsEnabled,
+      isArchived,
     });
 
     return (
       <Tooltip label={tooltip}>
-        <FullContainer data-testid="action-button-full-container">
+        <Box w="100%" h="100%" data-testid="action-button-full-container">
           <ActionButtonView
             disabled
             icon="bolt"
             tooltip={tooltip}
             settings={props.settings}
+            isFullHeight={!props.isSettings}
             focus={props.isEditingDashcard}
           />
-        </FullContainer>
+        </Box>
       </Tooltip>
     );
   }
@@ -183,12 +178,18 @@ function ActionFn(props: ActionProps) {
 function getErrorTooltip({
   hasActionAssigned,
   hasActionsEnabled,
+  isArchived,
 }: {
   hasActionAssigned: boolean;
   hasActionsEnabled: boolean;
+  isArchived: boolean;
 }) {
   if (!hasActionAssigned) {
     return t`No action assigned`;
+  }
+
+  if (isArchived) {
+    return t`This action is archived`;
   }
 
   if (!hasActionsEnabled) {

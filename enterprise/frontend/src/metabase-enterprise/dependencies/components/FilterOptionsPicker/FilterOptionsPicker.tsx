@@ -46,6 +46,7 @@ export function FilterOptionsPicker({
         >
           {isCompact ? (
             <ActionIcon
+              variant="subtle"
               aria-label={t`Filter`}
               disabled={isDisabled}
               onClick={toggle}

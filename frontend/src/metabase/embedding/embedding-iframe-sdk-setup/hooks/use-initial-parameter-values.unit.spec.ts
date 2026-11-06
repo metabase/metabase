@@ -2,6 +2,15 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { useInitialParameterValues } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-initial-parameter-values";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/embedding/embedding-iframe-sdk-setup/constants", () => ({
+  ...jest.requireActual(
+    "metabase/embedding/embedding-iframe-sdk-setup/constants",
+  ),
+  SET_INITIAL_PARAMETER_DEBOUNCE_MS: 0,
+}));
+
 describe("useInitialParameterValues", () => {
   const mockUpdateSettings = jest.fn();
 

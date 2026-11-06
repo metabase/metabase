@@ -63,7 +63,12 @@ export function PanelHeader({
         <Title flex={1} order={4} lh="1rem">
           {getHeaderLabel(node, groupType)}
         </Title>
-        <ActionIcon m="-sm" aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon
+          variant="subtle"
+          m="-sm"
+          aria-label={t`Close`}
+          onClick={onClose}
+        >
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

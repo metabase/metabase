@@ -9,6 +9,12 @@ import { useGetSettingsQuery } from "./api";
 const REFRESH_INTERVAL = 10 * 1000; // 10 seconds
 
 /**
+ * The interval to pass when the user is waiting for the feature to arrive, as
+ * opposed to the background refresh above.
+ */
+export const WAITING_REFRESH_INTERVAL = 1000;
+
+/**
  * In some circumstances, a metabase instance may have a temporary token signalling that we
  * should refresh session properties. This hook will keep refreshing the session properties
  * every 10 seconds until it gets a payload that doesn't have the refresh token feature.

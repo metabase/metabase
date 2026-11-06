@@ -79,8 +79,10 @@
             ;; than spin on the same batch.
             total))))))
 
-(task/defjob ^{:doc "Collects exploration result blobs that nothing references any more."}
-  CollectOrphanedExplorationResults [_]
+(task/defjob CollectOrphanedExplorationResults
+  "Collects exploration result blobs that nothing references any more."
+  {:saved-class "metabase.explorations.task.collect_orphaned_results.CollectOrphanedExplorationResults"}
+  [_]
   (task-history/with-task-history {:task "collect-orphaned-exploration-results"}
     (collect-orphaned-results!)))
 

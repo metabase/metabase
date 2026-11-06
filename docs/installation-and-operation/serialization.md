@@ -21,7 +21,7 @@ The [Metabase Representation Format](https://github.com/metabase/representations
 ## Serialization use cases
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
-- **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable. For a built-in Git workflow with push/pull from the Metabase UI, see [Remote Sync](./remote-sync.md).
+- **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable. For a built-in Git workflow with push/pull from the Metabase UI, see [Remote Sync](../data-modeling/semantic-layer/remote-sync.md).
 - **Duplicating assets to other Metabases**. Export the "template" data from a source Metabase and import them to one or more target instances.
 
 Check out our guides for:
@@ -145,6 +145,7 @@ show-homepage-data
 show-homepage-pin-message
 show-homepage-xrays
 show-metabot
+show-modular-embed-terms
 show-sdk-embed-terms
 show-simple-embed-terms
 show-static-embed-terms
@@ -635,7 +636,7 @@ We're interested in how we can improve serialization to suit your workflow. [Upv
 
 ## Further reading
 
-- [Remote Sync](./remote-sync.md)
+- [Remote Sync](../data-modeling/semantic-layer/remote-sync.md)
 - [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/serialization)
 - [Database routing](../permissions/database-routing.md)
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)

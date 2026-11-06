@@ -39,13 +39,12 @@ interface AllChangesViewProps {
 
 export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const isUsingTenants = useSetting("use-tenants");
-  const isTransformsSyncEnabled = useSetting("remote-sync-transforms");
   const { data: collectionTree = [] } = useListCollectionsTreeQuery({
     namespaces: [
       "",
       "analytics",
       ...(isUsingTenants ? ["shared-tenant-collection"] : []),
-      ...(isTransformsSyncEnabled ? ["transforms"] : []),
+      "transforms",
     ],
     "include-library": true,
   });

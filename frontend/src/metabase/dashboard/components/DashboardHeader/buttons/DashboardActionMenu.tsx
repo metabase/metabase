@@ -3,14 +3,20 @@ import { c, t } from "ttag";
 
 import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { openEventsSidebar } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
+import {
+  PLUGIN_CACHING,
+  PLUGIN_LIBRARY,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 
 import {
@@ -50,6 +56,7 @@ const DashboardActionMenuInner = ({
     onChangeLocation,
     withTimelineEvents = false,
   } = useDashboardContext();
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
   const [opened, setOpened] = useState(false);
   const [showAutoRefreshOptions, setShowAutoRefreshOptions] = useState(false);
 
@@ -75,21 +82,18 @@ const DashboardActionMenuInner = ({
     refreshDashboard,
   );
 
-  // solely for the dependency list below, so we don't ever have an undefined
+  // The trash shortcut opens `<pathname>/archive`. Without a location, it does nothing.
   const pathname = location?.pathname ?? "";
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-send-to-trash",
-        perform: () => {
-          if (pathname) {
-            onChangeLocation(`${pathname}/archive`);
-          }
-        },
+  useRegisterShortcut([
+    {
+      id: "dashboard-send-to-trash",
+      perform: () => {
+        if (pathname) {
+          onChangeLocation(`${pathname}/archive`);
+        }
       },
-    ],
-    [pathname],
-  );
+    },
+  ]);
 
   if (!dashboard) {
     return null;
@@ -97,6 +101,9 @@ const DashboardActionMenuInner = ({
 
   const canConfigureCaching =
     dashboard.can_set_cache_policy && PLUGIN_CACHING.isGranularCachingEnabled();
+  const showDataStudioLink =
+    hasDataStudioAccess &&
+    PLUGIN_LIBRARY.isLibraryCollectionType(dashboard.collection?.type);
 
   return (
     <Menu position="bottom-end" opened={opened} onChange={handleOpenChange}>
@@ -114,6 +121,17 @@ const DashboardActionMenuInner = ({
           <AutoRefreshMenuOptions onSelect={() => handleOpenChange(false)} />
         ) : (
           <>
+            {showDataStudioLink && (
+              <>
+                <Menu.Item
+                  leftSection={<Icon name="grid_bordered" />}
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioDashboard(dashboard.id)}
+                >{t`Open in Data Studio`}</Menu.Item>
+                <Menu.Divider />
+              </>
+            )}
+
             {canResetFilters && (
               <Menu.Item
                 leftSection={<Icon name="revert" />}

@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Markdown } from "metabase/common/components/Markdown";
 import { Flex } from "metabase/ui";
 

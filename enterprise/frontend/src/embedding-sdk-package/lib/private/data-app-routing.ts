@@ -1,16 +1,19 @@
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
-import { DATA_APP_EMBED_PREFIX } from "metabase/urls/data-apps";
+import * as DataAppUrls from "metabase/urls/data-apps";
 
 const escapeRegExp = (str: string): string =>
   str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Captures everything from the start of `pathname` up to and including the
-// data-app `:name` segment. Tolerates a Metabase subpath install
-// (`/mb/embed/apps/sales/…`) by allowing arbitrary characters before the
-// `DATA_APP_EMBED_PREFIX` literal.
-const DATA_APP_BASENAME_RE = new RegExp(
-  `^(.*?${escapeRegExp(DATA_APP_EMBED_PREFIX)}/[^/]+)`,
+// Captures the Metabase subpath install root (`/mb` in `/mb/embed/apps/sales/…`,
+// empty without one) and the data-app `:name` segment.
+const DATA_APP_IFRAME_PATH_RE = new RegExp(
+  `^(.*?)${escapeRegExp(DataAppUrls.DATA_APP_EMBED_PREFIX)}/([^/]+)`,
 );
+
+const matchIframePath = () =>
+  typeof window === "undefined"
+    ? null
+    : window.location.pathname.match(DATA_APP_IFRAME_PATH_RE);
 
 /**
  * The iframe URL's data-app prefix, including any Metabase subpath install root.
@@ -20,10 +23,27 @@ const DATA_APP_BASENAME_RE = new RegExp(
  *   `/mb/embed/apps/sales/customers/42`  -> `/mb/embed/apps/sales`
  *   `/customers/42`                      -> `""`
  */
-export const getBasename = (): string =>
-  typeof window === "undefined"
-    ? ""
-    : (window.location.pathname.match(DATA_APP_BASENAME_RE)?.[1] ?? "");
+export const getBasename = (): string => {
+  const match = matchIframePath();
+
+  return match
+    ? `${match[1]}${DataAppUrls.DATA_APP_EMBED_PREFIX}/${match[2]}`
+    : "";
+};
+
+/**
+ * The prefix of the app's own page in Metabase, the URL a person can open or
+ * share, including any subpath install root. `""` in the dev preview.
+ *
+ *   `/embed/apps/sales/customers/42`     -> `/apps/sales`
+ *   `/mb/embed/apps/sales/customers/42`  -> `/mb/apps/sales`
+ *   `/customers/42`                      -> `""`
+ */
+export const getPageBasename = (): string => {
+  const match = matchIframePath();
+
+  return match ? `${match[1]}${DataAppUrls.DATA_APP_ROOT_URL}/${match[2]}` : "";
+};
 
 const subscribers = new Set<() => void>();
 let detachPopstate: (() => void) | undefined;

@@ -45,12 +45,16 @@ interface SetupOpts {
   field?: Field;
   idFields?: Field[];
   value?: FieldId | null;
+  disabled?: boolean;
+  isLoading?: boolean;
 }
 
 function setup({
   field = FIELD,
   idFields = ID_FIELDS,
   value = null,
+  disabled,
+  isLoading,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
@@ -59,6 +63,8 @@ function setup({
       field={field}
       idFields={idFields}
       value={value}
+      disabled={disabled}
+      isLoading={isLoading}
       onChange={onChange}
     />,
   );
@@ -67,13 +73,14 @@ function setup({
 }
 
 describe("FkTargetPicker", () => {
-  it("should show empty state when there are no idFields", async () => {
+  it("should be disabled when there are no idFields", async () => {
     setup({ idFields: [] });
 
     const select = screen.getByPlaceholderText("No key available");
+    expect(select).toBeDisabled();
     await userEvent.click(select);
 
-    expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
   it("should render options with label, description, and icon", async () => {
@@ -130,6 +137,18 @@ describe("FkTargetPicker", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should show empty state when the search has no results", async () => {
+    setup();
+
+    const select = screen.getByPlaceholderText("Select a target");
+    await userEvent.click(select);
+    await userEvent.type(select, "no such field");
+
+    expect(
+      await screen.findByText("Didn't find any results"),
+    ).toBeInTheDocument();
+  });
+
   it("should include schema in the label if there are multiple schemas", async () => {
     setup();
 
@@ -163,5 +182,34 @@ describe("FkTargetPicker", () => {
     expect(
       screen.getByPlaceholderText("Field access denied"),
     ).toBeInTheDocument();
+  });
+
+  it("should show a loading placeholder instead of the no access one while the keys load", () => {
+    setup({
+      field: createMockField({
+        ...FIELD,
+        semantic_type: "type/FK",
+        fk_target_field_id: getNextId(),
+      }),
+      idFields: [],
+      isLoading: true,
+    });
+
+    expect(screen.getByPlaceholderText("Loading…")).toBeDisabled();
+    expect(
+      screen.queryByPlaceholderText("Field access denied"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should stay disabled without keys even when not disabled by the caller", () => {
+    setup({ idFields: [], disabled: false });
+
+    expect(screen.getByPlaceholderText("No key available")).toBeDisabled();
+  });
+
+  it("should be disabled when disabled by the caller", () => {
+    setup({ disabled: true });
+
+    expect(screen.getByPlaceholderText("Select a target")).toBeDisabled();
   });
 });

@@ -52,8 +52,7 @@ export function useCollectionChartPaste(collection: Collection) {
         dispatch(
           addUndo({
             id: PASTE_TOAST_ID,
-            icon: "warning",
-            toastColor: "error",
+            variant: "negative",
             message: t`Couldn't save the chart to this collection`,
           }),
         );

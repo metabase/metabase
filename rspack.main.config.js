@@ -30,11 +30,17 @@ const {
 const {
   DropStylesEntryScriptPlugin,
 } = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
+const {
+  LocaleCatalogManifest,
+} = require("./frontend/build/shared/rspack/plugins/LocaleCatalogManifest/locale-catalog-manifest");
 const resolveConfig = require("./frontend/build/shared/rspack/resolve-config");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("./frontend/build/shared/rspack/side-effect-free-modules");
-const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
+const {
+  SVGO_CONFIG,
+  SVGO_ASSET_CONFIG,
+} = require("./frontend/build/shared/rspack/svgo-config");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
@@ -186,9 +192,9 @@ const config = {
     styles: "./css/index.module.css",
     ...(isEEBuild && {
       "app-data-app":
-        ENTERPRISE_SRC_PATH + "/data_apps/runtime/app-data-app.tsx",
+        ENTERPRISE_SRC_PATH + "/data-apps/runtime/app-data-app.tsx",
       "data-app-vendors":
-        ENTERPRISE_SRC_PATH + "/data_apps/runtime/iframe-vendors.ts",
+        ENTERPRISE_SRC_PATH + "/data-apps/runtime/iframe-vendors.ts",
     }),
   },
 
@@ -235,7 +241,16 @@ const config = {
         type: "javascript/auto",
       },
       {
-        test: /\.(svg|png)$/,
+        test: /\.svg$/,
+        type: "asset/resource",
+        resourceQuery: { not: [/component|source/] },
+        // No `[query]`: a `?url` import must emit the same name as the SDK
+        // build references.
+        generator: { filename: "[hash][ext]" },
+        use: [{ loader: "svgo-loader", options: SVGO_ASSET_CONFIG }],
+      },
+      {
+        test: /\.png$/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
         // No `[query]`: a `?url` import must emit the same name as the SDK
@@ -354,6 +369,7 @@ const config = {
     new OnScriptError(),
     ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
+    new LocaleCatalogManifest(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",

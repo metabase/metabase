@@ -13,7 +13,6 @@
    [metabase.session.core :as session]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn select-one-by-id
@@ -41,12 +40,12 @@
   "The Table with `table-id`, or nil. Unlike [[select-one-by-id]], a nil `table-id` is answered with nil
   rather than refused — callers reach here with a column value, not with an id an agent supplied."
   [table-id]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (defn field-types
   "The `base_type` and `effective_type` of the Field with `field-id`, or nil."
   [field-id]
-  (t2/select-one [:model/Field :base_type :effective_type] :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one [:model/Field :base_type :effective_type] :id field-id))
 
 (defn nullable-fields-with-fingerprints
   "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
@@ -55,8 +54,7 @@
   [field-ids]
   (t2/select [:model/Field :id :database_is_nullable :fingerprint]
              :id [:in field-ids]
-             :database_is_nullable true
-             {:from [(warehouse-schema-overlay/field-query)]}))
+             :database_is_nullable true))
 
 (defn active-user-exists?
   "Whether an active User with `user-id` exists."
@@ -100,7 +98,7 @@
   "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
   rather than an empty result, so callers guard it."
   [table-ids]
-  (t2/select :model/Table :id [:in table-ids] :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in table-ids] :active true))
 
 (defn active-visible-fields-for-tables
   "The id, name, table id, and position of the active, non-hidden Fields of the Tables with `table-ids`, in
@@ -111,8 +109,7 @@
              :table_id [:in table-ids]
              :active true
              :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
-             {:from [(warehouse-schema-overlay/field-query)]
-              :order-by [[:position :asc] [:id :asc]]}))
+             {:order-by [[:position :asc] [:id :asc]]}))
 
 (defn collections-for-read-check
   "The Collections with `ids`, carrying the columns [[metabase.models.interface/can-read?]] consults.
@@ -260,6 +257,11 @@
               :payload
               :subscriptions
               [:handlers :channel [:recipients :recipients-detail]]))
+
+(defn group-permission-exists?
+  "Whether some McpGroupPermission matches `where`, a HoneySQL condition such as `[:in :group_id ids]`."
+  [where]
+  (t2/exists? :model/McpGroupPermission {:where where}))
 
 (defn user-id->tenant-id
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the

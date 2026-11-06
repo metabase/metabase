@@ -2,7 +2,7 @@
   "Keeps [[metabase.driver/host-carrying-parameters]] from falling behind the clients it describes.
 
   A JDBC client enumerates every parameter it accepts through `java.sql.Driver/getPropertyInfo`. This asks each
-  driver on the classpath for that list, narrows it to names that could carry a host, and fails on one the driver has
+  driver under test for that list, narrows it to names that could carry a host, and fails on one the driver has
   neither declared in [[metabase.driver/host-carrying-parameters]] nor written off
   in [[metabase.driver/non-host-parameters]] -- so upgrading a JDBC dependency that adds a parameter
   surfaces it here instead of quietly widening what a database's `:additional-options` can reach."
@@ -10,6 +10,8 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test :as mt]
+   [metabase.test.data.env :as tx.env]
    [metabase.util :as u])
   (:import
    (java.sql Driver DriverPropertyInfo)
@@ -66,38 +68,22 @@
                          (.-name info)))))
     (catch Throwable _ nil)))
 
-(def ^:private always-on-the-classpath
-  "Drivers that ship in the core artifact. A driver missing from a run is normally just one whose module was not on the
-  classpath, which is the whole point of checking whatever is present -- but for these that would mean a namespace
-  failed to load, and skipping them silently is how this check would come to pass while testing nothing."
-  #{:h2 :postgres :mysql :sqlite})
-
-(defn- loaded-driver
-  "`driver` with its namespace loaded, so the methods it declares are registered, or nil when it is not on the
-  classpath at all."
-  [driver]
-  (try
-    (driver/the-initialized-driver driver)
-    (catch Throwable _ nil)))
-
 (deftest ^:parallel host-parameters-are-declared-or-reviewed-test
-  (doseq [[driver details] (sort-by key probe-details)]
-    (testing driver
-      (if-not (loaded-driver driver)
-        (is (not (always-on-the-classpath driver))
-            (str driver " ships in the core artifact but would not load, so its parameters went unchecked"))
-        (if-let [parameters (host-ish-parameters driver details)]
-          (let [declared    (into #{} (map u/lower-case-en) (driver/host-carrying-parameters driver))
-                reviewed    (into #{} (map u/lower-case-en) (driver/non-host-parameters driver))
-                unaccounted (remove #(or (declared (u/lower-case-en %)) (reviewed (u/lower-case-en %))) parameters)]
-            (is (= [] (vec unaccounted))
-                (str "Connection parameters of " driver " that could name a host and are neither declared in"
-                     " `driver/host-carrying-parameters` nor written off in"
-                     " `driver/non-host-parameters`. Check the client's documentation: if the parameter"
-                     " names somewhere the client connects, declare it in the first; otherwise record it in the"
-                     " second, next to the driver's other connection methods.")))
-          (testing "does not enumerate its parameters, so its declaration comes from documentation"
-            (is (some? (driver/host-carrying-parameters driver)))))))))
+  (mt/test-drivers (filter probe-details (tx.env/test-drivers))
+    (let [driver  driver/*driver*
+          details (probe-details driver)]
+      (if-let [parameters (host-ish-parameters driver details)]
+        (let [declared    (into #{} (map u/lower-case-en) (driver/host-carrying-parameters driver))
+              reviewed    (into #{} (map u/lower-case-en) (driver/non-host-parameters driver))
+              unaccounted (remove #(or (declared (u/lower-case-en %)) (reviewed (u/lower-case-en %))) parameters)]
+          (is (= [] (vec unaccounted))
+              (str "Connection parameters of " driver " that could name a host and are neither declared in"
+                   " `driver/host-carrying-parameters` nor written off in"
+                   " `driver/non-host-parameters`. Check the client's documentation: if the parameter"
+                   " names somewhere the client connects, declare it in the first; otherwise record it in the"
+                   " second, next to the driver's other connection methods.")))
+        (testing "does not enumerate its parameters, so its declaration comes from documentation"
+          (is (some? (driver/host-carrying-parameters driver))))))))
 
 (def ^:private opens-no-connection-without-a-host
   "Drivers for which details naming no host really do name nowhere, so reporting no hosts is the honest answer: `:h2`
@@ -107,14 +93,14 @@
 
 (deftest ^:parallel host-less-details-name-a-host-or-fail-closed-test
   (testing "a client that fills in its own host does not thereby slip past the network policy"
-    (doseq [[driver details] (sort-by key probe-details)
-            :when            (and (not (opens-no-connection-without-a-host driver))
-                                  (loaded-driver driver))]
-      (testing driver
-        (let [hosts (try
+    (mt/test-drivers (filter #(and (probe-details %) (not (opens-no-connection-without-a-host %)))
+                             (tx.env/test-drivers))
+      (let [driver  driver/*driver*
+            details (probe-details driver)
+            hosts   (try
                       (not-empty (vec (driver/connection-hosts driver (dissoc details :host))))
                       (catch Throwable _ ::refused))]
-          (is (some? hosts)
-              (str driver " reports no hosts at all for details that name none, which reads as \"this database is"
-                   " nowhere\" and lets the connection through unchecked -- but its client will substitute a host of"
-                   " its own and connect. Report where it would really connect, or throw.")))))))
+        (is (some? hosts)
+            (str driver " reports no hosts at all for details that name none, which reads as \"this database is"
+                 " nowhere\" and lets the connection through unchecked -- but its client will substitute a host of"
+                 " its own and connect. Report where it would really connect, or throw."))))))

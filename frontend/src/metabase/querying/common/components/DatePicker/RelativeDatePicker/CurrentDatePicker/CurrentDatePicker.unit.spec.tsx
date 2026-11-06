@@ -1,7 +1,7 @@
 import _userEvent from "@testing-library/user-event";
 
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
@@ -15,6 +15,12 @@ const DEFAULT_VALUE: RelativeDatePickerValue = {
   type: "relative",
   value: 0,
   unit: "hour",
+};
+
+const CURRENT_MONTH_VALUE: RelativeDatePickerValue = {
+  type: "relative",
+  value: 0,
+  unit: "month",
 };
 
 interface SetupOpts {
@@ -73,6 +79,38 @@ describe("CurrentDatePicker", () => {
       value: 0,
       unit: "week",
     });
+  });
+
+  it("should mark the selected interval as checked", () => {
+    setup({ value: CURRENT_MONTH_VALUE });
+
+    expect(
+      screen.getByRole("radiogroup", { name: "Current" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Month" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Week" })).not.toBeChecked();
+  });
+
+  it("should call onChange when the selected interval is clicked again", async () => {
+    const { onChange } = setup({ value: CURRENT_MONTH_VALUE });
+
+    await userEvent.click(screen.getByText("Month"));
+
+    expect(onChange).toHaveBeenCalledWith(CURRENT_MONTH_VALUE);
+  });
+
+  it("should select the focused interval on Enter", async () => {
+    const { onChange } = setup();
+
+    // Focusing the chip opens its tooltip, so the state that opens it has to
+    // be set inside act().
+    act(() => {
+      screen.getByRole("radio", { name: "Month" }).focus();
+    });
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(onChange).toHaveBeenCalledWith(CURRENT_MONTH_VALUE);
   });
 
   it("should show the date range for the selected interval", async () => {

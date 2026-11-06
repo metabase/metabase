@@ -13,8 +13,7 @@
    [metabase.util.log :as log])
   (:import
    (java.time Instant)
-   (java.util Date)
-   (org.quartz DisallowConcurrentExecution)))
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -31,8 +30,7 @@
     (metabot.settings/embedded-metabot-enabled?) (conj metabot.config/embedded-metabot-id)))
 
 (defn- generate-suggested-prompts-for-metabot! [config-id]
-  (let [metabot-eid (get-in metabot.config/metabot-config [config-id :entity-id])
-        metabot-id  (metabot.db/metabot-id-by-entity-id metabot-eid)]
+  (let [metabot-id (metabot.db/metabot-id-by-entity-id config-id)]
     (cond
       (nil? metabot-id)
       (log/warnf "No Metabot instance found for %s. Skipping suggested prompt generation." config-id)
@@ -67,9 +65,11 @@
       (when-not (= :api-key-missing (:error-code (ex-data e)))
         (log/errorf "Suggested prompts generation failed: %s" (.getMessage e))))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Initial _suggested prompts_ generation for the enabled built-in Metabot instances."}
-  SuggestedPromptsGenerator [_ctx]
+(task/defjob SuggestedPromptsGenerator
+  "Initial _suggested prompts_ generation for the enabled built-in Metabot instances."
+  {:saved-class "metabase.metabot.task.suggested_prompts_generator.SuggestedPromptsGenerator"
+   :concurrent? false}
+  [_ctx]
   (maybe-generate-suggested-prompts!))
 
 (defmethod task/init! ::SuggestedPromptsGenerator
