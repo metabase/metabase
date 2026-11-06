@@ -67,7 +67,7 @@ export function LibraryPicker({
     return (
       <SavedEntityPicker
         type={selectedFolder.type}
-        libraryFolder={selectedFolder.collection}
+        libraryFolders={selectedFolder.collections}
         tableId={tableId}
         databaseId={databaseId}
         onSelect={onSelect}
@@ -101,30 +101,39 @@ export function LibraryPicker({
 }
 
 // Only Data and Metrics hold data sources. Empty subfolders inside them are left
-// out by `buildCollectionTree`, in `SavedEntityPicker.tsx`.
+// out by `buildCollectionTree`, in `SavedEntityPicker.tsx`. When the user can't
+// read the Data or Metrics folder, the collection tree lifts its readable
+// subfolders into the Library, so a folder can be several collections.
 function getLibraryFolders(
   children: Collection[],
   { canSelectMetric }: { canSelectMetric: boolean },
 ) {
-  return children.flatMap((collection) => {
-    const folder = getLibraryFolder(collection);
-    const contents = [...(collection.here ?? []), ...(collection.below ?? [])];
-    const isSelectable =
-      folder != null &&
-      contents.includes(folder.type) &&
-      (folder.type !== "metric" || canSelectMetric);
+  return LIBRARY_FOLDER_KINDS.flatMap(({ collectionType, type, infoItem }) => {
+    if (type === "metric" && !canSelectMetric) {
+      return [];
+    }
 
-    return isSelectable ? [{ ...folder, collection }] : [];
+    const collections = children.filter(
+      (collection) =>
+        collection.type === collectionType &&
+        [...(collection.here ?? []), ...(collection.below ?? [])].includes(
+          type,
+        ),
+    );
+
+    return collections.length > 0 ? [{ type, infoItem, collections }] : [];
   });
 }
 
-function getLibraryFolder(collection: Collection) {
-  switch (collection.type) {
-    case "library-data":
-      return { type: "table" as const, infoItem: LIBRARY_DATA_INFO_ITEM };
-    case "library-metrics":
-      return { type: "metric" as const, infoItem: LIBRARY_METRICS_INFO_ITEM };
-    default:
-      return null;
-  }
-}
+const LIBRARY_FOLDER_KINDS = [
+  {
+    collectionType: "library-data",
+    type: "table",
+    infoItem: LIBRARY_DATA_INFO_ITEM,
+  },
+  {
+    collectionType: "library-metrics",
+    type: "metric",
+    infoItem: LIBRARY_METRICS_INFO_ITEM,
+  },
+] as const;
