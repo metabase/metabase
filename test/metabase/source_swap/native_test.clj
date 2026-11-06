@@ -6,7 +6,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.source-swap.native :as source-swap.native]))
+   [metabase.source-swap.native :as source-swap.native]
+   [metabase.sql-tools.settings :as sql-tools.settings]))
 
 (defn- field-id-ref
   [mp field-id]
@@ -205,6 +206,17 @@
                                                                    "ORDERS" "NEW_ORDERS")]
       (is (str/includes? result "NEW_ORDERS"))
       (is (str/includes? result "{{status}}")))))
+
+(deftest replace-table-keeps-optional-clauses-on-both-sqlglot-backends-test
+  (testing "the comment markers that hold [[optional]] clauses survive the rename on both backends (QUE-985)"
+    (doseq [[sql expected] [["SELECT * FROM orders WHERE 1=1 [[AND category IN ({{cat}})]]"
+                             "SELECT * FROM orders_v2 WHERE 1 = 1 [[ AND category IN ({{cat}}) ]]"]
+                            ["SELECT * FROM orders WHERE true [[AND created_at >= ({{start}})]]"
+                             "SELECT * FROM orders_v2 WHERE TRUE [[ AND created_at >= ({{start}}) ]]"]]
+            backend [:sqlglot :sqlglot-java]]
+      (binding [sql-tools.settings/*parser-backend-override* backend]
+        (is (= expected (#'source-swap.native/replace-table-in-native-sql :postgres sql "orders" "orders_v2"))
+            [backend sql])))))
 
 (deftest ^:parallel replace-table-in-native-sql-with-optional-clause-test
   (testing "Table rename works with optional clauses"

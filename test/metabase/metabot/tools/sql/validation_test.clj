@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]))
 
 ;;;; contains-template-tags?
@@ -217,5 +218,5 @@
              ["snowflake" "WITH x AS (SELECT * FROM orders) SELECT subtotal FROM x"
               "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}}]]]
       (testing sql
-        (is (= "ok" (:status (sql-parsing/validate-query
-                              dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))
+        (is (= "ok" (:status (sql-parsing/validate-query (sql-tools/sqlglot-parser)
+                                                         dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))

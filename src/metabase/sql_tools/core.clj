@@ -246,8 +246,20 @@
   [sql :- :string
    from-dialect :- [:maybe :string]
    to-dialect :- [:maybe :string]]
-  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+  (interface/transpile-sql-impl (sql-tools.settings/current-parser-backend)
                                 sql from-dialect to-dialect))
+
+(defn sqlglot-backend
+  "The current backend when it is a sqlglot backend, else `:sqlglot`. Statement checks always parse with sqlglot, so
+  with Macaw selected they use GraalPy."
+  []
+  (let [backend (sql-tools.settings/current-parser-backend)]
+    (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot)))
+
+(defn sqlglot-parser
+  "The sqlglot parser for [[sqlglot-backend]]."
+  []
+  (sqlglot/parser (sqlglot-backend)))
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
@@ -263,14 +275,14 @@
   See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
   for the same question asked by a caller that only needs a verdict."
   [driver sql stmt-type]
-  (sql-parsing/validate-executable-stmt (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/validate-executable-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
 (defn classify-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that only reads
   the verdict and never executes its `:sql`. Cheaper and more permissive about the dialect than
   [[validate-executable-stmt]]; do not execute the `:sql` it returns."
   [driver sql stmt-type]
-  (sql-parsing/classify-stmt (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/classify-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
 (mu/defn read-only-select? :- :boolean
   "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,
