@@ -502,6 +502,42 @@
             (is (= "U_NEW" (:provider_id auth-identity)))
             (is (= "https://slack.com" (get-in auth-identity [:metadata :iss])))))))))
 
+(deftest sso-mode-does-not-relink-pre-iss-link-test
+  (testing "An SSO login does not silently replace a Slack link made before iss tracking with another Slack account"
+    (mt/with-temporary-setting-values
+      [slack-connect-enabled true
+       slack-connect-client-id "test-client-id"
+       slack-connect-client-secret "test-secret"
+       slack-connect-authentication-mode "sso"]
+      (mt/with-temp [:model/User user {:email "prelinked@example.com"}
+                     :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                      :provider "slack-connect"
+                                                      :provider_id "U_LINKED"}]
+        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                    (fn [_issuer] slack-discovery-doc)
+                                    oidc.state/validate-oidc-callback
+                                    (fn [_request _state _provider & _opts]
+                                      {:valid? true :nonce "test-nonce" :redirect "/"})
+                                    http/post
+                                    (fn [_url _opts]
+                                      {:status 200
+                                       :body {:id_token "valid-token" :access_token "access-token-123"}})
+                                    oidc.tokens/validate-id-token
+                                    (fn [_token _config _nonce]
+                                      {:valid? true
+                                       :claims {:sub "U_OTHER"
+                                                :iss "https://slack.com"
+                                                :aud "test-client-id"
+                                                :email "prelinked@example.com"}})]
+          (let [result (auth-identity/login! :provider/slack-connect
+                                             {:code "test-code"
+                                              :state "test-state"
+                                              :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
+                                              :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}})]
+            (is (false? (:success? result)))
+            (is (= :identity-mismatch (:error result)))
+            (is (= "U_LINKED" (t2/select-one-fn :provider_id :model/AuthIdentity :id ai-id)))))))))
+
 ;;; -------------------------------------------------- Settings Validation Tests --------------------------------------------------
 
 (deftest slack-connect-configured-test

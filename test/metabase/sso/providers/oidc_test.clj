@@ -693,6 +693,26 @@
         (is (= :account-linking-required (:error result)))
         (is (= "custom-oidc" (t2/select-one-fn :provider :model/AuthIdentity :id ai-id)))))))
 
+(deftest login-legacy-migration-ignores-other-unknown-issuer-rows-test
+  (testing "A user migrating their own legacy row is not blocked by another user's legacy row for the same sub,
+            whose issuer is unknown (e.g. an older account of the same person, or another IdP's colliding sub)"
+    (mt/with-temp [:model/User other {:email "older-account@example.com"}
+                   :model/AuthIdentity _ {:user_id (:id other)
+                                          :provider "custom-oidc"
+                                          :provider_id "user123"}
+                   :model/User user {:email "current-account@example.com"}
+                   :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                    :provider "custom-oidc"
+                                                    :provider_id "user123"}]
+      (let [config (assoc test-config
+                          :identity-provider-name "oidc-okta"
+                          :legacy-provider-name "custom-oidc")
+            result (login-with-claims! (assoc base-claims :email "current-account@example.com") config)
+            row    (t2/select-one :model/AuthIdentity :id ai-id)]
+        (is (true? (:success? result)))
+        (is (= "oidc-okta" (:provider row)))
+        (is (= "https://provider.example.com" (get-in row [:metadata :iss])))))))
+
 (deftest authenticate-custom-attribute-mapping-test
   (testing "Uses custom attribute mappings when provided"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration

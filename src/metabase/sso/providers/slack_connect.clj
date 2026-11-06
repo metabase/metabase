@@ -71,6 +71,8 @@
      ;; Slack verifies account emails itself and may omit the email_verified claim; without this,
      ;; existing accounts could never auto-link (Slack has no linking-policy settings)
      :assume-email-verified true
+     ;; Slack's issuer is fixed, so identities linked before iss tracking are known to be Slack's
+     :assumed-issuer slack-issuer-uri
      :redirect-uri (get request :redirect-uri)}))
 
 ;;; -------------------------------------------------- Utilities --------------------------------------------------
@@ -146,7 +148,8 @@
       :else
       (oidc/link-identity! provider user-id
                            (sso.db/auth-identity user-id provider-name)
-                           sub (:iss claims)))))
+                           sub (:iss claims)
+                           :assumed-issuer slack-issuer-uri))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
   [provider {:keys [user authenticated-user claims] :as request}]
