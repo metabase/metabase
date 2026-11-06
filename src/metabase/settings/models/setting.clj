@@ -886,13 +886,15 @@
           ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
           ;; site-wide value or write or read from the cache
           (set-user-local-value! setting-name new-value)
-          (do
+          ;; one cache state for the whole write. Its reads and writes still go to the app DB this thread sees, which
+          ;; must not change during the write; only tests swap app DBs.
+          (let [cache-state (setting.cache/current-state)]
             ;; make sure we're not trying to set the value of a Database-local-only Setting
             (when-not (allows-site-wide-values? setting)
               (throw (ex-info (tru "Site-wide values are not allowed for Setting {0}" (:name setting))
                               {:setting (:name setting)})))
             ;; always update the cache entirely when updating a Setting.
-            (setting.cache/restore-cache!)
+            (setting.cache/restore-cache! cache-state)
             ;; write to DB
             (cond
               (nil? new-value)
@@ -902,22 +904,22 @@
                 (when-let [deprecated-name (:deprecated-name setting)]
                   (let [deprecated-key (core/name deprecated-name)]
                     (settings.db/delete-setting! deprecated-key)
-                    (setting.cache/update-cache! deprecated-key nil))))
+                    (setting.cache/update-cache! cache-state deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
-              (contains? (setting.cache/cache) setting-name)
+              (contains? (setting.cache/cache cache-state) setting-name)
               (update-setting! setting-name new-value)
 
               ;; if there's nothing in the cache then the row doesn't exist, insert a new one
               :else
               (set-new-setting! setting-name new-value))
             ;; update cached value
-            (setting.cache/update-cache! setting-name new-value)
+            (setting.cache/update-cache! cache-state setting-name new-value)
             ;; Record the fact that a Setting has been updated so eventually other instances (if applicable) find out
             ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
             ;; cause other instances to do needless reloading of the cache from the DB)
             (when-not config/*disable-setting-cache*
-              (setting.cache/update-settings-last-updated!))))
+              (setting.cache/update-settings-last-updated! cache-state))))
         ;; Now return the `new-value`.
         new-value))))
 

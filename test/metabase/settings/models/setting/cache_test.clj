@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.system.core :as system]
@@ -58,7 +59,7 @@
 (defn reset-last-update-check!
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
-  (.set ^java.util.concurrent.atomic.AtomicLong (var-get #'setting.cache/last-update-check) 0))
+  (.set ^java.util.concurrent.atomic.AtomicLong (:last-update-check (setting.cache/current-state)) 0))
 
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"
@@ -141,7 +142,7 @@
     (reset-last-update-check!)
     (setting-test/test-setting-1! "Starfish")
     ;; 1. User writes
-    (with-redefs [setting.cache/cache* external-cache]
+    (mt/with-dynamic-fn-redefs [setting.cache/cache* external-cache]
       (setting-test/toucan-name! "Batman Toucan"))
     (setting-test/test-setting-1! "Batman")
     (is (= "Batman Toucan"
@@ -155,3 +156,59 @@
     (reset-last-update-check!)
     (is (= "fr"
            (system/site-locale)))))
+
+(deftest per-app-db-cache-test
+  (testing "settings caches are per app-DB id: another id gets its own, and a copy with the root's id shares it"
+    (let [root-cache (#'setting.cache/cache*)
+          own-cache? (fn [app-db]
+                       (mdb/with-application-db app-db
+                         (not (identical? root-cache (#'setting.cache/cache*)))))]
+      (is (= {:other-id-has-own-cache? true
+              :same-id-has-own-cache?  false
+              :root-cache-kept?        true}
+             {:other-id-has-own-cache? (own-cache? (assoc (mdb/app-db) :id Integer/MAX_VALUE))
+              :same-id-has-own-cache?  (own-cache? (assoc (mdb/app-db) ::copy true))
+              :root-cache-kept?        (identical? root-cache (#'setting.cache/cache*))})))))
+
+(deftest ^:synchronized app-db-id-bump-flushes-cache-test
+  (testing "bumping the root app DB's id gives a thread with no bindings a fresh settings cache"
+    (mdb.test-util/with-application-db-as-root (mdb/app-db)
+      (let [before  (#'setting.cache/cache*)
+            _       (mdb/increment-app-db-unique-indentifier!)
+            seen    (promise)
+            unbound (Thread. ^Runnable (fn []
+                                         (deliver seen (try
+                                                         (#'setting.cache/cache*)
+                                                         (catch Throwable e
+                                                           e)))))]
+        (.start unbound)
+        (let [seen-cache (deref seen 10000 ::timed-out)]
+          (testing "the thread finished, did not throw, and saw a new cache"
+            (is (not (or (= ::timed-out seen-cache)
+                         (instance? Throwable seen-cache)
+                         (identical? before seen-cache))))))))))
+
+(deftest held-cache-state-test
+  (testing "reads and writes through one cache state stay on its cache when the app DB this thread sees changes"
+    (let [state  (setting.cache/current-state)
+          before (setting.cache/cache state)]
+      (try
+        (mdb/with-application-db (assoc (mdb/app-db) :id Integer/MAX_VALUE)
+          (setting.cache/update-cache! state "held-cache-test-key" "held")
+          (is (= {:through-state "held", :current nil}
+                 {:through-state (get (setting.cache/cache state) "held-cache-test-key")
+                  :current       (get (setting.cache/cache) "held-cache-test-key")})))
+        (finally
+          ;; puts the cache back as it was: a nil cache reads as not yet loaded, and an empty one would not
+          (reset! (#'setting.cache/cache* state) before))))))
+
+(deftest restore-uses-the-state-it-checked-test
+  (testing "a restore fills the cache whose clock and lock it checked, even if the state this thread sees changes"
+    (let [new-state #'setting.cache/new-state
+          checked   (new-state)
+          calls     (atom 0)]
+      ;; Only the first state is checked: the restore's own settings reads, such as the encryption settings, also see
+      ;; the later states and may fill them.
+      (mt/with-dynamic-fn-redefs [setting.cache/current-state #(if (= 1 (swap! calls inc)) checked (new-state))]
+        (setting.cache/restore-cache-if-needed! :force-check? true))
+      (is (some? @(:cache checked))))))
