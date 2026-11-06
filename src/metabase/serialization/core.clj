@@ -21,14 +21,77 @@
   - export: rows to entities, resolving database ids to references (see [[metabase.serialization.resolve]]).
   - import: entities to rows, resolving references to database ids and creating the Users, Databases, Tables and
     Fields the store lacks when asked to (see [[metabase.serialization.resolve]])."
+  (:refer-clojure :exclude [import load])
   (:require
+   [metabase.serialization.dependencies :as serialization.dependencies]
+   [metabase.serialization.entity :as serialization.entity]
+   [metabase.serialization.export :as serialization.export]
+   [metabase.serialization.load :as serialization.load]
+   [metabase.serialization.mbql :as serialization.mbql]
+   [metabase.serialization.parameters :as serialization.parameters]
+   [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.resolve :as resolve]
    [metabase.serialization.spec :as serialization.spec]
+   [metabase.serialization.storage :as serialization.storage]
    [metabase.serialization.transform :as serialization.transform]
    [metabase.serialization.util :as serialization.util]
+   [metabase.serialization.visualization-settings :as serialization.viz]
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
+ [serialization.dependencies
+  export-dependencies
+  export-escapes
+  export-mbql-dependencies
+  export-parameters-dependencies
+  export-visualization-settings-dependencies
+  import-dependencies
+  import-escapes
+  import-mbql-dependencies
+  import-parameters-dependencies
+  import-visualization-settings-dependencies]
+ [serialization.entity
+  entity-ref
+  key-of
+  log-str
+  model-of
+  restore-identity]
+ [serialization.export
+  export
+  export-batch
+  with-export-transaction]
+ [serialization.load
+  after-load
+  before-load
+  import
+  load
+  load-all
+  load-error
+  load-error?
+  load-order
+  local-rows]
+ [serialization.storage
+  batch-storage-paths
+  collection-namespace-folder
+  resource-paths
+  storable
+  storage-default-collection-path
+  storage-path-prefixes
+  storage-paths]
+ [serialization.mbql
+  card-entity-id
+  card-template-tag-export-rename
+  card-template-tag-import-rename
+  card-template-tag-renames
+  export-mbql
+  import-mbql
+  mbql-transform
+  recording-card-entity-ids
+  serialized-query-source-table
+  walk-export
+  walk-import
+  walk-export-refs
+  walk-import-refs]
  [resolve
   collecting?
   export-in-bulk
@@ -37,6 +100,22 @@
   target-not-found
   target-not-found?
   visit-some]
+ [protocol.app-db
+  rows-by-refs]
+ [serialization.parameters
+  export-parameter-mappings
+  export-parameters
+  import-parameter-mappings
+  import-parameters
+  parameter-mappings-transform
+  parameters-transform]
+ [serialization.viz
+  owned-entity-id
+  export-visualization-settings
+  import-visualization-settings
+  import-visualizer-settings
+  link-card-model->toucan-model
+  visualization-settings-transform]
  [serialization.spec
   columns
   spec
@@ -50,8 +129,19 @@
   import-keywords
   import-only-transform
   import-unchanged
-  keyword-transform])
+  keyword-transform
+  column-ids
+  column-refs
+  database-transform
+  field-transform
+  fk-transform
+  table-transform
+  user-transform])
 
 (def batch-size
   "The number of rows, ids or entities that serialization queries or processes together."
   serialization.util/batch-size)
+
+(def app-db-store
+  "The store of the application database."
+  protocol.app-db/store)

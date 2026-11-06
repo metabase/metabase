@@ -2,7 +2,7 @@
   "One declared recoverable error per `:error` code the representations pipeline raises.
 
   The pipeline (`metabase.agent-lib.representations*`, `metabase.metabot.tools.construct`,
-  `metabase.models.serialization.resolve.mp`) throws a bare statement of what went wrong plus
+  `metabase.serialization.protocol.mp`) throws a bare statement of what went wrong plus
   structured `ex-data` carrying an `:error` keyword. It deliberately knows nothing about which tools
   its caller has, so it cannot say how to recover. This namespace supplies that half: each `:error`
   code gets a declaration whose recovery steps are written in the tool vocabulary — `read_resource`,

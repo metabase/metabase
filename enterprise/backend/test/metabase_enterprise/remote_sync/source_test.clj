@@ -5,8 +5,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
-   [metabase-enterprise.serialization.core :as serialization]
-   [metabase.models.serialization :as serdes]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -22,7 +21,7 @@
 (defn- create-test-entity
   "Creates a test entity with serdes/meta for testing"
   [id label model-name]
-  {:serdes/meta [{:id id :label label :model model-name}]
+  {:serdes/meta [{:model model-name}]
    :name (str "Test " label)
    :entity_id id})
 
@@ -60,7 +59,7 @@
 
 (deftest entity-file-path-uses-git-separators-test
   (testing "paths are git tree paths joined with / and never the host filesystem separator (#74095)"
-    (let [path (serialization/entity-file-path (serdes/storage-base-context) (create-test-entity "A" "a" "Card"))]
+    (let [path (ee.serialization/entity-file-path (ee.serialization/file-namer) (create-test-entity "A" "a" "Card"))]
       (is (= "collections/main/test_a.yaml" path))
       (is (not (str/includes? path "\\")))
       (testing "JGit's Windows path checker accepts the path, so pushing from a Windows host does not fail"
