@@ -1,0 +1,10 @@
+allowed_hosts: []
+collection: embeddedAppCollection
+description: null
+entity_id: embeddedDataApp000001
+name: Embedded Orders
+path: dist/index.js
+slug: embedded-app
+version: 1
+serdes/meta:
+- model: DataApp

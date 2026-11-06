@@ -5,7 +5,15 @@ export const attributeToSettingKey = (attr: string): string =>
   attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 // Naïve parsing of attribute values -> appropriate JS types (number, boolean, string)
-export const parseAttributeValue = (value: string | null): unknown => {
+export const parseAttributeValue = (
+  value: string | null,
+  attributeName?: string,
+): unknown => {
+  // path must always remain a string
+  if (attributeName === "path") {
+    return value ?? "";
+  }
+
   if (value === "[object Object]") {
     console.error(
       "You are passing an object to `setAttribute`, this is not supported as the browser will call `.toString()` to it, making it `[object Object]`.\nPlease pass a string or set the property directly, eg embed.theme = {...}",
