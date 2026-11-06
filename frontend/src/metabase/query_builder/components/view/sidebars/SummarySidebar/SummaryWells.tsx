@@ -37,7 +37,7 @@ type SummaryWellsProps = {
   /** A field was picked in a well's typeahead. */
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   /** A chip was removed or changed. */
-  onChange: (nextQuery: Lib.Query, wellId: SummaryWellId) => void;
+  onChange: (nextQuery: Lib.Query) => void;
 };
 
 /**
@@ -68,10 +68,8 @@ export function SummaryWells({
     [sections],
   );
 
-  const handleRemove = (
-    wellId: SummaryWellId,
-    clause: Lib.AggregationClause | Lib.BreakoutClause,
-  ) => onChange(Lib.removeClause(query, stageIndex, clause), wellId);
+  const handleRemove = (clause: Lib.AggregationClause | Lib.BreakoutClause) =>
+    onChange(Lib.removeClause(query, stageIndex, clause));
 
   return (
     <Box className={S.wells} data-testid="summary-wells">
@@ -85,7 +83,7 @@ export function SummaryWells({
           onRemoveLast={() => {
             const lastItem = valueItems.at(-1);
             if (lastItem) {
-              handleRemove("values", lastItem.clause);
+              handleRemove(lastItem.clause);
             }
           }}
         >
@@ -95,8 +93,8 @@ export function SummaryWells({
               query={query}
               stageIndex={stageIndex}
               item={item}
-              onChange={(nextQuery) => onChange(nextQuery, "values")}
-              onRemove={() => handleRemove("values", item.clause)}
+              onChange={onChange}
+              onRemove={() => handleRemove(item.clause)}
             />
           ))}
         </SummaryWellInput>
@@ -110,7 +108,7 @@ export function SummaryWells({
           onRemoveLast={() => {
             const lastItem = dimensionItems.at(-1);
             if (lastItem) {
-              handleRemove("columns", lastItem.clause);
+              handleRemove(lastItem.clause);
             }
           }}
         >
@@ -118,7 +116,7 @@ export function SummaryWells({
             <WellChip
               key={item.key}
               label={item.label}
-              onRemove={() => handleRemove("columns", item.clause)}
+              onRemove={() => handleRemove(item.clause)}
             >
               <span className={S.chipLabel}>{item.label}</span>
             </WellChip>

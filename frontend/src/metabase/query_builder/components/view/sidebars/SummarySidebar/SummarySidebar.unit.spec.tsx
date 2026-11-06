@@ -107,15 +107,15 @@ function getFieldButton(sectionName: string, name: string) {
 }
 
 describe("SummarySidebar", () => {
-  it("starts a bare query from Count of rows without running it", () => {
+  it("opens a bare query empty", () => {
     const { onQueryChange } = setup();
 
-    expect(getChipLabels("values")).toEqual(["Count"]);
+    expect(getChipLabels("values")).toEqual([]);
     expect(getChipLabels("columns")).toEqual([]);
     expect(onQueryChange).not.toHaveBeenCalled();
   });
 
-  it("runs once a grouping joins the starting count", async () => {
+  it("counts the rows once a grouping is added to a summary without values", async () => {
     const { onQueryChange, getLastQuery } = setup();
 
     await userEvent.click(getFieldButton("Product", "Category"));
@@ -125,10 +125,39 @@ describe("SummarySidebar", () => {
       values: ["Count"],
       dimensions: ["Product → Category"],
     });
+    expect(getChipLabels("values")).toEqual(["Count"]);
     expect(getChipLabels("columns")).toEqual(["Product → Category"]);
   });
 
-  it("runs the starting count once Count of rows is picked", async () => {
+  it("keeps the values a summary already has when a grouping is added", async () => {
+    const { getLastQuery } = setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    await userEvent.click(getFieldButton("Product", "Category"));
+    expect(getLastQuery()).toEqual({
+      values: ["Sum of Total"],
+      dimensions: ["Product → Category"],
+    });
+
+    fireEvent.click(getFieldButton("Orders", "Created At"), { altKey: true });
+    expect(getLastQuery().values).toEqual(["Sum of Total"]);
+  });
+
+  it("runs once Count of rows is picked", async () => {
     const { onQueryChange, getLastQuery } = setup();
 
     await userEvent.type(screen.getByLabelText("Add a value by name"), "count");
@@ -184,18 +213,9 @@ describe("SummarySidebar", () => {
     await userEvent.click(quantityOption);
 
     expect(getLastQuery()).toEqual({
-      values: ["Count", "Sum of Quantity"],
+      values: ["Sum of Quantity"],
       dimensions: [],
     });
-  });
-
-  it("drops the starting count without running when it's removed first", async () => {
-    const { onQueryChange } = setup();
-
-    await userEvent.click(screen.getByRole("button", { name: "Remove Count" }));
-
-    expect(getChipLabels("values")).toEqual([]);
-    expect(onQueryChange).not.toHaveBeenCalled();
   });
 
   it("replaces the groupings on a field click and adds on alt-click", async () => {

@@ -36,7 +36,7 @@ type SetupOpts = {
 function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
-  const onChange = jest.fn<void, [Lib.Query, SummaryWellId]>();
+  const onChange = jest.fn<void, [Lib.Query]>();
   renderWithProviders(
     <SummaryWells
       query={query}
@@ -49,9 +49,8 @@ function setup({ spec = SUMMARIZED_QUERY }: SetupOpts = {}) {
 
   function getLastChange() {
     const [lastCall] = onChange.mock.calls.slice(-1);
-    const [nextQuery, wellId] = lastCall;
+    const [nextQuery] = lastCall;
     return {
-      wellId,
       values: getValueItems(nextQuery, STAGE_INDEX).map(({ label }) => label),
       dimensions: getDimensionItems(nextQuery, STAGE_INDEX).map(
         ({ label }) => label,
@@ -104,7 +103,6 @@ describe("SummaryWells", () => {
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(getLastChange()).toEqual({
-      wellId: "values",
       values: ["Count"],
       dimensions: ["Created At: Month"],
     });
@@ -181,7 +179,6 @@ describe("SummaryWells", () => {
     await userEvent.keyboard("{Backspace}");
 
     expect(getLastChange()).toEqual({
-      wellId: "values",
       values: ["Count"],
       dimensions: ["Created At: Month"],
     });

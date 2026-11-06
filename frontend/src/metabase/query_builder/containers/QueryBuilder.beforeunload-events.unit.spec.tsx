@@ -25,7 +25,7 @@ import {
 registerVisualizations();
 
 /** Runs the Count the summary sidebar starts from, by picking it in Summarize by. */
-async function applyStartingCount() {
+async function addCountOfRows() {
   await userEvent.type(
     await screen.findByLabelText("Add a value by name"),
     "count",
@@ -198,7 +198,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       expect(screen.queryByText("Count")).not.toBeInTheDocument();
       await userEvent.click(await screen.findByText("Summarize"));
-      await applyStartingCount();
+      await addCountOfRows();
       expect(
         await within(screen.getByTestId("qb-header")).findByText("Count"),
       ).toBeInTheDocument();
@@ -215,7 +215,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       expect(screen.queryByText("Count")).not.toBeInTheDocument();
       await userEvent.click(await screen.findByText("Summarize"));
-      await applyStartingCount();
+      await addCountOfRows();
       expect(
         await within(screen.getByTestId("qb-header")).findByText("Count"),
       ).toBeInTheDocument();

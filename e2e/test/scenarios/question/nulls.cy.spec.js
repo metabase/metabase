@@ -165,8 +165,6 @@ describe("scenarios > question > null", () => {
       H.openOrdersTable();
 
       H.summarize();
-      // remove pre-selected "Count"
-      H.removeSummaryItem("Count");
       H.addSummaryValue("Discount");
       H.openSummaryValueMenu("Sum of Discount");
       cy.findByRole("menuitem", { name: "Cumulative sum of ..." }).click();
