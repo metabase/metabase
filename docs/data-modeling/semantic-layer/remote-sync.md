@@ -444,12 +444,6 @@ Your production Metabase gets these collections when it pulls, and they're read-
 
 If a collection uses items from a collection that isn't synced, Metabase shows you what's missing when you save. You can sync those collections from there. See [Items in synced collections must be self-contained](#items-in-synced-collections-must-be-self-contained).
 
-### If you synced other collections before Metabase 65
-
-Your setup keeps working, and you no longer need the `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED` environment variable.
-
-We recommend that you publish the tables and move the metrics you want to version into the Library, and keep syncing the collections that hold your questions, models, dashboards, and documents.
-
 ### Items in synced collections must be self-contained
 
 The same rule that applies to the [Library](#library-content-must-be-self-contained) applies to any synced collection. Everything a dashboard or question needs must be inside one of the synced collections. This includes:
