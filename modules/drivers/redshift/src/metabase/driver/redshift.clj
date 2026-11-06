@@ -1071,7 +1071,7 @@
                        (remove #(= % me))
                        (map (fn [o] {:owner o})))]
       (when (seq owners)
-        (driver.postgres/raise-unmemberable-default-priv-owners! schema-name owners)))))
+        (driver.postgres/raise-unmemberable-default-priv-owners! me schema-name owners)))))
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]

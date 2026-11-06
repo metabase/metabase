@@ -1680,18 +1680,20 @@
 
 (defn raise-unmemberable-default-priv-owners!
   "Throw the standard ex-info for the ALTER-DEFAULT-PRIVILEGES pre-condition,
-   naming the owner roles we cannot target with `FOR ROLE`."
-  [schema-name owners]
+   naming the owner roles that `login`, the admin connection's login, cannot
+   target with `FOR ROLE`. The message names `login` rather than CURRENT_USER,
+   which would be whoever runs the fix."
+  [login schema-name owners]
   (let [owner-names   (map :owner owners)
         quoted-schema (quote-schema schema-name)
         grants        (str/join " "
-                                (map #(format "GRANT %s TO CURRENT_USER;" (quote-field %))
+                                (map #(format "GRANT %s TO %s;" (quote-field %) (quote-field login))
                                      owner-names))]
-    (throw (ex-info (format (str "Current user is not a member of %d role(s) owning objects in "
+    (throw (ex-info (format (str "The admin connection's login %s is not a member of %d role(s) owning objects in "
                                  "schema %s: %s. The workspace user would lose access to "
                                  "future tables created by these roles. Grant role membership "
                                  "with `%s` and retry.")
-                            (count owners) quoted-schema (str/join ", " owner-names) grants)
+                            (quote-field login) (count owners) quoted-schema (str/join ", " owner-names) grants)
                     {:status-code 412
                      :schema      schema-name
                      :owners      (vec owner-names)}))))
@@ -1703,7 +1705,7 @@
    objects created by those roles."
   [conn schema-name]
   (when-let [missing (seq (unmemberable-owners-in-schema conn schema-name))]
-    (raise-unmemberable-default-priv-owners! schema-name missing)))
+    (raise-unmemberable-default-priv-owners! (current-login conn) schema-name missing)))
 
 (defn- table-creators
   "The roles that own a relation in `schema`, own `schema`, or hold CREATE on it: the roles whose database-wide default
@@ -1815,8 +1817,9 @@
 
 (defn- start-workspace-transaction!
   "Runs first in every transaction of the workspace methods. Pins search_path to pg_catalog: a function or operator
-  that a workspace user planted in a schema on the default search_path (`public` before Postgres 15) would otherwise
-  run with this login's privileges (CVE-2018-1058). Catalog functions are also schema-qualified where it matters."
+  that a workspace user planted in a schema on the default search_path (`public`, in a cluster created before
+  Postgres 15 or upgraded from one) would otherwise run with this login's privileges (CVE-2018-1058). Catalog
+  functions are also schema-qualified where it matters."
   [conn]
   (jdbc/execute! conn ["SET LOCAL search_path = pg_catalog, pg_temp"])
   (jdbc/execute! conn [(format "SET LOCAL lock_timeout = '%s'" workspace-lock-timeout)]))
@@ -1943,8 +1946,9 @@
 
 (defn- check-no-public-create-anywhere!
   "Every login, the workspace user included, can create objects in a schema that grants CREATE to PUBLIC, in any
-  database it may connect to (`public` before Postgres 15): writes outside its output schema, objects that keep it
-  from being dropped, and functions that shadow catalog ones for whoever runs with that schema on its search_path."
+  database it may connect to: writes outside its output schema, objects that keep it from being dropped, and
+  functions that shadow catalog ones for whoever runs with that schema on its search_path. In a cluster created
+  before Postgres 15, or upgraded from one by pg_upgrade or a dump and restore, `public` grants it in every database."
   [database conn]
   ;; the warehouse's own database too, even when CONNECT comes from a grant to the workspace user rather than PUBLIC
   (let [findings     (doall (public-create-findings database conn (distinct (cons (current-database conn)
@@ -1957,6 +1961,9 @@
                    (when (seq schemas)
                      (format " These schemas grant CREATE to PUBLIC: %s."
                              (str/join ", " (for [[db schema] schemas] (str db "." schema)))))
+                   (when (some (fn [[_db schema]] (= "public" schema)) schemas)
+                     (str " `public` grants it by default in a cluster created before Postgres 15, or upgraded from"
+                          " one by pg_upgrade or a dump and restore."))
                    (when (seq unverifiable)
                      (format " The admin connection's login cannot connect to check these databases: %s."
                              (str/join ", " unverifiable)))

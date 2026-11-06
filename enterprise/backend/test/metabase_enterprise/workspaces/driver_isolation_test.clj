@@ -38,8 +38,9 @@
 
 (defn- init!
   "[[driver/init-workspace-isolation!]]. Postgres init refuses a cluster where PUBLIC can create objects in any
-  database, the default before Postgres 15, and the shared test cluster is not these tests' to change:
-  metabase.driver.postgres.workspace-test covers that check against a database of its own."
+  database, the default in a cluster created before Postgres 15 or upgraded from one, and the shared test cluster is
+  not these tests' to change: metabase.driver.postgres.workspace-test covers that check against a database of its
+  own."
   [driver database workspace]
   (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
     (driver/init-workspace-isolation! driver database workspace)))

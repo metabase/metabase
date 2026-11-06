@@ -34,7 +34,7 @@
   `mb_ws_test_etl`, a role the admin login is a member of."
   [spec]
   (exec! spec ["DROP SCHEMA IF EXISTS sales, noselect, loose, pubwrite, sq, nogrant CASCADE"
-               ;; the default before Postgres 15, which init refuses
+               ;; the default in a cluster created before Postgres 15 or upgraded from one, which init refuses
                "REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
   (doseq [role ["mb_ws_test_etl" "mb_ws_test_pubwriter" (:user admin-login)]]
     (drop-role-if-exists! spec role))
@@ -411,7 +411,7 @@
      (let [workspace (new-workspace! spec database 2109)
            user      (-> workspace :database_details :user)]
        (tx/drop-if-exists-and-create-db! :postgres other-db-name)
-       ;; the default before Postgres 15, which init refuses
+       ;; the default in a cluster created before Postgres 15 or upgraded from one, which init refuses
        (exec! (sql-jdbc.conn/connection-details->spec :postgres (other-db-details))
               ["REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
        (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name other-db-name])]

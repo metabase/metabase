@@ -106,9 +106,9 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      ;; Postgres init refuses a cluster where PUBLIC can create objects in any database, the default before Postgres
-      ;; 15, and the shared test cluster is not this test's to change: metabase.driver.postgres.workspace-test covers
-      ;; that check against a database of its own
+      ;; Postgres init refuses a cluster where PUBLIC can create objects in any database, the default in a cluster
+      ;; created before Postgres 15 or upgraded from one, and the shared test cluster is not this test's to change:
+      ;; metabase.driver.postgres.workspace-test covers that check against a database of its own
       (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
         (provisioning/provision-single! wsd-id)))))
 
