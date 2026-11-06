@@ -470,6 +470,13 @@
     (system/stop! handle)
     (mc/remove-root handle)))
 
+(defn- halt-order
+  "The handles [[system/halt!]] would stop, in order, given `dependencies`."
+  ([]
+   (halt-order {}))
+  ([dependencies]
+   (#'system/halt-order (#'system/dependency-graph dependencies))))
+
 (deftest ^:synchronized ensure-started-test
   (let [handle  (system/mutable-component-handle ::ensure-started (constantly nil))
         starts  (atom 0)
@@ -512,9 +519,10 @@
         (finally
           (cleanup! [handle]))))))
 
-;; halt! itself is never called in these tests: it stops every component this test JVM has started, such as the test
-;; web server, which later tests need. It is only (close-admission!) then (stop-all! (halt-order)), and these tests
-;; drive each part on throwaway components, reopening afterwards, so a regression in any of them fails here.
+;; halt! is only called in these tests with dependencies it refuses: a halt stops every component this test JVM has
+;; started, such as the test web server, which later tests need. It is only (dependency-graph), (close-admission!) and
+;; (stop-all! (halt-order)), and these tests drive each part on throwaway components, reopening afterwards, so a
+;; regression in any of them fails here.
 (deftest ^:synchronized halt-order-test
   (testing "halt stops components in reverse start order, and failing stops do not stop the rest and are all reported"
     (let [stopped (atom [])
@@ -533,7 +541,7 @@
                 :suppressed ["stop b"]
                 :stopped    [:c :b :a]
                 :values     [nil nil nil]}
-               (merge (try (#'system/stop-all! (filter (set handles) (#'system/halt-order)))
+               (merge (try (#'system/stop-all! (filter (set handles) (halt-order)))
                            {}
                            (catch clojure.lang.ExceptionInfo e
                              {:failures   (mapv first (:failures (ex-data e)))
@@ -572,7 +580,7 @@
           (deliver leave true)
           @starter
           @closing
-          (is (some #{handle} (#'system/halt-order))))
+          (is (some #{handle} (halt-order))))
         (finally
           (system/reopen!)
           (cleanup! [handle]))))))
@@ -645,7 +653,7 @@
         (system/ensure-started! b (constantly :b) (constantly nil))
         (system/stop! a)
         (system/ensure-started! a (constantly :a-again) (constantly nil))
-        (is (= [b a] (filter #{a b} (#'system/halt-order))))
+        (is (= [b a] (filter #{a b} (halt-order))))
         (finally
           (cleanup! [a b]))))))
 
@@ -657,9 +665,44 @@
         (system/ensure-started! user
                                 #(do (system/ensure-started! dep (constantly :dep) (constantly nil)) :user)
                                 (constantly nil))
-        (is (= [user dep] (filter #{dep user} (#'system/halt-order))))
+        (is (= [user dep] (filter #{dep user} (halt-order))))
         (finally
           (cleanup! [user dep]))))))
+
+(deftest ^:synchronized halt-order-follows-dependencies-test
+  (testing "a component halts before the components it uses, even ones started after it, and the rest by start order"
+    (let [a       (system/mutable-component-handle ::deps-a (constantly nil))
+          b       (system/mutable-component-handle ::deps-b (constantly nil))
+          c       (system/mutable-component-handle ::deps-c (constantly nil))
+          handles [a b c]]
+      (try
+        (doseq [handle handles]
+          (system/ensure-started! handle (constantly :running) (constantly nil)))
+        (is (= {:no-dependencies [c b a]
+                :a-uses-c        [b a c]
+                :a-uses-c-via-x  [b a c]}
+               {:no-dependencies (filterv (set handles) (halt-order))
+                :a-uses-c        (filterv (set handles) (halt-order {::deps-a #{::deps-c}}))
+                :a-uses-c-via-x  (filterv (set handles) (halt-order {::deps-a #{::never-started}
+                                                                     ::never-started #{::deps-c}}))}))
+        (finally
+          (cleanup! handles))))))
+
+(deftest dependency-cycle-test
+  (testing "dependencies that form a cycle are refused"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Circular dependency"
+                          (#'system/dependency-graph {::cycle-a #{::cycle-b}, ::cycle-b #{::cycle-a}})))))
+
+(deftest ^:synchronized halt-refuses-a-cycle-before-closing-admission-test
+  (testing "a halt given a cycle throws while starts are still admitted"
+    (let [handle (system/mutable-component-handle ::after-cyclic-halt (constantly nil))]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Circular dependency"
+                              (system/halt! {::cycle-a #{::cycle-b}, ::cycle-b #{::cycle-a}})))
+        (is (= :started (system/ensure-started! handle (constantly :started) (constantly nil))))
+        (finally
+          (system/reopen!)
+          (cleanup! [handle]))))))
 
 (deftest ^:synchronized start-ignores-bindings-test
   (testing "start sees roots, not the bindings of the thread that triggered it"
