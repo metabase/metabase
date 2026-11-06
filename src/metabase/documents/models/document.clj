@@ -10,7 +10,6 @@
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
@@ -585,50 +584,11 @@
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
-(defn- ast-model->entity
-  "The database row identified by the smart-link/card-embed `model` (\"card\", \"dataset\", \"table\", or
-  \"dashboard\") and `id`, or nil."
-  [model id]
-  (case model
-    ("card" "dataset") (documents.db/card id)
-    "table"            (documents.db/table id)
-    "dashboard"        (documents.db/dashboard id)))
-
 (def ^:private model->serdes-model
   {"card"      "Card"
    "dataset"   "Card"
    "dashboard" "Dashboard"
    "table"     "Table"})
-
-(def ^:private non-portable-card-embed-attrs
-  "`cardEmbed` attrs holding a raw local database id that serdes cannot rewrite into a portable
-  reference, and so must not travel. `:stored_result_id` points at a `stored_result` row — an
-  ephemeral cached-snapshot record, not a first-class serdes entity — so exporting the integer
-  verbatim would, on import, either dangle or silently resolve to an unrelated instance's
-  snapshot. Dropping it degrades a static (snapshot-backed) embed to a live embed of the Card,
-  which is portable and renders the same query."
-  ["stored_result_id"])
-
-(defn- id->entity-id
-  [{{:strs [model] :or {model "card"}} :attrs type :type :as node}]
-  (let [id-key (if (= prose-mirror/smart-link-type type) "entityId" "id")
-        id (prose-mirror/node-entity-id node)
-        node (cond-> node
-               (= prose-mirror/card-embed-type type)
-               (update :attrs #(apply dissoc % non-portable-card-embed-attrs)))]
-    (if-let [db-model (and id (ast-model->entity model id))]
-      (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
-      (u/prog1 node
-        (log/warnf "entity_id not found for %s at id: %s" model id)))))
-
-(defn- entity-id->id
-  [{:keys [attrs type] :as node}]
-  (let [id-key (if (= prose-mirror/smart-link-type type) "entityId" "id")
-        id (:id (serdes/load-find-local (get attrs id-key)))]
-    (if id
-      (assoc-in node [:attrs id-key] id)
-      (u/prog1 node
-        (log/warn "Model not found at path" (get attrs id-key))))))
 
 (def ^:private local-id-card-embed-attrs
   "`cardEmbed` attrs holding a raw local database id that serdes cannot rewrite into a
@@ -646,50 +606,9 @@
   runs in both directions and the two directions see different shapes: on export `:id` is a raw
   database id, but on import it is a serdes path (a vector of `{:model :id}` maps). A guard that
   expected a positive integer would therefore pass on export and silently skip every node on import,
-  leaving the path unresolved. The id-shape checks belong in the readers — [[id->entity-id]] guards
-  on `prose-mirror/node-entity-id`, and [[entity-id->id]] on what `load-find-local` resolves to."
+  leaving the path unresolved. The id-shape checks belong in the readers, `walk-export-node` and `walk-import-node`."
   [node]
   (contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type node)))
-
-(defn- export-document-content
-  "Transform cardEmbed / smartLink nodes to use entity IDs instead of database IDs"
-  [document serdes-key _]
-  (serdes-key
-   (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast document serdes-rewritable-node? id->entity-id)
-     document)))
-
-(defn- import-document-content
-  "Transform live cardEmbed / smartLink nodes to use database IDs instead of entity IDs.
-
-  Ingested YAML keywordizes every key, attrs included, so the document is normalized first --
-  stringifying attrs keys -- before [[entity-id->id]] reads them; it and the app-DB `:in` transform
-  that runs after this must only ever see string-keyed attrs."
-  [document serdes-key _]
-  (serdes-key
-   (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast (update document :document prose-mirror/normalize-document)
-                              serdes-rewritable-node? entity-id->id)
-     document)))
-
-(defmethod serdes/make-spec "Document"
-  [_model-name _opts]
-  {:schema    ::documents.schema/external-document
-   :copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder]
-   :transform {:document {:export-with-context export-document-content
-                          :import-with-context import-document-content}
-               :collection_id (serdes/fk :model/Collection)
-               :creator_id (serdes/fk :model/User)}
-   :defaults {:archived          false
-              :archived_directly false}})
-
-(defmethod serdes/extract-query "Document"
-  [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
-  (documents.db/documents-for-serdes-reducible collection-set
-                                               filter-column
-                                               filter-ids
-                                               (serdes/extract-order-columns model-name opts)))
 
 (defn- table-path
   "The path a document names the Table with the `[db-name schema table-name]` reference `table-ref` by."
@@ -792,45 +711,6 @@
 
                                        :else
                                        nil))))))
-
-(defmethod serdes/deserialization-dependencies "Document"
-  [{:keys [collection_id] :as document}]
-  (set (concat
-        (document-deps document)
-        (when collection_id #{[{:model "Collection" :id collection_id}]}))))
-
-(defmethod serdes/serialization-dependencies "Document"
-  ;; Embedded cards and smart-links become content references (each must be part of the export); the containing
-  ;; Collection is included too, though a selective export may legitimately omit it.
-  [_model-name {:keys [collection_id content_type] :as document}]
-  (set
-   (concat
-    (when collection_id [[{:model "Collection" :id collection_id}]])
-    (when (= content_type prose-mirror/prose-mirror-content-type)
-      (concat
-       (for [embedded-card-id (prose-mirror/card-ids document)]
-         [{:model "Card" :id embedded-card-id}])
-       (for [{{model "model"} :attrs :as node}
-             (prose-mirror/collect-ast document
-                                       #(when (= prose-mirror/smart-link-type (:type %)) %))
-             :let  [link-id (prose-mirror/node-entity-id node)]
-             :when (and link-id (contains? model->serdes-model model))]
-         [{:model (model->serdes-model model) :id link-id}]))))))
-
-(defmethod serdes/descendants "Document"
-  [_model-name id _opts]
-  (when-let [document (documents.db/document id)]
-    (when (= prose-mirror/prose-mirror-content-type (:content_type document))
-      (merge
-       (into {}
-             (for [embedded-card-id (prose-mirror/card-ids document)]
-               {["Card" embedded-card-id] {"Document" id}}))
-       (into {}
-             (for [{{model "model"} :attrs :as node} (prose-mirror/collect-ast document
-                                                                               #(when (= prose-mirror/smart-link-type (:type %)) %))
-                   :let  [link-id (prose-mirror/node-entity-id node)]
-                   :when (and link-id (contains? model->serdes-model model))]
-               {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))

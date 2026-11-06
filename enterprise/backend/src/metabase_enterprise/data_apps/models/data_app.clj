@@ -7,7 +7,6 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -169,61 +168,6 @@
   "The `content` of a bundle file as the bytes the app is served."
   ^bytes [^String content]
   (.getBytes content StandardCharsets/UTF_8))
-
-(defn- ingested-bundle-path
-  "The normalized bundle path of the ingested data app `ingested`."
-  [ingested]
-  (lib/normalize ::data-apps.schema/bundle-path (:path ingested)))
-
-(defmethod serdes/make-spec "DataApp"
-  [_model-name _opts]
-  {:schema    ::data-apps.schema/external-data-app
-   :copy      [:entity_id :description :version :allowed_hosts]
-   :skip      [;; admin-owned state of this instance
-               :enabled
-               ;; set by the import itself
-               :bundle_hash]
-   :transform {;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
-               :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
-               :name         {:as :slug :export identity :import identity}
-               :display_name {:as :name :export identity :import identity}
-               :bundle_path  {:as :path :export identity :import identity}
-               :bundle       {:as                  :serdes/resources
-                              :export-with-context (fn [app _k bundle]
-                                                     (if bundle
-                                                       {(:bundle_path app) (bundle->file bundle)}
-                                                       ::serdes/skip))
-                              :import-with-context (fn [ingested _k files]
-                                                     (let [path (ingested-bundle-path ingested)]
-                                                       (file->bundle
-                                                        (or (get files path)
-                                                            (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
-                                                                            {:status-code 400}))))))}}
-   :defaults  {:description nil :allowed_hosts []}})
-
-(defmethod serdes/extract-query "DataApp"
-  [model-name {:keys [filter-column filter-ids] :as opts}]
-  (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
-                                                 (serdes/extract-order-columns model-name opts)))
-
-(defmethod serdes/deserialization-dependencies "DataApp" [{:keys [collection resource_collection_id]}]
-  ;; The resource collection the manifest names loads first, so the app links to it as it lands. A manifest names it
-  ;; as `collection`; serialization's own checks ask by the column.
-  (when-let [collection-entity-id (or collection resource_collection_id)]
-    [[{:model "Collection" :id collection-entity-id}]]))
-
-(defmethod serdes/descendants "DataApp" [_model-name id _opts]
-  ;; An app's resource collection, and through it the copies it holds, travel with the app.
-  (when-let [collection-id (data-apps.db/resource-collection-id id)]
-    {["Collection" collection-id] {"DataApp" id}}))
-
-(defmethod serdes/storage-path "DataApp" [app _ctx]
-  [{:label data-app.config/apps-dir}
-   {:label (:slug app) :key (:entity_id app) :style :slug}
-   {:label "data_app"}])
-
-(defmethod serdes/resource-paths "DataApp" [ingested]
-  [(ingested-bundle-path ingested)])
 
 (defn- entity-bundle-path
   "The normalized bundle path of `entity`, a data app entity."

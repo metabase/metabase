@@ -7,9 +7,9 @@
    [metabase.app-db.core :as mdb]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.serialization :as serdes]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.serialization.core :as serialization]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -156,13 +156,6 @@
   "The entity ids among `entity-ids` that name an existing Action."
   [entity-ids :- [:set :string]]
   (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in entity-ids]))
-
-(mu/defn dashcard-serdes-columns
-  "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
-  `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
-             :dashboard_id dashboard-id))
 
 (mu/defn dashcard-series-columns
   "The id, Card id, and DashboardCard id of the DashboardCardSeries of the DashboardCards with `dashcard-ids`."
@@ -351,7 +344,7 @@
   "Return a honeysql query that is used to fetch info for a linkcard."
   [model id-or-ids]
   ^:allow-subquery {:select (select-clause-for-link-card-model model)
-                    :from   (t2/table-name (serdes/link-card-model->toucan-model model))
+                    :from   (t2/table-name (serialization/link-card-model->toucan-model model))
                     :where  (if (coll? id-or-ids)
                               [:in :id (mapv ensure-integer-link-card-id id-or-ids)]
                               [:= :id (ensure-integer-link-card-id id-or-ids)])})
@@ -361,7 +354,7 @@
   [[link-card-info-rows]], or nil."
   [model :- :string
    id    :- [:or :int :string]]
-  (t2/select-one (serdes/link-card-model->toucan-model model)
+  (t2/select-one (serialization/link-card-model->toucan-model model)
                  (h2x/assert-map-or-nil! (link-card-info-query-for-model model id))))
 
 (defn- link-card-info-query

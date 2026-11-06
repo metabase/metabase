@@ -38,8 +38,8 @@
                    :model/Card       _                 {:collection_id synced-id :type :model :archived true}
                    :model/Card       _                 {:collection_id archived-id :type :model}
                    :model/Card       _                 {:collection_id local-id :type :question}]
-      (is (=? {:remote-sync-card-count     4
-               :remote-sync-model-count    1
+      (is (=? {:remote-sync-card-count     3
+               :remote-sync-model-count    0
                :remote-sync-question-count 2
                :remote-sync-metric-count   1}
               (stats/remote-sync-stats))))))
