@@ -76,3 +76,10 @@
               (format "ALTER ROLE %s SET search_path = planted, pg_catalog" (:user login)))
        (is (=? {:status-code 412, :message #(str/includes? % "CREATEROLE")}
                (check! database)))))))
+
+(deftest audit-database-is-refused-test
+  (testing "the workspace methods refuse the audit database, whose pool is Metabase's own app DB"
+    (do-with-login!
+     (fn [_spec database]
+       (is (= {:status-code 400, :message "Workspaces are not supported on the audit database."}
+              (check! (assoc database :is-audit true))))))))

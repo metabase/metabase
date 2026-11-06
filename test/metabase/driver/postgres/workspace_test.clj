@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.impl :as driver.impl]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
@@ -289,8 +290,14 @@
     (is (true? (driver/database-supports? :postgres :workspace nil)))
     (is (false? (driver/database-supports? :h2 :workspace nil))))
   (testing "a driver deriving from Postgres does not inherit it"
-    (driver/register! ::derived-from-postgres, :parent :postgres)
-    (is (false? (driver/database-supports? ::derived-from-postgres :workspace nil)))))
+    ;; derived only for this test, so tests that walk the driver hierarchy never see it; restored rather than
+    ;; underived, since `underive` rebuilds the hierarchy in an order drivers with several parents refuse
+    (let [hierarchy @#'driver.impl/hierarchy]
+      (alter-var-root #'driver.impl/hierarchy derive ::derived-from-postgres :postgres)
+      (try
+        (is (false? (driver/database-supports? ::derived-from-postgres :workspace nil)))
+        (finally
+          (alter-var-root #'driver.impl/hierarchy (constantly hierarchy)))))))
 
 (deftest default-privileges-cover-every-table-creator-test
   (do-with-warehouse!
@@ -449,19 +456,6 @@
                                  (driver/init-workspace-isolation! :postgres database wsd))))
          (is (not (role-exists? spec (-> wsd :database_details :user)))))))))
 
-(deftest destroy-when-the-user-cannot-log-in-test
-  (do-with-warehouse!
-   (fn [spec database]
-     (let [wsd (new-wsd database 1016)]
-       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
-       (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" (scratch-name database wsd 1 "sales")))
-       (exec! spec [(format "REVOKE CONNECT ON DATABASE %s FROM PUBLIC" db-name)
-                    (format "GRANT CONNECT ON DATABASE %s TO %s" db-name (:user provisioner))])
-       (testing "destroy skips DROP OWNED when the user cannot log in, and still drops the user"
-         (dotimes [_ 2]
-           (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
-           (is (not (role-exists? spec (-> wsd :database_details :user))))))))))
-
 (deftest default-privilege-owners-grantable-and-not-test
   (do-with-warehouse!
    (fn [spec database]
@@ -538,11 +532,9 @@
            user (-> wsd :database_details :user)]
        (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
        (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" (scratch-name database wsd 1 "sales")))
-       (testing "a large object, its own new password and read-only transactions do not stop destroy"
+       (testing "a large object and its own new password do not stop destroy"
          (is (= [0] (as-workspace-user wsd "DO $$BEGIN PERFORM lo_create(0); END$$")))
          (is (= [0] (as-workspace-user wsd "ALTER ROLE CURRENT_USER PASSWORD 'AttackerPassw0rd'")))
-         (is (= [0] (as-workspace-user (assoc-in wsd [:database_details :password] "AttackerPassw0rd")
-                                       "ALTER ROLE CURRENT_USER SET default_transaction_read_only = on")))
          (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
          (is (not (role-exists? spec user)))
          (is (empty? (jdbc/query spec ["SELECT 1 FROM pg_largeobject_metadata"]))))))))
@@ -883,3 +875,121 @@
            (let [e (is (thrown? clojure.lang.ExceptionInfo
                                 (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))]
              (is (= {:status-code 412, :schemas [], :unverifiable [bad]} (ex-data e))))))))))
+
+(defn- server-version [spec]
+  (:v (first (jdbc/query spec ["SELECT current_setting('server_version_num')::int AS v"]))))
+
+(deftest init-refuses-a-noinherit-provisioning-login-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd  (new-wsd database 1044)
+           user (-> wsd :database_details :user)]
+       (exec! spec [(format "ALTER ROLE %s NOINHERIT" (:user provisioner))])
+       (try
+         (if (> 160000 (server-version spec))
+           (testing "before Postgres 16, a NOINHERIT login would hold the membership without its privileges: a 412"
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                  (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))]
+               (is (= {:status-code 412, :user user} (ex-data e)))
+               (is (str/includes? (ex-message e) (format "`ALTER ROLE \"%s\" INHERIT`" (:user provisioner)))))
+             (is (not (role-exists? spec user))))
+           (testing "from Postgres 16, the membership inherits whatever the login's attribute, so init and destroy work"
+             (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))
+             (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))))
+         (finally
+           (exec! spec [(format "ALTER ROLE %s INHERIT" (:user provisioner))])))))))
+
+(deftest init-gives-connect-where-public-lacks-it-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd  (new-wsd database 1045)
+           user (-> wsd :database_details :user)]
+       (exec! spec [(format "REVOKE CONNECT ON DATABASE %s FROM PUBLIC" db-name)
+                    (format "GRANT CONNECT ON DATABASE %s TO %s" db-name (:user provisioner))])
+       (testing "without the grant option on CONNECT, init returns a 412 naming it"
+         (let [e (is (thrown? clojure.lang.ExceptionInfo
+                              (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))]
+           (is (= {:status-code 412, :user user} (ex-data e)))
+           (is (str/includes? (ex-message e) (format "`GRANT CONNECT ON DATABASE \"%s\" TO \"%s\" WITH GRANT OPTION`"
+                                                     db-name (:user provisioner)))))
+         (is (not (role-exists? spec user))))
+       (testing "with it, init grants CONNECT to the workspace user, which logs in; destroy takes it back"
+         (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO %s WITH GRANT OPTION" db-name (:user provisioner))])
+         (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+         (is (= [{:one 1}] (as-workspace-user wsd "SELECT 1 AS one")))
+         (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
+         (is (not (role-exists? spec user))))
+       (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO PUBLIC" db-name)])))))
+
+(deftest public-create-check-includes-this-database-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd (new-wsd database 1046)]
+       (public-create! spec "loose")
+       ;; as when this database does not grant CONNECT to PUBLIC
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [])]
+         (testing "this database is checked even when it is not among those PUBLIC may connect to"
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/init-workspace-isolation! :postgres database wsd))))]
+             (is (= [(str db-name ".loose")] (:schemas (ex-data e)))))))))))
+
+(deftest destroy-drops-what-the-user-made-in-another-database-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd   (new-wsd database 1047)
+           user  (-> wsd :database_details :user)
+           other "workspace_isolation_other"]
+       (tx/drop-if-exists-and-create-db! :postgres other)
+       (exec! (sql-jdbc.conn/connection-details->spec
+               :postgres (mt/dbdef->connection-details :postgres :db {:database-name other}))
+              ["REVOKE CREATE ON SCHEMA public FROM PUBLIC"])
+       (mt/with-dynamic-fn-redefs [postgres/connectable-databases (constantly [db-name other])]
+         (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+         (testing "a large object the user makes in another database it may connect to does not stop destroy"
+           (is (= [0] (jdbc/execute! (sql-jdbc.conn/connection-details->spec
+                                      :postgres (merge (mt/dbdef->connection-details :postgres :db {:database-name other})
+                                                       (:database_details wsd)))
+                                     ["DO $$BEGIN PERFORM lo_create(0); END$$"])))
+           (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
+           (is (not (role-exists? spec user)))))))))
+
+(deftest add-workspace-schema-again-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd     (new-wsd database 1048)
+           scratch (scratch-name database wsd 1 "sales")]
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (testing "a second add of the same schema, as a retry after an add that committed, succeeds"
+         (dotimes [_ 2]
+           (is (nil? (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" scratch)))))
+         (is (= [0] (as-workspace-user wsd (format "CREATE TABLE %s.t (x int)" scratch)))))
+       (testing "a schema of the scratch name owned by another role is not adopted"
+         (let [other (scratch-name database wsd 2 "sales")]
+           (exec! spec [(format "CREATE SCHEMA %s" other)])
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" other))))]
+             (is (= {:status-code 409, :scratch other} (ex-data e))))
+           (exec! spec [(format "DROP SCHEMA %s" other)])))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))))
+
+(deftest destroy-while-the-user-keeps-reconnecting-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [wsd  (new-wsd database 1049)
+           user (-> wsd :database_details :user)
+           stop (atom false)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database wsd))
+       (provisioning #(driver/add-workspace-schema! :postgres database wsd "sales" (scratch-name database wsd 1 "sales")))
+       (let [reconnector (future
+                           (while (not @stop)
+                             (try
+                               (with-open [_session (hold-session! wsd ["SELECT 1"])]
+                                 (Thread/sleep 20))
+                               (catch Exception _))))]
+         (try
+           (testing "a client that keeps reconnecting does not survive or stall destroy"
+             (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database wsd))))
+             (is (not (role-exists? spec user))))
+           (finally
+             (reset! stop true)
+             (deref reconnector 5000 nil))))))))

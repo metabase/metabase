@@ -2259,9 +2259,10 @@
 
 (defmulti init-workspace-isolation!
   "Create the workspace user for the `wsd`'s `:isolation_id`, with the password in its `:database_details`, and make
-  the provisioning login a member of it, so teardown can end its sessions and drop what it owns. A precondition
-  refuses a cluster where any database the user could connect to has a schema granting CREATE to PUBLIC: the
-  workspace user could write there.
+  the provisioning login a member of it, so teardown can end its sessions and drop what it owns; a provisioning login
+  that does not inherit privileges is refused. The user gets CONNECT on this database where PUBLIC lacks it. A
+  precondition refuses a cluster where this database, or any other the user could connect to, has a schema granting
+  CREATE to PUBLIC: the workspace user could write there.
 
   When a user of that name already exists, throws `ex-info` with `{:status-code 409, :workspace/cleanup? false}`
   and changes nothing. That user may belong to another workspace, so the caller must not run
@@ -2292,7 +2293,7 @@
 (defmulti destroy-workspace-isolation!
   "Drop every scratch namespace of `wsd`, revoke every grant left to the workspace user, and drop the user. Idempotent.
   It needs nothing from the workspace user or its stored password, and also drops what the user created outside its
-  scratch namespaces in this database. It first ends the user's sessions and revokes its grants; while a session stays
+  scratch namespaces, in this database and in the others it may connect to. It first ends the user's sessions and revokes its grants; while a session stays
   open, or while the user owns objects elsewhere, it throws a 409 and leaves the user unable to log in."
   {:added "0.66.0" :arglists '([driver database wsd])}
   dispatch-on-initialized-driver

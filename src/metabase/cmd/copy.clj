@@ -423,9 +423,7 @@
     :model/ModelIndexValue
     :model/OsiAiContext
     ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
-    :model/TransformRunCancelation
-    ;; `workspace_provisioning_connection` uses its `database_id` FK as its primary key
-    :model/WorkspaceProvisioningConnection})
+    :model/TransformRunCancelation})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

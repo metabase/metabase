@@ -7,13 +7,15 @@
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.status :as ws.status]
+   [metabase-enterprise.workspaces.workspace :as ws.workspace]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [next.jdbc :as next.jdbc]))
+   [next.jdbc :as next.jdbc]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,8 +50,16 @@
         (exec! spec (format "DROP OWNED BY %s" (:user login-weak)) (format "DROP ROLE %s" (:user login-weak))))
       (exec! spec (format "CREATE ROLE %s LOGIN PASSWORD '%s'" (:user login-weak) (:password login-weak)))
       (mt/with-premium-features #{:workspaces}
-        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details (superuser-details)}]
-          (f spec db-id))))))
+        ;; a plain insert rather than mt/with-temp, which binds a connection that a `future` (and a test request
+        ;; handled on this thread) would share, so racing requests would run in one transaction
+        (let [db-id (t2/insert-returning-pk! :model/Database {:name    (mt/random-name)
+                                                              :engine  :postgres
+                                                              :details (superuser-details)})]
+          (try
+            (f spec db-id)
+            (finally
+              (t2/delete! :model/Workspace :id [:in (t2/select-fn-vec :workspace_id :model/WorkspaceDatabase :database_id db-id)])
+              (t2/delete! :model/Database :id db-id))))))))
 
 (defn- url [db-id] (format "ee/workspace-manager/database/%d/provisioning-connection" db-id))
 
@@ -84,6 +94,24 @@
       (is (= {:message "Workspaces are not supported on h2 databases.", :error-code "workspaces_unsupported"}
              (mt/user-http-request :crowberto :put 400 (url (mt/id)) {:details {:user "x"}})))
       (is (nil? (ws.db/provisioning-connection (mt/id)))))))
+
+(deftest non-warehouse-databases-test
+  (testing "the audit, sample, attached-warehouse and routing-destination databases are refused before anything else"
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-temp [:model/Database {router-id :id} {:engine :postgres, :details {}}]
+        (doseq [[kind flags] {"audit"       {:is_audit true}
+                              "sample"      {:is_sample true}
+                              "attached"    {:is_attached_dwh true}
+                              "destination" {:router_database_id router-id}}]
+          (testing kind
+            (mt/with-temp [:model/Database {db-id :id} (merge {:engine :postgres, :details {}} flags)]
+              (doseq [[method body] [[:get nil] [:put {:details {:user "x"}}] [:delete nil]]]
+                (is (= {:message "Workspaces are not supported on this database.", :error-code "workspaces_unsupported"}
+                       (if body
+                         (mt/user-http-request :crowberto method 400 (url db-id) body)
+                         (mt/user-http-request :crowberto method 400 (url db-id))))
+                    (name method)))
+              (is (nil? (ws.db/provisioning-connection db-id))))))))))
 
 (defn- pool-open? [db-id]
   (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool [db-id :workspace-provisioning]))
@@ -123,8 +151,10 @@
      (testing "nothing configured"
        (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
      (testing "a login that cannot connect is a 400 and stores nothing"
+       ;; a role that does not exist, not a wrong password: CI's Postgres trusts local connections and ignores passwords
        (is (=? {:message string?, :error-code "connection_failed"}
-               (mt/user-http-request :crowberto :put 400 (url db-id) {:details (assoc login-a :password "wrong")})))
+               (mt/user-http-request :crowberto :put 400 (url db-id)
+                                     {:details {:user "mb_wsm_test_no_such_role", :password "x"}})))
        (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))
      (testing "a login without CREATEROLE and CREATE on the database is a 412 naming both, and stores nothing"
        (let [message (mt/user-http-request :crowberto :put 412 (url db-id) {:details login-weak})]
@@ -193,5 +223,43 @@
          (is (=? {:error-code "workspaces_exist", :workspaces [{:id ws-id, :name "live"}]}
                  (mt/user-http-request :crowberto :delete 409 (url db-id))))
          (is (true? (:configured (mt/user-http-request :crowberto :get 200 (url db-id)))))))
+     (testing "PUT /api/database/:id cannot move the Database to another login while the provisioning login is stored"
+       (is (=? {:error-code "workspaces_exist"}
+               (mt/user-http-request :crowberto :put 409 (format "database/%d" db-id)
+                                     {:details (merge (superuser-details) (select-keys login-b [:user :password]))})))
+       (is (= (:user (superuser-details)) (:user (t2/select-one-fn :details :model/Database :id db-id)))))
      (testing "once the workspace is gone, DELETE works"
        (is (nil? (mt/user-http-request :crowberto :delete 204 (url db-id))))))))
+
+(deftest put-waits-for-a-workspace-being-created-test
+  (testing "a PUT of another login while a workspace database is being created waits for it, then is a 409 naming it"
+    (do-with-warehouse!
+     (fn [_spec db-id]
+       (mt/user-http-request :crowberto :put 204 (url db-id) {:details login-a})
+       (let [ws-id    (ws.db/insert-workspace! "being created" nil)
+             inserted (promise)
+             creator  (future
+                        (t2/with-transaction [_conn]
+                          (ws.workspace/insert-workspace-database! {:workspace_id     ws-id
+                                                                    :database_id      db-id
+                                                                    :isolation_id     (subs (str (random-uuid)) 0 8)
+                                                                    :database_details {}
+                                                                    :status           :provisioning
+                                                                    :lock_token       (ws.status/new-lock-token)})
+                          (deliver inserted true)
+                          (Thread/sleep 2000)))]
+         (try
+           @inserted
+           (is (=? {:error-code "workspaces_exist", :workspaces [{:id ws-id}]}
+                   (mt/user-http-request :crowberto :put 409 (url db-id) {:details login-b})))
+           (is (= (:user login-a) (:user (mt/user-http-request :crowberto :get 200 (url db-id)))))
+           @creator
+           (finally
+             (t2/delete! :model/Workspace :id ws-id))))))))
+
+(deftest put-requires-a-user-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (is (=? {:errors {:user string?}}
+             (mt/user-http-request :crowberto :put 400 (url db-id) {:details {:password "x"}})))
+     (is (= {:configured false} (mt/user-http-request :crowberto :get 200 (url db-id)))))))
