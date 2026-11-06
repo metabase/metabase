@@ -312,7 +312,11 @@
 
 (deftest ^:parallel resolve-metabase-uri-unknown-entity-type-test
   (testing "returns nil for unknown entity types"
-    (is (nil? (links/resolve-metabase-uri "metabase://unknown/123" {} {})))))
+    (is (nil? (links/resolve-metabase-uri "metabase://unknown/123" {} {}))))
+  (testing "an unknown entity type does not open a query from this conversation"
+    (is (nil? (links/resolve-metabase-uri "metabase://collection/q1"
+                                          {"q1" {:database 1 :lib/type :mbql.stage/native}}
+                                          {})))))
 
 (deftest ^:parallel resolve-metabase-uri-non-metabase-uris-test
   (testing "returns nil for non-metabase URIs"

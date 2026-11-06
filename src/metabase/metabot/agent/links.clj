@@ -144,15 +144,6 @@
                                                          :available-queries (keys queries-state)})
         nil))))
 
-(defn- resolve-entity-link
-  "Resolve a metabase://{type}/{id} link to a proper URL."
-  [entity-type entity-id]
-  (if-let [path (get link-type-paths entity-type)]
-    (str path "/" entity-id)
-    (do
-      (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})
-      nil)))
-
 (def ^:private entity-id-pattern
   "Matches the ID of a `metabase://{type}/{id}` link that names an entity, and captures the numeric ID. It takes a
   bare numeric ID, a numeric ID with a frontend slug (lowercase, because that is the output of `slugg`), and a numeric
@@ -176,7 +167,7 @@
     (if (and numeric-id
              (or (= numeric-id entity-id)
                  (not in-conversation?)))
-      (resolve-entity-link entity-type numeric-id)
+      (str (get link-type-paths entity-type) "/" numeric-id)
       (resolve-chart-link entity-id charts-state queries-state))))
 
 (defn- resolve-measure-link
@@ -232,7 +223,9 @@
           "chart"    (resolve-chart-link entity-id charts-state queries-state)
           "measure"  (resolve-measure-link entity-id)
           "segment"  (resolve-segment-link entity-id)
-          (resolve-entity-or-conversation-link entity-type entity-id charts-state queries-state))))))
+          (if (contains? link-type-paths entity-type)
+            (resolve-entity-or-conversation-link entity-type entity-id charts-state queries-state)
+            (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})))))))
 
 ;;; Markdown Link Processing
 
