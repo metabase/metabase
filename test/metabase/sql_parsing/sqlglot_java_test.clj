@@ -60,6 +60,27 @@
                  (protocol/single-stmt-of-type java "postgres" sql "read-only")))))
       (is (= "multiple_statements" (:reason (protocol/transpile-sql java "SELECT 1; SELECT 2" "postgres" "mysql")))))))
 
+(deftest statement-checks-match-graalpy-test
+  (testing "read and write statements get the same checks on both parsers"
+    (let [graal (sql-parsing/parser :sqlglot)
+          java  (sql-parsing/parser :sqlglot-java)]
+      (doseq [[dialect stmt-type sql allowed?]
+              [["postgres" "read"  "SELECT set_config('role', 'none', false)"                         false]
+               ["postgres" "read"  "SELECT query_to_xml('SELECT 1', true, false, '')"                 false]
+               ["postgres" "read"  "SELECT * FROM U&\"t\""                                            false]
+               ["postgres" "write" "UPDATE t SET a = pg_sleep(1)"                                     false]
+               ["postgres" "write" "INSERT INTO t SELECT query_to_xml('SELECT 1', true, false, '')"   false]
+               ["mysql"    "read"  "SELECT 1 /*! , 2 */"                                              false]
+               ["tsql"     "read"  "SELECT 1 EXEC sp_who"                                             false]
+               ["tsql"     "write" "UPDATE t SET a = 1"                                               true]
+               ["tsql"     "write" "DELETE FROM t WHERE a = 1"                                        true]
+               ["postgres" "read"  "SELECT id FROM orders"                                            true]]]
+        (testing (pr-str dialect stmt-type sql)
+          (let [result (protocol/single-stmt-of-type java dialect sql stmt-type)]
+            (is (= allowed? (:allowed_stmt_type? result)))
+            (is (= (protocol/single-stmt-of-type graal dialect sql stmt-type)
+                   result))))))))
+
 (deftest slow-call-times-out-test
   (testing "a call that takes longer than the deadline throws a TimeoutException and interrupts the port's thread"
     (let [interrupted (promise)]

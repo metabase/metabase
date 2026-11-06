@@ -233,13 +233,16 @@
   every dialect, since Postgres reads its escapes and the function checks above never see the name.
 
   A carriage return with no newline after it is refused in every dialect. sqlglot ends a `--` or `#` comment at one,
-  and MySQL does not, so the text after it would be a comment to one and SQL to the other."
-  [sql dialect]
+  and MySQL does not, so the text after it would be a comment to one and SQL to the other.
+
+  The T-SQL statement words are looked for only when `select?` says the statement is a SELECT, since a write statement
+  starts with one."
+  [sql dialect select?]
   (or (when (re-find #"\r(?!\n)" sql)
         ["lone-carriage-return" nil])
       (when (re-find #"(?<![\w\$])[uU]&\"" sql)
         ["unicode-identifier" nil])
-      (when (= dialect "tsql")
+      (when (and (= dialect "tsql") select?)
         (some (fn [[token-type text]]
                 (when-not (#{"STRING" "NATIONAL_STRING" "IDENTIFIER"} token-type)
                   ;; sqlglot keeps a character such as U+200B inside a word, `t<U+200B>EXEC`, where SQL Server may end
@@ -268,6 +271,20 @@
 (def ^:private read-classes [Expressions$Select Expressions$SetOperation])
 (def ^:private write-classes [Expressions$Update Expressions$Insert Expressions$Delete])
 
+(defn- statement-reason
+  "`[reason detail]` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else nil."
+  [stmt sql dialect]
+  (if-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
+                                       stmt)]
+    ["session-function" function]
+    (if (external-table? stmt dialect)
+      ["external-table" nil]
+      (if-let [executor (sql-executing-function stmt)]
+        ["sql-executing-function" executor]
+        (if (dynamic-function-call? stmt)
+          ["dynamic-function-call" nil]
+          (hidden-sql sql dialect (ast/instance-of-any? read-classes (unbracketed stmt))))))))
+
 (defn- not-read-only-reason
   "`[reason detail]` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else nil."
   [stmts sql dialect]
@@ -276,25 +293,15 @@
     (not= 1 (count stmts))                                             ["multiple-statements" nil]
     (not (ast/instance-of-any? read-classes (unbracketed (first stmts)))) ["not-a-select" nil]
     (not (read-only? (first stmts)))                                   ["writes-or-locks" nil]
-    :else
-    (if-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
-                                         (first stmts))]
-      ["session-function" function]
-      (if (external-table? (first stmts) dialect)
-        ["external-table" nil]
-        (if-let [executor (sql-executing-function (first stmts))]
-          ["sql-executing-function" executor]
-          (if (dynamic-function-call? (first stmts))
-            ["dynamic-function-call" nil]
-            (hidden-sql sql dialect)))))))
+    :else                                                              (statement-reason (first stmts) sql dialect)))
 
 (defn single-stmt-of-type
   "Whether `sql` is a single read statement (`\"read\"`, a SELECT), a single read-only SELECT (`\"read-only\"`), or a
   single write statement (anything else: INSERT, UPDATE, DELETE), with the statement as regenerated SQL.
 
   `\"read-only\"` also refuses a SELECT holding anything that writes or locks anywhere in its tree, and does not count
-  a statement holding only a comment after the last semicolon. `:reason` (and `:reason_detail`) say why a query is
-  not a read-only SELECT."
+  a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
+  share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds."
   [sql stmt-type dialect]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
@@ -303,7 +310,9 @@
       (let [stmts   (cond->> (vec (ast/parse (split-placeholder-casts sql dialect) dialect))
                       read-only-type? ast/nonempty-statements)
             allowed (if (#{"read" "read-only"} stmt-type) read-classes write-classes)
-            problem (when read-only-type? (not-read-only-reason stmts sql dialect))
+            problem (cond
+                      read-only-type?        (not-read-only-reason stmts sql dialect)
+                      (= 1 (count stmts))    (statement-reason (first stmts) sql dialect))
             [stmt]  stmts]
         (when problem
           (vswap! result assoc :reason (first problem) :reason_detail (second problem)))
