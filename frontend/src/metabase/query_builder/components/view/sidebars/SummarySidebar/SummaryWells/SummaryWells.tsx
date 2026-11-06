@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryField,
@@ -25,6 +26,7 @@ type SummaryWellsProps = {
   query: Lib.Query;
   stageIndex: number;
   sections: SummaryFieldSection[];
+  formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query) => void;
 };
@@ -33,6 +35,7 @@ export function SummaryWells({
   query,
   stageIndex,
   sections,
+  formulaInputs,
   onPick,
   onChange,
 }: SummaryWellsProps) {
@@ -61,6 +64,7 @@ export function SummaryWells({
       <SummaryWell wellId="values" title={t`Summarize by`}>
         <SummaryWellInput
           wellId="values"
+          formulaInput={formulaInputs?.values}
           sections={valueSections}
           hasItems={valueItems.length > 0}
           autoFocus
@@ -87,6 +91,7 @@ export function SummaryWells({
       <SummaryWell wellId="columns" title={t`Group by`}>
         <SummaryWellInput
           wellId="columns"
+          formulaInput={formulaInputs?.columns}
           sections={columnSections}
           hasItems={dimensionItems.length > 0}
           onPick={(field) => onPick("columns", field)}

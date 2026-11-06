@@ -27,6 +27,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
     autoFocus,
     autoCorrect,
     tabIndex,
+    indentWithTab,
     extensions,
     ...rest
   } = props;
@@ -37,6 +38,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
     autoFocus,
     autoCorrect,
     tabIndex,
+    indentWithTab,
   });
 
   const localRef = useRef<ReactCodeMirrorRef>(null);
@@ -50,6 +52,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
       ref={mergedRef}
       {...rest}
       autoFocus={autoFocus}
+      indentWithTab={indentWithTab}
       className={cx(S.editor, className)}
       basicSetup={setup}
       extensions={extendedExtensions}

@@ -11,6 +11,7 @@ import { useLatest } from "react-use";
 import { Box, Combobox, Icon, PillsInput, useCombobox } from "metabase/ui";
 
 import { MatchedLabel } from "../MatchedLabel";
+import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryField,
@@ -34,6 +35,7 @@ type SummaryWellInputProps = {
   children: ReactNode;
   hasItems: boolean;
   autoFocus?: boolean;
+  formulaInput?: SummaryFormulaInput;
   onPick: (field: SummaryField) => void;
   onRemoveLast: () => void;
 };
@@ -44,6 +46,7 @@ export function SummaryWellInput({
   children,
   hasItems,
   autoFocus = false,
+  formulaInput,
   onPick,
   onRemoveLast,
 }: SummaryWellInputProps) {
@@ -70,8 +73,22 @@ export function SummaryWellInput({
     () => filterFieldSections(sections, searchText),
     [sections, searchText],
   );
-  // highlight the best match once the filtered options render, so Enter picks it
   const comboboxRef = useLatest(combobox);
+  useEffect(() => {
+    const input = inputRef.current;
+    if (
+      formulaInput &&
+      !formulaInput.isPending() &&
+      searchText.startsWith("=") &&
+      input &&
+      input === document.activeElement
+    ) {
+      comboboxRef.current.closeDropdown();
+      formulaInput.start(searchText.slice(1), input, () => setSearchText(""));
+    }
+  }, [formulaInput, searchText, comboboxRef]);
+
+  // highlight the best match once the filtered options render, so Enter picks it
   useEffect(() => {
     if (searchText.length > 0) {
       comboboxRef.current.selectFirstOption();
@@ -96,6 +113,19 @@ export function SummaryWellInput({
 
   // the dropdown waits for the first character, so focusing a well doesn't cover the one below
   const handleSearchChange = (text: string) => {
+    if (formulaInput?.isPending()) {
+      setSearchText(text);
+      formulaInput.update(text.startsWith("=") ? text.slice(1) : text);
+      return;
+    }
+    if (formulaInput && text.startsWith("=") && inputRef.current) {
+      setSearchText(text);
+      combobox.closeDropdown();
+      formulaInput.start(text.slice(1), inputRef.current, () =>
+        setSearchText(""),
+      );
+      return;
+    }
     setSearchText(text);
     if (text.trim().length > 0) {
       combobox.openDropdown();
@@ -105,7 +135,12 @@ export function SummaryWellInput({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Backspace" && searchText.length === 0 && hasItems) {
+    if (
+      event.key === "Backspace" &&
+      searchText.length === 0 &&
+      hasItems &&
+      !formulaInput?.isPending()
+    ) {
       event.preventDefault();
       onRemoveLast();
     }

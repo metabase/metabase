@@ -38,6 +38,7 @@ import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import { FormulaBarSlotProvider } from "../../FormulaBar";
 import { ResizableSummaryPanel } from "../../ResizableSummaryPanel";
 import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
@@ -267,7 +268,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       .with({ isShowingQuestionInfoSidebar: true }, () => 0)
       .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
       .otherwise(() => SIDEBAR_SIZES.NORMAL);
-    return (
+    const content = (
       <div className={CS.fullHeight} ref={ref}>
         <Flex
           className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
@@ -353,6 +354,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
         />
       </div>
     );
+    return <FormulaBarSlotProvider>{content}</FormulaBarSlotProvider>;
   },
 );
 
