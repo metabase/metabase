@@ -11,7 +11,6 @@ export function createMockEmailChannelSpec(
     type: "email",
     name: "Email",
     schedules: [],
-    schedule_type: null,
     allows_recipients: true,
     configured: true,
     recipients: ["user", "email"],
@@ -26,7 +25,6 @@ export function createMockSlackChannelSpec(
     type: "slack",
     name: "Slack",
     schedules: [],
-    schedule_type: null,
     allows_recipients: false,
     configured: false,
     fields: [
