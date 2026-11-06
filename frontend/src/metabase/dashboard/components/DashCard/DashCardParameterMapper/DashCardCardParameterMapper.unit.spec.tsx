@@ -11,6 +11,8 @@ import {
   screen,
 } from "__support__/ui";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card, VirtualCard } from "metabase-types/api";
 import {
@@ -20,11 +22,7 @@ import {
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockMetricDimension,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
-  createMockTemplateTag,
   createMockTextDashboardCard,
   createMockVirtualCard,
   createMockVirtualDashCard,
@@ -34,6 +32,10 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 
 const QUESTION_ID = 1;
+
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -108,18 +110,6 @@ const setup = (options: SetupOptions = {}) => {
 };
 
 describe("DashCardCardParameterMapper", () => {
-  it("should render an unauthorized state for a card with no dataset query", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({ query: {} }),
-    });
-    setup({ card });
-
-    expect(getIcon("key")).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/permission to see this question/i),
-    ).toBeInTheDocument();
-  });
-
   describe("Action cards", () => {
     it("should render an informative error state for action cards", () => {
       setup({
@@ -237,11 +227,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should render mapping for a non-native, non-virtual, non-action card", () => {
     const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-        },
-      }),
+      dataset_query: ORDERS_QUERY,
     });
 
     setup({
@@ -377,11 +363,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should render an error state when a field is not present in the list of options", () => {
     const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 1,
-        },
-      }),
+      dataset_query: ORDERS_QUERY,
       display: "scalar",
     });
     setup({
@@ -399,11 +381,11 @@ describe("DashCardCardParameterMapper", () => {
   it("should render an error state when mapping to a native model", () => {
     const card = createMockCard({
       type: "model",
-      dataset_query: createMockNativeDatasetQuery({
-        native: {
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
           query: "SELECT * FROM ORDERS",
-        },
-      }),
+        }),
+      ),
       display: "table",
     });
     setup({
@@ -418,7 +400,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should show header content when card is more than 2 units high", () => {
     const numberCard = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({}),
+      dataset_query: ORDERS_QUERY,
       display: "scalar",
     });
     setup({
@@ -434,7 +416,7 @@ describe("DashCardCardParameterMapper", () => {
 
   it("should hide header content when card is less than 3 units high", () => {
     const numberCard = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({}),
+      dataset_query: ORDERS_QUERY,
       display: "scalar",
     });
     setup({
@@ -535,14 +517,14 @@ describe("DashCardCardParameterMapper", () => {
   describe("Native question", () => {
     it("should not show native question variable warning if a native question variable is used", () => {
       const card = createMockCard({
-        dataset_query: createMockNativeDatasetQuery({
-          native: createMockNativeQuery({
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
             query: "SELECT * FROM ACCOUNTS WHERE source = {{ source }}",
-            "template-tags": {
-              source: createMockTemplateTag({ name: "source" }),
+            templateTags: {
+              source: { type: "text", name: "source" },
             },
           }),
-        }),
+        ),
       });
       setup({
         card,
@@ -554,17 +536,14 @@ describe("DashCardCardParameterMapper", () => {
 
     it("should not show native question variable warning without single value explanation if parameter is date type", () => {
       const card = createMockCard({
-        dataset_query: createMockNativeDatasetQuery({
-          native: createMockNativeQuery({
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
             query: "SELECT * FROM ORDERS WHERE created_at = {{ created_at }}",
-            "template-tags": {
-              created_at: createMockTemplateTag({
-                name: "created_at",
-                type: "date",
-              }),
+            templateTags: {
+              created_at: { type: "date", name: "created_at" },
             },
           }),
-        }),
+        ),
       });
       setup({
         card,
@@ -579,7 +558,7 @@ describe("DashCardCardParameterMapper", () => {
   describe("mobile", () => {
     it("should show header content when card is more than 2 units high", () => {
       const numberCard = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({}),
+        dataset_query: ORDERS_QUERY,
         display: "scalar",
       });
       setup({

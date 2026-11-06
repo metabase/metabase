@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
   createMetadataProvider,
@@ -11,9 +12,7 @@ import {
   createMockCard,
   createMockDashboardCard,
   createMockField,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
   createMockVirtualCard,
 } from "metabase-types/api/mocks";
 import {
@@ -103,12 +102,8 @@ describe("parameters/utils/mapping-options", () => {
     describe("native model", () => {
       it("should not return mapping options for native models", () => {
         const card = createMockCard({
+          ...native({ query: "SELECT * FROM ORDERS" }),
           type: "model",
-          dataset_query: createMockNativeDatasetQuery({
-            native: {
-              query: "SELECT * FROM ORDERS",
-            },
-          }),
         });
         const metadata = createMockMetadata({
           databases: [createSampleDatabase()],
@@ -729,13 +724,7 @@ describe("getMappingOptionByTarget", () => {
   });
 
   describe("structured dashcard", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 2,
-        },
-      }),
-    });
+    const card = structured(DEFAULT_TEST_QUERY);
     const database = createSampleDatabase();
     const metadata = createMockMetadata({
       questions: [card],
@@ -858,13 +847,7 @@ describe("getMappingOptionByTarget", () => {
     });
 
     it("should return undefined if option is not found", () => {
-      const card = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({
-          query: {
-            "source-table": 2,
-          },
-        }),
-      });
+      const card = structured(DEFAULT_TEST_QUERY);
       const database = createSampleDatabase();
       const metadata = createMockMetadata({
         questions: [card],

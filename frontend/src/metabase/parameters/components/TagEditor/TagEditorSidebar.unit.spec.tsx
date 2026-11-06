@@ -13,11 +13,12 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { TableId, TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
-  createMockNativeDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
@@ -41,10 +42,12 @@ interface SetupOpts {
 const setup = ({ query, templateTags = {}, loadedTableIds }: SetupOpts) => {
   const database = createSampleDatabase();
   const card = createMockCard({
-    dataset_query: createMockNativeDatasetQuery({
-      database: database.id,
-      native: { query, "template-tags": templateTags },
-    }),
+    dataset_query: Lib.toJsQuery(
+      Lib.withTemplateTags(
+        Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query }),
+        templateTags,
+      ),
+    ),
   });
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [database] }),
