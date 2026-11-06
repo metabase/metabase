@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -13,7 +14,6 @@ import {
   setupParameterValuesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
-  setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
@@ -36,12 +36,12 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Card, CollectionItem, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
   createMockField,
   createMockParameterValues,
-  createMockTable,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -1179,11 +1179,9 @@ const setup = async ({
     });
     setupCardsEndpoints(cards);
     cards.forEach((card) =>
-      setupTableQueryMetadataEndpoint(
-        createMockTable({
-          id: `card__${card.id}`,
-          fields: card.result_metadata ?? [],
-        }),
+      setupCardQueryMetadataEndpoint(
+        card,
+        createMockCardQueryMetadata({ databases: [createMockDatabase()] }),
       ),
     );
   } else {
