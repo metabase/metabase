@@ -90,22 +90,42 @@
   "Set `:collection_id` and `:collection_position` in `pulse-data` to nil when it is a dashboard subscription.
 
   `before-insert` takes `:collection_id` from the dashboard only when the request sends none. Without this step, the
-  permission check would demand write access to the request's collection. A user who has it would get the
-  subscription saved there, and `maybe-reconcile-collection-position!` would shift the pinned items in it."
+  permission check would demand write access to the collection in the request, even when it is the collection of the
+  dashboard. A user with view access only would get a 403. `check-dashboard-subscription-collection-keys!` rejects
+  any other collection."
   [{:keys [dashboard_id] :as pulse-data}]
   (cond-> pulse-data
     dashboard_id (assoc :collection_id nil :collection_position nil)))
 
+(defn- check-dashboard-subscription-collection-keys!
+  "Throw a 400 when the request is a dashboard subscription with a `:collection_position`, or with a non-nil
+  `:collection_id` that is not the collection of its dashboard."
+  [{:keys [dashboard_id collection_id collection_position]}]
+  (when dashboard_id
+    (api/check-400 (nil? collection_position)
+                   (tru "A dashboard subscription cannot have a collection position."))
+    (when (some? collection_id)
+      (let [dashboard-collection-id (pulse.db/dashboard-collection-id dashboard_id)]
+        (api/check-400 (= collection_id dashboard-collection-id)
+                       (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                            dashboard-collection-id
+                            collection_id))))))
+
 (defn create-pulse-with-perm-checks!
   "Create a new Pulse with permissions checks.
 
-  A dashboard subscription ignores `:collection_id` and `:collection_position` in `pulse-data`. It goes in the
-  collection of its dashboard, and it has no pin position. View access to the dashboard is enough to subscribe to it:
+  A dashboard subscription goes in the collection of its dashboard, and it has no pin position. After the permission
+  checks, throw a 400 when `requested` has a `:collection_position`, or a non-nil `:collection_id` that is not the
+  dashboard's. View access to the dashboard is enough to subscribe to it:
   https://github.com/metabase/metabase/pull/17722"
-  [cards channels pulse-data]
+  [cards channels requested]
   (perms/check-has-application-permission :subscription false)
-  (let [pulse-data (without-collection-for-dashboard-subscription pulse-data)]
+  (let [pulse-data (without-collection-for-dashboard-subscription requested)]
     (api/create-check :model/Pulse (assoc pulse-data :cards cards))
+    ;; Check after the permission checks, so the error tells a caller nothing about a dashboard they cannot read.
+    ;; Check `requested`, not `pulse-data`: for a dashboard subscription, `pulse-data` has both collection keys set
+    ;; to nil.
+    (check-dashboard-subscription-collection-keys! requested)
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
@@ -274,7 +294,7 @@
 
   A dashboard subscription stays in the collection of its dashboard, and it has no pin position. Throw a 400 when
   `pulse-updates` has a different `:collection_id` or `:collection_position`. Values equal to the stored ones are
-  accepted and ignored. Create ignores both keys."
+  accepted and ignored."
   [id {:keys [cards] :as pulse-updates}]
   ;; Validate `:cards` up front so a bad card ref is a clean 400, not a 500. This fn is called
   ;; directly (e.g. from the agent API), not only through the PUT endpoint whose schema already

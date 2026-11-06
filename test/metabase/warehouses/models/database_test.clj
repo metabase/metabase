@@ -11,7 +11,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
@@ -19,6 +18,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -901,18 +901,19 @@
              (t2/select-one-fn :engine :model/Database :id db-id))))))
 
 (deftest ^:parallel serdes-extract-is-stub-test
-  (testing "serdes/extract-one never exports :is_stub"
+  (testing "serialization never exports :is_stub"
     (mt/with-temp [:model/Database stub     {:engine :h2 :name "stub" :is_stub true}
                    :model/Database non-stub {:engine :h2 :name "non-stub"}]
-      (is (not (contains? (serdes/extract-one "Database" nil stub) :is_stub)))
-      (is (not (contains? (serdes/extract-one "Database" nil non-stub) :is_stub))))))
+      (doseq [exported (serialization/export-batch :model/Database [stub non-stub])]
+        (is (not (contains? exported :is_stub)))))))
 
 (deftest ^:parallel serdes-is-sample-not-trusted-test
-  (testing "serdes never trusts an archive's :is_sample (SEC-1175): the real Sample Database is excluded from export,
-            so an incoming is_sample is forged. It is dropped from :copy and imported as false."
-    (let [spec (serdes/make-spec "Database" nil)]
-      (is (not (contains? (set (:copy spec)) :is_sample)))
-      (is (false? ((get-in spec [:transform :is_sample :import]) true))))))
+  (testing "serialization never trusts archive's :is_sample (SEC-1175): real Sample Database is excluded from export,
+            so incoming is_sample is forged. It is not exported and imported as false."
+    (mt/with-temp [:model/Database db {:engine :h2 :name "sample-ish" :is_sample true}]
+      (let [exported (first (serialization/export-batch :model/Database [db]))]
+        (is (not (contains? exported :is_sample)))
+        (is (false? (:is_sample (first (serialization/import :model/Database [(assoc exported :is_sample true)])))))))))
 
 (deftest assert-sqlite-not-hosted-test
   (testing "serdes import refuses a SQLite Database on a hosted instance (SEC-1175); self-hosted and non-SQLite are fine"

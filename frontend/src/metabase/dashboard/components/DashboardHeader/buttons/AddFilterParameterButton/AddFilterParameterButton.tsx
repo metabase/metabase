@@ -18,18 +18,15 @@ export const AddFilterParameterButton = () => {
     addParameter({ options });
   };
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-add-filter",
-        perform: () =>
-          isAddParameterPopoverOpen
-            ? hideAddParameterPopover()
-            : showAddParameterPopover(),
-      },
-    ],
-    [isAddParameterPopoverOpen],
-  );
+  useRegisterShortcut([
+    {
+      id: "dashboard-add-filter",
+      perform: () =>
+        isAddParameterPopoverOpen
+          ? hideAddParameterPopover()
+          : showAddParameterPopover(),
+    },
+  ]);
 
   return (
     <AddFilterParameterMenu

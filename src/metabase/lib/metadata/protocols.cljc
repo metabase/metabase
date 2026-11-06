@@ -157,7 +157,8 @@
 (mr/def ::metadata-provider
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
   [:fn
-   {:error/message "Valid MetadataProvider"}
+   {:error/message "Valid MetadataProvider"
+    :json-schema   {:not {}}}
    #'metadata-provider?])
 
 (defn metadata-providerable?

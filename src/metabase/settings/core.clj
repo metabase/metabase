@@ -98,6 +98,7 @@
   env-var-name
   env-var-source
   env-var-value
+  exportable-settings
   export?
   get
   get-raw-value

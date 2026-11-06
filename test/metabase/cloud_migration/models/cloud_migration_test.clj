@@ -23,6 +23,13 @@
                  cloud-migration/migrate! identity]
      ~@body))
 
+(defn- start-migration!
+  "Starts a cloud migration through the API, with external calls mocked, after ending the ones other tests left
+  unfinished, since the API refuses to start one while another is ongoing."
+  []
+  (t2/update! :model/CloudMigration {:state [:not-in cloud-migration/terminal-states]} {:state :cancelled})
+  (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration")))
+
 (defn- fake-upload-route-handler
   [migration]
   {(:upload_url migration)
@@ -44,7 +51,7 @@
   (is (= 99 (cloud-migration/abs-progress 100 51 99))))
 
 (deftest migrate!-test
-  (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))
+  (let [migration         (start-migration!)
         progress-calls    (atom {:setup  []
                                  :dump   []
                                  :upload []
@@ -73,7 +80,7 @@
               "one progress call during other stages"))))))
 
 (deftest migrate!-test-managed-scheduler
-  (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
+  (let [migration         (start-migration!)]
     (mt/with-dynamic-fn-redefs [cloud-migration/cluster?     (constantly false)]
       (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
         (testing "works when quartz scheduler is running"
@@ -90,7 +97,7 @@
 
 (deftest migrate!-test-2
   (testing "exits early on terminal state"
-    (let [migration (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
+    (let [migration (start-migration!)]
       (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
       (try
         (#'cloud-migration/migrate! migration)

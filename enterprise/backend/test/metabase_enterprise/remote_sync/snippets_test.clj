@@ -12,17 +12,11 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase-enterprise.serialization.test-util :as ts]
-   [metabase-enterprise.serialization.v2.extract :as extract]
-   [metabase-enterprise.serialization.v2.ingest :as ingest]
-   [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
-   [metabase.models.serialization :as serdes]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -41,9 +35,9 @@
       (t2/delete! :model/RemoteSyncObject))))
 
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections (fn [f]
-                                                   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                                                     (clean-remote-sync-state f))))
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (clean-remote-sync-state f))))
 
 ;;; ------------------------------------------- Event Handler Tests -------------------------------------------
 
@@ -443,12 +437,10 @@ is_sample: false
                 "sanity check: the snippet has two template tags")
             ;; Real export to YAML on disk, then real import back. Ingest keywordizes the tag-name keys,
             ;; which is what used to defeat template-tag id preservation in the load hook.
-            (storage/store! (serdes/with-cache
-                              (into [] (extract/extract {:targets       [["NativeQuerySnippet" snippet-eid]]
-                                                         :no-settings   true
-                                                         :no-data-model true})))
-                            (storage.files/file-writer dump-dir))
-            (serdes/with-cache
-              (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+            (ee.serialization/store! (into [] (ee.serialization/extract {:targets       [[:model/NativeQuerySnippet snippet-eid]]
+                                                                         :no-settings   true
+                                                                         :no-data-model true}))
+                                     (ee.serialization/file-writer dump-dir))
+            (ee.serialization/load-metabase! (ee.serialization/ingest-yaml dump-dir))
             (is (= before (tag-ids))
                 "template-tag ids should be identical after an export/import round-trip")))))))

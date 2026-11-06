@@ -1,0 +1,49 @@
+name: Static viz
+
+# Build static-viz bundle once (for OSS and EE) and upload it as a run artifact, so the backend test jobs download it
+# instead of each building it individually. The artifacts can be obtained with ./.github/actions/download-static-viz.
+#
+# The artifact holds resources/frontend_client/app/dist and the .github/static-viz-sources.yaml the
+# build generates, at their workspace paths.
+
+on:
+  workflow_call:
+    inputs:
+      editions:
+        description: JSON array of the editions to build.
+        required: false
+        type: string
+        default: '["ee", "oss"]'
+
+jobs:
+  build:
+    name: Build static viz (${{ matrix.edition }})
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        edition: ${{ fromJSON(inputs.editions) }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      # Needed for shadow-cljs.
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build static-viz frontend
+        run: bun run build-static-viz
+        env:
+          MB_EDITION: ${{ matrix.edition }}
+      - name: Upload static-viz bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: static-viz-${{ matrix.edition }}
+          # Two paths, so the artifact is rooted at their common ancestor - the workspace - and downloading
+          # it to `.` puts both back where the build left them.
+          path: |
+            resources/frontend_client/app/dist
+            .github/static-viz-sources.yaml
+          # Force `.github` to be included
+          include-hidden-files: true
+          if-no-files-found: error
+          overwrite: true
