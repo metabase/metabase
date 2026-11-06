@@ -758,3 +758,12 @@
   (testing "keeps Lib columns unchanged"
     (let [column (meta/field-metadata :orders :id)]
       (is (= column (lib.js/legacy-column->type-info column))))))
+
+(deftest ^:parallel xray-cell-query-test
+  (testing "returns last stage filter as legacy clause"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 2)))]
+      (is (=? ["=" ["field" (meta/id :venues :price) any?] 2]
+              (js->clj (lib.js/xray-cell-query query))))))
+  (testing "returns nil without filter"
+    (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))

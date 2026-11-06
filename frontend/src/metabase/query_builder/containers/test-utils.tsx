@@ -39,7 +39,7 @@ import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   Database,
@@ -55,8 +55,6 @@ import {
   createMockDataset,
   createMockFieldValues,
   createMockModelIndex,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockSettings,
   createMockUnsavedCard,
   createMockUser,
@@ -77,6 +75,9 @@ export const TEST_CARD = createMockCard({
   id: 1,
   name: "Test card",
   type: "model",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
 });
 
 export const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
@@ -142,23 +143,17 @@ export const TEST_MODEL_CARD_SLUG = [
   TEST_MODEL_CARD.name.toLowerCase(),
 ].join("-");
 
+const TEST_NATIVE_QUERY = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+  query: "SELECT 1",
+});
+
 export const TEST_NATIVE_CARD = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: createMockNativeQuery({
-      query: "SELECT 1",
-    }),
-  }),
+  query_type: "native",
+  dataset_query: Lib.toJsQuery(TEST_NATIVE_QUERY),
 });
 
 export const TEST_NATIVE_CARD_DATASET = createMockDataset({
-  json_query: {
-    database: SAMPLE_DB_ID,
-    type: "native",
-    native: {
-      query: "SELECT 1",
-    },
-  },
+  json_query: Lib.toLegacyQuery(TEST_NATIVE_QUERY),
   database_id: SAMPLE_DB_ID,
   status: "completed",
   row_count: 1,
@@ -166,9 +161,7 @@ export const TEST_NATIVE_CARD_DATASET = createMockDataset({
 });
 
 export const TEST_UNSAVED_NATIVE_CARD = createMockUnsavedCard({
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-  }),
+  dataset_query: Lib.toJsQuery(TEST_NATIVE_QUERY),
 });
 
 export const TEST_STRUCTURED_CARD = createMockCard({

@@ -20,7 +20,6 @@ import {
   ORDERS_ID,
   createOrdersTable,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { SummarizeSidebar } from "./SummarizeSidebar";
@@ -504,7 +503,8 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should offer all temporal buckets for a column of a saved question source (metabase#10441, metabase#11439)", async () => {
-    const card = createSavedStructuredCard({
+    const card = createMockCard({
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       id: 2,
       name: "11439",
       result_metadata: (createOrdersTable().fields ?? []).map((field) => ({

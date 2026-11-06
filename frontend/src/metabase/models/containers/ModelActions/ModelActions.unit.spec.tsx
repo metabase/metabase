@@ -45,12 +45,9 @@ import {
   createMockField,
   createMockImplicitCUDActions,
   createMockImplicitQueryAction,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createSavedStructuredCard } from "metabase-types/api/mocks/presets";
 
 import ActionCreatorModal from "../ActionCreatorModal";
 
@@ -171,9 +168,9 @@ function createMockQueryAction(
   return _createMockQueryAction({
     can_write: true,
     ...opts,
-    dataset_query: createMockNativeDatasetQuery({
-      native: createMockNativeQuery({ query: TEST_QUERY }),
-    }),
+    dataset_query: Lib.toLegacyQuery(
+      Lib.createTestNativeQuery(TEST_PROVIDER, { query: TEST_QUERY }),
+    ),
   });
 }
 
@@ -797,7 +794,7 @@ describe("ModelActions", () => {
   describe("navigation", () => {
     it("redirects to query builder when trying to open a question", async () => {
       const { model: question, router } = await setup({
-        model: createSavedStructuredCard(),
+        model: createStructuredModelCard({ type: "question" }),
       });
 
       expect(router?.location.pathname).toBe(Urls.question(question));

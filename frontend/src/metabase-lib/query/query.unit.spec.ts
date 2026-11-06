@@ -1,6 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery } from "metabase-types/api";
 import {
   createMockCard,
   createMockMeasure,
@@ -23,14 +22,6 @@ import {
 const METRIC_ID = 42;
 const QUESTION_ID = 43;
 
-const DEFAULT_QUERY: DatasetQuery = {
-  database: SAMPLE_DATABASE.id,
-  type: "query",
-  query: {
-    "source-table": ORDERS_ID,
-  },
-};
-
 describe("fromJsQuery", () => {
   // this is a very important optimization that the FE heavily relies upon
   it("should return the same object for the same database id, query, and metadata", () => {
@@ -38,8 +29,9 @@ describe("fromJsQuery", () => {
       SAMPLE_DATABASE.id,
       SAMPLE_METADATA,
     );
-    const query1 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
-    const query2 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
+    const jsQuery = Lib.createTestJsQuery(metadataProvider, DEFAULT_TEST_QUERY);
+    const query1 = Lib.fromJsQuery(metadataProvider, jsQuery);
+    const query2 = Lib.fromJsQuery(metadataProvider, jsQuery);
     expect(query1 === query2).toBe(true);
   });
 });
@@ -47,7 +39,10 @@ describe("fromJsQuery", () => {
 describe("toLegacyQuery", () => {
   it("should serialize a query", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-    expect(Lib.toLegacyQuery(query)).toEqual(DEFAULT_QUERY);
+    const legacyQuery = Lib.toLegacyQuery(query);
+    const restoredQuery = Lib.fromJsQuery(SAMPLE_PROVIDER, legacyQuery);
+    expect(legacyQuery.database).toBe(SAMPLE_DATABASE.id);
+    expect(Lib.primarySourceTableId(restoredQuery)).toBe(ORDERS_ID);
   });
 });
 

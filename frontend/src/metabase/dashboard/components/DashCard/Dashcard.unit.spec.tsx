@@ -58,7 +58,6 @@ import {
   createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
-  createMockNativeCard,
   createMockNumericColumn,
   createMockParameter,
   createMockPlaceholderDashboardCard,
@@ -82,6 +81,13 @@ registerDashboardVisualizations();
 
 const ORDERS_QUERY = Lib.toJsQuery(
   Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
+
+const NATIVE_QUERY = Lib.toJsQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+    query: "SELECT * FROM ORDERS WHERE STATE = {{state}}",
+    templateTags: { state: { type: "text" } },
+  }),
 );
 
 const testDashboard = createMockDashboard();
@@ -1216,8 +1222,10 @@ describe("DashCard", () => {
         slug: "state",
       });
 
-      const nativeCard = createMockNativeCard({
+      const nativeCard = createMockCard({
         name: "SQL Card",
+        query_type: "native",
+        dataset_query: NATIVE_QUERY,
         can_write: false,
       });
 
@@ -1275,8 +1283,10 @@ describe("DashCard", () => {
         slug: "state",
       });
 
-      const nativeCard = createMockNativeCard({
+      const nativeCard = createMockCard({
         name: "SQL Card",
+        query_type: "native",
+        dataset_query: NATIVE_QUERY,
         can_write: false,
       });
 

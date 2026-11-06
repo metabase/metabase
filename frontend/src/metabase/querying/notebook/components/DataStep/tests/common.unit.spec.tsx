@@ -19,6 +19,7 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type { CardType, IconName } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCardQueryMetadata,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
@@ -27,7 +28,6 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import {
@@ -158,9 +158,10 @@ describe("DataStep", () => {
     { type: "question", icon: "table2" },
     { type: "model", icon: "model" },
   ])("should render with a selected card", async ({ type, icon }) => {
-    const card = createSavedStructuredCard({
+    const card = createMockCard({
       id: 1,
       type,
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     });
     const metadata = createMockMetadata({
       databases: [createSampleDatabase()],
@@ -188,7 +189,11 @@ describe("DataStep", () => {
   });
 
   it("should change to card", async () => {
-    const card = createSavedStructuredCard({ id: 1, name: "Orders question" });
+    const card = createMockCard({
+      id: 1,
+      name: "Orders question",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    });
     setupCardEndpoints(card);
     setupCardQueryMetadataEndpoint(
       card,

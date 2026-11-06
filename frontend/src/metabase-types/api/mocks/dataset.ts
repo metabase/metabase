@@ -11,6 +11,7 @@ import type {
 } from "metabase-types/api";
 
 import { createMockField } from "./field";
+import { EMPTY_NATIVE_QUERY } from "./query";
 
 export const createMockColumn = (
   data: Partial<DatasetColumn> = {},
@@ -132,11 +133,7 @@ export const createMockEmbedDataset = (
     const { data = {}, ...rest } = opts;
     return {
       data: createMockEmbedDatasetData(data),
-      json_query: {
-        database: 1,
-        type: "native",
-        native: { query: "SELECT 1" },
-      },
+      json_query: EMPTY_NATIVE_QUERY,
       status: "success",
       ...rest,
     };

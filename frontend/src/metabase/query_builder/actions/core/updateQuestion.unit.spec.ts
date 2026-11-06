@@ -14,37 +14,25 @@ import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type {
-  Card,
-  NativeDatasetQuery,
-  TemplateTag,
-  UnsavedCard,
-} from "metabase-types/api";
+import type { Card, TestTemplateTag, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockSavedQuestionsDatabase,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
   REVIEWS_ID,
-  SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
-  createNativeModelCard,
   createOrdersTable,
   createSampleDatabase,
-  createSavedNativeCard,
-  createSavedStructuredCard,
-  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
 import { UPDATE_QUESTION } from "../../store/actions";
@@ -72,18 +60,64 @@ type SetupOpts = {
 
 const SAVED_QUESTIONS_DB = createMockSavedQuestionsDatabase();
 
+function createNativeJsQuery(
+  templateTags: Record<string, TestTemplateTag> = {},
+  query = "select * from orders",
+) {
+  const tagsSql = Object.values(templateTags)
+    .map((tag) => `{{${tag.name}}}`)
+    .join(" ");
+  return Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: `${query} ${tagsSql}`,
+    templateTags,
+  });
+}
+
+function createAdHocCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: createNativeJsQuery(),
+    ...opts,
+  });
+}
+
+function createSavedStructuredCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: createNativeJsQuery(),
+    ...opts,
+  });
+}
+
+function createStructuredModelCard(opts?: Partial<Card>): Card {
+  return createSavedStructuredCard({ type: "model", ...opts });
+}
+
+function createNativeModelCard(opts?: Partial<Card>): Card {
+  return createSavedNativeCard({ type: "model", ...opts });
+}
+
 function getDefaultOriginalQuestion(card: TestCard) {
-  if ("native" in card.dataset_query) {
+  const query = Lib.fromJsQuery(SAMPLE_PROVIDER, card.dataset_query);
+  if (Lib.queryDisplayInfo(query).isNative) {
     return createSavedNativeCard({
       ...card,
-      dataset_query: createMockNativeDatasetQuery({
-        ...card.dataset_query,
-        database: SAMPLE_DB_ID,
-        native: createMockNativeQuery({
-          ...card.dataset_query.native,
-          query: "select * from products limit 5",
-        }),
-      }),
+      dataset_query: Lib.toJsQuery(
+        Lib.withNativeQuery(query, "select * from products limit 5"),
+      ),
     });
   }
   return createMockCard({
@@ -447,9 +481,10 @@ describe("QB Actions > updateQuestion", () => {
           describe(questionType, () => {
             it("doesn't turn read-only questions into ad-hoc", async () => {
               const card = getCard({
-                dataset_query: createMockNativeDatasetQuery({
+                dataset_query: {
+                  ...createNativeJsQuery(),
                   database: null,
-                }),
+                },
               });
 
               const { result } = await setup({ card });
@@ -608,32 +643,33 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("template tags editor visibility", () => {
-    const VARIABLE_TAG_1: TemplateTag = {
+    const VARIABLE_TAG_1: TestTemplateTag = {
       id: "id_1",
-      name: "tag",
+      name: "foo",
       type: "text",
       "display-name": "Variable Tag 1",
     };
 
-    const VARIABLE_TAG_2: TemplateTag = {
+    const VARIABLE_TAG_2: TestTemplateTag = {
       id: "id_2",
-      name: "tag",
+      name: "bar",
       type: "number",
       "display-name": "Variable Tag 2",
     };
 
-    const CARD_TAG: TemplateTag = {
+    const CARD_TAG: TestTemplateTag = {
       id: "id_3",
-      name: "tag_3",
+      name: "#1-card",
+      "card-id": 1,
       type: "card",
       "display-name": "Card Tag 3",
     };
 
-    const SNIPPET_TAG: TemplateTag = {
+    const SNIPPET_TAG: TestTemplateTag = {
       id: "id_4",
       "snippet-id": 1,
       "display-name": "foo",
-      name: "foo",
+      name: "snippet: foo",
       "snippet-name": "foo",
       type: "snippet",
     };
@@ -644,35 +680,26 @@ describe("QB Actions > updateQuestion", () => {
       tagsAfter,
       ...opts
     }: Omit<SetupOpts, "card"> & {
-      card: Card<NativeDatasetQuery> | UnsavedCard<NativeDatasetQuery>;
-      tagsBefore: Record<string, TemplateTag>;
-      tagsAfter: Record<string, TemplateTag>;
+      card: TestCard;
+      tagsBefore: Record<string, TestTemplateTag>;
+      tagsAfter: Record<string, TestTemplateTag>;
     }) {
       const setTemplateTagEditorVisibleSpy = jest.spyOn(
         native,
         "setIsShowingTemplateTagsEditor",
       );
 
-      const originalCard = getDefaultOriginalQuestion({
+      const originalCard = createSavedNativeCard({
         ...card,
-        dataset_query: {
-          ...card.dataset_query,
-          native: {
-            ...card.dataset_query.native,
-            "template-tags": tagsBefore,
-          },
-        },
+        dataset_query: createNativeJsQuery(
+          tagsBefore,
+          "select * from products limit 5",
+        ),
       });
 
       const cardWithTags = {
         ...card,
-        dataset_query: {
-          ...card.dataset_query,
-          native: {
-            ...card.dataset_query.native,
-            "template-tags": tagsAfter,
-          },
-        },
+        dataset_query: createNativeJsQuery(tagsAfter),
       };
 
       const result = await setup({
@@ -734,7 +761,7 @@ describe("QB Actions > updateQuestion", () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             card: getCard(),
             tagsBefore: {},
-            tagsAfter: { snippet: SNIPPET_TAG },
+            tagsAfter: { "snippet: foo": SNIPPET_TAG },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -745,7 +772,7 @@ describe("QB Actions > updateQuestion", () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             card: getCard(),
             tagsBefore: {},
-            tagsAfter: { foo: CARD_TAG },
+            tagsAfter: { "#1-card": CARD_TAG },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -778,7 +805,7 @@ describe("QB Actions > updateQuestion", () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             card: getCard(),
             tagsBefore: {},
-            tagsAfter: { snippet: SNIPPET_TAG },
+            tagsAfter: { "snippet: foo": SNIPPET_TAG },
             isShowingTemplateTagsEditor: false,
           });
 

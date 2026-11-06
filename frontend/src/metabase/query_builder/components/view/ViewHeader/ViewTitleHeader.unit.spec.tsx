@@ -30,7 +30,6 @@ import type {
   Card,
   Database,
   DatabaseId,
-  NativeDatasetQuery,
   UnsavedCard,
 } from "metabase-types/api";
 import {
@@ -43,11 +42,9 @@ import {
   ORDERS_ID,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
-  createAdHocNativeCard,
   createOrdersTable,
   createProductsTable,
   createSampleDatabase,
-  createSavedNativeCard,
 } from "metabase-types/api/mocks/presets";
 
 import { ViewTitleHeader } from "./ViewTitleHeader";
@@ -110,29 +107,50 @@ function getAdHocQuestionCard(overrides?: Partial<UnsavedCard>): UnsavedCard {
   });
 }
 
-function getNativeQuestionCard(): UnsavedCard<NativeDatasetQuery> {
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function getNativeQuestionCard(): UnsavedCard {
   return createAdHocNativeCard();
 }
 
 function getNativeQuestionCardWithUnmappedTag(
   type: "dimension" | "temporal-unit",
-): UnsavedCard<NativeDatasetQuery> {
-  return createAdHocNativeCard({
-    dataset_query: {
-      type: "native",
-      database: SAMPLE_DB_ID,
-      native: {
-        query: "select * from products where {{my_filter}}",
-        "template-tags": {
-          my_filter: {
-            id: "24d574c5-40e7-4e9d-9d0e-3fbc7b1f7bd0",
-            name: "my_filter",
-            "display-name": "My Filter",
-            type,
-          },
-        },
+): UnsavedCard {
+  const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from products where {{my_filter}}",
+    templateTags: {
+      my_filter: {
+        id: "24d574c5-40e7-4e9d-9d0e-3fbc7b1f7bd0",
+        name: "my_filter",
+        "display-name": "My Filter",
+        type: "text",
       },
     },
+  });
+  const tags = Lib.templateTags(query);
+  return createAdHocNativeCard({
+    dataset_query: Lib.toJsQuery(
+      Lib.withTemplateTags(query, {
+        my_filter: { ...tags.my_filter, type },
+      }),
+    ),
   });
 }
 
@@ -140,12 +158,11 @@ function getEmptyNativeQuestionCard({
   database,
 }: {
   database: DatabaseId | null;
-}): UnsavedCard<NativeDatasetQuery> {
+}): UnsavedCard {
   return createAdHocNativeCard({
     dataset_query: {
-      type: "native",
+      ...Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, { query: "" }),
       database,
-      native: { query: "" },
     },
   });
 }
@@ -159,9 +176,7 @@ function getSavedGUIQuestionCard(overrides?: Partial<Card>): Card {
   });
 }
 
-function getSavedNativeQuestionCard(
-  overrides?: Partial<Card<NativeDatasetQuery>>,
-): Card<NativeDatasetQuery> {
+function getSavedNativeQuestionCard(overrides?: Partial<Card>): Card {
   return createSavedNativeCard({ ...SAVED_QUESTION, ...overrides });
 }
 
@@ -761,9 +776,10 @@ describe("View Header | Not saved native question", () => {
     const { onOpenModal } = setup({
       card: createAdHocNativeCard({
         dataset_query: {
-          type: "native",
+          ...Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "select foo",
+          }),
           database: null,
-          native: { query: "select foo" },
         },
       }),
       isDirty: true,

@@ -70,11 +70,9 @@ export function comparisonDashboard(
 ) {
   const questionId = question.id();
   const comparisonEntity = getComparisonEntity(question.query());
-  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
-  const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
-  const cellQuery = filter
-    ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
-    : "";
+  const filter = Lib.xrayCellQuery(questionWithFilters.query());
+  const cellQuery =
+    filter != null ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}` : "";
 
   const query = question.datasetQuery();
   if (questionId != null && !isTransientCardId(questionId)) {
@@ -90,11 +88,9 @@ export function automaticDashboard(
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
-  const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
-  const cellQuery = filter
-    ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
-    : "";
+  const filter = Lib.xrayCellQuery(questionWithFilters.query());
+  const cellQuery =
+    filter != null ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}` : "";
 
   const query = question.datasetQuery();
   if (questionId != null && !isTransientCardId(questionId)) {

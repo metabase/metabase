@@ -3,11 +3,16 @@ import { renderHook } from "@testing-library/react";
 import { createMockMetadata } from "__support__/metadata";
 import type { IconModel } from "metabase/common/utils/icon";
 import * as Lib from "metabase-lib";
-import { createMetadataProvider } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -25,6 +30,9 @@ jest.mock("metabase/hooks/use-icon", () => {
 
 const joinedCard = createMockCard({
   name: "Joined Card",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+  }),
 });
 
 const metadata = createMockMetadata({
@@ -32,7 +40,12 @@ const metadata = createMockMetadata({
   questions: [joinedCard],
 });
 
-const cardWithoutJoins = createMockCard();
+const cardWithoutJoins = createMockCard({
+  dataset_query: Lib.createTestJsQuery(
+    createMetadataProvider({ metadata }),
+    DEFAULT_TEST_QUERY,
+  ),
+});
 
 const cardWithJoins = createMockCard({
   dataset_query: Lib.toJsQuery(

@@ -15,6 +15,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Notification,
   NotificationChannel,
@@ -711,6 +713,7 @@ function setup({
   setupEnterpriseOnlyPlugin("application_permissions");
 
   const mockCard = createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     type: cardType,
     display: "line",
     visualization_settings: createMockVisualizationSettings({

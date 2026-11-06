@@ -4,10 +4,7 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import {
-  createMockImplicitQueryAction,
-  createMockNativeDatasetQuery,
-} from "metabase-types/api/mocks";
+import { createMockImplicitQueryAction } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   createOrdersIdField,
@@ -66,6 +63,10 @@ describe("sortActionParams", () => {
     expect(sortedParams[2].id).toEqual("c");
   });
 });
+
+const NATIVE_DATASET_QUERY = Lib.toLegacyQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
+);
 
 const ACTIONS_ENABLED_DB_ID = 10;
 
@@ -177,7 +178,7 @@ describe("isValidImplicitDeleteAction", () => {
       isValidImplicitDeleteAction({
         ...implicitDeleteAction,
         type: "query",
-        dataset_query: createMockNativeDatasetQuery(),
+        dataset_query: NATIVE_DATASET_QUERY,
       }),
     ).toBe(false);
   });
@@ -204,7 +205,7 @@ describe("isValidImplicitUpdateAction", () => {
       isValidImplicitUpdateAction({
         ...implicitUpdateAction,
         type: "query",
-        dataset_query: createMockNativeDatasetQuery(),
+        dataset_query: NATIVE_DATASET_QUERY,
       }),
     ).toBe(false);
   });
