@@ -12,7 +12,6 @@ import {
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { getTableColumnListInfo } from "metabase/querying/common/utils";
 import { isConcreteTableId } from "metabase-types/api";
 
 import { ConnectedTableList } from "./ConnectedTableList";
@@ -27,6 +26,7 @@ import {
   NodeListTitleText,
 } from "./NodeList";
 import type { DataReferencePaneProps, DataReferenceTableItem } from "./types";
+import { getTableColumnListInfo } from "./utils";
 
 export function TablePane({
   id,
