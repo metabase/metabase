@@ -121,12 +121,15 @@ type CreateOrEditQuestionAlertModalProps = {
 );
 
 function toastForSendResult(result: SendNotificationResponse): Partial<Undo> {
-  switch (result.status) {
-    case "sent":
-      return { message: t`Test alert sent.` };
-    case "skipped":
-      return { variant: "warning", message: t`No alert to send.` };
-  }
+  return match(result.status)
+    .with("sent", () => ({
+      message: t`Test alert sent.`,
+    }))
+    .with("skipped", () => ({
+      variant: "warning",
+      message: t`No alert to send.`,
+    }))
+    .exhaustive();
 }
 
 export const CreateOrEditQuestionAlertModal = ({
