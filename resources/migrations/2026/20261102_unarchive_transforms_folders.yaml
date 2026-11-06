@@ -1,0 +1,16 @@
+## An archived transforms folder hides its transforms, which keep running on their jobs, and no page restores it.
+## Clearing the three archive columns puts every archived transforms folder back in the Transforms list, in its old
+## place, because archiving keeps a collection's location. The rollback does nothing: the archive state is gone.
+
+databaseChangeLog:
+  - changeSet:
+      id: b20m1q
+      author: brybacki
+      comment: Unarchive the archived transforms folders
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET archived = FALSE, archived_directly = NULL, archive_operation_id = NULL
+              WHERE namespace = 'transforms' AND archived = TRUE;
+      rollback: # nothing to undo: the archive state is gone

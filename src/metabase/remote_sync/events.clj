@@ -8,6 +8,7 @@
 (events/derive! ::collection-event :metabase/event)
 (events/derive! :event/collection-create ::collection-event)
 (events/derive! :event/collection-update ::collection-event)
+(events/derive! :event/collection-delete ::collection-event)
 
 ;; Field events
 (events/derive! ::field-event :metabase/event)

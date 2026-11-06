@@ -24,6 +24,12 @@ title: API changelog
   `PUT /api/table/:id`, `PUT /api/table` and the Data Studio bulk table edit answer `data_authority: null` the same
   way.
 
+- `PUT /api/collection/:id` with `{"archived": true}` answers `400 Bad Request` for a collection in the `transforms`
+  namespace (a transforms folder). Unarchiving a transforms folder still works.
+
+- New `DELETE /api/transform/collection/:id` deletes a transforms folder, its subfolders and every transform in them.
+  It keeps the output tables of the transforms. With `delete-tables=true`, it drops the output tables too.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with

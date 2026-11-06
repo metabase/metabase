@@ -52,6 +52,7 @@
 
 (mr/def :event/collection-create ::collection)
 (mr/def :event/collection-update ::collection)
+(mr/def :event/collection-delete ::collection)
 
 ;; dashboard events
 

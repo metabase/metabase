@@ -2306,6 +2306,17 @@
               :is_sample        false
               :is_remote_synced false}})
 
+;; An import skips `update-collection!`, so an export from an older version can bring back an archived transforms
+;; folder.
+(defmethod serdes/load-one! "Collection" [ingested maybe-local]
+  (when (and (:archived ingested)
+             (= transforms-ns (some-> (:namespace ingested) keyword)))
+    (throw (ex-info (tru "Transforms folder \"{0}\" is archived and cannot be imported. Delete it in the source, or unarchive it there, and export again."
+                         (:name ingested))
+                    {:status-code 400
+                     :entity_id   (:entity_id ingested)})))
+  (serdes/default-load-one! ingested maybe-local))
+
 (defmethod serdes/load-update! "Collection" [model-name ingested local]
   (serdes/default-load-update! model-name
                                (cond-> ingested (system-collection-name local) (dissoc :name))

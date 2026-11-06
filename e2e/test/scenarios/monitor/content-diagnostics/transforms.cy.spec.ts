@@ -13,8 +13,6 @@ import {
 
 const SEARCH_TERM = "transforming";
 
-const ARCHIVED_FOLDER_NAME = "E2E transforming archived folder";
-const ARCHIVED_TRANSFORM_NAME = "E2E transforming archived-folder transform";
 const SLOW_TRANSFORM_NAME = "E2E transforming slow transform";
 const STALE_TRANSFORM_NAME = "E2E transforming stale transform";
 const SCHEDULED_TRANSFORM_NAME = "E2E transforming scheduled transform";
@@ -34,33 +32,6 @@ const lastRunOn = () =>
 
 const yearlyCronAwayFromNow = () =>
   `0 0 0 1 ${dayjs().add(6, "month").month() + 1} ?`;
-
-function createTransformInArchivedFolder() {
-  H.createTransformCollection({ name: ARCHIVED_FOLDER_NAME }).then(
-    ({ body: collection }) => {
-      H.createTransform({
-        name: ARCHIVED_TRANSFORM_NAME,
-        collection_id: collection.id,
-        source: {
-          type: "query",
-          query: {
-            database: WRITABLE_DB_ID,
-            type: "native",
-            native: { query: "SELECT 1 AS id" },
-          },
-        },
-        target: {
-          type: "table",
-          database: WRITABLE_DB_ID,
-          name: "e2e_transforming_archived",
-          schema: TARGET_SCHEMA,
-        },
-      }).then(({ body: transform }) => markStale("transform", transform.id));
-
-      H.archiveCollection(collection.id);
-    },
-  );
-}
 
 function findingRow(name: string) {
   return cy.findByTestId("stale-content-list").contains('[role="row"]', name);
@@ -94,27 +65,6 @@ describe(
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-    });
-
-    // Archiving a folder takes its cards, dashboards and documents out of scope, but a transform runs on
-    // its schedule regardless of the folder it sits in, so it stays in scope.
-    it("still reports a stale transform whose folder has been archived", () => {
-      createTransformInArchivedFolder();
-      runContentDiagnosticsScan();
-
-      visitContentDiagnosticsTab("stale");
-      searchFindings(SEARCH_TERM);
-
-      cy.findByTestId("stale-content-list")
-        .findByText(ARCHIVED_TRANSFORM_NAME)
-        .should("be.visible");
-
-      cy.findByTestId("stale-content-list")
-        .findByText(ARCHIVED_TRANSFORM_NAME)
-        .click();
-      cy.findByTestId("content-diagnostics-sidebar")
-        .findByText("Last run")
-        .should("be.visible");
     });
 
     it("reports a transform whose run exceeded the threshold", () => {
