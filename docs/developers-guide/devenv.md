@@ -463,8 +463,8 @@ mage kondo
 # Lint the migrations file (if you've written a database migration):
 mage lint-migrations
 
-# Run Eastwood
-clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
+# Load every namespace we ship, failing on reflection warnings
+clojure -M:ee:drivers:load-namespaces
 
 # Run the namespace checker
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
