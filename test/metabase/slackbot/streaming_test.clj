@@ -535,15 +535,15 @@
             (let [opts (last @ai-request-calls)]
               (is (= metabot.config/internal-metabot-id (:metabot-id opts)))
               (testing "the tools the loop builds from these options refuse an uncurated table when verified content is on"
-                (mt/with-temp-vals-in-db :model/Metabot (metabot.config/normalize-metabot-id metabot.config/internal-metabot-id)
-                  {:use_verified_content true}
-                  ;; the user and scope the Slack handler binds around the loop
-                  (mt/with-current-user (mt/user->id :crowberto)
-                    (binding [metabot.scope/*current-user-scope* #{"agent:metadata:read"}]
-                      (let [list-fields (get-in (#'agent/init-agent opts) [:tools "list_available_fields" :fn])]
-                        (is (some #(str/includes? % "only uses curated content")
-                                  (get-in (list-fields {:table_ids [(mt/id :orders)] :model_ids [] :metric_ids []})
-                                          [:structured-output :errors])))))))))))))))
+                (let [internal-id (metabot.config/normalize-metabot-id metabot.config/internal-metabot-id)]
+                  (mt/with-temp-vals-in-db :model/Metabot internal-id {:use_verified_content true}
+                    ;; the user and scope the Slack handler binds around the loop
+                    (mt/with-current-user (mt/user->id :crowberto)
+                      (binding [metabot.scope/*current-user-scope* #{"agent:metadata:read"}]
+                        (let [list-fields (get-in (#'agent/init-agent opts) [:tools "list_available_fields" :fn])]
+                          (is (some #(str/includes? % "only uses curated content")
+                                    (get-in (list-fields {:table_ids [(mt/id :orders)] :model_ids [] :metric_ids []})
+                                            [:structured-output :errors]))))))))))))))))
 
 (deftest ^:synchronized slackbot-streaming-records-streamed-error-test
   (testing "an :error part the agent loop emits instead of throwing is still recorded on the row,
