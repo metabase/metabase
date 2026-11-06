@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import {
   getHistorySignalLabel,
   isRoleA,
@@ -18,12 +16,11 @@ export function HistoryListSummary({
   const status = useHistoryReviewStatus(table);
   const isHistory =
     structure.role != null && isRoleA(structure.role, "role/HistoryDimension");
-  if (!isHistory || status == null) {
+  // Only sync's guess needs a reason; an admin's choice speaks for itself
+  if (!isHistory || status == null || structure.isScdTypeOverridden) {
     return null;
   }
-  const summary = structure.isScdTypeOverridden
-    ? t`Set by an admin`
-    : getHistorySignalLabel(structure.scdTypeInference.rule);
+  const summary = getHistorySignalLabel(structure.scdTypeInference.rule);
   return (
     <Text c="text-secondary" size="sm" truncate title={summary}>
       {summary}

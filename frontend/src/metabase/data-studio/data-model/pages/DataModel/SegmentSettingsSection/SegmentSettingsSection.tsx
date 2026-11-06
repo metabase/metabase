@@ -11,7 +11,7 @@ import {
   type SegmentSettingsOverrides,
   useSegmentSettings,
 } from "metabase/metadata/table-segments";
-import { Button, NumberInput, Switch, Text } from "metabase/ui";
+import { Button, Icon, NumberInput, Switch, Text, Tooltip } from "metabase/ui";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../DetailPanel";
@@ -99,18 +99,30 @@ export function SegmentSettingsSection({
           }
         />
         <DetailsRow
-          label={t`Required filter threshold`}
-          fillValue
-          labelNote={
-            <InheritanceNote
-              isOverridden={overrides.requiredFilterRowThreshold !== undefined}
-              parentLabel={parentLabel}
-              onReset={() => update({ requiredFilterRowThreshold: undefined })}
-            />
+          label={
+            <>
+              {t`Required filter row threshold`}
+              <Tooltip
+                label={t`Add required filters for tables exceeding this many rows`}
+                maw={280}
+                multiline
+              >
+                <Icon
+                  name="info"
+                  size={14}
+                  ml="xs"
+                  c="text-secondary"
+                  aria-label={t`Add required filters for tables exceeding this many rows`}
+                  // Sits on the text's baseline inside the label paragraph
+                  style={{ verticalAlign: "-2px" }}
+                />
+              </Tooltip>
+            </>
           }
+          fillValue
           value={
             <NumberInput
-              aria-label={t`Required filter threshold`}
+              aria-label={t`Required filter row threshold`}
               classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
               value={overrides.requiredFilterRowThreshold ?? ""}
               placeholder={inherited.requiredFilterRowThreshold.value.toLocaleString()}
@@ -119,12 +131,8 @@ export function SegmentSettingsSection({
               allowNegative={false}
               thousandSeparator=","
               hideControls
-              rightSection={
-                <Text size="sm" c="text-secondary">
-                  {t`rows`}
-                </Text>
-              }
-              rightSectionWidth={56}
+              rightSection={<Icon name="pencil" size={14} c="text-secondary" />}
+              rightSectionPointerEvents="none"
               onChange={(value) =>
                 update({
                   // Cleared: inherit again
@@ -141,7 +149,7 @@ export function SegmentSettingsSection({
   );
 }
 
-/** Says where the value comes from, with a reset once it's set here */
+/** Once a value is set here, says what it overrides, with a reset */
 function InheritanceNote({
   isOverridden,
   parentLabel,
@@ -152,11 +160,7 @@ function InheritanceNote({
   onReset: () => void;
 }) {
   if (!isOverridden) {
-    return (
-      <Text size="sm" c="text-secondary">
-        {t`From ${parentLabel}`}
-      </Text>
-    );
+    return null;
   }
   return (
     <>

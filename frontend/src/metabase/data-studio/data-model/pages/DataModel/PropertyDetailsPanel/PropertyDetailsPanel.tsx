@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import { type Ref, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -40,7 +40,7 @@ import {
   DetailsEditableText,
   FieldDetailsSkeleton,
 } from "../DetailPanel";
-import { InferredIcon } from "../TableSection/InferenceReview";
+import { InferredValue } from "../TableSection/InferenceReview";
 
 import {
   type OpenPropertySignal,
@@ -415,15 +415,14 @@ function PropertyTypeRow({
   definitionColumns: DefinitionColumnNames | null;
   onSave: (overrides: { type?: RegistryProperty["type"] }) => void;
 }) {
+  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
   const declaredType = property.definition?.declaredType;
-  const inferredTypeLabel = getPropertyTypeLabel(property.inferredType);
-  const inference = getTypeInference(property);
+  const confirm = () => onSave({ type: property.type });
 
   return (
     <DetailsRow
       label={t`Type`}
       fillValue
-      labelAside={<InferredIcon description={inference} />}
       labelNote={
         <>
           {property.typeSource === "definition" && (
@@ -432,32 +431,40 @@ function PropertyTypeRow({
             </Text>
           )}
           <TypeDriftHint property={property} />
-          {property.typeSource === "admin" && (
-            <Button
-              size="compact-sm"
-              onClick={() => onSave({ type: undefined })}
-            >
-              {t`Use ${inferredTypeLabel}`}
-            </Button>
-          )}
         </>
       }
       value={
-        <Select
-          aria-label={t`Type`}
-          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-          data={getPropertyTypeOptions()}
-          value={property.type}
-          allowDeselect={false}
-          onChange={(value) => {
-            const option = getPropertyTypeOptions().find(
-              (option) => option.value === value,
-            );
-            if (option) {
-              onSave({ type: option.value });
-            }
-          }}
-        />
+        // Read from the values: sync's guess, until an admin confirms it
+        property.typeSource === "values" ? (
+          <InferredValue
+            value={getPropertyTypeLabel(property.type)}
+            inference={getTypeInference(property)}
+            onConfirm={confirm}
+            onChange={() => {
+              setIsSelectOpenOnMount(true);
+              confirm();
+            }}
+            data-testid="property-type-review"
+          />
+        ) : (
+          <Select
+            aria-label={t`Type`}
+            classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+            data={getPropertyTypeOptions()}
+            value={property.type}
+            allowDeselect={false}
+            autoFocus={isSelectOpenOnMount}
+            defaultDropdownOpened={isSelectOpenOnMount}
+            onChange={(value) => {
+              const option = getPropertyTypeOptions().find(
+                (option) => option.value === value,
+              );
+              if (option) {
+                onSave({ type: option.value });
+              }
+            }}
+          />
+        )
       }
     />
   );

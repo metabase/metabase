@@ -18,11 +18,7 @@ import * as Lib from "metabase-lib";
 import type { Segment, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
-import {
-  InferredIcon,
-  NeedsReviewBadge,
-  ReviewValue,
-} from "../InferenceReview";
+import { InferredValue } from "../InferenceReview";
 import {
   type ResolvedDefaultSegment,
   type ResolvedRequiredFilter,
@@ -50,9 +46,6 @@ interface TableFilteringProps {
  */
 export function TableFiltering({ table, readOnly }: TableFilteringProps) {
   const model = useTableSegmentsModel(table);
-  const { defaultSegment, requiredFilter } = model;
-  const isDefaultUnderReview = defaultSegment.needsReview && !readOnly;
-  const isRequiredUnderReview = requiredFilter.needsReview && !readOnly;
 
   return (
     <SidebarSection title={t`Filtering`}>
@@ -60,22 +53,10 @@ export function TableFiltering({ table, readOnly }: TableFilteringProps) {
         <DetailsRow
           label={t`Default segment`}
           fillValue
-          labelAside={
-            isDefaultUnderReview ? (
-              <NeedsReviewBadge />
-            ) : (
-              <InferredIcon description={getDefaultInference(defaultSegment)} />
-            )
-          }
-          labelNote={
-            // Read-only tables keep the badge here; there's no review cell
-            defaultSegment.needsReview && readOnly && <NeedsReviewBadge />
-          }
           value={
             <DefaultSegmentValue
               model={model}
               customSegments={table.segments ?? []}
-              isUnderReview={isDefaultUnderReview}
               disabled={readOnly}
             />
           }
@@ -83,25 +64,7 @@ export function TableFiltering({ table, readOnly }: TableFilteringProps) {
         <DetailsRow
           label={t`Required filter`}
           fillValue
-          labelAside={
-            isRequiredUnderReview ? (
-              <NeedsReviewBadge />
-            ) : (
-              <InferredIcon
-                description={getRequiredInference(requiredFilter)}
-              />
-            )
-          }
-          labelNote={
-            requiredFilter.needsReview && readOnly && <NeedsReviewBadge />
-          }
-          value={
-            <RequiredFilterValue
-              model={model}
-              isUnderReview={isRequiredUnderReview}
-              disabled={readOnly}
-            />
-          }
+          value={<RequiredFilterValue model={model} disabled={readOnly} />}
         />
       </DetailsTable>
     </SidebarSection>
@@ -131,27 +94,34 @@ function isSameSegment(a: DefaultSegment, b: DefaultSegment): boolean {
   );
 }
 
-/** The default segment, or its weak guess to confirm or change */
+/** Sync's default segment, until an admin sets one; "All records" isn't a guess */
+function isDefaultSegmentInferred({
+  inference,
+  isOverridden,
+}: ResolvedDefaultSegment): boolean {
+  return !isOverridden && inference.segment.type !== "all";
+}
+
+/** The default segment, or sync's guess to confirm or change */
 function DefaultSegmentValue({
   model,
   customSegments,
-  isUnderReview,
   disabled,
 }: {
   model: TableSegmentsModel;
   customSegments: Segment[];
-  isUnderReview: boolean;
   disabled: boolean;
 }) {
   const [isMenuOpenOnMount, setIsMenuOpenOnMount] = useState(false);
   const { defaultSegment, setDefaultSegment } = model;
 
-  if (isUnderReview) {
+  if (isDefaultSegmentInferred(defaultSegment)) {
     const inferredSegment = defaultSegment.inference.segment;
     return (
-      <ReviewValue
+      <InferredValue
         value={defaultSegment.inferredLabel}
         inference={getDefaultInference(defaultSegment)}
+        readOnly={disabled}
         onConfirm={() => setDefaultSegment(inferredSegment)}
         onChange={() => {
           setIsMenuOpenOnMount(true);
@@ -285,34 +255,29 @@ function DefaultSegmentPicker({
   );
 }
 
-/** The required filter, or its weak guess to confirm or change */
+/** The required filter, or sync's proposal to confirm or change */
 function RequiredFilterValue({
   model,
-  isUnderReview,
   disabled,
 }: {
   model: TableSegmentsModel;
-  isUnderReview: boolean;
   disabled: boolean;
 }) {
   const [isPickerOpenOnMount, setIsPickerOpenOnMount] = useState(false);
   const { requiredFilter, setRequiredFilterQuery } = model;
+  const { inferredQuery, inferredFilterName, isOverridden } = requiredFilter;
 
-  if (isUnderReview) {
-    const confirm = () => {
-      // `undefined` while the table's metadata loads; `null` means none
-      if (requiredFilter.inferredQuery !== undefined) {
-        setRequiredFilterQuery(requiredFilter.inferredQuery);
-      }
-    };
+  // No proposal (or one still loading) isn't shown as a guess
+  if (!isOverridden && inferredQuery && inferredFilterName) {
     return (
-      <ReviewValue
-        value={requiredFilter.inferredFilterName ?? t`No required filter`}
+      <InferredValue
+        value={inferredFilterName}
         inference={getRequiredInference(requiredFilter)}
-        onConfirm={confirm}
+        readOnly={disabled}
+        onConfirm={() => setRequiredFilterQuery(inferredQuery)}
         onChange={() => {
           setIsPickerOpenOnMount(true);
-          confirm();
+          setRequiredFilterQuery(inferredQuery);
         }}
         data-testid="table-required-filter-review"
       />
@@ -392,7 +357,10 @@ function RequiredFilterPicker({
           data-testid="table-required-filter-select"
         >
           {requiredFilter.filterName ?? (
-            <Input.Placeholder>{t`Add a required filter`}</Input.Placeholder>
+            // The color inputs use for their placeholders
+            <Input.Placeholder c="text-disabled">
+              {t`No required filter`}
+            </Input.Placeholder>
           )}
         </Input>
       </Popover.Target>

@@ -18,9 +18,11 @@ import {
   useSchemaTables,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Code, Loader, Stack, Text } from "metabase/ui";
+import { Code, Group, Loader, Stack, Text } from "metabase/ui";
 import { isDate, isSummable } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
+
+import { InferredIcon } from "../TableSection/InferenceReview";
 
 type DefinitionSource = {
   tableName: string;
@@ -83,12 +85,12 @@ export function CustomFieldSection({
         <DetailsRow
           label={t`Structure`}
           value={
-            <Stack gap="xs" py="xs">
+            <Group gap="xs" wrap="nowrap">
               <Text c="text-primary">{t`Custom property`}</Text>
-              <Text size="sm" c="text-secondary">
-                {t`Inferred: named with the ${facet.prefix} prefix, so the customer chose this column`}
-              </Text>
-            </Stack>
+              <InferredIcon
+                description={t`Inferred: named with the ${facet.prefix} prefix, so the customer chose this column`}
+              />
+            </Group>
           }
         />
         <DetailsRow
@@ -178,21 +180,27 @@ function Meaning({
   const consequence = getMeaningConsequence(field);
   return (
     <Stack gap="xs" py="xs">
-      <Text c="text-primary" fw="bold">
-        {semanticTypeName ?? t`No semantic type`}
-      </Text>
-      <Text size="sm" c="text-secondary">
-        {t`Inferred from the rest of the name, ${facet.suffix}.`}
-        {declaredType != null && source?.typeColumn != null && (
-          <>
-            {" "}
-            {declared
-              ? t`${source.tableName}.${source.typeColumn} says ${declaredType}.`
-              : t`${source.tableName}.${source.typeColumn} says ${declaredType}, which has no type mapping yet.`}
-          </>
+      <Group gap="xs" wrap="nowrap">
+        <Text c="text-primary" fw="bold">
+          {semanticTypeName ?? t`No semantic type`}
+        </Text>
+        {/* No semantic type isn't a guess */}
+        {semanticTypeName != null && (
+          <InferredIcon
+            description={t`Inferred from the rest of the name, ${facet.suffix}.`}
+          />
         )}
-        {consequence && <> {consequence}</>}
-      </Text>
+      </Group>
+      {(declaredType != null && source?.typeColumn != null) || consequence ? (
+        <Text size="sm" c="text-secondary">
+          {declaredType != null &&
+            source?.typeColumn != null &&
+            (declared
+              ? t`${source.tableName}.${source.typeColumn} says ${declaredType}.`
+              : t`${source.tableName}.${source.typeColumn} says ${declaredType}, which has no type mapping yet.`)}
+          {consequence && <> {consequence}</>}
+        </Text>
+      ) : null}
     </Stack>
   );
 }
