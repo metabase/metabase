@@ -4,6 +4,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.core.core :as core]
+   [metabase.global-system.system :as global-system]
    [metabase.sample-data.impl :as sample-data.impl]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -68,3 +69,13 @@
                               {:level :warn, :message "Metabase Shutdown COMPLETE, with 1 failed steps"}]}
                   {:ran      @ran
                    :messages (messages)})))))))
+
+(deftest system-dependencies-name-components-test
+  (testing "every key in the halt's dependencies is an installed component, so a renamed one is not silently dropped"
+    (let [installed (set (keys (global-system/snapshot)))
+          named     (into #{} (mapcat (fn [[k uses]] (cons k uses))) @#'core/system-dependencies)]
+      (is (= #{} (into #{} (remove installed) named))))))
+
+(deftest system-dependencies-have-no-cycle-test
+  (testing "the halt's dependencies form a graph a halt accepts"
+    (is (some? (#'global-system/dependency-graph @#'core/system-dependencies)))))
