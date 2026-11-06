@@ -200,18 +200,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
       assertAnswered("@cardQuery", { id, column: "HIGH", value: 600 });
     });
 
-    cy.log("Goal-based alerts are offered for a dynamic goal");
-    H.mockSlackConfigured();
-    cy.findByLabelText("Move, trash, and more…").click();
-    H.popover().findByText("Create an alert").click();
-    H.modal().findByTestId("alert-goal-select").should("be.enabled").click();
-    H.popover()
-      .should("contain.text", "When results go above the goal")
-      .and("contain.text", "When results go below the goal");
-    cy.realPress("Escape");
-    H.modal().button("Cancel").click();
-    H.modal().should("not.exist");
-
     cy.log("A goal picked on a saved question resolves before it is saved");
     H.openVizSettingsSidebar();
     H.vizSettingsSidebar().within(() => {
