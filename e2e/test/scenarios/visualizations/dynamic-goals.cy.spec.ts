@@ -684,12 +684,8 @@ function openGoalMenu(
     JQuery<HTMLElement>
   > = H.vizSettingsSidebar,
 ) {
-  getContainer()
-    .findByLabelText(label)
-    .realHover()
-    .parent()
-    .findByLabelText("Pick a dynamic value")
-    .click();
+  getContainer().findByLabelText(label).realHover();
+  getContainer().findByRole("button", { name: "Pick a dynamic value" }).click();
 }
 
 function pickGoalSource(name: string) {
