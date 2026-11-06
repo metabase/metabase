@@ -4,8 +4,8 @@ import { jt, t } from "ttag";
 import {
   skipToken,
   useGetCardQuery,
+  useGetCardQueryMetadataQuery,
   useGetCollectionQuery,
-  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -53,11 +53,11 @@ export const QuestionPane = ({
     id,
   });
   const {
-    data: table,
-    isLoading: isLoadingTable,
-    error: tableError,
-  } = useGetTableQueryMetadataQuery({ id: getQuestionVirtualTableId(id) });
-  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
+    data: cardMetadata,
+    isLoading: isLoadingCardMetadata,
+    error: cardMetadataError,
+  } = useGetCardQueryMetadataQuery(id);
+  const metadataProvider = useMetadataProvider(card?.database_id ?? null);
   const {
     data: collection,
     isLoading: isLoadingCollection,
@@ -65,18 +65,20 @@ export const QuestionPane = ({
   } = useGetCollectionQuery(
     card ? { id: card.collection_id ?? "root" } : skipToken,
   );
-  const isLoading = isLoadingCard || isLoadingTable || isLoadingCollection;
-  const error = cardError ?? tableError ?? collectionError;
+  const isLoading =
+    isLoadingCard || isLoadingCardMetadata || isLoadingCollection;
+  const error = cardError ?? cardMetadataError ?? collectionError;
 
-  if (card == null || table == null) {
+  if (card == null || cardMetadata == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const queryAndColumns = getTableQueryAndColumns(metadataProvider, table.id);
+  const tableId = getQuestionVirtualTableId(card.id);
+  const queryAndColumns = getTableQueryAndColumns(metadataProvider, tableId);
   const lastEditInfo = card["last-edit-info"];
 
   const handleColumnClick = (columnIndex: number) => {
-    onItemClick({ type: "field", tableId: table.id, columnIndex });
+    onItemClick({ type: "field", tableId, columnIndex });
   };
 
   return (

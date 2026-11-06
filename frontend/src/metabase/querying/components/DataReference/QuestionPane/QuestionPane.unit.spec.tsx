@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
-  setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -42,14 +42,18 @@ const setup = async ({ card, fields }: SetupOpts) => {
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", name: "Our analytics" })],
   });
-  setupTableQueryMetadataEndpoint(
-    createMockTable({
-      id: getQuestionVirtualTableId(card.id),
-      db_id: SAMPLE_DB_ID,
-      display_name: card.name,
-      fields,
-    }),
-  );
+  setupCardQueryMetadataEndpoint(card, {
+    databases: [],
+    tables: [
+      createMockTable({
+        id: getQuestionVirtualTableId(card.id),
+        db_id: SAMPLE_DB_ID,
+        display_name: card.name,
+        fields,
+      }),
+    ],
+    fields: [],
+  });
 
   renderWithProviders(
     <QuestionPane
@@ -74,7 +78,11 @@ const setup = async ({ card, fields }: SetupOpts) => {
 
 describe("QuestionPane", () => {
   it("should list columns of question with aggregation (metabase#86298)", async () => {
-    const card = createMockCard({ id: CARD_ID, name: "Orders count" });
+    const card = createMockCard({
+      id: CARD_ID,
+      name: "Orders count",
+      database_id: SAMPLE_DB_ID,
+    });
     const { onItemClick } = await setup({
       card,
       fields: [
