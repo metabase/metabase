@@ -3600,7 +3600,7 @@
            enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}
-   :model-imports #{:model/Database :model/Sandbox}}
+   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
 
   enterprise/analytics.internal-stats
   {:team "UX West"
@@ -4716,10 +4716,13 @@
            cache
            driver
            lib.schema
+           models
            premium-features
            settings
            util
-           workspaces}}}
+           workspaces}
+   :model-exports #{:model/Workspace}
+   :model-imports #{:model/Database :model/Table :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
