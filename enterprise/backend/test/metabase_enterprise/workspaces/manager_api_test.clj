@@ -7,15 +7,22 @@
    [java-time.api :as t]
    [metabase-enterprise.workspaces.connection :as ws.connection]
    [metabase-enterprise.workspaces.status :as ws.status]
+   [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.initialization-status.core :as init-status]
+   [metabase.oauth-server.core :as oauth-server]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
+   [metabase.util.encryption :as encryption]
    [metabase.util.json :as json]
    [metabase.util.yaml :as yaml]
+   [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -477,7 +484,7 @@
            ;; as JSON and YAML carry them: keyword values become strings
            expected-details        (json/decode+kw
                                     (json/encode
-                                     (merge (dissoc parent :user :password)
+                                     (merge (select-keys parent [:host :port :dbname :db])
                                             {:user                        user
                                              :password                    password
                                              :schema-filters-type         "inclusion"
@@ -551,10 +558,9 @@
                         :auth-provider                 "oauth"
                         :oauth-token-url               "https://idp.example/PARENT-token-url"
                         :oauth-token-headers           "{\"client_secret\":\"PARENT-oauth-secret\"}"
-                        :tunnel-enabled                false
-                        :tunnel-host                   "PARENT-bastion"
-                        :tunnel-user                   "PARENT-tunnel-user"
-                        :tunnel-pass                   "PARENT-tunnel-pass"
+                        :http-auth-url                 "https://idp.example/PARENT-http-auth-url"
+                        :http-auth-headers             "Authorization: Bearer PARENT-bearer"
+                        :sslpassword                   "PARENT-sslpassword"
                         :ssl                           true
                         :ssl-mode                      "verify-full"
                         :ssl-use-client-auth           true
@@ -589,29 +595,50 @@
   (do-with-warehouse!
    (fn [_spec db-id]
      (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 url (create-body db-id ["sales"]))]
-       (t2/update! :model/Database :id db-id {:details (merge (superuser-details)
-                                                              {:tunnel-enabled     true
-                                                               :tunnel-host        "bastion.example"
-                                                               :tunnel-user        "parent-tunnel-user"
-                                                               :tunnel-auth-option "password"
-                                                               :tunnel-pass        "ParentTunnelPassw0rd"})})
+       ;; written past the Database hooks: with workspaces on it, its tunnel can no longer be changed, and a tunneled
+       ;; database cannot get one, so this only happens to a database tunneled by other means
+       (t2/query-one {:update :metabase_database
+                      :where  [:= :id db-id]
+                      :set    {:details (encryption/maybe-encrypt
+                                         (json/encode
+                                          (merge (superuser-details)
+                                                 {:tunnel-enabled     true
+                                                  :tunnel-host        "bastion.example"
+                                                  :tunnel-user        "parent-tunnel-user"
+                                                  :tunnel-auth-option "password"
+                                                  :tunnel-pass        "ParentTunnelPassw0rd"})))}})
        (doseq [response-format ["json" "yaml"]]
          (testing response-format
            (is (= "SSH tunnels are not supported for workspaces."
                   (mt/user-http-request :crowberto :get 400 (connection-url ws-id) :format response-format)))))))))
 
-(deftest connection-unreadable-ssl-root-cert-is-409-test
+(deftest connection-never-reads-a-file-for-the-root-certificate-test
   (do-with-warehouse!
    (fn [_spec db-id]
      (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 url (create-body db-id ["sales"]))
-           db-name     (t2/select-one-fn :name :model/Database :id db-id)]
-       (t2/update! :model/Database :id db-id {:details (merge (superuser-details)
-                                                              {:ssl                   true
-                                                               :ssl-mode              "verify-full"
-                                                               :ssl-root-cert-options "local"
-                                                               :ssl-root-cert-path    "/nonexistent/mbcws-13/root.crt"})})
-       (is (= (format "The SSL root certificate of database %s cannot be read on this instance." (pr-str db-name))
-              (mt/user-http-request :crowberto :get 409 (connection-url ws-id))))))))
+           db-name     (t2/select-one-fn :name :model/Database :id db-id)
+           secret-file (doto (java.io.File/createTempFile "mbcws-13-not-a-cert" ".txt")
+                         (.deleteOnExit)
+                         (spit "FILE-CONTENT-THE-PARENT-CAN-READ"))
+           set-ssl!    (fn [ssl-details]
+                         (t2/update! :model/Database :id db-id
+                                     {:details (merge (superuser-details)
+                                                      {:ssl-root-cert-options "local"
+                                                       :ssl-root-cert-path    (.getAbsolutePath secret-file)}
+                                                      ssl-details)}))]
+       (testing "SSL off: the root certificate is not sent, and the file is never read"
+         (set-ssl! {:ssl false})
+         (doseq [response-format ["json" "yaml"]]
+           (let [body (pr-str (mt/user-http-request :crowberto :get 200 (connection-url ws-id) :format response-format))]
+             (is (not (str/includes? body "FILE-CONTENT")))
+             (is (not (str/includes? body "ssl-root-cert"))))))
+       (testing "SSL verifying the server: a certificate read from a file is a 409, and the file is never read"
+         (set-ssl! {:ssl true, :ssl-mode "verify-full"})
+         (let [body (mt/user-http-request :crowberto :get 409 (connection-url ws-id))]
+           (is (= (format "The SSL root certificate of database %s is read from a file; upload it instead to use the database for workspaces."
+                          (pr-str db-name))
+                  body))
+           (is (not (str/includes? (pr-str body) "FILE-CONTENT")))))))))
 
 (deftest connection-response-check-never-quotes-the-password-test
   (testing "when the response fails its schema (checked in dev and test), the 400 names the problem, not the details"
@@ -626,3 +653,68 @@
         (let [body (mt/user-http-request :crowberto :get 400 (connection-url 1))]
           (is (some? body))
           (is (not (str/includes? (pr-str body) "NeverQuotedPassw0rd"))))))))
+
+(deftest connection-refuses-a-schema-the-filter-cannot-express-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 url (create-body db-id ["sales"]))
+           wsd-ids     (t2/select-pks-set :model/WorkspaceDatabase :workspace_id ws-id)]
+       (doseq [main-schema ["sales,finance" " sales" "sales "]]
+         (testing (pr-str main-schema)
+           (t2/update! :model/WorkspaceSchema {:workspace_database_id [:in wsd-ids]} {:main_schema main-schema})
+           (is (str/includes? (mt/user-http-request :crowberto :get 409 (connection-url ws-id))
+                              "a schema name with a comma or leading or trailing whitespace is not supported"))))
+       (t2/update! :model/WorkspaceSchema {:workspace_database_id [:in wsd-ids]} {:main_schema "sales"})))))
+
+(deftest connection-creator-through-api-keys-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (mt/with-model-cleanup [:model/ApiKey]
+       (let [new-key  (fn [key-name]
+                        (:unmasked_key (mt/user-http-request :crowberto :post 200 "api-key"
+                                                             {:group_id (:id (perms-group/admin))
+                                                              :name     key-name
+                                                              :scope    "workspace-manager"})))
+             key-a    (new-key "CI workspaces A")
+             key-b    (new-key "CI workspaces B")
+             as-key   (fn [k] {:request-options {:headers {"x-api-key" k}}})
+             {ws-id :id} (client/client :post 200 url (as-key key-a) (create-body db-id ["sales"]))]
+         (testing "the key that created the workspace gets its connection"
+           (is (=? {:workspace {:id ws-id}} (client/client :get 200 (connection-url ws-id) (as-key key-a)))))
+         (testing "another workspace-manager key of the same group, and the admin who made both keys, get a 403"
+           (is (= "Only the creator of a workspace can fetch its connection."
+                  (client/client :get 403 (connection-url ws-id) (as-key key-b))))
+           (mt/user-http-request :crowberto :get 403 (connection-url ws-id))))))))
+
+(deftest connection-creator-through-oauth-tokens-test
+  ;; the bearer bridge is gated on initialization being complete, which the test runner never marks
+  (init-status/set-complete!)
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+       (mt/with-temp [:model/User {other-admin :id} {:is_superuser true}
+                      :model/OAuthClient {client-id :client_id} {:client_id         (str (random-uuid))
+                                                                 :redirect_uris     ["https://example.com/callback"]
+                                                                 :grant_types       ["authorization_code"]
+                                                                 :response_types    ["code"]
+                                                                 :scopes            ["mb:workspace-manager"]
+                                                                 :registration_type "static"}]
+         (let [token-for (fn [user-id]
+                           (let [token (str "connection-test-" (random-uuid))]
+                             ;; through the provider's store, which hashes tokens at rest
+                             (oidc.store/save-access-token (:token-store (oauth-server/get-provider)) token
+                                                           (str user-id) client-id
+                                                           [api-scope.workspace-manager/workspace-manager]
+                                                           (+ (System/currentTimeMillis) (* 60 60 1000)) nil)
+                             {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
+               token-a   (token-for (mt/user->id :crowberto))
+               token-b   (token-for other-admin)]
+           (try
+             (let [{ws-id :id} (client/client :post 200 url token-a (create-body db-id ["sales"]))]
+               (testing "a token of the creator gets the connection"
+                 (is (=? {:workspace {:id ws-id}} (client/client :get 200 (connection-url ws-id) token-a))))
+               (testing "a token of another admin gets a 403"
+                 (is (= "Only the creator of a workspace can fetch its connection."
+                        (client/client :get 403 (connection-url ws-id) token-b)))))
+             (finally
+               (t2/delete! :model/OAuthAccessToken :client_id client-id)))))))))
