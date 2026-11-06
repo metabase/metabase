@@ -13,11 +13,11 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.workspace.output :as-alias wkspc-output]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -77,7 +77,7 @@
    x))
 
 (defn- resolve-db [db-name]
-  (or (t2/select-one :model/Database :name db-name)
+  (or (advanced-config.db/database-by-name db-name)
       (throw (ex-info (str "Workspace config references unknown database: " (pr-str db-name))
                       {:database-name db-name}))))
 
