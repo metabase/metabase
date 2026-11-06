@@ -1,6 +1,6 @@
 (ns metabase.global-system.mutable-component
   "The protocol for reading, binding and writing one component of the global system."
-  (:refer-clojure :exclude [binding compare-and-set! reset! reset-vals! swap! swap-vals!]))
+  (:refer-clojure :exclude [binding reset! reset-vals! swap! swap-vals!]))
 
 (defprotocol MutableComponentHandle
   "Handle for reading and mutating a single component's stored value.
@@ -15,7 +15,7 @@
      Inside a [[binding]] that slot is the bound value; otherwise it is the root, which every unbound thread sees.
      Outside a [[binding]], throws if the component has no root; use [[alter-root]] to install one.
      The function `f` can run more than once, so it must have no side effects.
-     Prefer [[swap!]], [[reset!]] or [[compare-and-set!]].")
+     Prefer [[swap!]] or [[reset!]].")
   (alter-root [handle new-value]
     "Installs `new-value` as the root value and returns the value it replaced.
      Every thread sees it, this one included, except where an active [[binding]] of this component shadows it.
@@ -59,13 +59,6 @@
   "Like [[clojure.core/reset!]]: sets the value and returns it."
   [handle new-value]
   (second (reset-vals! handle new-value)))
-
-(defn compare-and-set!
-  "Like [[clojure.core/compare-and-set!]]: sets the value to `new-value` only if the current value is identical to
-   `old-value`, and returns whether it did."
-  [handle old-value new-value]
-  (let [[old _] (swap-vals!* handle (fn [current] (if (identical? current old-value) new-value current)) nil)]
-    (identical? old old-value)))
 
 (defmacro with-slot-lock
   "Runs `body` holding the [[slot-lock]] of `handle`.

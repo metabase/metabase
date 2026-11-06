@@ -316,27 +316,6 @@
                   (is (= [11 0] (mc/reset-vals! other-handle 0))))))
   (is (= 5 @other-handle)))
 
-(deftest ^:synchronized compare-and-set-test
-  (testing "compare-and-set! writes only when the current value is identical to the expected one"
-    (mc/alter-root other-handle :a)
-    (is (false? (mc/compare-and-set! other-handle :b :c)))
-    (is (= :a @other-handle))
-    (is (true? (mc/compare-and-set! other-handle :a :c)))
-    (is (= :c @other-handle)))
-  (testing "in a binding it compares and writes the bound value"
-    (mc/binding other-handle nil
-                (fn []
-                  (is (true? (mc/compare-and-set! other-handle nil :bound)))
-                  (is (= :bound @other-handle))))
-    (is (= :c @other-handle)))
-  (testing "of many threads racing to install a value, exactly one wins"
-    (mc/alter-root other-handle nil)
-    (let [start   (promise)
-          racers  (mapv (fn [i] (future @start (mc/compare-and-set! other-handle nil i))) (range 16))
-          _       (deliver start true)
-          winners (into [] (keep-indexed (fn [i racer] (when @racer i))) racers)]
-      (is (= [@other-handle] winners)))))
-
 ;;; --------------------------------------- Roots, locks and test roots ---------------------------------------
 
 (deftest ^:synchronized root-entry-test
