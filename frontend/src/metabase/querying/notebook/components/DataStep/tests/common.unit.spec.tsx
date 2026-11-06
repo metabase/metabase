@@ -2,6 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
+import {
+  setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
+} from "__support__/server-mocks";
 import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { METAKEY, isTouchDevice } from "metabase/utils/browser";
@@ -14,7 +18,10 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType, IconName } from "metabase-types/api";
-import { createMockSearchResult } from "metabase-types/api/mocks";
+import {
+  createMockCardQueryMetadata,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PRODUCTS_ID,
@@ -180,6 +187,39 @@ describe("DataStep", () => {
     await userEvent.click(await screen.findByText("Products"));
 
     expect(getNextTableName()).toBe("Products");
+  });
+
+  it("should change to card", async () => {
+    const card = createSavedStructuredCard({ id: 1, name: "Orders question" });
+    setupCardEndpoints(card);
+    setupCardQueryMetadataEndpoint(
+      card,
+      createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
+    );
+    const emptyQuery = Question.create({
+      DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+    }).query();
+    const { getNextQuery } = await setup({
+      step: createMockNotebookStep({ query: emptyQuery }),
+      searchItems: [
+        createMockSearchResult({
+          id: card.id,
+          name: card.name,
+          model: "card",
+          database_id: SAMPLE_DB_ID,
+        }),
+      ],
+    });
+
+    await userEvent.type(
+      await screen.findByPlaceholderText(/search for tables and more/i),
+      card.name,
+    );
+    await userEvent.click(await screen.findByText(card.name));
+
+    await waitFor(() => {
+      expect(Lib.allSourceCardIds(getNextQuery())).toEqual([card.id]);
+    });
   });
 
   it("should remove joins when changing a table", async () => {

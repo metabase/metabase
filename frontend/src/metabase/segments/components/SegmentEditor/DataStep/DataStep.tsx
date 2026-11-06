@@ -2,6 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { selectTableQueryMetadata } from "metabase/api";
+import type {
+  OmniPickerQuestionItem,
+  OmniPickerTableItem,
+} from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
   getDataPickerValue,
@@ -13,7 +17,6 @@ import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import type { TableId } from "metabase-types/api";
 
 import { ClauseStep } from "../ClauseStep";
 
@@ -41,7 +44,13 @@ export function DataStep({
   const store = useStore();
   const dispatch = useDispatch();
 
-  const handleChange = async (tableId: TableId) => {
+  const handleChange = async (
+    item: OmniPickerTableItem | OmniPickerQuestionItem,
+  ) => {
+    if (item.model !== "table") {
+      return;
+    }
+    const tableId = item.id;
     await dispatch(fetchTableMetadataAndForeignKeys({ id: tableId }));
     const state = store.getState();
     const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
