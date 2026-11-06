@@ -190,7 +190,8 @@
   {:payload [:map {:closed true} [:query-id :string]]}
   [{:keys [query-id]}]
   {:message (str "Query " (quoting/quoted query-id) " needs at least one edit. No edits were saved.")
-   :recovery [{:uses #{} :text "Provide at least one edit with a nonempty `old_string` and the intended `new_string`."}]})
+   :recovery [{:uses #{} :text (str "Provide at least one edit with a nonempty `old_string` and the intended `new_string`. "
+                                    "To show the SQL to the user without a change, set `show_sql: true` with no edits.")}]})
 
 (tools/defrecoverable empty-old-string!
   "An edit has an empty search string, which cannot identify stored text."
@@ -219,12 +220,13 @@
 
   Parameters:
   - query-id: ID of the query to edit
-  - edit: Edit specification map (see apply-sql-edit for format)
+  - edits: Edit specification maps (see apply-sql-edit for format). An empty list is allowed only with
+    `show-sql?`, and then the SQL stays unchanged.
   - name: New name for the query (optional)
   - description: New description for the query (optional)
 
   Returns an `operation-result` map. For details see its docstring."
-  [{:keys [query-id edits queries-state]}
+  [{:keys [query-id edits queries-state show-sql?]}
    :- [:map {:closed true}
        [:query-id [:or :string :int]]
        [:edits [:sequential [:map {:closed true}
@@ -232,13 +234,14 @@
                              [:new_string :string]
                              [:replace_all {:optional true} [:maybe :boolean]]]]]
        [:checklist {:optional true} [:maybe :string]]
+       [:show-sql? {:optional true} [:maybe :boolean]]
        [:queries-state [:map-of :string ::metabot.schema/query]]]]
   (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 
   (let [query-id (str query-id)
         query (metabot.tools.sql.common/query-for-sql-edit! queries-state query-id)
         current-sql (do
-                      (when (empty? edits)
+                      (when (and (empty? edits) (not show-sql?))
                         (empty-edits! {:query-id query-id}))
                       (metabot.u/extract-sql-content query))
         new-sql (metabot.tools.sql.common/check-nonblank-sql!

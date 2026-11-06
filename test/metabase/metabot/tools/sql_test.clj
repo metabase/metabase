@@ -274,6 +274,46 @@
               (is (= {:buffer_id "buf-1" :mode "rewrite" :value "SELECT * FROM t" :show_sql true}
                      (:data part))))))))))
 
+(deftest edit-sql-query-show-current-sql-test
+  (testing "edit_sql_query with no edits and show_sql true shows the current SQL unchanged"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {:as db} {:engine :h2}]
+          (mt/with-db db
+            (testing "open buffer: a code_edit with the unchanged SQL"
+              (let [{:keys [error output data-parts]} (run-sql-edit-tool "edit_sql_query" (code-editor-context {:auto_apply true})
+                                                                         {:edits [] :show_sql true})]
+                (is (nil? error))
+                (is (= [{:buffer_id "buf-1" :mode "rewrite" :value "SELECT * FROM t" :show_sql true}]
+                       (map :data data-parts)))
+                (is (str/includes? output "shown to the user"))
+                (is (str/includes? output "not changed"))
+                (is (not (str/includes? output "already applied")))))
+            (testing "open buffer without auto_apply: the proposal changes nothing"
+              (let [{:keys [error output]} (run-sql-edit-tool "edit_sql_query" (code-editor-context {}) {:edits [] :show_sql true})]
+                (is (nil? error))
+                (is (str/includes? output "accepting it changes nothing"))))
+            (testing "no buffer: a generated_entity with show_sql"
+              (let [{:keys [error output data-parts]} (run-sql-edit-tool "edit_sql_query" {} {:edits [] :show_sql true})]
+                (is (nil? error))
+                (is (= ["generated_entity"] (map :data-type data-parts)))
+                (is (true? (get-in (first data-parts) [:data :show_sql])))
+                (is (str/includes? output "not changed"))
+                (is (str/includes? output "metabase://query/test-q"))))
+            (testing "the shown SQL is the stored text, character for character"
+              (let [sql    "select  a.id\n  from t a -- mine\n where a.id = 1"
+                    query  (-> (lib/native-query (mt/metadata-provider) sql) lib/->legacy-MBQL)
+                    result (sql.edit/edit-sql-query {:query-id      "q1"
+                                                     :edits         []
+                                                     :show-sql?     true
+                                                     :queries-state {"q1" query}})]
+                (is (= sql (get-in result [:action-result :query-content])))))
+            (doseq [extra-args [{:edits []} {:edits [] :show_sql false}]]
+              (testing (str "without show_sql true, no edits still fails: " extra-args)
+                (let [{:keys [error output]} (run-sql-edit-tool "edit_sql_query" {} extra-args)]
+                  (is (= {:class :recoverable :code ::sql.edit/empty-edits} error))
+                  (is (str/includes? output "`show_sql: true`")))))))))))
+
 (deftest edit-and-replace-sql-query-unexpected-error-test
   (mt/with-dynamic-fn-redefs [sql.edit/edit-sql-query (fn [_] (throw (ex-info "boom" {})))
                               sql.replace/replace-sql-query (fn [_] (throw (ex-info "boom" {})))]

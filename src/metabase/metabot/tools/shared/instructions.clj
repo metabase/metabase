@@ -114,6 +114,17 @@ Reference items using: [name](metabase://type/id)")
        "**If the returned SQL query is correct:**\n\n"
        (delivery-instruction query-id delivery)))
 
+(defn sql-shown-instructions-for
+  "Generate instructions for a query whose current SQL is shown to the user with no change. `delivery` is how
+   the SQL reached the user: `:applied`, `:proposed` or `:link` (see [[delivery-instruction]])."
+  [query-id delivery]
+  (str "The current SQL of the query is shown to the user. The SQL is not changed.\n\n"
+       (case delivery
+         :applied  "- Tell the user that the SQL is shown in their SQL editor. Do not describe it as a change, do not offer a link"
+         :proposed (str "- The SQL is proposed in the user's SQL editor with no change. Tell them it is there and that "
+                        "accepting it changes nothing. Do not offer a link")
+         :link     (delivery-instruction query-id delivery))))
+
 (defn replace-sql-query-instructions-for
   "Generate instructions for a replaced SQL query. `delivery` is how the result reached the user:
    `:applied`, `:proposed` or `:link` (see [[delivery-instruction]])."

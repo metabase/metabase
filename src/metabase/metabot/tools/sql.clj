@@ -201,7 +201,8 @@
   (declaration [_]
     {:name "edit_sql_query"
      :description (str "Edit an existing SQL query using structured edits. Provide a short, "
-                       "human-friendly `title` shown above the results.")
+                       "human-friendly `title` shown above the results. To show the current SQL to the user "
+                       "without a change, send no edits and `show_sql: true`.")
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
      :args edit-sql-schema})
@@ -211,8 +212,13 @@
                             {:query-id query-id
                              :edits edits
                              :checklist checklist
+                             :show-sql? show-sql?
                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/edit-sql-query-instructions-for ctx {:edit? true :show-sql? show-sql?})))
+                     title
+                     (if (and (empty? edits) show-sql?)
+                       instructions/sql-shown-instructions-for
+                       instructions/edit-sql-query-instructions-for)
+                     ctx {:edit? true :show-sql? show-sql?})))
 
 (def edit-sql-query-tool
   "The tool that applies structured edits to a stored SQL query."

@@ -623,12 +623,14 @@ describe("query builder SQL that Metabot started from the sidebar", () => {
       [codeEditPart({ sql: METABOT_SQL, showSql: true })],
     ]);
     await sendTurn({ hasQbBuffer: false });
+    expect(isNativeEditorOpen()).toBe(false);
 
     await sendTurn();
 
     expect(isNativeEditorOpen()).toBe(true);
     expect(getSqlModeEntry()?.mode).toBe("sql-shown");
     expect(runQuestionQuery).not.toHaveBeenCalled();
+    expect(screen.getByTestId("qb-proposed-sql")).toBeEmptyDOMElement();
 
     // A later change must not bring back a diff of the old edit.
     await editEditorText(`${METABOT_SQL} -- mine`);
