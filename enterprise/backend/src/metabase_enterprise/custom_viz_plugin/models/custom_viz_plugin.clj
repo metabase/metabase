@@ -13,8 +13,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.nio.charset StandardCharsets))
-  (:import
+   (java.nio.charset StandardCharsets)
    (java.sql Blob)))
 
 (set! *warn-on-reflection* true)
