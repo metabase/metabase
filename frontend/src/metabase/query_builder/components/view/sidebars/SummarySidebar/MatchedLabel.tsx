@@ -5,7 +5,6 @@ type MatchedLabelProps = {
   searchText: string;
 };
 
-/** A one-line, ellipsized label with the first case-insensitive match of `searchText` in bold. */
 export function MatchedLabel({ label, searchText }: MatchedLabelProps) {
   const needle = searchText.trim().toLowerCase();
   const start = needle.length > 0 ? label.toLowerCase().indexOf(needle) : -1;

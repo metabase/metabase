@@ -224,7 +224,6 @@ function removeMetricFromSidebar(metricName) {
   H.summaryWellItem("values", metricName).should("not.exist");
 }
 
-/** Closes the sidebar from the header button and opens it again. */
 function reopenSummarize() {
   H.summarize();
   H.summaryWell("values").should("not.exist");

@@ -4,7 +4,6 @@ import type { IconName } from "metabase-types/api";
 /** `values` is Summarize by, `columns` is Group by. */
 export type SummaryWellId = "values" | "columns";
 
-/** What a field in the list or a typeahead option stands for. */
 export type SummaryField =
   | { kind: "count" }
   | { kind: "column"; column: Lib.ColumnMetadata }
@@ -28,11 +27,9 @@ export type SummaryOperatorOption = {
   operator: Lib.AggregationOperator;
   shortName: string;
   displayName: string;
-  /** Whether a column value is aggregated with this operator now. */
   isSelected: boolean;
 };
 
-/** An aggregation in Summarize by, with what kind of chip shows it. */
 export type SummaryValueItem = {
   clause: Lib.AggregationClause;
   /** The name of the aggregation's result column, unique within the stage. */
@@ -43,7 +40,6 @@ export type SummaryValueItem = {
   | {
       kind: "column";
       column: Lib.ColumnMetadata;
-      /** The operators the column can switch to, with the one in use selected. */
       operatorOptions: SummaryOperatorOption[];
     }
   | { kind: "metric" }
@@ -51,7 +47,6 @@ export type SummaryValueItem = {
   | { kind: "expression" }
 );
 
-/** A breakout in Group by. */
 export type SummaryDimensionItem = {
   clause: Lib.BreakoutClause;
   /** The name of the breakout's result column, unique within the stage. */

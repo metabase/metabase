@@ -43,7 +43,6 @@ function getHandle() {
   return handle;
 }
 
-/** Drags the left edge by `distance` pixels, to the left for a negative one. Releases unless `release` is false. */
 function dragEdge(distance: number, { release = true } = {}) {
   fireEvent.mouseDown(getHandle(), { clientX: 500, clientY: 100 });
   fireEvent.mouseMove(document, { clientX: 500 + distance, clientY: 100 });

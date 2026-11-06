@@ -36,11 +36,6 @@ function getFieldWellId(field: SummaryField): SummaryWellId {
   return field.kind === "column" ? "columns" : "values";
 }
 
-/**
- * The summary sidebar: Summarize by and Group by wells on the left, and on the right a drawer
- * with the fields to build them from, which slides out of the panel when hidden. Grouping a
- * summary that has no values yet counts the rows.
- */
 export function SummarySidebar({
   query,
   onQueryChange,

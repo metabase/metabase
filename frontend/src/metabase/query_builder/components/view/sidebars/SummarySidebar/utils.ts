@@ -48,11 +48,7 @@ function withoutEmptySections(sections: SummaryFieldSection[]) {
   return sections.filter((section) => section.items.length > 0);
 }
 
-/**
- * The fields the summary can be built from, in sections: the measures and metrics of the
- * query's source, then the breakoutable columns grouped by the table they come from, in the
- * order the query reaches those tables. Sections with no items are left out.
- */
+// measures and metrics first, then the tables in the order the query reaches them
 export function getFieldSections(
   query: Lib.Query,
   stageIndex: number,
@@ -82,11 +78,6 @@ export function getFieldSections(
   ]);
 }
 
-/**
- * The sections a well's typeahead offers. Group by offers the table sections. Summarize by offers
- * Count of rows, then measures and metrics, then the table sections: a column picked there is
- * aggregated with its default operator.
- */
 export function getWellFieldSections(
   sections: SummaryFieldSection[],
   wellId: SummaryWellId,
@@ -112,11 +103,6 @@ export function getWellFieldSections(
   return [countSection, ...valueSections, ...columnSections];
 }
 
-/**
- * The sections with only the items whose names contain `searchText`, ignoring case and
- * surrounding whitespace; sections left with no items are dropped. Returns `sections` itself
- * for a blank search.
- */
 export function filterFieldSections(
   sections: SummaryFieldSection[],
   searchText: string,
@@ -149,7 +135,6 @@ function findOperatorColumn(
   );
 }
 
-/** The operators among `operators` that can aggregate `column`, e.g. Sum and Average for a number. */
 function getColumnOperatorOptions(
   query: Lib.Query,
   stageIndex: number,
@@ -174,7 +159,6 @@ function getColumnOperatorOptions(
     }));
 }
 
-/** Sum when the column can be summed, else Distinct values, else the first operator that fits. */
 function getDefaultOperatorOption(
   query: Lib.Query,
   stageIndex: number,
@@ -209,11 +193,7 @@ function getColumnAggregation(
     : null;
 }
 
-/**
- * The names of the stage's result columns, which are unique: the breakouts' in breakout order,
- * then the aggregations' in aggregation order. Clause display names repeat, e.g. two sums of
- * one column, a column and a custom column with the same name, or one column by year and by month.
- */
+// result column names are unique within the stage; clause display names can repeat
 function getResultColumnNames(query: Lib.Query, stageIndex: number) {
   const infos = Lib.returnedColumns(query, stageIndex).map((column) =>
     Lib.displayInfo(query, stageIndex, column),
@@ -263,7 +243,6 @@ function getValueItem(
   };
 }
 
-/** The stage's aggregations as Summarize by chips. */
 export function getValueItems(
   query: Lib.Query,
   stageIndex: number,
@@ -300,7 +279,6 @@ export function getValueItems(
   );
 }
 
-/** The stage's breakouts as Group by chips, named with their bucket, e.g. "Created At: Month". */
 export function getDimensionItems(
   query: Lib.Query,
   stageIndex: number,
@@ -390,11 +368,7 @@ function hasValue(
   }
 }
 
-/**
- * Adds `field` to a well: as a breakout in Group by, or as an aggregation in Summarize by, a
- * column with its default operator. Returns `query` itself when the well already has the field,
- * or when a column can't be aggregated.
- */
+/** Returns `query` itself when the well already has the field, or when a column can't be aggregated. */
 export function addField(
   query: Lib.Query,
   stageIndex: number,
@@ -438,7 +412,6 @@ export function addField(
   }
 }
 
-/** Empties a well, dropping the clauses that depend on its contents too. */
 export function clearWell(
   query: Lib.Query,
   stageIndex: number,
@@ -454,7 +427,6 @@ export function clearWell(
   );
 }
 
-/** Puts `field` in a well in place of what it holds. */
 export function replaceWellWithField(
   query: Lib.Query,
   stageIndex: number,
@@ -469,7 +441,6 @@ export function replaceWellWithField(
   );
 }
 
-/** Aggregates a column value's column with another operator, in place. */
 export function changeValueOperator(
   query: Lib.Query,
   stageIndex: number,

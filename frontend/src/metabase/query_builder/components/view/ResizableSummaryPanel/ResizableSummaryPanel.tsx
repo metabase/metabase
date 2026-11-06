@@ -21,11 +21,7 @@ type ResizableSummaryPanelProps = {
   "data-testid"?: string;
 };
 
-/**
- * The right-hand panel the summary sidebar renders in, resizable from its left edge. It starts
- * at 650px and always leaves the results some room. While it's being dragged, its content carries
- * `data-resizing`, so the content can hold off animations that would trail the drag.
- */
+// while dragged, the content carries `data-resizing` so it can hold off animations that would trail the drag
 export function ResizableSummaryPanel({
   containerWidth,
   children,

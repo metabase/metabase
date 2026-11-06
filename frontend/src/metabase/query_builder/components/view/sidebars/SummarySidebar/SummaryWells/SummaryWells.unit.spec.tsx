@@ -6,9 +6,10 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
+import type { SummaryField, SummaryWellId } from "../types";
+import { getDimensionItems, getFieldSections, getValueItems } from "../utils";
+
 import { SummaryWells } from "./SummaryWells";
-import type { SummaryField, SummaryWellId } from "./types";
-import { getDimensionItems, getFieldSections, getValueItems } from "./utils";
 
 const STAGE_INDEX = -1;
 

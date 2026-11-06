@@ -7,89 +7,37 @@ import {
   useState,
 } from "react";
 import { useLatest } from "react-use";
-import { t } from "ttag";
 
 import { Box, Combobox, Icon, PillsInput, useCombobox } from "metabase/ui";
 
-import { MatchedLabel } from "./MatchedLabel";
-import S from "./SummarySidebar.module.css";
-import type { SummaryField, SummaryFieldSection, SummaryWellId } from "./types";
-import { filterFieldSections } from "./utils";
+import { MatchedLabel } from "../MatchedLabel";
+import S from "../SummarySidebar.module.css";
+import type {
+  SummaryField,
+  SummaryFieldSection,
+  SummaryWellId,
+} from "../types";
+import { filterFieldSections } from "../utils";
 
-const DROPDOWN_GAP_PX = 4;
-const DROPDOWN_MAX_HEIGHT_PX = 320;
-
-/** Where the typeahead sits relative to its field, so it lines up with the well card instead. */
-type DropdownFrame = {
-  position: "bottom-start" | "top-start";
-  width: number;
-  offset: { mainAxis: number; crossAxis: number };
-};
-
-/**
- * Opens below the card, or above it when there's more room there. The side is picked here rather
- * than by flipping, because the offset that clears the card differs per side.
- * The card is the field's parent; `null` if the field isn't mounted in one.
- */
-function getCardFrame(field: HTMLElement): DropdownFrame | null {
-  const card = field.parentElement;
-  if (card == null) {
-    return null;
-  }
-  const fieldRect = field.getBoundingClientRect();
-  const cardRect = card.getBoundingClientRect();
-  const spaceBelow = window.innerHeight - cardRect.bottom;
-  const isBelow =
-    spaceBelow >= DROPDOWN_MAX_HEIGHT_PX || spaceBelow >= cardRect.top;
-  return {
-    position: isBelow ? "bottom-start" : "top-start",
-    width: cardRect.width,
-    offset: {
-      mainAxis:
-        (isBelow
-          ? cardRect.bottom - fieldRect.bottom
-          : fieldRect.top - cardRect.top) + DROPDOWN_GAP_PX,
-      crossAxis: cardRect.left - fieldRect.left,
-    },
-  };
-}
-
-function getFieldTexts(wellId: SummaryWellId, hasItems: boolean) {
-  if (wellId === "values") {
-    return {
-      label: t`Add a value by name`,
-      placeholder: hasItems ? t`Add a value…` : t`Type a metric or column`,
-      noMatches: t`No matching metrics or columns`,
-    };
-  }
-  return {
-    label: t`Add a grouping by name`,
-    placeholder: hasItems ? t`Add a column…` : t`Type a column`,
-    noMatches: t`No matching columns`,
-  };
-}
-
-function getOptionValue(sectionKey: string, itemKey: string) {
-  return `${sectionKey}/${itemKey}`;
-}
+import {
+  DROPDOWN_GAP_PX,
+  DROPDOWN_MAX_HEIGHT_PX,
+  type DropdownFrame,
+  getCardFrame,
+  getFieldTexts,
+  getOptionValue,
+} from "./utils";
 
 type SummaryWellInputProps = {
   wellId: SummaryWellId;
-  /** What the well's typeahead offers, before searching. */
   sections: SummaryFieldSection[];
-  /** The well's chips, laid out inline before the field. */
   children: ReactNode;
   hasItems: boolean;
   autoFocus?: boolean;
   onPick: (field: SummaryField) => void;
-  /** Backspace in the empty field: takes off the last chip, like any pills input. */
   onRemoveLast: () => void;
 };
 
-/**
- * A well's field: its chips followed by a typeahead that finds metrics (Summarize by) or
- * columns (Group by) by name.
- */
 export function SummaryWellInput({
   wellId,
   sections,

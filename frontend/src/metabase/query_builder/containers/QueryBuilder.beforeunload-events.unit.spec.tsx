@@ -24,7 +24,6 @@ import {
 
 registerVisualizations();
 
-/** Runs the Count the summary sidebar starts from, by picking it in Summarize by. */
 async function addCountOfRows() {
   await userEvent.type(
     await screen.findByLabelText("Add a value by name"),

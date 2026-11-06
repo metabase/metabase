@@ -34,11 +34,6 @@ type SummaryFieldListProps = {
   onAdd: (field: SummaryField) => void;
 };
 
-/**
- * The fields a summary can be built from, in collapsible sections: measures, metrics, then a
- * section per table the query reaches. A search keeps only the matching fields and opens every
- * section, so no match is hidden.
- */
 export function SummaryFieldList({
   sections,
   onSelect,
@@ -142,7 +137,6 @@ export function SummaryFieldList({
 type CollapsibleSectionProps = {
   name: string;
   isExpanded: boolean;
-  /** Absent while the section can't collapse, i.e. during a search. */
   onToggle?: () => void;
   children: ReactNode;
 };
