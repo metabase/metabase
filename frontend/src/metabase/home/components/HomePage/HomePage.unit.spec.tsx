@@ -96,6 +96,22 @@ describe("HomePage", () => {
     expect(screen.getByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
   });
 
+  it("should show the default homepage if the dashboard was archived (#31599)", async () => {
+    setup({
+      dashboardId: 10,
+      dashboardResponse: async () =>
+        createMockDashboard({ id: 10, archived: true }),
+    });
+
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("path:/api/dashboard/10")).toBe(true),
+    );
+    await waitForLoaderToBeRemoved();
+
+    expect(await screen.findByTestId("home-page")).toBeInTheDocument();
+    expect(screen.queryByText(TEST_DASHBOARD_NAME)).not.toBeInTheDocument();
+  });
+
   it("should show the homepage right away when no homepage dashboard is set (metabase#37089)", () => {
     setup();
     expect(screen.getByTestId("home-page")).toBeInTheDocument();
