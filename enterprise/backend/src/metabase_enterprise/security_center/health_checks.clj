@@ -163,13 +163,12 @@
    :run               (fn []
                         ;; Each of these settings has a `:feature`, so it reads as off on a token without it, and each
                         ;; reads as off until its provider is configured.
-                        (let [on (cond-> []
-                                   (setting/get :saml-enabled)               (conj (item :pass (tru "SAML is on")))
-                                   (setting/get :oidc-enabled)               (conj (item :pass (tru "OIDC is on")))
-                                   (setting/get :jwt-enabled-and-configured) (conj (item :pass (tru "JWT is on"))))]
-                          (if (seq on)
-                            on
-                            [(item :fail (tru "None of SAML, OIDC or JWT is on"))])))})
+                        (or (not-empty
+                             (cond-> []
+                               (setting/get :saml-enabled)               (conj (item :pass (tru "SAML is on")))
+                               (setting/get :oidc-enabled)               (conj (item :pass (tru "OIDC is on")))
+                               (setting/get :jwt-enabled-and-configured) (conj (item :pass (tru "JWT is on")))))
+                            [(item :fail (tru "None of SAML, OIDC or JWT is on"))]))})
 
 (def ^:private scim-provisioning
   {:id                :scim-provisioning
@@ -341,13 +340,9 @@
   [{:keys [id applicable?]} :- ::entry]
   (try
     (boolean (applicable?))
-    (catch Throwable e
+    (catch Exception e
       (log/errorf e "Health check %s could not tell whether it applies" (name id))
       true)))
-
-(defn- unknown-item
-  [message]
-  {:status :unknown, :message (str message)})
 
 (mu/defn- run-items :- ::items
   "The items of `entry`'s `:run`. A throw, an empty result and an item outside the schema each become one unknown
@@ -355,10 +350,10 @@
   [{:keys [id run]} :- ::entry]
   (try
     (mu/validate-throw ::items (vec (run)))
-    (catch Throwable e
+    (catch Exception e
       (log/errorf e "Health check %s failed" (name id))
       ;; a generic text: an exception message may hold anything, and the log has it
-      [(unknown-item (tru "Couldn''t run this check. Check the server logs for the underlying error."))])))
+      [(item :unknown (tru "Couldn''t run this check. Check the server logs for the underlying error."))])))
 
 (mu/defn run-check :- ::security-center.schema/health-check
   "Runs `entry` and returns the `HealthCheck` the API serves: the texts in the current user's locale, the items of this

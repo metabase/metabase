@@ -90,10 +90,9 @@
   "The id and name, in name order, of the databases the group with `group-id` can query in any way: a create-queries
   permission other than `:no` on the database or on one of its tables."
   [group-id :- ms/PositiveInt]
-  (let [db-ids (t2/select-fn-set :db_id :model/DataPermissions
-                                 :group_id   group-id
-                                 :perm_type  :perms/create-queries
-                                 :perm_value [:not= :no])]
-    (if (seq db-ids)
-      (t2/select [:model/Database :id :name] :id [:in db-ids] {:order-by [:name]})
-      [])))
+  (if-let [db-ids (not-empty (t2/select-fn-set :db_id :model/DataPermissions
+                                               :group_id   group-id
+                                               :perm_type  :perms/create-queries
+                                               :perm_value [:not= :no]))]
+    (t2/select [:model/Database :id :name] :id [:in db-ids] {:order-by [:name]})
+    []))
