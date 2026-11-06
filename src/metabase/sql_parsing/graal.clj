@@ -26,7 +26,7 @@
    (java.nio.file AccessMode DirectoryStream DirectoryStream$Filter Files FileSystems Path)
    (java.time Duration)
    (java.util Map Set)
-   (java.util.concurrent ExecutionException TimeoutException)
+   (java.util.concurrent ExecutionException ExecutorService Executors Future ThreadFactory TimeoutException)
    (org.graalvm.polyglot Context Engine HostAccess PolyglotException Source Value)
    (org.graalvm.polyglot.io FileSystem IOAccess)))
 
@@ -196,10 +196,24 @@
 
 ;;; ---------------------------------------------- timeout handling ---------------------------------------
 
+(def ^:private python-thread-stack-bytes
+  "Stack size of the threads that run Python calls. GraalPy runs interpreted, and each Python frame takes much more
+  Java stack than in CPython, so a deep parse can overflow a default 1 MB thread stack. The overflow comes back as a
+  Python `RecursionError`."
+  (* 16 1024 1024))
+
+(defonce ^:private ^ExecutorService python-executor
+  (Executors/newCachedThreadPool
+   (reify ThreadFactory
+     (newThread [_ runnable]
+       (doto (Thread. nil runnable "sql-parsing-python" (long python-thread-stack-bytes))
+         (.setDaemon true))))))
+
 (defn- with-timeout*
-  "Execute f in a future; return its result, or `::timeout` after `timeout-ms`."
+  "Execute f on a [[python-executor]] thread; return its result, or `::timeout` after `timeout-ms`."
   [timeout-ms f]
-  (let [fut (future (f))]
+  (let [^Callable task (bound-fn* f)
+        ^Future fut    (.submit python-executor task)]
     (try
       (deref fut timeout-ms ::timeout)
       (catch ExecutionException e
