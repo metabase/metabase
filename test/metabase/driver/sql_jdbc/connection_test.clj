@@ -990,11 +990,14 @@
                                                           :wrote
                                                           (catch Throwable e
                                                             e))))
+          ;; throws if a thread never gets there, so the race is set up or the test fails, never passes without it
           wait-for  (fn [ready?]
                       (loop [tries 0]
-                        (when (and (not (ready?)) (< tries 500))
-                          (Thread/sleep 10)
-                          (recur (inc tries)))))]
+                        (cond
+                          (ready?)       nil
+                          (< tries 500)  (do (Thread/sleep 10)
+                                             (recur (inc tries)))
+                          :else          (throw (ex-info "A thread never reached the lock state the race needs" {})))))]
       ;; daemons, so a deadlock fails this test without keeping the JVM alive
       (doseq [^Thread thread [starter halter writer]]
         (.setDaemon thread true))
