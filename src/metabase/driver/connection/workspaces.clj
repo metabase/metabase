@@ -2,6 +2,7 @@
   (:require
    [metabase.util.log :as log]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *swapped-connection-details*
   "A dynamic var that holds a map of database-id -> swapped-details-map for temporarily swapping connection details.
   When a connection spec is created for a database, if its ID is present in this map, the swap map will be

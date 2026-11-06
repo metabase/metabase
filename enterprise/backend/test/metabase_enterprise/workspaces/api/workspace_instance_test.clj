@@ -27,13 +27,13 @@
 
 (deftest current-empty-test
   (testing "GET /ee/workspace-instance/current returns {:data nil} when no workspace is loaded"
-    (with-redefs [ws/instance-workspace (constantly nil)]
+    (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly nil)]
       (is (= {:data nil}
              (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))))))
 
 (deftest current-with-workspace-test
   (testing "GET /ee/workspace-instance/current returns the workspace wrapped in {:data ...}"
-    (with-redefs [ws/instance-workspace (constantly {:name      "Current Test"
+    (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly {:name      "Current Test"
                                                      :databases {(mt/id) {:input_schemas ["PUBLIC"]
                                                                           :output        {:schema "ws_alice"}}}})]
       (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current")
@@ -54,7 +54,7 @@
   (testing "GET /ee/workspace-instance/current returns can_write false when locked by config"
     (ws.tu/with-workspace-locked-by-config
       (fn []
-        (with-redefs [ws/instance-workspace (constantly {:name "Locked Test" :databases {}})]
+        (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly {:name "Locked Test" :databases {}})]
           (let [data (:data (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))]
             (is (= "Locked Test" (:name data)))
             (is (false? (:can_write data)))))))))
@@ -62,7 +62,7 @@
 (deftest current-with-workspace-locked-by-env-var-returns-can-write-false-test
   (testing "GET /ee/workspace-instance/current returns can_write false when MB_INSTANCE_WORKSPACE is set"
     (mt/with-temp-env-var-value! [:mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
-      (with-redefs [ws/instance-workspace (constantly {:name "Env Locked Test" :databases {}})]
+      (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly {:name "Env Locked Test" :databases {}})]
         (let [data (:data (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/current"))]
           (is (= "Env Locked Test" (:name data)))
           (is (false? (:can_write data))))))))
@@ -93,27 +93,27 @@
       (fn []
         (let [resp (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
                                          {:name "x" :databases {}})]
-          (is (re-find #"config\.yml" (:message resp))))))))
+          (is (re-find #"config\.yml" resp)))))))
 
 (deftest post-current-rejects-when-env-var-set-test
   (testing "POST /ee/workspace-instance/current returns 400 when MB_INSTANCE_WORKSPACE is set"
     (mt/with-temp-env-var-value! [:mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
       (let [resp (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
                                        {:name "x" :databases {}})]
-        (is (re-find #"config\.yml" (:message resp)))))))
+        (is (re-find #"config\.yml" resp))))))
 
 (deftest delete-current-rejects-when-locked-test
   (testing "DELETE /ee/workspace-instance/current returns 400 when locked by config"
     (ws.tu/with-workspace-locked-by-config
       (fn []
         (let [resp (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current")]
-          (is (re-find #"config\.yml" (:message resp))))))))
+          (is (re-find #"config\.yml" resp)))))))
 
 (deftest delete-current-rejects-when-env-var-set-test
   (testing "DELETE /ee/workspace-instance/current returns 400 when MB_INSTANCE_WORKSPACE is set"
     (mt/with-temp-env-var-value! [:mb-instance-workspace "{\"name\":\"x\",\"databases\":{}}"]
       (let [resp (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current")]
-        (is (re-find #"config\.yml" (:message resp)))))))
+        (is (re-find #"config\.yml" resp))))))
 
 (deftest post-current-rejects-non-superuser-before-lock-test
   (testing "POST /ee/workspace-instance/current returns 403 (not 400) for a non-superuser even when locked"
