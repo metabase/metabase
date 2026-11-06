@@ -16,3 +16,13 @@
   metabase-enterprise.workspaces.transform-hooks
   [_driver _db-id sql]
   sql)
+
+(defenterprise workspace-transform-target
+  "The target a transform targeting `target` on `db-id` would write to, without recording
+   anything. On a workspaced database that is the workspace's remapped copy; checks such as
+   \"does the target table already exist\" must ask about that table, not the canonical one.
+
+   OSS / no-workspace fallback: returns `target` unchanged."
+  metabase-enterprise.workspaces.transform-hooks
+  [_db-id target]
+  target)
