@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [malli.json-schema :as mjs]
+   [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.open-api :as defendpoint.open-api]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.server.core :as server]
@@ -118,3 +119,44 @@
             (is (contains? (:properties json-schema) "data"))
             (is (contains? (:properties json-schema) "row_count"))
             (is (contains? (:properties json-schema) "status"))))))))
+
+(deftest ^:parallel response-override-test
+  (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
+    (testing "an override documents the status, description and media types it names"
+      (is (=? {"200" {:description "Rows as CSV or JSON"
+                      :content     {"text/csv"         {:schema {:type :string}}
+                                    "application/json" {:schema {:type :array, :items {:type :object}}}}}}
+              (#'defendpoint.open-api/schema->response-obj
+               [:fn {:openapi/response {:status      "200"
+                                        :description "Rows as CSV or JSON"
+                                        :content     {"text/csv"         :string
+                                                      "application/json" [:sequential :map]}}}
+                any?]))))
+    (testing "an override without content documents a response with no body"
+      (is (= {"204" {:description "No content"}}
+             (#'defendpoint.open-api/schema->response-obj ::api/generic-204-no-content))))
+    (testing "an override takes precedence over :openapi/response-schema"
+      (is (= {"204" {:description "No content"}}
+             (#'defendpoint.open-api/schema->response-obj
+              [:map {:openapi/response {:status "204", :description "No content"}, :openapi/response-schema :int}]))))
+    (testing "a malformed override is refused"
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (#'defendpoint.open-api/schema->response-obj [:map {:openapi/response {:status "ok"}}]))))))
+
+(deftest ^:parallel response-override-replaces-2xx-stub-test
+  (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
+    (testing "an endpoint documenting an exact success status has no 2XX entry left over"
+      (is (= #{"204" "4XX" "5XX"}
+             (set (keys (:responses (#'defendpoint.open-api/path-item
+                                     "/api/test"
+                                     {:method          :delete
+                                      :route           {:path "/test"}
+                                      :docstr          "Delete it."
+                                      :params          {}
+                                      :response-schema ::api/generic-204-no-content
+                                      :body            []})))))))
+    (testing "an endpoint without a response schema keeps the 2XX stub"
+      (is (= #{"2XX" "4XX" "5XX"}
+             (set (keys (:responses (#'defendpoint.open-api/path-item
+                                     "/api/test"
+                                     {:method :get, :route {:path "/test"}, :docstr "Get it.", :params {}, :body []})))))))))
