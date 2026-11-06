@@ -3,7 +3,6 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
@@ -100,15 +99,6 @@
                                        [tag-id (every? #(get transform-id->can-write % false) tform-ids)]))
                                 tag-id->transform-ids)]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
-
-(defmethod serdes/make-spec "TransformTag"
-  [_model-name _opts]
-  {:schema    ::transforms.schema/external-transform-tag
-   :copy [:entity_id :built_in_type]
-   :transform {:name {:export str :import identity}}})
-
-(defmethod serdes/storage-path "TransformTag" [tt _ctx]
-  [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
 
 (defmethod serialization/spec :model/TransformTag [_]
   {:schema    ::transforms.schema/external-transform-tag

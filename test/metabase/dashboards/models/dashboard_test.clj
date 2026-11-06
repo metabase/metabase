@@ -5,10 +5,10 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.queries.models.parameter-card :as parameter-card]
+   [metabase.serialization.core :as serialization]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
@@ -378,8 +378,13 @@
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
               (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
 
-(deftest ^:parallel descendants-test
-  (testing "dashboard which have parameter's source is another card"
+(defn- content-dependencies [dashboard]
+  (into #{}
+        (remove (comp #{:model/Database :model/Table :model/Field} first))
+        (first (serialization/export-dependencies :model/Dashboard [dashboard]))))
+
+(deftest ^:parallel export-dependencies-test
+  (testing "dashboard whose parameter's source is another card"
     (mt/with-temp
       [:model/Field     field     {:name "A field"}
        :model/Card      card      {:name "A card"}
@@ -389,23 +394,22 @@
                                                  :values_source_type   "card"
                                                  :values_source_config {:card_id     (:id card)
                                                                         :value_field [:field (:id field) nil]}}]}]
-      (is (= {["Card" (:id card)] {"Dashboard" (:id dashboard)}}
-             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
+      (is (= #{[:model/Card (:id card)]}
+             (content-dependencies dashboard))))))
 
-(deftest descendants-test-2
-  (testing "dashboard which has a dashcard with an action"
+(deftest export-dependencies-test-2
+  (testing "dashboard with dashcard with action"
     (mt/with-actions [{:keys [action-id]} {}]
       (mt/with-temp
         [:model/Dashboard     dashboard {:name "A dashboard"}
-         :model/DashboardCard dc        {:action_id          action-id
+         :model/DashboardCard _         {:action_id          action-id
                                          :dashboard_id       (:id dashboard)
                                          :parameter_mappings []}]
-        (is (= {["Action" action-id] {"Dashboard"     (:id dashboard)
-                                      "DashboardCard" (:id dc)}}
-               (serdes/descendants "Dashboard" (:id dashboard) {})))))))
+        (is (= #{[:model/Action action-id]}
+               (content-dependencies dashboard)))))))
 
-(deftest ^:parallel descendants-test-3
-  (testing "dashboard in which its dashcards has parameter_mappings to a card"
+(deftest ^:parallel export-dependencies-test-3
+  (testing "dashboard whose dashcards have parameter_mappings to card"
     (mt/with-temp
       [:model/Card          card1     {:name "Card attached to dashcard"}
        :model/Card          card2     {:name "Card attached to parameters"}
@@ -413,19 +417,16 @@
                                                      :slug "category_name"
                                                      :id   "_CATEGORY_NAME_"
                                                      :type "category"}]}
-       :model/DashboardCard dc        {:card_id            (:id card1)
+       :model/DashboardCard _         {:card_id            (:id card1)
                                        :dashboard_id       (:id dashboard)
                                        :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                              :card_id      (:id card2)
                                                              :target       [:dimension (mt/$ids $categories.name)]}]}]
-      (is (= {["Card" (:id card1)] {"Dashboard"     (:id dashboard)
-                                    "DashboardCard" (:id dc)}
-              ["Card" (:id card2)] {"Dashboard"     (:id dashboard)
-                                    "DashboardCard" (:id dc)}}
-             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
+      (is (= #{[:model/Card (:id card1)] [:model/Card (:id card2)]}
+             (content-dependencies dashboard))))))
 
-(deftest ^:parallel descendants-test-4
-  (testing "dashboard in which its dashcards have series"
+(deftest ^:parallel export-dependencies-test-4
+  (testing "dashboard whose dashcards have series"
     (mt/with-temp
       [:model/Card                card1     {:name "Card attached to dashcard"}
        :model/Card                card2     {:name "Card attached to series in 1st position"}
@@ -434,14 +435,11 @@
                                                            :slug "category_name"
                                                            :id   "_CATEGORY_NAME_"
                                                            :type "category"}]}
-       :model/DashboardCard       dashcard {:card_id (:id card1), :dashboard_id (:id dashboard)}
-       :model/DashboardCardSeries s2       {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}
-       :model/DashboardCardSeries s3       {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]
-      (is (= (into {} (for [[card series] [[card1 nil] [card2 s2] [card3 s3]]]
-                        [["Card" (:id card)] (cond-> {"Dashboard"           (:id dashboard)
-                                                      "DashboardCard"       (:id dashcard)}
-                                               series (assoc "DashboardCardSeries" (:id series)))]))
-             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
+       :model/DashboardCard       dashcard  {:card_id (:id card1), :dashboard_id (:id dashboard)}
+       :model/DashboardCardSeries _         {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}
+       :model/DashboardCardSeries _         {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]
+      (is (= #{[:model/Card (:id card1)] [:model/Card (:id card2)] [:model/Card (:id card3)]}
+             (content-dependencies dashboard))))))
 
 (deftest ^:parallel hydrate-tabs-test
   (mt/with-temp

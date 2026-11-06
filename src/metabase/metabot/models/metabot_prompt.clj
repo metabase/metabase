@@ -1,9 +1,7 @@
 (ns metabase.metabot.models.metabot-prompt
   (:require
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -20,22 +18,6 @@
 
 (t2/deftransforms :model/MetabotPrompt
   {:model mi/transform-keyword})
-
-;;; ------------------------------------------------- Serialization -------------------------------------------------
-
-(defmethod serdes/generate-path "MetabotPrompt" [_ entity]
-  (conj (serdes/generate-path "Metabot" (metabot.db/metabot (:metabot_id entity)))
-        (serdes/infer-self-path "MetabotPrompt" entity)))
-
-(defmethod serdes/deserialization-dependencies "MetabotPrompt" [prompt]
-  #{[{:model "Card" :id (:card_id prompt)}]})
-
-(defmethod serdes/make-spec "MetabotPrompt" [_model-name _opts]
-  {:schema    ::metabot.schema/external-metabot-prompt
-   :copy      [:entity_id :prompt]
-   :transform {:model      (serdes/kw)
-               :card_id    (serdes/fk :model/Card)
-               :metabot_id (serdes/parent-ref)}})
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
