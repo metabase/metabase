@@ -146,16 +146,18 @@
               source (assoc :expectation source))))))
 
 (mu/defn- check-expectation-sql
-  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten. Its SQL is the
-  author's, so SQL the parser cannot read is a refusal naming the expectation rather than the parser's own escape."
+  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten with `replacements`
+  and `output-token`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming the expectation
+  rather than the parser's own escape."
   [driver           :- :keyword
    expectation-name :- :string
    sql              :- :string
    replacements     :- ::data-testing.compile/table-replacements
+   output-token     :- [:maybe ::data-testing.compile/output-token]
    temp-tables      :- [:set :string]]
   (try
     (check-rewrite driver
-                   (data-testing.compile/replace-tables driver sql replacements)
+                   (data-testing.compile/replace-tables driver sql replacements output-token)
                    temp-tables
                    expectation-name)
     (catch Exception e
@@ -174,16 +176,17 @@
 
   `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-transform`
   is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
-  the temp tables everything may read; `default-schema` is the schema an unqualified reference resolves to in the
-  database under test."
+  the temp tables everything may read; `output-token`, when given, is the placeholder for the output that expectation
+  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test."
   [driver :- :keyword
-   {:keys [inputs expectations referenced-tables rewritten-transform replacements default-schema]}
+   {:keys [inputs expectations referenced-tables rewritten-transform replacements output-token default-schema]}
    :- [:map {:closed true}
        [:inputs              ::data-testing.schema/inputs]
        [:expectations        ::data-testing.schema/expectations]
        [:referenced-tables   [:set ::data-testing.schema/table]]
        [:rewritten-transform :string]
        [:replacements        ::data-testing.compile/table-replacements]
+       [:output-token        {:optional true} [:maybe ::data-testing.compile/output-token]]
        [:default-schema      [:maybe :string]]]]
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (data-testing.errors/ex
@@ -210,7 +213,7 @@
     (check-rewrite driver rewritten-transform temp-tables nil)
     (doseq [{:keys [name sql]} expectations
             :when              sql]
-      (check-expectation-sql driver name sql replacements temp-tables)))
+      (check-expectation-sql driver name sql replacements output-token temp-tables)))
   (when (empty? expectations)
     (throw (data-testing.errors/ex
             ::data-testing.errors/no-expectations

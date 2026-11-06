@@ -25,11 +25,13 @@
 
 (mr/def ::subject-plan
   "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,
-  the tables whose names expectation SQL may use for the output, and how a message names the output."
+  the tables whose names expectation SQL may use for the output, the token expectation SQL may write for the output
+  instead (nil when there is none), and how a message names the output."
   [:map {:closed true}
    [:database      ::lib.schema.metadata/database]
    [:compiled      ::data-testing.compile/compiled-query]
    [:output-tables [:sequential ::data-testing.compile/output-table]]
+   [:output-token  [:maybe ::data-testing.compile/output-token]]
    [:output-label  :string]])
 
 (defmulti subject-plan

@@ -26,4 +26,5 @@
     {:database      database
      :compiled      {:query query :params params}
      :output-tables [target]
+     :output-token  nil
      :output-label  (data-testing.validator/table-label target)}))

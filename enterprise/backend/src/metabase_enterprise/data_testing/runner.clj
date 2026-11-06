@@ -66,6 +66,7 @@
    [:output-table :string]
    [:labels       ::labels]
    [:replacements ::data-testing.compile/table-replacements]
+   [:output-token [:maybe ::data-testing.compile/output-token]]
    [:compiled     ::data-testing.compile/compiled-query]])
 
 (mr/def ::built-expectation
@@ -74,11 +75,13 @@
 
 (mr/def ::context
   "What an expectation is given to build its queries and read their answers: the driver, the output temp table and
-  the columns it has, the input-table replacements, and the expectation's own temp tables once they exist."
+  the columns it has, the input-table replacements, the token its SQL may write for the output, and the expectation's
+  own temp tables once they exist."
   [:map {:closed true}
    [:driver         :keyword]
    [:output-table   :string]
    [:replacements   ::data-testing.compile/table-replacements]
+   [:output-token   {:optional true} [:maybe ::data-testing.compile/output-token]]
    [:output-columns {:optional true} [:sequential ::data-testing.schema/result-column]]
    [:temp-tables    {:optional true} [:map-of :string :string]]])
 
@@ -247,7 +250,7 @@
    subject      :- ::data-testing.subject/subject
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
-  (let [{:keys [database compiled output-tables output-label]}
+  (let [{:keys [database compiled output-tables output-token output-label]}
         (data-testing.subject/subject-plan subject-type subject)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))
@@ -263,6 +266,7 @@
       :referenced-tables   source-tables
       :rewritten-transform (:query rewritten)
       :replacements        replacements
+      :output-token        output-token
       :default-schema      default-schema})
     {:driver       driver
      :database     database
@@ -270,6 +274,7 @@
      :output-table output-table
      :labels       (table-labels output-label input->table output-table)
      :replacements replacements
+     :output-token output-token
      :compiled     rewritten}))
 
 (mu/defn validate-test :- :nil
@@ -292,7 +297,7 @@
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [transform                                        :- ::transforms.schema/transform
    {:keys [inputs expectations] :as transform-test} :- ::data-testing.schema/transform-test]
-  (let [{:keys [driver database input->table output-table labels replacements compiled]}
+  (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
         (validated-plan :transform (transforms.u/->definition transform) inputs expectations)
         {run-id :id} (data-testing.run-tracking/start-run! :transform (:id transform-test) api/*current-user-id*)
         final-status (atom :error)]
@@ -307,7 +312,8 @@
                  (let [results (check-expectations driver conn
                                                    {:driver driver
                                                     :output-table output-table
-                                                    :replacements replacements}
+                                                    :replacements replacements
+                                                    :output-token output-token}
                                                    expectations labels)]
                    {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
                     :expectations results
