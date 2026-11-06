@@ -12,6 +12,8 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card, Dataset, Field, Metric } from "metabase-types/api";
 import {
   createMockCard,
@@ -56,14 +58,14 @@ function makeMetricCard(resultMetadata: Field[]): Card {
     database_id: SAMPLE_DB_ID,
     table_id: ORDERS_ID,
     result_metadata: resultMetadata,
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      },
-    },
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    }),
   });
 }
 

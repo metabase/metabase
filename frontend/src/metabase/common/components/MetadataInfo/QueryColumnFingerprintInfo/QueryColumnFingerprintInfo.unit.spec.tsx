@@ -12,7 +12,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { columnFinder } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER, columnFinder } from "metabase-lib/test-helpers";
 import type { FieldFingerprint, FieldReference } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,7 +20,6 @@ import {
   createMockField,
   createMockFingerprint,
   createMockGlobalFieldFingerprint,
-  createMockNativeDatasetQuery,
   createMockNumberFieldFingerprint,
 } from "metabase-types/api/mocks";
 import {
@@ -141,9 +140,8 @@ const setupNativeModel = ({ mappedToField }: SetupNativeModelOpts) => {
   const card = createMockCard({
     id: MODEL_ID,
     type: "model",
-    dataset_query: createMockNativeDatasetQuery({
-      database: SAMPLE_DB_ID,
-      native: { query: "select * from products limit 5" },
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from products limit 5",
     }),
     result_metadata: [
       createMockField({

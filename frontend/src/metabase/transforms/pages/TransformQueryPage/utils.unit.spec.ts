@@ -1,14 +1,14 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   DatabaseId,
   QueryTransformSource,
-  TemplateTags,
+  TestTemplateTags,
 } from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockStructuredDatasetQuery,
   createMockTemplateTag,
   createMockTransform,
   createMockTransformTarget,
@@ -26,18 +26,17 @@ const getMetadataProvider = (databaseId: DatabaseId | null) =>
 
 const mbqlSource: QueryTransformSource = {
   type: "query",
-  query: createMockStructuredDatasetQuery({ database: SAMPLE_DB_ID }),
+  query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 };
 
-function createNativeSource(templateTags?: TemplateTags): QueryTransformSource {
+function createNativeSource(
+  templateTags?: TestTemplateTags,
+): QueryTransformSource {
   return {
     type: "query",
-    query: createMockNativeDatasetQuery({
-      database: SAMPLE_DB_ID,
-      native: createMockNativeQuery({
-        query: "SELECT * FROM table",
-        "template-tags": templateTags,
-      }),
+    query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT * FROM table",
+      templateTags,
     }),
   };
 }
@@ -71,11 +70,7 @@ describe("isMissingIncrementalTableTag", () => {
 
   it("returns true when the edited native source has a non-table variable", () => {
     const source = createNativeSource({
-      snippet1: createMockTemplateTag({
-        id: "1",
-        name: "snippet1",
-        type: "snippet",
-      }),
+      snippet1: { type: "snippet" },
     });
 
     const transform = createMockTransform({
@@ -102,14 +97,23 @@ describe("isMissingIncrementalTableTag", () => {
   });
 
   it("returns false when the edited native source still has a table variable", () => {
-    const source = createNativeSource({
-      my_table: createMockTemplateTag({
-        id: "1",
-        name: "my_table",
-        type: "table",
-        "table-id": 42,
+    const source: QueryTransformSource = {
+      type: "query",
+      query: createMockNativeDatasetQuery({
+        database: SAMPLE_DB_ID,
+        native: createMockNativeQuery({
+          query: "SELECT * FROM {{my_table}}",
+          "template-tags": {
+            my_table: createMockTemplateTag({
+              id: "1",
+              name: "my_table",
+              type: "table",
+              "table-id": 42,
+            }),
+          },
+        }),
       }),
-    });
+    };
 
     const transform = createMockTransform({
       source_type: "native",
