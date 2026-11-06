@@ -189,6 +189,4 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"
-   "Workspace"
-   "WorkspaceDatabase"])
+   "ViewLog"])
