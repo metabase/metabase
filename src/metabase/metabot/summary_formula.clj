@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
@@ -17,7 +18,10 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql SQLException)))
 
 (def ^:private required-permission :permission/metabot-nlq)
 
@@ -121,22 +125,57 @@
       (filter (comp readable :id) metrics))))
 
 (defn- query-permission-error []
-  (let [message "You don't have permission to run this query."]
-    (ex-info message {:status-code 403
-                      :error-code  "query_permission_denied"
-                      :message     message})))
+  (ex-info (tru "You don''t have permission to run this query.")
+           {:status-code 403
+            :error-code  "query_permission_denied"}))
+
+(defn- invalid-query-error []
+  (ex-info (tru "This query isn''t valid.")
+           {:status-code 400
+            :error-code  "invalid_query"}))
+
+(defn- database-failure?
+  "Whether `e` was caused by a failing database connection or statement, which says nothing about the query."
+  [e]
+  (some #(instance? SQLException %) (u/full-exception-chain e)))
+
+(defn- check-database-exists!
+  "The saved questions virtual database has a negative id, and no row."
+  [database-id]
+  (when-not (and (pos-int? database-id)
+                 (metabot.db/database-exists? database-id))
+    (throw (ex-info (tru "This database doesn''t exist.")
+                    {:status-code 404
+                     :error-code  "database_not_found"}))))
+
+(defn- formula-query
+  "`dataset-query` with the metadata provider of its database."
+  [{:keys [database] :as dataset-query}]
+  (try
+    (lib/query (lib-be/application-database-metadata-provider database) dataset-query)
+    (catch Exception e
+      (log/debug e "Summary formula query is invalid")
+      (throw (if (database-failure? e) e (invalid-query-error))))))
+
+(defn- check-tables-exist!
+  "The metadata provider only returns tables of the query's database, so this also refuses tables of other databases."
+  [query]
+  (let [table-ids (set (lib/all-source-table-ids query))]
+    (when-not (= (count table-ids)
+                 (count (lib.metadata/bulk-metadata query :metadata/table table-ids)))
+      (throw (invalid-query-error)))))
 
 (defn- check-can-run-query!
   "The check the QP runs. It needs a preprocessed query: a raw one with a card as its primary source only checks that
-  card. Preprocessing also fails for missing routing, impersonation and sandbox attributes, and a formula is no use on
-  a query that can't run, so any failure refuses the request."
+  card. Preprocessing also fails for missing routing, impersonation and sandbox attributes, and those failures have no
+  common shape, so anything but a database failure refuses the request."
   [query]
   (try
     (qp.setup/with-qp-setup [query query]
       (qp.perms/check-query-permissions* (qp.preprocess/preprocess query)))
     (catch Exception e
       (log/debug e "Summary formula query failed the run check")
-      (throw (query-permission-error)))))
+      (throw (if (database-failure? e) e (query-permission-error))))))
 
 (defn- check-can-read-database!
   "The frontend can't edit a query when the user can't read its database, so it offers no formula editors."
@@ -188,10 +227,9 @@
   the columns of any stages after it come from client-supplied metadata."
   [query]
   (when (lib/native-stage? query 0)
-    (let [message "Formulas can't be suggested for a native query."]
-      (throw (ex-info message {:status-code 400
-                               :error-code  "native_query_not_supported"
-                               :message     message})))))
+    (throw (ex-info (tru "Formulas can''t be suggested for a native query.")
+                    {:status-code 400
+                     :error-code  "native_query_not_supported"}))))
 
 (defn- primary-source
   [query]
@@ -249,25 +287,26 @@
             u/not-blank
             (u/truncate name-max-chars))))
 
-(def ^:private unavailable-errors
+(defn- unavailable-errors
+  []
   {:metabot-disabled  {:status-code 403
                        :error-code  "metabot_disabled"
-                       :message     "AI features are turned off."}
+                       :message     (tru "AI features are not enabled.")}
    :no-llm            {:status-code 503
                        :error-code  "ai_provider_not_configured"
-                       :message     "No AI provider is connected."}
+                       :message     (tru "No AI provider is connected.")}
    :usage-limit       {:status-code 429
                        :error-code  "ai_usage_limit_reached"
-                       :message     "The AI usage limit has been reached."}
+                       :message     (tru "The AI usage limit has been reached.")}
    :permission-denied {:status-code 403
                        :error-code  "metabot_permission_denied"
-                       :message     "You don't have access to AI features."}})
+                       :message     (tru "You don''t have access to AI features.")}})
 
 (defn- unavailable-error
   ([reason]
    (unavailable-error reason nil))
   ([reason cause]
-   (let [{:keys [message] :as error} (unavailable-errors reason)]
+   (let [{:keys [message] :as error} ((unavailable-errors) reason)]
      (ex-info message error cause))))
 
 (defn- llm-call-error
@@ -279,7 +318,7 @@
     :metabot/permission-denied   (unavailable-error :permission-denied e)
     (let [{:keys [message] :as error} (merge {:status-code 502
                                               :error-code  "ai_provider_error"
-                                              :message     "Couldn't generate a formula."}
+                                              :message     (tru "Couldn''t generate a formula.")}
                                              (metabot.self/provider-error e))]
       (log/warn e "Unable to suggest a summary formula")
       (ex-info message error e))))
@@ -310,15 +349,16 @@
                aggregation-system-prompt)}
    {:role "user" :content (user-message request)}])
 
-(def ^:private no-match
-  {:expression nil :name nil :error "Nothing in this data matches that."})
+(defn- no-match
+  []
+  {:expression nil :name nil :error (tru "Nothing in this data matches that.")})
 
 (defn- draft-formula
   [request]
   (let [{:keys [expression name]} (call-llm (llm-messages request))]
     (if-let [expression (clean-expression expression)]
       {:expression expression :name (clean-name name) :error nil}
-      no-match)))
+      (no-match))))
 
 (defn suggest-formula
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
@@ -326,21 +366,20 @@
   reference what's available at the last stage of `dataset_query`, an MBQL 5 query without a metadata provider.
 
   Returns `{:expression <source or nil> :name <name or nil> :error <message or nil>}`; `:expression` is nil, with an
-  `:error`, when nothing in the query fits, including when it has no columns or metrics to offer. Throws an HTTP error when the suggestion can't be made."
+  `:error`, when nothing in the query fits, including when it has no columns or metrics to offer. Throws an HTTP error
+  with an `:error-code` when the suggestion can't be made. Unexpected failures propagate as they are."
   [{:keys [mode prompt dataset_query]}]
   (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
     (throw (unavailable-error reason)))
   (metabot.usage/check-metabase-managed-free-limit!)
-  (let [query (try
-                (lib/query (lib-be/application-database-metadata-provider (:database dataset_query)) dataset_query)
-                (catch Exception e
-                  (log/debug e "Summary formula query is invalid")
-                  (throw (query-permission-error))))]
+  (check-database-exists! (:database dataset_query))
+  (let [query (formula-query dataset_query)]
     (check-can-read-database! query)
+    (check-tables-exist! query)
     (check-can-run-query! query)
     (check-mbql-query! query)
     (check-references-visible! query)
     (let [{:keys [columns metrics] :as context} (formula-context query mode)]
       (if (or (seq columns) (seq metrics))
         (draft-formula (assoc context :mode mode :prompt prompt))
-        no-match))))
+        (no-match)))))

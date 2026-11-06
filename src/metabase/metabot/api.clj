@@ -469,8 +469,9 @@
                                                      [:error      [:maybe :string]]]
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summarize sidebar well. `mode` is
   `aggregation` for Values and `expression` for Rows and Columns. The formula can reference what's available at the
-  last stage of `dataset_query`. `expression` is nil, with an `error`, when nothing there fits. Other failures are HTTP
-  errors with an `error-code`. The client compiles and validates the formula."
+  last stage of `dataset_query`. `expression` is nil, with an `error`, when nothing there fits. A suggestion that can't be
+  made is an HTTP error with an `error-code`. Request validation, auth and unexpected failures use the standard API
+  error responses, without one. The client compiles and validates the formula."
   [_route-params
    _query-params
    body :- [:map {:closed true}

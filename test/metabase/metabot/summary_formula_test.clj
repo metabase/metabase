@@ -11,7 +11,10 @@
    [metabase.metabot.usage :as metabot.usage]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.test :as mt])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -168,7 +171,7 @@
       (do-with-llm
        {:expression "Count" :name "Count"}
        (fn [calls]
-         (is (= {:message "AI features are turned off." :error-code "metabot_disabled"}
+         (is (= {:message "AI features are not enabled." :error-code "metabot_disabled"}
                 (mt/user-http-request :rasta :post 403 endpoint (request-body))))
          (is (empty? @calls)))))))
 
@@ -274,39 +277,108 @@
       (grant-query-access! :orders)
       (check-refused (lib/append-stage (lib/native-query (mt/metadata-provider) "SELECT 1"))))))
 
+(defn- check-invalid-query
+  "Check that a request for `dataset-query` gets a 400 without reaching the LLM."
+  [dataset-query]
+  (do-with-llm
+   {:expression "Count" :name "Count"}
+   (fn [calls]
+     (is (= {:message "This query isn't valid." :error-code "invalid_query"}
+            (mt/user-http-request :crowberto :post 400 endpoint (request-body {:dataset_query dataset-query}))))
+     (is (empty? @calls)))))
+
+(defn- check-database-not-found
+  "Check that a request for a query on `database-id` gets a 404 without reaching the LLM."
+  [database-id]
+  (do-with-llm
+   {:expression "Count" :name "Count"}
+   (fn [calls]
+     (let [query (assoc (lib/prepare-for-serialization (orders-query)) :database database-id)]
+       (is (= {:message "This database doesn't exist." :error-code "database_not_found"}
+              (mt/user-http-request :rasta :post 404 endpoint (request-body {:dataset_query query})))))
+     (is (empty? @calls)))))
+
 (deftest summary-formula-virtual-database-test
-  (testing "POST /api/metabot/summary-formula returns a 403 for the saved questions virtual database"
-    (do-with-llm
-     {:expression "Count" :name "Count"}
-     (fn [calls]
-       (let [query (assoc (lib/prepare-for-serialization (orders-query)) :database -1337)]
-         (is (= {:message    "You don't have permission to run this query."
-                 :error-code "query_permission_denied"}
-                (mt/user-http-request :rasta :post 403 endpoint (request-body {:dataset_query query})))))
-       (is (empty? @calls))))))
+  (testing "POST /api/metabot/summary-formula returns a 404 for the saved questions virtual database"
+    (check-database-not-found -1337)))
+
+(deftest summary-formula-unknown-database-test
+  (testing "POST /api/metabot/summary-formula returns a 404 for a database that doesn't exist"
+    (check-database-not-found Integer/MAX_VALUE)))
 
 (deftest summary-formula-mismatched-database-test
-  (testing "POST /api/metabot/summary-formula returns a 403 for a table outside the query's database"
+  (testing "POST /api/metabot/summary-formula returns a 400 for a table outside the query's database"
     (mt/with-temp [:model/Database {database-id :id} {}]
+      (check-invalid-query (assoc (lib/prepare-for-serialization (orders-query)) :database database-id)))))
+
+(deftest summary-formula-unknown-table-test
+  (testing "POST /api/metabot/summary-formula returns a 400 for a table that doesn't exist"
+    (check-invalid-query (assoc-in (lib/prepare-for-serialization (orders-query))
+                                   [:stages 0 :source-table]
+                                   Integer/MAX_VALUE))))
+
+(deftest summary-formula-unknown-table-permission-test
+  (testing "POST /api/metabot/summary-formula returns a 403 before checking the tables of a database the user can't read"
+    (mt/with-no-data-perms-for-all-users!
       (do-with-llm
        {:expression "Count" :name "Count"}
        (fn [calls]
-         (let [query (assoc (lib/prepare-for-serialization (orders-query)) :database database-id)]
-           (is (= {:message    "You don't have permission to run this query."
-                   :error-code "query_permission_denied"}
-                  (mt/user-http-request :crowberto :post 403 endpoint (request-body {:dataset_query query})))))
+         (let [query (assoc-in (lib/prepare-for-serialization (orders-query))
+                               [:stages 0 :source-table]
+                               Integer/MAX_VALUE)]
+           (is (= {:message "You don't have permission to run this query." :error-code "query_permission_denied"}
+                  (mt/user-http-request :rasta :post 403 endpoint (request-body {:dataset_query query})))))
          (is (empty? @calls)))))))
 
-(deftest summary-formula-unknown-database-test
-  (testing "POST /api/metabot/summary-formula doesn't reach the LLM for a database that doesn't exist"
+(deftest summary-formula-run-check-database-failure-test
+  (testing "POST /api/metabot/summary-formula returns a 500, not a 403, when a database failure interrupts the run check"
     (do-with-llm
      {:expression "Count" :name "Count"}
      (fn [calls]
-       (let [query (assoc (lib/prepare-for-serialization (orders-query)) :database Integer/MAX_VALUE)]
-         (is (= {:message    "You don't have permission to run this query."
-                 :error-code "query_permission_denied"}
-                (mt/user-http-request :rasta :post 403 endpoint (request-body {:dataset_query query})))))
+       (mt/with-dynamic-fn-redefs [qp.preprocess/preprocess (fn [_query]
+                                                              (throw (ex-info "Error preprocessing query"
+                                                                              {:type :qp}
+                                                                              (SQLException. "Connection reset"))))]
+         (mt/user-http-request :rasta :post 500 endpoint (request-body)))
        (is (empty? @calls))))))
+
+(deftest summary-formula-run-check-refusal-test
+  (testing "POST /api/metabot/summary-formula returns a 403 for any other failure of the run check"
+    (do-with-llm
+     {:expression "Count" :name "Count"}
+     (fn [calls]
+       (mt/with-dynamic-fn-redefs [qp.preprocess/preprocess (fn [_query]
+                                                              (throw (ex-info "No impersonation role" {})))]
+         (is (= {:message "You don't have permission to run this query." :error-code "query_permission_denied"}
+                (mt/user-http-request :rasta :post 403 endpoint (request-body)))))
+       (is (empty? @calls))))))
+
+(deftest summary-formula-localized-messages-test
+  (testing "POST /api/metabot/summary-formula localizes its messages for the current user"
+    (mt/with-mock-i18n-bundles! {"es" {:messages {"Nothing in this data matches that."             "Nada coincide."
+                                                  "You don''t have permission to run this query." "Sin permiso."
+                                                  "AI features are not enabled."                   "IA desactivada."}}}
+      (mt/with-temporary-setting-values [site-locale "es"]
+        (testing "for a formula that doesn't match"
+          (do-with-llm
+           {:expression "" :name ""}
+           (fn [_calls]
+             (is (=? {:error "Nada coincide."}
+                     (mt/user-http-request :rasta :post 200 endpoint (request-body)))))))
+        (testing "for a query the user can't run"
+          (mt/with-no-data-perms-for-all-users!
+            (do-with-llm
+             {:expression "Count" :name "Count"}
+             (fn [_calls]
+               (is (=? {:message "Sin permiso."}
+                       (mt/user-http-request :rasta :post 403 endpoint (request-body))))))))
+        (testing "for AI features being turned off"
+          (mt/with-temporary-setting-values [metabot-enabled? false]
+            (do-with-llm
+             {:expression "Count" :name "Count"}
+             (fn [_calls]
+               (is (=? {:message "IA desactivada."}
+                       (mt/user-http-request :rasta :post 403 endpoint (request-body))))))))))))
 
 ;;; ------------------------------------------------- Query shape -----------------------------------------------
 
