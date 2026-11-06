@@ -3,19 +3,24 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PEOPLE_ID,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import type { NotebookStep } from "./types";
 
 export const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
-  questions: [createSavedStructuredCard({ id: 1 })],
+  questions: [
+    createMockCard({
+      id: 1,
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    }),
+  ],
 });
 
 export const DEFAULT_QUESTION = checkNotNull(metadata.question(1));

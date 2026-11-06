@@ -9,7 +9,6 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "metabase/current-user";
 import { PLUGIN_SCHEMA_VIEWER, reinitialize } from "metabase/plugins";
 import type { AdminPath } from "metabase/redux/store";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -130,14 +129,6 @@ describe("DatabaseQuickLinksMenu", () => {
       "href",
       `/data-studio/schema-viewer?database-id=${DATABASE_ID}&schema=public`,
     );
-  });
-
-  it("should not render for the saved questions virtual database", () => {
-    setup({ isAdmin: true, databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID });
-
-    expect(
-      screen.queryByRole("button", { name: "Database options" }),
-    ).not.toBeInTheDocument();
   });
 
   it("should link a non-admin with database management access to the admin page", async () => {

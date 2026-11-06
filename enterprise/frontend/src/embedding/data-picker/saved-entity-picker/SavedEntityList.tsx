@@ -9,8 +9,7 @@ import { SelectList } from "metabase/common/components/SelectList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CollectionId, DatabaseId, TableId } from "metabase-types/api";
+import type { CardId, CollectionId, DatabaseId } from "metabase-types/api";
 
 import type { SavedEntityType } from "../types";
 
@@ -19,10 +18,10 @@ import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
   type: SavedEntityType;
-  selectedId?: TableId;
+  selectedId?: CardId;
   databaseId?: DatabaseId | null;
   collectionId?: CollectionId;
-  onSelect: (tableOrModelId: string) => void;
+  onSelect: (cardId: CardId) => void;
 }
 
 export const SavedEntityList = ({
@@ -68,7 +67,6 @@ export const SavedEntityList = ({
           <Fragment>
             {filteredList.map((collectionItem) => {
               const { id, name, moderated_status } = collectionItem;
-              const virtualTableId = getQuestionVirtualTableId(id);
 
               return (
                 <SelectList.Item
@@ -78,14 +76,14 @@ export const SavedEntityList = ({
                   }}
                   key={id}
                   id={id}
-                  isSelected={selectedId === virtualTableId}
+                  isSelected={selectedId === id}
                   size="small"
                   name={tc(name)}
                   icon={{
                     name: CARD_INFO[type].icon,
                     size: 16,
                   }}
-                  onSelect={() => onSelect(virtualTableId)}
+                  onSelect={() => onSelect(id)}
                   rightIcon={PLUGIN_MODERATION.getStatusIcon(
                     moderated_status ?? undefined,
                   )}

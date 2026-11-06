@@ -113,6 +113,9 @@ describe("scenarios > joins", () => {
         cy.findByText("Our analytics").click();
         cy.findByText(JOINED_QUESTION_NAME).click();
       });
+      H.getNotebookStep("join")
+        .findByLabelText("Right table")
+        .should("contain.text", JOINED_QUESTION_NAME);
 
       H.visualize();
 

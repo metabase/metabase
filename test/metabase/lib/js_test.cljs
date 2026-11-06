@@ -331,20 +331,6 @@
       (testing "metric refs come without options"
         (is (= [["metric" metric-id]] (map array-checker legacy-refs)))))))
 
-(deftest ^:parallel source-table-or-card-id-test
-  (testing "returns the table-id as a number"
-    (are [query] (= (meta/id :venues) (lib.js/source-table-or-card-id query))
-      (lib.tu/venues-query)
-      (lib/append-stage (lib.tu/venues-query))))
-  (testing "returns the card-id in the legacy string form"
-    (are [query] (= "card__1" (lib.js/source-table-or-card-id query))
-      (lib.tu/query-with-source-card)
-      (lib/append-stage (lib.tu/query-with-source-card))))
-  (testing "returns nil for questions starting from a native query"
-    (are [query] (nil? (lib.js/source-table-or-card-id query))
-      (lib.tu/native-query)
-      (lib/append-stage (lib.tu/native-query)))))
-
 (deftest ^:parallel expression-clause-normalization-test
   (are [x y] (do
                (is (mr/validate :metabase.lib.schema.expression/expression y))
@@ -703,3 +689,81 @@
             [q2-type q2] queries]
       (testing (str "q1 = " q1-type ", q2 = " q2-type)
         (lib.js/query= q1 q2)))))
+
+(deftest ^:parallel card-metadata-test
+  (let [mp   (lib.tu/metadata-provider-with-mock-cards)
+        card (:orders (lib.tu/mock-cards))]
+    (testing "returns metadata of card with given id"
+      (is (=? {:lib/type :metadata/card
+               :id       (:id card)
+               :name     (:name card)}
+              (lib.js/card-metadata mp (:id card)))))
+    (testing "returns nil for unknown card id"
+      (is (nil? (lib.js/card-metadata mp 999999))))))
+
+(deftest ^:parallel database-metadata-test
+  (let [database (lib.js/database-metadata meta/metadata-provider)]
+    (testing "returns metadata of database"
+      (is (=? {:lib/type :metadata/database
+               :id       (meta/id)}
+              database)))
+    (testing "display info returns database name"
+      (is (=? {:name        (:name database)
+               :displayName (:name database)}
+              (js->clj (lib.js/display-info (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                            -1
+                                            database)
+                       :keywordize-keys true))))))
+
+(deftest ^:parallel table-metadata-test
+  (testing "returns metadata of table with given id"
+    (is (=? {:lib/type :metadata/table
+             :id       (meta/id :orders)}
+            (lib.js/table-metadata meta/metadata-provider (meta/id :orders)))))
+  (testing "returns nil for unknown table id"
+    (is (nil? (lib.js/table-metadata meta/metadata-provider 999999)))))
+
+(deftest ^:parallel primary-source-table-id-test
+  (let [mp   (lib.tu/metadata-provider-with-mock-cards)
+        card (:orders (lib.tu/mock-cards))]
+    (testing "returns id of source table"
+      (is (= (meta/id :orders)
+             (lib.js/primary-source-table-id (lib/query mp (lib.metadata/table mp (meta/id :orders)))))))
+    (testing "returns nil for source card"
+      (is (nil? (lib.js/primary-source-table-id (lib/query mp (lib.metadata/card mp (:id card)))))))))
+
+(deftest ^:parallel primary-source-card-id-test
+  (let [mp   (lib.tu/metadata-provider-with-mock-cards)
+        card (:orders (lib.tu/mock-cards))]
+    (testing "returns id of source card"
+      (is (= (:id card)
+             (lib.js/primary-source-card-id (lib/query mp (lib.metadata/card mp (:id card)))))))
+    (testing "returns nil for source table"
+      (is (nil? (lib.js/primary-source-card-id (lib/query mp (lib.metadata/table mp (meta/id :orders)))))))))
+
+(deftest ^:parallel legacy-column->type-info-test
+  (testing "picks only base, effective, and semantic types as keywords"
+    (is (= {:base-type      :type/Integer
+            :effective-type :type/Integer
+            :semantic-type  :type/PK}
+           (lib.js/legacy-column->type-info #js {:id             1
+                                                 :name           "ID"
+                                                 :table_id       2
+                                                 :base_type      "type/Integer"
+                                                 :effective_type "type/Integer"
+                                                 :semantic_type  "type/PK"}))))
+  (testing "skips missing types"
+    (is (= {:base-type :type/Text}
+           (lib.js/legacy-column->type-info #js {:base_type "type/Text" :semantic_type nil}))))
+  (testing "keeps Lib columns unchanged"
+    (let [column (meta/field-metadata :orders :id)]
+      (is (= column (lib.js/legacy-column->type-info column))))))
+
+(deftest ^:parallel xray-cell-query-test
+  (testing "returns last stage filter as legacy clause"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 2)))]
+      (is (=? ["=" ["field" (meta/id :venues :price) any?] 2]
+              (js->clj (lib.js/xray-cell-query query))))))
+  (testing "returns nil without filter"
+    (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))

@@ -3,7 +3,10 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.js.metadata :as lib.js.metadata]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.test-runner.assert-exprs.approximately-equal]))
+
+(comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
 
 (deftest ^:parallel parse-fields-test
   (let [metadata-fragment #js {:fields #js {"card__1234:5678" #js {:id 0}
@@ -100,3 +103,16 @@
           mp (lib.js.metadata/metadata-provider 1 metadata)]
       (is (= 1234
              (lib.metadata/setting mp :unaggregated-query-row-limit))))))
+
+(deftest ^:parallel parse-table-schema-name-test
+  (testing "table schema is the schema name, not the store's schema ID"
+    (let [metadata-fragment #js {:tables #js {"1" #js {:id          1
+                                                       :schema      "2:PUBLIC"
+                                                       :schema_name "PUBLIC"}
+                                              "2" #js {:id     2
+                                                       :schema "PUBLIC"}}}
+          parsed-fragment   (lib.js.metadata/parse-objects :table metadata-fragment)]
+      (is (=? {1 {:schema "PUBLIC"}
+               2 {:schema "PUBLIC"}}
+              (update-vals parsed-fragment deref)))
+      (is (not (contains? @(get parsed-fragment 1) :schema-name))))))

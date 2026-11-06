@@ -25,6 +25,8 @@ import {
   getSidebar,
 } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Field from "metabase-lib/v1/metadata/Field";
 import type { Card } from "metabase-types/api";
 import {
@@ -35,13 +37,15 @@ import {
   createMockDatabase,
   createMockField,
   createMockHeadingDashboardCard,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
 
 import { SIDEBAR_NAME } from "./constants";
+
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
 
 const STATE = createMockState({
   dashboard: createMockDashboardState({
@@ -57,10 +61,10 @@ const STATE = createMockState({
       0: createMockDashboardCard({
         card: createMockCard({
           id: 0,
-          dataset_query: createMockNativeDatasetQuery({
-            native: {
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
               query: "",
-              "template-tags": {
+              templateTags: {
                 foo: {
                   id: "foo",
                   type: "text",
@@ -68,15 +72,15 @@ const STATE = createMockState({
                   "display-name": "foo",
                 },
               },
-            },
-          }),
+            }),
+          ),
         }),
         parameter_mappings: [],
       }),
       1: createMockDashboardCard({
         card: createMockCard({
           id: 1,
-          dataset_query: createMockStructuredDatasetQuery({ query: {} }),
+          dataset_query: ORDERS_QUERY,
         }),
         parameter_mappings: [],
       }),
@@ -414,7 +418,7 @@ describe("dashboard/selectors", () => {
       .assocIn(["dashboard", "dashcards", 2], {
         card: createMockCard({
           id: 2,
-          dataset_query: createMockStructuredDatasetQuery({ query: {} }),
+          dataset_query: ORDERS_QUERY,
         }),
         parameter_mappings: [],
       })

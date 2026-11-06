@@ -16,13 +16,11 @@ import {
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
 } from "metabase-types/api/mocks";
-import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import { setNativeEditorSelectedRange } from "../actions";
 import { getQuestion } from "../store/selectors";
@@ -61,9 +59,8 @@ describe("QueryBuilder > native questions", () => {
   it("runs only the selected text and keeps the full query (metabase#16886)", async () => {
     const card = {
       ...TEST_NATIVE_CARD,
-      dataset_query: createMockNativeDatasetQuery({
-        database: SAMPLE_DB_ID,
-        native: createMockNativeQuery({ query: "select 1 from orders" }),
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: "select 1 from orders",
       }),
     };
     setupListNotificationEndpoints({ card_id: card.id }, []);
