@@ -987,8 +987,8 @@
              (validation-error schema {:names 5})))
       (is (= "Invalid tool arguments: `names` must be an array of strings; received an object."
              (validation-error schema {:names {:a 1}}))))
-    (testing "a bad element reports the element's constraint without a received clause"
-      (is (= "Invalid tool arguments: `names` should be a string."
+    (testing "a bad element is named by its index, with what it received"
+      (is (= "Invalid tool arguments: `names[1]` should be a string; received a number."
              (validation-error schema {:names ["ok" 5]}))))
     (testing "an unsupported key is called out as such"
       (is (= "Invalid tool arguments: `nope` is not a supported argument."
@@ -999,6 +999,44 @@
     (testing "arguments that aren't an object at all"
       (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
              (validation-error schema ["orders"]))))))
+
+(deftest ^:parallel nested-tool-argument-validation-test
+  (let [schema [:map {:closed true}
+                [:name {:optional true} :string]
+                [:ops {:optional true} [:sequential [:map {:closed true}
+                                                     [:op :string]
+                                                     [:card_id {:optional true} :int]]]]]]
+    (testing "an error in one operation names its index and field"
+      (is (= "Invalid tool arguments: `ops[1].card_id` should be an integer; received a string."
+             (validation-error schema {:ops [{:op "add_card", :card_id 1} {:op "add_card", :card_id "x"}]}))))
+    (testing "a missing or unsupported nested key is named by its path"
+      (is (= "Invalid tool arguments: `ops[0].op` is required."
+             (validation-error schema {:ops [{:card_id 1}]})))
+      (is (= "Invalid tool arguments: `ops[0].nope` is not a supported argument."
+             (validation-error schema {:ops [{:op "add_card", :nope 1}]}))))
+    (testing "every failure is reported, each under its own path"
+      (is (= (str "Invalid tool arguments: `name` should be a string; received a number."
+                  " `ops[0].card_id` should be an integer; received a string."
+                  " `ops[1].op` is required.")
+             (validation-error schema {:name 5, :ops [{:op "add_card", :card_id "y"} {:card_id 2}]}))))))
+
+(deftest ^:parallel alternative-tool-argument-validation-test
+  (testing "errors from the alternatives of an `:or` go under the `:or`'s own path"
+    (let [schema [:map {:closed true}
+                  [:target [:or
+                            [:map {:closed true} [:collection_id :int]]
+                            [:map {:closed true} [:dashboard_id :int]]]]]]
+      (is (re-find #"^Invalid tool arguments: `target` "
+                   (validation-error schema {:target {:document_id 1}})))))
+  (testing "an `:or` inside a list keeps the index of each element that failed"
+    (let [schema [:map {:closed true}
+                  [:ops [:sequential [:or
+                                      [:map {:closed true} [:card_id :int]]
+                                      [:map {:closed true} [:text :string]]]]]]
+          error  (validation-error schema {:ops [{:card_id 1} {:nope 1} {:text "ok"} {:nope 2}]})]
+      (is (re-find #"`ops\[1\]` " error))
+      (is (re-find #"`ops\[3\]` " error))
+      (is (not (re-find #"`ops` |`ops\[0\]`" error))))))
 
 (deftest ^:parallel tool-unparseable-arguments-test
   (testing "arguments the provider streamed as invalid JSON are reported as such"
