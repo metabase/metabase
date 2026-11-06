@@ -6,7 +6,10 @@ import _ from "underscore";
 
 import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { getActionItems } from "metabase/actions/utils";
+import {
+  getActionItems,
+  supportsImplicitActions,
+} from "metabase/actions/utils";
 import {
   actionApi,
   datasetApi,
@@ -245,7 +248,7 @@ export function ObjectDetailPanel({
     question &&
     question.canWrite() &&
     question.type() === "model" &&
-    question.supportsImplicitActions(),
+    supportsImplicitActions(question.query()),
   );
 
   const modelId = question?.type() === "model" ? question.id() : undefined;
