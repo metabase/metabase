@@ -1259,7 +1259,10 @@
                                         {}))))
   (testing "a key other keys count under names them"
     (is (= ["WARNING: :dv-x (also counts :dv-y) is over budget (1 recorded, 2 actual) -- remove ignores, or accept them all with `--seed :discouraged-var/dv-x`"]
-           (kondo-ratchet/change-report {:ignore-counts {}, :discouraged-var-counts {:dv-x 1}, :config-counts {}, :comment-exempt #{}}
+           (kondo-ratchet/change-report {:ignore-counts          {}
+                                         :discouraged-var-counts {:dv-x 1}
+                                         :config-counts          {}
+                                         :comment-exempt         #{}}
                                         {}
                                         []
                                         {:actual {:discouraged-var {:dv-x 2}}}

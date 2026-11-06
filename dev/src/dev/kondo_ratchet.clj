@@ -317,7 +317,7 @@
     (keyword (drop-metabase-prefix (name sym)))))
 
 (defn- alias-note
-  "` (also counts a, b)` for the keys in `aliases` that count under `k`, or an empty string."
+  "The suffix ` (also counts :a/x, :b/y)` naming the keys in `aliases` that count under `k`, or an empty string."
   [aliases k]
   (if-let [names (seq (sort-by str (keep (fn [[alias source]] (when (= k source) alias)) aliases)))]
     (str " (also counts " (str/join ", " names) ")")
@@ -1047,8 +1047,8 @@
                            (label name) budget n (seed-hint name)))))
 
 (defn- missing-budget-lines
-  "[[fix!]]'s report lines for entries with ignores but no budget at all, suggesting `--seed` on the name
-  `seed-hint` returns for it. Each entry is named by what `label` returns for it."
+  "[[fix!]]'s report lines for entries with ignores but no budget at all.
+  Each suggests `--seed` on the name `seed-hint` returns for it, and is named by what `label` returns for it."
   [recorded actual seeded seed-hint label]
   (for [[name n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys recorded))))]
     (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed %s`"
@@ -1063,9 +1063,9 @@
 (defn- ignore-change-report
   "Change-report lines for one ratchets file's inline-ignore budgets, scoped to `occurrences`: seeding,
   lowered/dropped/over-budget counts, unused `:unlimited` policies, and ignores with no budget entry, for
-  `:ignore-counts` and each [[discouraged-count-field]], then stale discouraged-var and discouraged-namespace
-  ignores. `seeds`, `attribution` and `aliases` are as [[fix!]] gets them from [[resolve-seed]], `:attribute`
-  and `:aliases`; a key that `aliases` folds others into names them.
+  `:ignore-counts` and each [[discouraged-count-field]], then stale discouraged-var and discouraged-namespace ignores.
+  The `seeds` are [[resolve-seed]]'s, and `attribution` and `aliases` are [[fix!]]'s `:attribute` and `:aliases`.
+  A line for a key that other keys count under names them.
   Its :comment-exempt is reported separately, via [[stale-exemptions-warning]].
   Shared by [[change-report]] (the prod ratchets file) and [[fix!]]'s pass over the test ratchets file."
   [{:keys [ignore-counts], :as ratchets} occurrences {:keys [unattributed], :as attribution} seeds aliases]
@@ -1381,7 +1381,7 @@
   :comment-exempt, scoped to `occurrences`, plus the unresolved discouraged-var and discouraged-namespace
   findings among them. `attribution` is the `:attribute` result for `occurrences` (see [[fix!]]).
   `ratchets-file` names the file in the not-normalized message, and `render-fn` gives its canonical text.
-  An over-budget key that `aliases` (see [[fix!]]) folds others into names them.
+  An over-budget line for a key that other keys count under, by `aliases` (see [[fix!]]), names them.
   Shared by [[check-report]] (the prod ratchets file) and [[check]]'s pass over the test ratchets file."
   [ratchets-file render-fn {:keys [ignore-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
    occurrences {:keys [unresolved], :as attribution} ratchets-text aliases]
@@ -1426,7 +1426,7 @@
   "Diagnostics for budget violations, unjustified ignores, unresolved discouraged-var and
   discouraged-namespace findings, and noncanonical ratchet text.
   Lower counts are valid; post-merge automation records them.
-  `attribution` and `aliases` are the `:attribute` result for `occurrences` and the `:aliases` (see [[fix!]])."
+  The `attribution` and `aliases` are the `:attribute` result for `occurrences` and the `:aliases` of [[fix!]]."
   [{:keys [config-counts] :as ratchets}
    module-ratchets occurrences attribution config-actual module-actual ratchets-text module-ratchets-text aliases]
   (let [config-over (counts-over-budget config-counts config-actual)
@@ -1469,7 +1469,7 @@
   without failing.
   `{:disabled true}` in [[*ratchets-file*]] disables checking entirely; the test ratchets file honors its
   own `:disabled` independently, skipping only its own checks.
-  `:attribute` and `:aliases` are as for [[fix!]]."
+  The `:attribute` and `:aliases` options are as for [[fix!]]."
   ([]
    (check nil))
   ([{:keys [attribute aliases], :or {attribute no-attribution, aliases (constantly {})}}]
