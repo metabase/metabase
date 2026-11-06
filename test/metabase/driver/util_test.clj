@@ -22,6 +22,7 @@
    [metabase.util.json :as json]
    [metabase.util.snake-hating-map :as snake-hating-map])
   (:import
+   (java.sql SQLException)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
