@@ -49,9 +49,6 @@
   trash-collection-id
   data-apps-ns
   data-actions-ns
-  default-allowed-namespaces
-  ineligible-dependencies
-  non-remote-synced-dependencies
-  remote-synced-dependents]
+  default-allowed-namespaces]
  [metabase.collections.util
   annotate-dashboards])

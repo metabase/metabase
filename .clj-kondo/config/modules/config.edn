@@ -132,6 +132,7 @@
            query-processor
            remote-sync
            search
+           serialization
            settings
            users.schema
            util
@@ -144,8 +145,7 @@
                     :model/Database
                     :model/Field
                     :model/QueryExecution
-                    :model/Table
-                    :model/User}}
+                    :model/Table}}
 
   actions.rest
   {:team "Gadget"
@@ -666,8 +666,6 @@
                     :model/CollectionBookmark
                     :model/CollectionPermissionGraphRevision
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardCardSeries
                     :model/Document
                     :model/Exploration
                     :model/NativeQuerySnippet
@@ -834,8 +832,7 @@
                     :model/ParameterCard
                     :model/Pulse
                     :model/PulseCard
-                    :model/Revision
-                    :model/User}}
+                    :model/Revision}}
 
   dashboards.rest
   {:team "UX West"
@@ -1026,6 +1023,7 @@
            lib.schema
            models
            premium-features
+           serialization
            server
            settings
            util}
@@ -1195,6 +1193,7 @@
            lib.schema
            models
            remote-sync
+           serialization
            util}
    :model-exports #{:model/Glossary}
    :model-imports #{:model/User}}
@@ -1276,8 +1275,9 @@
            lib.be
            lib.metadata
            lib.schema
-           models
-           util}}
+           serialization
+           util}
+   :model-imports #{:model/Card}}
 
   lib.be
   {:team "Querying Platform"
@@ -1434,6 +1434,7 @@
            documents
            glossary
            lib
+           lib.agent-lib
            lib.be
            lib.metadata
            lib.schema
@@ -1524,7 +1525,7 @@
            util
            warehouses.schema}
    :model-exports #{:model/Measure}
-   :model-imports #{:model/Collection :model/Table :model/User}}
+   :model-imports #{:model/Collection :model/Table}}
 
   metabot
   {:team    "Metabot"
@@ -1587,6 +1588,7 @@
               request
               search
               search.entity-retrieval
+              serialization
               server
               settings
               sql-tools
@@ -1802,9 +1804,6 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.schema
-           metabase.models.serialization
-           metabase.models.serialization.resolve
-           metabase.models.serialization.resolve.mp
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -1812,12 +1811,9 @@
            dependencies
            lib
            lib.legacy-mbql
-           lib.metadata
            lib.schema
-           parameters.schema
            util
-           util.classloader
-           util.config}
+           util.classloader}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel
@@ -1860,8 +1856,7 @@
                     :model/TransformJob
                     :model/TransformJobTransformTag
                     :model/TransformTag
-                    :model/TransformTransformTag
-                    :model/User}}
+                    :model/TransformTransformTag}}
 
   mq
   {:team "UX West"
@@ -1891,7 +1886,7 @@
            users.schema
            util}
    :model-exports #{:model/NativeQuerySnippet}
-   :model-imports #{:model/Collection :model/User}}
+   :model-imports #{:model/Collection}}
 
   notification
   {:team "Gadget"
@@ -1956,9 +1951,13 @@
            models
            request
            search.entity-retrieval
+           serialization
            util}
    :model-exports #{:model/OsiAiContext}
-   :model-imports #{:model/Card :model/Measure :model/Segment}}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/Segment
+                    :model/Table}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -2257,8 +2256,7 @@
                     :model/Notification
                     :model/Revision
                     :model/Table
-                    :model/Timeline
-                    :model/User}}
+                    :model/Timeline}}
 
   queries.rest
   {:team "Querying Platform"
@@ -2632,7 +2630,7 @@
            util
            warehouses.schema}
    :model-exports #{:model/Segment}
-   :model-imports #{:model/Collection :model/Table :model/User}}
+   :model-imports #{:model/Collection :model/Table}}
 
   segments.rest
   {:team "Graphy"
@@ -2650,10 +2648,11 @@
 
   serialization
   {:team "Data Apps"
-   :api  #{metabase.serialization.core}
+   :api  #{metabase.serialization.core metabase.serialization.protocol.mp metabase.serialization.resolve}
    :uses #{app-db
            lib
            lib.legacy-mbql
+           lib.metadata
            lib.schema
            models
            util
@@ -3065,7 +3064,7 @@
            serialization
            util}
    :model-exports #{:model/Timeline :model/TimelineEvent}
-   :model-imports #{:model/Collection :model/User}}
+   :model-imports #{:model/Collection}}
 
   tracing
   {:team "DevEx"
@@ -3110,6 +3109,7 @@
            revisions
            run-tracking
            search
+           serialization
            settings
            staleness
            task
@@ -3178,9 +3178,11 @@
    :uses #{driver
            lib.schema
            models
+           serialization
            util
            warehouses}
-   :model-exports #{:model/TableIndex}}
+   :model-exports #{:model/TableIndex}
+   :model-imports #{:model/Transform}}
 
   transforms.indexes.rest
   {:team "Gadget"
@@ -3408,8 +3410,7 @@
                     :model/ImplicitAction
                     :model/QueryAction
                     :model/Table
-                    :model/Transform
-                    :model/User}}
+                    :model/Transform}}
 
   warehouses.rest
   {:team "UX West"
@@ -3697,6 +3698,7 @@
            queries
            query-permissions
            query-processor
+           serialization
            settings
            setup
            startup
@@ -3886,6 +3888,7 @@
            lib.schema
            models
            premium-features
+           serialization
            server
            settings
            util
@@ -3914,6 +3917,7 @@
            premium-features
            queries
            search
+           serialization
            settings
            system
            util
@@ -3927,7 +3931,8 @@
                     :model/Database
                     :model/Field
                     :model/Measure
-                    :model/Table}
+                    :model/Table
+                    :model/User}
    :model-exports #{:model/DataApp}}
 
   enterprise/data-studio
@@ -4365,6 +4370,7 @@
            models
            premium-features
            search
+           serialization
            settings
            startup
            task
@@ -4513,10 +4519,10 @@
            lib
            lib.schema
            logger
-           models
            plugins
            premium-features
            search
+           serialization
            server
            settings
            setup
@@ -4654,6 +4660,7 @@
            request
            revisions
            run-tracking
+           serialization
            sql-tools
            sql-tools.parsing
            task
@@ -4719,6 +4726,7 @@
            models
            permissions
            query-processor
+           serialization
            settings
            tracing
            transforms

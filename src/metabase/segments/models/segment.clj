@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
@@ -239,25 +238,6 @@
   [_model _key segments]
   (for [segment segments]
     (assoc segment :definition_description (definition-description segment))))
-
-;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serdes/deserialization-dependencies "Segment" [{:keys [definition]}]
-  (serdes/mbql-deps false definition))
-
-(defmethod serdes/storage-path "Segment" [segment _ctx]
-  (let [table-path (-> segment :definition serdes/serialized-query-source-table)]
-    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
-          [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
-
-(defmethod serdes/make-spec "Segment" [_model-name _opts]
-  {:schema    ::segments.schema/external-segment
-   :copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
-               :table_id]
-   :transform {:creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import serdes/import-mbql}}
-   :defaults {:archived false :show_in_getting_started false}})
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 

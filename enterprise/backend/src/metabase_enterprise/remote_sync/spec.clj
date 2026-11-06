@@ -15,10 +15,10 @@
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util :as u]))
 
@@ -76,13 +76,13 @@
                        :all-on-setting-disable - Optional setting keyword; the model syncs all or nothing with
                                      this setting, so an import that drops it is checked for unsynced local work
    - :resources?     - Optional. True when the model's YAML files carry resource files (see
-                       `metabase.models.serialization/resource-paths`), whose changes only a full import or export
+                       `metabase.serialization.core/resource-paths`), whose changes only a full import or export
                        handles.
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
                        :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet, Glossary)
-                       nil/:derived      - No root query; derived from other models via serdes/descendants
+                       nil/:derived      - No root query; the content of the remote-synced Collections
    - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
                        When :library-synced, uses the library-is-remote-synced? setting."
   {:model/Card
@@ -185,9 +185,7 @@
                      :field-mappings {:model_name :term}}
     :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
     :export-scope   :all  ; export all glossary entries
-    :enabled?       :library-synced
-    ;; files exported before `entity_id` existed are keyed by term; resolve those paths through load-find-local
-    :natural-key-paths? true}
+    :enabled?       :library-synced}
 
    :model/Timeline
    {:model-type     "Timeline"
@@ -573,12 +571,9 @@
   (disj (models-for-setting :remote-sync-transforms) "TransformTag"))
 
 (defn models-in-import
-  "Returns set of model-type strings present in the import.
-   Takes an ingest-list (sequence of serdes paths from serialization/ingest-list)."
-  [ingest-list]
-  (->> ingest-list
-       (map (fn [path] (:model (last path))))
-       (into #{})))
+  "Returns set of model-type strings present in the import, given the `[model ref]` keys of its entities."
+  [ks]
+  (into #{} (map (comp name first)) ks))
 
 (defn check-entity-id-conflicts
   "Checks if imported entity_ids exist locally but are NOT in RemoteSyncObject.
@@ -1058,86 +1053,41 @@
   {:entity-id (:entity_id instance)
    :path      (select-keys instance path-keys)})
 
-;;; ----------------------------------------- Serdes Path Identity Extraction ------------------------------------------
+;;; ------------------------------------------- Imported Entity Identity --------------------------------------------
 
-(def ^:private serdes-path-identity-hierarchy
-  "Hierarchy for extract-identity-from-serdes-path dispatch. Both :entity-id and :hybrid models
-   extract identity the same way (entity_id from last path element)."
-  (-> (make-hierarchy)
-      (derive :entity-id ::entity-id-extractor)
-      (derive :hybrid ::entity-id-extractor)))
+(defmulti extract-identity-from-key
+  "The identity of the imported entity with the `[model ref]` key `k`, by the spec's identity strategy: the
+  entity id for entity-id and hybrid models, the key itself for user settings."
+  {:arglists '([spec k])}
+  (fn [spec _k] (:identity spec)))
 
-(defmulti extract-identity-from-serdes-path
-  "Extracts identity data from a serdes path based on the spec's identity strategy. For entity-id
-   and hybrid models, returns the entity_id string from the last path element. For path-based models
-   like Table and Field, returns a map with database, schema, and table/field names that can be used
-   to look up the entity. A spec with `:natural-key-paths?` may also be keyed on a natural key (files
-   exported before the model had an entity_id); its paths are resolved through `serdes/load-find-local`, and
-   through the entity's natural key when `ingest-one` (path -> ingested entity, or nil) is given."
-  {:arglists '([spec serdes-path ingest-one])}
-  (fn [spec _path _ingest-one] (:identity spec))
-  :hierarchy #'serdes-path-identity-hierarchy)
+(defmethod extract-identity-from-key :entity-id [_ [_ id]] id)
 
-(defn- natural-key-entity-id
-  "The entity_id of the local row whose natural-key column (the spec's tracked name column) equals `ingested`'s,
-  or nil."
-  [{:keys [model-key] :as spec} ingested]
-  (let [column (get-in spec [:tracking :field-mappings :model_name])]
-    (when-some [value (get ingested column)]
-      (remote-sync.db/entity-id-where model-key column value))))
+(defmethod extract-identity-from-key :hybrid [_ [_ id]] id)
 
-(defmethod extract-identity-from-serdes-path ::entity-id-extractor
-  [{:keys [natural-key-paths?] :as spec} serdes-path ingest-one]
-  (let [id (:id (last serdes-path))]
-    (if natural-key-paths?
-      ;; The path id may be a natural key (a glossary term, before `entity_id` existed) naming whichever local row
-      ;; the loader matches it to, so use that row's entity_id. Before the load there may be no row with that id
-      ;; yet; the loader then matches the entity on its natural key, so resolve the same way when the entity can
-      ;; be read. Failing both, the raw id is kept, since it matches no local row (harmless to the removal
-      ;; anti-join) and still counts as an imported entity.
-      (or (:entity_id (serdes/load-find-local serdes-path))
-          (when ingest-one (natural-key-entity-id spec (ingest-one serdes-path)))
-          id)
-      id)))
+(defmethod extract-identity-from-key :user-settings [_ k] k)
 
-(defmethod extract-identity-from-serdes-path :user-settings
-  [_ serdes-path _ingest-one]
-  serdes-path)
-
-(defmethod extract-identity-from-serdes-path :default
-  [_ _ _]
-  nil)
+(defmethod extract-identity-from-key :default [_ _] nil)
 
 (defn extract-imported-entities
-  "Processes serdes paths from an import and extracts entity identities grouped by how they should be looked up.
-   Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
-   the serdes paths of the user settings models, which are only counted.
-
-   `ingest-one` (path -> ingested entity) is for the pre-load conflict check: a `:natural-key-paths?` path whose
-   id matches no local row yet resolves to the row the loader will match on the entity's natural key."
-  ([seen-paths]
-   (extract-imported-entities seen-paths nil))
-  ([seen-paths ingest-one]
-   (reduce
-    (fn [acc path]
-      (let [model-type (-> path last :model)]
-        (if-let [spec (spec-for-model-type model-type)]
-          (let [identity-type (:identity spec)
-                identity-data (extract-identity-from-serdes-path spec path ingest-one)]
-            (if identity-data
-              (case identity-type
-                (:entity-id :hybrid)
-                (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
-
-                :user-settings
-                (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
-
-                acc)
-              acc))
-          acc)))
-    {:by-entity-id {}
-     :by-path {}}
-    seen-paths)))
+  "The identities of the imported entities with the `[model ref]` keys `seen`, grouped by how they are looked
+  up: `:by-entity-id` holds entity ids by model type, and `:by-path` the keys of the user settings models, which are
+  only counted."
+  [seen]
+  (reduce
+   (fn [acc [model :as k]]
+     (let [model-type (name model)]
+       (if-let [spec (spec-for-model-type model-type)]
+         (if-let [identity-data (extract-identity-from-key spec k)]
+           (case (:identity spec)
+             (:entity-id :hybrid) (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
+             :user-settings       (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+             acc)
+           acc)
+         acc)))
+   {:by-entity-id {}
+    :by-path {}}
+   seen))
 
 ;;; -------------------------------------------- Event Helper Functions ------------------------------------------------
 
@@ -1255,7 +1205,7 @@
 (defmulti query-export-roots
   "Queries for root-level export targets based on eligibility configuration.
    Returns a sequence of [model-type id] tuples for initial targets, or nil if
-   this model type's targets are derived from other models (e.g., via serdes/descendants)."
+   this model type's targets are the content of the remote-synced Collections."
   {:arglists '([spec])}
   (fn [spec] (get-in spec [:eligibility :type])))
 
@@ -1332,21 +1282,51 @@
    :continue-on-error        false
    :skip-archived            true})
 
-(def ^:private models-traversed-but-not-stored
-  "Models git sync walks through but never writes."
-  #{"Table" "Field"})
+(defn- select-entities
+  "A map of {model-name [id ...]}: the `roots`, a map of model-name to ids, the content of the Collections among them
+  and of their descendants, unarchived only when `unarchived-only?`, and the data model of the Tables published in
+  those Collections."
+  [roots unarchived-only?]
+  (let [opts      (assoc git-sync-extract-opts :skip-archived unarchived-only?)
+        coll-set  (ee.serialization/collection-subtree-ids (vec (get roots "Collection")) unarchived-only?)
+        table-ids (when (seq coll-set)
+                    (ee.serialization/select-ids :model/Table (assoc opts :collection-set coll-set)))
+        in-colls  (fn [model-key]
+                    (when (seq coll-set)
+                      (ee.serialization/select-ids model-key (assoc opts :collection-set coll-set))))
+        selected  (fn [{:keys [model-key eligibility export-scope]}]
+                    (case (:type eligibility)
+                      :collection
+                      (in-colls model-key)
+
+                      :setting
+                      (when (= export-scope :root-only)
+                        (in-colls model-key))
+
+                      (:published-table :parent-table)
+                      (when (seq table-ids)
+                        (ee.serialization/select-ids model-key (assoc opts :table-ids table-ids)))
+
+                      nil))]
+    (into {}
+          (keep (fn [{:keys [model-type] :as spec}]
+                  (let [ids (into (set (get roots model-type)) (selected spec))]
+                    (when (seq ids)
+                      [model-type (vec ids)]))))
+          (vals (enabled-specs)))))
 
 (defn exportable-entities
-  "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
-  `serdes/descendants`/`required` closure — or `{}` when there is no remote-syncable content."
+  "What a full export would serialize: a map of {model-name [id ...]} — the export roots, the content of the
+  remote-synced Collections they hold, and the data model of the Tables published in those Collections — or `{}`
+  when there is no remote-syncable content."
   []
-  (let [root-targets (into []
-                           (mapcat query-export-roots)
-                           (vals (enabled-specs)))
-        targets (-> #{}
-                    (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) git-sync-extract-opts))))
-                    (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
-    (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
+  (select-entities (u/group-by first second (mapcat query-export-roots (vals (enabled-specs)))) true))
+
+(defn collection-entities
+  "A map of {model-name [id ...]} of the Collections with `collection-ids`, their descendants, and what they hold that
+  remote sync takes, archived ones included, since the checks of an archive run while it archives them."
+  [collection-ids]
+  (select-entities {"Collection" (vec collection-ids)} false))
 
 (defn exportable-entity-count
   "Number of entities `targets` (a map as returned by [[exportable-entities]]) names. An upper bound on what
@@ -1361,31 +1341,9 @@
    callers must reduce it once.
 
    `targets` defaults to [[exportable-entities]]; pass it explicitly when the same map is needed for
-   [[exportable-entity-count]] so the dependency walk runs once.
-
-   Only extracts models that:
-   1. Have a spec in remote-sync-specs
-   2. Are currently enabled (based on :enabled? field)
-   3. Are in one of the provided collections (or descendants)"
+   [[exportable-entity-count]] so the dependency walk runs once."
   ([]
    (extract-entities-for-export (exportable-entities)))
   ([targets]
-   (eduction (map (fn [[model ids]]
-                    (serdes/extract-all model (merge git-sync-extract-opts
-                                                     {:filter-column (serdes/primary-key model)
-                                                      :filter-ids    (vec ids)}))))
-             cat
+   (eduction (mapcat (fn [[model-type ids]] (ee.serialization/export-ids (keyword "model" model-type) ids git-sync-extract-opts)))
              targets)))
-
-(defn extract-entities-for-rows
-  "Serializes the entities named by `rows`, grouped by model type. Each row is a map with a
-   `:model_type` (the serdes model name) and a `:model_id` (the local DB primary key). Returns a lazy
-   sequence of serialized entities."
-  [rows]
-  (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
-    (eduction (map (fn [[model ids]]
-                     (serdes/extract-all model (merge git-sync-extract-opts
-                                                      {:filter-column (serdes/primary-key model)
-                                                       :filter-ids    (vec ids)}))))
-              cat
-              by-model)))
