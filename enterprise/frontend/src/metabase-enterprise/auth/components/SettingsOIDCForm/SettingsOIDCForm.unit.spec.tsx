@@ -22,7 +22,7 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import { SettingsOIDCForm } from "./SettingsOIDCForm";
+import { SettingsOIDCForm, parseTrustedEmailDomains } from "./SettingsOIDCForm";
 
 const GROUPS = [
   createMockGroup({
@@ -162,6 +162,12 @@ const queryMappingRow = (name: string) =>
     .find((row) => within(row).queryByText(name) != null);
 
 const getMappingRow = (name: string) => checkNotNull(queryMappingRow(name));
+
+const expandAccountLinking = async () => {
+  await userEvent.click(
+    screen.getByRole("button", { name: "Account linking" }),
+  );
+};
 
 const expandAttributes = async () => {
   await userEvent.click(screen.getByRole("button", { name: "Attributes" }));
@@ -338,6 +344,7 @@ describe("SettingsOIDCForm", () => {
         "Server settings",
         "User provisioning",
         "Attributes",
+        "Account linking",
         "Group mapping",
       ]);
     });
@@ -937,5 +944,150 @@ describe("SettingsOIDCForm", () => {
         expect.objectContaining({ "group-mappings": { devs: [3] } }),
       ]);
     });
+  });
+});
+
+describe("SettingsOIDCForm - Account linking", () => {
+  it("defaults to auto-linking verified emails with no trusted domains", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await expandAccountLinking();
+
+    expect(
+      // the switch's wrapping <label> also contains the description text, so exact match can't work
+      screen.getByLabelText(
+        /Automatically link accounts with a verified email/,
+      ),
+    ).toBeChecked();
+    expect(screen.getByLabelText("Trusted email domains")).toHaveValue("");
+  });
+
+  it("populates account linking fields from existing provider config", async () => {
+    await setup({
+      providers: [
+        {
+          ...EXISTING_PROVIDER,
+          "auto-link-verified-email": false,
+          "trusted-email-domains": ["mycompany.com", "example.org"],
+        },
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Account linking" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      // the switch's wrapping <label> also contains the description text, so exact match can't work
+      screen.getByLabelText(
+        /Automatically link accounts with a verified email/,
+      ),
+    ).not.toBeChecked();
+    expect(screen.getByLabelText("Trusted email domains")).toHaveValue(
+      "mycompany.com, example.org",
+    );
+  });
+
+  it("includes account linking settings in form submission", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await expandAccountLinking();
+    await userEvent.click(
+      // the switch's wrapping <label> also contains the description text, so exact match can't work
+      screen.getByLabelText(
+        /Automatically link accounts with a verified email/,
+      ),
+    );
+    await userEvent.type(
+      screen.getByLabelText("Trusted email domains"),
+      "mycompany.com, example.org",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(async () => {
+      const puts = await getOidcPutCalls();
+      expect(puts.length).toBeGreaterThan(0);
+    });
+
+    const puts = await getOidcPutCalls();
+    const lastPut = puts[puts.length - 1];
+    expect(lastPut.body["auto-link-verified-email"]).toBe(false);
+    expect(lastPut.body["trusted-email-domains"]).toEqual([
+      "mycompany.com",
+      "example.org",
+    ]);
+  });
+
+  it("normalizes trusted email domains before submission", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await expandAccountLinking();
+    await userEvent.type(
+      screen.getByLabelText("Trusted email domains"),
+      "@MyCompany.com example.org, mycompany.com",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(async () => {
+      const puts = await getOidcPutCalls();
+      expect(puts.length).toBeGreaterThan(0);
+    });
+
+    const puts = await getOidcPutCalls();
+    const lastPut = puts[puts.length - 1];
+    expect(lastPut.body["trusted-email-domains"]).toEqual([
+      "mycompany.com",
+      "example.org",
+    ]);
+  });
+
+  it("rejects trusted email domains that are not domains", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await expandAccountLinking();
+    await userEvent.type(
+      screen.getByLabelText("Trusted email domains"),
+      "not-a-domain",
+    );
+    await userEvent.tab();
+
+    expect(
+      await screen.findByText(
+        "Enter domains like mycompany.com, separated by commas",
+      ),
+    ).toBeInTheDocument();
+    expect(await getOidcPutCalls()).toHaveLength(0);
+  });
+
+  it("rejects subdomain wildcards, which would be stored but never match", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await expandAccountLinking();
+    await userEvent.type(
+      screen.getByLabelText("Trusted email domains"),
+      "*.mycompany.com",
+    );
+    await userEvent.tab();
+
+    expect(
+      await screen.findByText(
+        "Enter domains like mycompany.com, separated by commas",
+      ),
+    ).toBeInTheDocument();
+    expect(await getOidcPutCalls()).toHaveLength(0);
+  });
+});
+
+describe("parseTrustedEmailDomains", () => {
+  it("splits on commas and whitespace, strips @, lowercases, and dedupes", () => {
+    expect(
+      parseTrustedEmailDomains("@MyCompany.com example.org,\n mycompany.com ,"),
+    ).toEqual(["mycompany.com", "example.org"]);
+  });
+
+  it("returns an empty list for empty input", () => {
+    expect(parseTrustedEmailDomains(null)).toEqual([]);
+    expect(parseTrustedEmailDomains("")).toEqual([]);
   });
 });

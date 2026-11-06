@@ -2,6 +2,8 @@
   "Generic OIDC authentication provider backed by the `oidc-providers` setting.
    Derives from the base OIDC provider and adds per-provider configuration and claim extraction."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
@@ -19,6 +21,20 @@
 
 ;;; -------------------------------------------------- Configuration --------------------------------------------------
 
+(def ^:private max-provider-name-length
+  "The width of `auth_identity.provider`."
+  50)
+
+(defn identity-provider-name
+  "The AuthIdentity provider name for the custom OIDC provider with `provider-key`: `oidc-<key>`, or, when that would
+  not fit `auth_identity.provider`, the key truncated and suffixed with a hash of the whole key."
+  [provider-key]
+  (let [full (str "oidc-" provider-key)]
+    (if (<= (count full) max-provider-name-length)
+      full
+      (let [digest (subs (codecs/bytes->hex (buddy-hash/sha256 ^String provider-key)) 0 12)]
+        (str (subs full 0 (- max-provider-name-length (count digest) 1)) "-" digest)))))
+
 (defn- build-oidc-config
   "Build OIDC configuration map from provider settings."
   [provider-config request]
@@ -32,12 +48,24 @@
                :client-secret (:client-secret provider-config)
                :issuer-uri    (:issuer-uri provider-config)
                :scopes        (or (:scopes provider-config) ["openid" "email" "profile"])
-               :redirect-uri  (:redirect-uri request)}
+               :redirect-uri  (:redirect-uri request)
+               ;; per-IdP AuthIdentity namespace: every configured IdP shares the :provider/custom-oidc
+               ;; dispatch keyword, so without this their (iss, sub) identities would collide in one row
+               :identity-provider-name (identity-provider-name (:key provider-config))
+               ;; AuthIdentity rows written before per-IdP provider names all used this shared name;
+               ;; verify-or-link-identity! migrates a user's matching legacy row on their first login
+               :legacy-provider-name "custom-oidc"}
         (get attribute-map "first_name")
         (assoc :attribute-firstname (get attribute-map "first_name"))
 
         (get attribute-map "last_name")
-        (assoc :attribute-lastname (get attribute-map "last_name"))))))
+        (assoc :attribute-lastname (get attribute-map "last_name"))
+
+        (some? (:auto-link-verified-email provider-config))
+        (assoc :auto-link-verified-email (:auto-link-verified-email provider-config))
+
+        (seq (:trusted-email-domains provider-config))
+        (assoc :trusted-email-domains (:trusted-email-domains provider-config))))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
@@ -84,7 +112,8 @@
 
 (methodical/defmethod auth-identity/login! :provider/custom-oidc
   [provider {:keys [user] :as request}]
-  (when-not user
+  ;; only gate provisioning on successful authentications: a failure must surface its own error
+  (when (and (true? (:success? request)) (not user))
     (sso-utils/check-user-provisioning :oidc))
   (let [provisioning-enabled? (sso-settings/oidc-user-provisioning-enabled?)
         user-was-deactivated? (and user (not (:is_active user)))

@@ -119,9 +119,10 @@
     provider)
   :hierarchy #'auth-identity.hierarchy/hierarchy)
 
-(methodical/defmethod validate ::provider
+(methodical/defmethod validate :default
   [_provider _auth-identity-data]
-  ;; Default: no validation (SSO providers typically don't need credential validation)
+  ;; No validation by default: it's opt-in, and per-IdP provider names (e.g. "oidc-okta") have no
+  ;; registered provider keyword at all
   nil)
 
 ;;; -------------------------------------------------- Multimethod: authenticate --------------------------------------------------
@@ -285,6 +286,8 @@
    [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
    [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
    [:provider-id {:optional true} [:maybe :string]]
+   [:provider-metadata {:optional true} [:maybe ::auth-identity.schema/auth-identity.metadata.oidc]]
+   [:identity-provider-name {:optional true} [:maybe :string]]
    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
    [:groups {:optional true} [:maybe [:sequential :string]]]])
 
@@ -303,6 +306,14 @@
    [:jwt/require-exp-and-iat? {:optional true} [:maybe :boolean]]
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
    [:oidc-nonce {:optional true} [:maybe :string]]
+   ;; the linking policy of an OIDC login; see metabase.sso.providers.oidc/linking-config-keys
+   [:oidc-config {:optional true} [:maybe [:map {:closed true}
+                                           [:identity-provider-name   {:optional true} [:maybe :string]]
+                                           [:legacy-provider-name     {:optional true} [:maybe :string]]
+                                           [:auto-link-verified-email {:optional true} [:maybe :boolean]]
+                                           [:trusted-email-domains    {:optional true} [:maybe [:sequential :string]]]
+                                           [:assume-email-verified    {:optional true} [:maybe :boolean]]
+                                           [:assumed-issuer           {:optional true} [:maybe :string]]]]]
    [:oidc-provider {:optional true} [:maybe :keyword]]
    [:oidc-provider-key {:optional true} [:maybe :string]]
    [:password {:optional true} [:maybe :string]]
@@ -420,7 +431,7 @@
 (def ^:private authenticate-owned-keys
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
    :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor :session/provider
-   :jwt-data :claims
+   :jwt-data :claims :oidc-config
    :tenant-slug :tenant-attributes :user-provisioning-enabled? :created-new-user?])
 
 (defn- notify-admins-of-new-sso-user!
@@ -475,6 +486,20 @@
   []
   [:email :first_name :last_name :sso_source])
 
+(defn identity-provider-name
+  "AuthIdentity provider name for a login: the map's :identity-provider-name (set — in the config and in
+   SSO user-data — by providers whose dispatch keyword covers several IdPs, e.g. per-key custom OIDC) or
+   the provider keyword's name."
+  [provider m]
+  (or (:identity-provider-name m) (name provider)))
+
+(defn- auth-identity-row
+  "AuthIdentity row linking `user-id` to the `:provider-id`/`:provider-metadata` carried in SSO `user-data`."
+  [user-id provider user-data]
+  (cond-> {:user_id user-id :provider (identity-provider-name provider user-data)}
+    (:provider-id user-data)       (assoc :provider_id (:provider-id user-data))
+    (:provider-metadata user-data) (assoc :metadata (:provider-metadata user-data))))
+
 (mu/defn update-user!
   "Updates a user from user-data in the request"
   [{user-id :id} :- ::users.schema/user
@@ -486,9 +511,8 @@
       (auth-identity.db/update-user! user-id
                                      (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
                                        reactivating? (assoc :is_superuser false))))
-    (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
-      (auth-identity.db/insert-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
-                                                (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
+    (when-not (auth-identity.db/auth-identity-exists? user-id (identity-provider-name provider user-data))
+      (auth-identity.db/insert-auth-identity! (auth-identity-row user-id provider user-data)))
     (auth-identity.db/user-login-status user-id)))
 
 (mu/defn- create-user!
@@ -507,8 +531,7 @@
     (t2/with-transaction [_]
       (u/prog1
         (auth-identity.db/insert-user-returning-login-columns! (select-keys user-data insert-fields))
-        (auth-identity.db/insert-auth-identity! (cond-> {:user_id (:id <>) :provider (name provider)}
-                                                  (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+        (auth-identity.db/insert-auth-identity! (auth-identity-row (:id <>) provider user-data))
         (notification/with-skip-sending-notification true
           (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
                                                                      :sso_source (name provider))}))))))

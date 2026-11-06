@@ -17,6 +17,7 @@ import {
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
+  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
@@ -55,6 +56,25 @@ const DEFAULT_SCOPES = ["openid", "email", "profile"];
 const DEFAULT_FIRST_NAME_ATTRIBUTE = "given_name";
 const DEFAULT_LAST_NAME_ATTRIBUTE = "family_name";
 
+// "*" or a dotted hostname; leading "@" and case are normalized away first.
+// Only "*" is a wildcard: matching is exact, so reject strings like "*.mycompany.com"
+const TRUSTED_EMAIL_DOMAIN_REGEX =
+  /^(\*|([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,})$/;
+
+export function parseTrustedEmailDomains(value: string | null): string[] {
+  if (!value) {
+    return [];
+  }
+  return Array.from(
+    new Set(
+      value
+        .split(/[\s,]+/)
+        .map((domain) => domain.trim().replace(/^@/, "").toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+}
+
 // the API keeps an existing provider's secret when none is sent, but a new provider needs one
 function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
   return Yup.object({
@@ -73,6 +93,18 @@ function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
     scopes: Yup.string().nullable().default(null),
     "attribute-firstname": Yup.string().nullable().default(null),
     "attribute-lastname": Yup.string().nullable().default(null),
+    "auto-link-verified-email": Yup.boolean().default(true),
+    "trusted-email-domains": Yup.string()
+      .nullable()
+      .default(null)
+      .test(
+        "trusted-email-domains",
+        t`Enter domains like mycompany.com, separated by commas`,
+        (value) =>
+          parseTrustedEmailDomains(value ?? null).every((domain) =>
+            TRUSTED_EMAIL_DOMAIN_REGEX.test(domain),
+          ),
+      ),
     "group-attribute": Yup.string().nullable().default(null),
   });
 }
@@ -86,6 +118,8 @@ interface OIDCFormValues {
   scopes: string | null;
   "attribute-firstname": string | null;
   "attribute-lastname": string | null;
+  "auto-link-verified-email": boolean;
+  "trusted-email-domains": string | null;
   "group-attribute": string | null;
 }
 
@@ -107,6 +141,8 @@ function providerToFormValues(
       scopes: null,
       "attribute-firstname": null,
       "attribute-lastname": null,
+      "auto-link-verified-email": true,
+      "trusted-email-domains": null,
       "group-attribute": null,
     };
   }
@@ -131,6 +167,9 @@ function providerToFormValues(
       attributeMap["last_name"],
       DEFAULT_LAST_NAME_ATTRIBUTE,
     ),
+    "auto-link-verified-email": provider["auto-link-verified-email"] ?? true,
+    "trusted-email-domains":
+      provider["trusted-email-domains"]?.join(", ") || null,
     "group-attribute": withoutDefault(
       provider["group-sync"]?.["group-attribute"],
       DEFAULT_GROUP_ATTRIBUTE,
@@ -161,6 +200,10 @@ function formValuesToProvider(
     attributeMap["last_name"] = values["attribute-lastname"];
   }
 
+  const trustedEmailDomains = parseTrustedEmailDomains(
+    values["trusted-email-domains"],
+  );
+
   const provider: Partial<CustomOidcConfig> = {
     key: values.key,
     "login-prompt": values["login-prompt"],
@@ -169,6 +212,8 @@ function formValuesToProvider(
     scopes,
     enabled: true,
     "attribute-map": attributeMap,
+    "auto-link-verified-email": values["auto-link-verified-email"],
+    "trusted-email-domains": trustedEmailDomains,
     "group-sync": toGroupSync(groupSync, {
       "group-attribute": values["group-attribute"] ?? DEFAULT_GROUP_ATTRIBUTE,
     }),
@@ -220,6 +265,9 @@ export function SettingsOIDCForm() {
     initialValues["attribute-firstname"],
     initialValues["attribute-lastname"],
   ].some((value) => value != null);
+  const hasCustomAccountLinking =
+    !initialValues["auto-link-verified-email"] ||
+    initialValues["trusted-email-domains"] != null;
 
   const runCheck = useCallback(
     async (values: OIDCFormValues) => {
@@ -404,6 +452,30 @@ export function SettingsOIDCForm() {
                     name="attribute-lastname"
                     label={t`Last name attribute key`}
                     placeholder={DEFAULT_LAST_NAME_ATTRIBUTE}
+                    nullable
+                    readOnly={isLocked}
+                  />
+                </Stack>
+              </CollapsibleSettingsSection>
+
+              <CollapsibleSettingsSection
+                title={t`Account linking`}
+                description={t`${applicationName} links each account to the identity your provider asserts for it, and checks the link on every sign-in. These settings control how a link gets established for an existing account.`}
+                defaultOpened={hasCustomAccountLinking}
+              >
+                <Stack gap="lg">
+                  <FormSwitch
+                    name="auto-link-verified-email"
+                    label={t`Automatically link accounts with a verified email`}
+                    description={t`Link the identity to the existing account with the same email when the token asserts the email is verified (email_verified is true).`}
+                    disabled={isLocked}
+                  />
+                  <FormTextInput
+                    name="trusted-email-domains"
+                    label={t`Trusted email domains`}
+                    description={t`Comma-separated list of email domains to link even when the token has no email_verified claim. Use * to trust all domains. Only trust domains where people can't register unverified email addresses themselves.`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder={t`e.g. mycompany.com`}
                     nullable
                     readOnly={isLocked}
                   />

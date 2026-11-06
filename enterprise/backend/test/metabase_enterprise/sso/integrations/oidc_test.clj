@@ -65,7 +65,10 @@
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
     {:success? true
-     :claims {}
+     :claims {:sub "test-oidc-provider-id"
+              :iss "https://test.idp.example.com"
+              :email "oidcuser@example.com"
+              :email_verified true}
      :user-data {:email "oidcuser@example.com"}
      :provider-id "test-oidc-provider-id"}
     {:success? :redirect
@@ -242,16 +245,21 @@
   "Dynamic var to control the email returned by the group sync mock."
   "oidc-group-user@example.com")
 
-;; Mock that returns claims with group membership
+;; Mock that returns claims with group membership. The sub is derived from the email: one sub asserted
+;; for several different users is exactly what identity linking rejects.
 (methodical/defmethod auth-identity/authenticate :provider/test-oidc-with-groups
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
     {:success?    true
-     :claims      *group-sync-claims*
+     :claims      (merge {:sub            (str "sub-" *group-sync-email*)
+                          :iss            "https://test.idp.example.com"
+                          :email          *group-sync-email*
+                          :email_verified true}
+                         *group-sync-claims*)
      :user-data   {:email      *group-sync-email*
                    :first_name "OIDC"
                    :last_name  "GroupUser"}
-     :provider-id "test-oidc-provider-id"}
+     :provider-id (str "sub-" *group-sync-email*)}
     {:success?     :redirect
      :redirect-url "https://test.idp.example.com/authorize"
      :state        "test-state"
@@ -515,3 +523,14 @@
            {:params {:code "test-code" :state "test-state"}})
           (is (not-any? #(re-find #"jane@example.com" (:message %)) (log-messages))
               "Log messages should not contain user's email address"))))))
+
+(deftest ^:parallel identity-provider-name-fits-column-test
+  (testing "short keys keep the readable oidc-<key> name"
+    (is (= "oidc-okta" (oidc.provider/identity-provider-name "okta"))))
+  (testing "long keys are truncated with a hash of the whole key, so they fit auth_identity.provider (varchar 50)"
+    (let [k1 (apply str (repeat 60 "a"))
+          k2 (str (apply str (repeat 59 "a")) "b")]
+      (is (= 50 (count (oidc.provider/identity-provider-name k1))))
+      (is (str/starts-with? (oidc.provider/identity-provider-name k1) "oidc-"))
+      (is (= (oidc.provider/identity-provider-name k1) (oidc.provider/identity-provider-name k1)))
+      (is (not= (oidc.provider/identity-provider-name k1) (oidc.provider/identity-provider-name k2))))))
