@@ -205,8 +205,7 @@
         (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
           (log/trace "All cached rows reduced"))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *refresh-lease-duration-ms*
+(def ^:private refresh-lease-duration-ms
   "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
   the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
   (u/minutes->ms 5))
@@ -253,7 +252,7 @@
 (defn- not-too-stale?
   "Whether an entry last written at `updated-at` is close enough to `invalidated-at` (the strategy's freshness
   boundary) that serving it is still serving roughly what the caller asked for -- within
-  [[*refresh-lease-duration-ms*]] of it.
+  [[refresh-lease-duration-ms]] of it.
 
   Serving an expired entry is only defensible while its replacement is on the way, and that is the one thing an
   expired entry doesn't tell you: it can sit untouched for weeks until the first request arrives, wins the lease, and
@@ -264,7 +263,7 @@
   [updated-at invalidated-at]
   (boolean (and updated-at
                 (not (t/before? (t/instant updated-at)
-                                (t/minus (t/instant invalidated-at) (t/millis *refresh-lease-duration-ms*)))))))
+                                (t/minus (t/instant invalidated-at) (t/millis refresh-lease-duration-ms)))))))
 
 (mu/defn- maybe-serve-cached-results :- [:tuple
                                          #_status [:enum ::fresh ::stale ::miss ::canceled]
@@ -302,7 +301,7 @@
                          updated-at
                          (fresh-duration-ms strategy)
                          (cache/query-caching-early-refresh-ratio))
-                        (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*))
+                        (i/try-acquire-refresh-lease! *backend* query-hash refresh-lease-duration-ms))
                    nil
 
                    ;; within its TTL -> serve the fresh entry
@@ -311,7 +310,7 @@
                      [::fresh result])
 
                    ;; expired, and we won the refresh lease -> recompute (don't serve stale)
-                   (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)
+                   (i/try-acquire-refresh-lease! *backend* query-hash refresh-lease-duration-ms)
                    nil
 
                    ;; another process is refreshing, and the entry is still close enough to what
