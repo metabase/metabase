@@ -13,7 +13,7 @@ Remote sync stores your [Library](./library.md) and [transforms](../transforms/t
 
 Remote sync syncs:
 
-- The Library: published tables with their segments and measures, metrics, dashboards, documents, [data apps](../../data-apps/build.md#what-syncs-with-a-data-app), SQL snippets, [data actions](../data-actions.md), and the glossary.
+- The Library: published tables with their segments and measures, metrics, documents, [data apps](../../data-apps/build.md#what-syncs-with-a-data-app), SQL snippets, [data actions](../data-actions.md), and the glossary.
 - Transforms: their tags, tests, folders, and Python libraries.
 
 Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never leaves your Metabase.
@@ -24,7 +24,7 @@ Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML fil
 
 Here's a basic Remote sync workflow:
 
-1. In your development Metabase (Read-write mode), publish a table, create a metric, or build a dashboard in the Library.
+1. In your development Metabase (Read-write mode), publish a table or create a metric in the Library.
 2. From the development Metabase, push the change to a Git branch.
 3. Open a pull request for review.
 4. Merge the pull request to your main branch.
@@ -258,26 +258,26 @@ file:///Users/you/local-repo
 
 ## An example dev-to-production workflow
 
-Let's say your team wants to publish a new table and build a dashboard with it. Here's a workflow that ensures all production content goes through a review process.
+Let's say your team wants to publish a new table and create a metric from it. Here's a workflow that ensures all production content goes through a review process.
 
 ### Step 1: Create a new branch
 
-In your development Metabase, go to **Admin** > **Settings** > **Remote sync** and [create a new branch](#creating-a-branch) for your work, like `feature/megafauna-dashboard`.
+In your development Metabase, go to **Admin** > **Settings** > **Remote sync** and [create a new branch](#creating-a-branch) for your work, like `feature/megafauna-metric`.
 
 ### Step 2: Create content in your development Metabase
 
-In Data Studio, publish the `Megafauna` table to the Library and add a measure to it. Create a dashboard called "Megafauna Analytics" in the Library and add some questions to it.
+In Data Studio, publish the `Megafauna` table to the Library and add a measure to it. Create a metric called "Megafauna count" in the Library.
 
 ### Step 3: Push to your development branch
 
-[Push your changes](#committing-and-pushing-your-changes) to `feature/megafauna-dashboard` with a commit message like "Add a Megafauna table and dashboard".
+[Push your changes](#committing-and-pushing-your-changes) to `feature/megafauna-metric` with a commit message like "Add a Megafauna table and metric".
 
 ### Step 4: Create a pull request
 
 In your Git repository:
 
-1. Create a pull request from your branch, `feature/megafauna-dashboard`, to the main branch `main`.
-2. Review the changes to the YAML files representing your published table, measure, dashboard, and questions.
+1. Create a pull request from your branch, `feature/megafauna-metric`, to the main branch `main`.
+2. Review the changes to the YAML files representing your published table, measure, and metric.
 3. Someone who knows what they're doing approves and merges the PR.
 
 ### Step 5: Production automatically updates
@@ -285,7 +285,7 @@ In your Git repository:
 On your production Metabase:
 
 1. Within five minutes, Auto-sync detects the new commits on `main` (you can also manually pull the changes).
-2. The published table and the "Megafauna Analytics" dashboard appear in the Library with all their questions.
+2. The published table and the "Megafauna count" metric appear in the Library.
 3. The content is read-only (people can view and use it, but can't edit it).
 
 ## How the Library works in Read-write mode
@@ -294,7 +294,7 @@ On your production Metabase:
 
 When the Library has unsynced changes, a yellow dot appears next to the Library section that changed (for example, **Semantic layer**). At the top of the Data Studio sidebar, click the branch name to push or pull changes.
 
-In the main Metabase sidebar, the Library sections (Data, Metrics, and Dashboards) show a sync icon to indicate that they are versioned.
+In the main Metabase sidebar, the Library sections (Data and Metrics) show a sync icon to indicate that they are versioned.
 
 ### Moving and deleting Library content
 
@@ -304,7 +304,7 @@ Content in other Metabases that depended on this item may break, because the dep
 
 ### Library content must be self-contained
 
-Everything a Library dashboard or question needs must be in the Library. This includes:
+Everything an item in the Library needs must be in the Library. This includes:
 
 - Questions that reference other questions
 - Dashboards with questions
