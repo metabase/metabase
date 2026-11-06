@@ -6,9 +6,11 @@
   hooks and transforms touch none of the columns the CLI reads."
   (:require
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
+   [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.core :as mdb]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -88,8 +90,12 @@
 
 (defn insert-score-row!
   "Insert one `data_complexity_score` row with `score` encoded as JSON, running no model hooks or transforms.
-  Return nil."
+  Throw when `score` doesn't match the stored score schema. Return nil."
   [fingerprint source score]
+  ;; `db/insert-score!` validates `score_data` against this schema; the raw insert has to do it itself.
+  (when-not (mr/validate ::data-complexity-score.schema/data-complexity-score.score-data score)
+    (throw (ex-info "Data Complexity score doesn't match the stored score schema"
+                    {:explain (mr/explain ::data-complexity-score.schema/data-complexity-score.score-data score)})))
   ;; `created_at` comes from the column default, so it is in database time like the rows the cron writes.
   (data-complexity-score.db/insert-score-row! {:fingerprint fingerprint
                                                :source      source

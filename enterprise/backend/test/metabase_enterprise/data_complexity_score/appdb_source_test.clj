@@ -4,9 +4,11 @@
    [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
+   [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -36,6 +38,16 @@
         (finally
           ;; Append-only table, so clean up by hand.
           (t2/delete! :model/DataComplexityScore :fingerprint fp))))))
+
+(deftest ^:synchronized insert-score-row-rejects-a-score-outside-the-schema-test
+  (testing "a score the stored schema rejects is not written"
+    (mt/initialize-if-needed! :db)
+    (let [fp    (str "appdb-source-test/fp-" (random-uuid))
+          score (assoc-in (complexity/score-from-entities [] [] nil {}) [:meta :unexpected] true)]
+      (is (not (mr/validate ::data-complexity-score.schema/data-complexity-score.score-data score)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stored score schema"
+                            (appdb-source/insert-score-row! fp "appdb-cli-test" score)))
+      (is (nil? (stored-row fp))))))
 
 (deftest ^:synchronized verify-write-target-shape-test
   (mt/initialize-if-needed! :db)
