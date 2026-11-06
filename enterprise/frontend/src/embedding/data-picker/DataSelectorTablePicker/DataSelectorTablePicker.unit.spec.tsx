@@ -134,4 +134,12 @@ describe("DataSelectorTablePicker", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onChangeTable).not.toHaveBeenCalled();
   });
+
+  it("show the table icon for a table without a description (metabase#72322)", () => {
+    const table = createMockTable({ description: null });
+    const database = createMockDatabase({ tables: [table] });
+    setup({ database });
+    expect(screen.getByLabelText("table icon")).toBeInTheDocument();
+    expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
+  });
 });

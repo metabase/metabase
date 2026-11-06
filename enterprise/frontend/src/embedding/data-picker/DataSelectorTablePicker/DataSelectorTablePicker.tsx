@@ -6,6 +6,13 @@ import {
   type Section,
 } from "metabase/common/components/AccordionList";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+
+import {
+  HoverParent,
+  TableInfoIcon,
+} from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { hasTableInfoPopover } from "metabase/common/components/MetadataInfo/TableInfoPopover";
+
 import { useDocsUrl } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
@@ -107,7 +114,18 @@ export const DataSelectorTablePicker = ({
       table && selectedTable ? table.id === selectedTable.id : false;
 
     const renderItemIcon = ({ table }: { table: DataSelectorTable }) =>
+
+      hasTableInfoPopover(table) ? (
+        <TableInfoIcon table={table} position="top-start" />
+      ) : (
+        <Icon name="table" />
+      );
+
+    const renderItemWrapper = (content: ReactNode) => (
+      <HoverParent>{content}</HoverParent>
+    );
       table ? <Icon name="table" /> : null;
+
 
     const showSpinner = (itemOrSection: Item | Section<Item>) =>
       "table" in itemOrSection && !isSyncCompleted(itemOrSection.table);
