@@ -151,6 +151,24 @@ describe("Sidesheet", () => {
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
 
+  it("should keep the close hotkey from reaching global shortcut listeners", async () => {
+    const windowListener = jest.fn();
+    window.addEventListener("keydown", windowListener);
+    render(
+      <Sidesheet title="My Title" isOpen onClose={jest.fn()} closeHotkey="]">
+        hello world
+      </Sidesheet>,
+    );
+
+    await userEvent.keyboard("a");
+    expect(windowListener).toHaveBeenCalledTimes(1);
+
+    await userEvent.keyboard("]");
+    expect(windowListener).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("keydown", windowListener);
+  });
+
   it("should not fire onClose when the consumer closes it with isOpen", async () => {
     const closeSpy = jest.fn();
     const { rerender } = render(

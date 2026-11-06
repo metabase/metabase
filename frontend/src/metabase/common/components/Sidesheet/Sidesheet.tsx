@@ -139,7 +139,12 @@ export function Sidesheet({
     }
   };
 
-  useHotkeys(closeHotkey ? [[closeHotkey, requestClose]] : []);
+  // Consume the keypress: kbar is re-enabled as the sheet starts closing and would act on it too.
+  const handleCloseHotkey = (event: KeyboardEvent) => {
+    event.stopPropagation();
+    requestClose();
+  };
+  useHotkeys(closeHotkey ? [[closeHotkey, handleCloseHotkey]] : []);
 
   return (
     <SidesheetCloseContext.Provider value={requestClose}>
