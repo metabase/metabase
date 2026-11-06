@@ -70,7 +70,7 @@
     ;; short forms that `UUID/fromString` accepts on the JVM
     "1-2-3-4-5"                             false
     "157-bad-cafe-dead-beef"                false
-    ;; other strings: empty, no dashes, a leading space
+    ;; malformed strings
     ""                                      false
     "not-a-uuid"                            false
     "123456789abcdef0123456789abcdef0"      false
