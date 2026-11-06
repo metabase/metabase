@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import type {
-  ConcreteTableId,
+  TableId,
   DataPermission,
   DataPermissionValue,
   DatabaseEntityId,
@@ -64,7 +64,7 @@ export function hasPermissionValueInSubgraph(
             databaseId: entityId.databaseId,
             schemaName: schema.name,
             // A permission entity always names a real warehouse table, never a card.
-            tableId: table.id as ConcreteTableId,
+            tableId: table.id as TableId,
           },
           permission,
         )

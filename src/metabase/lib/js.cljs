@@ -1991,7 +1991,6 @@
     :metadata/table #js {:databaseId (:database a-query)
                          :tableId (:id metadata)}
     :metadata/card  #js {:databaseId (:database a-query)
-                         :tableId (str "card__" (:id metadata))
                          :cardId (:id metadata)
                          :isModel (= (keyword (:type metadata)) :model)}
     (do

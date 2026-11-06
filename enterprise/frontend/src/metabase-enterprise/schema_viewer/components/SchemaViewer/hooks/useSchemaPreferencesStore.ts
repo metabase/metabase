@@ -2,16 +2,12 @@ import { useCallback, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { useUserKeyValue } from "metabase/current-user";
-import type {
-  ConcreteTableId,
-  DatabaseId,
-  SchemaName,
-} from "metabase-types/api";
+import type { TableId, DatabaseId, SchemaName } from "metabase-types/api";
 
 type UseSchemaPreferencesStoreArgs = {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
-  initialTableIds: ConcreteTableId[] | undefined;
+  initialTableIds: TableId[] | undefined;
 };
 
 type UseSchemaPreferencesStoreResult = {
@@ -21,13 +17,13 @@ type UseSchemaPreferencesStoreResult = {
    * When a `schema` is set the backend returns all tables in that schema
    * automatically, so we never put schema-native tables in this set.
    */
-  extraTableIds: readonly ConcreteTableId[];
-  addExtraTableId: (tableId: ConcreteTableId) => void;
+  extraTableIds: readonly TableId[];
+  addExtraTableId: (tableId: TableId) => void;
   contextKey: `${DatabaseId}__${SchemaName}` | null;
   isRestoring: boolean;
 };
 
-const EMPTY_IDS: readonly ConcreteTableId[] = [];
+const EMPTY_IDS: readonly TableId[] = [];
 
 /**
  * Owns per-context `schema_viewer` UserKeyValue restoration:
@@ -64,9 +60,9 @@ export function useSchemaPreferencesStore({
   });
 
   const [tableIdsByContext, setTableIdsByContext] = useState<
-    ReadonlyMap<string, readonly ConcreteTableId[]>
+    ReadonlyMap<string, readonly TableId[]>
   >(() => {
-    const map = new Map<string, readonly ConcreteTableId[]>();
+    const map = new Map<string, readonly TableId[]>();
     if (
       contextKey != null &&
       initialTableIds != null &&
@@ -118,7 +114,7 @@ export function useSchemaPreferencesStore({
       : EMPTY_IDS;
 
   const addExtraTableId = useCallback(
-    (tableId: ConcreteTableId) => {
+    (tableId: TableId) => {
       if (contextKey == null) {
         return;
       }

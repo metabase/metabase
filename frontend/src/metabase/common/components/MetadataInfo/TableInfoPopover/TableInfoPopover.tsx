@@ -1,3 +1,5 @@
+import type { TableId } from "metabase-types/api";
+
 import type { PopoverProps } from "../Popover";
 import { Popover } from "../Popover";
 import type { TableInfoProps } from "../TableInfo";
@@ -6,7 +8,7 @@ import { TableInfo } from "../TableInfo";
 export type TableInfoPopoverProps = Omit<PopoverProps, "content"> &
   Omit<TableInfoProps, "tableId"> & {
     table: {
-      id: string | number;
+      id: TableId;
       description?: string | null;
     };
   };

@@ -3,15 +3,10 @@ import { useMemo } from "react";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
-import {
-  type Table,
-  type UnsavedCard,
-  isConcreteTableId,
-} from "metabase-types/api";
+import type { Table, UnsavedCard } from "metabase-types/api";
 
 export function useTableCard(table: Table | undefined): UnsavedCard | null {
-  const tableId =
-    table != null && isConcreteTableId(table.id) ? table.id : null;
+  const tableId = table?.id ?? null;
   const { data: loadedTable } = useGetTableQueryMetadataQuery(
     tableId != null ? { id: tableId } : skipToken,
   );

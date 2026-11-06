@@ -12,7 +12,6 @@ import {
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { isConcreteTableId } from "metabase-types/api";
 
 import { ConnectedTableList } from "../ConnectedTableList";
 import { FieldList } from "../FieldList";
@@ -99,11 +98,9 @@ export function TablePane({
               />
               <ConnectedTableList
                 tables={connectedTables}
-                onTableClick={(table) => {
-                  if (isConcreteTableId(table.id)) {
-                    onItemClick({ type: "table", id: table.id });
-                  }
-                }}
+                onTableClick={(table) =>
+                  onItemClick({ type: "table", id: table.id })
+                }
               />
             </>
           ) : null}

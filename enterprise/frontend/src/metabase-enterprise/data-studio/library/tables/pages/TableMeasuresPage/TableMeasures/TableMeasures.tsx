@@ -9,7 +9,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { TableId, Table } from "metabase-types/api";
 
 type TableMeasuresProps = {
   table: Table;
@@ -37,7 +37,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
                 label: t`New measure`,
                 trackClickEvent: () =>
                   // Unjustified type cast. FIXME
-                  trackMeasureCreateStarted(table.id as ConcreteTableId),
+                  trackMeasureCreateStarted(table.id as TableId),
                 url: Urls.dataStudioPublishedTableMeasureNew(table.id),
               }
             : undefined

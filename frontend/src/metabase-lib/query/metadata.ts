@@ -2,13 +2,12 @@ import * as ML from "cljs/metabase.lib.js";
 import type {
   CardId,
   CardType,
-  ConcreteTableId,
+  TableId,
   DatabaseId,
   DatasetColumn,
   Field,
   FieldId,
   NormalizedField,
-  TableId,
 } from "metabase-types/api";
 
 /**
@@ -222,7 +221,7 @@ export function databaseMetadata(
 
 export function tableMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
-  tableId: ConcreteTableId,
+  tableId: TableId,
 ): TableMetadata | null {
   return ML.table_metadata(queryOrMetadataProvider, tableId);
 }

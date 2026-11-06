@@ -4,7 +4,7 @@ import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { type NormalizedTable, isConcreteTableId } from "metabase-types/api";
+import type { NormalizedTable } from "metabase-types/api";
 
 import { Label, LabelContainer } from "../MetadataInfo";
 import { TableLabel } from "../TableLabel/TableLabel";
@@ -63,10 +63,6 @@ function ConnectedTableButton({
 }
 
 function ConnectedTableLink({ table }: { table: ConnectedTable }) {
-  if (!isConcreteTableId(table.id)) {
-    return <TableLabel className={S.label} table={table} />;
-  }
-
   return (
     <Link
       className={S.connectedTable}

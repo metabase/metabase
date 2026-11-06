@@ -1,5 +1,5 @@
 import type {
-  ConcreteTableId,
+  TableId,
   GroupInfo,
   GroupsPermissions,
   PermissionsDatabase,
@@ -63,7 +63,7 @@ function diffDatabasePermissions(
         databaseId: database.id,
         schemaName: table.schema || "",
         // A permission entity always names a real warehouse table, never a card.
-        tableId: table.id as ConcreteTableId,
+        tableId: table.id as TableId,
       },
       DataPermission.VIEW_DATA,
     );
@@ -74,7 +74,7 @@ function diffDatabasePermissions(
         databaseId: database.id,
         schemaName: table.schema || "",
         // A permission entity always names a real warehouse table, never a card.
-        tableId: table.id as ConcreteTableId,
+        tableId: table.id as TableId,
       },
       DataPermission.VIEW_DATA,
     );

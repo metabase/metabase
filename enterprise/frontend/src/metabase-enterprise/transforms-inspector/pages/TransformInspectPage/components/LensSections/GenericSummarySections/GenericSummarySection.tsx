@@ -14,7 +14,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
-  ConcreteTableId,
+  TableId,
   InspectorCard,
   InspectorSource,
   InspectorTarget,
@@ -143,7 +143,7 @@ export const GenericSummarySection = ({
 };
 
 function getTableName(
-  tableId: ConcreteTableId | undefined,
+  tableId: TableId | undefined,
   tables: Array<InspectorSource | InspectorTarget>,
 ): string | undefined {
   if (!tableId) {

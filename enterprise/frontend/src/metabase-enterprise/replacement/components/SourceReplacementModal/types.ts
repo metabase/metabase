@@ -1,7 +1,7 @@
-import type { Card, CardId, ConcreteTableId, Table } from "metabase-types/api";
+import type { Card, CardId, TableId, Table } from "metabase-types/api";
 
 export type TableEntityItem = {
-  id: ConcreteTableId;
+  id: TableId;
   type: "table";
   data?: TableEntityData;
 };

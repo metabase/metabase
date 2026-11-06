@@ -4,7 +4,7 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
-  ConcreteTableId,
+  TableId,
   DashboardId,
   Dataset,
   FieldValue,
@@ -86,7 +86,7 @@ export function setupCardsUsingModelEndpoint(card: Card, usedBy: Card[] = []) {
 }
 
 export function setupCardsForTableEndpoint(
-  tableId: ConcreteTableId,
+  tableId: TableId,
   cards: Card[] = [],
 ) {
   fetchMock.get({

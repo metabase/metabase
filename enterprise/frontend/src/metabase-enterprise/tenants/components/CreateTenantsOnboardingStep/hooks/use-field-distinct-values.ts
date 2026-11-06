@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
-import { type FieldId, isConcreteTableId } from "metabase-types/api";
+import type { FieldId } from "metabase-types/api";
 
 /** How many distinct values to fetch from the field. */
 const DISTINCT_VALUES_LIMIT = 100;
@@ -38,7 +38,7 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
   const metadataProvider = useMetadataProvider(databaseId ?? null);
 
   const query = useMemo(() => {
-    if (fieldId == null || table == null || !isConcreteTableId(table.id)) {
+    if (fieldId == null || table == null) {
       return null;
     }
 

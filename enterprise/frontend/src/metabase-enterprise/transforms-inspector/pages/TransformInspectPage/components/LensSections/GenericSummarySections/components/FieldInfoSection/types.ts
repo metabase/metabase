@@ -1,5 +1,5 @@
 import type {
-  ConcreteTableId,
+  TableId,
   InspectorField,
   InspectorFieldStats,
   InspectorSource,
@@ -24,7 +24,7 @@ export type FieldTreeNode = {
 };
 
 export type TableWithFields = {
-  table_id?: ConcreteTableId | null;
+  table_id?: TableId | null;
   table_name: string;
   fields: InspectorField[];
 };

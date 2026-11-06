@@ -7,7 +7,7 @@ import { useSearchParams } from "metabase/router";
 import { Stack } from "metabase/ui";
 import { getSchemaViewerParams } from "metabase/urls";
 import { useGetErdQuery } from "metabase-enterprise/api";
-import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
+import type { TableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
 import { useSchemaPreferencesStore } from "../../components/SchemaViewer/hooks/useSchemaPreferencesStore";
@@ -27,7 +27,7 @@ export function SchemaViewerPage() {
   const databaseId: DatabaseId | undefined =
     rawDatabaseId != null ? Number(rawDatabaseId) : undefined;
 
-  const tableIds: ConcreteTableId[] | undefined = useMemo(
+  const tableIds: TableId[] | undefined = useMemo(
     () => (rawTableIds === "" ? undefined : rawTableIds.split(",").map(Number)),
     [rawTableIds],
   );

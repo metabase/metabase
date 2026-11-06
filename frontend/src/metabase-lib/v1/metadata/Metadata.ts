@@ -113,17 +113,12 @@ class Metadata {
    */
   field(
     fieldId: FieldId | FieldReference | string | undefined | null,
-    tableId?: TableId | undefined | null,
   ): Field | null {
     if (fieldId == null) {
       return null;
     }
 
-    const uniqueId = getUniqueFieldId({
-      id: fieldId,
-      name: "",
-      table_id: tableId ?? undefined,
-    });
+    const uniqueId = getUniqueFieldId({ id: fieldId, name: "" });
 
     return this.fields[uniqueId] || null;
   }

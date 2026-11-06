@@ -40,7 +40,6 @@ import type {
   Segment,
   TableId,
 } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import { type FieldEntity, FieldSchema } from "./schema";
 
@@ -268,8 +267,7 @@ export const getShallowFieldName = createSelector(
     (
       field: Pick<NormalizedField, "id" | "table_id" | "display_name">,
     ): string =>
-      metadata.field(field.id, field.table_id)?.displayName() ??
-      field.display_name,
+      metadata.field(field.id)?.displayName() ?? field.display_name,
 );
 
 // Takes the whole `State`, not `MetadataState`: it composes `getSettings`,
@@ -460,10 +458,7 @@ function hydrateDatabaseTables(
   }
 
   return Object.values(metadata.tables).filter(
-    (table) =>
-      isConcreteTableId(table.id) &&
-      table.schema &&
-      table.db_id === database.id,
+    (table) => table.schema && table.db_id === database.id,
   );
 }
 

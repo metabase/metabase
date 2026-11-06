@@ -3,7 +3,7 @@ import { type Metadata, metadataProvider } from "metabase-lib";
 import type {
   CardId,
   CardType,
-  ConcreteTableId,
+  TableId,
   DatasetQuery,
   FieldId,
   LegacyDatasetQuery,
@@ -112,7 +112,7 @@ export function swapClauses(
   return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
 }
 
-export function primarySourceTableId(query: Query): ConcreteTableId | null {
+export function primarySourceTableId(query: Query): TableId | null {
   return ML.primary_source_table_id(query);
 }
 
@@ -120,7 +120,7 @@ export function primarySourceCardId(query: Query): CardId | null {
   return ML.primary_source_card_id(query);
 }
 
-export function allSourceTableIds(query: Query): ConcreteTableId[] {
+export function allSourceTableIds(query: Query): TableId[] {
   return ML.all_source_table_ids(query);
 }
 

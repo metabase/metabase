@@ -20,8 +20,7 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type { ConcreteTableId, DatabaseId, Table } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
+import type { TableId, DatabaseId, Table } from "metabase-types/api";
 
 import S from "./TableSelector.module.css";
 
@@ -37,7 +36,7 @@ export function TableSelector({
   database: DatabaseId | undefined;
   table: Table | undefined;
   availableTables: Table[];
-  selectedTableIds: ConcreteTableId[];
+  selectedTableIds: TableId[];
   disabled?: boolean;
   onChange: (table: Table | undefined) => void;
   onRemove: () => void;
@@ -54,7 +53,7 @@ export function TableSelector({
   function shouldDisableItem(item: OmniPickerItem) {
     if (item.model === "table") {
       // Filter available tables to exclude already selected ones (except current selection)
-      return !isConcreteTableId(item.id) || selectedTableIds.includes(item.id);
+      return typeof item.id !== "number" || selectedTableIds.includes(item.id);
     }
     return false;
   }

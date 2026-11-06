@@ -7,12 +7,12 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { TableId, Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { TablePane } from "./TablePane";
 
-const TABLE_ID: ConcreteTableId = 1;
+const TABLE_ID: TableId = 1;
 
 interface SetupOpts {
   table: Table;

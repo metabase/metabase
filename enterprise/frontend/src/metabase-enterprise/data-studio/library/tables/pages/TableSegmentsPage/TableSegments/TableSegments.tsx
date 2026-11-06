@@ -9,7 +9,7 @@ import {
 import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { TableId, Table } from "metabase-types/api";
 
 type TableSegmentsProps = {
   table: Table;
@@ -40,7 +40,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
                   trackSegmentCreateStarted(
                     "data_studio_segments",
                     // Unjustified type cast. FIXME
-                    table.id as ConcreteTableId,
+                    table.id as TableId,
                   ),
               }
             : undefined
