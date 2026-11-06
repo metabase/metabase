@@ -101,6 +101,16 @@
            (report-lines ratchets [] (kondo-ratchet/render ratchets)))
         "each field reports its over-budget symbols by their own seed name")))
 
+(deftest ^:parallel discouraged-counts-over-budget-aliases-test
+  (testing "an over-budget key names the alias keys that count under it"
+    (let [ratchets {:ignore-counts          {}
+                    :discouraged-var-counts {:a/x 1}
+                    :attribution            {:actual {:discouraged-var {:a/x 2}}}
+                    :aliases                {:b/x :a/x, :c/x :a/x, :d/y :d/z}}]
+      (is (= ["discouraged-var symbols over budget -- remove an ignore, or seed the symbol's budget with `./bin/mage kondo-ratchets-shrink --seed <name below>` and explain the increase in the PR:"
+              "  :discouraged-var/a/x: 1 recorded, 2 actual (also counts :b/x, :c/x)"]
+             (report-lines ratchets [] (kondo-ratchet/render ratchets)))))))
+
 (deftest ^:parallel unresolved-discouraged-finding-test
   (let [ratchets {:ignore-counts {}
                   :attribution   {:unresolved [{:file "f.clj", :line 3, :linters [:discouraged-var]}]}}]
