@@ -389,3 +389,29 @@
                                         (java.sql.SQLException. "ERROR: permission denied to drop objects" "42501"))]
       (is (= {:status-code 409, :user "mb__isolation_abcde_1"} (ex-data e)))
       (is (str/includes? (ex-message e) "`GRANT \"mb__isolation_abcde_1\" TO <login>`")))))
+
+(deftest destroy-revokes-grants-the-admin-login-recorded-as-grantor-test
+  ;; The admin login is a member of the input tables' owner role and also holds USAGE and SELECT WITH GRANT OPTION
+  ;; directly, so Postgres's best-grantor rule records the login, not the owner, as grantor of the workspace user's
+  ;; read grants. DROP OWNED BY, which acts as the owner, misses those grants.
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2111)
+           user      (-> workspace :database_details :user)
+           grantors  #(set (map :grantor (jdbc/query spec [(str "SELECT pg_get_userbyid(a.grantor) AS grantor "
+                                                                "FROM pg_class c, aclexplode(c.relacl) a "
+                                                                "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) "
+                                                                "UNION ALL SELECT pg_get_userbyid(a.grantor) "
+                                                                "FROM pg_namespace n, aclexplode(n.nspacl) a "
+                                                                "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) "
+                                                                "AND n.nspname <> ?")
+                                                           user user (:schema workspace)])))]
+       (exec! spec [(format "GRANT USAGE ON SCHEMA sales TO %s WITH GRANT OPTION" (:user admin-login))
+                    (format "GRANT SELECT ON ALL TABLES IN SCHEMA sales TO %s WITH GRANT OPTION" (:user admin-login))])
+       (provisioned! database workspace)
+       (testing "the admin login, not the owner, is recorded as grantor"
+         (is (contains? (grantors) (:user admin-login))))
+       (testing "destroy revokes those grants and drops the user"
+         (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
+         (is (not (role-exists? spec user)))
+         (is (nil? (schema-owner spec (:schema workspace)))))))))
