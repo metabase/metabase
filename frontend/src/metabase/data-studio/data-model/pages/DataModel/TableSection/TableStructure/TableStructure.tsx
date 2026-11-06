@@ -46,11 +46,7 @@ import {
 } from "../../DetailPanel";
 import { CustomPropertiesSection } from "../CustomProperties/CustomPropertiesSection";
 import { EntityCustomPropertiesSection } from "../CustomProperties/EntityCustomPropertiesSection";
-import {
-  InferredIcon,
-  NeedsReviewBadge,
-  ReviewValue,
-} from "../InferenceReview";
+import { InferredValue } from "../InferenceReview";
 import {
   HistoryChecksStatus,
   HistoryKindInput,
@@ -111,18 +107,6 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
             <DetailsRow
               label={t`Role`}
               fillValue
-              labelAside={
-                isRoleUnderReview(structure, readOnly) ? (
-                  <NeedsReviewBadge />
-                ) : (
-                  <InferredIcon description={getRoleInference(structure)} />
-                )
-              }
-              labelNote={
-                // Read-only tables keep the badge here; there's no review cell
-                structure.needsReview &&
-                !isRoleUnderReview(structure, readOnly) && <NeedsReviewBadge />
-              }
               value={
                 <RoleValue
                   structure={structure}
@@ -166,20 +150,6 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
             <DetailsRow
               label={t`Main date`}
               fillValue
-              labelAside={
-                isMainDateUnderReview(structure, readOnly) ? (
-                  <NeedsReviewBadge />
-                ) : (
-                  <InferredIcon description={getMainDateInference(structure)} />
-                )
-              }
-              labelNote={
-                // Read-only tables keep the badge here; there's no review cell
-                structure.mainDateNeedsReview &&
-                !isMainDateUnderReview(structure, readOnly) && (
-                  <NeedsReviewBadge />
-                )
-              }
               value={
                 <MainDateValue
                   fields={fields}
@@ -314,25 +284,23 @@ type RoleInputProps = {
   onChange: (role: TableStructureValue["role"]) => void;
 };
 
-/** A weak guess an admin can act on: shown as text to confirm or change */
-function isRoleUnderReview(
-  { needsReview, inference }: TableStructureValue,
-  disabled: boolean,
-) {
-  return needsReview && !disabled && inference.role != null;
+/** Sync's role, until an admin confirms or changes it; no role isn't a guess */
+function isRoleInferred({ isRoleOverridden, inference }: TableStructureValue) {
+  return !isRoleOverridden && inference.role != null;
 }
 
-/** The role, or its weak guess to confirm or change */
+/** The role, or sync's guess to confirm or change */
 function RoleValue({ structure, disabled, onChange }: RoleInputProps) {
   const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
   const { inference } = structure;
 
-  if (isRoleUnderReview(structure, disabled) && inference.role) {
+  if (isRoleInferred(structure) && inference.role) {
     const inferredRole = inference.role;
     return (
-      <ReviewValue
+      <InferredValue
         value={getTableRoleLabel(inferredRole)}
         inference={getRoleInference(structure)}
+        readOnly={disabled}
         onConfirm={() => onChange(inferredRole)}
         onChange={() => {
           setIsSelectOpenOnMount(true);
@@ -460,15 +428,15 @@ function getMainDateFieldId({ mainDateField }: TableStructureValue) {
   return mainDateField ? getRawTableFieldId(mainDateField) : null;
 }
 
-/** A weak main date guess an admin can act on, like the role's */
-function isMainDateUnderReview(
-  { mainDateNeedsReview }: TableStructureValue,
-  disabled: boolean,
-) {
-  return mainDateNeedsReview && !disabled;
+/** Sync's main date, until an admin confirms or changes it; none isn't a guess */
+function isMainDateInferred({
+  isMainDateOverridden,
+  mainDateField,
+}: TableStructureValue) {
+  return !isMainDateOverridden && mainDateField != null;
 }
 
-/** The main date, or its weak guess to confirm or change */
+/** The main date, or sync's guess to confirm or change */
 function MainDateValue({
   fields,
   structure,
@@ -478,12 +446,13 @@ function MainDateValue({
   const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
   const inferredFieldId = structure.mainDateInference.fieldId;
 
-  if (isMainDateUnderReview(structure, disabled)) {
+  if (isMainDateInferred(structure) && structure.mainDateField) {
     return (
-      <ReviewValue
+      <InferredValue
         // Not overridden, so the current main date is the inferred one
-        value={structure.mainDateField?.display_name ?? t`No main date`}
+        value={structure.mainDateField.display_name}
         inference={getMainDateInference(structure)}
+        readOnly={disabled}
         onConfirm={() => onChange(inferredFieldId)}
         onChange={() => {
           setIsSelectOpenOnMount(true);

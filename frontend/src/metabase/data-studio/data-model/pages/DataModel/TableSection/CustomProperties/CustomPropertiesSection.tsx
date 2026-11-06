@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { msgid, ngettext, t } from "ttag";
 
 import {
@@ -19,14 +18,14 @@ import {
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
-  Badge,
   Button,
   Group,
+  Icon,
   Loader,
-  Popover,
   Select,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -36,10 +35,9 @@ import {
   getCustomPropertiesTitle,
   getEntityNoun,
   getMissingBindingMessage,
-  needsAttention,
 } from "../../PropertyDetailsPanel/property-labels";
 import { DataQualityChecks } from "../DataQualityChecks";
-import { InferredIcon, NeedsReviewBadge } from "../InferenceReview";
+import { InferredIcon, InferredValue } from "../InferenceReview";
 
 type CustomPropertiesSectionProps = {
   table: Table;
@@ -56,9 +54,8 @@ export function CustomPropertiesSection({
   const state = usePropertyRegistry(table);
   const registry = state.status === "loaded" ? state.registry : undefined;
   const noun = getEntityNoun(resolved.entityTable);
-  const columns = useColumnsReview(table, resolved);
-  const definitions = useDefinitionsReview(resolved);
-  const attentionCount = registry?.properties.filter(needsAttention).length;
+  const columns = useColumnsReview(table, resolved, onChange);
+  const definitions = useDefinitionsReview(resolved, onChange);
 
   return (
     <SidebarSection title={getCustomPropertiesTitle(resolved.entityTable)}>
@@ -68,10 +65,12 @@ export function CustomPropertiesSection({
       <DetailsTable>
         <DetailsRow
           label={t`Belongs to`}
-          labelAside={
-            <InferredIcon description={getEntityInference(resolved)} />
+          value={
+            <Group gap="xs" wrap="nowrap">
+              <EntityTableValue table={table} resolved={resolved} />
+              <InferredIcon description={getEntityInference(resolved)} />
+            </Group>
           }
-          value={<EntityTableValue table={table} resolved={resolved} />}
         />
         {columns.isEditing ? (
           <ColumnsRows
@@ -83,12 +82,15 @@ export function CustomPropertiesSection({
         ) : (
           <DetailsRow
             label={t`Columns`}
-            labelAside={<InferredIcon description={columns.inference} />}
             value={
-              <PointersValue
-                names={columns.names}
-                disabled={disabled}
-                onChange={columns.startEditing}
+              <InferredValue
+                value={columns.names.join(" · ")}
+                inference={columns.inference}
+                readOnly={disabled}
+                isInset={false}
+                onConfirm={columns.confirm}
+                onChange={columns.confirm}
+                data-testid="eav-columns-review"
               />
             }
           />
@@ -102,23 +104,44 @@ export function CustomPropertiesSection({
         ) : (
           <DetailsRow
             label={t`Definitions`}
-            labelAside={<InferredIcon description={definitions.inference} />}
             value={
-              <PointersValue
-                names={definitions.names}
-                disabled={disabled}
-                onChange={definitions.startEditing}
+              <InferredValue
+                value={definitions.names.filter(Boolean).join(" · ")}
+                inference={definitions.inference}
+                readOnly={disabled}
+                isInset={false}
+                onConfirm={definitions.confirm}
+                onChange={definitions.confirm}
+                data-testid="eav-definitions-review"
               />
             }
           />
         )}
         <DetailsRow
-          label={t`Shape`}
-          value={<ShapeValue resolved={resolved} />}
+          label={
+            <>
+              {t`Shape`}
+              <Tooltip label={<RecognisedShapes />} maw={320} multiline>
+                <Icon
+                  name="info"
+                  size={14}
+                  ml="xs"
+                  c="text-secondary"
+                  aria-label={t`Shapes we recognize`}
+                  // Sits on the text's baseline inside the label paragraph
+                  style={{ verticalAlign: "-2px" }}
+                />
+              </Tooltip>
+            </>
+          }
+          value={
+            resolved.definitionTable
+              ? t`Property rows with a definitions table`
+              : t`Property rows without a definitions table`
+          }
         />
         <DetailsRow
           label={t`Properties`}
-          labelAside={attentionCount ? <NeedsReviewBadge /> : null}
           value={
             <PropertyRegistrySummary
               table={table}
@@ -201,7 +224,16 @@ function EntityTableValue({
 const fieldName = (fields: Field[], fieldId: FieldId | null) =>
   fields.find((field) => getRawTableFieldId(field) === fieldId)?.name;
 
-function useColumnsReview(table: Table, resolved: ResolvedEavBinding) {
+/**
+ * The entity key, property, and value columns: sync's guess to confirm or
+ * change, then pickers once an admin has. Confirming records the guess, so
+ * Change and Confirm both open the pickers.
+ */
+function useColumnsReview(
+  table: Table,
+  resolved: ResolvedEavBinding,
+  onChange: (binding: Partial<EavBinding>) => void,
+) {
   const { getTableStructure } = useTableStructures();
   const { inference, eavOverrides } = getTableStructure(table);
   const { binding } = resolved;
@@ -211,69 +243,60 @@ function useColumnsReview(table: Table, resolved: ResolvedEavBinding) {
     fieldName(fields, binding.propertyFieldId),
     fieldName(fields, binding.valueFieldId),
   ];
-  const isConfident =
-    inference.confidence === "high" &&
+  // A guess missing any column isn't one to confirm
+  const isInferred =
     names.every((name) => name != null) &&
     eavOverrides.entityKeyFieldId === undefined &&
     eavOverrides.propertyFieldId === undefined &&
     eavOverrides.valueFieldId === undefined;
-  const [isEditingByAdmin, { open: startEditing }] = useDisclosure(false);
   return {
     names,
     inference: t`Inferred: ${inference.signal}`,
-    isEditing: isEditingByAdmin || !isConfident,
-    startEditing,
+    isEditing: !isInferred,
+    confirm: () =>
+      onChange({
+        entityKeyFieldId: binding.entityKeyFieldId,
+        propertyFieldId: binding.propertyFieldId,
+        valueFieldId: binding.valueFieldId,
+      }),
   };
 }
 
-function useDefinitionsReview({
-  binding,
-  definitionTable,
-  definitionInference,
-  isDefinitionOverridden,
-  isLabelOverridden,
-  isTypeOverridden,
-}: ResolvedEavBinding) {
+/** The definitions table and its label and type columns, like the columns */
+function useDefinitionsReview(
+  {
+    binding,
+    definitionTable,
+    definitionInference,
+    isDefinitionOverridden,
+    isLabelOverridden,
+    isTypeOverridden,
+  }: ResolvedEavBinding,
+  onChange: (binding: Partial<EavBinding>) => void,
+) {
   const definitionFields = definitionTable?.fields ?? [];
   const names = [
     definitionTable?.name,
     fieldName(definitionFields, binding.labelFieldId),
     fieldName(definitionFields, binding.typeFieldId),
   ];
-  const isConfident =
+  // No definitions table isn't a guess to confirm
+  const isInferred =
     definitionTable != null &&
     !isDefinitionOverridden &&
     !isLabelOverridden &&
-    !isTypeOverridden &&
-    names.every((name) => name != null);
-  const [isEditingByAdmin, { open: startEditing }] = useDisclosure(false);
+    !isTypeOverridden;
   return {
     names,
     inference: t`Inferred: ${definitionInference.signal}. Labels from ${names[1] ?? ""}, types from ${names[2] ?? ""}.`,
-    isEditing: isEditingByAdmin || !isConfident,
-    startEditing,
+    isEditing: !isInferred,
+    confirm: () =>
+      onChange({
+        definitionTableId: definitionTable?.id ?? null,
+        labelFieldId: binding.labelFieldId,
+        typeFieldId: binding.typeFieldId,
+      }),
   };
-}
-
-function PointersValue({
-  names,
-  disabled,
-  onChange,
-}: {
-  names: (string | undefined)[];
-  disabled: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <Group gap="sm" justify="space-between" wrap="nowrap">
-      <Text truncate>{names.filter(Boolean).join(" · ")}</Text>
-      {!disabled && (
-        <Button size="compact-sm" flex="0 0 auto" onClick={onChange}>
-          {t`Change`}
-        </Button>
-      )}
-    </Group>
-  );
 }
 
 function ColumnsRows({
@@ -326,7 +349,7 @@ function DefinitionsRows({
   disabled: boolean;
   onChange: (binding: Partial<EavBinding>) => void;
 }) {
-  const { binding, definitionTable, isDefinitionOverridden } = resolved;
+  const { binding, definitionTable } = resolved;
   const selectDefinitionTable = (
     definitionTableId: EavBinding["definitionTableId"] | undefined,
   ) =>
@@ -341,24 +364,6 @@ function DefinitionsRows({
       key="definitions"
       label={t`Definitions`}
       fillValue
-      labelAside={
-        <InferredIcon
-          description={
-            isDefinitionOverridden ? null : getDefinitionTableHint(resolved)
-          }
-        />
-      }
-      labelNote={
-        !disabled &&
-        isDefinitionOverridden && (
-          <Button
-            size="compact-sm"
-            onClick={() => selectDefinitionTable(undefined)}
-          >
-            {t`Use the inferred table`}
-          </Button>
-        )
-      }
       value={
         <Select
           aria-label={t`Definitions table`}
@@ -403,15 +408,6 @@ function DefinitionsRows({
       />
     ),
   ];
-}
-
-function getDefinitionTableHint({
-  definitionTable,
-  definitionInference,
-}: ResolvedEavBinding) {
-  return definitionTable
-    ? t`Inferred: ${definitionInference.signal}`
-    : t`None. Labels come from the property names and types from the values.`;
 }
 
 function ColumnSelectRow({
@@ -472,39 +468,32 @@ const getRecognisedShapes = (): RecognisedShape[] => [
   { label: t`JSON property bags`, isWorking: false },
 ];
 
-function ShapeValue({ resolved }: { resolved: ResolvedEavBinding }) {
-  const [isOpen, { toggle, close }] = useDisclosure(false);
+/** The custom property shapes sync recognizes now, then the ones planned */
+function RecognisedShapes() {
+  const shapes = getRecognisedShapes();
+  const groups = [
+    {
+      title: t`Working`,
+      shapes: shapes.filter(({ isWorking }) => isWorking),
+    },
+    {
+      title: t`Next step`,
+      shapes: shapes.filter(({ isWorking }) => !isWorking),
+    },
+  ];
+  // Plain elements so the text keeps the tooltip's colors
   return (
-    <Group gap="sm" justify="space-between" wrap="nowrap">
-      <Text>
-        {resolved.definitionTable
-          ? t`Property rows with a definitions table`
-          : t`Property rows without a definitions table`}
-      </Text>
-      <Popover opened={isOpen} onChange={close} position="bottom-end">
-        <Popover.Target>
-          <Button size="compact-sm" flex="0 0 auto" onClick={toggle}>
-            {t`Shapes we recognise`}
-          </Button>
-        </Popover.Target>
-        <Popover.Dropdown>
-          <Stack gap="sm" p="md" maw={360}>
-            {getRecognisedShapes().map(({ label, isWorking }) => (
-              <Group key={label} gap="sm" wrap="nowrap" justify="space-between">
-                <Text size="sm">{label}</Text>
-                <Badge
-                  variant="light"
-                  color={isWorking ? "positive" : "neutral"}
-                  flex="0 0 auto"
-                >
-                  {isWorking ? t`Working` : t`Next step`}
-                </Badge>
-              </Group>
-            ))}
-          </Stack>
-        </Popover.Dropdown>
-      </Popover>
-    </Group>
+    <Stack gap="sm">
+      <strong>{t`Shapes we recognize`}</strong>
+      {groups.map(({ title, shapes }) => (
+        <div key={title}>
+          <div>{title}</div>
+          {shapes.map(({ label }) => (
+            <div key={label}>{`• ${label}`}</div>
+          ))}
+        </div>
+      ))}
+    </Stack>
   );
 }
 

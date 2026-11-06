@@ -34,6 +34,7 @@ import {
   useIsHistoryAttribute,
   useIsHistoryTable,
 } from "./FieldHistoryRoleInput";
+import { ValueOrderSection } from "./ValueOrderSection";
 
 interface FieldDetailsProps {
   field: Field;
@@ -158,6 +159,7 @@ export function FieldDetails({
           onTrackMetadataChange={trackMetadataChange}
         />
       </SidebarSection>
+      <ValueOrderSection field={field} table={table} />
       <SidebarSection title={t`Behavior`}>
         <BehaviorSection
           field={field}

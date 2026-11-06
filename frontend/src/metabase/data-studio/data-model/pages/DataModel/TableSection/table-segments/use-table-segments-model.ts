@@ -48,7 +48,6 @@ export type ResolvedDefaultSegment = {
   inference: DefaultSegmentInference;
   inferredLabel: string;
   isOverridden: boolean;
-  needsReview: boolean;
 };
 
 export type TableSegmentsModel = {
@@ -72,7 +71,6 @@ export type ResolvedRequiredFilter = {
   inferredQuery: Lib.Query | null | undefined;
   inferredFilterName: string | null;
   isOverridden: boolean;
-  needsReview: boolean;
 };
 
 function findColumn(
@@ -112,6 +110,20 @@ function toFilterClause(
             operator: "=",
             column,
             values: [condition.value],
+            options: {},
+          });
+    case "in":
+      // A status bucket: text values usually, numbers for coded statuses
+      return Lib.isNumeric(column)
+        ? Lib.numberFilterClause({
+            operator: "=",
+            column,
+            values: condition.values.map(Number),
+          })
+        : Lib.stringFilterClause({
+            operator: "=",
+            column,
+            values: condition.values,
             options: {},
           });
     case "is-null":
@@ -266,8 +278,6 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
       customSegments,
     ),
     isOverridden: defaultOverride != null,
-    needsReview:
-      defaultOverride == null && defaultInference.confidence === "low",
   };
 
   const requiredInference = inferRequiredFilter(
@@ -296,9 +306,6 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
       ? (getFilterNames(inferredRequiredQuery)[0] ?? null)
       : null,
     isOverridden: overrides.requiredFilter !== undefined,
-    needsReview:
-      overrides.requiredFilter === undefined &&
-      requiredInference.confidence === "low",
   };
 
   return {

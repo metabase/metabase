@@ -33,6 +33,7 @@ import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
 import { TableCollection } from "./TableCollection";
 import { TableFiltering } from "./TableFiltering";
 import { TableMetadata, TableStats } from "./TableMetadata";
+import { TableProcess, useHasProcess } from "./TableProcess";
 import { TablePropertyList } from "./TablePropertyList";
 import S from "./TableSection.module.css";
 import { TableStructure } from "./TableStructure";
@@ -62,6 +63,10 @@ const TableSectionBase = ({
   const isCustomPropertyTable =
     structure.role != null &&
     isRoleA(structure.role, "role/CustomPropertyTable");
+  const hasProcess = useHasProcess(table);
+  // A link to the Process tab of a table without one lands on Details
+  const visibleTab =
+    activeTab === "process" && !hasProcess ? "details" : activeTab;
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -96,7 +101,7 @@ const TableSectionBase = ({
     <Stack data-testid="table-section" gap="lg">
       {isCustomPropertyTable && <KeepPropertyRegistryLoaded table={table} />}
       <Box>
-        <Tabs value={activeTab} onChange={handleTabChange}>
+        <Tabs value={visibleTab} onChange={handleTabChange}>
           {/* Bleeds into the panel's padding so the border spans the drawer */}
           <Tabs.List mb="xl" mx="-xl" px="xl">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
@@ -104,6 +109,7 @@ const TableSectionBase = ({
             {isCustomPropertyTable && (
               <Tabs.Tab value="properties">{t`Custom properties`}</Tabs.Tab>
             )}
+            {hasProcess && <Tabs.Tab value="process">{t`Process`}</Tabs.Tab>}
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
           </Tabs.List>
@@ -144,6 +150,12 @@ const TableSectionBase = ({
           {isCustomPropertyTable && (
             <Tabs.Panel value="properties">
               <TablePropertyList table={table} />
+            </Tabs.Panel>
+          )}
+
+          {hasProcess && (
+            <Tabs.Panel value="process">
+              <TableProcess table={table} readOnly={readOnly} />
             </Tabs.Panel>
           )}
 

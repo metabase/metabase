@@ -1,1 +1,5 @@
-export { InferredIcon, NeedsReviewBadge, ReviewValue } from "./InferenceReview";
+export {
+  InferredActions,
+  InferredIcon,
+  InferredValue,
+} from "./InferenceReview";
