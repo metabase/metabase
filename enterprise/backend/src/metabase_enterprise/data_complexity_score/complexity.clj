@@ -209,10 +209,11 @@
     []))
 
 (def default-reads
-  "The universe reads [[enumerate-catalogs]] uses unless the caller passes its own, through the models.
-  Each takes the audit Database's id. `:universe-cards-fn` returns rows of `:id :name :type :collection_id`, and
-  `:universe-tables-fn` rows of `:id :name :collection_id :is_published :visibility_type :db_id :data_layer
-  :data_authority`, with `:is_published` a boolean."
+  "The universe reads [[enumerate-catalogs]] runs through the models unless the caller passes `:reads`.
+  Each function takes the audit Database's id.
+  The Card read returns rows of `:id`, `:name`, `:type` and `:collection_id`.
+  The Table read returns rows of `:id`, `:name`, `:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
+  `:data_layer` and `:data_authority`, with `:is_published` a boolean."
   {:universe-cards-fn  data-complexity-score.db/universe-cards
    :universe-tables-fn data-complexity-score.db/universe-tables})
 
@@ -227,7 +228,7 @@
    The caller owns the scope decision (Metabot row lookup); this namespace does not read settings,
    premium-feature gates, or Metabot rows directly.
 
-   `reads` overrides the universe reads; see [[default-reads]]."
+   Functions in `reads` replace those in [[default-reads]]."
   [{:keys [curated-only? collection-id]} reads]
   ;; An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3× per
   ;; scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]], each a

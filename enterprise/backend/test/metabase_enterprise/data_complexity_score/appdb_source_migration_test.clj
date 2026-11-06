@@ -27,11 +27,12 @@
 (defn- cli-table-row
   "The CLI's read of the Table with `table-id`, limited to the columns user settings can change."
   [table-id]
+  ;; No Database has this id, so the read excludes no Table as the audit Database's.
   (some #(when (= table-id (:id %)) (select-keys % [:is_published :collection_id :data_layer :data_authority]))
         ((:universe-tables-fn (appdb-source/reads)) Integer/MAX_VALUE)))
 
 (deftest cli-refuses-an-appdb-below-v59-test
-  (testing "below the v59 data_layer conversion the CLI refuses the appdb; from it, it scores"
+  (testing "an appdb from before the `data_layer` conversion is refused, and scores once migrated through it"
     (impl/test-migrations ["v59.2026-03-17T13:00:00"] [migrate!]
       (let [e (try (appdb-source/verify-supported-appdb!)
                    (catch clojure.lang.ExceptionInfo e e))]

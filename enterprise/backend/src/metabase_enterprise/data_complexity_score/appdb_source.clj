@@ -1,9 +1,10 @@
 (ns metabase-enterprise.data-complexity-score.appdb-source
-  "The universe reads and the score write for the Data Complexity CLI.
-  The CLI scores an appdb with a jar that may be newer, and it runs no migrations. The jar's Toucan models target the
-  jar's schema, so a hook or transform added in a later release would break the CLI on every older appdb. Card and
-  Table reads and the write therefore go through raw queries here. The other reads still use the models: today their
-  hooks and transforms touch none of the columns the CLI reads."
+  "The appdb version checks, universe reads and score write for the Data Complexity CLI.
+  The CLI scores an appdb with a jar that may be newer, and it runs no migrations.
+  The jar's Toucan models target the jar's schema, so a hook or transform added in a later release would break the CLI
+  on every older appdb.
+  Card and Table reads and the write therefore go through raw queries here.
+  The other reads still use the models: today their hooks and transforms touch none of the columns the CLI reads."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
@@ -17,12 +18,13 @@
 
 ;;; ---------------------------------------- appdb version ----------------------------------------
 
+;; Releases up to 0.59.3 ran the conversion as `v58.2026-01-27T13:00:00`, and from 0.59.2.2 also as
+;; `v59.2026-01-27T13:00:00`. `v59.2026-03-17T13:00:00` replaced both, and marks itself ran when either already had.
+;; Without any of them, Tables can still hold `bronze`, `silver`, `gold` and `copper`, which the raw Table read does
+;; not map.
 (def ^:private floor-changeset-ids
-  "The changesets that convert the pre-v59 `data_layer` values. Every appdb from v59 up records at least one.
-  Releases up to 0.59.3 ran `v58.2026-01-27T13:00:00` (and from 0.59.2.2 also `v59.2026-01-27T13:00:00`), and
-  `v59.2026-03-17T13:00:00` replaced both, marking itself ran when either already had.
-  Without any of them, Tables can still hold `bronze`, `silver`, `gold` and `copper`, which the raw Table read does
-  not map."
+  "The changesets that convert the pre-v59 `data_layer` values.
+  Every appdb from v59 up records at least one."
   ["v58.2026-01-27T13:00:00" "v59.2026-01-27T13:00:00" "v59.2026-03-17T13:00:00"])
 
 (def ^:private user-settings-reset-changeset-id
@@ -35,6 +37,7 @@
   "ceygl0")
 
 (defn- changeset-ran?
+  "Whether the appdb's `databasechangelog` records `changeset-id`."
   [changeset-id]
   (some? (mdb/changelog-by-id (mdb/app-db) changeset-id)))
 
@@ -49,7 +52,7 @@
                     {:cli-validation true, :changeset-ids floor-changeset-ids}))))
 
 (defn- user-values-only-in-settings-table?
-  "True when user-set Table values live only in `metabase_table_user_settings`: 64.0–64.5.1 and 65.0–65.3.1."
+  "True when user-set Table values live only in `metabase_table_user_settings`: 64.0 to 64.5.1 and 65.0 to 65.3.1."
   []
   ;; The settings table outlives the copy-back and is still written, so its existence alone doesn't say which
   ;; table holds the user's values.
@@ -62,12 +65,13 @@
   "Return `table-row` with `:is_published` as a boolean."
   [table-row]
   ;; MySQL and MariaDB return `is_published`, and the `CASE` over it, as `0` or `1`, and `0` is truthy.
-  ;; `:model/Table` coerces it with `mi/transform-boolean`.
+  ;; The model coerces it with `mi/transform-boolean`.
   (u/update-if-exists table-row :is_published #(or (true? %) (= 1 %))))
 
 (defn reads
-  "The universe reads for [[metabase-enterprise.data-complexity-score.complexity/complexity-scores]]'s `:reads`, as
-  raw queries chosen for this appdb's version."
+  "Return raw replacements for the universe reads, for the `:reads` option of
+  [[metabase-enterprise.data-complexity-score.complexity/complexity-scores]].
+  Reads `databasechangelog` when called, to pick the Table read for this appdb's version."
   []
   (let [read-tables (if (user-values-only-in-settings-table?)
                       data-complexity-score.db/raw-universe-tables-with-user-settings
@@ -95,9 +99,10 @@
 
 (defn insert-score-row!
   "Insert one `data_complexity_score` row with `score` encoded as JSON, running no model hooks or transforms.
-  Throw when `score` doesn't match the stored score schema. Return nil."
+  Throw when `score` doesn't match the stored score schema.
+  Return nil."
   [fingerprint source score]
-  ;; `db/insert-score!` validates `score_data` against this schema; the raw insert has to do it itself.
+  ;; The model path validates this in `db/insert-score!`; the raw insert has to do it itself.
   (when-not (mr/validate ::data-complexity-score.schema/data-complexity-score.score-data score)
     (throw (ex-info "Data Complexity score doesn't match the stored score schema"
                     {:explain (mr/explain ::data-complexity-score.schema/data-complexity-score.score-data score)})))

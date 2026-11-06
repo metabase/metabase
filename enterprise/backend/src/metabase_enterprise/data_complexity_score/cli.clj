@@ -37,10 +37,8 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
-   ;; Required for side-effects so setting `:on-change` watchers (e.g. `report-timezone`) have
-   ;; their event topics derived from `:metabase/event` before the settings cache is restored
-   ;; from the appdb. Both `run-appdb-mode!` and `run-representation-mode! --write-to-appdb`
-   ;; call `setup-db-without-migrations!`, so the load must precede both — not just appdb-mode.
+   ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
+   ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
    [metabase.search.embeddings.startup :as embeddings.startup]
    [metabase.util.json :as json]))

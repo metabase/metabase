@@ -109,7 +109,7 @@
 ;;; or transforms. Text columns come back as strings.
 
 (mu/defn raw-universe-cards
-  "[[universe-cards]] as a raw query."
+  "The rows of [[universe-cards]], read with a raw query."
   [audit-database-id :- ::lib.schema.id/database]
   (t2/query {:select [:id :name :type :collection_id]
              :from   [:report_card]
@@ -119,7 +119,8 @@
                       [:not= :database_id [:auto/param audit-database-id]]]}))
 
 (mu/defn raw-universe-tables
-  "[[universe-tables]] as a raw query. `:is_published` can come back as `0` or `1`."
+  "The rows of [[universe-tables]], read with a raw query.
+  On MySQL and MariaDB the `:is_published` values come back as `0` or `1`."
   [audit-database-id :- ::lib.schema.id/database]
   (t2/query {:select [:t.id :t.name :t.collection_id :t.is_published :t.visibility_type :t.db_id :t.data_layer
                       :t.data_authority]
@@ -129,9 +130,9 @@
                       [:not= :t.db_id [:auto/param audit-database-id]]]}))
 
 (mu/defn raw-universe-tables-with-user-settings
-  "[[raw-universe-tables]] with the values users set in `metabase_table_user_settings` applied, by the rules the
-  `ceygl0` changeset uses to copy them back into `metabase_table`.
-  For an appdb whose user values are only in the settings table: 64.0–64.5.1 and 65.0–65.3.1."
+  "The rows of [[raw-universe-tables]], with the values users set in `metabase_table_user_settings` applied.
+  The rules are the ones the `ceygl0` changeset uses to copy those values back into `metabase_table`.
+  Use it for an appdb whose user values are only in the settings table: 64.0 to 64.5.1 and 65.0 to 65.3.1."
   [audit-database-id :- ::lib.schema.id/database]
   (t2/query {:select    [:t.id :t.name :t.db_id
                          [[:case [:is-not :s.is_published nil] :s.is_published :else :t.is_published] :is_published]
