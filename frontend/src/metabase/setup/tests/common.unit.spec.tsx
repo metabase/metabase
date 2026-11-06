@@ -204,6 +204,7 @@ describe("setup (OSS)", () => {
     it("should not offer the step when AI features are disabled", async () => {
       await completeSetup({ settings: { "ai-features-enabled?": false } });
 
+      expect(screen.getByText("You're all set up!")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Set up AI" }),
       ).not.toBeInTheDocument();

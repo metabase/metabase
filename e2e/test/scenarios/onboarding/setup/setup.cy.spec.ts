@@ -657,24 +657,6 @@ describe("scenarios > setup > AI config step", () => {
       .should("deep.equal", { type: "metabase" });
     cy.findByLabelText("Connected to Metabase AI service").should("be.visible");
   });
-
-  it("should not offer the step when AI features are disabled", () => {
-    H.mockSessionProperty("ai-features-enabled?", false);
-
-    navigateToDatabaseStep();
-    cy.findByTestId("setup-forms")
-      .findByText("Continue with sample data")
-      .click();
-
-    skipLicenseStepOnEE();
-    cy.findByLabelText("Usage data preferences").should("be.visible");
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByText("Finish").click();
-
-      cy.findByText("You're all set up!").should("be.visible");
-      cy.button("Set up AI").should("not.exist");
-    });
-  });
 });
 
 describe("scenarios > setup (EE)", () => {
