@@ -121,18 +121,30 @@ Triage search for each spec: `grep -nE 'realHover|realPress|echartsContainer|car
 
 ## Convert a whole folder
 
-One spec gets one worktree, one branch, and one PR.
+One folder gets one branch and one PR. Reviewers ask an LLM to read the diff, so each extra PR costs a review request, CI runs and rebases, while more test moves of the same kind cost little.
+
+Split only when one of these is true:
+
+- The PR is too big: more than 1,500 changed lines (deleted Cypress lines do not count) or more than 15 moved `it()` blocks.
+- A change touches production code, not only tests and test support. That change gets its own PR.
+
+When you split:
+
+- Split by spec, never inside one spec.
+- Keep specs that edit the same Jest spec, helper, or server-mock file in the same PR.
+- Make the parts about the same size, and independent: each part starts from the base commit, not from another part.
+- Put the backend tests of a `split` row in the same PR as its Jest part.
 
 1. **Set up.** List the specs with their `it()` counts. Leave out specs that an open PR already converts. Make a worktree at the base commit, and save the type check there as `target/e2e-to-unit/typecheck-baseline.txt`.
 2. **Phase A: audit in parallel, read only.** Run the triage search. A spec where every test hits a backend-only gate (real login, SSO, email, git sync, a real external database, Snowplow) gets no agent and one line in the report. For each other spec, start a read-only audit agent, up to 8 at a time. Each returns a verdict for every `it()`, and for each `convert` row the files it will edit and the E2E tests it names as cover.
 3. **Settle covers.** Merge all named covers into `covers.md`. A `convert` row that is a cover for another row stays in Cypress.
-4. **Plan branches.** Name each branch `e2e-to-jest-<folder>-<spec name>`, for example `e2e-to-jest-admin-databases`. Two specs that edit the same Jest spec, helper, or server-mock file go in a stack: the second branch starts from the first branch after the first is done.
-5. **Phase B: convert in parallel.** One worktree for each spec, up to 4 workers at a time. A stacked spec waits for the one below it. Each worker follows "Convert one test" for its rows only, with the phase A audit. It does not audit again. It uses the shared type-check baseline, and it touches no other Cypress spec.
-6. **Check and commit.** In each worktree, run the changed Jest specs as whole files, and check that each named cover exists. Read each worker report critically: verify the covers it names. Commit one spec per branch only if the user asked for commits. Otherwise give the commands.
+4. **Plan the PR.** Estimate the size from the phase A audit. Name the branch `e2e-to-jest-<folder>`, for example `e2e-to-jest-admin`. If you must split (see above), name each branch `e2e-to-jest-<folder>-<part>`, for example `e2e-to-jest-admin-databases`.
+5. **Phase B: convert in parallel.** Each worker gets its own worktree on its own work branch from the base commit, up to 4 workers at a time. Give specs that edit the same Jest spec, helper, or server-mock file to the same worker. Each worker follows "Convert one test" for its rows only, with the phase A audit. It does not audit again. It uses the shared type-check baseline, and it touches no other Cypress spec.
+6. **Check, combine and commit.** In each worktree, run the changed Jest specs as whole files, and check that each named cover exists. Read each worker report critically: verify the covers it names. Then merge the work branches into the PR branch, and run every changed Jest spec there again. Commit only if the user asked for commits. Otherwise give the commands.
 7. **Finish.**
-   - Report a table: branch, tests moved, commit, and why the other tests stay.
-   - For each branch, write the title to `pr-<branch>.title`, in the form `test: rework <spec name> e2e spec to jest` (no `.cy.spec.*`), and the body to `pr-<branch>.md` in the scratchpad.
-   - Write one script, `open-<folder>-prs.sh`, in the scratchpad. It starts with `set -euo pipefail`. For each branch it runs `git push -u origin <branch>` and `gh pr create --head <branch> --base <base> --title "$(cat <title file>)" --body-file <body file>`. It opens a stacked PR after the PR below it, gets that PR's number with `gh pr view <base branch> --json number --jq .number`, and writes "This PR is stacked on #<number>" into a copy of the body. It prints `done` at the end.
+   - Report a table: spec, tests moved, and why the other tests stay.
+   - For each PR branch, write the title to `pr-<branch>.title`, in the form `test: rework <folder> e2e specs to jest`, and the body to `pr-<branch>.md` in the scratchpad.
+   - Write one script, `open-<folder>-prs.sh`, in the scratchpad. It starts with `set -euo pipefail`. For each PR branch it runs `git push -u origin <branch>` and `gh pr create --head <branch> --base <base> --title "$(cat <title file>)" --body-file <body file>`. It prints `done` at the end.
    - Check the script with `bash -n`. Do not run it. Give the user the command with the absolute path.
    - Say that the edited Cypress specs did not run, and list them for CI.
 
@@ -144,6 +156,8 @@ Sections, in this order:
 2. **Proof that the new tests catch the bug:** one sentence on what a mutant is, then a table with one row per mutant: Jest test | file and the code broken on purpose | check that failed.
 3. **Does this PR lose any check?** Answer "No." first. Then list the mocked data, grouped by page or component: each endpoint and what it returns, and each mock setting or token feature. If the Cypress test already faked the same responses, say so. Then say what Jest cannot check, and for each real-server check, say what the kept test does and where the page reads the value (file name). Do not write a bare list of covers, because a reader takes it as a list of losses.
 4. **Changes to the Cypress spec:** what was removed, that no hook, helper, or kept test changed, whether Cypress ran locally, and that CI runs the tests that stay.
+
+A PR with several specs starts with a summary table: spec, tests moved, verdict (`convert`, `split`, `delete as already covered`). Then it has one part for each spec, with the 4 sections above. Each part must be complete without the others, so a reviewer, or the LLM that a reviewer asks, can check one spec at a time.
 
 Name each test or file as a permalink at the branch's pushed commit: `https://github.com/metabase/metabase/blob/<sha>/<path>#L<n>`, not a bare `:<line>`.
 
