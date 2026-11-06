@@ -2300,15 +2300,16 @@
         (is (t2/exists? :model/Transform :id transform-id))))))
 
 (defn- create-and-run-transform!
-  "Create a transform in the folder `folder-id` that writes the table `table-name`, run it as `user`, and return it."
+  "Create a transform in the folder `folder-id` that writes the table `table-name`, run it as `user`, and return its
+  definition with the `:id` the API gave it."
   [user folder-id table-name]
-  (let [transform (mt/user-http-request user :post 200 "transform"
-                                        {:name          table-name
-                                         :collection_id folder-id
-                                         :source        {:type "query" :query (make-query "Gadget")}
-                                         :target        {:type "table" :schema (get-test-schema) :name table-name}})]
-    (test-run! user (:id transform))
-    transform))
+  (let [definition {:name          table-name
+                    :collection_id folder-id
+                    :source        {:type :query :query (make-query "Gadget")}
+                    :target        {:type "table" :schema (get-test-schema) :name table-name}}
+        {id :id}   (mt/user-http-request user :post 200 "transform" definition)]
+    (test-run! user id)
+    (assoc definition :id id)))
 
 (deftest delete-transforms-folder-with-tables-test
   (testing "DELETE /api/transform/collection/:id keeps the output tables, unless delete-tables=true"
