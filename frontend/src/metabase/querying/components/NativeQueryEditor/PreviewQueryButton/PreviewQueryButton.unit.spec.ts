@@ -1,11 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { createMockNativeQuerySnippet } from "metabase-types/api/mocks";
-import {
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { PreviewQueryButton } from "./PreviewQueryButton";
 
@@ -21,11 +20,7 @@ interface SetupOpts {
 function setup({ queryText }: SetupOpts) {
   const emptyQuery = new NativeQuery(
     Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata: METADATA }),
-    {
-      type: "native",
-      database: SAMPLE_DB_ID,
-      native: { query: "", "template-tags": {} },
-    },
+    Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, { query: "" }),
   );
   return emptyQuery.setQueryText(queryText).question();
 }

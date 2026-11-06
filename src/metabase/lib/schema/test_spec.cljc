@@ -231,6 +231,11 @@
    [:map
     [:card-id {:optional true} ::lib.schema.id/card]]])
 
+(mr/def ::test-table-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/source-table]
+   [:ref ::test-common-spec]])
+
 (mr/def ::test-raw-value-spec
   [:merge
    [:ref ::lib.schema.template-tag/raw-value]
@@ -245,6 +250,7 @@
    [:dimension     [:ref ::test-field-filter-spec]]
    [:snippet       [:ref ::test-snippet-spec]]
    [:card          [:ref ::test-source-query-spec]]
+   [:table         [:ref ::test-table-spec]]
    ;; :number, :text, :date, :boolean
    [::mc/default   [:ref ::test-raw-value-spec]]])
 

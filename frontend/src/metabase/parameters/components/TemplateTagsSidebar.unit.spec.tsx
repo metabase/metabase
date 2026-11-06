@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadataFromState } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
   setupParameterValuesEndpoints,
@@ -9,13 +12,10 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import {
-  createMockCard,
-  createMockDatabase,
-  createMockNativeDatasetQuery,
-  createMockTemplateTag,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 
 import { TemplateTagsSidebar } from "./TemplateTagsSidebar";
 
@@ -37,20 +37,24 @@ const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
     name: "Writable Postgres",
     engine: "postgres",
   });
-  const nativeQuery = createMockNativeDatasetQuery({
-    database: WRITABLE_DB_ID,
-    native: {
-      query: "SELECT {{x}}",
-      "template-tags": {
-        x: createMockTemplateTag({
-          name: "x",
-          "display-name": "X",
-          type: "text",
+  const nativeQuery = Lib.toJsQuery(
+    Lib.createTestNativeQuery(
+      createMetadataProvider({
+        databaseId: WRITABLE_DB_ID,
+        metadata: createMockMetadata({
+          databases: [sampleDatabase, writableDatabase],
         }),
+      }),
+      {
+        query: "SELECT {{x}}",
+        templateTags: { x: { "display-name": "X", type: "text" } },
       },
-    },
+    ),
+  );
+  const card = createMockCard({
+    query_type: "native",
+    dataset_query: nativeQuery,
   });
-  const card = createMockCard({ dataset_query: nativeQuery });
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: [sampleDatabase, writableDatabase],

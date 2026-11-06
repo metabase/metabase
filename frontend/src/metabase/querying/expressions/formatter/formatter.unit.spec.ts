@@ -4,12 +4,11 @@ import expression from "ts-dedent";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { SAMPLE_DB_ID } from "../../../../../../e2e/support/cypress_data";
 import { compileExpression } from "../compile-expression";
 import {
   expressions,
@@ -289,13 +288,10 @@ describe("format", () => {
 
     const provider = createMetadataProvider({ metadata });
 
-    const otherQuery = Lib.fromJsQuery(provider, {
-      database: SAMPLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-    });
+    const otherQuery = Lib.fromJsQuery(
+      provider,
+      Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    );
 
     it.each([
       { result: "[Unknown Field]", parts: fields.orders.TOTAL },
@@ -766,55 +762,4 @@ it("should format escaped regex characters (metabase#56596)", async () => {
       "\\n\\r\\t\\v\\f\\b"
     `,
   ]);
-});
-
-// TODO: unskip when we have a fix for metabase#58371
-// eslint-disable-next-line jest/no-disabled-tests
-it.skip("should format joined columns properly (metabase#58371)", async () => {
-  const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      joins: [
-        {
-          alias: "Other Table",
-          condition: [
-            "=",
-            [
-              "field",
-              "field_a",
-              {
-                "base-type": "type/Number",
-              },
-            ],
-            [
-              "field",
-              "field_b",
-              {
-                "base-type": "type/Number",
-              },
-            ],
-          ],
-        },
-      ],
-      expressions: {
-        foo: [
-          "field",
-          "Fieldname that has a non-removable dash",
-          {
-            "base-type": "type/Integer",
-            "join-alias": "Other Table",
-          },
-        ],
-      },
-    },
-  });
-
-  const expression = Lib.expressions(query, -1)[0];
-  const formatted = await format(expression, {
-    query,
-    stageIndex: -1,
-  });
-
-  expect(formatted).toBe("[Fieldname That Has A Non Removable Dash]");
 });

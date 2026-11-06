@@ -6,10 +6,11 @@ import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualization } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
-  createMockStructuredDatasetQuery,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
@@ -22,9 +23,10 @@ export default {
 
 registerVisualization(Funnel);
 
-const dataset_query = createMockStructuredDatasetQuery({
-  query: { "source-table": 1 },
-});
+const dataset_query = Lib.createTestJsQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
 
 // Unjustified type cast. FIXME
 const MOCK_SERIES = [

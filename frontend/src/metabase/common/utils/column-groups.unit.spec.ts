@@ -32,9 +32,7 @@ function getQueryWithCardDataSource() {
     questions: [card],
   });
   const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
-  const cardMetadata = checkNotNull(
-    Lib.tableOrCardMetadata(metadataProvider, `card__${cardId}`),
-  );
+  const cardMetadata = checkNotNull(Lib.cardMetadata(metadataProvider, cardId));
   return Lib.queryFromTableOrCardMetadata(metadataProvider, cardMetadata);
 }
 

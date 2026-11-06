@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import Field from "metabase-lib/v1/metadata/Field";
 import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/v1/parameters/constants";
-import type { NormalizedField } from "metabase-types/api";
+import type { NormalizedRealTableField } from "metabase-types/api";
 import {
   createMockField as createMockApiField,
   createMockNormalizedField,
@@ -15,7 +15,7 @@ import {
   getParameterOptionsForField,
 } from "./template-tag-options";
 
-function createMockField(field: Partial<NormalizedField>): Field {
+function createMockField(field: Partial<NormalizedRealTableField>): Field {
   return new Field(
     createMockNormalizedField({
       base_type: "type/*",
