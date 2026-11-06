@@ -3,8 +3,7 @@
 ## - workspace, workspace_database and table_remapping, which 064/20260724_drop_workspace_tables dropped, in the shape
 ##   that migration's rollbacks describe. The changesets are those of 066/20261021_recreate_workspace_tables.yaml in
 ##   #85175 (v66.2026-10-21T00:00:00 to :11), with version-less ids. Parent tables come first so the foreign keys
-##   resolve. Each changeset is MARK_RAN when its object already exists: app DBs that ran #85175's v66 changesets
-##   have them, and so do release lines below 64 that this file may be backported to.
+##   resolve.
 ## - metabase_database.admin_details, which 065/20261026_drop_admin_details dropped, for the admin connection that
 ##   workspace provisioning uses. The changeset is 062/20260504_admin_details.yaml's v62.2026-05-04T00:00:00, with a
 ##   version-less id.
@@ -15,11 +14,6 @@ databaseChangeLog:
       id: ucb8em
       author: escherize
       comment: Recreate workspace table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: workspace
       changes:
         - createTable:
             tableName: workspace
@@ -65,12 +59,6 @@ databaseChangeLog:
       id: qut0vn
       author: escherize
       comment: Index workspace.creator_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: workspace
-                indexName: idx_workspace_creator_id
       changes:
         - createIndex:
             tableName: workspace
@@ -83,12 +71,6 @@ databaseChangeLog:
       id: oufckc
       author: escherize
       comment: FK workspace.creator_id -> core_user.id (set null on delete so deleting a user doesn't cascade)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyTableName: workspace
-                foreignKeyName: fk_workspace_creator_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace
@@ -102,11 +84,6 @@ databaseChangeLog:
       id: x8x5te
       author: escherize
       comment: Recreate workspace_database table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: workspace_database
       changes:
         - createTable:
             tableName: workspace_database
@@ -176,17 +153,6 @@ databaseChangeLog:
       id: osowga
       author: escherize
       comment: Unique constraint on workspace_database (workspace_id, database_id)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            # MySQL/MariaDB implement the constraint as an index of the same name, which uniqueConstraintExists misses
-            - or:
-                - uniqueConstraintExists:
-                    tableName: workspace_database
-                    constraintName: idx_unique_workspace_database
-                - indexExists:
-                    tableName: workspace_database
-                    indexName: idx_unique_workspace_database
       changes:
         - addUniqueConstraint:
             tableName: workspace_database
@@ -197,12 +163,6 @@ databaseChangeLog:
       id: q9zjzl
       author: escherize
       comment: FK workspace_database.workspace_id -> workspace.id (cascade on delete)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyTableName: workspace_database
-                foreignKeyName: fk_workspace_database_workspace_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_database
@@ -216,12 +176,6 @@ databaseChangeLog:
       id: syt3fm
       author: escherize
       comment: FK workspace_database.database_id -> metabase_database.id (restrict on delete)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyTableName: workspace_database
-                foreignKeyName: fk_workspace_database_database_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_database
@@ -235,12 +189,6 @@ databaseChangeLog:
       id: xj2pfn
       author: escherize
       comment: Index workspace_database.workspace_id for hydration lookups
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: workspace_database
-                indexName: idx_workspace_database_workspace_id
       changes:
         - createIndex:
             tableName: workspace_database
@@ -257,11 +205,6 @@ databaseChangeLog:
       id: gve1yq
       author: escherize
       comment: Recreate table_remapping table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: table_remapping
       changes:
         - createTable:
             tableName: table_remapping
@@ -335,17 +278,6 @@ databaseChangeLog:
       id: 5stg1n
       author: escherize
       comment: Unique constraint on table_remapping (database_id, from_db, from_schema, from_table_name)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            # MySQL/MariaDB implement the constraint as an index of the same name, which uniqueConstraintExists misses
-            - or:
-                - uniqueConstraintExists:
-                    tableName: table_remapping
-                    constraintName: idx_unique_table_remapping_source
-                - indexExists:
-                    tableName: table_remapping
-                    indexName: idx_unique_table_remapping_source
       changes:
         - addUniqueConstraint:
             tableName: table_remapping
@@ -356,17 +288,6 @@ databaseChangeLog:
       id: lt5wi6
       author: escherize
       comment: Unique constraint on table_remapping (database_id, to_db, to_schema, to_table_name) so two source tables can't map to the same target
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            # MySQL/MariaDB implement the constraint as an index of the same name, which uniqueConstraintExists misses
-            - or:
-                - uniqueConstraintExists:
-                    tableName: table_remapping
-                    constraintName: idx_unique_table_remapping_target
-                - indexExists:
-                    tableName: table_remapping
-                    indexName: idx_unique_table_remapping_target
       changes:
         - addUniqueConstraint:
             tableName: table_remapping
@@ -377,12 +298,6 @@ databaseChangeLog:
       id: m6tckg
       author: escherize
       comment: FK table_remapping.database_id -> metabase_database.id (cascade on delete)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyTableName: table_remapping
-                foreignKeyName: fk_table_remapping_database_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: table_remapping
