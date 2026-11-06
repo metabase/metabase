@@ -140,8 +140,35 @@ export function setupForbiddenCardEndpoints(cardId: CardId) {
   });
 }
 
-export function setupCardQueryEndpoints(card: Card, dataset: Dataset) {
-  fetchMock.post(`path:/api/card/${card.id}/query`, dataset);
+type SetupCardQueryEndpointsOpts = {
+  /**
+   * Return the request's parameters in `json_query.parameters`, as the real
+   * API does. The query builder compares them with the next-run parameters.
+   */
+  echoParameters?: boolean;
+};
+
+export function setupCardQueryEndpoints(
+  card: Card,
+  dataset: Dataset,
+  { echoParameters = false }: SetupCardQueryEndpointsOpts = {},
+) {
+  if (!echoParameters) {
+    fetchMock.post(`path:/api/card/${card.id}/query`, dataset);
+    return;
+  }
+
+  fetchMock.post(`path:/api/card/${card.id}/query`, (call) => {
+    const body: unknown = JSON.parse(String(call.options.body ?? "{}"));
+    const parameters =
+      typeof body === "object" && body != null && "parameters" in body
+        ? body.parameters
+        : [];
+    return {
+      ...dataset,
+      json_query: { ...dataset.json_query, parameters },
+    };
+  });
 }
 
 export function setupCardQueryDownloadEndpoint(card: Card, type: string) {
