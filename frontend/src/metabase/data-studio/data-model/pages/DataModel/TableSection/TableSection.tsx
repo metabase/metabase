@@ -22,8 +22,6 @@ import type {
   TableFieldOrder,
 } from "metabase-types/api";
 
-import { SemanticReviewButton } from "../SemanticReview";
-
 import {
   ListSearchBar,
   ListSearchEmptyState,
@@ -231,7 +229,6 @@ function FieldsTab({
         disabled={isSorting}
         onChange={setQuery}
       >
-        {!isSorting && !readOnly && <SemanticReviewButton table={table} />}
         {!isSorting && !readOnly && (
           <Button
             leftSection={<Icon name="sort_arrows" />}

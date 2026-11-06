@@ -20,7 +20,6 @@ import {
   type Facets,
   isFieldTypeA,
 } from "./field-types";
-import { getSuggestions } from "./review";
 import {
   type RowNouns,
   type SubjectInference,
@@ -336,22 +335,4 @@ export function useTableSemantics(table: SemanticTable) {
     [getFieldTypes, table, schemaTables],
   );
   return { ...semanticTypes, subject, fieldTypes };
-}
-
-export function useSchemaSuggestions(schema: Pick<Table, "db_id" | "schema">) {
-  const semanticTypes = useSemanticTypes();
-  const { tables, isLoading } = useSchemaTables(schema);
-  const { getTableSubject, getFieldTypes } = semanticTypes;
-  const suggestions = useMemo(
-    () =>
-      getSuggestions(
-        tables.map((table) => ({
-          table,
-          subject: getTableSubject(table),
-          fieldTypes: getFieldTypes(table, tables),
-        })),
-      ),
-    [tables, getTableSubject, getFieldTypes],
-  );
-  return { ...semanticTypes, tables, suggestions, isLoading };
 }
