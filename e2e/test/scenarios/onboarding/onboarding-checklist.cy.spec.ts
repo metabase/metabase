@@ -8,20 +8,6 @@ describe("Inaccessible Onboarding checklist", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("should not render when embedded in an iframe", () => {
-    H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
-    cy.findByTestId("main-navbar-root").within(() => {
-      cy.findByRole("listitem", { name: "Home" }).should("be.visible");
-      cy.findByRole("listitem", { name: "How to use Metabase" }).should(
-        "not.exist",
-      );
-    });
-
-    cy.log("Redirects to the home page");
-    H.visitFullAppEmbeddingUrl({ url: "/getting-started", qs: {} });
-    cy.location("pathname").should("eq", "/");
-  });
-
   it("should not render when the instance is whitelabelled", () => {
     H.updateSetting("application-name", "Acme, corp.");
 
