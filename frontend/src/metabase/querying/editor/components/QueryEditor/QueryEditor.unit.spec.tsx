@@ -33,11 +33,18 @@ const TEST_CARD = createMockCard({
   },
 });
 
-interface SetupOpts {
-  card?: Card;
-}
+const TEST_CARD_WITH_AGGREGATION = createMockCard({
+  dataset_query: {
+    type: "query",
+    query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+    database: SAMPLE_DB_ID,
+  },
+});
 
-function TestableQueryEditor({ query }: Pick<QueryEditorProps, "query">) {
+function TestableQueryEditor({
+  query,
+  uiOptions,
+}: Pick<QueryEditorProps, "query" | "uiOptions">) {
   const [uiState, setUiState] = useState<QueryEditorUiState>({
     lastRunResult: null,
     lastRunQuery: null,
@@ -51,7 +58,7 @@ function TestableQueryEditor({ query }: Pick<QueryEditorProps, "query">) {
     <QueryEditor
       query={query}
       uiState={uiState}
-      uiOptions={{}}
+      uiOptions={uiOptions}
       onChangeQuery={() => {}}
       onChangeUiState={setUiState}
       parametersList={null}
@@ -60,7 +67,12 @@ function TestableQueryEditor({ query }: Pick<QueryEditorProps, "query">) {
   );
 }
 
-const setup = ({ card = TEST_CARD }: SetupOpts) => {
+interface SetupOpts {
+  card?: Card;
+  uiOptions?: QueryEditorProps["uiOptions"];
+}
+
+const setup = ({ card = TEST_CARD, uiOptions }: SetupOpts) => {
   const db = createSampleDatabase();
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -69,33 +81,75 @@ const setup = ({ card = TEST_CARD }: SetupOpts) => {
     }),
   });
   const metadata = createMockMetadataFromState(storeInitialState);
-  const question = new Question(card, metadata);
-  const query = question.query();
+  const queryForCard = (card: Card) => {
+    const question = new Question(card, metadata);
+    return question.query();
+  };
 
   setupAdhocQueryMetadataEndpoint(createMockCardQueryMetadata({}));
   setupCardDataset({});
 
-  renderWithProviders(<TestableQueryEditor query={query} />, {
-    storeInitialState,
-  });
+  const { rerender } = renderWithProviders(
+    <TestableQueryEditor query={queryForCard(card)} uiOptions={uiOptions} />,
+    {
+      storeInitialState,
+    },
+  );
 
-  return {};
+  return {
+    rerenderWithCard(card: Card) {
+      rerender(
+        <TestableQueryEditor
+          query={queryForCard(card)}
+          uiOptions={uiOptions}
+        />,
+      );
+    },
+  };
 };
 
 describe("QueryEditor", () => {
-  it("shows a refresh button once fetched", async () => {
-    setup({});
+  describe("refresh button", () => {
+    it("does not show a refresh button in initial state", async () => {
+      setup({});
 
-    expect(
-      screen.queryByRole("button", { name: "Refresh" }),
-    ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Refresh" }),
+      ).not.toBeInTheDocument();
+    });
+    it("does not show a refresh button if read only", async () => {
+      setup({ uiOptions: { readOnly: true } });
+      await userEvent.click(await screen.findByTestId("run-button"));
 
-    await userEvent.click(await screen.findByTestId("run-button"));
+      expect(
+        screen.queryByRole("button", { name: "Refresh" }),
+      ).not.toBeInTheDocument();
+    });
+    it("does not show a refresh button if run button hidden", async () => {
+      setup({ uiOptions: { hideRunButton: true } });
+      await userEvent.click(await screen.findByTestId("run-button"));
 
-    expect(
-      await screen.findByRole("button", {
-        name: "Refresh",
-      }),
-    ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Refresh" }),
+      ).not.toBeInTheDocument();
+    });
+    it("shows a refresh button once fetched", async () => {
+      setup({});
+      await userEvent.click(await screen.findByTestId("run-button"));
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Refresh",
+        }),
+      ).toBeInTheDocument();
+    });
+    it("does not show a refresh button if dirty", async () => {
+      const { rerenderWithCard } = setup({});
+      await userEvent.click(await screen.findByTestId("run-button"));
+      rerenderWithCard(TEST_CARD_WITH_AGGREGATION); // dirty the result
+      expect(
+        screen.queryByRole("button", { name: "Refresh" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
