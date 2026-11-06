@@ -130,8 +130,10 @@
                    :model/Collection coll {:is_remote_synced true :type collection/library-data-collection-type :name "Data"}
                    :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db)
                                        :is_published true :collection_id (:id coll)}
+                   :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}
                    :model/Segment seg {:name "S" :table_id (:id table)
-                                       :definition {:source-table (:id table) :filter [:> [:field 1 nil] 0]}}]
+                                       :definition {:source-table (:id table)
+                                                    :filter       [:> [:field (:id field) nil] 0]}}]
       (is (= "synced" (noop-update-status! "Segment" (:id seg) :event/segment-update seg))))))
 
 (deftest measure-noop-update-stays-synced-test
@@ -249,8 +251,8 @@
                                                                 :status_changed_at (t/offset-date-time)})))
               ;; force? routes through full-export!, which computes + records the content_hash for every flavor
               (impl/export! (source.p/snapshot (test-helpers/create-mock-source)) task-id "Full export" :force? true)
-              (doseq [{:keys [model_type model_id] :as row} rows]
-                (is (= (source/row->content-hash row)
+              (doseq [[{:keys [model_type model_id]} {:keys [content-hash]}] (map vector rows (source/rows->file-infos rows))]
+                (is (= content-hash
                        (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
                     (str "written hash should match per-row hash for " model_type))))))))))
 
@@ -265,9 +267,10 @@
         (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name (:name card)
                                              :status "create" :status_changed_at (t/offset-date-time)}))
       ;; synced entries keyed by RSO id, carrying each card's real content hash
-      (let [synced (mapv (fn [r] {:id (:id r) :file_path "p"
-                                  :content_hash (source/row->content-hash (select-keys r [:model_type :model_id]))})
-                         (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
+      (let [rsos   (t2/select [:model/RemoteSyncObject :id :model_type :model_id])
+            synced (mapv (fn [r {:keys [content-hash]}] {:id (:id r) :file_path "p" :content_hash content-hash})
+                         rsos
+                         (source/rows->file-infos rsos))]
         ;; force more than one chunk for the 3 rows
         (with-redefs [impl/app-db-batch-size 2]
           (#'impl/mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced (t/offset-date-time))))

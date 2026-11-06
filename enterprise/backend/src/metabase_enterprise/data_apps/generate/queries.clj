@@ -7,8 +7,8 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.models.serialization :as serdes]
    [metabase.queries.core :as queries]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -21,27 +21,32 @@
     (lib/test-query mp query)))
 
 (defn- card
-  "The question named `card-name` with entity ID `entity-id` in the collection with `collection-entity-id`, holding the
-  query `query` builds, as an export extracts it."
-  [card-name entity-id collection-entity-id query]
+  "The question named `card-name` with entity ID `entity-id`, holding the query `query` builds, as the Card row an export
+  takes."
+  [card-name entity-id query]
   (let [query (build-query query)]
-    (-> (serdes/extract-one "Card" {} {:entity_id              entity-id
-                                       :name                   card-name
-                                       :card_schema            queries/current-card-schema-version
-                                       :type                   :question
-                                       :display                :table
-                                       :creator_id             api/*current-user-id*
-                                       :database_id            (:database query)
-                                       :dataset_query          (lib/prepare-for-serialization query)
-                                       :visualization_settings {}
-                                       :parameters             []
-                                       :parameter_mappings     []})
-        (assoc :collection_id collection-entity-id))))
+    {:entity_id              entity-id
+     :name                   card-name
+     :card_schema            queries/current-card-schema-version
+     :type                   :question
+     :display                :table
+     :creator_id             api/*current-user-id*
+     :database_id            (:database query)
+     :dataset_query          (lib/prepare-for-serialization query)
+     :visualization_settings {}
+     :parameters             []
+     :parameter_mappings     []}))
 
 (defn generate
   "The files of the questions in `definitions`, a map of export name to `{:entityId .. :query ..}`, in the data app's
   collection with entity ID `collection-entity-id`, each at its path in the collection's directory."
   [collection-entity-id definitions]
-  (vec (for [[export-name {:keys [entityId query]}] definitions
-             :let [export-name (u/qualified-name export-name)]]
-         (generate.util/resource-file export-name (card export-name entityId collection-entity-id query)))))
+  (let [names    (mapv (comp u/qualified-name key) definitions)
+        cards    (mapv (fn [card-name {:keys [entityId query]}] (card card-name entityId query))
+                       names (vals definitions))
+        exported (serialization/export-batch :model/Card cards)]
+    (mapv (fn [card-name exported]
+            (when (instance? Exception exported)
+              (throw exported))
+            (generate.util/resource-file card-name (assoc exported :collection_id collection-entity-id)))
+          names exported)))

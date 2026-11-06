@@ -373,6 +373,8 @@
    ids     :- [:set ms/PositiveInt]]
   (t2/select columns :id [:in ids]))
 
+;;; ---------------------------------------------- ::collections.schema/collection contents ----------------------------------------------
+
 (mu/defn instance-by-id
   "The instance of `model` with `id`, or nil."
   [model :- :keyword
@@ -700,5 +702,3 @@
   "The IDs of the Users among `user-ids` that are not API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
-
-;;; -------------------------------------------------- Hydration --------------------------------------------------

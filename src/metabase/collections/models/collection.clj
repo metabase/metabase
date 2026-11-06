@@ -1543,36 +1543,30 @@
   [model]
   (into #{} (map :id) (ineligible-dependencies model)))
 
+;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
+
 (defn check-non-remote-synced-dependencies
-  "Checks if a model has non-remote-synced-dependencies and throws if it does.
-
-  Takes model (the model to check dependencies for).
-
-  Returns the model if no non-remote-synced dependencies are found.
-
-  Throws an ex-info object with non-remote-synced-dependencies and a 400 status code if dependencies are found."
+  "Returns `model`, throwing a 400 when remote sync exports it, or for a Collection what it holds, and it depends on
+  content remote sync does not export."
   [model]
-  (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
+  (when-let [pairs (seq (remote-sync/dangling-dependencies {:from {(name (t2/model model)) [(:id model)]}}))]
     (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
-                    {:non-remote-synced-models non-remote-synced-deps
-                     :status-code 400
-                     :response/keys #{:non-remote-synced-models}})))
+                    {:status-code              400
+                     :error-code               "non-remote-synced-dependencies"
+                     :non-remote-synced-models (into #{} (map (comp second second)) pairs)
+                     :response/keys            #{:non-remote-synced-models}})))
   model)
 
 (defn check-remote-synced-dependents
-  "Checks if a model has remote-synced-dependents and throws if it does.
-
-  Takes model (the model to check dependencies for).
-
-  Returns the model if no remote-synced dependents are found.
-
-  Throws an ex-info object with remote-synced-dependencies and a 400 status code if dependents are found."
+  "Returns `model`, throwing a 400 when content remote sync exports depends on it, or for a Collection on what it
+  holds, though remote sync no longer exports it."
   [model]
-  (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
+  (when-let [pairs (seq (remote-sync/dangling-dependencies {:to {(name (t2/model model)) [(:id model)]}}))]
     (throw (ex-info (str (deferred-tru "Used by remote synced content."))
-                    {:remote-synced-models remote-synced-deps
-                     :status-code 400
-                     :response/keys #{:remote-synced-models}})))
+                    {:status-code          400
+                     :error-code           "remote-synced-dependents"
+                     :remote-synced-models (vec (distinct (map (fn [[[model-name id]]] {model-name id}) pairs)))
+                     :response/keys        #{:remote-synced-models}})))
   model)
 
 (defn moving-into-remote-synced?
@@ -2360,7 +2354,6 @@
   as the original, this check is a no-op.
 
   As usual, an `collection-id` of `nil` represents the Root Collection.
-
 
   Intended for use with `PUT` or `PATCH`-style operations. Usage should look something like:
 
