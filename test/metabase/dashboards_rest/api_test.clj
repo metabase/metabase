@@ -4905,6 +4905,19 @@
         (is (= ["A   sian" "As"]
                (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
 
+(defn- wait-for-inbox
+  "Calls `thunk` and returns its result, failing the test unless `mt/inbox` satisfies `pred` within ten seconds."
+  [pred thunk]
+  (let [done (promise)]
+    (add-watch mt/inbox ::wait-for-inbox (fn [_ _ _ inbox] (when (pred inbox) (deliver done true))))
+    (try
+      (let [result (thunk)]
+        (when (pred @mt/inbox) (deliver done true))
+        (is (true? (deref done 10000 false)) "the expected emails arrived")
+        result)
+      (finally
+        (remove-watch mt/inbox ::wait-for-inbox)))))
+
 (defn- test-handle-broken-subscription-notification!
   [{:keys [disable-links? email-body-pattern match-email-body-pattern?]}]
   (let [param {:name "Source"
@@ -4983,10 +4996,17 @@
           (is (false? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id)))
           (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
         (mt/with-fake-inbox
-          (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
-                                                          :rasta :put 200 (str "dashboard/" dash-id)
-                                                          {:parameters []}))
-                title            (format "Subscription to %s removed" dashboard-name)
+          (let [title            (format "Subscription to %s removed" dashboard-name)
+                ;; The emails go out on a background thread once the save commits, one per broken pulse, to the
+                ;; dashboard and pulse creators.
+                both-sent?       (fn [inbox]
+                                   (every? (fn [email]
+                                             (= 2 (count (filter (comp #{title} :subject) (get inbox email)))))
+                                           ["rasta@metabase.com" "trashbird@metabase.com"]))
+                {:keys [parameters]} (dashboard-response
+                                      (wait-for-inbox both-sent?
+                                                      #(mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
+                                                                             {:parameters []})))
                 ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
                 ;; as "We've Noticed a New Metabase Login, Rasta".
                 inbox            (update-vals
@@ -5014,22 +5034,58 @@
               (emails-received? "trashbird@metabase.com"))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            false
-      :email-body-pattern        "#my-channel"
-      :match-email-body-pattern? true}))
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            false
-      :email-body-pattern        "href="
-      :match-email-body-pattern? true}))
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            true
-      :email-body-pattern        "href="
-      :match-email-body-pattern? false})))
+  ;; with-temp's own transaction would never commit, so the emails, which wait for the commit, would never go out
+  (mt/test-helpers-set-global-values!
+    (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+      (test-handle-broken-subscription-notification!
+       {:disable-links?            false
+        :email-body-pattern        "#my-channel"
+        :match-email-body-pattern? true}))
+    (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
+      (test-handle-broken-subscription-notification!
+       {:disable-links?            false
+        :email-body-pattern        "href="
+        :match-email-body-pattern? true}))
+    (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
+      (test-handle-broken-subscription-notification!
+       {:disable-links?            true
+        :email-body-pattern        "href="
+        :match-email-body-pattern? false}))))
 
+(deftest broken-subscription-email-waits-for-commit-test
+  (testing "A save that breaks a subscription and then fails rolls back without emailing anyone"
+    (let [param {:id "_SOURCE_PARAM_ID_" :name "Source" :slug "source" :type :string/=}]
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card          {card-id :id}            {}
+           :model/Dashboard     {dash-id :id
+                                 dashboard-name :name}   {:parameters [param]}
+           :model/DashboardCard {dashcard-id :id}        {:dashboard_id dash-id :card_id card-id}
+           :model/Pulse         {pulse-id :id}           {:name         "Broken by the save"
+                                                          :dashboard_id dash-id
+                                                          :creator_id   (mt/user->id :trashbird)
+                                                          :parameters   [(assoc param :value ["Twitter"])]}
+           :model/PulseCard     _                        {:pulse_id pulse-id :card_id card-id :dashboard_card_id dashcard-id}
+           :model/PulseChannel  {pulse-channel-id :id}   {:channel_type :email :pulse_id pulse-id :enabled true}
+           :model/PulseChannelRecipient _                {:pulse_channel_id pulse-channel-id
+                                                          :user_id          (mt/user->id :crowberto)}]
+          (mt/with-fake-inbox
+            (let [title     (format "Subscription to %s removed" dashboard-name)
+                  sent-to   (fn [inbox email] (count (filter (comp #{title} :subject) (get inbox email))))
+                  each-once (fn [inbox] (every? #(= 1 (sent-to inbox %)) ["rasta@metabase.com" "trashbird@metabase.com"]))]
+              ;; Two tabs and a dashcard on neither fails the save after the subscription was archived.
+              (mt/user-http-request :rasta :put 400 (str "dashboard/" dash-id)
+                                    {:parameters []
+                                     :tabs       [{:id -1 :name "A"} {:id -2 :name "B"}]
+                                     :dashcards  [{:id dashcard-id :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]})
+              (is (=? [{:id (:id param)}] (t2/select-one-fn :parameters :model/Dashboard :id dash-id)))
+              (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+              (is (zero? (sent-to @mt/inbox "trashbird@metabase.com")))
+              (testing "a save that succeeds then sends the email once, which shows the failed one sent none"
+                (wait-for-inbox each-once
+                                #(mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:parameters []}))
+                (is (each-once @mt/inbox))
+                (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))))))))))
 (deftest run-mbql5-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
     (testing "Should be able to run a query for a DashCard with an MBQL 5 query (#39024)"
