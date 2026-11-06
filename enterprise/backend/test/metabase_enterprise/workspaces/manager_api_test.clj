@@ -632,13 +632,58 @@
            (let [body (pr-str (mt/user-http-request :crowberto :get 200 (connection-url ws-id) :format response-format))]
              (is (not (str/includes? body "FILE-CONTENT")))
              (is (not (str/includes? body "ssl-root-cert"))))))
-       (testing "SSL verifying the server: a certificate read from a file is a 409, and the file is never read"
-         (set-ssl! {:ssl true, :ssl-mode "verify-full"})
-         (let [body (mt/user-http-request :crowberto :get 409 (connection-url ws-id))]
-           (is (= (format "The SSL root certificate of database %s is read from a file; upload it instead to use the database for workspaces."
-                          (pr-str db-name))
-                  body))
-           (is (not (str/includes? (pr-str body) "FILE-CONTENT")))))))))
+       (doseq [ssl-mode ["verify-full" "verify-ca"]]
+         (testing (str "SSL in " ssl-mode ": a certificate read from a file is a 409, and the file is never read")
+           (set-ssl! {:ssl true, :ssl-mode ssl-mode})
+           (let [body (mt/user-http-request :crowberto :get 409 (connection-url ws-id))]
+             (is (= (format "The SSL root certificate of database %s is read from a file; upload it instead to use the database for workspaces."
+                            (pr-str db-name))
+                    body))
+             (is (not (str/includes? (pr-str body) "FILE-CONTENT"))))))
+       (testing "a file path written into the details past the model is dropped when the Database is read, so it is never
+                 read either (the connection namespace's own test covers its refusal)"
+         (t2/query-one {:update :metabase_database
+                        :where  [:= :id db-id]
+                        :set    {:details (encryption/maybe-encrypt
+                                           (json/encode
+                                            (merge (superuser-details)
+                                                   {:ssl true, :ssl-mode "verify-full"
+                                                    :ssl-root-cert-path (.getAbsolutePath secret-file)})))}})
+         (let [body (pr-str (mt/user-http-request :crowberto :get 200 (connection-url ws-id)))]
+           (is (not (str/includes? body "FILE-CONTENT")))
+           (is (not (str/includes? body "ssl-root-cert")))))))))
+
+(deftest connection-root-certificate-secret-kinds-test
+  (do-with-warehouse!
+   (fn [_spec db-id]
+     (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 url (create-body db-id ["sales"]))
+           db-name     (t2/select-one-fn :name :model/Database :id db-id)
+           cert        "-----BEGIN CERTIFICATE-----\nroot\n-----END CERTIFICATE-----\n"]
+       (testing "a root certificate id naming a Secret of another kind is a 409, never that Secret's value"
+         (mt/with-temp [:model/Secret {password-secret-id :id} {:name       "another database's password"
+                                                                :kind       :password
+                                                                :source     :uploaded
+                                                                :value      "SOME-OTHER-SECRET-VALUE"
+                                                                :version    1
+                                                                :creator_id (mt/user->id :crowberto)}]
+           (t2/update! :model/Database :id db-id {:details (merge (superuser-details)
+                                                                  {:ssl              true
+                                                                   :ssl-mode         "verify-full"
+                                                                   :ssl-root-cert-id password-secret-id})})
+           (is (= password-secret-id (:ssl-root-cert-id (t2/select-one-fn :details :model/Database :id db-id))))
+           (let [body (mt/user-http-request :crowberto :get 409 (connection-url ws-id))]
+             (is (= (format "The SSL root certificate of database %s is not a stored certificate; upload it again to use the database for workspaces."
+                            (pr-str db-name))
+                    body))
+             (is (not (str/includes? (pr-str body) "SOME-OTHER-SECRET-VALUE"))))))
+       (testing "verify-ca with an uploaded certificate: its value is sent"
+         (t2/update! :model/Database :id db-id {:details (merge (superuser-details)
+                                                                {:ssl                   true
+                                                                 :ssl-mode              "verify-ca"
+                                                                 :ssl-root-cert-options "uploaded"
+                                                                 :ssl-root-cert-value   cert})})
+         (is (=? {:ssl-root-cert-options "uploaded", :ssl-root-cert-value cert}
+                 (-> (mt/user-http-request :crowberto :get 200 (connection-url ws-id)) :databases first :details))))))))
 
 (deftest connection-response-check-never-quotes-the-password-test
   (testing "when the response fails its schema (checked in dev and test), the 400 names the problem, not the details"
@@ -687,34 +732,38 @@
            (mt/user-http-request :crowberto :get 403 (connection-url ws-id))))))))
 
 (deftest connection-creator-through-oauth-tokens-test
-  ;; the bearer bridge is gated on initialization being complete, which the test runner never marks
-  (init-status/set-complete!)
-  (do-with-warehouse!
-   (fn [_spec db-id]
-     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-       (mt/with-temp [:model/User {other-admin :id} {:is_superuser true}
-                      :model/OAuthClient {client-id :client_id} {:client_id         (str (random-uuid))
-                                                                 :redirect_uris     ["https://example.com/callback"]
-                                                                 :grant_types       ["authorization_code"]
-                                                                 :response_types    ["code"]
-                                                                 :scopes            ["mb:workspace-manager"]
-                                                                 :registration_type "static"}]
-         (let [token-for (fn [user-id]
-                           (let [token (str "connection-test-" (random-uuid))]
-                             ;; through the provider's store, which hashes tokens at rest
-                             (oidc.store/save-access-token (:token-store (oauth-server/get-provider)) token
-                                                           (str user-id) client-id
-                                                           [api-scope.workspace-manager/workspace-manager]
-                                                           (+ (System/currentTimeMillis) (* 60 60 1000)) nil)
-                             {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
-               token-a   (token-for (mt/user->id :crowberto))
-               token-b   (token-for other-admin)]
-           (try
-             (let [{ws-id :id} (client/client :post 200 url token-a (create-body db-id ["sales"]))]
-               (testing "a token of the creator gets the connection"
-                 (is (=? {:workspace {:id ws-id}} (client/client :get 200 (connection-url ws-id) token-a))))
-               (testing "a token of another admin gets a 403"
-                 (is (= "Only the creator of a workspace can fetch its connection."
-                        (client/client :get 403 (connection-url ws-id) token-b)))))
-             (finally
-               (t2/delete! :model/OAuthAccessToken :client_id client-id)))))))))
+  ;; the bearer bridge is gated on initialization being complete, which the test runner never marks; put it back after
+  (let [progress (init-status/progress)]
+    (init-status/set-complete!)
+    (try
+      (do-with-warehouse!
+       (fn [_spec db-id]
+         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+           (mt/with-temp [:model/User {other-admin :id} {:is_superuser true}
+                          :model/OAuthClient {client-id :client_id} {:client_id         (str (random-uuid))
+                                                                     :redirect_uris     ["https://example.com/callback"]
+                                                                     :grant_types       ["authorization_code"]
+                                                                     :response_types    ["code"]
+                                                                     :scopes            ["mb:workspace-manager"]
+                                                                     :registration_type "static"}]
+             (let [token-for (fn [user-id]
+                               (let [token (str "connection-test-" (random-uuid))]
+                                 ;; through the provider's store, which hashes tokens at rest
+                                 (oidc.store/save-access-token (:token-store (oauth-server/get-provider)) token
+                                                               (str user-id) client-id
+                                                               [api-scope.workspace-manager/workspace-manager]
+                                                               (+ (System/currentTimeMillis) (* 60 60 1000)) nil)
+                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
+                   token-a   (token-for (mt/user->id :crowberto))
+                   token-b   (token-for other-admin)]
+               (try
+                 (let [{ws-id :id} (client/client :post 200 url token-a (create-body db-id ["sales"]))]
+                   (testing "a token of the creator gets the connection"
+                     (is (=? {:workspace {:id ws-id}} (client/client :get 200 (connection-url ws-id) token-a))))
+                   (testing "a token of another admin gets a 403"
+                     (is (= "Only the creator of a workspace can fetch its connection."
+                            (client/client :get 403 (connection-url ws-id) token-b)))))
+                 (finally
+                   (t2/delete! :model/OAuthAccessToken :client_id client-id))))))))
+      (finally
+        (init-status/set-progress! (double progress))))))

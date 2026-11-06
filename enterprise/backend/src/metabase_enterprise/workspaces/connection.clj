@@ -46,7 +46,8 @@
    :redshift   #{:host :port :db :auto_run_queries :refingerprint}
    :sqlserver  #{:host :port :db :instance :ssl :auto_run_queries :refingerprint}
    :mysql      #{:host :port :dbname :ssl :ssl-cert :json-unfolding :auto_run_queries :refingerprint}
-   :clickhouse #{:host :port :dbname :ssl :clickhouse-settings :max-open-connections :enable-multiple-db :use-no-proxy
+   ;; not `:clickhouse-settings`, sent as HTTP parameters, which can carry role= or password=
+   :clickhouse #{:host :port :dbname :ssl :max-open-connections :enable-multiple-db :use-no-proxy
                  :auto_run_queries :refingerprint}})
 
 (defn- schema-filter-pattern
@@ -81,7 +82,8 @@
 
 (defn- ssl-root-cert
   "The SSL root certificate to send for `database`, or nil: only when it connects over SSL in a mode that verifies the
-  server, and only a certificate the admin uploaded, inline in the details or as an uploaded Secret. A certificate read
+  server, and only a certificate the admin uploaded, inline in the details or as an uploaded certificate Secret (a
+  Secret of another kind is a 409). A certificate read
   from a file, a path in the details or a Secret whose source is a file path, is a 409 naming the database: sending it
   would hand any caller with a superuser login the content of any file the parent can read, and the path means nothing
   on the sidecar. A Secret id that resolves to nothing sends nothing; on the sidecar it could name an unrelated Secret."
@@ -94,6 +96,12 @@
       (cond
         (or (:ssl-root-cert-path details) (= "local" (:ssl-root-cert-options details))) (refuse!)
         (= "file-path" (some-> secret :source name))                                    (refuse!)
+        ;; the Database model keeps a client-sent id when the database had none, so the id may name any Secret
+        (and secret (not= :pem-cert (some-> secret :kind keyword)))
+        (throw (ex-info (tru "The SSL root certificate of database {0} is not a stored certificate; upload it again to use the database for workspaces."
+                             (pr-str database-name))
+                        {:status-code 409, :database_id database-id}))
+
         secret (secrets/value-as-string (keyword engine) (select-keys details [:ssl-root-cert-id]) "ssl-root-cert")
         :else  (:ssl-root-cert-value details)))))
 

@@ -175,8 +175,8 @@
    :redshift   #{"host" "port" "db" "auto_run_queries" "refingerprint"}
    :sqlserver  #{"host" "port" "db" "instance" "ssl" "auto_run_queries" "refingerprint"}
    :mysql      #{"host" "port" "dbname" "ssl" "ssl-cert" "json-unfolding" "auto_run_queries" "refingerprint"}
-   :clickhouse #{"host" "port" "dbname" "ssl" "clickhouse-settings" "max-open-connections" "enable-multiple-db"
-                 "use-no-proxy" "auto_run_queries" "refingerprint"}})
+   :clickhouse #{"host" "port" "dbname" "ssl" "max-open-connections" "enable-multiple-db" "use-no-proxy"
+                 "auto_run_queries" "refingerprint"}})
 
 (defn- dropped-property?
   "Whether `property-name`, declared by a workspace engine, is one the sidecar must not get from the parent: a login or
@@ -184,7 +184,7 @@
   sidecar instead), or the root certificate (sent only by the connection namespace's own rule)."
   [property-name]
   (or (#{"user" "password" "use-auth-provider" "auth-provider" "azure-managed-identity-client-id" "oauth-token-url"
-         "oauth-token-headers" "auth-mode" "role" "ssl-use-client-auth" "additional-options"
+         "oauth-token-headers" "auth-mode" "role" "ssl-use-client-auth" "additional-options" "clickhouse-settings"
          "let-user-control-scheduling"} property-name)
       (some #(str/starts-with? property-name %)
             ["ad-" "tunnel-" "ssl-client-cert" "ssl-key" "ssl-root-cert" "schedules." "schema-filters" "db-filters"])))
@@ -260,3 +260,23 @@
           include?                          #(driver.s/include-schema? schema-filters-patterns nil %)]
       (is (every? include? (concat (keys schemas) (vals schemas))))
       (is (not-any? include? ["aXb" "x(y)$z" "sales" "s" "mb__isolation_k3f9q2xa_s9_other"])))))
+
+(deftest root-certificate-path-in-the-details-is-refused-test
+  (testing "a path in the details is refused before anything is read (the Database model drops such paths on read, so
+            this guards only details that reach here some other way)"
+    (let [f (doto (java.io.File/createTempFile "mbcws-13-not-a-cert" ".txt")
+              (.deleteOnExit)
+              (spit "FILE-CONTENT-THE-PARENT-CAN-READ"))]
+      (doseq [ssl-mode ["verify-ca" "verify-full"]]
+        (testing ssl-mode
+          (is (=? {:status-code 409}
+                  (try
+                    (#'ws.connection/ssl-root-cert {:id 1, :name "DW", :engine :postgres
+                                                    :details {:ssl true, :ssl-mode ssl-mode
+                                                              :ssl-root-cert-path (.getAbsolutePath f)}})
+                    (catch clojure.lang.ExceptionInfo e
+                      (ex-data e))))))))
+    (testing "SSL off or not verifying: nothing is read and nothing is sent"
+      (doseq [details [{:ssl false, :ssl-mode "verify-full", :ssl-root-cert-path "/etc/passwd"}
+                       {:ssl true, :ssl-mode "require", :ssl-root-cert-path "/etc/passwd"}]]
+        (is (nil? (#'ws.connection/ssl-root-cert {:id 1, :name "DW", :engine :postgres, :details details})))))))
