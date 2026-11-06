@@ -139,9 +139,17 @@
                                  (= (::mb.viz/number-style viz-settings) "currency"))
 
         {::mb.viz/keys [number-separators decimals scale number-style
-                        prefix suffix currency-style currency]} global-settings
+                        prefix suffix currency-style currency-position currency]} global-settings
         currency           (when currency?
                              (keyword (or currency "USD")))
+        currency-label     (when currency?
+                             (get-in currency/currency
+                                     [currency (case currency-style
+                                                 "code" :code
+                                                 "name" :name_plural
+                                                 "narrowSymbol" :symbol_native
+                                                 :symbol)]))
+        currency-after?    (or (= currency-style "name") (= currency-position "after"))
         integral?          (and (isa? (or effective_type base_type) :type/Integer) (integer? (or scale 1)))
         relation?          (isa? semantic_type :Relation/*)
         percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
@@ -194,20 +202,18 @@
                  sb               (StringBuilder.)]
              ;; Using explicit StringBuilder to avoid touching the slow `clojure.core/str` multi-arity.
              (when prefix (.append sb prefix))
-             (when (and inline-currency? (or (nil? currency-style)
-                                             (= currency-style "symbol")))
-               (.append sb (get-in currency/currency [currency :symbol])))
-             (when (and inline-currency? (= currency-style "code"))
-               (.append sb (get-in currency/currency [currency :code]))
-               (.append sb \space))
+             (when (and inline-currency? (not currency-after?))
+               (.append sb currency-label)
+               (when (= currency-style "code")
+                 (.append sb \space)))
              (.append sb (cond-> (.format ^DecimalFormat fmtr scaled-value)
                            (and (not currency?) (not decimals))
                            (strip-trailing-zeroes decimal)))
              (when percent?
                (.append sb "%"))
-             (when (and inline-currency? (= currency-style "name"))
-               (.append sb \space)
-               (.append sb (get-in currency/currency [currency :name_plural])))
+             (when (and inline-currency? currency-after?)
+               (.append sb (if (= currency-style "name") \space \u00a0))
+               (.append sb currency-label))
              (when suffix (.append sb suffix))
              (str sb))
            value))

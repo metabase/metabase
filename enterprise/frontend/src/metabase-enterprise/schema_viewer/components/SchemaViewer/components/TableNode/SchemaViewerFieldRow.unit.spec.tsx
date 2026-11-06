@@ -2,15 +2,15 @@ import userEvent from "@testing-library/user-event";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import type { ConcreteTableId, ErdField } from "metabase-types/api";
+import type { ErdField, TableId } from "metabase-types/api";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 
 type ContextOverrides = {
-  visibleTableIds?: Set<ConcreteTableId>;
-  expandingTableIds?: Set<ConcreteTableId>;
+  visibleTableIds?: Set<TableId>;
+  expandingTableIds?: Set<TableId>;
 };
 
 type SetupOpts = {
@@ -48,10 +48,8 @@ function setup({
   };
 
   const value = {
-    visibleTableIds:
-      contextOverrides.visibleTableIds ?? new Set<ConcreteTableId>(),
-    expandingTableIds:
-      contextOverrides.expandingTableIds ?? new Set<ConcreteTableId>(),
+    visibleTableIds: contextOverrides.visibleTableIds ?? new Set<TableId>(),
+    expandingTableIds: contextOverrides.expandingTableIds ?? new Set<TableId>(),
     expandToTable,
     selectedNodeId: null,
     selectNode,
@@ -145,7 +143,7 @@ describe("SchemaViewerFieldRow", () => {
           fk_target_field_id: 999,
         },
         context: {
-          visibleTableIds: new Set<ConcreteTableId>(),
+          visibleTableIds: new Set<TableId>(),
         },
       });
       await userEvent.click(screen.getByText("user_id"));
@@ -200,7 +198,7 @@ describe("SchemaViewerFieldRow", () => {
           database_type: "integer",
         },
         context: {
-          expandingTableIds: new Set<ConcreteTableId>(),
+          expandingTableIds: new Set<TableId>(),
         },
       });
       expect(screen.getByText("integer")).toBeInTheDocument();

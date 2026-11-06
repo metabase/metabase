@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -6,12 +5,10 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   HoverParent,
   TableInfoIcon,
 } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
@@ -75,8 +72,6 @@ export const DataSelectorTablePicker = ({
     }
     return null;
   }
-
-  const isSavedQuestionList = selectedDatabase.is_saved_questions;
 
   const header = (
     <Header
@@ -142,10 +137,6 @@ export const DataSelectorTablePicker = ({
             renderItemWrapper={renderItemWrapper}
             showItemArrows={hasNextStep}
           />
-
-          {isSavedQuestionList && (
-            <LinkToDocsOnReferencingSavedQuestionsInQueries />
-          )}
         </Box>
       </DelayGroup>
     );
@@ -157,32 +148,6 @@ export const DataSelectorTablePicker = ({
       </Box>
     );
   }
-};
-
-const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
-  const { url: docsUrl } = useDocsUrl(
-    "questions/native-editor/referencing-saved-questions-in-queries",
-  );
-  return (
-    <Box
-      p="lg"
-      ta="center"
-      bg="background_page-secondary"
-      style={{
-        borderTop: "1px solid var(--mb-color-border-neutral)",
-      }}
-    >
-      {t`Is a question missing?`}
-      <ExternalLink
-        href={docsUrl}
-        target="_blank"
-        className={cx(CS.block, CS.link)}
-      >
-        {t`Learn more about nested queries`}
-      </ExternalLink>
-    </Box>
-  );
 };
 
 const Header = ({

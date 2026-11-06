@@ -5,8 +5,11 @@ import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
+  Card,
   RawSeries,
   TimelineEvent,
   TransformedSeries,
@@ -17,9 +20,9 @@ import {
   createMockSettings,
   createMockSingleSeries,
   createMockTimelineEvent,
+  createMockUnsavedCard,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
 import {
   registerQueryBuilderMetabotContextFn,
@@ -27,6 +30,19 @@ import {
 } from "./use-register-query-builder-metabot-context";
 
 registerVisualizations();
+
+function createCard(opts?: Partial<Card>) {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
+function createAdHocCard() {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  });
+}
 
 const getUserIsViewing = (
   result: Awaited<ReturnType<typeof registerQueryBuilderMetabotContextFn>>,
@@ -97,7 +113,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should handle saved questions", async () => {
-    const card = createMockCard();
+    const card = createCard();
     const data = createMockData({ question: new Question(card) });
     const result = await registerQueryBuilderMetabotContextFn(data);
 
@@ -120,11 +136,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should register no context for adhoc questions without a data source", async () => {
-    const question = new Question(
-      createAdHocCard({
-        dataset_query: { type: "query", database: null, query: {} },
-      }),
-    );
+    const question = new Question(createMockUnsavedCard());
 
     const data = createMockData({ question });
     const result = await registerQueryBuilderMetabotContextFn(data);
@@ -133,7 +145,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should produce valid results for line charts", async () => {
-    const card = createMockCard({
+    const card = createCard({
       name: "Count by name",
       display: "line",
       visualization_settings: createMockVisualizationSettings({
@@ -183,7 +195,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
 
   it("should re-project a breakout row chart so y_values are the numeric metric (BOT-1598)", async () => {
     // Two text dimensions + a count metric, the same shape as the query in BOT-1598.
-    const card = createMockCard({
+    const card = createCard({
       name: "Count by category and series",
       display: "row",
       visualization_settings: createMockVisualizationSettings({
@@ -258,7 +270,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should produce valid series results for a single-dimension row chart", async () => {
-    const card = createMockCard({
+    const card = createCard({
       name: "Count by name",
       display: "row",
       visualization_settings: createMockVisualizationSettings({
@@ -289,7 +301,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should produce valid series results for pie charts", async () => {
-    const card = createMockCard({
+    const card = createCard({
       name: "Count by name",
       display: "pie",
       visualization_settings: createMockVisualizationSettings({
@@ -315,7 +327,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should produce valid series results for funnel charts", async () => {
-    const card = createMockCard({
+    const card = createCard({
       name: "Count by name",
       display: "funnel",
       visualization_settings: createMockVisualizationSettings({
@@ -342,7 +354,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
 });
 
 it("should return empty result when metabot is disabled", async () => {
-  const card = createMockCard({
+  const card = createCard({
     name: "Count by name",
     display: "table",
     visualization_settings: createMockVisualizationSettings({
@@ -360,7 +372,7 @@ it("should return empty result when metabot is disabled", async () => {
 });
 
 it("should return populated context when metabot is enabled", async () => {
-  const card = createMockCard({
+  const card = createCard({
     name: "Count by name",
     display: "table",
     visualization_settings: createMockVisualizationSettings({

@@ -1,19 +1,18 @@
 import { findRequests } from "__support__/server-mocks";
 import { act, screen, waitFor, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card, Database, TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -38,13 +37,15 @@ function createNativeCard(templateTag: TemplateTag): Card {
   return createMockCard({
     id: 1,
     name: "Native question",
-    dataset_query: createMockNativeDatasetQuery({
-      database: SAMPLE_DB_ID,
-      native: createMockNativeQuery({
-        query: `SELECT * FROM PRODUCTS WHERE {{${templateTag.name}}}`,
-        "template-tags": { [templateTag.name]: templateTag },
-      }),
-    }),
+    query_type: "native",
+    dataset_query: Lib.toJsQuery(
+      Lib.withTemplateTags(
+        Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+          query: `SELECT * FROM PRODUCTS WHERE {{${templateTag.name}}}`,
+        }),
+        { [templateTag.name]: templateTag },
+      ),
+    ),
   });
 }
 

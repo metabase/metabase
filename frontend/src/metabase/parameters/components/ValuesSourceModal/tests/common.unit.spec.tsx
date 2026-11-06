@@ -6,6 +6,7 @@ import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockCard,
+  createMockColumn,
   createMockField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
@@ -173,7 +174,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 1,
                 name: "id",
                 display_name: "ID",
@@ -181,7 +182,7 @@ describe("ValuesSourceModal", () => {
                 effective_type: "type/BigInteger",
                 semantic_type: "type/PK",
               }),
-              createMockField({
+              createMockColumn({
                 id: 2,
                 name: "category",
                 display_name: "Category",
@@ -224,7 +225,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 2,
                 display_name: "Category",
                 base_type: "type/Text",
@@ -291,7 +292,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 2,
                 display_name: "Category",
                 base_type: "type/Text",
@@ -325,7 +326,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 2,
                 display_name: "Category",
                 base_type: "type/Text",

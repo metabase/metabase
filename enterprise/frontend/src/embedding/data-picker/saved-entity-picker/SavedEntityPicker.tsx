@@ -20,10 +20,10 @@ import { useSelector } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
 import { mergeLazily } from "metabase/utils/merge-lazily";
 import type {
+  CardId,
   Collection,
   CollectionId,
   DatabaseId,
-  TableId,
   User,
 } from "metabase-types/api";
 
@@ -37,9 +37,9 @@ import { findCollectionById } from "./utils";
 interface SavedEntityPickerProps {
   type: SavedEntityType;
   collectionId?: CollectionId | null;
-  tableId?: TableId;
+  selectedCardId?: CardId;
   databaseId?: DatabaseId | null;
-  onSelect: (cardId: string) => void;
+  onSelect: (cardId: CardId) => void;
   onBack: () => void;
 }
 
@@ -92,7 +92,7 @@ interface InnerSavedEntityPickerProps extends SavedEntityPickerProps {
 function InnerSavedEntityPicker({
   collectionId,
   type,
-  tableId,
+  selectedCardId,
   databaseId,
   onSelect,
   onBack,
@@ -179,7 +179,7 @@ function InnerSavedEntityPicker({
       <SavedEntityList
         type={type}
         collectionId={selectedCollectionId}
-        selectedId={tableId}
+        selectedId={selectedCardId}
         databaseId={databaseId}
         onSelect={onSelect}
       />

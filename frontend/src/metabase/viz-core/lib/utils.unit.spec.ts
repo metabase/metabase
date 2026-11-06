@@ -1,13 +1,15 @@
 import _ from "underscore";
 
-import type { Breakout, Card, CardId, DatasetQuery } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { Card, CardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
   createMockSingleSeries,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
+import { ORDERS, ORDERS_ID, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import type { Extent } from "../types";
 
@@ -23,41 +25,52 @@ import {
   preserveExistingColumnsOrder,
 } from "./utils";
 
-// TODO Atte Keinänen 5/31/17 Rewrite tests using metabase-lib methods instead of a raw format
+const createQuery = ({
+  multiseries = false,
+  filtered = false,
+}: { multiseries?: boolean; filtered?: boolean } = {}) =>
+  Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [
+            { type: "column", fieldId: ORDERS.CREATED_AT },
+            ...(multiseries
+              ? [
+                  {
+                    type: "column" as const,
+                    fieldId: PRODUCTS.CATEGORY,
+                    sourceFieldId: ORDERS.PRODUCT_ID,
+                  },
+                ]
+              : []),
+          ],
+          filters: filtered
+            ? [
+                {
+                  type: "operator",
+                  operator: ">",
+                  args: [
+                    { type: "column", fieldId: ORDERS.TOTAL },
+                    { type: "literal", value: 100 },
+                  ],
+                },
+              ]
+            : [],
+        },
+      ],
+    }),
+  );
 
-const baseQueryBreakout: Breakout = ["field", 2, null];
-
-const baseQuery: DatasetQuery = {
-  database: 1,
-  type: "query",
-  query: {
-    "source-table": 2,
-    aggregation: [["count"]],
-    breakout: [baseQueryBreakout],
-  },
-};
-const derivedQuery: DatasetQuery = {
-  ...baseQuery,
-  query: {
-    ...baseQuery.query,
-    filter: ["time-interval", ["field", 1, null], -7, "day"],
-  },
-};
-
-const breakoutMultiseriesQuery: DatasetQuery = {
-  ...baseQuery,
-  query: {
-    ...baseQuery.query,
-    breakout: [baseQueryBreakout, ["field", 10, { "source-field": 1 }]],
-  },
-};
-const derivedBreakoutMultiseriesQuery: DatasetQuery = {
-  ...breakoutMultiseriesQuery,
-  query: {
-    ...breakoutMultiseriesQuery.query,
-    filter: ["time-interval", ["field", 1, null], -7, "day"],
-  },
-};
+const baseQuery = createQuery();
+const derivedQuery = createQuery({ filtered: true });
+const breakoutMultiseriesQuery = createQuery({ multiseries: true });
+const derivedBreakoutMultiseriesQuery = createQuery({
+  multiseries: true,
+  filtered: true,
+});
 
 const savedCard = createMockCard({
   id: 3,
@@ -187,8 +200,8 @@ describe("metabase/visualization/lib/utils", () => {
     });
 
     it("should not reuse cardinality across different query executions with the same column name", () => {
-      const jsonQueryA = createMockStructuredDatasetQuery();
-      const jsonQueryB = createMockStructuredDatasetQuery();
+      const jsonQueryA = createQuery();
+      const jsonQueryB = createQuery();
 
       expect(
         getColumnCardinality([["a"], ["b"]], 0, "category", jsonQueryA),
@@ -199,7 +212,7 @@ describe("metabase/visualization/lib/utils", () => {
     });
 
     it("should reuse cardinality for the same query execution when a remapped column is dropped", () => {
-      const jsonQuery = createMockStructuredDatasetQuery();
+      const jsonQuery = createQuery();
       const preRemapRows = [
         [1, "Alice", 10],
         [1, "Alice", 10],
@@ -223,7 +236,7 @@ describe("metabase/visualization/lib/utils", () => {
     });
 
     it("should not reuse cardinality when the same json query is attached to series with a different row count", () => {
-      const jsonQuery = createMockStructuredDatasetQuery();
+      const jsonQuery = createQuery();
 
       expect(
         getColumnCardinality([["a"], ["b"]], 0, "category", jsonQuery),

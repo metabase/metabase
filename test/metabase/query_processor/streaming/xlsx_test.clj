@@ -55,6 +55,8 @@
     (testing "General number formatting"
       (testing "number-style (non-currency)"
         (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-style "decimal"})))
+        (is (= ["#,##0" "#,##0.##########"]
+               (format-string {::mb.viz/number-style "decimal", ::mb.viz/currency-position "after"})))
         (is (= "#,##0.00%"   (format-string {::mb.viz/number-style "percent"})))
         (is (= "#,##0.00E+0" (format-string {::mb.viz/number-style "scientific"})))))))
 
@@ -267,6 +269,26 @@
                                                    ::mb.viz/currency "KGS",
                                                    ::mb.viz/currency-style "narrowSymbol"}
                                                   price-col))))))))
+
+(deftest currency-position-format-string-test
+  (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency_position "after"}}]
+    (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}
+          settings  {::mb.viz/currency "EUR", ::mb.viz/currency-in-header false}]
+      (testing "The instance default applies to all currency label styles"
+        (doseq [[style expected] [["symbol" "#,##0.00\"\u00a0\"[$€]"]
+                                  ["narrowSymbol" "#,##0.00\"\u00a0\"[$€]"]
+                                  ["code" "#,##0.00\"\u00a0\"[$EUR]"]
+                                  ["name" "#,##0.00\" euros\""]]]
+          (is (= expected (format-string (assoc settings ::mb.viz/currency-style style) price-col)))))
+      (testing "Column settings override the instance default"
+        (is (= "[$€]#,##0.00"
+               (format-string (assoc settings ::mb.viz/currency-position "before") price-col))))
+      (testing "Currency names always follow the amount"
+        (is (= "#,##0.00\" euros\""
+               (format-string (assoc settings ::mb.viz/currency-position "before"
+                                     ::mb.viz/currency-style "name") price-col))))
+      (testing "Header currency labels stay out of the cell"
+        (is (= "#,##0.00" (format-string (assoc settings ::mb.viz/currency-in-header true) price-col)))))))
 
 (deftest format-settings->format-string-test-3e
   (mt/with-temporary-setting-values [custom-formatting {}]

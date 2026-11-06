@@ -8,6 +8,7 @@ import type {
   JoinConditionOperator,
   RowValue,
   SchemaId,
+  SchemaName,
   TableId,
   TableVisibilityType,
 } from "metabase-types/api";
@@ -42,6 +43,11 @@ export type Query = unknown & { _opaque: typeof QuerySymbol };
 declare const MetadataProviderSymbol: unique symbol;
 export type MetadataProvider = unknown & {
   _opaque: typeof MetadataProviderSymbol;
+};
+
+declare const DatabaseMetadataSymbol: unique symbol;
+export type DatabaseMetadata = unknown & {
+  _opaque: typeof DatabaseMetadataSymbol;
 };
 
 declare const TableMetadataSymbol: unique symbol;
@@ -155,14 +161,20 @@ export type BucketDisplayInfo = {
   isTemporalExtraction?: boolean;
 };
 
+export type DatabaseDisplayInfo = {
+  name: string;
+  displayName: string;
+};
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
+  description?: string;
   isSourceTable?: boolean;
   isSourceCard?: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
-  schema: SchemaId;
+  schema?: SchemaName | null;
   isQuestion?: boolean;
   isModel?: boolean;
   isMetric?: boolean;

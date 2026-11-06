@@ -69,10 +69,8 @@ describe("getClickBehaviorTarget", () => {
       id: 5,
       name: "Products (drill target)",
       dataset_query: Lib.toJsQuery(
-        Lib.fromJsQuery(metadataProvider, {
-          type: "query",
-          query: { "source-table": PRODUCTS_ID },
-          database: SAMPLE_DB_ID,
+        Lib.createTestQuery(metadataProvider, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
         }),
       ),
     });
@@ -122,21 +120,12 @@ describe("getClickBehaviorTarget", () => {
       id: 6,
       entity_id: createMockEntityId("native-target-entity-id"),
       name: "Native drill target",
-      dataset_query: {
-        type: "native",
-        database: SAMPLE_DB_ID,
-        native: {
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestNativeQuery(metadataProvider, {
           query: "select * from products where category = {{category}}",
-          "template-tags": {
-            category: {
-              id: "tag-1",
-              name: "category",
-              "display-name": "Category",
-              type: "text",
-            },
-          },
-        },
-      },
+          templateTags: { category: { type: "text" } },
+        }),
+      ),
     });
 
     const clicked = buildQuestionLinkClicked({

@@ -1,10 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type {
-  ConcreteFieldReference,
-  StructuredQuery,
-} from "metabase-types/api";
+import type { ConcreteFieldReference } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -27,7 +24,7 @@ const CREATED_AT_MONTH_BREAKOUT: ConcreteFieldReference = [
   },
 ];
 
-const QUERY: StructuredQuery = {
+const QUERY = {
   "source-table": ORDERS_ID,
   aggregation: [["count"], ["sum", ORDERS_TOTAL_FIELD]],
   breakout: [CREATED_AT_MONTH_BREAKOUT],

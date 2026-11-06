@@ -5,8 +5,8 @@ import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardId,
-  ConcreteTableId,
   Card as SavedCard,
+  TableId,
   UnsavedCard,
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -126,17 +126,9 @@ export function tableRowsQuery(
  * edited away from the table's pristine default.
  *
  * Only concrete (numeric) table ids are supported — the `/table/:slug` route
- * parses ids via {@link extractEntityId}. Callers holding a possibly-virtual id
- * (e.g. `card__17` from the Saved Questions virtual database) must fall back to
- * {@link tableRowsQuery} or the ad-hoc {@link question} URL.
+ * parses ids via {@link extractEntityId}.
  */
-export function table({
-  id,
-  name,
-}: {
-  id: ConcreteTableId;
-  name?: string | null;
-}) {
+export function table({ id, name }: { id: TableId; name?: string | null }) {
   return appendSlug(`/table/${id}`, name ? slugg(name) : undefined);
 }
 
