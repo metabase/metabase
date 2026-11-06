@@ -1,199 +1,199 @@
 (ns metabase-enterprise.serialization.v2.extract
-  "Extraction is the first step in serializing a Metabase appdb so it can be eg. written to disk.
+  "Extraction, the first step of an export: the entities an export takes, which storage then writes.
 
-  See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization]]."
+  An export selects rows with SQL alone: the Collections it targets with their descendants, their content, and the
+  other models it takes (see [[select/select-rows]]); [[metabase.serialization.core/export]] converts them, and
+  [[dependency-validation/validate-dependencies!]] checks that what they depend on is exported or exists."
   (:require
    [clojure.set :as set]
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.dependency-validation :as dependency-validation]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase-enterprise.serialization.v2.select :as select]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (defn- model-set
-  "Returns a set of models to export based on export opts"
+  "The models an export of `opts` takes."
   [opts]
   (cond-> #{}
-    (:include-field-values opts)
-    (conj "FieldValues")
-
-    (:include-metabot opts)
-    (conj "Metabot")
-
-    (not (:no-collections opts))
-    (into serdes.models/content)
-
-    (not (:no-data-model opts))
-    (into serdes.models/data-model)
-
-    (not (:no-settings opts))
-    (conj "Setting")
-
-    (not (:no-transforms opts))
-    (conj "Transform" "TransformTag" "TransformJob" "TransformTest" "PythonLibrary")
-
-    (not (:no-embedding-themes opts))
-    (conj "EmbeddingTheme")
-
-    (not (:no-custom-viz-plugins opts))
-    (conj "CustomVizPlugin")
-
-    (not (:no-data-apps opts))
-    (conj "DataApp")))
-
-;; OsiAiContext is intentionally NOT in the default export set. It's a top-level model that *depends on* its
-;; entity, extracted unfiltered, so any export — even an untargeted "full" one, which still omits personal and
-;; analytics collections — would pull ai_context rows whose referenced Card/Table/Measure/Segment is absent,
-;; leaking curator text and creating dangling deps that fail import. It stays out until reverse-dependency
-;; export lands (its row should travel *with* its entity), tracked in
-;; https://linear.app/metabase/issue/BOT-1759; see the metabase.osi.models.osi-ai-context serdes TODO.
+    (:include-field-values opts)       (conj :model/FieldValues)
+    (:include-metabot opts)            (conj :model/Metabot)
+    (not (:no-collections opts))       (into serdes.models/content)
+    (not (:no-data-model opts))        (into serdes.models/data-model)
+    (not (:no-settings opts))          (conj :model/Setting)
+    (not (:no-transforms opts))        (conj :model/Transform :model/TransformTag :model/TransformJob :model/TransformTest
+                                             :model/PythonLibrary)
+    (not (:no-embedding-themes opts))  (conj :model/EmbeddingTheme)
+    (not (:no-custom-viz-plugins opts)) (conj :model/CustomVizPlugin)
+    (not (:no-data-apps opts))         (conj :model/DataApp)))
 
 (defn make-targets-of-type
-  "Returns a targets seq with model type and given ids"
-  [model-name ids]
-  (mapv vector (repeat model-name) ids))
+  "The targets of an export of the `model` entities with `ids`, `model` a model keyword or name."
+  [model ids]
+  (mapv vector (repeat (keyword "model" (name model))) ids))
 
 (defn- collection-set-for-user
-  "Returns a set of collection IDs to export for the provided user, if any.
-   If user-id is nil, do not include any personally-owned collections.
-
-  Does not export ee-only analytics collections."
+  "The ids of the Collections an untargeted export takes for the User with `user-id`: every non-personal one, and the
+  personal ones of that User, without the analytics Collections. Nil stands for the root collection."
   [user-id]
   (let [roots (serialization.db/root-collections-for-user user-id)]
-    ;; start with the special "nil" root collection ID
     (-> #{nil}
         (into (map :id) roots)
         (into (mapcat collection/descendant-ids) roots))))
 
 (defn- missing-target-error
   "Bad-input error for a target that matches no row. `id-kind` names the flavour of id for the message."
-  [model-name id-kind id]
-  (ex-info (format "Could not find %s with %s: %s" model-name id-kind id)
+  [model id-kind id]
+  (ex-info (format "Could not find %s with %s: %s" (name model) id-kind id)
            {:status-code 400
-            :model       model-name
+            :model       (name model)
             :id          id}))
 
 (defn- parse-target
-  "Normalizes a `[model-name id]` target to a database-local id, checking that it actually exists.
-
-  Nothing downstream treats a missing target as an error: `serdes/descendants` finds no children for an
-  id with no row behind it, and a `nil` id quietly exports root-level content. Both are reported as bad
-  input here instead."
-  [[model-name id :as target]]
-  (if (string? id)
-    (if-let [resolved-id (serdes/eid->id model-name id)]
-      [model-name resolved-id]
-      (throw (missing-target-error model-name "entity ID" id)))
-    (let [model (keyword "model" model-name)]
-      (when-not (serialization.db/instance-exists? model id)
-        (throw (missing-target-error model-name "ID" id)))
-      target)))
+  "The `[model id]` of a target, `model` a model keyword or name and `id` its primary key or entity id, checking that it
+  exists."
+  [[model id]]
+  (let [model (keyword "model" (name model))]
+    (if (string? id)
+      (if-let [pk (serialization.db/entity-pk model id)]
+        [model pk]
+        (throw (missing-target-error model "entity ID" id)))
+      (do (when-not (serialization.db/instance-exists? model id)
+            (throw (missing-target-error model "ID" id)))
+          [model id]))))
 
 (defn- analytics-collection-ids
-  "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
-   These collections are intentionally excluded from serialization."
+  "The ids of the analytics Collections, which an export leaves out."
   []
-  (let [analytics-roots (serialization.db/analytics-root-collections)]
-    (into (set (map :id analytics-roots))
-          (mapcat collection/descendant-ids)
-          analytics-roots)))
+  (let [roots (serialization.db/analytics-root-collections)]
+    (into (set (map :id roots)) (mapcat collection/descendant-ids) roots)))
 
 (defn- analytics-card-ids
-  "Of `card-ids`, the subset living in an 'analytics' namespace collection. These are removed from extraction (they
-   have stable entity_ids across instances) and references to them stay valid, resolving on import. `card-ids` is
-   queried in bounded `:in` batches so a large closure doesn't blow past database parameter limits."
+  "Of `card-ids`, the ones in an analytics Collection, which an export leaves out: they have the same entity ids on
+  every instance, so references to them resolve on import."
   [card-ids]
-  (let [analytics-colls (analytics-collection-ids)]
-    (if (and (seq card-ids) (seq analytics-colls))
+  (let [colls (analytics-collection-ids)]
+    (if (and (seq card-ids) (seq colls))
       (into #{}
-            (comp (partition-all serdes/query-batch-size)
-                  (mapcat (fn [batch]
-                            (serialization.db/card-ids-in-collections (vec batch) (vec analytics-colls)))))
+            (comp (partition-all serialization/batch-size)
+                  (mapcat #(serialization.db/card-ids-in-collections (vec %) (vec colls))))
             card-ids)
       #{})))
 
-(defn- resolve-targets
-  "Returns all targets (for either supplied initial `targets` or for supplied `user-id`)."
-  [{:keys [targets] :as opts} user-id]
-  (let [initial-targets (if (seq targets)
-                          (mapv parse-target targets)
-                          (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
-        ;; a map of `{[model-name id] {source-model source-id ...}}`
-        targets         (u/traverse initial-targets #(serdes/descendants (first %) (second %) opts))]
-    ;; due to traverse argument we'd lose original source entities, lets track them
-    (merge-with into
-                targets
-                (u/traverse (map key targets) #(serdes/required (first %) (second %))))))
+(defn- selection
+  "The `{:collection-set ids :ids {model ids}}` an export of `opts` selects: the Collections of its `:targets`, and
+  those of the DataApps it targets, with their descendants, or those of `:user-id` when it has no targets, unarchived
+  ones only with `:skip-archived`, and the rows of other models it targets."
+  [{:keys [targets user-id skip-archived]}]
+  (if (seq targets)
+    (let [by-model (u/group-by first second (map parse-target targets))
+          roots    (into (vec (remove nil? (get by-model :model/Collection)))
+                         (serialization.db/data-app-collection-ids (vec (get by-model :model/DataApp))))]
+      {:collection-set (cond-> (serialization.db/collection-subtree-ids roots (boolean skip-archived))
+                         (some nil? (get by-model :model/Collection)) (conj nil))
+       :ids            (dissoc by-model :model/Collection)})
+    {:collection-set (let [ids (collection-set-for-user user-id)]
+                       (cond-> ids
+                         skip-archived (-> (set/difference (serialization.db/archived-collection-ids
+                                                            (vec (remove nil? ids))))
+                                           set)))
+     :ids            {}}))
 
-(defn- extract-subtrees
-  "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
+(defn- content-ids
+  "The map from each content model of `models` to the primary keys of the rows of it an export of `opts` with
+  `selection` takes: those in its Collections, and those it targets."
+  [models {:keys [collection-set ids]} opts]
+  (into {}
+        (keep (fn [model]
+                (let [selected (cond-> (set (get ids model))
+                                 (seq collection-set) (into (select/select-ids model (assoc opts :collection-set collection-set))))]
+                  (when (seq selected)
+                    [model selected]))))
+        (set/intersection models (set serdes.models/content))))
 
-  The targeted entities are specified as a list of `[\"SomeModel\" pk-or-entity-id]` pairs.
+(defn- select-rows-by-ids
+  "The rows of `model` with the primary keys `ids` that `opts` select, a batch at a time."
+  [model ids opts]
+  (into [] (comp (partition-all serialization/batch-size)
+                 (mapcat #(select/select-rows model (assoc opts :ids (vec %)))))
+        ids))
 
-  [[serdes/descendants]] is recursively called on these entities and all their descendants, until the
-  complete transitive closure of all descendants is found. This produces a set of `[\"ModelName\" id]` pairs, which
-  entities are then returned as a reducible stream of serializable entity maps, with `:serdes/meta` keys.
+(defn- with-dependencies
+  "`by-model`, a map from content models to primary keys, with the rows of the content `models` its rows depend on,
+  transitively, found by escape analysis, but elidable ones, as an export of the Collections `collection-set` takes
+  them: Snippets and their folders, and with no Collections those outside analytics Collections, or else those in the
+  Collections or their ancestors, whose rows it takes too."
+  [by-model models collection-set opts]
+  (let [content   (set/difference (set/intersection models (set serdes.models/content))
+                                  serdes.models/elidable-content-models)
+        analytics (analytics-collection-ids)
+        ancestors (into #{}
+                        (mapcat (comp collection/location-path->ids :location))
+                        (select-rows-by-ids :model/Collection (remove nil? collection-set) opts))
+        allowed   (into (set collection-set) ancestors)
+        taken?    (fn [model row]
+                    (cond
+                      (= :model/NativeQuerySnippet model)                    true
+                      (and (= :model/Collection model)
+                           (= "snippets" (some-> (:namespace row) name)))    true
+                      (seq collection-set)                                   (contains? allowed (if (= :model/Collection model)
+                                                                                                  (:id row)
+                                                                                                  (:collection_id row)))
+                      (= :model/Collection model)                            (not (contains? analytics (:id row)))
+                      :else                                                  (not (contains? analytics (:collection_id row)))))]
+    (loop [by-model by-model
+           frontier (into {} (map (fn [[model ids]] [model (select-rows-by-ids model ids opts)])) by-model)]
+      (let [candidates (reduce (fn [m [model id]]
+                                 (cond-> m
+                                   (and (content model) (some? id) (not (contains? (get by-model model) id)))
+                                   (update model (fnil conj #{}) id)))
+                               {}
+                               (keys (serialization/export-escapes frontier)))
+            fetched    (into {} (map (fn [[model ids]] [model (select-rows-by-ids model ids opts)])) candidates)
+            added      (into {}
+                             (keep (fn [[model rows]]
+                                     (when-let [rows (seq (filter #(taken? model %) rows))]
+                                       [model (vec rows)])))
+                             fetched)]
+        (if (seq added)
+          (recur (merge-with into by-model (update-vals added #(set (map :id %)))) added)
+          by-model)))))
 
-  Eg. if Dashboard B includes a Card A that is derived from a Card C that's in an alien collection, warnings will be
-  emitted for C, A and B, and all three will be excluded from the serialized output.
+(defn- export-rows
+  "The rows of `model` that `opts` select, exported."
+  [model opts]
+  (serialization/export model (select/select-rows model opts) :continue-on-error (:continue-on-error opts)))
 
-  `opts` are passed down to [[serdes/extract-all]] for each model."
-  [{:keys [targets user-id] :as opts}]
-  (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [models       (model-set opts)
-        has-content? (seq (set/intersection (set serdes.models/content) models))
-        nodes        (when has-content?
-                       (resolve-targets opts user-id))
-        ;; `by-model` is a map of `{model-name [ids ...]}`
-        by-model (u/group-by first second (keys nodes))
-        ;; Cards in analytics collections aren't extracted (stable entity_ids), but references to them stay valid.
-        analytics-cards (when has-content?
-                          (analytics-card-ids (get by-model "Card")))
-        coll-set        (get by-model "Collection")]
-    ;; Validate that every entity to be extracted has all its references satisfied; aborts (unless
-    ;; continue-on-error) before any archive is produced, so incomplete exports fail fast and loudly.
-    (when has-content?
-      (dependency-validation/validate-dependencies! by-model coll-set analytics-cards opts)) ;; may throw
-    (let [;; When targets are specified, also include Tables found via descendants
-          ;; (published tables in target collections). These are extracted by ID, not all.
-          targeted-data-model (when (seq targets)
-                                (select-keys by-model serdes.models/data-model-in-collection))
-          by-model        (cond-> (select-keys by-model models)
-                            ;; Add Tables back if they were found in descendants
-                            (seq targeted-data-model) (merge targeted-data-model)
-                            ;; Remove analytics cards from extraction - they have stable entity_ids across instances
-                            ;; so cards that reference them can still be exported and imported correctly
-                            (and analytics-cards (contains? by-model "Card"))
-                            (update "Card" (fn [ids] (vec (remove analytics-cards ids)))))
-          extract-by-ids  (fn [[model ids]]
-                            (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                   :filter-column  (serdes/primary-key model)
-                                                                   :filter-ids     (vec ids)})))
-          extract-all     (fn [model]
-                            (serdes/extract-all model (assoc opts :collection-set coll-set)))]
-      (eduction cat
-                [(if (seq targets)
-                   (eduction (map extract-by-ids) cat by-model)
-                   (eduction (map extract-all) cat (set/intersection (set serdes.models/content) models)))
-                 ;; extract all non-content entities like data model and settings if necessary
-                 (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))]))))
+(defn export-ids
+  "The rows of `model` with the primary keys `ids` that `opts` select, exported a batch at a time."
+  [model ids opts]
+  (eduction (mapcat #(export-rows model (assoc opts :ids (vec %)))) (partition-all serialization/batch-size ids)))
 
 (defn extract
-  "Returns a reducible stream of entities to serialize"
-  [opts]
-  (extract-subtrees opts))
-
-(comment
-  (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
-               (merge
-                (u/traverse colls #(serdes/ascendants (first %) (second %)))
-                (u/traverse colls #(serdes/descendants (first %) (second %) {})))))
-  (def by-model (u/group-by first second (keys nodes)))
-  ;; continue-on-error so this just logs in the REPL instead of throwing
-  (dependency-validation/validate-dependencies! by-model (get by-model "Collection")
-                                                (analytics-card-ids (get by-model "Card"))
-                                                {:continue-on-error true}))
+  "A reducible of the exported entities an export of `opts` takes: the content of the Collections it selects (see
+  [[selection]]) with the content it depends on, the published Tables of those Collections with their data model
+  when it has `:targets`, and every row of the other models it takes. Reduce it within [[metabase.serialization.core/with-export-transaction]] for a
+  consistent snapshot."
+  [{:keys [targets] :as opts}]
+  (log/tracef "Extracting with options: %s" (pr-str opts))
+  (let [models     (model-set opts)
+        selected   (selection opts)
+        by-model   (with-dependencies (content-ids models selected opts) models (:collection-set selected) opts)
+        analytics  (analytics-card-ids (vec (get by-model :model/Card)))
+        by-model   (cond-> by-model
+                     (seq analytics) (update :model/Card #(set (remove analytics %))))
+        table-ids  (when (and (seq targets) (seq (:collection-set selected)))
+                     (select/select-ids :model/Table (assoc opts :collection-set (:collection-set selected))))
+        table-dm   (when (seq table-ids)
+                     (remove models serdes.models/data-model-in-collection))]
+    (when (seq by-model)
+      (dependency-validation/validate-dependencies! by-model analytics-card-ids opts))
+    (eduction cat
+              [(eduction (mapcat (fn [[model ids]] (export-ids model ids opts))) by-model)
+               (eduction (mapcat #(export-rows % (assoc opts :table-ids table-ids))) table-dm)
+               (eduction (mapcat #(export-rows % opts)) (set/difference models (set serdes.models/content)))])))
