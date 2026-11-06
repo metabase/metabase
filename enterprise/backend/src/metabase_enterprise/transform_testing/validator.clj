@@ -138,9 +138,9 @@
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/unremapped-reference
             (if source
-              (tru "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the transform''s output and its declared inputs."
+              (tru "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the output of the query under test and its declared inputs."
                    (pr-str source) (str/join ", " surviving))
-              (tru "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+              (tru "The test could not fully remap the query under test to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
                    (str/join ", " surviving)))
             (cond-> {:references (vec surviving)}
               source (assoc :expectation source))))))
@@ -188,14 +188,14 @@
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/missing-inputs
-            (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+            (tru "The query under test reads table(s) with no declared test input: {0}. Add an input for each."
                  (str/join ", " (map table-label missing)))
             {:tables (mapv table-label missing)
              :response/keys #{:tables}})))
   (when-let [unused (seq (unused-inputs inputs referenced-tables default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/unused-inputs
-            (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+            (tru "Test input(s) declared for table(s) the query under test does not read: {0}. Remove them."
                  (str/join ", " (map table-label unused)))
             {:tables (mapv table-label unused)
              :response/keys #{:tables}})))

@@ -340,7 +340,7 @@
                          (catch ExceptionInfo e e))]
               (is (= ::transform-testing.errors/unparseable-source (:error-type (ex-data e))))
               (testing "and the refusal reads as the parser's own diagnostic, less its internals"
-                (is (= (str "The transform source SQL could not be parsed for test input validation: "
+                (is (= (str "The SQL of the query under test could not be parsed for test input validation: "
                             "ParseError: Expected table name but got 'WHERE'. Line 1, Col: 19.\n"
                             "  SELECT * FROM WHERE (\n"
                             "                ^^^^^")

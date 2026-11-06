@@ -48,7 +48,6 @@
     (when-not (driver.u/supports? driver :transforms/testing database)
       (throw (transform-testing.errors/ex
               ::transform-testing.errors/unsupported-driver
-              (tru "The {0} database of this transform does not support transform testing."
-                   (name driver))
+              (tru "Tests cannot run on the {0} database." (name driver))
               {:driver driver})))
     database))

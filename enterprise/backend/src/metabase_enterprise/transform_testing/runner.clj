@@ -185,7 +185,7 @@
       (if (sql-parsing/parse-error? e)
         (throw (transform-testing.errors/ex
                 ::transform-testing.errors/unparseable-source
-                (tru "The transform source SQL could not be parsed for test input validation: {0}"
+                (tru "The SQL of the query under test could not be parsed for test input validation: {0}"
                      (sql-parsing/parse-error-message e))
                 {}))
         (throw e)))))
@@ -218,7 +218,7 @@
     nil
     (catch Exception e
       (rethrow-remapped e ::transform-testing.errors/transform-failed
-                        (tru "The transform under test failed to run:")
+                        (tru "The query under test failed to run:")
                         labels))))
 
 (mu/defn- check-expectations :- [:sequential ::transform-testing.schema/expectation-result]

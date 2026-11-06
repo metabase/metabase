@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transform-testing.errors
-  "The `:error-type` vocabulary for transform tests, and [[ex]], the constructor every typed throw
-  goes through.
+  "The `:error-type` vocabulary for tests, and [[ex]], the constructor every typed throw goes through.
 
   A refusal and a failure are different outcomes, and a caller that confuses them either gives up
   on a real bug or chases one that does not exist. Everything here is a refusal: the run did not
@@ -12,10 +11,10 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private error-types
-  "Every `:error-type` a transform test run can throw, and the HTTP status it carries.
+  "Every `:error-type` a test run can throw, and the HTTP status it carries.
 
   400 — the test is wrong, and its author can fix it.
-  422 — the test is fine; the transform or its database prevents a run here.
+  422 — the test is fine; the subject or its database prevents a run here.
   501 — the test asks for something not built yet."
   {;; 400 — authoring
    ::unknown-column             400  ; An expectation names a column the output does not have.
@@ -25,10 +24,12 @@
    ::duplicate-input-table      400  ; Two inputs stand in for the same table.
    ::unparseable-source         400  ; The transform's SQL could not be parsed to find what it reads.
    ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
+   ::no-expectations            400  ; The test checks nothing.
 
-   ;; 422 — the transform or its environment
+   ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).
-   ::unsupported-driver         422  ; The database does not support transform testing.
+   ::unsupported-driver         422  ; The database does not support testing.
+   ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
    ::transform-failed           422  ; The transform under test would not run.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
@@ -44,13 +45,13 @@
   "Return `error-type` iff it is a member of [[all]]; otherwise throw."
   [error-type :- :keyword]
   (when-not (contains? all error-type)
-    (throw (ex-info (str error-type " is not a declared transform-test error type; see"
+    (throw (ex-info (str error-type " is not a declared test error type; see"
                          " metabase-enterprise.transform-testing.errors/all.")
                     {:invalid-error-type error-type})))
   error-type)
 
 (defmacro ex
-  "Construct (not throw) a typed transform-test ExceptionInfo. `error-type` is assoc'd into `data`
+  "Construct (not throw) a typed test ExceptionInfo. `error-type` is assoc'd into `data`
   under `:error-type` and must be a member of [[all]] — a literal keyword is checked at
   macro-expansion time, so a typo fails the build; a computed one is checked at runtime."
   ([error-type msg data]
@@ -62,12 +63,12 @@
      `(ex-info ~msg (assoc ~data :error-type (checked ~error-type)) ~cause))))
 
 (mu/defn code :- :string
-  "The public wire spelling of `error-type` — the vocabulary a client switches on.
-
-  Derived from the keyword's name so the two cannot drift, and prefixed so that the Clojure
-  namespace this vocabulary happens to live in is not what gets published."
-  [error-type :- :keyword]
-  (str "transform-test." (name error-type)))
+  "The public wire spelling of `error-type` under `prefix`, the endpoint family that refused: `<prefix>.<name>`. The
+  vocabulary a client switches on."
+  [prefix     :- :string
+   error-type :- :keyword]
+  ;; From the keyword's name, so the two cannot drift; the keyword's namespace is a source location, not vocabulary.
+  (str prefix "." (name error-type)))
 
 (mu/defn status-code :- :int
   "The HTTP status for `error-type`, or 500 for an untyped or unknown one."

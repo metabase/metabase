@@ -35,7 +35,7 @@
         (throw (ex-info (ex-message e)
                         (assoc (dissoc (ex-data e) :error-type)
                                :status-code (transform-testing.errors/status-code error-type)
-                               :error-code  (transform-testing.errors/code error-type))))
+                               :error-code  (transform-testing.errors/code "transform-test" error-type))))
         (throw e)))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::transform-testing.schema/transform-test.response]
