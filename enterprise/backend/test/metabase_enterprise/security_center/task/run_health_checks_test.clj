@@ -8,6 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private stored-results
+  {:read-only-connections {:result {}, :checked_at "2026-11-06T10:00:00Z"}})
+
 (deftest run-health-checks!-test
   (testing "does nothing when Security Center is off"
     (let [calls (atom 0)]
@@ -15,13 +18,20 @@
                                   health-checks/refresh-and-run-checks      #(do (swap! calls inc) [])]
         (run-health-checks/run-health-checks!)
         (is (zero? @calls)))))
-  (testing "refreshes and runs the checks, then sets the gauges and the last-run time"
-    (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
-                                health-checks/refresh-and-run-checks      (constantly [{:id       :https-redirect
-                                                                                        :severity :medium
-                                                                                        :status   :fail}])]
-      (mt/with-prometheus-system! [_ system]
-        (run-health-checks/run-health-checks!)
-        (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
-                                    {:check_id "https-redirect", :severity "medium", :status "fail"})))
-        (is (pos? (mt/metric-value system :metabase-security-center/health-checks-last-run-timestamp-seconds)))))))
+  (testing "refreshes and runs the checks, then sets the last-run gauge to the stored refresh time"
+    (mt/with-premium-features #{:admin-security-center}
+      (mt/with-temporary-setting-values [security-center-health-check-results stored-results]
+        (with-redefs [health-checks/checks {:read-only-connections {:id       :read-only-connections
+                                                                    :severity :high
+                                                                    :refresh  (constantly {})}}]
+          (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                      health-checks/refresh-and-run-checks      (constantly [{:id       :read-only-connections
+                                                                                              :severity :high
+                                                                                              :status   :fail}])]
+            (mt/with-prometheus-system! [_ system]
+              (run-health-checks/run-health-checks!)
+              (is (= 1793959200.0 (mt/metric-value system
+                                                   :metabase-security-center/health-checks-last-run-timestamp-seconds)))
+              (is (= 0.0 (mt/metric-value system :metabase-security-center/health-checks
+                                          {:check_id "read-only-connections", :severity "high", :status "fail"}))
+                  "the job does not set the status gauge"))))))))

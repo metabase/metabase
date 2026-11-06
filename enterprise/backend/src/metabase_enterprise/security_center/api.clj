@@ -148,7 +148,10 @@
   "Refresh every background health check that applies, wait for it, then run every health check that applies."
   []
   (api/check-superuser)
-  {:checks (doto (health-checks/refresh-and-run-checks) metrics/set-health-check-gauges!)})
+  (let [checks (health-checks/refresh-and-run-checks)]
+    (metrics/set-health-check-gauges! checks)
+    (metrics/set-health-checks-last-run!)
+    {:checks checks}))
 
 (def +check-security-center-enabled
   "Middleware that returns 402 if Security Center is not available on this instance."

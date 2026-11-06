@@ -1,11 +1,9 @@
 (ns metabase-enterprise.security-center.task.run-health-checks
-  "Quartz task that refreshes the background health checks, runs every health check and sets the health check
-  gauges."
+  "Quartz task that refreshes the background health checks and sets the last-run gauge."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time.api :as t]
    [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.metrics :as metrics]
    [metabase.premium-features.core :as premium-features]
@@ -19,19 +17,18 @@
 (def ^:private trigger-key "metabase.task.security-center.run-health-checks.trigger")
 
 (defn run-health-checks!
-  "Refreshes every background health check, runs every health check and sets the gauges. Does nothing when Security
-  Center is off."
+  "Refreshes every background health check, runs every health check and sets the last-run gauge. Does nothing when
+  Security Center is off."
   []
   (when (premium-features/security-center-enabled?)
     (let [timer  (u/start-timer)
           checks (health-checks/refresh-and-run-checks)]
-      (metrics/set-health-check-gauges! checks)
-      (metrics/set-health-checks-last-run! (t/offset-date-time))
+      (metrics/set-health-checks-last-run!)
       (log/infof "Ran %d health checks in %sms: %s"
                  (count checks) (u/since-ms timer) (frequencies (map :status checks))))))
 
 (task/defjob RunHealthChecks
-  "Periodically refresh the background health checks and set the health check gauges."
+  "Periodically refresh the background health checks."
   {:saved-class "metabase_enterprise.security_center.task.run_health_checks.RunHealthChecks"
    :concurrent? false}
   [_]

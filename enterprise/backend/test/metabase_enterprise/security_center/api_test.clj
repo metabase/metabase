@@ -372,4 +372,10 @@
           (testing "GET then returns what the recheck stored"
             (is (=? {:checks [{:status "fail"}]}
                     (mt/user-http-request :crowberto :get 200 "ee/security-center/health-checks")))
-            (is (= 1 @calls))))))))
+            (is (= 1 @calls)))
+          (testing "only POST recheck sets the last-run gauge"
+            (mt/with-prometheus-system! [_ system]
+              (mt/user-http-request :crowberto :get 200 "ee/security-center/health-checks")
+              (is (= 0.0 (mt/metric-value system :metabase-security-center/health-checks-last-run-timestamp-seconds)))
+              (mt/user-http-request :crowberto :post 200 "ee/security-center/health-checks/recheck")
+              (is (pos? (mt/metric-value system :metabase-security-center/health-checks-last-run-timestamp-seconds))))))))))
