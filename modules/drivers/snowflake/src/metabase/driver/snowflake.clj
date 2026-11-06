@@ -1447,7 +1447,7 @@
 
 (defmethod driver/init-workspace-isolation! :snowflake
   [driver database workspace]
-  (let [details          (driver.conn/effective-details database)
+  (let [details          (driver.conn/effective-details (driver.u/ensure-lib-database database))
         schema-name      (:schema workspace)
         db-name          (:db details)
         warehouse        (:warehouse details)
@@ -1494,7 +1494,7 @@
 
 (defmethod driver/destroy-workspace-isolation! :snowflake
   [driver database workspace]
-  (let [details     (driver.conn/effective-details database)
+  (let [details     (driver.conn/effective-details (driver.u/ensure-lib-database database))
         schema-name (:schema workspace)
         db-name     (:db details)
         role-name   (-> workspace :database_details :role)
@@ -1521,7 +1521,7 @@
 
 (defmethod driver/grant-workspace-read-access! :snowflake
   [driver database workspace schemas]
-  (let [db-name   (:db (driver.conn/effective-details database))
+  (let [db-name   (:db (driver.conn/effective-details (driver.u/ensure-lib-database database)))
         role-name (-> workspace :database_details :role)]
     (when-not role-name
       (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no role — initialization may have failed. Re-run workspace initialization and retry.")

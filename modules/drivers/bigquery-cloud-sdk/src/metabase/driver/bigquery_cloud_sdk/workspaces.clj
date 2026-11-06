@@ -568,7 +568,7 @@
   ;; project. Grant dataViewer at the dataset level so future tables also gain
   ;; access — matches the schema-wide semantics of the SQL drivers.
   (let [ws-sa-email (-> workspace :database_details :impersonate-service-account)
-        details     (driver.conn/effective-details database)
+        details     (driver.conn/effective-details (driver.u/ensure-lib-database database))
         client      (ws-database-details->client details)
         project-id  (bigquery.common/get-project-id details)]
     (log/infof "Granting dataset-level read access on %d dataset(s) %s to %s"
@@ -585,7 +585,7 @@
 
 (defmethod driver/destroy-workspace-isolation! :bigquery-cloud-sdk
   [_driver database workspace]
-  (let [details      (driver.conn/effective-details database)
+  (let [details      (driver.conn/effective-details (driver.u/ensure-lib-database database))
         client       (ws-database-details->client details)
         iam-client   (ws-database-details->iam-client details)
         project-id   (bigquery.common/get-project-id details)
@@ -602,7 +602,7 @@
 
 (defmethod driver/workspace-isolation-details :bigquery-cloud-sdk
   [_driver database workspace]
-  (let [details    (driver.conn/effective-details database)
+  (let [details    (driver.conn/effective-details (driver.u/ensure-lib-database database))
         project-id (bigquery.common/get-project-id details)
         sa-email   (ws-service-account-email workspace project-id)]
     {:schema           (driver.u/workspace-isolation-namespace-name workspace)
@@ -611,7 +611,7 @@
 
 (defmethod driver/init-workspace-isolation! :bigquery-cloud-sdk
   [_driver database workspace]
-  (let [details       (driver.conn/effective-details database)
+  (let [details       (driver.conn/effective-details (driver.u/ensure-lib-database database))
         client        (ws-database-details->client details)
         iam-client    (ws-database-details->iam-client details)
         project-id    (bigquery.common/get-project-id details)

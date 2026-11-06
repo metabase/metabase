@@ -785,7 +785,7 @@
   ;; connection's (admin-overlay-resolved) string rather than returning :user/:password.
   (let [username    (driver.u/workspace-isolation-user-name workspace)
         password    (driver.u/random-workspace-password)
-        original-db (:db (driver.conn/effective-details database))]
+        original-db (:db (driver.conn/effective-details (driver.u/ensure-lib-database database)))]
     {:schema           (driver.u/workspace-isolation-namespace-name workspace)
      :database_details {:db (replace-credentials original-db username password)}}))
 

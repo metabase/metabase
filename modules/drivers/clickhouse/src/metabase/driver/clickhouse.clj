@@ -682,7 +682,7 @@
 (defmethod driver/init-workspace-isolation! :clickhouse
   [driver database workspace]
   (let [db-name             (:schema workspace)
-        canonical-db        (:db (driver.conn/effective-details database))
+        canonical-db        (:db (driver.conn/effective-details (driver.u/ensure-lib-database database)))
         read-user           (:database_details workspace)
         escaped-password    (sql.u/escape-sql (:password read-user) :ansi)
         quoted-db           (quote-schema db-name)
