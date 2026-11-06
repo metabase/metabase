@@ -27,8 +27,7 @@
 
 (mr/def ::entry
   "One check as registered: the texts and the docs link the API returns, and the functions that compute the check.
-  `:applicable?` says whether the check is returned at all. `:run` computes the items and is always fast.
-  `:refresh` is the slow work of a background check; it stores a result that `:run` reads."
+  `:applicable?` says whether the check is returned at all. `:run` computes the items and is always fast."
   [:map {:closed true}
    [:id                ::security-center.schema/health-check-id]
    [:severity          ::security-center.schema/severity]
@@ -39,8 +38,7 @@
    [:docs-anchor       {:optional true} ms/NonBlankString]
    [:requires-restart? :boolean]
    [:applicable?       fn?]
-   [:run               fn?]
-   [:refresh           {:optional true} fn?]])
+   [:run               fn?]])
 
 (mr/def ::items
   "What `:run` returns: at least one item, so a check always reports something."
