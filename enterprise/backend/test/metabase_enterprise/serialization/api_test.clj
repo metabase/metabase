@@ -649,6 +649,7 @@
           (let [db (t2/select-one :model/Database :name db-name)]
             (is (some? db))
             (is (=? {:host "localhost" :port 5432 :dbname "mydb"} (:details db)))
+            (is (map? (:admin_details db)) "admin_details survives the import, with its low-level keys dropped")
             (doseq [k [:details :write_data_details :admin_details]]
               (is (= #{} (set (keys (select-keys (get db k) [:subname :classname :connection-uri :INIT]))))
                   (str k " should keep none of the low-level keys"))))

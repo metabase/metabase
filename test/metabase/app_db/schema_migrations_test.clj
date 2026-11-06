@@ -4591,3 +4591,25 @@
           (testing "deleting the workspace deletes its workspace_database rows"
             (t2/delete! :workspace :id ws-id)
             (is (not (t2/exists? :workspace_database :id wsd-id)))))))))
+
+(deftest readd-admin-details-migration-test
+  (testing "h8xlm4 re-adds metabase_database.admin_details, nullable, after 065 dropped it"
+    (impl/test-migrations ["h8xlm4"] [migrate!]
+      (let [db-id (t2/insert-returning-pk! :metabase_database {:name       "Admin details DB"
+                                                               :engine     "h2"
+                                                               :created_at :%now
+                                                               :updated_at :%now
+                                                               :details    "{}"})]
+        (is (not (contains? (t2/select-one :metabase_database :id db-id) :admin_details))
+            "065 dropped the column")
+        (migrate!)
+        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4"))))
+        (is (=? {:admin_details nil} (t2/select-one :metabase_database :id db-id))
+            "existing rows get a null admin_details")
+        (t2/update! :metabase_database :id db-id {:admin_details "{\"user\":\"admin\"}"})
+        (is (= "{\"user\":\"admin\"}" (:admin_details (t2/select-one :metabase_database :id db-id)))))))
+  (testing "h8xlm4 is MARK_RAN when admin_details is already there"
+    (impl/test-migrations ["h8xlm4"] [migrate!]
+      (t2/query "ALTER TABLE metabase_database ADD COLUMN admin_details TEXT")
+      (migrate!)
+      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4")))))))
