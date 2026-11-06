@@ -1,7 +1,6 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { Meta, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import { merge } from "icepick";
 import { type ComponentProps, type ComponentType, useEffect } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
@@ -103,11 +102,10 @@ export const AllOptions = {
     yesterday.classList.add("pseudo-hover");
   },
 };
-export const AllOptionsDarkTheme = merge(AllOptions, {
-  args: {
-    theme: "dark",
-  },
-});
+export const AllOptionsDarkTheme = {
+  ...AllOptions,
+  args: { theme: "dark" },
+};
 
 export const Exclude = {
   render: Template,
@@ -123,11 +121,10 @@ export const Exclude = {
       .classList.add("pseudo-hover");
   },
 };
-export const ExcludeDarkTheme = merge(Exclude, {
-  args: {
-    theme: "dark",
-  },
-});
+export const ExcludeDarkTheme = {
+  ...Exclude,
+  args: { theme: "dark" },
+};
 
 export const ExcludeDayOfWeek = {
   render: Template,
@@ -140,11 +137,10 @@ export const ExcludeDayOfWeek = {
     },
   },
 };
-export const ExcludeDayOfWeekDarkTheme = merge(ExcludeDayOfWeek, {
-  args: {
-    theme: "dark",
-  },
-});
+export const ExcludeDayOfWeekDarkTheme = {
+  ...ExcludeDayOfWeek,
+  args: { ...ExcludeDayOfWeek.args, theme: "dark" },
+};
 
 export const RelativeCurrent = {
   render: Template,
@@ -162,11 +158,10 @@ export const RelativeCurrent = {
     next.classList.add("pseudo-hover");
   },
 };
-export const RelativeCurrentDarkTheme = merge(RelativeCurrent, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativeCurrentDarkTheme = {
+  ...RelativeCurrent,
+  args: { ...RelativeCurrent.args, theme: "dark" },
+};
 
 export const RelativePrevious = {
   render: Template,
@@ -187,11 +182,10 @@ export const RelativePrevious = {
   },
   decorators: [WithMockDate],
 };
-export const RelativePreviousDarkTheme = merge(RelativePrevious, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativePreviousDarkTheme = {
+  ...RelativePrevious,
+  args: { ...RelativePrevious.args, theme: "dark" },
+};
 
 export const RelativeNext = {
   render: Template,
@@ -212,11 +206,10 @@ export const RelativeNext = {
   },
   decorators: [WithMockDate],
 };
-export const RelativeNextDarkTheme = merge(RelativeNext, {
-  args: {
-    theme: "dark",
-  },
-});
+export const RelativeNextDarkTheme = {
+  ...RelativeNext,
+  args: { ...RelativeNext.args, theme: "dark" },
+};
 
 export const SpecificBetween = {
   render: Template,
@@ -237,8 +230,7 @@ export const SpecificBetween = {
   },
 };
 
-export const SpecificBetweenDarkTheme = merge(SpecificBetween, {
-  args: {
-    theme: "dark",
-  },
-});
+export const SpecificBetweenDarkTheme = {
+  ...SpecificBetween,
+  args: { ...SpecificBetween.args, theme: "dark" },
+};

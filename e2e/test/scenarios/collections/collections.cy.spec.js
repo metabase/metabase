@@ -1,4 +1,3 @@
-import { assocIn } from "icepick";
 import _ from "underscore";
 
 const { H } = cy;
@@ -351,18 +350,10 @@ describe("scenarios > collection defaults", () => {
       "/api/collection/root/items?models=dashboard**",
       (req) => {
         req.on("response", (res) => {
-          const withLong = assocIn(
-            res.body,
-            ["data", 0, "last-edit-info"],
-            lastEditInfo(LONG_EMAIL),
-          );
-          res.send(
-            assocIn(
-              withLong,
-              ["data", 1, "last-edit-info"],
-              lastEditInfo(SHORT_EMAIL),
-            ),
-          );
+          const data = [...res.body.data];
+          data[0] = { ...data[0], "last-edit-info": lastEditInfo(LONG_EMAIL) };
+          data[1] = { ...data[1], "last-edit-info": lastEditInfo(SHORT_EMAIL) };
+          res.send({ ...res.body, data });
         });
       },
     );

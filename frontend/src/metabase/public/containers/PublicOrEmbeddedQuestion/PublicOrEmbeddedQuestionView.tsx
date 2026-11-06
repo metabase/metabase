@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import cx from "classnames";
-import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -116,12 +114,15 @@ export function PublicOrEmbeddedQuestionView({
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,
             ) => {
-              setCard((prevCard) =>
-                updateIn(
-                  prevCard,
-                  ["visualization_settings"],
-                  (previousSettings) => ({ ...previousSettings, ...settings }),
-                ),
+              setCard(
+                (prevCard) =>
+                  prevCard && {
+                    ...prevCard,
+                    visualization_settings: {
+                      ...prevCard.visualization_settings,
+                      ...settings,
+                    },
+                  },
               );
             }}
             gridUnit={12}

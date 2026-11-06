@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -54,9 +53,8 @@ const AutomaticDashboardAppInner = () => {
   const save = async () => {
     if (dashboard) {
       // remove the transient id before trying to save
-      const { data: newDashboard } = await saveDashboard(
-        dissoc(dashboard, "id"),
-      );
+      const { id: _id, ...dashboardWithoutId } = dashboard;
+      const { data: newDashboard } = await saveDashboard(dashboardWithoutId);
 
       if (!newDashboard) {
         return;
