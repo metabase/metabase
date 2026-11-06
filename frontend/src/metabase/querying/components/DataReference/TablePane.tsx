@@ -12,7 +12,7 @@ import {
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { getTableQueryAndColumns } from "metabase/querying/common/utils";
+import { getColumnListInfo } from "metabase/querying/common/utils";
 import { isConcreteTableId } from "metabase-types/api";
 
 import { ConnectedTableList } from "./ConnectedTableList";
@@ -55,7 +55,7 @@ export function TablePane({
     );
   }
 
-  const queryAndColumns = getTableQueryAndColumns(metadataProvider, table.id);
+  const columnListInfo = getColumnListInfo(metadataProvider, table.id);
 
   const handleColumnClick = (columnIndex: number) => {
     onItemClick({ type: "field", tableId: table.id, columnIndex });
@@ -81,12 +81,12 @@ export function TablePane({
           )}
         </div>
         <div className={CS.my2}>
-          {queryAndColumns?.columns.length ? (
+          {columnListInfo?.columns.length ? (
             <>
               <FieldList
-                query={queryAndColumns.query}
-                stageIndex={queryAndColumns.stageIndex}
-                columns={queryAndColumns.columns}
+                query={columnListInfo.query}
+                stageIndex={columnListInfo.stageIndex}
+                columns={columnListInfo.columns}
                 onColumnClick={handleColumnClick}
               />
               <ConnectedTableList
