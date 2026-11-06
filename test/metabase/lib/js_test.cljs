@@ -754,3 +754,21 @@
              (lib.js/primary-source-card-id (lib/query mp (lib.metadata/card mp (:id card)))))))
     (testing "returns nil for source table"
       (is (nil? (lib.js/primary-source-card-id (lib/query mp (lib.metadata/table mp (meta/id :orders)))))))))
+
+(deftest ^:parallel legacy-column->type-info-test
+  (testing "picks only base, effective, and semantic types as keywords"
+    (is (= {:base-type      :type/Integer
+            :effective-type :type/Integer
+            :semantic-type  :type/PK}
+           (lib.js/legacy-column->type-info #js {:id             1
+                                                 :name           "ID"
+                                                 :table_id       2
+                                                 :base_type      "type/Integer"
+                                                 :effective_type "type/Integer"
+                                                 :semantic_type  "type/PK"}))))
+  (testing "skips missing types"
+    (is (= {:base-type :type/Text}
+           (lib.js/legacy-column->type-info #js {:base_type "type/Text" :semantic_type nil}))))
+  (testing "keeps Lib columns unchanged"
+    (let [column (meta/field-metadata :orders :id)]
+      (is (= column (lib.js/legacy-column->type-info column))))))
