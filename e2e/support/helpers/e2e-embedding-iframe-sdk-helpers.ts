@@ -58,7 +58,11 @@ export interface BaseEmbedTestPageOptions {
 
 export interface MetabaseElement {
   // The component to embed
-  component: "metabase-dashboard" | "metabase-question" | "metabase-browser";
+  component:
+    | "metabase-dashboard"
+    | "metabase-question"
+    | "metabase-browser"
+    | "metabase-data-app";
 
   // Attributes passed serialized to the element
   attributes: {
@@ -172,7 +176,7 @@ function getSdkIframeEmbedHtml({
       ${elements
         .map(
           ({ component, attributes }) => `
-        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)}></${component}>
       `,
         )
         .join("\n")}

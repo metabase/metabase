@@ -59,6 +59,7 @@ export interface DataAppGroup {
   id: number;
   name: string;
   member_count: number;
+  is_tenant_group: boolean;
 }
 
 export interface AddDataAppGroupsRequest {

@@ -11,13 +11,13 @@
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
+   [metabase-enterprise.browser-sandboxing.api]
    [metabase-enterprise.cloud-add-ons.api]
    [metabase-enterprise.cloud-proxy.api]
    [metabase-enterprise.content-diagnostics.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
-   [metabase-enterprise.custom-viz-plugin.api.sandbox-host]
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
@@ -120,14 +120,7 @@
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
-   ;; The sandbox donor GET can be accessed without auth (an iframe src cannot carry session auth), so it lives in
-   ;; its own namespace, tested before the rest of the session-authed custom-viz routes. Both stay behind
-   ;; the :custom-viz premium gate.
-   "/custom-viz-plugin"            (premium-handler
-                                    (handlers/routes
-                                     metabase-enterprise.custom-viz-plugin.api.sandbox-host/routes
-                                     metabase-enterprise.custom-viz-plugin.api/routes)
-                                    :custom-viz)
+   "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.
@@ -156,6 +149,7 @@
    ;; a lapsed-license user still needs to manage their enrolled second factor. The :multi-factor-auth
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
+   "/browser-sandboxing"           metabase-enterprise.browser-sandboxing.api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    "/transform-test"               (premium-handler metabase-enterprise.transform-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
