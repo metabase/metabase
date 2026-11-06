@@ -310,8 +310,8 @@
 (defn- attribute-occurrences!
   "Per-symbol attribution of the [[kondo-ratchet/discouragement-linters]] ignores in each of `groups`, a seq
   of occurrence seqs, as [[attribute-discouraged]] returns it, in the same order.
-  `edges` is a delay of [[alias-edges]] for the configured discouraged vars."
-  [groups edges]
+  `edges-delay` is a delay of [[alias-edges]] for the configured discouraged vars."
+  [groups edges-delay]
   ;; One kondo run covers every group, since a JVM start and a lint pass dominate the cost.
   (let [discouraged-files (fn [occurrences]
                             (into (sorted-set)
@@ -326,11 +326,12 @@
                                   [linter (kondo-ratchet/discouraged-symbols linter config)]))
         ;; Started first so the alias passes run alongside the attribution run: each kondo run is mostly JVM
         ;; startup. Forcing the delay below waits for them and rethrows a failed pass's own exception.
-        _                 (future @edges)
+        _                 (future @edges-delay)
         [output baseline] (if (empty? contents)
                             [{} []]
-                            (lint-with-ignores-disabled! contents))]
-    (mapv #(attribute-discouraged (select-keys contents %) output baseline known @edges) file-groups)))
+                            (lint-with-ignores-disabled! contents))
+        edges             @edges-delay]
+    (mapv #(attribute-discouraged (select-keys contents %) output baseline known edges) file-groups)))
 
 (defn ratchet-options
   "The `:attribute` and `:aliases` that [[dev.kondo-ratchet/check]] and `fix!` take.

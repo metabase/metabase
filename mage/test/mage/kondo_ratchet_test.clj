@@ -603,20 +603,27 @@
 
 (deftest alias-edges!-kondo-test
   (testing "a real kondo pass over an import-vars re-export and an OSS defenterprise finds both edges"
-    (let [dir (fs/create-temp-dir)]
+    (let [dir  (fs/create-temp-dir)
+          file (str (fs/file dir "oss.clj"))]
       (try
-        (spit (fs/file dir "oss.clj")
-              (str "(ns fixture.oss\n"
-                   "  (:require\n"
-                   "   [fixture.impl]\n"
-                   "   [metabase.premium-features.core :refer [defenterprise]]\n"
-                   "   [potemkin :as p]))\n\n"
-                   "(p/import-vars [fixture.impl g])\n\n"
-                   "(defenterprise f\n  \"Docstring.\"\n  metabase-enterprise.fixture\n  [x]\n  x)\n"))
+        (spit file (str/join "\n" ["(ns fixture.oss"
+                                   "  (:require"
+                                   "   [fixture.impl]"
+                                   "   [metabase.premium-features.core :refer [defenterprise]]"
+                                   "   [potemkin :as p]))"
+                                   ""
+                                   "(p/import-vars [fixture.impl g])"
+                                   ""
+                                   "(defenterprise f"
+                                   "  \"Docstring.\""
+                                   "  metabase-enterprise.fixture"
+                                   "  [x]"
+                                   "  x)"
+                                   ""]))
         (is (= '{fixture.oss/g                 fixture.impl/g
                  metabase-enterprise.fixture/f fixture.oss/f}
                (kondo-ratchet/alias-edges! '#{fixture.oss/g metabase-enterprise.fixture/f}
-                                           #(when (= 'fixture.oss (symbol %)) [(str (fs/file dir "oss.clj"))])
+                                           #(when (= 'fixture.oss (symbol %)) [file])
                                            #'kondo-ratchet/analyze-for-aliases!)))
         (finally
           (fs/delete-tree dir))))))
@@ -627,8 +634,10 @@
             :ee.search.core/f       :search.core/f}
            (kondo-ratchet/alias-keys '{metabase.lib.core/->legacy-MBQL   metabase.lib.convert/->legacy-MBQL
                                        metabase-enterprise.search.core/f metabase.search.core/f}
-                                     '#{metabase.lib.core/->legacy-MBQL metabase.lib.convert/->legacy-MBQL
-                                        metabase-enterprise.search.core/f metabase.search.core/f})))))
+                                     '#{metabase-enterprise.search.core/f
+                                        metabase.lib.convert/->legacy-MBQL
+                                        metabase.lib.core/->legacy-MBQL
+                                        metabase.search.core/f})))))
 
 (deftest ratchet-options-test
   (testing "attribution and the aliases share one run of the alias passes"
@@ -637,10 +646,14 @@
       ((:attribute options) [[]])
       (is (= {} ((:aliases options))))
       (is (= 1 @runs))))
-  (testing "a failed run's own exception reaches both"
-    (let [options (kondo-ratchet/ratchet-options (fn [_vars] (throw (ex-info "alias passes failed" {}))))]
+  (testing "a failed run's own exception reaches both, and the run isn't repeated"
+    (let [runs    (atom 0)
+          options (kondo-ratchet/ratchet-options (fn [_vars]
+                                                   (swap! runs inc)
+                                                   (throw (ex-info "alias passes failed" {}))))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"alias passes failed" ((:attribute options) [[]])))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"alias passes failed" ((:aliases options)))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"alias passes failed" ((:aliases options))))
+      (is (= 1 @runs)))))
 
 (deftest attribute-discouraged-alias-test
   (testing "an ignore on a re-exported var counts under its source"
