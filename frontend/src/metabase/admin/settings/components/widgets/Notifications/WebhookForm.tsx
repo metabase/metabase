@@ -80,7 +80,6 @@ const styles = {
   },
   labelProps: {
     fz: "0.875rem",
-    mb: "0.75rem",
   },
 };
 

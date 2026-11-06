@@ -155,7 +155,6 @@ const EventForm = ({
                     value={getTimeInputValue(values.timestamp)}
                     name="date"
                     label={t`Time`}
-                    fw="bold"
                     flex={1}
                     onChange={(time) => {
                       if (time) {

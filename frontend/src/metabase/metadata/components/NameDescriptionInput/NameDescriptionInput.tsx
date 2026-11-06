@@ -61,7 +61,11 @@ export const NameDescriptionInput = ({
   return (
     <Box ref={ref}>
       <Input
-        classNames={{ root: S.name }}
+        classNames={{
+          input: S.nameInput,
+          root: S.name,
+          wrapper: S.nameWrapper,
+        }}
         fw="bold"
         leftSection={
           <Group
@@ -128,13 +132,16 @@ export const NameDescriptionInput = ({
 
       <Textarea
         autosize
+        classNames={{
+          input: S.descriptionInput,
+          root: S.description,
+        }}
         maxRows={4}
         minRows={2}
         placeholder={descriptionPlaceholder}
         pos="relative"
         styles={{
           input: {
-            lineHeight: "var(--mantine-line-height-lg)",
             borderStartStartRadius: 0,
             borderStartEndRadius: 0,
             borderEndStartRadius: "var(--mantine-radius-sm)",

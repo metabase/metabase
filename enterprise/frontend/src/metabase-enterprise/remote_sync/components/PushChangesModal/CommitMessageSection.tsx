@@ -14,16 +14,11 @@ export const CommitMessageSection = ({
   <Box>
     <Textarea
       value={value}
-      label={<Text mb="xxs">{t`Describe your changes`}</Text>}
+      label={t`Describe your changes`}
       onChange={(e) => onChange(e.target.value)}
       placeholder={t`What did you change and why?`}
       minRows={3}
       maxRows={5}
-      styles={{
-        input: {
-          fontSize: "0.875rem",
-        },
-      }}
     />
     <Text size="xs" c="text-secondary" mt="sm">
       {t`This message will be visible in your Git history`}

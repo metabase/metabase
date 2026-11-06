@@ -1,6 +1,4 @@
 .root {
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-sm);
   overflow: hidden;
 
   &:hover {
@@ -8,6 +6,31 @@
       color: var(--mb-color-core-brand);
     }
   }
+}
+
+/* The picker's own frame and sizes, unless it follows the inputs.
+   E.g. the X-axis fields of a bar chart. */
+.root:not(.defaultInputStyle) {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--mb-color-background_page-primary);
+
+  /* Keep 40px and 16px icons: the picker sits in lists with other chart settings rows */
+  input {
+    --input-height: var(--input-height-lg);
+  }
+
+  [data-position] {
+    --input-section-icon-size: 1rem;
+  }
+}
+
+/* As a single field it looks like the other inputs.
+   E.g. the Metric field of a map. */
+.defaultInputStyle {
+  border: 0.5px solid var(--mb-color-border-neutral-strongest);
+  border-radius: var(--mantine-radius-xs);
+  background-color: var(--mb-color-input-background);
 }
 
 .grabberHandle {

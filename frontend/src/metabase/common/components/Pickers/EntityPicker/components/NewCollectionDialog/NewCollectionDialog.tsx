@@ -130,7 +130,6 @@ export const NewCollectionDialog = () => {
                 name="name"
                 label={t`Give it a name`}
                 placeholder={t`My new collection`}
-                labelProps={{ my: "0.5rem" }}
                 data-autofocus
               />
               <Modal.Footer>
