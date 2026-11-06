@@ -1,4 +1,3 @@
-import type * as Lib from "metabase-lib";
 import type {
   CardId,
   ConcreteTableId,
@@ -80,9 +79,3 @@ export type DataReferenceCardFieldItem = {
 export type DataReferenceFieldItem =
   | DataReferenceTableFieldItem
   | DataReferenceCardFieldItem;
-
-export type ColumnListInfo = {
-  query: Lib.Query;
-  stageIndex: number;
-  columns: Lib.ColumnMetadata[];
-};

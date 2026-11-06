@@ -12,7 +12,6 @@ import { useMetadataProvider } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
 
 import type {
-  ColumnListInfo,
   DataReferenceCardFieldItem,
   DataReferencePaneProps,
   DataReferenceTableFieldItem,
@@ -49,9 +48,16 @@ function TableFieldPane({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  const columnListInfo = getTableColumnListInfo(metadataProvider, table.id);
+  if (columnListInfo == null) {
+    return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
+  }
+
   return (
     <ColumnFieldPane
-      columnListInfo={getTableColumnListInfo(metadataProvider, table.id)}
+      query={columnListInfo.query}
+      stageIndex={columnListInfo.stageIndex}
+      columns={columnListInfo.columns}
       columnIndex={columnIndex}
       timezone={table.db?.timezone}
       onBack={onBack}
@@ -87,13 +93,20 @@ function CardFieldPane({
     );
   }
 
+  const columnListInfo = getCardColumnListInfo(metadataProvider, card.id);
+  if (columnListInfo == null) {
+    return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
+  }
+
   const database = cardMetadata.databases.find(
     (database) => database.id === card.database_id,
   );
 
   return (
     <ColumnFieldPane
-      columnListInfo={getCardColumnListInfo(metadataProvider, card.id)}
+      query={columnListInfo.query}
+      stageIndex={columnListInfo.stageIndex}
+      columns={columnListInfo.columns}
       columnIndex={columnIndex}
       timezone={database?.timezone}
       onBack={onBack}
@@ -103,7 +116,9 @@ function CardFieldPane({
 }
 
 type ColumnFieldPaneProps = {
-  columnListInfo: ColumnListInfo | undefined;
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
   columnIndex: number;
   timezone: string | undefined;
   onBack?: () => void;
@@ -111,18 +126,19 @@ type ColumnFieldPaneProps = {
 };
 
 function ColumnFieldPane({
-  columnListInfo,
+  query,
+  stageIndex,
+  columns,
   columnIndex,
   timezone,
   onBack,
   onClose,
 }: ColumnFieldPaneProps) {
-  const column = columnListInfo?.columns.at(columnIndex);
-  if (columnListInfo == null || column == null) {
+  const column = columns.at(columnIndex);
+  if (column == null) {
     return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
   }
 
-  const { query, stageIndex } = columnListInfo;
   const { name } = Lib.displayInfo(query, stageIndex, column);
 
   return (
