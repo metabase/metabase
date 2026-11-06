@@ -25,14 +25,14 @@
   (:require
    #?@(:clj [[metabase.util.json :as json]])
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 ;;; -------------------------------------------------- Main API --------------------------------------------------
 
@@ -372,13 +372,9 @@
   (= "dimension" (get-in mapping [:target :type])))
 
 (defn- normalize [form]
-  (walk/postwalk
-   (fn [form]
-     (if (and (sequential? form)
-              (string? (first form)))
-       (into [(keyword (first form))] (map normalize) (rest form))
-       form))
-   form))
+  (match/replace-all form
+    [#'string? & _] (update &match 0 keyword)
+    #'map? (update-keys &match #(cond-> % (string? %) keyword))))
 
 (defn db->norm-param-mapping
   "Converts a `parameter-mapping` (i.e. value of `:parameterMapping`) from DB to normalized form"

@@ -7,14 +7,14 @@
 
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
   (:require
-   [clojure.walk :as walk]
    [hiccup.core :refer [html]]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.style :as style]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match])
   (:import
    (cz.vutbr.web.css CSSFactory MediaSpec NetworkProcessor)
    (java.awt Font GraphicsEnvironment Graphics2D RenderingHints)
@@ -197,21 +197,13 @@
   If a given string, inside a `transformable-element` contains any character that isn't Lato-compatible, replace the entire string.
   This is done to make the string as consistent as possible (no mixing fonts in a single string)."
   [content]
-  (let [transformable-els #{:div :span :td :th :tr :table :p :tbody :thead}
-        string-wrapper    (fn [part]
-                            (if (and (string? part)
-                                     (not (lato-can-render? part)))
-                              [:span {:style (style/style {:font-family "sans-serif"})} part]
-                              part))]
-    (walk/postwalk
-     (fn [form]
-       (if (and
-            (not (map-entry? form))
-            (vector? form)
-            (transformable-els (first form)))
-         (mapv string-wrapper form)
-         form))
-     content)))
+  (let [string-wrapper (fn [part]
+                         (if (and (string? part)
+                                  (not (lato-can-render? part)))
+                           [:span {:style (style/style {:font-family "sans-serif"})} part]
+                           part))]
+    (match/replace-all content
+      [#{:div :span :td :th :tr :table :p :tbody :thead} & _] (mapv string-wrapper &match))))
 
 (mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."

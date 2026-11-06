@@ -1,14 +1,14 @@
 (ns metabase.lib.schema.metadata-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (deftest ^:parallel normalize-column-metadata-test
   (let [col {"active"                                          true
@@ -80,11 +80,7 @@
 (deftest ^:parallel normalize-column-metadata-from-json-test
   (let [cols      (for [field (meta/fields :venues)]
                     (meta/field-metadata :venues field))
-        json-cols (walk/postwalk
-                   (fn [x]
-                     (cond-> x
-                       (keyword? x) u/qualified-name))
-                   cols)]
+        json-cols (match/replace-all cols #'keyword? (u/qualified-name &match))]
     (is (= cols
            (lib/normalize [:sequential ::lib.schema.metadata/column] json-cols)))))
 
