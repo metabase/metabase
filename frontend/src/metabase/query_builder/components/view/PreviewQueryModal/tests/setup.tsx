@@ -8,7 +8,13 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import type { TokenFeatures } from "metabase-types/api";
+import type {
+  Card,
+  NativeDatasetQuery,
+  NativeDatasetResponse,
+  ParameterValuesMap,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockDatabase,
   createMockNativeCard,
@@ -21,16 +27,21 @@ export interface SetupOpts {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  card?: Card<NativeDatasetQuery>;
+  parameterValues?: ParameterValuesMap;
+  nativeQueryResponse?: NativeDatasetResponse;
 }
 
 export const setup = ({
   showMetabaseLinks = true,
   tokenFeatures = {},
   enterprisePlugins = [],
+  card = createMockNativeCard(),
+  parameterValues = {},
+  nativeQueryResponse,
 }: SetupOpts = {}) => {
-  const card = createMockNativeCard();
   const state = createMockState({
-    qb: createMockQueryBuilderState({ card }),
+    qb: createMockQueryBuilderState({ card, parameterValues }),
     entities: createMockEntitiesState({
       databases: [createMockDatabase()],
       questions: [card],
@@ -45,12 +56,16 @@ export const setup = ({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  fetchMock.post("path:/api/dataset/native", {
-    status: 500,
-    body: {
-      message: 'Cannot run the query: missing required parameters: #{"value"}',
+  fetchMock.post(
+    "path:/api/dataset/native",
+    nativeQueryResponse ?? {
+      status: 500,
+      body: {
+        message:
+          'Cannot run the query: missing required parameters: #{"value"}',
+      },
     },
-  });
+  );
 
   renderWithProviders(<PreviewQueryModal />, { storeInitialState: state });
 };

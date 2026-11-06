@@ -343,6 +343,7 @@ function DataAppLogTableContent({
       <LoadingOverlay visible={isFetching} />
       <TreeTable
         instance={instance}
+        static
         hierarchical={false}
         ariaLabel={t`Data app activity`}
         emptyState={<MonitorEmptyState label={t`No activity found`} />}

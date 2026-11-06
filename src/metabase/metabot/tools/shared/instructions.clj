@@ -51,12 +51,19 @@ The assistant needs to:
 - Use statistics ONLY for query planning (e.g., percent_null indicates whether to handle NULLs,
   distinct_count suggests field cardinality), NEVER to answer the user's question directly")
 
+(def not-saved-instruction
+  "Tells the model that what it just built has no card, so that it does not claim a save."
+  (str "- It is not saved. Do not bring this up unless the user asks about saving, "
+       "or what they asked for needs it saved. "
+       "Say that it is saved only after a tool result says so."))
+
 (defn chart-created-instructions
   "Generate instructions for chart creation result."
   [chart-id]
   (str "Chart created successfully.\n"
        "Present link to user using: [Chart](metabase://chart/" chart-id ")\n"
-       "Replace 'Chart' with a meaningful description of what the chart shows."))
+       "Replace 'Chart' with a meaningful description of what the chart shows.\n"
+       not-saved-instruction))
 
 (def answer-sources-instructions
   "Instructions for LLM when processing available answer sources (metrics and models)."
@@ -75,6 +82,7 @@ Reference items using: [name](metabase://type/id)")
          "- Remember you cannot view the results directly yourself\n")
        "- Always provide a direct link using `[Link text](metabase://query/" query-id ")` "
        "so the user can open it themselves\n"
+       not-saved-instruction "\n"
        "- Consider whether to create a chart or graph when that better matches the user's intent\n"
        "- Present the results in a way that matches the user's intent and follow up if they need clarification"))
 
@@ -96,7 +104,8 @@ Reference items using: [name](metabase://type/id)")
          "tell them it's waiting there, do not offer a link")
     (str "- Always provide a direct link using: "
          "`[Updated Query](metabase://query/" query-id ")` "
-         "where Updated Query is a meaningful link text")))
+         "where Updated Query is a meaningful link text\n"
+         not-saved-instruction)))
 
 (defn edit-sql-query-instructions-for
   "Generate instructions for an edited SQL query. `loaded-in-editor?` reflects how the result was

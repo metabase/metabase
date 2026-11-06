@@ -178,6 +178,15 @@ describe("NativeQuery", () => {
         expect(query.setQueryText("SELECT * FROM ORDERS").table()).toBe(null);
       });
     });
+
+    describe("setDatabaseId()", () => {
+      it("switches a SQL query to a Mongo database (metabase#53299)", () => {
+        const mongoQuery = makeQuery("SELECT 1").setDatabaseId(MONGO_DB_ID);
+        expect(mongoQuery.engine()).toBe("mongo");
+        expect(mongoQuery.requiresTable()).toBe(true);
+        expect(mongoQuery.queryText()).toBe("SELECT 1");
+      });
+    });
   });
 
   describe("Accessing the underlying native query", () => {
@@ -595,6 +604,20 @@ describe("NativeQuery", () => {
       expect(oldQuery.templateTags()).toEqual(newQuery.templateTags());
     });
 
+    it("should preserve the order of template tags when the type of a tag changes (metabase#11580)", () => {
+      const oldQuery = makeQuery().setQueryText("SELECT {{foo}} {{bar}}");
+      const newQuery = oldQuery.setTemplateTag("foo", {
+        ...oldQuery.templateTagsMap()["foo"],
+        type: "number",
+      });
+
+      expect(newQuery.templateTags().map((tag) => tag.name)).toEqual([
+        "foo",
+        "bar",
+      ]);
+      expect(newQuery.templateTagsMap()["foo"].type).toBe("number");
+    });
+
     it("should allow setting source settings for tags", () => {
       const oldQuery = makeQuery().setQueryText(
         "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
@@ -613,6 +636,25 @@ describe("NativeQuery", () => {
       expect(newParameters[0].values_query_type).toEqual("search");
       expect(newParameters[0].values_source_type).toEqual("static-list");
       expect(newParameters[0].values_source_config).toEqual({ values: ["A"] });
+    });
+
+    it("should use the default value of a required tag as the parameter default", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{cat}}",
+      );
+      const newQuery = oldQuery.setTemplateTag("cat", {
+        ...oldQuery.templateTagsMap()["cat"],
+        required: true,
+        default: "Gizmo",
+      });
+
+      const newParameters = newQuery.question().parameters();
+      expect(newParameters).toHaveLength(1);
+      expect(newParameters[0]).toMatchObject({
+        slug: "cat",
+        required: true,
+        default: "Gizmo",
+      });
     });
   });
 
