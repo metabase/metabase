@@ -63,10 +63,11 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = mergeLazily(
 ) as Collection;
 
 export function SavedEntityPicker(props: SavedEntityPickerProps) {
-  const { data: collections } = useListCollectionsTreeQuery({
-    "exclude-archived": true,
-    namespaces: ["", "shared-tenant-collection", "tenant-specific"],
-  });
+  const { data: collections, error: collectionsError } =
+    useListCollectionsTreeQuery({
+      "exclude-archived": true,
+      namespaces: ["", "shared-tenant-collection", "tenant-specific"],
+    });
   const { data: rootCollection, isLoading: isRootCollectionLoading } =
     useGetCollectionQuery({ id: "root" });
   const currentUser = useSelector(getUser);
@@ -74,7 +75,7 @@ export function SavedEntityPicker(props: SavedEntityPickerProps) {
   // The starting collection is picked once, so wait for "Our analytics" to load
   // or fail: users without access to it still get the picker.
   if (!collections || isRootCollectionLoading || !currentUser) {
-    return <DelayedLoadingAndErrorWrapper loading error={null} />;
+    return <DelayedLoadingAndErrorWrapper loading error={collectionsError} />;
   }
 
   return (

@@ -73,6 +73,7 @@ function mockCollectionItemsEndpoint() {
 
 type SetupOpts = {
   rootCollectionRequest?: "loads-after-collections" | "fails";
+  collectionsTreeRequest?: "fails";
 };
 
 function mockRootCollectionRequest(
@@ -87,7 +88,14 @@ function mockRootCollectionRequest(
   return () => rootCollection.resolve(createMockCollection(ROOT_COLLECTION));
 }
 
-async function setup({ rootCollectionRequest }: SetupOpts = {}) {
+async function setup({
+  rootCollectionRequest,
+  collectionsTreeRequest,
+}: SetupOpts = {}) {
+  // registered before setupCollectionsEndpoints, so it answers first
+  if (collectionsTreeRequest === "fails") {
+    fetchMock.get("path:/api/collection/tree", 500);
+  }
   setupCollectionsEndpoints({
     collections: [COLLECTIONS.PERSONAL, COLLECTIONS.REGULAR],
   });
@@ -184,5 +192,12 @@ describe("SavedEntityPicker", () => {
     const options = await screen.findAllByTestId("option-text");
     expect(options.map((node) => node.textContent)).toEqual(["personal item"]);
     expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+  });
+
+  it("shows an error instead of the loader when the collections request fails", async () => {
+    await setup({ collectionsTreeRequest: "fails" });
+
+    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 });
