@@ -640,7 +640,7 @@
          (run-transform! (native-transform! "SELECT 1 AS id" table-name))
          (t2/update! :model/Database :id (mt/id) {:settings {:database-enable-actions true}})
          (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "public" :name table-name)]
-           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"this action would write a table the workspace remaps"
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tables are written only by transforms"
                                  (mt/with-current-user (mt/user->id :crowberto)
                                    (actions/perform-action! :model.row/create
                                                             {:database (mt/id), :type :query, :query {:source-table table-id}
@@ -698,3 +698,58 @@
     (mt/test-driver :postgres
       (mt/with-temporary-setting-values [instance-workspace nil]
         (is (= [["off"]] (rows (mt/native-query {:query "SELECT current_setting('transaction_read_only')"}))))))))
+
+(defn- counts-of [table]
+  (ffirst (query-sql (format "SELECT count(*) FROM %s" table))))
+
+(deftest server-layer-holds-without-the-sql-check-test
+  (do-with-postgres-workspace!
+   (fn [scratch]
+     (let [table (str scratch ".ws_victim")]
+       (execute-sql! (format "CREATE TABLE %s (id int)" table) (format "INSERT INTO %s VALUES (1), (2)" table))
+       ;; the SQL check (layer 1) is off: only the driver's single-statement parse and the READ ONLY transaction remain
+       (mt/with-dynamic-fn-redefs [qp.workspace-remapping/rewrite-query identity]
+         (testing "anything but one SELECT or WITH statement, as PgJDBC parses it, is refused before it runs"
+           (doseq [sql [(format "SELECT 1; COMMIT; DELETE FROM %s" table)
+                        (format "SELECT 1; END; DELETE FROM %s" table)
+                        (format "SET TRANSACTION READ WRITE; DELETE FROM %s; COMMIT; SELECT 1" table)
+                        (format "SELECT 1; COMMIT; BEGIN READ WRITE; DELETE FROM %s; COMMIT" table)
+                        "COMMIT"
+                        "SET SESSION CHARACTERISTICS AS TRANSACTION READ WRITE"
+                        (format "DELETE FROM %s" table)]]
+             (is (thrown-with-msg? Exception #"must be a single SELECT or WITH statement"
+                                   (qp/process-query (mt/native-query {:query sql})))
+                 sql))
+           (is (= 2 (counts-of table))))
+         (testing "a write inside the one statement fails on the server: the transaction is READ ONLY"
+           (is (thrown-with-msg? Exception #"read-only transaction"
+                                 (qp/process-query (mt/native-query {:query (format "WITH d AS (DELETE FROM %s RETURNING id) SELECT * FROM d" table)}))))
+           (is (= 2 (counts-of table))))
+         (testing "session state doesn't outlive the query: the connection is reset with DISCARD ALL"
+           (mt/with-temporary-setting-values [jdbc-data-warehouse-max-connection-pool-size 1]
+             ;; a session-level advisory lock survives the rollback, so only DISCARD ALL releases it
+             (rows (mt/native-query {:query "SELECT pg_advisory_lock(424242)"}))
+             (is (= [[0]] (rows (mt/native-query {:query (str "SELECT count(*)::int FROM pg_locks WHERE locktype = 'advisory'"
+                                                              " AND pid = pg_backend_pid()")})))))))))))
+
+(deftest nested-checkout-without-read-only-is-refused-test
+  (mt/test-driver :postgres
+    (let [database (lib.metadata/database (mt/metadata-provider))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs a read-only transaction"
+                            (sql-jdbc.execute/do-with-connection-with-options
+                             :postgres database {:write? true}
+                             (fn [_]
+                               (sql-jdbc.execute/do-with-connection-with-options
+                                :postgres database {:read-only-transaction? true}
+                                (fn [_] :ran)))))))))
+
+(deftest row-actions-refused-on-covered-database-without-remappings-test
+  (do-with-postgres-workspace!
+   (fn [_scratch]
+     (is (= [] (remappings)))
+     (t2/update! :model/Database :id (mt/id) {:settings {:database-enable-actions true}})
+     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tables are written only by transforms"
+                           (mt/with-current-user (mt/user->id :crowberto)
+                             (actions/perform-action! :model.row/create
+                                                      {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}
+                                                       :create-row {"name" "x"}})))))))
