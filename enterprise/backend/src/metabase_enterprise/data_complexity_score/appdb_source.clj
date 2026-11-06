@@ -103,9 +103,10 @@
   Return nil."
   [fingerprint source score]
   ;; The model path validates this in `db/insert-score!`; the raw insert has to do it itself.
-  (when-not (mr/validate ::data-complexity-score.schema/data-complexity-score.score-data score)
-    (throw (ex-info "Data Complexity score doesn't match the stored score schema"
-                    {:explain (mr/explain ::data-complexity-score.schema/data-complexity-score.score-data score)})))
+  (let [schema ::data-complexity-score.schema/data-complexity-score.score-data]
+    (when-not (mr/validate schema score)
+      (throw (ex-info "Data Complexity score doesn't match the stored score schema"
+                      {:explain (mr/explain schema score)}))))
   ;; `created_at` comes from the column default, so it is in database time like the rows the cron writes.
   (data-complexity-score.db/insert-score-row! {:fingerprint fingerprint
                                                :source      source

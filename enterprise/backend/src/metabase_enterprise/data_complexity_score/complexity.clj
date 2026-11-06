@@ -240,13 +240,13 @@
         verified-ids      (when curated-only? (verified-card-id-set))
         official-cids     (when curated-only? (official-collection-id-set))
         routed-db-ids     (routed-child-database-id-set)
-        {:keys [universe-cards-fn universe-tables-fn]} (merge default-reads reads)
+        read-fns          (merge default-reads reads)
         ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
         ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`.
-        universe-cards   (universe-cards-fn audit/audit-db-id)
-        universe-tables   (universe-tables-fn audit/audit-db-id)
+        universe-cards    ((:universe-cards-fn read-fns) audit/audit-db-id)
+        universe-tables   ((:universe-tables-fn read-fns) audit/audit-db-id)
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
