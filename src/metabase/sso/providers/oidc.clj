@@ -391,8 +391,10 @@
           #(next-method provider request))))
 
     ;; a disabled account must not (re)link an identity; the session layer would only refuse the login
-    ;; after the link had already been rewritten
-    (false? (:is_active user))
+    ;; after the link had already been rewritten. One that provisioning reactivates still goes through the
+    ;; identity check below.
+    (and (false? (:is_active user))
+         (not (true? (get-in request [:user-data :is_active]))))
     {:success? false
      :error :account-disabled
      :message "Your account is disabled. Please contact your administrator."}
