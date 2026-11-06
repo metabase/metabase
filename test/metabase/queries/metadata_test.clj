@@ -19,4 +19,3 @@
         (is (= {} (lib-be/normalize-query unnormalizable))))
       (is (= {:databases [], :fields [], :snippets [], :tables [], :cards []}
              (queries.metadata/batch-fetch-query-metadata [unnormalizable]))))))
-

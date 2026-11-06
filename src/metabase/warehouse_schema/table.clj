@@ -348,4 +348,3 @@
                            :include-fields? include-fields?
                            :databases databases
                            :card-id->metadata-fields card-id->metadata-fields))))
-
