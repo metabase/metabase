@@ -34,6 +34,7 @@ import {
   inferTableRole,
 } from "./inference";
 import { type TableRole, isTableRole } from "./roles";
+import type { ScdDetailsOverrides } from "./scd-types";
 
 /** What an admin set; anything absent comes from sync's inference */
 type TableStructureOverrides = {
@@ -42,6 +43,7 @@ type TableStructureOverrides = {
   periodGranularity?: PeriodGranularity;
   history?: Partial<HistoryBinding>;
   scdType?: ScdType;
+  scdDetails?: ScdDetailsOverrides;
   eav?: Partial<EavBinding>;
   /** `null` means an admin said the table has no main date */
   mainDateFieldId?: FieldId | null;
@@ -67,6 +69,7 @@ export type TableStructure = {
   scdType: ScdType | null;
   scdTypeInference: ScdTypeInference;
   isScdTypeOverridden: boolean;
+  scdDetailsOverrides: ScdDetailsOverrides;
   eav: EavBinding;
   eavOverrides: Partial<EavBinding>;
   /** `undefined` when the table has no main date */
@@ -103,6 +106,20 @@ function parseHistoryBinding(value: unknown): Partial<HistoryBinding> {
   };
 }
 
+function parseScdDetails(value: unknown): ScdDetailsOverrides {
+  if (!isObject(value)) {
+    return {};
+  }
+  return {
+    currentTableId: parseTableId(value.currentTableId),
+    currentValueFieldIds: Array.isArray(value.currentValueFieldIds)
+      ? value.currentValueFieldIds.filter(
+          (fieldId): fieldId is FieldId => typeof fieldId === "number",
+        )
+      : undefined,
+  };
+}
+
 function parseEavBinding(value: unknown): Partial<EavBinding> {
   if (!isObject(value)) {
     return {};
@@ -133,6 +150,7 @@ function parseOverrides(value: unknown): TableStructureOverrides {
     periodGranularity: granularity,
     history: parseHistoryBinding(value.history),
     scdType: isScdType(value.scdType) ? value.scdType : undefined,
+    scdDetails: parseScdDetails(value.scdDetails),
     eav: parseEavBinding(value.eav),
     mainDateFieldId: parseFieldId(value.mainDateFieldId),
   };
@@ -216,6 +234,7 @@ export function useTableStructures() {
         scdType: overrides.scdType ?? scdTypeInference.scdType,
         scdTypeInference,
         isScdTypeOverridden: overrides.scdType != null,
+        scdDetailsOverrides: overrides.scdDetails ?? {},
         eav: withOverrides(inferEavBinding(fields), overrides.eav),
         eavOverrides: overrides.eav ?? {},
         ...resolveMainDate(fields, role, overrides.mainDateFieldId),
@@ -291,6 +310,15 @@ export function useTableStructures() {
     [updateOverrides],
   );
 
+  const setScdDetails = useCallback(
+    (table: Pick<Table, "db_id" | "id">, scdDetails: ScdDetailsOverrides) =>
+      updateOverrides(table, (overrides) => ({
+        ...overrides,
+        scdDetails: { ...overrides.scdDetails, ...scdDetails },
+      })),
+    [updateOverrides],
+  );
+
   const setEavBinding = useCallback(
     (table: Pick<Table, "db_id" | "id">, eav: Partial<EavBinding>) =>
       updateOverrides(table, (overrides) => ({
@@ -333,6 +361,7 @@ export function useTableStructures() {
     setPeriodGranularity,
     setHistoryBinding,
     setScdType,
+    setScdDetails,
     setEavBinding,
     setMainDate,
     setFieldGrain,

@@ -3,20 +3,14 @@ import _ from "underscore";
 
 import {
   type HistoryBinding,
-  type HistoryKind,
   type TableStructure,
-  getHistoryKind,
-  getHistoryKindOptions,
-  getHistorySignalLabel,
   inferHistoryBinding,
   useHistoryReviewStatus,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Group, Loader, Radio, Stack, Text } from "metabase/ui";
+import { Loader, Stack, Text } from "metabase/ui";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
-
-import { InferredActions, InferredIcon } from "../InferenceReview";
 
 import { countOf, getEntityNoun } from "./history-labels";
 
@@ -46,10 +40,6 @@ const findField = (fields: Field[], fieldId: FieldId | null) =>
 const displayNameOf = (fields: Field[], fieldId: FieldId | null) =>
   findField(fields, fieldId)?.display_name ?? t`a column`;
 
-export function getTableHistoryKind(structure: TableStructure) {
-  return getHistoryKind(structure.history.validToFieldId != null);
-}
-
 export function getValidToForDates(
   fields: Field[],
   binding: Pick<HistoryBinding, "validFromFieldId">,
@@ -63,80 +53,6 @@ export function getValidToForDates(
       isDate(field) && getRawTableFieldId(field) !== binding.validFromFieldId,
   );
   return otherDateField ? getRawTableFieldId(otherDateField) : null;
-}
-
-function getInferenceDescription({
-  scdType,
-  scdTypeInference,
-}: TableStructure) {
-  const source = t`Recognized from ${getHistorySignalLabel(scdTypeInference.rule)}: ${scdTypeInference.signal}`;
-  return scdType != null ? t`SCD type ${scdType} · ${source}` : source;
-}
-
-export function HistoryKindInput({
-  structure,
-  fields,
-  disabled,
-  onChange,
-  onConfirmGuess,
-}: {
-  structure: TableStructure;
-  fields: Field[];
-  disabled: boolean;
-  onChange: (kind: HistoryKind) => void;
-  onConfirmGuess: () => void;
-}) {
-  const { isScdTypeOverridden } = structure;
-  const selectedKind = getTableHistoryKind(structure);
-  const hasDateRange = getValidToForDates(fields, structure.history) != null;
-  // Sync's guess, until an admin confirms it or picks another kind. The
-  // options stay visible, locked until Confirm or Change, with the buttons
-  // below them rather than beside a single value.
-  const isInferred = !isScdTypeOverridden;
-
-  return (
-    <Stack gap="sm" py="xs" data-testid="table-history-kind-input">
-      <Radio.Group
-        value={selectedKind}
-        onChange={(value) => {
-          const option = getHistoryKindOptions().find(
-            (option) => option.value === value,
-          );
-          if (option) {
-            onChange(option.value);
-          }
-        }}
-        aria-label={t`History`}
-      >
-        <Stack gap="sm">
-          {getHistoryKindOptions().map((option) => (
-            <Radio
-              key={option.value}
-              value={option.value}
-              label={
-                <Group gap="xs" wrap="nowrap">
-                  {option.label}
-                  {isInferred && option.value === selectedKind && (
-                    <InferredIcon
-                      description={getInferenceDescription(structure)}
-                    />
-                  )}
-                </Group>
-              }
-              disabled={
-                disabled ||
-                isInferred ||
-                (option.value === "versions-with-dates" && !hasDateRange)
-              }
-            />
-          ))}
-        </Stack>
-      </Radio.Group>
-      {isInferred && !disabled && (
-        <InferredActions onConfirm={onConfirmGuess} onChange={onConfirmGuess} />
-      )}
-    </Stack>
-  );
 }
 
 export function getSharedPointers(structure: TableStructure) {

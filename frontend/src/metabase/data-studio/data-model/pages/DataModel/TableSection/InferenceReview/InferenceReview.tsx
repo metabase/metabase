@@ -46,6 +46,7 @@ export function InferredValue({
   return (
     <Group
       flex={1}
+      miw={0}
       justify="space-between"
       gap="sm"
       wrap="nowrap"
