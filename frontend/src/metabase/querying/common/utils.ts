@@ -6,6 +6,7 @@ import type {
   FieldValue,
   NormalizedField,
   Table,
+  TableId,
 } from "metabase-types/api";
 
 const STAGE_INDEX = -1;
@@ -24,6 +25,32 @@ export function getFieldOptions(fieldValues: FieldValue[]): ComboboxItem[] {
 type LegacyColumn = DatasetColumn | NormalizedField | Field;
 
 type QueryAndColumn = { query: Lib.Query; column: Lib.ColumnMetadata };
+
+export type TableQueryAndColumns = {
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
+};
+
+export const getTableQueryAndColumns = (
+  metadataProvider: Lib.MetadataProvider,
+  tableId: TableId,
+): TableQueryAndColumns | undefined => {
+  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  if (tableMetadata == null) {
+    return undefined;
+  }
+
+  const query = Lib.queryFromTableOrCardMetadata(
+    metadataProvider,
+    tableMetadata,
+  );
+  return {
+    query,
+    stageIndex: STAGE_INDEX,
+    columns: Lib.returnedColumns(query, STAGE_INDEX),
+  };
+};
 
 export const getQueryAndColumns = (
   metadataProvider: Lib.MetadataProvider,
