@@ -249,7 +249,7 @@
                     :model/User}}
 
   analytics.interface
-  {:team "Querying Platform"
+  {:team "Querying"
    :ns-prefix "metabase.analytics-interface"
    :api  #{metabase.analytics-interface.core}
    :uses #{}}
@@ -960,7 +960,7 @@
                     :model/User}}
 
   driver
-  {:team "Querying Platform"
+  {:team "Querying"
    :api  #{metabase.driver
            metabase.driver.common
            metabase.driver.connection
@@ -1168,7 +1168,7 @@
            util}}
 
   funnysql
-  {:team "Querying Platform"
+  {:team "Querying"
    :api  #{metabase.funnysql.core}
    :uses #{util}}
 
@@ -1199,7 +1199,7 @@
    :model-imports #{:model/User}}
 
   health-inspector
-  {:team "Querying Platform"
+  {:team "Querying"
    :api #{metabase.health-inspector.api
           metabase.health-inspector.core
           metabase.health-inspector.init}
@@ -1236,7 +1236,7 @@
    :uses #{lib.be util}}
 
   lib
-  {:team "Querying Platform"
+  {:team "Querying"
    :module-exports #{lib.agent-lib
                      lib.be
                      lib.legacy-mbql
@@ -1280,7 +1280,7 @@
    :model-imports #{:model/Card}}
 
   lib.be
-  {:team "Querying Platform"
+  {:team "Querying"
    :ns-prefix "metabase.lib-be"
    :api  #{metabase.lib-be.core metabase.lib-be.init metabase.lib-be.schema}
    :uses #{lib
@@ -1303,7 +1303,7 @@
                     :model/Transform}}
 
   lib.legacy-mbql
-  {:team "Querying Platform"
+  {:team "Querying"
    :ns-prefix "metabase.legacy-mbql"
    :api #{metabase.legacy-mbql.normalize metabase.legacy-mbql.schema metabase.legacy-mbql.util}
    :uses #{lib
@@ -1312,7 +1312,7 @@
            util}}
 
   lib.metadata
-  {:team "Querying Platform"
+  {:team "Querying"
    :api #{metabase.lib.metadata
           metabase.lib.metadata.cached-provider
           metabase.lib.metadata.calculation
@@ -1342,7 +1342,7 @@
    :model-imports #{:model/Card :model/Field :model/Table}}
 
   lib.schema
-  {:team "Querying Platform"
+  {:team "Querying"
    :api #{metabase.lib.schema
           metabase.lib.schema.actions
           metabase.lib.schema.aggregation
@@ -1390,7 +1390,7 @@
            util}}
 
   lib.types
-  {:team "Querying Platform"
+  {:team "Querying"
    :ns-prefix "metabase.types"
    :api #{metabase.types.core metabase.types.init}
    :uses #{util}}
@@ -2259,7 +2259,7 @@
                     :model/Timeline}}
 
   queries.rest
-  {:team "Querying Platform"
+  {:team "Querying"
    :ns-prefix "metabase.queries-rest"
    :api  #{metabase.queries-rest.api}
    :uses #{api
@@ -2310,7 +2310,7 @@
    :model-imports #{:model/Card :model/Field :model/Table}}
 
   query-processor
-  {:team    "Querying Platform"
+  {:team    "Querying"
    :module-exports #{query-processor.cache-backend
                      query-processor.driver-api
                      query-processor.pivot}
@@ -2395,7 +2395,7 @@
                     :model/Table}}
 
   query-processor.cache-backend
-  {:team      "Querying Platform"
+  {:team      "Querying"
    :ns-prefix "metabase.query-processor.middleware.cache-backend"
    :api       #{metabase.query-processor.middleware.cache-backend.db
                 metabase.query-processor.middleware.cache-backend.interface}
@@ -2403,7 +2403,7 @@
    :model-imports #{:model/QueryCache}}
 
   query-processor.driver-api
-  {:team "Querying Platform"
+  {:team "Querying"
    :ns-prefix "metabase.driver-api"
    :api  #{metabase.driver-api.core}
    :uses #{actions
