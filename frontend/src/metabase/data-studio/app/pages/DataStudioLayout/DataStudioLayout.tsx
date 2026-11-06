@@ -118,14 +118,6 @@ export function DataStudioLayout() {
           }
         />
         <AreaTab
-          label={t`Dashboards`}
-          icon="dashboard"
-          to={Urls.dataStudioDashboards()}
-          isSelected={currentTab === "dashboards"}
-          showLabel={isNavbarOpened}
-          isGated={!hasLibraryFeature}
-        />
-        <AreaTab
           label={t`SQL snippets`}
           icon="snippet"
           to={Urls.dataStudioSnippets()}

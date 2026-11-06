@@ -137,8 +137,6 @@ export const VisualizationDirtyState = ({
   cancelQuery,
   hidden,
 }: VisualizationDirtyStateProps) => {
-  const keyboardShortcut = getRunQueryShortcut();
-
   const handleClick = () => {
     if (!hidden) {
       if (isRunning) {
@@ -169,8 +167,8 @@ export const VisualizationDirtyState = ({
         hidden={hidden}
         isRunning={Boolean(isRunning)}
         isDirty={Boolean(isResultDirty)}
+        getTooltip={getRunQueryShortcut}
       />
-      {!hidden && <Text c="text-secondary">{keyboardShortcut}</Text>}
     </Flex>
   );
 };

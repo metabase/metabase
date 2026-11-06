@@ -169,61 +169,48 @@ export function initializePlugin() {
     PLUGIN_TENANTS.userStrategyRoute = modalRoute(
       "user-strategy",
       EditUserStrategyModal,
-      { noWrap: true },
     );
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
         <Route index element={<TenantsListingApp />} />
         <Route path="" element={<TenantsListingApp />}>
-          {modalRoute("new", NewTenantModal, { noWrap: true })}
-          {modalRoute("user-strategy", EditUserStrategyModal, { noWrap: true })}
+          {modalRoute("new", NewTenantModal)}
+          {modalRoute("user-strategy", EditUserStrategyModal)}
         </Route>
         <Route path="groups">
           <Route index lazy={externalGroupsListing} />
           <Route path=":groupId" lazy={externalGroupDetail} />
         </Route>
         <Route path="people" lazy={externalPeopleListing}>
-          {modalRoute(
-            "new",
-            (props) => (
-              <NewUserModal {...props} external />
-            ),
-            {
-              noWrap: true,
-            },
-          )}
+          {modalRoute("new", (props) => (
+            <NewUserModal {...props} external />
+          ))}
           <Route path=":userId">
             <Route index element={redirect("..")} />
-            {modalRoute(
-              "edit",
-              (props) => (
-                <EditUserModal {...props} external />
-              ),
-              { noWrap: true },
-            )}
-            {modalRoute("deactivate", UserActivationModal, { noWrap: true })}
-            {modalRoute("reactivate", UserActivationModal, { noWrap: true })}
-            {modalRoute("success", UserSuccessModal, { noWrap: true })}
-            {modalRoute("reset", UserPasswordResetModal, { noWrap: true })}
+            {modalRoute("edit", (props) => (
+              <EditUserModal {...props} external />
+            ))}
+            {modalRoute("deactivate", UserActivationModal)}
+            {modalRoute("reactivate", UserActivationModal)}
+            {modalRoute("success", UserSuccessModal)}
+            {modalRoute("reset", UserPasswordResetModal)}
             {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
               <Fragment key={index}>{getRoutes()}</Fragment>
             ))}
           </Route>
         </Route>
         <Route path=":tenantId" element={<TenantsListingApp />}>
-          {modalRoute("edit", EditTenantModal, { noWrap: true })}
+          {modalRoute("edit", EditTenantModal)}
           {modalRoute(
             "deactivate",
             // @ts-expect-error - params prop can't be inferred
             TenantActivationModal,
-            { noWrap: true },
           )}
           {modalRoute(
             "reactivate",
             // @ts-expect-error - params prop can't be inferred
             TenantActivationModal,
-            { noWrap: true },
           )}
         </Route>
       </>

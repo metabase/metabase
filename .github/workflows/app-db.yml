@@ -21,7 +21,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: backend_all
+      filters: backend_all app_db_snapshot
 
   app-db-matrix:
     needs: gate
@@ -34,15 +34,20 @@ jobs:
       mysql: ${{ steps.versions.outputs.mysql }}
       postgres: ${{ steps.versions.outputs.postgres }}
       shards: ${{ steps.versions.outputs.shards }}
+      mariadb-extra: ${{ steps.versions.outputs.mariadb-extra }}
     steps:
       - name: Select versions and shards to test
         id: versions
         uses: actions/github-script@v9
         env:
           RUN_ALL: ${{ needs.gate.outputs.force-run }}
+          MATCHED_FILTERS: ${{ needs.gate.outputs.matched }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
+            // The app DB snapshot drift comparison replays the whole changelog twice, so the migrations shard turns
+            // it on only when something that decides the migrated DB changed (see metabase.app-db.snapshot-test).
+            const snapshotDrift = JSON.parse(process.env.MATCHED_FILTERS || '[]').includes('app_db_snapshot');
 
             const versions = {
               mariadb: [
@@ -114,6 +119,7 @@ jobs:
               {
                 name: 'EE App DB Tests (Part 1)', // migrations shard
                 'build-static-viz': true,
+                'snapshot-drift': snapshotDrift ? 'true' : 'false',
                 'test-args': `:only '"test"' :only-tags '[:mb/app-db-migrations-test]' :exclude-tags '[${commonExcludes}]'`,
               },
               {
@@ -129,6 +135,16 @@ jobs:
             ];
             core.setOutput('shards', JSON.stringify(shards));
 
+            // MariaDB 10.6 is the only server that loads the mariadb_legacy_timestamp snapshot, so a PR that runs the
+            // drift comparison also runs the migrations shard there.
+            const migrationsShard = shards.find((shard) => shard['snapshot-drift'] !== undefined);
+            const legacyTimestampServer = versions.mariadb.find((version) => version.name === 'MariaDB 10.6');
+            const mariadbExtra = snapshotDrift && !runAll
+              ? [{ version: legacyTimestampServer, job: migrationsShard }]
+              : [];
+            core.info(`mariadb extra: ${mariadbExtra.map(({ version, job }) => `${version.name} ${job.name}`).join(', ')}`);
+            core.setOutput('mariadb-extra', JSON.stringify(mariadbExtra));
+
   be-tests-mariadb:
     needs: app-db-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -138,6 +154,8 @@ jobs:
       matrix:
         version: ${{ fromJSON(needs.app-db-matrix.outputs.mariadb) }}
         job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
+        # one extra version and shard pairing, outside the cross product above
+        include: ${{ fromJSON(needs.app-db-matrix.outputs.mariadb-extra) }}
 
     services:
       mysql:
@@ -152,6 +170,8 @@ jobs:
           MARIADB_DATABASE: mb_test
     env:
       CI: 'true'
+      # true only in the migrations shard, and only when an app_db_snapshot path changed
+      MB_APP_DB_SNAPSHOT_DRIFT_TEST: ${{ matrix.job.snapshot-drift || 'false' }}
       DRIVERS: mysql
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
@@ -212,6 +232,8 @@ jobs:
           MYSQL_DATABASE: mb_test
     env:
       CI: 'true'
+      # true only in the migrations shard, and only when an app_db_snapshot path changed
+      MB_APP_DB_SNAPSHOT_DRIFT_TEST: ${{ matrix.job.snapshot-drift || 'false' }}
       DRIVERS: mysql
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
@@ -259,6 +281,8 @@ jobs:
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       CI: 'true'
+      # true only in the migrations shard, and only when an app_db_snapshot path changed
+      MB_APP_DB_SNAPSHOT_DRIFT_TEST: ${{ matrix.job.snapshot-drift || 'false' }}
       DRIVERS: postgres
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432

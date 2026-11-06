@@ -24,10 +24,10 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
@@ -595,9 +595,9 @@
                   drill-in  (fn [field-id]
                               (let [alias (atom nil)]
                                 (mt/with-dynamic-fn-redefs [field-stats/field-metadata-output
-                                                            (fn [query col field-id limit]
+                                                            (fn [query columns all-columns col field-id limit]
                                                               (reset! alias (:lib/desired-column-alias col))
-                                                              (output-fn query col field-id limit))]
+                                                              (output-fn query columns all-columns col field-id limit))]
                                   (let [{:keys [portable_fk]} (:structured-output
                                                                (field-stats/field-values {:entity-type "question"
                                                                                           :entity-id   card-id
@@ -698,7 +698,7 @@
   current user cannot read. Swapped in for both so a test can tell which one a caller picked."
   [tag recorded]
   (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
-    (reify resolve.mp/ContentStore
+    (reify protocol.mp/ContentStore
       (card-by-entity-id    [_ _] (refuse))
       (measure-by-entity-id [_ _] (refuse))
       (segment-by-entity-id [_ _] (refuse))
@@ -1982,7 +1982,41 @@
           (testing "Structured output contains expected fields"
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
-                    structured))))))))
+                    structured)))
+          (testing "Rendered text lists the result columns the LLM must reference by name"
+            (is (str/includes? output "### Fields"))
+            (is (str/includes? output (str "<field id=\"" (mt/id :products :category) "\" name=\"CATEGORY\"")))
+            (is (str/includes? output "<field id=\"count\" name=\"count\""))))
+        (testing "The base URI omits the fields, which only /fields returns"
+          (let [read-result (read-uris {:uris [(str "metabase://question/" question-id)]})
+                output      (:output read-result)
+                structured  (get-in read-result [:resources 0 :content :structured-output])]
+            (is (re-find #"<name>\S*My fav card" output))
+            (is (empty? (:fields structured)))
+            (is (not (str/includes? output "### Fields")))
+            (is (not (str/includes? output "<field ")))))))))
+
+(deftest read-native-question-resource-test
+  (testing "/fields on a native question renders its result columns, which have no Field ids"
+    (let [query    (lib/native-query (mt/metadata-provider)
+                                     "SELECT CATEGORY AS CAT, COUNT(*) AS N FROM PRODUCTS GROUP BY CATEGORY")
+          metadata (-> query
+                       qp/process-query
+                       :data :results_metadata :columns)]
+      (mt/with-temp
+        [:model/Card {question-id :id} {:name            "Native card"
+                                        :dataset_query   query
+                                        :result_metadata metadata}]
+        (mt/with-test-user :crowberto
+          (let [read-result (read-uris
+                             {:uris [(str "metabase://question/" question-id "/fields")]})
+                output      (:output read-result)
+                structured  (get-in read-result [:resources 0 :content :structured-output])]
+            (is (=? {:fields [{:name "CAT"} {:name "N"}]}
+                    structured))
+            (is (str/includes? output "### Fields"))
+            (is (str/includes? output "<field id=\"CAT\" name=\"CAT\""))
+            (is (str/includes? output "<field id=\"N\" name=\"N\""))))))))
 
 ;; ===== Pagination =====
 

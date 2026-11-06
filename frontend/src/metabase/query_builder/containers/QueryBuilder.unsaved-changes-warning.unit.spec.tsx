@@ -416,9 +416,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await waitForLoaderToBeRemoved();
 
       await userEvent.click(
-        within(screen.getByTestId("query-builder-main")).getByRole("button", {
-          name: "Get Answer",
-        }),
+        within(screen.getByTestId("query-builder-main")).getByTestId(
+          "run-button",
+        ),
       );
 
       expect(

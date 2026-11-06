@@ -2,7 +2,7 @@ import { jt, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Alert, Box, Code, Icon } from "metabase/ui";
+import { Alert, Code, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isEmpty } from "metabase/utils/validate";
 import type { Database } from "metabase-types/api";
@@ -57,14 +57,12 @@ export const ImpersonationWarning = ({
   const warningText = isRedshift ? redshiftWarning : regularWarning;
 
   return (
-    <Box mb="lg">
-      <Alert size="compact" icon={<Icon name="warning" />} color="warning">
-        {isEmpty(databaseUser) ? emptyText : warningText}{" "}
-        <Link
-          className={CS.link}
-          to={Urls.editDatabase(database.id) + (databaseUser ? "#user" : "")}
-        >{t`Edit settings`}</Link>
-      </Alert>
-    </Box>
+    <Alert size="compact" icon={<Icon name="warning" />} color="warning">
+      {isEmpty(databaseUser) ? emptyText : warningText}{" "}
+      <Link
+        className={CS.link}
+        to={Urls.editDatabase(database.id) + (databaseUser ? "#user" : "")}
+      >{t`Edit settings`}</Link>
+    </Alert>
   );
 };

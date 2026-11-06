@@ -38,7 +38,13 @@ import { serializeCardForUrl } from "metabase/common/utils/card";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
-import type { Card, Dataset, Timeline, UnsavedCard } from "metabase-types/api";
+import type {
+  Card,
+  Database,
+  Dataset,
+  Timeline,
+  UnsavedCard,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -227,6 +233,8 @@ const isSavedCard = (card: Card | UnsavedCard | null): card is Card => {
 interface SetupOpts {
   card: Card | UnsavedCard | null;
   dataset?: Dataset;
+  database?: Database;
+  echoQueryParameters?: boolean;
   initialRoute?: string;
   timelines?: Timeline[];
   timelinesResponse?: () => Promise<Timeline[]>;
@@ -235,6 +243,8 @@ interface SetupOpts {
 export const setup = async ({
   card,
   dataset = createMockDataset(),
+  database = TEST_DB,
+  echoQueryParameters = false,
   initialRoute = `/question${
     card == null
       ? ""
@@ -246,7 +256,7 @@ export const setup = async ({
   timelinesResponse,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
-  setupDatabasesEndpoints([TEST_DB]);
+  setupDatabasesEndpoints([database]);
   setupCardDataset({ dataset });
   setupSearchEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
@@ -265,13 +275,15 @@ export const setup = async ({
     value: false,
   });
 
-  const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
+  const metadata = createMockCardQueryMetadata({ databases: [database] });
   setupAdhocQueryMetadataEndpoint(metadata);
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
     setupCardQueryMetadataEndpoint(card, metadata);
-    setupCardQueryEndpoints(card, dataset);
+    setupCardQueryEndpoints(card, dataset, {
+      echoParameters: echoQueryParameters,
+    });
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
   }

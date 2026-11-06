@@ -49,6 +49,10 @@
   cursor: pointer;
 }
 
+.static:hover {
+  background-color: transparent;
+}
+
 .content.active {
   background-color: var(--mb-color-background_surface-selected);
 
