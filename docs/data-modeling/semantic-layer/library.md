@@ -84,7 +84,7 @@ The semantic layer lives in a special collection called Library, which has two r
 - **Data**: For [published tables](published-tables.md).
 - **Metrics**: For [official metrics](#metrics).
 
-[SQL snippets](#sql-snippets) are part of your semantic layer, but they don't live in this collection. They have their own page at **Data Studio > SQL snippets**.
+[SQL snippets](#sql-snippets) are part of your Library. They have their own page at **Data Studio > SQL snippets**.
 
 These root sections are predefined. You can't rename or archive them, but you can use [permissions](#library-permissions) to control who sees them.
 
