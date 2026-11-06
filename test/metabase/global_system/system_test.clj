@@ -439,3 +439,391 @@
                         (.start thread)
                         (.join thread)))))
       (is (= [:bound-db nil] @seen)))))
+
+;;; ------------------------------------------------ Lifecycle ------------------------------------------------
+
+(defn- cleanup!
+  "Stop each of `handles` and remove its root."
+  [handles]
+  (doseq [handle handles]
+    (system/stop! handle)
+    (mc/remove-root handle)))
+
+(defn- halt-order
+  "The handles [[system/halt!]] would stop, in order, given `dependencies`."
+  ([]
+   (halt-order {}))
+  ([dependencies]
+   (#'system/halt-order (#'system/dependency-graph dependencies))))
+
+(deftest ^:synchronized ensure-started-test
+  (let [handle  (system/mutable-component-handle ::ensure-started (constantly nil))
+        starts  (atom 0)
+        stopped (atom [])
+        start   (fn [] (swap! starts inc) (Object.))
+        stop    #(swap! stopped conj %)]
+    (try
+      (testing "threads racing to start the component start it once"
+        (let [go      (promise)
+              racers  (mapv (fn [_] (future @go (system/ensure-started! handle start stop))) (range 16))
+              _       (deliver go true)
+              results (mapv deref racers)]
+          (is (= {:starts 1, :one-value? true}
+                 {:starts @starts, :one-value? (every? #(identical? (first results) %) results)}))))
+      (testing "a thread that binds the component gets the binding and starts nothing, nil included"
+        (mc/binding handle :bound
+                    (fn [] (is (= :bound (system/ensure-started! handle start stop)))))
+        (mc/binding handle nil
+                    (fn [] (is (nil? (system/ensure-started! handle start stop)))))
+        (is (= 1 @starts)))
+      (testing "stop! stops the running value once, and leaves the root nil"
+        (let [running @handle]
+          (is (true? (system/stop! handle)))
+          (is (false? (system/stop! handle)))
+          (is (= {:stopped [running], :value nil}
+                 {:stopped @stopped, :value @handle}))))
+      (testing "after a stop, the next ensure-started! starts it again"
+        (is (some? (system/ensure-started! handle start stop)))
+        (is (= 2 @starts)))
+      (finally
+        (cleanup! [handle])))))
+
+(deftest ^:synchronized start-reports-whether-it-started-test
+  (testing "start! says whether this call did the start, and later calls get the running value"
+    (let [handle (system/mutable-component-handle ::start-reports (constantly nil))]
+      (try
+        (is (= {:first [:running true], :second [:running false]}
+               {:first  (system/start! handle (constantly :running) (constantly nil))
+                :second (system/start! handle (constantly :other) (constantly nil))}))
+        (finally
+          (cleanup! [handle]))))))
+
+;; halt! is only called in these tests with dependencies it refuses: a halt stops every component this test JVM has
+;; started, such as the test web server, which later tests need. It is only (dependency-graph), (begin-halt!) and
+;; (stop-all! (halt-order)), and these tests drive each part on throwaway components, reopening afterwards, so a
+;; regression in any of them fails here.
+(deftest ^:synchronized halt-order-test
+  (testing "halt stops components in reverse start order, and failing stops do not stop the rest and are all reported"
+    (let [stopped (atom [])
+          stop    (fn [v]
+                    (swap! stopped conj v)
+                    (when (#{:b :c} v)
+                      (throw (ex-info (str "stop " (name v)) {}))))
+          handles [(system/mutable-component-handle ::halt-a (constantly nil))
+                   (system/mutable-component-handle ::halt-b (constantly nil))
+                   (system/mutable-component-handle ::halt-c (constantly nil))]]
+      (try
+        (doseq [[handle value] (map vector handles [:a :b :c])]
+          (system/ensure-started! handle (constantly value) stop))
+        (is (= {:failures   [::halt-c ::halt-b]
+                :cause      "stop c"
+                :suppressed ["stop b"]
+                :stopped    [:c :b :a]
+                :values     [nil nil nil]}
+               (merge (try (#'system/stop-all! (filter (set handles) (halt-order)))
+                           {}
+                           (catch clojure.lang.ExceptionInfo e
+                             {:failures   (mapv first (:failures (ex-data e)))
+                              :cause      (ex-message (ex-cause e))
+                              :suppressed (mapv ex-message (.getSuppressed (ex-cause e)))}))
+                      {:stopped @stopped
+                       :values  (mapv deref handles)})))
+        (finally
+          (cleanup! handles))))))
+
+(deftest ^:synchronized stops-sharing-an-exception-test
+  (testing "two stops that throw the same exception are both reported, and the exception is not suppressed by itself"
+    (let [shared  (ex-info "shared failure" {})
+          a       (system/mutable-component-handle ::shares-a (constantly nil))
+          b       (system/mutable-component-handle ::shares-b (constantly nil))
+          handles [a b]]
+      (try
+        (doseq [handle handles]
+          (system/ensure-started! handle (constantly :running) (fn [_] (throw shared))))
+        (is (= {:failures [::shares-b ::shares-a], :cause "shared failure", :suppressed []}
+               (try (#'system/stop-all! (filter (set handles) (halt-order)))
+                    {}
+                    (catch clojure.lang.ExceptionInfo e
+                      {:failures   (mapv first (:failures (ex-data e)))
+                       :cause      (ex-message (ex-cause e))
+                       :suppressed (vec (.getSuppressed (ex-cause e)))}))))
+        (finally
+          (cleanup! handles))))))
+
+(deftest ^:synchronized root-published-after-registration-test
+  (testing "a started component's root becomes visible only once the component is registered"
+    (let [handle     (system/mutable-component-handle ::published-after-registration (constantly nil))
+          k          ::published-after-registration
+          registered (atom ::never-published)
+          roots      @#'system/roots]
+      (add-watch roots ::published (fn [_ _ old new]
+                                     (when (and (nil? (get old k)) (some? (get new k)))
+                                       (reset! registered (contains? @@#'system/started-components k)))))
+      (try
+        (system/ensure-started! handle (constantly :running) (constantly nil))
+        (is (true? @registered))
+        (finally
+          (remove-watch roots ::published)
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized halted-system-refuses-starts-test
+  (testing "once a halt begins no component starts, until the system is reopened"
+    (let [handle (system/mutable-component-handle ::after-halt (constantly nil))]
+      (try
+        (#'system/close-admission!)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The system has halted"
+                              (system/ensure-started! handle (constantly :started) (constantly nil))))
+        (system/reopen!)
+        (is (= :started (system/ensure-started! handle (constantly :started) (constantly nil))))
+        (finally
+          (system/reopen!)
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized halt-waits-for-running-starts-test
+  (testing "a halt waits for a start already running, so the halt order includes it"
+    (let [handle (system/mutable-component-handle ::starting-during-halt (constantly nil))
+          inside (promise)
+          leave  (promise)]
+      (try
+        (let [starter (future (system/ensure-started! handle
+                                                      #(do (deliver inside true) @leave :started)
+                                                      (constantly nil)))
+              _       @inside
+              closing (future (#'system/begin-halt!))]
+          (is (= ::still-waiting (deref closing 200 ::still-waiting)))
+          (deliver leave true)
+          @starter
+          @closing
+          (is (some #{handle} (halt-order))))
+        (finally
+          (system/reopen!)
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized halt-waits-without-holding-a-lock-test
+  (testing "starts that hold a slot lock while a halt waits are refused at once, so nothing deadlocks"
+    (let [a        (system/mutable-component-handle ::waits-a (constantly nil))
+          b        (system/mutable-component-handle ::waits-b (constantly nil))
+          c        (system/mutable-component-handle ::waits-c (constantly nil))
+          go       (promise)
+          outcome  (fn [thunk]
+                     (try
+                       (thunk)
+                       :started
+                       (catch clojure.lang.ExceptionInfo e
+                         (ex-message e))))
+          refusal  #(str "The system has halted, so a component cannot start: " %)
+          wait-for (fn [ready?]
+                     (loop [tries 0]
+                       (cond
+                         (ready?)      nil
+                         (< tries 500) (do (Thread/sleep 10)
+                                           (recur (inc tries)))
+                         :else         (throw (ex-info "A thread never reached the state the test needs" {})))))
+          start-a  (fn []
+                     @go
+                     (system/ensure-started! b (constantly :b) (constantly nil))
+                     :a)
+          ;; in flight while the halt begins, then starts b
+          starter  (future (outcome #(system/ensure-started! a start-a (constantly nil))))
+          halter   (doto (Thread. ^Runnable #(#'system/begin-halt!))
+                     (.setDaemon true))]
+      (try
+        (wait-for #(contains? (:starting @@#'system/admissions) ::waits-a))
+        (.start halter)
+        (wait-for #(#{Thread$State/BLOCKED Thread$State/WAITING} (.getState halter)))
+        ;; a start made while holding another component's slot lock
+        (let [writer (future (mc/with-slot-lock b
+                               (outcome #(system/ensure-started! c (constantly :c) (constantly nil)))))]
+          (is (= (refusal ::waits-c)
+                 (deref writer 5000 ::deadlocked))))
+        (deliver go true)
+        (.join halter 5000)
+        (is (= {:starter (refusal ::waits-b), :halt-finished? true}
+               {:starter        (deref starter 5000 ::deadlocked)
+                :halt-finished? (not (.isAlive halter))}))
+        (finally
+          (deliver go true)
+          (system/reopen!)
+          (cleanup! [a b c]))))))
+
+(deftest ^:synchronized halt-from-a-start-is-refused-test
+  (testing "a halt called from a component's start throws, and leaves starts admitted"
+    (let [halter (system/mutable-component-handle ::halts-in-start (constantly nil))
+          other  (system/mutable-component-handle ::after-refused-halt (constantly nil))]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A component's start cannot halt the system"
+                              (system/ensure-started! halter #(#'system/begin-halt!) (constantly nil))))
+        (is (= :started (system/ensure-started! other (constantly :started) (constantly nil))))
+        (finally
+          (system/reopen!)
+          (cleanup! [halter other]))))))
+
+(deftest ^:synchronized start-returning-false-test
+  (testing "a start that returns false still counts as started, so it runs once"
+    (let [handle (system/mutable-component-handle ::starts-false (constantly nil))
+          starts (atom 0)]
+      (try
+        (dotimes [_ 3]
+          (system/ensure-started! handle #(do (swap! starts inc) false) (constantly nil)))
+        (is (= 1 @starts))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized start-returning-nil-test
+  (testing "a start that returns nil throws, and leaves nothing registered"
+    (let [handle (system/mutable-component-handle ::starts-nil (constantly nil))]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Starting component returned nil"
+                              (system/ensure-started! handle (constantly nil) (constantly nil))))
+        (is (false? (system/stop! handle)))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized failed-start-can-be-retried-test
+  (testing "a start that throws leaves nothing registered, and the next start succeeds"
+    (let [handle (system/mutable-component-handle ::fails-then-starts (constantly nil))
+          starts (atom 0)
+          start  #(if (= 1 (swap! starts inc))
+                    (throw (ex-info "first start fails" {}))
+                    :started)]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"first start fails"
+                              (system/ensure-started! handle start (constantly nil))))
+        (is (= {:after-failure nil, :retry :started, :starts 2}
+               {:after-failure @handle
+                :retry         (system/ensure-started! handle start (constantly nil))
+                :starts        @starts}))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized stop-leaves-unmanaged-roots-test
+  (testing "stop! leaves alone a root that ensure-started! did not start"
+    (let [handle (system/mutable-component-handle ::unmanaged (constantly :installed))]
+      (try
+        (is (= {:stopped? false, :value :installed}
+               {:stopped? (system/stop! handle), :value @handle}))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized stop-after-reload-test
+  (testing "a handle made again for the same key, as a reload does, stops what the old handle started"
+    (let [stopped (atom [])
+          old     (system/mutable-component-handle ::reloaded (constantly nil))
+          _       (system/ensure-started! old (constantly :running) #(swap! stopped conj %))
+          new     (system/mutable-component-handle ::reloaded (constantly nil))]
+      (try
+        (is (= {:stopped? true, :stopped [:running]}
+               {:stopped? (system/stop! new), :stopped @stopped}))
+        (finally
+          (cleanup! [new]))))))
+
+(deftest ^:synchronized restart-keeps-halt-place-test
+  (testing "a component restarted after its dependents still halts after them"
+    (let [a (system/mutable-component-handle ::restart-a (constantly nil))
+          b (system/mutable-component-handle ::restart-b (constantly nil))]
+      (try
+        (system/ensure-started! a (constantly :a) (constantly nil))
+        (system/ensure-started! b (constantly :b) (constantly nil))
+        (system/stop! a)
+        (system/ensure-started! a (constantly :a-again) (constantly nil))
+        (is (= [b a] (filter #{a b} (halt-order))))
+        (finally
+          (cleanup! [a b]))))))
+
+(deftest ^:synchronized dependency-started-inside-start-halts-after-test
+  (testing "a component started inside another's start comes first in the start order, so it halts after"
+    (let [dep  (system/mutable-component-handle ::inner-dep (constantly nil))
+          user (system/mutable-component-handle ::inner-user (constantly nil))]
+      (try
+        (system/ensure-started! user
+                                #(do (system/ensure-started! dep (constantly :dep) (constantly nil)) :user)
+                                (constantly nil))
+        (is (= [user dep] (filter #{dep user} (halt-order))))
+        (finally
+          (cleanup! [user dep]))))))
+
+(deftest ^:synchronized halt-order-follows-dependencies-test
+  (testing "a component halts before the components it uses, even ones started after it, and the rest by start order"
+    (let [a       (system/mutable-component-handle ::deps-a (constantly nil))
+          b       (system/mutable-component-handle ::deps-b (constantly nil))
+          c       (system/mutable-component-handle ::deps-c (constantly nil))
+          handles [a b c]]
+      (try
+        (doseq [handle handles]
+          (system/ensure-started! handle (constantly :running) (constantly nil)))
+        (is (= {:no-dependencies   [c b a]
+                :a-uses-c          [b a c]
+                :a-uses-c-via-x    [b a c]
+                :stopped-user-of-c [c b a]}
+               {:no-dependencies   (filterv (set handles) (halt-order))
+                :a-uses-c          (filterv (set handles) (halt-order {::deps-a #{::deps-c}}))
+                :a-uses-c-via-x    (filterv (set handles) (halt-order {::deps-a        #{::never-started}
+                                                                       ::never-started #{::deps-c}}))
+                :stopped-user-of-c (filterv (set handles) (halt-order {::never-started #{::deps-c}}))}))
+        (finally
+          (cleanup! handles))))))
+
+(deftest dependency-cycle-test
+  (testing "dependencies that form a cycle are refused"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Circular dependency"
+                          (#'system/dependency-graph {::cycle-a #{::cycle-b}, ::cycle-b #{::cycle-a}})))))
+
+(deftest ^:synchronized halt-refuses-a-cycle-before-closing-admission-test
+  (testing "a halt given a cycle throws while starts are still admitted"
+    (let [handle (system/mutable-component-handle ::after-cyclic-halt (constantly nil))]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Circular dependency"
+                              (system/halt! {::cycle-a #{::cycle-b}, ::cycle-b #{::cycle-a}})))
+        (is (= :started (system/ensure-started! handle (constantly :started) (constantly nil))))
+        (finally
+          (system/reopen!)
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized start-ignores-bindings-test
+  (testing "start sees roots, not the bindings of the thread that triggered it"
+    (let [handle (system/mutable-component-handle ::start-unbound (constantly nil))]
+      (mc/alter-root other-handle :root-other)
+      (try
+        (mc/binding other-handle :bound-other
+                    (fn []
+                      (system/ensure-started! handle (fn [] [:made-from @other-handle]) (constantly nil))))
+        (is (= [:made-from :root-other] @handle))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized start-during-stop-throws-test
+  (testing "a start while the stop function runs throws instead of deadlocking on the component's lock"
+    (let [handle  (system/mutable-component-handle ::stopping (constantly nil))
+          during  (atom nil)
+          restart (fn []
+                    (try (system/ensure-started! handle (constantly :again) (constantly nil))
+                         (catch clojure.lang.ExceptionInfo e (ex-message e))))]
+      (try
+        (system/ensure-started! handle (constantly :running)
+                                (fn [_] (reset! during (deref (future (restart)) 2000 ::deadlocked))))
+        (system/stop! handle)
+        (is (re-find #"Component is stopping" (str @during)))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized start-that-starts-itself-throws-test
+  (testing "a start that starts its own component throws instead of recursing"
+    (let [handle (system/mutable-component-handle ::self-start (constantly nil))
+          start  (fn self [] (system/ensure-started! handle self (constantly nil)))]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Starting component started itself"
+                              (system/ensure-started! handle start (constantly nil))))
+        (finally
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized stop-uses-current-value-test
+  (testing "stop! stops the value the root holds now, which a running component may have replaced"
+    (let [handle  (system/mutable-component-handle ::replaced (constantly nil))
+          stopped (atom [])]
+      (try
+        (system/ensure-started! handle (constantly {:pools {}}) #(swap! stopped conj %))
+        (mc/swap! handle assoc-in [:pools 1] :open-pool)
+        (is (= {:stopped? true, :stopped [{:pools {1 :open-pool}}], :root nil}
+               {:stopped? (system/stop! handle), :stopped @stopped, :root @handle}))
+        (finally
+          (cleanup! [handle]))))))
