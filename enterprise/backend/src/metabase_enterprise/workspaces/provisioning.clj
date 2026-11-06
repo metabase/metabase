@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.provisioning
   (:require
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -8,8 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.util.log :as log]
    [potemkin.types :as p]
-   [toucan2.connection :as t2.connection]
-   [toucan2.core :as t2]))
+   [toucan2.connection :as t2.connection]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
@@ -100,13 +100,13 @@
   [workspace-database-id provisioner]
   (try
     (with-workspace-database-lock workspace-database-id
-      (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
+      (let [wsd (ws.db/workspace-database workspace-database-id)]
         (when-not wsd
           (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
         (when-not (= :provisioning (:status wsd))
           (throw (ex-info "WorkspaceDatabase must be :provisioning to provision"
                           {:id workspace-database-id :status (:status wsd)})))
-        (let [db         (t2/select-one :model/Database :id (:database_id wsd))
+        (let [db         (ws.db/database (:database_id wsd))
               driver     (driver.u/database->driver db)
               workspace  (wsd-iso-workspace workspace-database-id)
               ws-details (merge workspace (details provisioner driver db workspace))
@@ -121,17 +121,14 @@
                   (log/warnf destroy-t "Failed to clean up after provisioning failure for WorkspaceDatabase %s"
                              workspace-database-id)))
               (throw t)))
-          (t2/update! :model/WorkspaceDatabase
-                      {:id workspace-database-id}
-                      {:output_namespace (:schema ws-details)
-                       :database_details (:database_details ws-details)
-                       :status           :provisioned}))))
+          (ws.db/update-workspace-database! workspace-database-id
+                                            {:output_namespace (:schema ws-details)
+                                             :database_details (:database_details ws-details)
+                                             :status           :provisioned}))))
     (catch Throwable t
-      (t2/update! :model/WorkspaceDatabase
-                  {:id workspace-database-id}
-                  {:status :unprovisioned})
+      (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned})
       (throw t)))
-  (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))
+  (ws.db/workspace-database workspace-database-id))
 
 (defn deprovision-workspace-database!
   "Reverse provisioning for a `:deprovisioning` WorkspaceDatabase.
@@ -140,13 +137,13 @@
   [workspace-database-id provisioner]
   (try
     (with-workspace-database-lock workspace-database-id
-      (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
+      (let [wsd (ws.db/workspace-database workspace-database-id)]
         (when-not wsd
           (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
         (when-not (= :deprovisioning (:status wsd))
           (throw (ex-info "WorkspaceDatabase must be :deprovisioning to deprovision"
                           {:id workspace-database-id :status (:status wsd)})))
-        (let [db        (t2/select-one :model/Database :id (:database_id wsd))
+        (let [db        (ws.db/database (:database_id wsd))
               driver    (driver.u/database->driver db)
               workspace (assoc (wsd-iso-workspace workspace-database-id)
                                :schema           (:output_namespace wsd)
@@ -172,17 +169,14 @@
                 (ws.remapping-cleanup/clear-mappings-for-iso! db
                                                               (:database_id wsd)
                                                               (:output_namespace wsd)))))
-          (t2/update! :model/WorkspaceDatabase
-                      {:id workspace-database-id}
-                      {:output_namespace ""
-                       :database_details {}
-                       :status           :unprovisioned}))))
+          (ws.db/update-workspace-database! workspace-database-id
+                                            {:output_namespace ""
+                                             :database_details {}
+                                             :status           :unprovisioned}))))
     (catch Throwable t
-      (t2/update! :model/WorkspaceDatabase
-                  {:id workspace-database-id}
-                  {:status :provisioned})
+      (ws.db/update-workspace-database! workspace-database-id {:status :provisioned})
       (throw t)))
-  (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))
+  (ws.db/workspace-database workspace-database-id))
 
 ;;; ----------------------------------- High-level entry points (blocking) --------------------------------------------
 
@@ -192,8 +186,7 @@
   ([wsd-id]
    (provision-single! wsd-id dispatching-provisioner))
   ([wsd-id provisioner]
-   (t2/update! :model/WorkspaceDatabase {:id wsd-id :status :unprovisioned}
-               {:status :provisioning})
+   (ws.db/transition-workspace-database! wsd-id :unprovisioned :provisioning)
    (provision-workspace-database! wsd-id provisioner)))
 
 (defn deprovision-single!
@@ -202,8 +195,7 @@
   ([wsd-id]
    (deprovision-single! wsd-id dispatching-provisioner))
   ([wsd-id provisioner]
-   (t2/update! :model/WorkspaceDatabase {:id wsd-id :status :provisioned}
-               {:status :deprovisioning})
+   (ws.db/transition-workspace-database! wsd-id :provisioned :deprovisioning)
    (deprovision-workspace-database! wsd-id provisioner)))
 
 (defn provision-workspace!
@@ -213,13 +205,9 @@
   ([workspace-id]
    (provision-workspace! workspace-id dispatching-provisioner))
   ([workspace-id provisioner]
-   (let [triggered (t2/update! :model/WorkspaceDatabase
-                               {:workspace_id workspace-id :status :unprovisioned}
-                               {:status :provisioning})]
+   (let [triggered (ws.db/transition-workspace-databases! workspace-id :unprovisioned :provisioning)]
      (when (pos? triggered)
-       (doseq [{:keys [id]} (t2/select [:model/WorkspaceDatabase :id]
-                                       :workspace_id workspace-id
-                                       :status       :provisioning)]
+       (doseq [id (ws.db/workspace-database-ids-with-status workspace-id :provisioning)]
          (try
            (provision-workspace-database! id provisioner)
            (catch Throwable t
@@ -252,8 +240,8 @@
   retried. Returns nil."
   [wsd provisioner]
   (with-workspace-database-lock (:id wsd)
-    (when-let [wsd (t2/select-one :model/WorkspaceDatabase :id (:id wsd))]
-      (let [db         (t2/select-one :model/Database :id (:database_id wsd))
+    (when-let [wsd (ws.db/workspace-database (:id wsd))]
+      (let [db         (ws.db/database (:database_id wsd))
             driver     (driver.u/database->driver db)
             iso-ws     (wsd-iso-workspace (:id wsd))
             computed   (delay (details provisioner driver db iso-ws))
@@ -270,8 +258,8 @@
             ;; postgres/mysql app DBs, so the keep-row bookkeeping needs its own
             ;; autocommit connection to survive it.
             (binding [t2.connection/*current-connectable* nil]
-              (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
-                          {:output_namespace "" :database_details {} :status :unprovisioned}))
+              (ws.db/update-workspace-database! (:id wsd)
+                                                {:output_namespace "" :database_details {} :status :unprovisioned}))
             (throw t))
           (finally
             ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
@@ -280,7 +268,7 @@
             ;; (mirrors `deprovision-workspace-database!`).
             (binding [t2.connection/*current-connectable* nil]
               (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
-        (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
+        (ws.db/delete-workspace-database! (:id wsd))
         nil))))
 
 (defn deprovision-workspace!
@@ -290,13 +278,9 @@
   ([workspace-id]
    (deprovision-workspace! workspace-id dispatching-provisioner))
   ([workspace-id provisioner]
-   (let [triggered (t2/update! :model/WorkspaceDatabase
-                               {:workspace_id workspace-id :status :provisioned}
-                               {:status :deprovisioning})]
+   (let [triggered (ws.db/transition-workspace-databases! workspace-id :provisioned :deprovisioning)]
      (when (pos? triggered)
-       (doseq [{:keys [id]} (t2/select [:model/WorkspaceDatabase :id]
-                                       :workspace_id workspace-id
-                                       :status       :deprovisioning)]
+       (doseq [id (ws.db/workspace-database-ids-with-status workspace-id :deprovisioning)]
          (try
            (deprovision-workspace-database! id provisioner)
            (catch Throwable t
