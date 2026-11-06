@@ -347,3 +347,29 @@
         (testing "runs every check that applies again and returns them"
           (let [{:keys [checks]} (mt/user-http-request :crowberto :post 200 "ee/security-center/health-checks/recheck")]
             (is (=? [passing-health-check throwing-health-check] checks))))))))
+
+(deftest recheck-refreshes-the-background-checks-test
+  (mt/with-premium-features #{:admin-security-center}
+    (mt/with-temporary-setting-values [security-center-health-check-results nil]
+      (let [calls      (atom 0)
+            background (fake-health-check
+                        :id      :read-only-connections
+                        :refresh (fn []
+                                   (swap! calls inc)
+                                   {:message "The connection user can write"})
+                        :run     #(if-let [{:keys [message]} (health-checks/stored-result :read-only-connections)]
+                                    [{:status :fail, :message message}]
+                                    [{:status :unknown, :message "Not checked yet"}]))]
+        (with-redefs [health-checks/checks {:read-only-connections background}]
+          (testing "GET reads the stored result and does not refresh"
+            (is (=? {:checks [{:status "unknown", :items [{:message "Not checked yet"}]}]}
+                    (mt/user-http-request :crowberto :get 200 "ee/security-center/health-checks")))
+            (is (zero? @calls)))
+          (testing "POST recheck refreshes, waits for the refresh, and returns the fresh result"
+            (is (=? {:checks [{:status "fail", :items [{:message "The connection user can write"}]}]}
+                    (mt/user-http-request :crowberto :post 200 "ee/security-center/health-checks/recheck")))
+            (is (= 1 @calls)))
+          (testing "GET then returns what the recheck stored"
+            (is (=? {:checks [{:status "fail"}]}
+                    (mt/user-http-request :crowberto :get 200 "ee/security-center/health-checks")))
+            (is (= 1 @calls))))))))
