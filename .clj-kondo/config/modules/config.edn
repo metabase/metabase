@@ -3514,7 +3514,6 @@
            api-scope
            app-db
            collections
-           data-apps
            database-routing
            driver
            events

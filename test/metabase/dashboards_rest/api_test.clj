@@ -5163,17 +5163,15 @@
                             {:id (mt/id :orders :user_id)}
                             {:id (mt/id :people :source)}
                             {:id (mt/id :people :name)}])
-          :tables (concat (sort-by :id
-                                   [{:id (mt/id :categories)}
-                                    {:id (mt/id :users)}
-                                    {:id (mt/id :checkins)}
-                                    {:id (mt/id :reviews)}
-                                    {:id (mt/id :products)
-                                     :fields sequential?}
-                                    {:id (mt/id :venues)}])
-                          [{:id (str "card__" card-id-2)
-                            :fields sequential?}])
-          :cards [{:id link-card}]
+          :tables (sort-by :id
+                           [{:id (mt/id :categories)}
+                            {:id (mt/id :users)}
+                            {:id (mt/id :checkins)}
+                            {:id (mt/id :reviews)}
+                            {:id (mt/id :products)
+                             :fields sequential?}
+                            {:id (mt/id :venues)}])
+          :cards (sort-by :id [{:id card-id-2} {:id link-card}])
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
          (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
@@ -5195,10 +5193,10 @@
          card-id-1
          #(testing "Before delete"
             (is (=?
-                 {:cards      empty?
+                 {:cards      [{:id card-id-1}]
                   :fields     empty?
                   :dashboards empty?
-                  :tables     [{:id (str "card__" card-id-1)}]
+                  :tables     empty?
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
          ;; After delete, card-id-2 still exists on the dashboard but its source is gone.
@@ -5280,10 +5278,10 @@
   (let [original-admp   (mt/original-fn #'lib.metadata.jvm/application-database-metadata-provider-factory)
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
-                         {:tables     [{} {}]
+                         {:tables     [{}]
                           :databases  [{}]
                           :fields     []
-                          :cards      []
+                          :cards      [{:name "Card attached to dashcard"}]
                           :dashboards []}]]
     (mt/with-temp [:model/Dashboard     dash      {:name "Some dashboard"}
                    :model/Card          card      {:name "Card attached to dashcard"

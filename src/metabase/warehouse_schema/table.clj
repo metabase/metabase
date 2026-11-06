@@ -349,39 +349,3 @@
                            :databases databases
                            :card-id->metadata-fields card-id->metadata-fields))))
 
-(defn- remove-nested-pk-fk-semantic-types
-  "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
-  type confuses the frontend and it can really used in the same way"
-  [{:keys [fields] :as metadata-response} {:keys [trust-semantic-keys?]}]
-  (assoc metadata-response :fields (for [{:keys [semantic_type id] :as field} fields]
-                                     (if (and (not trust-semantic-keys?)
-                                              (or (isa? semantic_type :type/PK)
-                                                  (isa? semantic_type :type/FK))
-                                              ;; if they have a user entered id let it stay
-                                              (or (nil? id)
-                                                  (not (number? id))))
-                                       (assoc field :semantic_type nil)
-                                       field))))
-
-(defn batch-fetch-card-query-metadatas
-  "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
-  [ids {:keys [include-database?]}]
-  (when (seq ids)
-    (let [cards (warehouse-schema.db/cards-with-moderated-status ids)
-          dbs (if (seq cards)
-                (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
-                {})
-          card-id->metadata-fields (cards->card-id->metadata-fields cards)
-          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
-      (for [card readable-cards]
-        ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
-        ;; stale data that remained there from a time when the given column was still FK. We assume
-        ;; treating a not-FK-anymore column as FK is not that bad as not supporting user defined FK
-        ;; settings, so we trust the model's information.
-        (let [trust-semantic-keys? (= (:type card) :model)]
-          (-> card
-              (card->virtual-table :include-database? include-database?
-                                   :include-fields? true
-                                   :databases dbs
-                                   :card-id->metadata-fields card-id->metadata-fields)
-              (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?})))))))

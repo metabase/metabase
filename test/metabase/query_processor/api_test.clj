@@ -1217,20 +1217,23 @@
             (doseq [card-id [card-id-1 card-id-2]]
               (is (=?
                    {:fields    empty?
-                    :tables    [{:id (str "card__" card-id)}]
+                    :tables    empty?
+                    :cards     [{:id card-id}]
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            ;; card-id-1 is deleted, so querying it as a source returns empty tables
+            ;; card-id-1 is deleted, so querying it as a source returns no cards
             (is (=?
                  {:fields    empty?
                   :tables    empty?
+                  :cards     empty?
                   :databases [{:id (mt/id) :engine string?}]}
                  (query-metadata 200 card-id-1)))
             ;; card-id-2 still exists, so querying it as a source still works
             (is (=?
                  {:fields    empty?
-                  :tables    [{:id (str "card__" card-id-2)}]
+                  :tables    empty?
+                  :cards     [{:id card-id-2}]
                   :databases [{:id (mt/id) :engine string?}]}
                  (query-metadata 200 card-id-2)))))))))
 
