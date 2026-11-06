@@ -691,3 +691,14 @@
             [q2-type q2] queries]
       (testing (str "q1 = " q1-type ", q2 = " q2-type)
         (lib.js/query= q1 q2)))))
+
+(deftest ^:parallel card-metadata-test
+  (let [mp   (lib.tu/metadata-provider-with-mock-cards)
+        card (:orders (lib.tu/mock-cards))]
+    (testing "returns metadata of card with given id"
+      (is (=? {:lib/type :metadata/card
+               :id       (:id card)
+               :name     (:name card)}
+              (lib.js/card-metadata mp (:id card)))))
+    (testing "returns nil for unknown card id"
+      (is (nil? (lib.js/card-metadata mp 999999))))))
