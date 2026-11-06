@@ -91,17 +91,14 @@
     (throw (ex-info (format "Invalid resource file path: %s" path) {:path path}))))
 
 (defn read-resources
-  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`, and
-  the name of the directory it was read from as `:serdes/directory`."
-  [entity ^String directory-name read-fn]
+  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`."
+  [entity read-fn]
   (if-let [paths (seq (serdes/resource-paths entity))]
-    (assoc entity
-           :serdes/directory directory-name
-           :serdes/resources (into {}
-                                   (map (fn [path]
-                                          (check-resource-path! path)
-                                          [path (read-fn path)]))
-                                   paths))
+    (assoc entity :serdes/resources (into {}
+                                          (map (fn [path]
+                                                 (check-resource-path! path)
+                                                 [path (read-fn path)]))
+                                          paths))
     entity))
 
 (def legal-top-level-paths
@@ -208,15 +205,13 @@
       (if (= ["Setting"] (mapv :model serdes-meta))
         (when (contains? settings kw-id)
           {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
-        (when-let [^File file (get @cache (strip-labels serdes-meta))]
+        (when-let [file (get @cache (strip-labels serdes-meta))]
           (try
-            (let [dir (.getParentFile file)]
-              (read-resources (ingest-file file)
-                              (.getName dir)
-                              (fn [^String path]
-                                (let [resource (io/file dir path)]
-                                  (when (.isFile resource)
-                                    (slurp resource))))))
+            (read-resources (ingest-file file)
+                            (fn [path]
+                              (let [resource (io/file (.getParentFile ^File file) ^String path)]
+                                (when (.isFile resource)
+                                  (slurp resource)))))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
                                                        :abs-path serdes-meta} e))))))))

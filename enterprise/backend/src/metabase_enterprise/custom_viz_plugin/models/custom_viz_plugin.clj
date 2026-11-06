@@ -72,9 +72,8 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-;; A plugin serializes as `custom_viz_plugins/<identifier>/custom_viz_plugin.yaml` with its bundle unpacked beside it,
-;; in the layout `npx @metabase/custom-viz pack` produces; import packs the files back into an archive. Whether a
-;; plugin is enabled is per-instance, so the YAML carries no settings.
+;; A plugin serializes as `custom_viz_plugins/<slug>/custom_viz_plugin.yaml` with its unpacked bundle beside it.
+;; `enabled` is per-instance, so it isn't serialized.
 
 (def ^:private index-file
   "The resource file holding the plugin's built JavaScript, relative to its YAML file."
@@ -157,8 +156,8 @@
                    (assoc entity :files (vec (sort (keys (:serdes/resources entity))))))})
 
 (defn- case-colliding-identifiers
-  "The lower-cased identifiers that more than one of `identifiers` share: their plugins would be one directory on a
-  case-insensitive filesystem, and an import refuses the second of them anywhere, so none of them is exported."
+  "The lower-cased identifiers that more than one of `identifiers` share: an import refuses the second of them
+  anywhere, so none of them is exported."
   [identifiers]
   (into #{}
         (keep (fn [[lowered group]]
@@ -170,8 +169,8 @@
 
 (defmethod serdes/extract-query "CustomVizPlugin"
   [model-name {:keys [filter-column filter-ids] :as opts}]
-  ;; during export skip dev plugins, case-colliding and plugins who's name can't be directory name
-  ;; skipped plugins are named in the log, and is still served on this instance
+  ;; skip what an import would refuse: dev-only plugins, case-colliding identifiers, and identifiers registration no
+  ;; longer accepts. Skipped plugins are named in the log and still served on this instance.
   (let [colliding (case-colliding-identifiers
                    (custom-viz-plugin.db/plugin-identifiers-with-bundles filter-column filter-ids))]
     (eduction (remove (fn [{:keys [identifier]}]
@@ -202,21 +201,9 @@
          :icon             nil
          :metabase_version nil}))))
 
-(defn- check-directory!
-  "Throws unless the directory an ingested plugin was read from, when known, is named by its identifier."
-  [{:keys [identifier] :as ingested}]
-  (when-let [directory (:serdes/directory ingested)]
-    (when-not (= directory identifier)
-      (throw (ex-info (format "custom_viz_plugins/%s: the directory must be named by the plugin's identifier, \"%s\""
-                              directory identifier)
-                      {:status-code 400})))))
-
 (defn- check-identifier-free!
-  "Throws unless `identifier` can name the ingested plugin, matched to `maybe-local` by its `entity_id` or new: no
-  other plugin may hold the identifier (a plugin made on this instance holds it under another `entity_id`), and no
-  other plugin may hold one equal to it except for case: it would be a second plugin wherever identifiers are
-  case-sensitive, and a renamed one wherever they are not. The matched plugin itself may take any identifier,
-  including its own in another case: that is a rename, and the identifier is not the plugin's identity."
+  "Throws if another plugin than `maybe-local` already holds `identifier`, ignoring case, so case-only variants
+  can't become two plugins."
   [identifier maybe-local]
   (when-let [existing (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier (:id maybe-local))]
     (if (= existing identifier)
@@ -232,8 +219,7 @@
 
 (defmethod serdes/load-one! "CustomVizPlugin"
   [{:keys [identifier] :as ingested} maybe-local]
-  (check-directory! ingested)
-  ;; a new plugin is a registration, so it is held to the directory rule; an existing one may predate it
+  ;; a new plugin is a registration, so it is held to the directory-name rule; an existing one may predate it
   (when (nil? maybe-local)
     (when-let [error (manifest/directory-name-error identifier)]
       (throw (ex-info error {:status-code 400}))))
@@ -255,10 +241,10 @@
   (serdes/maybe-labeled model-name entity :identifier))
 
 (defmethod serdes/storage-path "CustomVizPlugin" [{:keys [identifier entity_id]} _ctx]
-  ;; the directory is the identifier verbatim, as an app's is its slug: identifiers are unique, so the dedup suffix
-  ;; never fires, and the directory is checked against the identifier on import
+  ;; slugified and deduplicated by `entity_id` like a collection's directory, so identifiers that slugify alike
+  ;; (`my-viz`, `my_viz`) get distinct directories
   [{:label "custom_viz_plugins"}
-   {:label identifier :key entity_id :style :slug}
+   {:label identifier :key entity_id}
    {:label "custom_viz_plugin"}])
 
 (defmethod serdes/resource-paths "CustomVizPlugin" [{:keys [files]}]

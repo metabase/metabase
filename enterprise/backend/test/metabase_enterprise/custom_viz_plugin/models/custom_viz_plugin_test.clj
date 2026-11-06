@@ -41,7 +41,6 @@
         (let [ingested (ingest/read-resources
                         {:serdes/meta [{:model "CustomVizPlugin" :id identifier}]
                          :identifier identifier :files (vec (keys exported))}
-                        identifier
                         exported)]
           (is (= (set (keys files)) (set (keys (:serdes/resources ingested)))))
           (mt/with-temp [:model/CustomVizPlugin {id :id :as plugin} {:identifier   identifier
@@ -123,13 +122,20 @@
            (serdes/generate-path "CustomVizPlugin" {:identifier "My-Viz" :entity_id "eNtItYiD0000000000001"})))))
 
 (deftest storage-path-test
-  (testing "storage-path is the identifier's own directory under custom_viz_plugins, holding custom_viz_plugin.yaml"
-    (let [entity {:identifier  "My-Viz"
-                  :entity_id   "eNtItYiD0000000000001"
-                  :serdes/meta [{:model "CustomVizPlugin" :id "eNtItYiD0000000000001" :label "my_viz"}]}]
-      (testing "the directory keeps the identifier verbatim, since import checks it against the identifier"
-        (is (= "custom_viz_plugins/My-Viz/custom_viz_plugin.yaml"
-               (storage.util/entity-file-path (serdes/storage-base-context) entity)))))))
+  (testing "storage-path is the slugified identifier's directory under custom_viz_plugins, holding custom_viz_plugin.yaml"
+    (let [entity (fn [identifier entity-id]
+                   {:identifier  identifier
+                    :entity_id   entity-id
+                    :serdes/meta [{:model "CustomVizPlugin" :id entity-id}]})
+          ctx    (serdes/storage-base-context)]
+      (is (= "custom_viz_plugins/my_viz/custom_viz_plugin.yaml"
+             (storage.util/entity-file-path ctx (entity "My-Viz" "eNtItYiD0000000000001"))))
+      (testing "identifiers that slugify alike, such as `My-Viz` and `my_viz`, get distinct directories"
+        (is (= "custom_viz_plugins/my_viz_2/custom_viz_plugin.yaml"
+               (storage.util/entity-file-path ctx (entity "my_viz" "eNtItYiD0000000000002")))))
+      (testing "an identifier with spaces is slugified"
+        (is (= "custom_viz_plugins/my_heatmap/custom_viz_plugin.yaml"
+               (storage.util/entity-file-path ctx (entity "My Heatmap" "eNtItYiD0000000000003"))))))))
 
 (deftest load-find-local-test
   (testing "load-find-local finds the plugin by its entity_id, not its identifier"
@@ -185,7 +191,6 @@
   [identifier ^bytes bundle & {:as extra}]
   (let [entity-id (or (:entity_id extra) (u/generate-nano-id))]
     (merge {:serdes/meta      [{:model "CustomVizPlugin" :id entity-id :label identifier}]
-            :serdes/directory identifier
             :serdes/resources (when bundle (as-text (cache/bundle->files bundle)))
             :identifier       identifier
             :entity_id        entity-id}
@@ -250,19 +255,6 @@
       (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "toggled-viz" bundle) :enabled false)]
         (serdes/load-one! (ingested-plugin "toggled-viz" bundle :enabled true) (t2/select-one :model/CustomVizPlugin :id id))
         (is (false? (t2/select-one-fn :enabled :model/CustomVizPlugin :id id)))))))
-
-(deftest load-checks-the-directory-name-test
-  (testing "a plugin read from a directory not named by its identifier fails the import, naming the directory"
-    (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"custom_viz_plugins/thumb: .*\"thumbs\""
-                            (serdes/load-one! (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs")
-                                                               :serdes/directory "thumb")
-                                              nil)))
-      (is (nil? (t2/select-one :model/CustomVizPlugin :identifier "thumbs")))))
-  (testing "an ingested plugin that carries no directory, such as one not read from files, loads"
-    (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (serdes/load-one! (dissoc (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs")) :serdes/directory) nil)
-      (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :identifier "thumbs"))))))
 
 (deftest load-refuses-a-new-identifier-that-cannot-name-a-directory-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]

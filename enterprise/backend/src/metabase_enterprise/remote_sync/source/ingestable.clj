@@ -151,7 +151,6 @@
       (try
         (let [dir (subs path 0 (inc (or (str/last-index-of path "/") -1)))]
           (serialization/read-resources (ingest-content content)
-                                        (last (str/split dir #"/"))
                                         #(source.p/read-file snapshot (str dir %))))
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))

@@ -613,15 +613,14 @@
       (and self (not (contains? self :id))) (assoc :serdes/meta (ingested-path model ingested)))))
 
 (defn storable
-  "Prepare an entity for storage, keeping only its model metadata and removing ingestion-only directory metadata."
+  "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities."
   [entity]
   (let [model (-> entity :serdes/meta last :model)]
     (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
-        (dissoc :serdes/directory)
         (assoc :serdes/meta [{:model model}]))))
 
 (defmulti resource-paths
-  "Resource paths relative to the entity's directory."
+  "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory."
   {:arglists '([ingested])}
   ingested-model)
 

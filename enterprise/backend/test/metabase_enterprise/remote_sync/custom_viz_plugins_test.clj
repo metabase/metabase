@@ -1,6 +1,6 @@
 (ns metabase-enterprise.remote-sync.custom-viz-plugins-test
   "Custom viz plugins are serdes entities: remote sync imports and exports them like data apps, with each plugin's
-   bundle unpacked beside its `custom_viz_plugin.yaml` under `custom_viz_plugins/<identifier>/`."
+   bundle unpacked beside its `custom_viz_plugin.yaml` under `custom_viz_plugins/<slug>/`."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
@@ -9,7 +9,6 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -20,7 +19,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections test-helpers/clean-remote-sync-state test-helpers/commit-with-temp)
+  test-helpers/clean-remote-sync-state test-helpers/commit-with-temp)
 
 (def ^:private icon-svg
   "The SVG icon; the text outside ASCII catches a wrong charset."
@@ -269,7 +268,7 @@
           (let [{dev-id :id} (register-dev-plugin! "dev-only")]
             (is (not (t2/exists? :model/RemoteSyncObject :model_type "CustomVizPlugin" :model_id dev-id)))
             (export-ok! mock :force? true)
-            (is (not-any? #(re-find #"^custom_viz_plugins/dev-only/" %) (keys (repo))))
+            (is (not-any? #(re-find #"^custom_viz_plugins/dev_only/" %) (keys (repo))))
             (import-ok! mock "main")
             (is (t2/exists? :model/CustomVizPlugin :id dev-id))))))))
 

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.custom-viz-plugin.serialization-test
-  "A custom viz plugin on disk: `custom_viz_plugins/<identifier>/custom_viz_plugin.yaml` with the bundle unpacked
-  beside it, laid out as `npx @metabase/custom-viz pack` archives it."
+  "A custom viz plugin on disk: `custom_viz_plugins/<slug>/custom_viz_plugin.yaml` with the bundle unpacked beside
+  it, laid out as `npx @metabase/custom-viz pack` archives it."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
@@ -233,16 +233,13 @@
                   (t2/select-one [:model/CustomVizPlugin :status :error_message :bundle :bundle_hash]
                                  :identifier "big"))))))))
 
-(deftest import-fails-naming-a-directory-not-named-by-its-identifier-test
-  (mt/with-model-cleanup [:model/CustomVizPlugin]
-    (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
-      (write-plugin-files! dump-dir "thumb" (plugin-yaml "thumbs") (plugin-files "thumbs"))
-      (is (= "custom_viz_plugins/thumb: the directory must be named by the plugin's identifier, \"thumbs\""
-             (try
-               (import! dump-dir)
-               (catch Exception e
-                 (ex-message (ex-cause e))))))
-      (is (nil? (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))))
+(deftest import-ignores-the-directory-name-test
+  (testing "the identifier comes from the YAML, whatever the directory is called"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
+        (write-plugin-files! dump-dir "my thumbs plugin" (plugin-yaml "thumbs") (plugin-files "thumbs"))
+        (import! dump-dir)
+        (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :identifier "thumbs")))))))
 
 (deftest round-trip-keeps-the-files-and-settles-the-hash-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
@@ -261,8 +258,8 @@
           (testing "exporting and importing again updates the row in place and changes nothing"
             (ts/with-random-dump-dir [dump-dir-2 "custom-viz-round-trip-"]
               (export! dump-dir-2)
-              (is (= (files-in (io/file dump-dir "custom_viz_plugins" "Calendar Heatmap"))
-                     (files-in (io/file dump-dir-2 "custom_viz_plugins" "Calendar Heatmap"))))
+              (is (= (files-in (io/file dump-dir "custom_viz_plugins" "calendar_heatmap"))
+                     (files-in (io/file dump-dir-2 "custom_viz_plugins" "calendar_heatmap"))))
               (import! dump-dir-2)
               (is (= [imported-id (:entity_id plugin) imported-hash]
                      ((juxt :id :entity_id :bundle_hash) (t2/select-one :model/CustomVizPlugin :identifier "Calendar Heatmap")))))))))))
