@@ -324,7 +324,6 @@ const GroupOption = ({
       <Combobox.Option
         value={String(group.id)}
         aria-label={getGroupNameLocalized(group)}
-        active={isSelected}
         disabled={isDisabled}
       >
         <Flex w="100%" align="center" justify="space-between" gap="sm">
