@@ -2,8 +2,11 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { cardApi, selectTableQueryMetadata } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import {
+  useLazyGetCardQuery,
+  useLazyGetCardQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
+} from "metabase/api";
 import type {
   OmniPickerItem,
   OmniPickerQuestionItem,
@@ -23,12 +26,10 @@ import type {
 import { getIsTenantUser } from "metabase/current-user";
 import { isEmbedding } from "metabase/embedding/config";
 import { selectMetadataProvider } from "metabase/metadata-store";
-import { useDispatch, useSelector, useStore } from "metabase/redux";
-import { fetchTableMetadata } from "metabase/redux/tables";
+import { useSelector, useStore } from "metabase/redux";
 import { Icon, TextInput } from "metabase/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import type { Card, CardId, TableId } from "metabase-types/api";
+import type { CardId, TableId } from "metabase-types/api";
 
 import type { QueryEditorDatabasePickerItem } from "../../../editor/types";
 import {
@@ -90,19 +91,20 @@ export function NotebookDataPicker({
   columnPicker,
 }: NotebookDataPickerProps) {
   const store = useStore();
-  const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
   const isEmbed = isEmbedding();
   const isTenantUser = useSelector(getIsTenantUser);
 
+  const [fetchTable] = useLazyGetTableQueryMetadataQuery();
+  const [fetchCard] = useLazyGetCardQuery();
+  const [fetchCardQueryMetadata] = useLazyGetCardQueryMetadataQuery();
+
   const loadTable = async (tableId: TableId) => {
-    await dispatch(fetchTableMetadata({ id: tableId }));
-    const state = store.getState();
-    const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
-      state,
+    const table = await fetchTable({ id: tableId }, true).unwrap();
+    const metadataProvider = selectMetadataProvider(
+      store.getState(),
+      table.db_id,
     );
-    const databaseId = checkNotNull(tableMetadata).db_id;
-    const metadataProvider = selectMetadataProvider(state, databaseId);
     return {
       metadataProvider,
       table: Lib.tableOrCardMetadata(metadataProvider, tableId),
@@ -110,13 +112,9 @@ export function NotebookDataPicker({
   };
 
   const loadCard = async (cardId: CardId) => {
-    const [card]: [Card, unknown] = await Promise.all([
-      runRtkEndpoint({ id: cardId }, dispatch, cardApi.endpoints.getCard, {
-        forceRefetch: false,
-      }),
-      runRtkEndpoint(cardId, dispatch, cardApi.endpoints.getCardQueryMetadata, {
-        forceRefetch: false,
-      }),
+    const [card] = await Promise.all([
+      fetchCard({ id: cardId }, true).unwrap(),
+      fetchCardQueryMetadata(cardId, true).unwrap(),
     ]);
     const metadataProvider = selectMetadataProvider(
       store.getState(),

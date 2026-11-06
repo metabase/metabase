@@ -388,6 +388,7 @@ export const {
   useGetCardQuery,
   useLazyGetCardQuery,
   useGetCardQueryMetadataQuery,
+  useLazyGetCardQueryMetadataQuery,
   useGetCardQueryQuery,
   useLazyGetCardQueryQuery,
   useGetCardQueryPivotQuery,
