@@ -4475,13 +4475,14 @@
            permissions
            premium-features
            security-center
+           session
            settings
            system
            task
            util
            util.config}
    :model-exports #{:model/SecurityAdvisory}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/DataPermissions :model/Database :model/User}}
 
   enterprise/serialization
   {:team "Graphy"

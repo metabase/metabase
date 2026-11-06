@@ -923,6 +923,9 @@
    (prometheus/gauge :metabase-security-center/vulnerable-advisories
                      {:description "Number of advisories where this Metabase instance is potentially affected."
                       :labels [:severity :acknowledged]})
+   (prometheus/gauge :metabase-security-center/health-checks
+                     {:description "1 when the Security Center health check last had this status, else 0."
+                      :labels [:check_id :severity :status]})
    ;; metaplow analytics metrics
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."
