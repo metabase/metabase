@@ -695,7 +695,7 @@
   [card-shown? {:keys [id card row col size_x size_y visualization_settings]}]
   (let [readable (when (and card (card-shown? card)) card)]
     (str "<dashcard"
-         (xml-attrs :id id
+         (xml-attrs :dashcard_id id
                     :card_id (:id readable)
                     :name (:name readable)
                     :display (some-> (or (:display readable)
@@ -708,14 +708,15 @@
   "The lines of the saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards
   they connect to. The `saved-charts` are the charts this call saved, which [[card-shown-fn]] shows.
   A dashcard with no tab shows on the first tab, as in the frontend and `read_resource`."
+  ;; Attribute names and the filter element match the dashboard reads in `read_resource`, so the model reads one shape.
   [{:keys [id name description tabs dashcards parameters]} saved-charts]
   (let [tabs        (sort-by :position tabs)
         first-tab   (:id (first tabs))
         by-tab      (group-by #(or (:dashboard_tab_id %) first-tab) (sort-by (juxt :row :col) dashcards))
         connections (fn [parameter-id]
-                      (not-empty (for [dc dashcards
-                                       :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
-                                   (:id dc))))
+                      (for [dc dashcards
+                            :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
+                        (:id dc)))
         card-shown? (card-shown-fn dashcards saved-charts)
         card-lines  (fn [indent dcs] (for [dc dcs] (str indent (dashcard-xml card-shown? dc))))]
     [(str "  <dashboard" (xml-attrs :id id :name name) ">")
@@ -723,17 +724,13 @@
        (str "    <description>" (llm-shape/escape-xml-content description) "</description>"))
      (if (seq tabs)
        (for [{tab-id :id tab-name :name} tabs]
-         [(str "    <tab" (xml-attrs :id tab-id :name tab-name) ">")
+         [(str "    <tab" (xml-attrs :tab_id tab-id :name tab-name) ">")
           (card-lines "      " (get by-tab tab-id))
           "    </tab>"])
        (card-lines "    " (get by-tab nil)))
      (for [{parameter-id :id :as parameter} parameters]
-       (str "    <filter"
-            (xml-attrs :id parameter-id
-                       :name (:name parameter)
-                       :type (some-> (:type parameter) u/qualified-name)
-                       :connected_dashcards (some->> (connections parameter-id) ids-text))
-            "/>"))
+       (str "    " (llm-shape/dashboard-filter->xml
+                    (assoc parameter :connected_dashcards (connections parameter-id)))))
      "  </dashboard>"]))
 
 (defn- action

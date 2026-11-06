@@ -193,7 +193,8 @@
   (mt/with-model-cleanup [:model/Dashboard]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "the result groups the dashcards under their tabs"
-        (is (re-find #"<tab id=\"\d+\" name=\"Revenue\">\n      <dashcard id=\"\d+\" display=\"text\" row=\"0\""
+        (is (re-find (re-pattern (str "<tab tab_id=\"\\d+\" name=\"Revenue\">\n"
+                                      "      <dashcard dashcard_id=\"\\d+\" display=\"text\" row=\"0\""))
                      (:output (call {:name "Tabbed"
                                      :ops  [{:op "add_tab", :id -1, :name "Revenue"}
                                             {:op "add_text", :id -2, :markdown "Notes", :tab -1}]}))))))))
@@ -207,10 +208,10 @@
                                                                                   :text         "Notes"}}]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "the result shows a card without a tab on the first tab, as the frontend does"
-        (is (re-find (re-pattern (str "<tab id=\"" one-id "\" name=\"One\">\n"
-                                      "      <dashcard id=\"" dashcard-id "\" display=\"text\"[^\n]*/>\n"
+        (is (re-find (re-pattern (str "<tab tab_id=\"" one-id "\" name=\"One\">\n"
+                                      "      <dashcard dashcard_id=\"" dashcard-id "\" display=\"text\"[^\n]*/>\n"
                                       "    </tab>\n"
-                                      "    <tab id=\"" two-id "\" name=\"Two\">\n"
+                                      "    <tab tab_id=\"" two-id "\" name=\"Two\">\n"
                                       "    </tab>"))
                      (:output (call {:dashboard_id dash-id, :name "Renamed"}))))))))
 
@@ -357,7 +358,7 @@
              (is (=? {:name "Revenue by month", :archived false} (t2/select-one :model/Card :id card-id)))
              (is (= "Marketing" (t2/select-one-fn :name :model/Dashboard :id other-id))))
            (testing "the result shows the layout with real ids"
-             (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" card_id=\"" (:id new-card)
+             (is (re-find (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" card_id=\"" (:id new-card)
                                            "\" name=\"Venues\" display=\"bar\" row=\"0\" col=\"0\""
                                            " size_x=\"24\" size_y=\"6\"/>"))
                           (:output result))))))))))
@@ -378,7 +379,7 @@
        (mt/with-current-user (mt/user->id :rasta)
          (let [output (:output (call {:dashboard_id dash-id, :name "Sales summary"}))]
            (testing "a card the user can't read shows its slot without its id or name"
-             (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
+             (is (re-find (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
                                            " size_y=\"6\"/>"))
                           output))
              (is (not (re-find #"Secret revenue" output))))))))))
@@ -695,7 +696,7 @@
 (deftest curated-only-result-test
   (curated-dashboard!
    (fn [{:keys [curated-id dash-id dashcard-id curated-metabot open-metabot]}]
-     (let [slot-only (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"0\" col=\"0\" size_x=\"12\""
+     (let [slot-only (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" row=\"0\" col=\"0\" size_x=\"12\""
                                       " size_y=\"6\"/>"))]
        (testing "with curation on, the uncurated dashboard is edited"
          (let [output (as-metabot
@@ -783,7 +784,7 @@
                        curated-metabot
                        #(binding [shared/*memory-atom* (chart-memory convo-id)]
                           (:output (call {:dashboard_id dash-id, :name "Renamed"} :internal))))]
-           (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
+           (is (re-find (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
                                          " size_y=\"6\"/>"))
                         output))
            (is (not (re-find #"Other chat's chart" output)))))))))
