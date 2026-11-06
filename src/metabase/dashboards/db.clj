@@ -399,3 +399,10 @@
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."
   [tab-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/DashboardTab :id [:in tab-ids]))
+
+(mu/defn dashcards-serdes-columns
+  "The id, Dashboard id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the
+  Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/DashboardCard :id :dashboard_id :card_id :action_id :parameter_mappings :visualization_settings]
+             :dashboard_id [:in [:auto/param dashboard-ids]]))

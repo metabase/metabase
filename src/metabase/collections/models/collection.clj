@@ -22,6 +22,7 @@
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
@@ -2321,6 +2322,34 @@
                                (cond-> ingested (system-collection-name local) (dissoc :name))
                                local))
 
+(defmethod serialization/storage-paths :model/Collection [_ entities {:keys [collections]}]
+  (mapv (fn [coll]
+          (into [{:label "collections"} {:label (serialization/collection-namespace-folder (:namespace coll))}]
+                (get collections (:entity_id coll))))
+        entities))
+
+(defn- import-parent-locations
+  "A transform fn importing parent Collection entity ids as the locations of their children."
+  [store _entities parent-eids opts]
+  (let [parent-ids (serialization/column-ids store :model/Collection parent-eids opts)
+        locations  (when-let [ids (seq (filter some? parent-ids))]
+                     (collections.db/collection-locations (vec (distinct ids))))]
+    (mapv #(if % (str (get locations %) % "/") "/") parent-ids)))
+
+(defmethod serialization/spec :model/Collection [_]
+  {:schema    ::collections.schema/external-collection
+   :copy      [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
+               :is_remote_synced :is_sample :name :namespace :slug :type]
+   :transform {:location          {:as     :parent_id
+                                   :export (fn [store _ locations _]
+                                             (serialization/column-refs store :model/Collection
+                                                                        (map location-path->parent-id locations)))
+                                   :import import-parent-locations}
+               :personal_owner_id serialization/user-transform}
+   :defaults  {:archived         false
+               :is_sample        false
+               :is_remote_synced false}})
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2624,3 +2653,25 @@
   "Return all collections in the given namespace."
   [namespace]
   (collections.db/collections-in-namespace (name namespace)))
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/Collection [_ entities]
+  (mapv (fn [{:keys [parent_id]}]
+          (when parent_id
+            #{[:model/Collection parent_id]}))
+        entities))
+
+(defmethod serialization/export-dependencies :model/Collection [_ collections]
+  (mapv (fn [{:keys [location]}]
+          (when-let [parent-id (some-> location location-path->parent-id)]
+            #{[:model/Collection parent-id]}))
+        collections))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/Collection [_ items]
+  (mapv (fn [{:keys [local] :as item}]
+          (cond-> item
+            (and local (system-collection-name local)) (update :row dissoc :name)))
+        items))

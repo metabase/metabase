@@ -654,6 +654,7 @@
            request
            revisions.schema
            search
+           serialization
            tracing
            transforms.feature-gating
            upload
@@ -814,6 +815,7 @@
            query-permissions
            query-processor
            search
+           serialization
            settings
            staleness
            sync
@@ -3051,6 +3053,7 @@
            events
            lib.schema
            models
+           serialization
            util}
    :model-exports #{:model/Timeline :model/TimelineEvent}
    :model-imports #{:model/Collection :model/User}}

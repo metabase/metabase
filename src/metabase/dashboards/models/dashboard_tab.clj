@@ -6,6 +6,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -60,6 +61,14 @@
    :copy      [:entity_id :name :position]
    :skip      []
    :transform {:dashboard_id (serdes/parent-ref)}})
+
+;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
+
+(defmethod serialization/spec :model/DashboardTab [_]
+  {:schema    ::dashboards.schema/external-dashboard-tab
+   :copy      [:entity_id :name :position]
+   :parent    {:model :model/Dashboard :key :dashboard_id :order (juxt :position :entity_id)}
+   :transform {:dashboard_id serialization/import-only-transform}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 

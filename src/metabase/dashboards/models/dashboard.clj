@@ -26,6 +26,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
@@ -507,6 +508,69 @@
                            (t2/hydrate :dashcards)
                            (update :dashcards #(t2/hydrate % :series)))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               SERIALIZATION                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod serialization/spec :model/Dashboard [_]
+  {:schema             ::dashboards.schema/external-dashboard
+   :copy               [:archived :archived_directly :auto_apply_filters :caveats :collection_position
+                        :description :embedding_params :enable_embedding :embedding_type :entity_id :name
+                        :points_of_interest :position :public_uuid :show_in_getting_started :width]
+   :skip               [:initially_published_at :view_count :last_viewed_at :cache_ttl :public_uuid_prefix]
+   :transform          {:collection_id     (serialization/fk-transform :model/Collection)
+                        :creator_id        serialization/user-transform
+                        :made_public_by_id serialization/user-transform
+                        :parameters        serialization/parameters-transform}
+   :children           {:tabs      :model/DashboardTab
+                        :dashcards :model/DashboardCard}
+   :defaults           {:archived                false
+                        :archived_directly       false
+                        :auto_apply_filters      true
+                        :enable_embedding        false
+                        :show_in_getting_started false}})
+
+(def ^:private export-walkers
+  "The dependency walkers for Dashboard rows with database ids."
+  {:mbql                   serialization/export-mbql-dependencies
+   :parameters             serialization/export-parameters-dependencies
+   :visualization-settings serialization/export-visualization-settings-dependencies})
+
+(def ^:private import-walkers
+  "The dependency walkers for Dashboard entities, which hold references."
+  {:mbql                   serialization/import-mbql-dependencies
+   :parameters             serialization/import-parameters-dependencies
+   :visualization-settings serialization/import-visualization-settings-dependencies})
+
+(defn- dashcard-dependencies
+  "The dependencies of a dashcard, found with the `walkers` of [[export-walkers]] or [[import-walkers]]."
+  [{:keys [action_id card_id parameter_mappings visualization_settings series]} {:keys [mbql visualization-settings]}]
+  (set
+   (concat
+    (mapcat mbql parameter_mappings)
+    (visualization-settings visualization_settings)
+    (when card_id   #{[:model/Card card_id]})
+    (when action_id #{[:model/Action action_id]})
+    (for [s series] [:model/Card (:card_id s)]))))
+
+(defn- dashboard-dependencies
+  "The dependencies of a Dashboard with its `:dashcards` and their `:series`, found with `walkers`."
+  [dashboard {:keys [parameters] :as walkers}]
+  (->> (map #(dashcard-dependencies % walkers) (:dashcards dashboard))
+       (reduce set/union #{})
+       (set/union (when-let [id (:collection_id dashboard)] #{[:model/Collection id]}))
+       (set/union (parameters (:parameters dashboard)))))
+
+(defn- export-dashboard-dependencies
+  "The `[model id]` dependencies of a Dashboard row with its `:dashcards` and their `:series`."
+  [dashboard]
+  (dashboard-dependencies dashboard export-walkers))
+
+(defn- import-dashboard-dependencies
+  "The `[model ref]` dependencies of a Dashboard entity."
+  [dashboard]
+  (dashboard-dependencies dashboard import-walkers))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "dashboard"
@@ -580,3 +644,28 @@
                             (when (setting/get :enable-public-sharing)
                               [:= :report_dashboard.public_uuid nil])
                             (staleness/collection-filter :report_dashboard.collection_id args)]})
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/Dashboard [_ entities]
+  (mapv import-dashboard-dependencies entities))
+
+(defn- dashcards-with-series
+  "The map from Dashboard id to the dashcards of the Dashboards with `dashboard-ids`, each with its `:series`."
+  [dashboard-ids]
+  (let [dashcards (when (seq dashboard-ids) (dashboards.db/dashcards-serdes-columns (vec dashboard-ids)))
+        series    (group-by :dashboardcard_id (when (seq dashcards)
+                                                (dashboards.db/dashcard-series-columns (mapv :id dashcards))))]
+    (group-by :dashboard_id (map #(assoc % :series (get series (:id %))) dashcards))))
+
+(defmethod serialization/export-dependencies :model/Dashboard [_ dashboards]
+  (let [dashcards (dashcards-with-series (keep :id dashboards))]
+    (mapv #(export-dashboard-dependencies (assoc % :dashcards (get dashcards (:id %)))) dashboards)))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/Dashboard [_ items]
+  (let [action-eids    (into #{} (comp (mapcat (comp :dashcards :entity)) (keep :action_id)) items)
+        loaded         (if (seq action-eids) (dashboards.db/action-entity-ids-in action-eids) #{})
+        keep-dashcard? #(or (nil? (:action_id %)) (contains? loaded (:action_id %)))]
+    (mapv #(m/update-existing-in % [:entity :dashcards] (partial filterv keep-dashcard?)) items)))

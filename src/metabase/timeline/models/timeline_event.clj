@@ -2,6 +2,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
@@ -113,3 +114,16 @@
                :timeline_id (serdes/parent-ref)
                :timestamp   (serdes/date)}
    :defaults {:archived false}})
+
+;;;; model
+
+;;;; serialization
+
+(defmethod serialization/spec :model/TimelineEvent [_]
+  {:schema    ::timeline.schema/external-timeline-event
+   :copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
+   :parent    {:model :model/Timeline :key :timeline_id :order (juxt :name :entity_id)}
+   :transform {:timeline_id serialization/import-only-transform
+               :creator_id serialization/user-transform
+               :timestamp  serialization/date-transform}
+   :defaults  {:archived false}})

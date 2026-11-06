@@ -10,6 +10,7 @@
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -368,3 +369,23 @@
                                                       (assoc opts
                                                              :sort-by :position
                                                              :key-field :card_id))}})
+
+;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
+
+(defmethod serialization/spec :model/DashboardCard [_]
+  {:schema    ::dashboards.schema/external-dashboard-card
+   :copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
+   :parent    {:model :model/Dashboard
+               :key   :dashboard_id
+               :order (juxt :dashboard_tab_id :row :col :entity_id)}
+   :children  {:series :model/DashboardCardSeries}
+   :transform {:dashboard_id           serialization/import-only-transform
+               :card_id                (serialization/fk-transform :model/Card)
+               :action_id              (serialization/fk-transform :model/Action)
+               :dashboard_tab_id       (update (serialization/fk-transform :model/DashboardTab) :import
+                                               (fn [import-ids]
+                                                 (fn [store batch refs opts]
+                                                   (import-ids store batch (map serialization/owned-entity-id refs)
+                                                               opts))))
+               :parameter_mappings     serialization/parameter-mappings-transform
+               :visualization_settings serialization/visualization-settings-transform}})

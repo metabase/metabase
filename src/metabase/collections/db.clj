@@ -91,6 +91,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :location :model/Collection :id collection-id))
 
+(mu/defn collection-locations :- [:map-of ::lib.schema.id/collection :string]
+  "The map from id to location of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-fn->fn :id :location :model/Collection :id [:in [:auto/param collection-ids]]))
+
 (defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
   [collection-id]

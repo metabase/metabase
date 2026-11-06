@@ -2,6 +2,7 @@
   (:require
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -25,3 +26,13 @@
    :skip      []
    :transform {:dashboardcard_id (serdes/parent-ref)
                :card_id          (serdes/fk :model/Card)}})
+
+;; Serialization
+
+(defmethod serialization/spec :model/DashboardCardSeries [_]
+  {:schema    ::dashboards.schema/external-dashboard-card-series
+   :identity  [:dashboardcard_id :position]
+   :copy      [:position]
+   :parent    {:model :model/DashboardCard :key :dashboardcard_id :order :position}
+   :transform {:dashboardcard_id serialization/import-only-transform
+               :card_id (serialization/fk-transform :model/Card)}})
