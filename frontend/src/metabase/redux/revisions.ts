@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { UnknownAction } from "@reduxjs/toolkit";
-import { assocIn } from "icepick";
 import _ from "underscore";
 
 import { revisionApi } from "metabase/api";
@@ -19,14 +17,15 @@ export const fetchRevisions = createThunkAction(
   FETCH_REVISIONS,
   (entityType: RevisionTargetType, id: number | string) => {
     return async (dispatch) => {
-      const revisions: Revision[] = await runRtkEndpoint(
+      // runRtkEndpoint is typed to return `any`; listRevisions resolves to Revision[]
+      const revisions = (await runRtkEndpoint(
         {
           id,
           entity: entityType === "metric" ? "legacy-metric" : entityType,
         },
         dispatch,
         revisionApi.endpoints.listRevisions,
-      );
+      )) as Revision[];
       return { type: entityType, id, revisions };
     };
   },
@@ -62,7 +61,10 @@ export default function revisions(
     isFetchRevisionsPayload(action.payload)
   ) {
     const { type, id, revisions } = action.payload;
-    return assocIn(state, [type, id], _.indexBy(revisions, "id"));
+    return {
+      ...state,
+      [type]: { ...state[type], [id]: _.indexBy(revisions, "id") },
+    };
   }
   return state;
 }

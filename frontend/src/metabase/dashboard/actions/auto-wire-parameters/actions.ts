@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import {
   closeAutoWireParameterToast,
   showAddedCardAutoWireParametersToast,
@@ -42,7 +41,7 @@ export function showAutoWireToast(
   dashcardId: DashCardId,
   cardId: CardId | null,
   target: ParameterTarget,
-  selectedTabId: DashboardTabId,
+  selectedTabId: DashboardTabId | null,
 ) {
   return function (dispatch: Dispatch, getState: GetState) {
     const dashboardState = getState().dashboard;

@@ -1,5 +1,4 @@
 import { type Reducer, combineReducers, createReducer } from "@reduxjs/toolkit";
-import { assoc, merge } from "icepick";
 
 import {
   createCardPublicLink,
@@ -26,6 +25,7 @@ import type {
   Range,
 } from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
+import { deepMerge } from "metabase/utils/deep-merge";
 import type {
   Card,
   CollectionItemModel,
@@ -478,7 +478,7 @@ const metadataDiff = createReducer<Record<string, Partial<Field>>>(
         const { name, changes } = action.payload;
         return {
           ...state,
-          [name]: state[name] ? merge(state[name], changes) : changes,
+          [name]: state[name] ? deepMerge(state[name], changes) : changes,
         };
       })
       .addCase(CANCEL_QUESTION_CHANGES, () => ({}));
@@ -514,10 +514,17 @@ const parameterValues = createReducer<ParameterValuesMap>({}, (builder) => {
       string,
       { type: string; payload: { parameterValues: ParameterValuesMap } }
     >(INITIALIZE_QB, (_state, action) => action.payload.parameterValues)
-    .addCase<string, { type: string; payload: { id: string; value: unknown } }>(
-      SET_PARAMETER_VALUE,
-      (state, action) => assoc(state, action.payload.id, action.payload.value),
-    );
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: { id: string; value: ParameterValuesMap[string] };
+      }
+    >(SET_PARAMETER_VALUE, (state, action) => {
+      const { id, value } = action.payload;
+      // Keep the same state object when nothing changed.
+      return state[id] === value ? state : { ...state, [id]: value };
+    });
 });
 
 const currentState = createReducer<{

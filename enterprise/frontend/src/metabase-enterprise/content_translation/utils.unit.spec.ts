@@ -14,6 +14,7 @@ import {
 import { leaveUntranslated } from "./use-translate-content";
 import {
   translateColumnDisplayName,
+  translateDisplayNames,
   translateFieldValuesInSeries,
   translateSeriesNames,
 } from "./utils";
@@ -837,5 +838,47 @@ describe("translateSeriesNames", () => {
       result[0].card.visualization_settings.series_settings?.non_metric;
     expect(nonMetric?.title).toBe("Other");
     expect(nonMetric?.color).toBe("#00ff00");
+  });
+});
+
+describe("translateDisplayNames", () => {
+  it("translates display names in nested objects and arrays", () => {
+    const obj = {
+      cols: [{ display_name: "Count", name: "count" }],
+      other: { displayName: "Total" },
+    };
+    expect(
+      translateDisplayNames({
+        obj,
+        tc: mockTranslateWithTranslations,
+        locale: "de",
+      }),
+    ).toEqual({
+      cols: [{ display_name: "translated_Count", name: "count" }],
+      other: { displayName: "translated_Total" },
+    });
+  });
+
+  it("returns the same objects when nothing is translated", () => {
+    const nested = { name: "count" };
+    const obj = { nested, value: 1 };
+    const result = translateDisplayNames({
+      obj,
+      tc: mockTranslateWithTranslations,
+      locale: "de",
+    });
+    expect(result).toBe(obj);
+    expect(result.nested).toBe(nested);
+  });
+
+  it("returns the input when there are no translations", () => {
+    const obj = { display_name: "Count" };
+    expect(
+      translateDisplayNames({
+        obj,
+        tc: mockTranslateWithoutTranslations,
+        locale: "de",
+      }),
+    ).toBe(obj);
   });
 });

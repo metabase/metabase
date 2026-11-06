@@ -1,5 +1,4 @@
 import type { StoryFn } from "@storybook/react";
-import { updateIn } from "icepick";
 
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
 import {
@@ -14,6 +13,7 @@ import {
 
 import type { StaticChartProps } from "../StaticVisualization";
 import { StaticVisualization } from "../StaticVisualization";
+import { withVisualizationSettings } from "../stories-utils";
 
 export default {
   title: "Viz/Static Viz/WaterfallChart",
@@ -453,19 +453,11 @@ export const WithGoalLine = {
   render: Template,
 
   args: {
-    // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.yAxisFullWithDataLabels,
-      [0, "card", "visualization_settings"],
-      (settings) => {
-        return {
-          ...settings,
-          "graph.show_goal": true,
-          "graph.goal_value": 250000,
-          "graph.goal_label": "Target",
-        };
-      },
-    ) as any,
+    rawSeries: withVisualizationSettings(data.yAxisFullWithDataLabels, {
+      "graph.show_goal": true,
+      "graph.goal_value": 250000,
+      "graph.goal_label": "Target",
+    }),
     renderingContext,
   },
 };
@@ -474,17 +466,11 @@ export const CustomYAxisRangeOffScreen = {
   render: Template,
 
   args: {
-    // Unjustified type cast. FIXME
-    rawSeries: updateIn(
-      data.ordinalXScale,
-      [0, "card", "visualization_settings"],
-      (val) => ({
-        ...val,
-        "graph.y_axis.auto_range": false,
-        "graph.y_axis.min": 30000,
-        "graph.y_axis.max": 40000,
-      }),
-    ) as any,
+    rawSeries: withVisualizationSettings(data.ordinalXScale, {
+      "graph.y_axis.auto_range": false,
+      "graph.y_axis.min": 30000,
+      "graph.y_axis.max": 40000,
+    }),
     renderingContext,
   },
 };

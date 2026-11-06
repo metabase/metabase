@@ -1,4 +1,3 @@
-import { dissocIn } from "icepick";
 import _ from "underscore";
 
 import type { Dispatch } from "metabase/redux/store";
@@ -146,9 +145,11 @@ export function cleanIndexFlags<T extends DatasetColumn | Field>(
 
   const newResultMetadata = [...fields];
   for (const index of indexesToClean) {
-    newResultMetadata[index] = dissocIn(newResultMetadata[index], [
-      "should_index",
-    ]);
+    // `undefined` keys are dropped when the question is serialized for the API.
+    newResultMetadata[index] = {
+      ...newResultMetadata[index],
+      should_index: undefined,
+    };
   }
   return newResultMetadata;
 }

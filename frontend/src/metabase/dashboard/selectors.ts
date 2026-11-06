@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
@@ -704,9 +703,9 @@ export const getTabs = createSelector([getDashboard], (dashboard) => {
 export const getSelectedTabId = createSelector(
   [
     getIsWebApp,
-    (state) => getSetting(state, "site-url"),
+    (state: State) => getSetting(state, "site-url"),
     getDashboard,
-    (state) => state.dashboard.selectedTabId,
+    (state: State) => state.dashboard.selectedTabId,
     (state: State & Partial<SdkSharedStoreState>) =>
       state.sdk?.initialDashboardTabId,
   ],

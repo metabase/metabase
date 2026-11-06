@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 import type { ComponentProps } from "react";
 
 import {
@@ -32,7 +31,9 @@ import {
   setup as renderMetabotChat,
   thumbsDown,
   thumbsUp,
+  updateTestConversation,
 } from "metabase/metabot/tests/utils";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
@@ -453,14 +454,20 @@ describe("AgentMessage", () => {
 describe("UserMessage chart mentions", () => {
   it("renders a chart mention as an icon chip using conversation state", async () => {
     const datasetQuery = createMockStructuredDatasetQuery();
-    const metabotState = assocIn(
-      getMetabotInitialState(),
-      ["conversations", "omnibot", "state"],
+    const initialState = getMetabotInitialState();
+    const omnibotConversationId = checkNotNull(
+      initialState.agents.omnibot,
+    ).conversationId;
+    const metabotState = updateTestConversation(
+      initialState,
+      omnibotConversationId,
       {
-        charts: {
-          "chart-1": {
-            queries: [datasetQuery],
-            visualization_settings: { chart_type: "bar" },
+        state: {
+          charts: {
+            "chart-1": {
+              queries: [datasetQuery],
+              visualization_settings: { chart_type: "bar" },
+            },
           },
         },
       },

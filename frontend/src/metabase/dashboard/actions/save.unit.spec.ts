@@ -9,6 +9,7 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
+import type { ClickBehavior } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -117,5 +118,114 @@ describe("updateDashboardAndCards", () => {
     expect(
       fetchMock.callHistory.called("path:/api/dashboard/1", { method: "GET" }),
     ).toBe(false);
+  });
+
+  describe("invalid click behavior", () => {
+    const DASHCARD_ID = 5;
+    const validClickBehavior: ClickBehavior = {
+      type: "link",
+      linkType: "url",
+      linkTemplate: "https://example.com",
+    };
+    const invalidClickBehavior: ClickBehavior = {
+      type: "link",
+      linkType: "url",
+      linkTemplate: "",
+    };
+
+    function setupClickBehavior(startingClickBehavior?: ClickBehavior) {
+      const database = createSampleDatabase();
+      const card = createMockCard({ id: CARD_ID });
+      const createDashcard = (visualization_settings = {}) =>
+        createMockDashboardCard({
+          id: DASHCARD_ID,
+          card_id: CARD_ID,
+          dashboard_id: 1,
+          card,
+          visualization_settings,
+        });
+
+      const savedDashboard = createMockDashboard({
+        id: 1,
+        dashcards: [createDashcard()],
+      });
+
+      const store = getStore(
+        {
+          [Api.reducerPath]: Api.reducer,
+          dashboard: dashboardReducers,
+          entities: (state = {}) => state,
+          settings: (state = {}) => state,
+        },
+        {
+          dashboard: createMockDashboardState({
+            dashboardId: 1,
+            dashboards: {
+              "1": createMockStoreDashboard({
+                id: 1,
+                dashcards: [DASHCARD_ID],
+              }),
+            },
+            dashcards: {
+              [DASHCARD_ID]: createDashcard({
+                click_behavior: invalidClickBehavior,
+                other: "setting",
+              }),
+            },
+            editingDashboard: createMockDashboard({
+              id: 1,
+              dashcards: [
+                createDashcard(
+                  startingClickBehavior
+                    ? { click_behavior: startingClickBehavior }
+                    : {},
+                ),
+              ],
+            }),
+          }),
+          entities: createMockEntitiesState({ databases: [database] }),
+          settings: createMockSettingsState(),
+        },
+        [Api.middleware],
+      );
+
+      fetchMock.put("path:/api/dashboard/1", savedDashboard);
+      setupDashboardQueryMetadataEndpoint(
+        savedDashboard,
+        createMockDashboardQueryMetadata({ databases: [database] }),
+      );
+      fetchMock.post(
+        `path:/api/dashboard/1/dashcard/${DASHCARD_ID}/card/${CARD_ID}/query`,
+        { data: [] },
+      );
+
+      return { store };
+    }
+
+    async function getSavedVisualizationSettings(
+      startingClickBehavior?: ClickBehavior,
+    ) {
+      const { store } = setupClickBehavior(startingClickBehavior);
+      await store.dispatch(updateDashboardAndCards());
+
+      const call = fetchMock.callHistory.lastCall("path:/api/dashboard/1", {
+        method: "PUT",
+      });
+      const body = JSON.parse(String(call?.options?.body));
+      return body.dashcards[0].visualization_settings;
+    }
+
+    it("restores the pre-edit click behavior", async () => {
+      expect(await getSavedVisualizationSettings(validClickBehavior)).toEqual({
+        click_behavior: validClickBehavior,
+        other: "setting",
+      });
+    });
+
+    it("removes the click behavior when there was none before editing", async () => {
+      expect(await getSavedVisualizationSettings()).toEqual({
+        other: "setting",
+      });
+    });
   });
 });

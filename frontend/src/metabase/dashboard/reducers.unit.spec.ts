@@ -1,6 +1,10 @@
 import { createMockStoreDashboard } from "__support__/state";
 import { INITIALIZE } from "metabase/redux/dashboard";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import type { DashCardVisualizationSettings } from "metabase-types/api";
+import {
+  createMockDashboard,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
 import {
   ADD_DASHCARD_IDS_TO_LOADING_QUEUE,
@@ -14,6 +18,9 @@ import {
   fetchCardDataAction,
   fetchDashboard,
   markTimelineEventsShown,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
   selectTimelineEvents,
   setDashCardTimelineEventsEnabled,
   setDashCardTimelineEventsVisibility,
@@ -551,6 +558,132 @@ describe("dashboard reducers", () => {
     it("forgets the tracking when another dashboard is opened", () => {
       const state = reducer(trackedState(), { type: INITIALIZE });
       expect(state.timelineEvents.hasTrackedEventsShown).toBe(false);
+    });
+  });
+
+  describe("dashcard visualization settings", () => {
+    const DASHCARD_ID = 5;
+
+    const setupState = (
+      visualization_settings: DashCardVisualizationSettings | null | undefined,
+    ) => {
+      const dashcard = {
+        ...createMockDashboardCard({ id: DASHCARD_ID }),
+        // The persisted value can be null although the type only allows undefined
+        visualization_settings: visualization_settings as
+          | DashCardVisualizationSettings
+          | undefined,
+      };
+      return { ...initState, dashcards: { [DASHCARD_ID]: dashcard } };
+    };
+
+    describe("UPDATE_DASHCARD_VISUALIZATION_SETTINGS", () => {
+      it("merges into existing settings and marks the dashcard dirty", () => {
+        const state = reducer(
+          setupState({ "card.title": "Old", "card.description": "Keep" }),
+          onUpdateDashCardVisualizationSettings(DASHCARD_ID, {
+            "card.title": "New",
+          }),
+        );
+
+        expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+          "card.title": "New",
+          "card.description": "Keep",
+        });
+        expect(state.dashcards[DASHCARD_ID]?.isDirty).toBe(true);
+      });
+
+      it.each([null, undefined])(
+        "creates visualization_settings when it is %s",
+        (initial) => {
+          const state = reducer(
+            setupState(initial),
+            onUpdateDashCardVisualizationSettings(DASHCARD_ID, {
+              "card.title": "New",
+            }),
+          );
+
+          expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+            "card.title": "New",
+          });
+          expect(state.dashcards[DASHCARD_ID]?.isDirty).toBe(true);
+        },
+      );
+
+      it("leaves state unchanged for a missing dashcard id", () => {
+        const initial = setupState({ "card.title": "Old" });
+        const state = reducer(
+          initial,
+          onUpdateDashCardVisualizationSettings(999, { "card.title": "New" }),
+        );
+
+        expect(state.dashcards).toBe(initial.dashcards);
+      });
+    });
+
+    describe("UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN", () => {
+      it("creates column_settings when missing", () => {
+        const state = reducer(
+          setupState({}),
+          onUpdateDashCardColumnSettings(DASHCARD_ID, "COUNT", {
+            number_style: "percent",
+          }),
+        );
+
+        expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+          column_settings: { COUNT: { number_style: "percent" } },
+        });
+        expect(state.dashcards[DASHCARD_ID]?.isDirty).toBe(true);
+      });
+
+      it("merges settings per column", () => {
+        const state = reducer(
+          setupState({
+            column_settings: {
+              COUNT: { number_style: "percent", decimals: 2 },
+              TOTAL: { decimals: 1 },
+            },
+          }),
+          onUpdateDashCardColumnSettings(DASHCARD_ID, "COUNT", {
+            decimals: 3,
+          }),
+        );
+
+        expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+          column_settings: {
+            COUNT: { number_style: "percent", decimals: 3 },
+            TOTAL: { decimals: 1 },
+          },
+        });
+      });
+    });
+
+    describe("REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS", () => {
+      it("replaces the settings and marks the dashcard dirty", () => {
+        const state = reducer(
+          setupState({ "card.title": "Old", "card.description": "Gone" }),
+          onReplaceAllDashCardVisualizationSettings(DASHCARD_ID, {
+            "card.title": "New",
+          }),
+        );
+
+        expect(state.dashcards[DASHCARD_ID]?.visualization_settings).toEqual({
+          "card.title": "New",
+        });
+        expect(state.dashcards[DASHCARD_ID]?.isDirty).toBe(true);
+      });
+
+      it("leaves state unchanged for a missing dashcard id", () => {
+        const initial = setupState({ "card.title": "Old" });
+        const state = reducer(
+          initial,
+          onReplaceAllDashCardVisualizationSettings(999, {
+            "card.title": "New",
+          }),
+        );
+
+        expect(state.dashcards).toBe(initial.dashcards);
+      });
     });
   });
 });

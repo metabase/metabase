@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
-import { merge } from "icepick";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { deepMerge } from "metabase/utils/deep-merge";
 import type {
   AUTH_TYPES,
   DefaultValues,
@@ -71,7 +70,7 @@ const DEFAULT_VALUES: DefaultValues = {
   },
 };
 
-const DEFAULT_GUEST_EMBED_VALUES: DefaultValues = merge(DEFAULT_VALUES, {
+const DEFAULT_GUEST_EMBED_VALUES: DefaultValues = deepMerge(DEFAULT_VALUES, {
   dashboard: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L157} */
     drills: false,
@@ -444,7 +443,7 @@ function countPropertyValues<
 
   options.embeds.forEach((embed) => {
     // Unjustified type cast. FIXME
-    const propertyValue = (embed.properties as Record<string, any>)[
+    const propertyValue = (embed.properties as Record<string, unknown>)[
       options.propertyName
     ];
     const value = options.getValue(propertyValue, embed.properties);
