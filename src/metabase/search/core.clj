@@ -253,10 +253,9 @@
     (when-let [updates (seq (hook-selectors [instance] always?))]
       (search.ingestion/ingest-maybe-async! updates))))
 
+;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
 (defn bulk-update!
-  "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows.
-  Enqueued messages only ask ingestion to re-derive the affected search entries: rows that no longer
-  satisfy their spec's query are purged by ingestion's asked-for-but-not-indexed diff."
+  "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows."
   [instances]
   (when (supports-index?)
     (when-let [updates (seq (hook-selectors instances true))]

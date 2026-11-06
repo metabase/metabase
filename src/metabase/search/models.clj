@@ -29,8 +29,8 @@
 ;;
 ;; Enqueued messages are re-derivations, never facts.
 ;; Delivery is registered after commit, so a rollback discards it and a worker never races uncommitted state.
-;; Ingestion re-reads the affected rows, and its asked-for-but-not-indexed diff purges entries whose backing row
-;; is gone.
+;; Ingestion re-reads the affected rows, and its asked-for-but-not-indexed diff purges entries named by their own
+;; id whose backing row is gone.
 (derive :hook/search-index dml-capture/hook)
 
 ;; Tests that run against an old schema disable updates, and the snapshot select could read columns it lacks.

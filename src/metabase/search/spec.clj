@@ -475,7 +475,8 @@
   longer exists, e.g. the pre-image of a deleted row."
   [model]
   (not-empty
-   (into #{} (mapcat (comp collect-updated-columns :where))
+   (into #{}
+         (mapcat (comp collect-updated-columns :where))
          (get (model-hooks) model))))
 
 (defn- instance->db-values
