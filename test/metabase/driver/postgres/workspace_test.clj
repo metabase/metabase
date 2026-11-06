@@ -240,8 +240,10 @@
          ;; past the CREATEROLE precondition, so that CREATE USER itself runs and fails
          (mt/with-dynamic-fn-redefs [driver.u/batch-exception                     identity
                                      postgres/check-admin-login-privileges! (constantly nil)]
-           (let [e (is (thrown? java.sql.SQLException
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (testing "a failed init tells the caller there is nothing to tear down"
+               (is (false? (:workspace/cleanup? (ex-data e)))))
              (is (some #(str/includes? % "CREATE USER") (messages e)))
              (is (not-any? #(str/includes? % "PASSWORD") (messages e)))
              (is (not-any? #(str/includes? % password) (messages e))))))
@@ -253,6 +255,32 @@
                                "SCRAM-SHA-256$"))
          (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest init-lock-timeout-leaves-nothing-to-clean-up-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2112)
+           ws-user   (-> workspace :database_details :user)
+           {:keys [host port db user password]} (superuser-details)
+           ;; a raw connection is the point here: its transaction must stay open across the code under test
+           other     (java.sql.DriverManager/getConnection (format "jdbc:postgresql://%s:%s/%s" host port db)
+                                                           ^String user ^String password)]
+       (try
+         (.setAutoCommit other false)
+         ;; another session creating a role of the same name, not yet committed: init does not see it, and its
+         ;; CREATE USER waits on it
+         (with-open [stmt (.createStatement other)]
+           (.execute stmt (format "CREATE ROLE \"%s\"" ws-user)))
+         (testing "an init that times out on that lock is a 409 that tells the caller not to tear anything down"
+           (with-redefs [postgres/workspace-lock-timeout "2s"]
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                  (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+               (is (= {:status-code 409, :workspace/cleanup? false} (ex-data e))))))
+         (finally
+           (.rollback other)
+           (.close other)))
+       (is (nil? (schema-owner spec (:schema workspace))))
+       (is (not (role-exists? spec ws-user)))))))
 
 (deftest destroy-ends-the-workspace-users-sessions-test
   (do-with-warehouse!
@@ -469,7 +497,7 @@
        (testing "init returns a 412 naming each schema that grants CREATE to PUBLIC, before any change"
          (let [e (is (thrown? clojure.lang.ExceptionInfo
                               (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
-           (is (= {:status-code 412, :schemas [(str db-name ".loose")], :unverifiable []} (ex-data e)))
+           (is (= {:status-code 412, :workspace/cleanup? false, :schemas [(str db-name ".loose")], :unverifiable []} (ex-data e)))
            (is (str/includes? (ex-message e) (format "`REVOKE CREATE ON SCHEMA \"loose\" FROM PUBLIC;` in database \"%s\""
                                                      db-name)))
            (is (not (role-exists? spec user)))
@@ -511,7 +539,7 @@
          (testing "init lists each other database's PUBLIC CREATE schema, and each database it could not check"
            (let [e (is (thrown? clojure.lang.ExceptionInfo
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
-             (is (= {:status-code 412, :schemas [(str other-db-name ".loose2")], :unverifiable [closed]} (ex-data e)))
+             (is (= {:status-code 412, :workspace/cleanup? false, :schemas [(str other-db-name ".loose2")], :unverifiable [closed]} (ex-data e)))
              (is (str/includes? (ex-message e) (format "`REVOKE CREATE ON SCHEMA \"loose2\" FROM PUBLIC;` in database \"%s\""
                                                        other-db-name)))
              (is (str/includes? (ex-message e) (format "`REVOKE CONNECT ON DATABASE \"%s\" FROM PUBLIC;`" closed)))
@@ -532,7 +560,7 @@
          (testing "a database whose name the connection guard refuses is listed as unverifiable"
            (let [e (is (thrown? clojure.lang.ExceptionInfo
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
-             (is (= {:status-code 412, :schemas [], :unverifiable [bad]} (ex-data e))))))))))
+             (is (= {:status-code 412, :workspace/cleanup? false, :schemas [], :unverifiable [bad]} (ex-data e))))))))))
 
 (deftest connectable-databases-test
   (do-with-warehouse!
@@ -590,7 +618,7 @@
            (testing "before Postgres 16, a NOINHERIT login would hold the membership without its privileges: a 412"
              (let [e (is (thrown? clojure.lang.ExceptionInfo
                                   (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
-               (is (= {:status-code 412, :user user} (ex-data e)))
+               (is (= {:status-code 412, :workspace/cleanup? false, :user user} (ex-data e)))
                (is (str/includes? (ex-message e) (format "`ALTER ROLE \"%s\" INHERIT`" (:user admin-login)))))
              (is (not (role-exists? spec user))))
            (testing "from Postgres 16, the membership inherits whatever the login's attribute, so init and destroy work"
@@ -610,7 +638,7 @@
          (testing "without the grant option on CONNECT, init returns a 412 naming it"
            (let [e (is (thrown? clojure.lang.ExceptionInfo
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
-             (is (= {:status-code 412, :user user} (ex-data e)))
+             (is (= {:status-code 412, :workspace/cleanup? false, :user user} (ex-data e)))
              (is (str/includes? (ex-message e) (format "`GRANT CONNECT ON DATABASE \"%s\" TO \"%s\" WITH GRANT OPTION`"
                                                        db-name (:user admin-login)))))
            (is (not (role-exists? spec user))))
@@ -634,7 +662,7 @@
          (testing "a login without CREATEROLE or CREATE on the database gets a 412 naming both grants, before any change"
            (let [e (is (thrown? clojure.lang.ExceptionInfo
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
-             (is (= {:status-code 412, :user user} (ex-data e)))
+             (is (= {:status-code 412, :workspace/cleanup? false, :user user} (ex-data e)))
              (is (str/includes? (ex-message e) (format "`ALTER ROLE \"%s\" CREATEROLE; GRANT CREATE ON DATABASE \"%s\" TO \"%s\";`"
                                                        (:user admin-login) db-name (:user admin-login)))))
            (is (not (role-exists? spec user)))

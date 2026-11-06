@@ -2027,6 +2027,14 @@
                                   (quote-field db) (quote-field db) (quote-field login))
                           {:status-code 412, :user user})))))))
 
+(defn- init-error
+  "`t`, from a failed init, marked so the caller does not tear the workspace down: init runs in one transaction, so
+  it leaves nothing behind, and a role of the workspace user's name may be one another session has just committed."
+  [t]
+  (if (contains? (ex-data t) :workspace/cleanup?)
+    t
+    (ex-info (ex-message t) (assoc (ex-data t) :workspace/cleanup? false) t)))
+
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
   (let [schema-name   (:schema workspace)
@@ -2061,7 +2069,9 @@
         ;; role, or a duplicate key in pg_authid when both inserted at once
         (if (#{"42710" "23505"} (sql-state e))
           (throw (role-exists-error user e))
-          (throw e))))))
+          (throw (init-error e))))
+      (catch Throwable t
+        (throw (init-error t))))))
 
 (defn- grants-to-role
   "Every privilege `role` holds on a relation, a schema or this database, or through a schema's default privileges, as

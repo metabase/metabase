@@ -232,13 +232,7 @@
   (blocking), failing fast on the first error."
   [ws]
   (doseq [{wsd-id :id} (:databases ws)]
-    (try
-      (provisioning/provision-single! wsd-id)
-      (catch Throwable t
-        ;; the row's teardown would drop the user init refused, so the row goes without one
-        (when (provisioning/refused-existing-user? t)
-          (ws.db/delete-workspace-database! wsd-id))
-        (throw t)))))
+    (provisioning/provision-single! wsd-id)))
 
 (defn- teardown-workspace-databases!
   "Tear down every WorkspaceDatabase of `workspace-id` — any state, blocking.
