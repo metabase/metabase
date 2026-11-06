@@ -1028,7 +1028,7 @@
           box   (token-check/initial-state)]
       ;; for every thread, since the task runs on one that has none of this test's bindings, and is built around the
       ;; var's value when the tick is asked for
-      #_{:clj-kondo/ignore [:discouraged-var]}
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [token-check/safe-tick! #(deliver seen {:user-id     api/*current-user-id*
                                                            :same-state? (identical? box @(token-check/state-handle))})]
         (global-system.tu/with-root @#'token-check/refresher-component (recording-executor tasks)
