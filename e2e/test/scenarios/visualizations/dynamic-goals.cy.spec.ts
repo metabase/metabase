@@ -600,70 +600,61 @@ describe("scenarios > visualizations > dynamic goals", () => {
       { idAlias: "forbiddenSourceId", wrapId: true },
     );
 
-    getCardIds([
-      "@singleColumnSourceId",
-      "@multiRowSourceId",
-      "@nullSourceId",
-      "@textSourceId",
-      "@deletedSourceId",
-      "@forbiddenSourceId",
-    ]).then(
-      ([
-        singleColumnSourceId,
-        multiRowSourceId,
-        nullSourceId,
-        textSourceId,
-        deletedSourceId,
-        forbiddenSourceId,
-      ]) => {
-        H.createNativeQuestion(
-          {
-            name: "Gauge with broken ranges",
-            native: { query: "SELECT 50 AS VAL" },
-            display: "gauge",
-            visualization_settings: {
-              "gauge.segments": [
-                {
-                  min: goalRef(multiRowSourceId, "LOW"),
-                  max: goalRef(nullSourceId, "TARGET"),
-                  color: "#ED6E6E",
-                  label: "",
-                },
-                {
-                  min: goalRef(textSourceId, "TARGET"),
-                  max: goalRef(singleColumnSourceId, "MISSING"),
-                  color: "#F9CF48",
-                  label: "",
-                },
-                {
-                  min: goalRef(deletedSourceId, "TARGET"),
-                  max: goalRef(forbiddenSourceId, "TARGET"),
-                  color: "#84BB4C",
-                  label: "",
-                },
-                { min: 0, max: 100, color: "#509EE3", label: "" },
-              ],
-            },
+    cy.then(function () {
+      const singleColumnSourceId: CardId = this.singleColumnSourceId;
+      const multiRowSourceId: CardId = this.multiRowSourceId;
+      const nullSourceId: CardId = this.nullSourceId;
+      const textSourceId: CardId = this.textSourceId;
+      const deletedSourceId: CardId = this.deletedSourceId;
+      const forbiddenSourceId: CardId = this.forbiddenSourceId;
+
+      H.createNativeQuestion(
+        {
+          name: "Gauge with broken ranges",
+          native: { query: "SELECT 50 AS VAL" },
+          display: "gauge",
+          visualization_settings: {
+            "gauge.segments": [
+              {
+                min: goalRef(multiRowSourceId, "LOW"),
+                max: goalRef(nullSourceId, "TARGET"),
+                color: "#ED6E6E",
+                label: "",
+              },
+              {
+                min: goalRef(textSourceId, "TARGET"),
+                max: goalRef(singleColumnSourceId, "MISSING"),
+                color: "#F9CF48",
+                label: "",
+              },
+              {
+                min: goalRef(deletedSourceId, "TARGET"),
+                max: goalRef(forbiddenSourceId, "TARGET"),
+                color: "#84BB4C",
+                label: "",
+              },
+              { min: 0, max: 100, color: "#509EE3", label: "" },
+            ],
           },
-          { idAlias: "gaugeId", wrapId: true },
-        );
-        H.createQuestion(
-          {
-            name: "Line with a broken goal",
-            query: ORDERS_COUNT_BY_MONTH_QUERY,
-            display: "line",
-            visualization_settings: {
-              "graph.metrics": ["count"],
-              "graph.dimensions": ["CREATED_AT"],
-              "graph.show_goal": true,
-              "graph.goal_value": goalRef(multiRowSourceId, "LOW"),
-            },
+        },
+        { idAlias: "gaugeId", wrapId: true },
+      );
+      H.createQuestion(
+        {
+          name: "Line with a broken goal",
+          query: ORDERS_COUNT_BY_MONTH_QUERY,
+          display: "line",
+          visualization_settings: {
+            "graph.metrics": ["count"],
+            "graph.dimensions": ["CREATED_AT"],
+            "graph.show_goal": true,
+            "graph.goal_value": goalRef(multiRowSourceId, "LOW"),
           },
-          { idAlias: "lineId", wrapId: true },
-        );
-        cy.request("DELETE", `/api/card/${deletedSourceId}`);
-      },
-    );
+        },
+        { idAlias: "lineId", wrapId: true },
+      );
+      cy.request("DELETE", `/api/card/${deletedSourceId}`);
+    });
 
     cy.signInAsNormalUser();
 
@@ -699,18 +690,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
     );
   });
 });
-
-function getCardIds(aliases: string[]): Cypress.Chainable<CardId[]> {
-  const ids: CardId[] = [];
-
-  aliases.forEach((alias) => {
-    cy.get<CardId>(alias).then((id) => {
-      ids.push(id);
-    });
-  });
-
-  return cy.wrap(ids);
-}
 
 function goalRef(id: CardId, column: string): GoalForeignColumnRef {
   return { type: "card", id, column };
