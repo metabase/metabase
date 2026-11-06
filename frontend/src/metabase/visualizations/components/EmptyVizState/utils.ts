@@ -28,7 +28,8 @@ export type ExcludedEmptyVizDisplayTypes =
   | "table"
   | "list"
   | "object"
-  | "boxplot";
+  | "boxplot"
+  | "cohort";
 type SupportedDisplayType = Exclude<
   CardDisplayType,
   ExcludedEmptyVizDisplayTypes

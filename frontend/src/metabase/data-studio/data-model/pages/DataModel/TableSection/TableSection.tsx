@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
+import { isEventTable, isEventTableSetUp } from "metabase/event-tables";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -38,6 +39,7 @@ import {
   isConcreteTableId,
 } from "metabase-types/api";
 
+import { EventSettings } from "./EventSettings";
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableActionsMenu } from "./TableActionsMenu";
@@ -76,6 +78,14 @@ const TableSectionBase = ({
   const [modalType, setModalType] = useState<TableModalType>();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  // A link can open the tab on a table that isn't an event table yet, to set
+  // it up. The tab stays while the table is open, so checking the entity type
+  // on Details doesn't take it away.
+  const [wasOpenedOnEvents] = useState(activeTab === "events");
+  const hasEventSettings = isEventTable(table) || wasOpenedOnEvents;
+  // Until product analysis can use the table: it needs the Event entity type
+  // as well as its required columns.
+  const isMissingEventSetup = hasEventSettings && !isEventTableSetUp(table);
   const readOnly = !table.can_write;
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
@@ -144,8 +154,18 @@ const TableSectionBase = ({
     <Stack data-testid="table-section" gap="lg" pb="xxl">
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List mb="lg">
+          <Tabs.List className={S.tabsList} mb="lg">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+            {hasEventSettings && (
+              <Tabs.Tab
+                value="events"
+                rightSection={
+                  isMissingEventSetup && (
+                    <Icon name="warning" c="feedback-warning" />
+                  )
+                }
+              >{t`Events`}</Tabs.Tab>
+            )}
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
@@ -291,6 +311,12 @@ const TableSectionBase = ({
           <Tabs.Panel value="measures">
             <MeasureList table={table} />
           </Tabs.Panel>
+
+          {hasEventSettings && (
+            <Tabs.Panel value="events">
+              <EventSettings table={table} readOnly={readOnly} />
+            </Tabs.Panel>
+          )}
         </Tabs>
       </Box>
 

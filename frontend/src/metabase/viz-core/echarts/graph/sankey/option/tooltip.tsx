@@ -1,18 +1,25 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { formatPercent } from "metabase/utils/formatting";
+import { formatNumber, formatPercent } from "metabase/utils/formatting";
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type { RowValue } from "metabase-types/api";
 
 import {
   EChartsTooltip,
+  type EChartsTooltipProps,
   type EChartsTooltipRow,
 } from "../../../../components/ChartTooltip/EChartsTooltip";
 import { getNumberOr } from "../../../../lib/settings/row-values";
 import { getMarkerColorClass, getTooltipBaseOption } from "../../../tooltip";
 import { getPercent } from "../../../tooltip/utils";
-import type { SankeyChartModel } from "../model/types";
+import type {
+  SankeyChartModel,
+  SankeyNode,
+  SankeyNodeConversion,
+} from "../model/types";
 
 interface ChartItemTooltipProps {
   chartModel: SankeyChartModel;
@@ -33,9 +40,7 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
 
   if (params.dataType === "node") {
     node = chartModel.data.nodes.find((node) => node.rawName === data.rawName)!;
-    header = !node.hasOutputs
-      ? formatters.target(node.displayName)
-      : formatters.source(node.displayName);
+    header = formatters.nodeLabel(node);
   } else if (params.dataType === "edge") {
     node = chartModel.data.nodes.find((node) => node.rawName === data.source)!;
     const targetNode = chartModel.data.nodes.find(
@@ -53,18 +58,41 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
     return null;
   }
 
+  const conversion = chartModel.conversion?.byNode.get(node.rawName);
+  if (conversion !== undefined) {
+    const focusedTarget = params.dataType === "edge" ? data.target : undefined;
+    return (
+      <EChartsTooltip
+        header={header}
+        {...getConversionRows(chartModel, node, conversion, focusedTarget)}
+      />
+    );
+  }
+
   const nodeValue = Math.max(
     getNumberOr(node.inputColumnValues[valueColumnKey], 0),
     getNumberOr(node.outputColumnValues[valueColumnKey], 0),
   );
   const formattedNodeValue = formatters.value(nodeValue);
 
-  rows = Array.from(node.outputLinkByTarget.values()).map((link) => {
-    const color = chartModel.nodeColors[String(link.targetNode.rawName)];
-    const isFocused = params.dataType === "edge" && data.target === link.target;
+  const nodeOrder = new Map(
+    chartModel.data.nodes.map((node, index) => [node, index]),
+  );
+  rows = _.sortBy(
+    Array.from(node.outputLinkByTarget.values()),
+    (link) => nodeOrder.get(link.targetNode) ?? 0,
+  ).map((link) => {
+    const color =
+      link.color ?? chartModel.nodeColors[String(link.targetNode.rawName)];
+    const isFocused =
+      params.dataType === "edge" &&
+      data.target === link.target &&
+      data.breakoutValue === link.breakoutValue;
+    const targetName = formatters.target(link.targetNode.displayName);
     return {
       isFocused,
-      name: formatters.target(link.targetNode.displayName),
+      name:
+        link.label !== undefined ? `${targetName} · ${link.label}` : targetName,
       values: [
         formatters.value(link.value),
         formatPercent(getPercent(nodeValue, link.value) ?? 0),
@@ -92,6 +120,56 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
   }
 
   return <EChartsTooltip header={header} rows={rows} footer={footer} />;
+};
+
+const formatConversionRate = (rate: number) =>
+  t`${formatNumber(rate, { number_style: "percent", decimals: 1 })} converted`;
+
+/**
+ * Where people went next from a node, and how many of each went on to
+ * convert. The footer compares the node with the rest of its step.
+ */
+export const getConversionRows = (
+  chartModel: SankeyChartModel,
+  node: SankeyNode,
+  conversion: SankeyNodeConversion,
+  focusedTarget: RowValue | undefined,
+): Pick<EChartsTooltipProps, "rows" | "footer"> => {
+  const { formatters } = chartModel;
+  const total = {
+    name:
+      conversion.lift !== undefined
+        ? t`Total · ${formatNumber(conversion.lift, { maximumFractionDigits: 1 })}× average`
+        : t`Total`,
+    values: [
+      formatters.value(conversion.people),
+      formatConversionRate(conversion.rate),
+    ],
+  };
+  if (conversion.nextSteps.length === 0) {
+    return {
+      rows: [
+        {
+          name: formatters.nodeLabel(node),
+          markerColorClass: getMarkerColorClass(
+            chartModel.nodeColors[String(node.rawName)],
+          ),
+          values: total.values,
+        },
+      ],
+    };
+  }
+  return {
+    rows: conversion.nextSteps.map((step) => ({
+      isFocused:
+        focusedTarget !== undefined &&
+        formatters.target(step.node.rawName) === focusedTarget,
+      name: formatters.nodeLabel(step.node),
+      markerColorClass: getMarkerColorClass(step.color),
+      values: [formatters.value(step.people), formatConversionRate(step.rate)],
+    })),
+    footer: total,
+  };
 };
 
 export const getTooltipOption = (

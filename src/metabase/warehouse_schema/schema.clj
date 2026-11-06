@@ -139,6 +139,11 @@
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::event-settings
+  "Product analytics settings for an event table, keyed like an analysis's settings, e.g.
+  `{\"columns.person\" \"user_id\"}`. The frontend owns their shape and validates them."
+  [:map-of [:or :keyword :string] :any])
+
 (mr/def ::table-user-settings
   "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
   [:merge
@@ -225,7 +230,9 @@
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
-   [:transform_target        {:optional true} [:maybe :boolean]]])
+   [:transform_target        {:optional true} [:maybe :boolean]]
+   [:detected_event_settings {:optional true} [:maybe ::event-settings]]
+   [:event_settings          {:optional true} [:maybe ::event-settings]]])
 
 (mr/def ::external-dimension
   "A Dimension as serialization writes it, with portable references in place of ids."
@@ -289,7 +296,8 @@
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                            :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable
                            :data_authority :data_source :owner_email :is_published :data_layer :db_id
-                           :collection_id :transform_id :owner_user_id]]
+                           :collection_id :transform_id :owner_user_id :detected_event_settings
+                           :event_settings]]
     [:map {:closed true}
      [:serdes/meta    {:optional true} ::models.schema/external-meta]
      [:archived_at    {:optional true} [:maybe ::models.schema/external-date]]

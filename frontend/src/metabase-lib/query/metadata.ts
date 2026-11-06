@@ -63,6 +63,8 @@ import type {
   DrillThruDisplayInfo,
   FilterOperator,
   FilterOperatorDisplayInfo,
+  Join,
+  JoinDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MeasureDisplayInfo,
@@ -152,6 +154,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   measure: MeasureMetadata,
 ): MeasureDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  join: Join,
+): JoinDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

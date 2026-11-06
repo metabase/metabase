@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { getUserIsAdmin } from "metabase/current-user";
+import { QuestionPublicLinkPopover } from "metabase/embedding/components/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 import { CopyLinkButton } from "metabase/embedding/components/SharingMenu/ActionButtons/CopyLinkButton";
 import { EmbedButton } from "metabase/embedding/components/SharingMenu/ActionButtons/EmbedButton";
 import { InviteToViewModal } from "metabase/embedding/components/SharingMenu/InviteToViewModal";
@@ -32,8 +33,6 @@ import {
   question as getQuestionUrl,
 } from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
-
-import { QuestionPublicLinkPopover } from "../../../../sidebars/QuestionInfoSidebar/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 
 export function QuestionSharingMenu({ question }: { question: Question }) {
   const dispatch = useDispatch();

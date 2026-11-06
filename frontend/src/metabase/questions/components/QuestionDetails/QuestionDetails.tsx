@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
@@ -8,16 +8,28 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
+import { QuestionPublicLinkPopover } from "metabase/embedding/components/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 import { Box, Flex, FixedSizeIcon as Icon, Loader, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type Question from "metabase-lib/v1/Question";
 
-import SidebarStyles from "./QuestionInfoSidebar.module.css";
-import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover/QuestionPublicLinkPopover";
-import { QuestionSources } from "./components/QuestionSources";
+import SidebarStyles from "./QuestionDetails.module.css";
 
-export const QuestionDetails = ({ question }: { question: Question }) => {
+type QuestionDetailsProps = {
+  question: Question;
+  /** More sections after these, e.g. the query builder's data sources. */
+  children?: ReactNode;
+};
+
+/**
+ * A saved question's creator, last editor, where it's saved and how it's
+ * shared, as the sections of an Info sidesheet card.
+ */
+export const QuestionDetails = ({
+  question,
+  children,
+}: QuestionDetailsProps) => {
   const lastEditInfo = question.lastEditInfo();
   const createdBy = question.getCreator();
   const createdAt = question.getCreatedAt();
@@ -91,7 +103,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         </Flex>
       </SidesheetCardSection>
       <SharingDisplay question={question} />
-      <QuestionSources />
+      {children}
     </>
   );
 };

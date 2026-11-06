@@ -1,0 +1,41 @@
+import { t } from "ttag";
+
+import type { ActorGrain, Grain, Measure } from "../../spec/types";
+
+export const compileGrain = (grain: ActorGrain): string => {
+  switch (grain) {
+    case "person":
+      return "person_id";
+    case "session":
+      return "session_id";
+  }
+};
+
+export const grainLabel = (grain: Grain): string =>
+  ({ person: "people", session: "sessions", event: "events" })[grain];
+
+/** User-facing name for the column `grainLabel` names. */
+export const grainTitle = (grain: Grain): string => {
+  switch (grain) {
+    case "person":
+      return t`People`;
+    case "session":
+      return t`Sessions`;
+    case "event":
+      return t`Events`;
+  }
+};
+
+export const compileMeasure = (measure: Measure, grain: ActorGrain): string => {
+  if (measure.agg === "count") {
+    return "count()";
+  }
+  if (measure.field === undefined) {
+    return `uniqExact(${compileGrain(grain)})`;
+  }
+  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(measure.field)) {
+    throw new Error(`Invalid measure field: ${measure.field}`);
+  }
+  const fn = measure.agg === "uniq" ? "uniqExact" : measure.agg;
+  return `${fn}(${measure.field})`;
+};

@@ -2,10 +2,14 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import { FilterColumnPicker } from "../FilterColumnPicker";
+import {
+  FilterColumnPicker,
+  type FilterColumnPickerProps,
+} from "../FilterColumnPicker";
 import { FilterPickerBody } from "../FilterPickerBody";
 import type {
   ColumnListItem,
+  CustomListItem,
   FilterChangeOpts,
   SegmentListItem,
 } from "../types";
@@ -15,13 +19,15 @@ export type MultiStageFilterPickerProps = {
   canAppendStage: boolean;
   onChange: (newQuery: Lib.Query, opts: FilterChangeOpts) => void;
   onClose?: () => void;
-};
+} & Pick<FilterColumnPickerProps, "getGroupItems" | "onCustomItemSelect">;
 
 export function MultiStageFilterPicker({
   query: initialQuery,
   canAppendStage,
   onChange,
   onClose,
+  getGroupItems,
+  onCustomItemSelect,
 }: MultiStageFilterPickerProps) {
   const { query, stageIndexes } = useMemo(() => {
     const query = canAppendStage
@@ -64,6 +70,13 @@ export function MultiStageFilterPicker({
     onClose?.();
   };
 
+  // The caller applies its own entries; picking one closes the picker, as a
+  // segment does.
+  const handleCustomItemSelect = (item: CustomListItem) => {
+    onCustomItemSelect?.(item);
+    onClose?.();
+  };
+
   const handleBack = () => {
     setSelectedItem(undefined);
   };
@@ -76,6 +89,8 @@ export function MultiStageFilterPicker({
         withCustomExpression={false}
         onColumnSelect={setSelectedItem}
         onSegmentSelect={handleSegmentChange}
+        getGroupItems={getGroupItems}
+        onCustomItemSelect={handleCustomItemSelect}
       />
     );
   }

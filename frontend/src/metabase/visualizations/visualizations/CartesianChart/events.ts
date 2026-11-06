@@ -54,6 +54,7 @@ import {
   isQuarterInterval,
   isRemappedToString,
   isTimeSeriesAxis,
+  withFunnelStepsDropOff,
 } from "metabase/viz-core";
 import type {
   BrushClickObject,
@@ -400,7 +401,8 @@ const getAdditionalTooltipRowsData = (
     .map((data) => {
       return {
         isSecondary: true,
-        name: data.key,
+        name:
+          (data.col && settings.column?.(data.col)?.column_title) || data.key,
         values: [
           formatValueForTooltip({
             value: data.value,
@@ -807,7 +809,8 @@ export const getStackedTooltipModel = (
     );
 
   const rowsTotal = getTotalValue(stackSeriesRows);
-  const isShowingTotalSensible = stackSeriesRows.length > 1;
+  const showsTotals = settings["graph.tooltip_show_stack_totals"] !== false;
+  const isShowingTotalSensible = showsTotals && stackSeriesRows.length > 1;
   const header = String(
     formatValueForTooltip({
       value: datum[X_AXIS_DATA_KEY],
@@ -819,6 +822,7 @@ export const getStackedTooltipModel = (
   const hasPositivesAndNegatives =
     stackSeriesRowsBySign["+"].total > 0 &&
     stackSeriesRowsBySign["-"].total < 0;
+  const showsSignTotals = showsTotals && hasPositivesAndNegatives;
 
   const formattedSeriesRows: EChartsTooltipRow[] = signs
     .map((sign) => {
@@ -843,7 +847,7 @@ export const getStackedTooltipModel = (
               ],
             };
           }),
-        ...(hasPositivesAndNegatives
+        ...(showsSignTotals
           ? [
               {
                 name: sign === "-" ? t`Total negative` : t`Total positive`,
@@ -1017,15 +1021,21 @@ export const getSeriesClickData = (
     seriesModel,
   );
 
-  return {
-    cardId: seriesModel.cardId,
-    event: event.event.event,
-    value: datum[seriesModel.dataKey],
-    column: seriesModel.column,
-    data,
-    dimensions,
+  return withFunnelStepsDropOff(
+    {
+      cardId: seriesModel.cardId,
+      event: event.event.event,
+      value: datum[seriesModel.dataKey],
+      column: seriesModel.column,
+      data,
+      dimensions,
+      settings,
+    },
+    chartModel,
     settings,
-  };
+    seriesId,
+    echartsDataIndex,
+  );
 };
 
 export const getAdjustedBrushEndEvent = (

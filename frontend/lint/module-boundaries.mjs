@@ -237,6 +237,13 @@ const elements = [
     enforcePublicApi: true,
   }),
   createElement({ type: "shared", name: "metadata" }),
+  // Product analytics settings for an event table, shared by product
+  // analytics and Data Studio's table metadata.
+  createElement({
+    type: "shared",
+    name: "event-tables",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "feature", name: "monitor" }),
   createElement({ type: "shared", name: "nav" }),
@@ -362,6 +369,11 @@ const elements = [
   createElement({ type: "feature", name: "explorations" }),
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
+  createElement({
+    type: "feature",
+    name: "product-analytics",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "public" }),
   createElement({
     type: "feature",

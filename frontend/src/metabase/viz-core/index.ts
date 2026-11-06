@@ -86,6 +86,15 @@ export {
   getTimelineSelectionSeries,
 } from "./echarts/cartesian/option";
 export { TREND_LINE_WIDTH } from "./echarts/cartesian/option/trend-line";
+export {
+  FUNNEL_STEPS_DROP_OFF_KEY,
+  FUNNEL_STEPS_GHOST_SERIES_ID,
+  FUNNEL_STEPS_MEDIAN_SECONDS_COLUMN,
+  getFunnelStepsModel,
+  withFunnelStepsDropOff,
+} from "./echarts/cartesian/funnel-steps/model";
+export { getFunnelStepsOption } from "./echarts/cartesian/funnel-steps/option";
+export { getFunnelStepsTooltipModel } from "./echarts/cartesian/funnel-steps/tooltip";
 export { getScatterPlotModel } from "./echarts/cartesian/scatter/model";
 export { getScatterPlotOption } from "./echarts/cartesian/scatter/option";
 export {
@@ -112,6 +121,11 @@ export { getWaterfallChartOption } from "./echarts/cartesian/waterfall/option";
 export { getSankeyLayout } from "./echarts/graph/sankey/layout";
 export { getSankeyChartColumns } from "./echarts/graph/sankey/model/dataset";
 export { getSankeyChartModel } from "./echarts/graph/sankey/model";
+export {
+  type PathNodeKind,
+  type PathsColumns,
+  getPathColors,
+} from "./echarts/graph/sankey/model/paths";
 export type {
   ColumnKey,
   SankeyChartColumns,

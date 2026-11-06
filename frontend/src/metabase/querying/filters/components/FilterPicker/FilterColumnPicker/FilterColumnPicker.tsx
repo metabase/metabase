@@ -26,14 +26,20 @@ import * as Lib from "metabase-lib";
 
 import { WIDTH } from "../constants";
 import type {
+  ColumnGroupItemsContext,
   ColumnListItem,
+  CustomListItem,
   ExpressionClauseItem,
   SegmentListItem,
 } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 
-type Item = ColumnListItem | SegmentListItem | ExpressionClauseItem;
+type Item =
+  | ColumnListItem
+  | SegmentListItem
+  | ExpressionClauseItem
+  | CustomListItem;
 
 type Section = BaseSection<Item> & {
   key?: string;
@@ -52,10 +58,18 @@ export interface FilterColumnPickerProps {
   stageIndexes: number[];
   checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
-  onSegmentSelect: (item: SegmentListItem) => void;
+  onSegmentSelect?: (item: SegmentListItem) => void;
   onExpressionSelect?: (clause?: Lib.DefinedClauseName) => void;
+  /**
+   * Entries of the caller's own for a group, after the group's segments.
+   * Keep its identity stable: the sections are rebuilt when it changes.
+   */
+  getGroupItems?: (group: ColumnGroupItemsContext) => CustomListItem[];
+  onCustomItemSelect?: (item: CustomListItem) => void;
 
   withCustomExpression?: boolean;
+  /** Whether the source table's segments are listed above its columns. */
+  withSegments?: boolean;
   withColumnGroupIcon?: boolean;
   withColumnItemIcon?: boolean;
 }
@@ -71,6 +85,9 @@ export const isExpressionClauseItem = (
   return "type" in item && item.type === "expression-clause";
 };
 
+export const isCustomListItem = (item: Item): item is CustomListItem =>
+  "type" in item && item.type === "custom";
+
 /**
  * Select a column, segment, or custom expression upon which to filter
  * Filter ColumnOrSegmentOrCustomExpressionPicker was too long of a name
@@ -83,7 +100,10 @@ export function FilterColumnPicker({
   onColumnSelect,
   onSegmentSelect,
   onExpressionSelect,
+  getGroupItems,
+  onCustomItemSelect,
   withCustomExpression = true,
+  withSegments = true,
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
@@ -99,16 +119,20 @@ export function FilterColumnPicker({
         stageIndexes,
         withColumnGroupIcon,
         withCustomExpression,
+        withSegments,
         isSearching,
         tc,
+        getGroupItems,
       }),
     [
       query,
       stageIndexes,
       withColumnGroupIcon,
       withCustomExpression,
+      withSegments,
       isSearching,
       tc,
+      getGroupItems,
     ],
   );
 
@@ -133,9 +157,11 @@ export function FilterColumnPicker({
 
   const handleSelect = (item: Item) => {
     if (isSegmentListItem(item)) {
-      onSegmentSelect(item);
+      onSegmentSelect?.(item);
     } else if (isExpressionClauseItem(item)) {
       onExpressionSelect?.(item.clause);
+    } else if (isCustomListItem(item)) {
+      onCustomItemSelect?.(item);
     } else {
       onColumnSelect(item);
     }
@@ -185,15 +211,19 @@ function getSections({
   stageIndexes,
   withColumnGroupIcon,
   withCustomExpression,
+  withSegments,
   isSearching,
   tc,
+  getGroupItems,
 }: {
   query: Lib.Query;
   stageIndexes: number[];
   withColumnGroupIcon: boolean;
   withCustomExpression: boolean;
+  withSegments: boolean;
   isSearching: boolean;
   tc: (content: string | null | undefined) => string | null | undefined;
+  getGroupItems?: FilterColumnPickerProps["getGroupItems"];
 }): Section[] {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
@@ -216,9 +246,10 @@ function getSections({
           longDisplayName: columnInfo.longDisplayName,
         };
       });
-      const segments = groupInfo.isSourceTable
-        ? Lib.availableSegments(query, stageIndex)
-        : [];
+      const segments =
+        withSegments && groupInfo.isSourceTable
+          ? Lib.availableSegments(query, stageIndex)
+          : [];
       const segmentItems = segments.map((segment) => {
         const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
         return {
@@ -235,7 +266,15 @@ function getSections({
             : groupInfo.displayName,
         ),
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
-        items: [...segmentItems, ...columnItems],
+        items: [
+          ...segmentItems,
+          ...(getGroupItems?.({
+            info: groupInfo,
+            columns: Lib.getColumnsFromColumnGroup(group),
+            stageIndex,
+          }) ?? []),
+          ...columnItems,
+        ],
       };
     });
   });
@@ -272,6 +311,8 @@ function renderItemIcon(query: Lib.Query, item: Item) {
     return <Icon name={modelIconMap["segment"]} size={18} />;
   } else if (isExpressionClauseItem(item)) {
     return <Icon name="function" size={18} />;
+  } else if (isCustomListItem(item)) {
+    return <Icon name={item.icon} size={18} />;
   } else {
     const { column, stageIndex } = item;
     return (

@@ -108,6 +108,8 @@ export interface Field {
   json_unfolding: boolean | null;
   coercion_strategy: string | null;
   fingerprint: FieldFingerprint | null;
+  /** How useful the field is for grouping, from 0 to 1. Null until sync scores it. */
+  dimension_interestingness?: number | null;
 
   last_analyzed: string;
   created_at: string;
