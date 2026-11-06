@@ -52,11 +52,13 @@
   "The error name `e` is reported under: the Python name where the shim knows it, else the Java class name."
   [^Throwable e]
   (cond
-    (instance? Parser$DialectError e)    "ValueError"
-    (ast/python-error-type e)            (ast/python-error-type e)
+    (instance? Parser$DialectError e)      "ValueError"
+    (ast/python-error-type e)              (ast/python-error-type e)
+    ;; The port raises an IllegalArgumentException where Python raises a ValueError.
+    (instance? IllegalArgumentException e) "ValueError"
     ;; Python raises a TypeError for a None argument (nil SQL).
-    (instance? NullPointerException e)   "TypeError"
-    :else                                (.getSimpleName (class e))))
+    (instance? NullPointerException e)     "TypeError"
+    :else                                  (.getSimpleName (class e))))
 
 (defn- call-port
   "Call `f`, turning any failure into the exception every parser throws, whose message and cause read
