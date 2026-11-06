@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 import { Component, useCallback } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -62,7 +63,11 @@ import {
 import { CONTAINER_WIDTH, DATA_BUCKET } from "../constants";
 import { LibraryPicker } from "../library-picker/LibraryPicker";
 import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
-import type { DataPickerDataType, SavedEntityType } from "../types";
+import type {
+  DataPickerDataType,
+  DataTypeInfoItem,
+  SavedEntityType,
+} from "../types";
 import { getDataTypes } from "../utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
@@ -104,6 +109,18 @@ const PARENT_STEP = {
   [METRIC_STEP]: DATA_BUCKET_STEP,
 } as const satisfies Record<DataSelectorStep, DataSelectorStep | null>;
 
+// The step a pick goes on to; none closes the picker
+const NEXT_STEP = {
+  [DATA_BUCKET_STEP]: DATABASE_STEP,
+  [DATABASE_STEP]: SCHEMA_STEP,
+  [SCHEMA_STEP]: TABLE_STEP,
+  [TABLE_STEP]: null,
+  [LIBRARY_STEP]: null,
+  [MODEL_STEP]: null,
+  [SAVED_QUESTION_STEP]: null,
+  [METRIC_STEP]: null,
+} as const satisfies Record<DataSelectorStep, DataSelectorStep | null>;
+
 const SAVED_ENTITY_TYPE_BY_STEP: Partial<
   Record<DataSelectorStep, SavedEntityType>
 > = {
@@ -123,7 +140,6 @@ const STEP_BY_CARD_TYPE = {
 type AvailableModelsResult = Omit<SearchResponse, "data">;
 
 interface DataSelectorOwnProps {
-  steps: DataSelectorStep[];
   triggerContentComponent: ComponentType<TriggerComponentProps>;
   triggerElement?: ReactNode;
   triggerIconSize?: number;
@@ -215,6 +231,7 @@ interface ComputedDataSelectorState {
 
 interface DataSelectorState extends ComputedDataSelectorState {
   activeStep: DataSelectorStep | null;
+  hasCardRequestFailed: boolean;
   isLoading: boolean;
   isError: boolean;
   isPopoverOpen: boolean;
@@ -241,7 +258,6 @@ export function DataSourceSelector(props: DataSourceSelectorProps) {
 
   return (
     <DataSelector
-      steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
       triggerContentComponent={TableTrigger}
       {...props}
       libraryCollection={libraryCollection}
@@ -266,6 +282,7 @@ export class UnconnectedDataSelector extends Component<
     const computedState = this._getComputedState(props, state);
     this.state = {
       activeStep: null,
+      hasCardRequestFailed: false,
       isLoading: false,
       isError: false,
       ...state,
@@ -438,9 +455,7 @@ export class UnconnectedDataSelector extends Component<
         try {
           await fetchQuestion(sourceId);
         } catch {
-          // Without the card's type, open on Saved Questions.
-          await this.switchToStep(SAVED_QUESTION_STEP);
-          return;
+          await this.setStateWithComputedState({ hasCardRequestFailed: true });
         }
 
         if (!this.isSearchLoading() && !this.state.activeStep) {
@@ -530,14 +545,15 @@ export class UnconnectedDataSelector extends Component<
     return this.hasMetrics() && this.props.hasNestedQueriesEnabled;
   };
 
-  hasUsableSavedEntities = (): boolean => {
-    return (
-      this.hasUsableModels() ||
-      this.hasSavedQuestions() ||
-      this.hasUsableMetrics() ||
-      this.hasLibrary()
-    );
-  };
+  getUsableDataTypes = (): DataTypeInfoItem[] =>
+    getDataTypes({
+      hasModels: this.hasModels(),
+      hasTables: this.props.canSelectTable,
+      hasSavedQuestions: this.hasSavedQuestions(),
+      hasMetrics: this.hasMetrics(),
+      hasLibrary: this.hasLibrary(),
+      hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
+    });
 
   hasSavedQuestions = (): boolean => {
     const { canSelectQuestion } = this.props;
@@ -564,15 +580,7 @@ export class UnconnectedDataSelector extends Component<
 
   // With a single bucket, `skipSteps` opens it straight away, so there's no
   // bucket step to go back to
-  hasDataBucketChoice = (): boolean =>
-    getDataTypes({
-      hasModels: this.hasModels(),
-      hasTables: this.props.canSelectTable,
-      hasSavedQuestions: this.hasSavedQuestions(),
-      hasMetrics: this.hasMetrics(),
-      hasLibrary: this.hasLibrary(),
-      hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
-    }).length > 1;
+  hasDataBucketChoice = (): boolean => this.getUsableDataTypes().length > 1;
 
   isJoinStep(): boolean {
     return !this.props.canChangeDatabase;
@@ -593,33 +601,84 @@ export class UnconnectedDataSelector extends Component<
 
   async hydrateActiveStep(): Promise<void> {
     if (this.isSavedEntitySelected()) {
-      // The card's type arrives with `fetchQuestion`, which hydrates again
-      const { selectedCardType } = this.props;
-      if (selectedCardType) {
-        await this.switchToStep(STEP_BY_CARD_TYPE[selectedCardType]);
-      }
+      await this.hydrateSavedEntityStep();
     } else if (
+      this.props.canSelectTable &&
       // Schema id is explicitly set when going through the New > Question/Model flow,
       // whereas we have to obtain it from the state when opening a saved question.
-      this.state.selectedSchemaId ||
-      this.state.selectedSchema?.id
+      (this.state.selectedSchemaId || this.state.selectedSchema?.id)
     ) {
       await this.switchToStep(TABLE_STEP);
     } else if (this.isJoinStep()) {
-      const querySourceType = this.props.querySourceType;
-      if (querySourceType === "model") {
-        await this.switchToStep(MODEL_STEP, {}, false);
-      } else if (querySourceType === "question") {
-        await this.switchToStep(SAVED_QUESTION_STEP, {}, false);
-      } else {
-        // query source is a table
-        await this.switchToStep(SCHEMA_STEP);
+      const sourceCardType = match(this.props.querySourceType)
+        .with("model", "question", (cardType) => cardType)
+        .otherwise(() => undefined);
+      // `canSelectCardType` reads the data `allLoading` waits for: it hydrates again
+      if (sourceCardType && this.props.allLoading) {
+        return;
       }
-    } else if (!this.hasUsableSavedEntities()) {
-      await this.switchToStep(DATABASE_STEP);
+
+      if (!sourceCardType) {
+        // A join on a table: its database's schemas, or the data types when
+        // tables are left out
+        await this.switchToStep(
+          this.props.canSelectTable ? SCHEMA_STEP : DATA_BUCKET_STEP,
+        );
+      } else if (this.canSelectCardType(sourceCardType)) {
+        // A join on a model or saved question that can be picked here
+        await this.switchToStep(STEP_BY_CARD_TYPE[sourceCardType], {}, false);
+      } else {
+        // A join on a model or saved question that can't be picked here
+        // (left out by the entity types, or needing nested queries) opens
+        // where a fresh pick starts
+        await this.switchToStep(this.getFreshPickStep());
+      }
     } else {
-      await this.switchToStep(DATA_BUCKET_STEP);
+      // A fresh pick
+      await this.switchToStep(this.getFreshPickStep());
     }
+  }
+
+  async hydrateSavedEntityStep(): Promise<void> {
+    const { hasCardRequestFailed } = this.state;
+    const cardType = hasCardRequestFailed
+      ? undefined
+      : this.props.selectedCardType;
+    const isCardTypeLoading = !cardType && !hasCardRequestFailed;
+    // The card's type arrives with `fetchQuestion`, and the checks below read
+    // the data `allLoading` waits for: both hydrate again
+    if (isCardTypeLoading || this.props.allLoading) {
+      return;
+    }
+
+    if (cardType && this.canSelectCardType(cardType)) {
+      await this.switchToStep(STEP_BY_CARD_TYPE[cardType]);
+      return;
+    }
+
+    // A card whose type is unknown (its request failed) or can't be picked
+    // here (left out by the entity types, or needing nested queries) opens
+    // where a fresh pick starts, as a table does when tables are left out
+    const step = this.getFreshPickStep();
+    await this.switchToStep(step, this.getClearedStateForStep(step));
+  }
+
+  // The checks the buckets use
+  canSelectCardType(cardType: CardType): boolean {
+    return {
+      model: this.hasUsableModels(),
+      question: this.hasSavedQuestions(),
+      metric: this.hasUsableMetrics(),
+    }[cardType];
+  }
+
+  // With Raw Data the only data type, open on the databases: opening on the
+  // data types would show a lone "Raw Data" option for a frame before
+  // `skipSteps` moves on to the databases
+  getFreshPickStep(): DataSelectorStep {
+    return this.props.canSelectTable && !this.hasDataBucketChoice()
+      ? DATABASE_STEP
+      : DATA_BUCKET_STEP;
   }
 
   // for steps where there's a single option sometimes we want to automatically select it
@@ -631,11 +690,8 @@ export class UnconnectedDataSelector extends Component<
       return;
     }
 
-    if (activeStep === DATABASE_STEP && this.props.selectedDatabaseId == null) {
-      const databases = this.getDatabases();
-      if (databases && databases.length === 1) {
-        this.onChangeDatabase(databases[0]);
-      }
+    if (activeStep === DATABASE_STEP) {
+      this.selectOnlyDatabase();
     }
     if (activeStep === SCHEMA_STEP && this.props.selectedSchemaId == null) {
       const { schemas } = this.state;
@@ -644,14 +700,7 @@ export class UnconnectedDataSelector extends Component<
       }
     }
     if (activeStep === DATA_BUCKET_STEP) {
-      const dataTypes = getDataTypes({
-        hasModels: this.hasModels(),
-        hasTables: this.props.canSelectTable,
-        hasSavedQuestions: this.hasSavedQuestions(),
-        hasMetrics: this.hasMetrics(),
-        hasLibrary: this.hasLibrary(),
-        hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
-      });
+      const dataTypes = this.getUsableDataTypes();
       if (dataTypes.length === 1) {
         this.onChangeDataBucket(dataTypes[0].id);
       }
@@ -659,35 +708,21 @@ export class UnconnectedDataSelector extends Component<
   }
 
   getNextStep(): DataSelectorStep | null {
-    const { steps } = this.props;
-    const index = steps.findIndex((step) => step === this.state.activeStep);
-    return index < steps.length - 1 ? steps[index + 1] : null;
+    const { activeStep } = this.state;
+    return activeStep === null ? null : NEXT_STEP[activeStep];
   }
 
   getPreviousStep(): DataSelectorStep | null {
-    const { steps } = this.props;
     const { activeStep } = this.state;
     if (this.isSearchLoading() || activeStep === null) {
       return null;
     }
 
     // Back goes to the closest parent with something to pick: climb past parents
-    // that aren't in `steps` or have nothing to choose (`hasStepChoice`). None, no back link.
+    // that have nothing to choose (`hasStepChoice`). None, no back link.
     let step: DataSelectorStep | null = PARENT_STEP[activeStep];
-    while (
-      step !== null &&
-      !(steps.includes(step) && this.hasStepChoice(step))
-    ) {
+    while (step !== null && !this.hasStepChoice(step)) {
       step = PARENT_STEP[step];
-    }
-    // Except a saved entity with no bucket step to return to (reopened on a card
-    // with only tables allowed): it goes back to the databases.
-    if (
-      step === null &&
-      SAVED_ENTITY_TYPE_BY_STEP[activeStep] &&
-      steps.includes(DATABASE_STEP)
-    ) {
-      return DATABASE_STEP;
     }
     return step;
   }
@@ -695,10 +730,9 @@ export class UnconnectedDataSelector extends Component<
   hasStepChoice(step: DataSelectorStep): boolean {
     switch (step) {
       case DATA_BUCKET_STEP:
-        // data bucket step doesn't make a lot of sense when there're no models, saved questions, metrics, or Library
-        return this.hasUsableSavedEntities();
+        return this.hasDataBucketChoice();
       case DATABASE_STEP:
-        return true;
+        return this.getDatabases().length > 1;
       case SCHEMA_STEP:
         return this.state.schemas.length > 1;
       case TABLE_STEP:
@@ -882,6 +916,13 @@ export class UnconnectedDataSelector extends Component<
     }
   };
 
+  selectOnlyDatabase = async (): Promise<void> => {
+    const databases = this.getDatabases();
+    if (databases.length === 1) {
+      await this.onChangeDatabase(databases[0]);
+    }
+  };
+
   onChangeDatabase = async (database: DataSelectorDatabase): Promise<void> => {
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
@@ -946,7 +987,6 @@ export class UnconnectedDataSelector extends Component<
   }
 
   renderActiveStep(): ReactNode {
-    const { hasNestedQueriesEnabled } = this.props;
     const hasNextStep = this.getNextStep() != null;
     const hasPreviousStep = this.getPreviousStep() != null;
 
@@ -973,14 +1013,7 @@ export class UnconnectedDataSelector extends Component<
         return (
           <Box p="sm">
             <DataBucketPicker
-              dataTypes={getDataTypes({
-                hasModels: this.hasModels(),
-                hasTables: this.props.canSelectTable,
-                hasSavedQuestions: this.hasSavedQuestions(),
-                hasMetrics: this.hasMetrics(),
-                hasLibrary: this.hasLibrary(),
-                hasNestedQueriesEnabled,
-              })}
+              dataTypes={this.getUsableDataTypes()}
               {...props}
             />
           </Box>
@@ -1039,11 +1072,14 @@ export class UnconnectedDataSelector extends Component<
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
+    const hasNothingToPick =
+      activeStep === DATA_BUCKET_STEP && this.getUsableDataTypes().length === 0;
+
     if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
     }
 
-    if (this.hasDataAccess()) {
+    if (this.hasDataAccess() && !hasNothingToPick) {
       if (activeStep === LIBRARY_STEP && libraryCollection) {
         return (
           <LibraryPicker
@@ -1067,7 +1103,7 @@ export class UnconnectedDataSelector extends Component<
             tableId={selectedTable?.id}
             databaseId={currentDatabaseId}
             onSelect={this.handleSavedEntitySelect}
-            onBack={this.previousStep}
+            onBack={this.getPreviousStep() ? this.previousStep : undefined}
           />
         );
       }

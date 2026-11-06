@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import type { ReactNode } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -14,7 +15,10 @@ import { mockSettings } from "__support__/settings";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { useSearchQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
+import { getShallowQuestions } from "metabase/metadata-store";
 import { reinitialize } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { defer } from "metabase/utils/promise";
@@ -26,6 +30,7 @@ import type {
   Card,
   Collection,
   Database,
+  DatabaseId,
   SearchModel,
   Table,
   TableId,
@@ -165,6 +170,7 @@ interface SetupOpts {
     id: TableId;
     databaseId: number;
   };
+  selectedDatabaseId?: DatabaseId;
   entityTypes: EmbeddingEntityType[];
   libraryCollection?: Collection;
   hasNestedQueriesEnabled?: boolean;
@@ -176,6 +182,7 @@ function setup({
   querySourceType,
   availableModels,
   selectedTable,
+  selectedDatabaseId = selectedTable?.databaseId,
   entityTypes,
   libraryCollection,
   hasNestedQueriesEnabled = true,
@@ -274,7 +281,7 @@ function setup({
       isInitiallyOpen
       querySourceType={querySourceType}
       canChangeDatabase={!isJoinStep}
-      selectedDatabaseId={selectedTable ? selectedTable.databaseId : null}
+      selectedDatabaseId={selectedDatabaseId ?? null}
       selectedTableId={selectedTable ? selectedTable.id : undefined}
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
@@ -452,6 +459,55 @@ describe("DataSourceSelector", () => {
       expect(screen.getByText("Accounting")).toBeInTheDocument();
       expect(screen.queryByText("Payments")).not.toBeInTheDocument();
     });
+
+    it("should show the database name without a back link when there is one database", async () => {
+      setup({ ...setupOpts, entityTypes: ["table"] });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("chevronleft icon"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should return to the database list when going back from the tables with two databases", async () => {
+      const sampleDatabase = createSampleDatabase();
+      const otherDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Other Database",
+        tables: [
+          createMockTable({
+            id: OTHER_DB_TABLE_ID,
+            db_id: OTHER_DB_ID,
+            display_name: "Other Table",
+          }),
+        ],
+      });
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        databases: [sampleDatabase, otherDatabase],
+      });
+
+      await userEvent.click(await screen.findByText("Other Database"));
+      expect(await screen.findByText("Other Table")).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Other Database")).toBeInTheDocument();
+    });
+
+    it("should show an empty state, not the tables, when only models are allowed and there are none", async () => {
+      setup({ ...setupOpts, entityTypes: ["model"] });
+
+      expect(
+        await screen.findByText(
+          "To pick some data, you'll need to add some first",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+    });
   });
 
   describe("both models and tables are available", () => {
@@ -460,7 +516,80 @@ describe("DataSourceSelector", () => {
       entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
     };
 
-    it('should go back to the databases when reopened on a model and `entityTypes` = ["table"]', async () => {
+    it("should open the databases, not the models, when reopened on a model with nested queries disabled", async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+      const sampleDatabase = createSampleDatabase();
+      const otherDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Other Database",
+        tables: [
+          createMockTable({ id: OTHER_DB_TABLE_ID, db_id: OTHER_DB_ID }),
+        ],
+      });
+
+      setup({
+        ...setupOpts,
+        hasNestedQueriesEnabled: false,
+        databases: [sampleDatabase, otherDatabase],
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Other Database")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it('should open the databases, not the models, when reopened on a model and `entityTypes` = ["table"]', async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+      const otherDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Other Database",
+        tables: [
+          createMockTable({ id: OTHER_DB_TABLE_ID, db_id: OTHER_DB_ID }),
+        ],
+      });
+
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        databases: [createSampleDatabase(), otherDatabase],
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Other Database")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it('should open the tables, not a one-database list, when reopened on a model and `entityTypes` = ["table"]', async () => {
       const model = createMockCard({
         id: 140,
         name: "Orders model",
@@ -483,13 +612,176 @@ describe("DataSourceSelector", () => {
         },
       });
 
-      expect(await screen.findByText("Models")).toBeInTheDocument();
-      expect(screen.getByText("Our analytics")).toBeInTheDocument();
-
-      await userEvent.click(screen.getByTestId("saved-entity-back-navigation"));
-
-      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
       expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it('should open the models, not the saved questions, when reopened on a question and `entityTypes` = ["model"]', async () => {
+      const question = createMockCard({ id: 140, name: "Orders question" });
+      setupCardEndpoints(question);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(question.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        entityTypes: ["model"],
+        selectedTable: {
+          id: getQuestionVirtualTableId(question.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Models")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it('should open the tables, not the metrics, when reopened on a metric and `entityTypes` = ["table"]', async () => {
+      const metric = createMockCard({
+        id: 140,
+        name: "Orders metric",
+        type: "metric",
+      });
+      setupCardEndpoints(metric);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(metric.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        selectedTable: {
+          id: getQuestionVirtualTableId(metric.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not the models or a one-database list, when reopened on a model with one database and one schema and nested queries disabled", async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        hasNestedQueriesEnabled: false,
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("chevronleft icon"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should open the schemas, not the models or a one-database list, when reopened on a model with one database and two schemas and nested queries disabled", async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+      const twoSchemaDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Two Schema Database",
+        tables: [
+          createMockTable({
+            id: OTHER_DB_TABLE_ID,
+            db_id: OTHER_DB_ID,
+            schema: "accounting",
+            display_name: "Ledger",
+          }),
+          createMockTable({
+            id: getNextId(OTHER_DB_TABLE_ID),
+            db_id: OTHER_DB_ID,
+            schema: "finance",
+            display_name: "Budget",
+          }),
+        ],
+      });
+
+      setup({
+        ...setupOpts,
+        databases: [twoSchemaDatabase],
+        hasNestedQueriesEnabled: false,
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Finance")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Accounting"));
+
+      expect(await screen.findByText("Ledger")).toBeInTheDocument();
+      expect(screen.queryByText("Budget")).not.toBeInTheDocument();
+    });
+
+    it('should show the Models title without a back link when reopened on a model and `entityTypes` = ["model"]', async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        entityTypes: ["model"],
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByTestId("saved-entity-title")).toHaveTextContent(
+        "Models",
+      );
+      expect(
+        screen.queryByTestId("saved-entity-back-navigation"),
+      ).not.toBeInTheDocument();
     });
 
     it("should open the models, never the saved questions, when reopened on a model that is still loading", async () => {
@@ -531,7 +823,7 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
-    it("should open the saved questions when reopened on a card whose request fails", async () => {
+    it("should open the data types when reopened on a card whose request fails", async () => {
       const cardId = 140;
       fetchMock.get(
         `path:/api/card/${cardId}`,
@@ -547,13 +839,130 @@ describe("DataSourceSelector", () => {
 
       setup({
         ...setupOpts,
+        availableModels: ["table", "dataset", "card"],
         selectedTable: {
           id: getQuestionVirtualTableId(cardId),
           databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
         },
       });
 
-      expect(await screen.findByText("Saved Questions")).toBeInTheDocument();
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+    });
+
+    it("should open the tables, not the saved questions, when reopened on a card whose request fails and nested queries are disabled", async () => {
+      const cardId = 140;
+      fetchMock.get(`path:/api/card/${cardId}`, { status: 500 });
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(cardId),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        hasNestedQueriesEnabled: false,
+        selectedTable: {
+          id: getQuestionVirtualTableId(cardId),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it('should open the data types, not the saved questions, when reopened on a card whose request fails and `entityTypes` = ["model", "table"]', async () => {
+      const cardId = 140;
+      fetchMock.get(`path:/api/card/${cardId}`, { status: 500 });
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(cardId),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        availableModels: ["table", "dataset", "card"],
+        entityTypes: ["model", "table"],
+        selectedTable: {
+          id: getQuestionVirtualTableId(cardId),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the data types, not the models, when a join on a model is reopened with nested queries disabled", async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        hasNestedQueriesEnabled: false,
+        isJoinStep: true,
+        // The Library as a second data type, so the data types don't skip to the tables
+        libraryCollection: LIBRARY_COLLECTION,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAMPLE_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it('should open the data types, not the models, when a join on a model is reopened and `entityTypes` = ["table", "question"]', async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        // Saved Questions as a second data type, so the data types don't skip to the tables
+        availableModels: ["table", "dataset", "card"],
+        entityTypes: ["table", "question"],
+        isJoinStep: true,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAMPLE_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
     });
 
     it("should only show data from the selected database when joining data", async () => {
@@ -580,10 +989,12 @@ describe("DataSourceSelector", () => {
         await screen.findByText("Many tables Database"),
       ).toBeInTheDocument();
       expect(screen.getByText("Table 1")).toBeInTheDocument();
-      await userEvent.click(screen.getByText("Many tables Database"));
-      // We're at the database step
-      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
-      expect(screen.getByText("Many tables Database")).toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+
+      // Going back skips the database list and lands on the bucket step
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
     });
 
@@ -657,6 +1068,100 @@ describe("DataSourceSelector", () => {
       expect(screen.getByText("Models")).toBeInTheDocument();
     });
 
+    it('should open the tables, not the models, when joining data on a model and `entityTypes` = ["table"]', async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        isJoinStep: true,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not the models, when joining data on a model with nested queries disabled", async () => {
+      setup({
+        ...setupOpts,
+        hasNestedQueriesEnabled: false,
+        isJoinStep: true,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it('should open the data types, not the models, when joining data on a model and `entityTypes` = ["table", "question"]', async () => {
+      setup({
+        ...setupOpts,
+        availableModels: ["table", "dataset", "card"],
+        entityTypes: ["table", "question"],
+        isJoinStep: true,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not a one-database list, from Raw Data when joining data", async () => {
+      setup({
+        ...setupOpts,
+        isJoinStep: true,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
+      await userEvent.click(await screen.findByText("Raw Data"));
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not a one-database list, from Raw Data when reopened with a table", async () => {
+      setup({
+        ...setupOpts,
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
+      await userEvent.click(await screen.findByText("Raw Data"));
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
+
+    it("should list the databases from Raw Data when reopened with a table and there are two databases", async () => {
+      const sampleDatabase = createSampleDatabase();
+      const otherDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Other Database",
+        tables: [
+          createMockTable({ id: OTHER_DB_TABLE_ID, db_id: OTHER_DB_ID }),
+        ],
+      });
+      setup({
+        ...setupOpts,
+        databases: [sampleDatabase, otherDatabase],
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      // Going back from the tables lands on the database list, then on the bucket step
+      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
+      expect(await screen.findByText("Other Database")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Raw Data"));
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Raw Data"));
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Other Database")).toBeInTheDocument();
+    });
+
     it("should skip the bucket step and show the SavedEntityPicker right away if there is only models in the bucket step", async () => {
       setup({
         ...setupOpts,
@@ -666,6 +1171,64 @@ describe("DataSourceSelector", () => {
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Models")).toBeInTheDocument();
       expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
+
+    it('should show the Models title without a back link when `entityTypes` = ["model"]', async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["model"],
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByTestId("saved-entity-title")).toHaveTextContent(
+        "Models",
+      );
+      expect(
+        screen.queryByTestId("saved-entity-back-navigation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show the database the tables belong to, and go back to the data types, not a one-database list, from the tables of the only database", async () => {
+      setup(setupOpts);
+
+      await userEvent.click(await screen.findByText("Raw Data"));
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("should show the database the schemas belong to, and go back to the data types, from the schemas of the only database", async () => {
+      const twoSchemaDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Two Schema Database",
+        tables: [
+          createMockTable({
+            id: OTHER_DB_TABLE_ID,
+            db_id: OTHER_DB_ID,
+            schema: "accounting",
+            display_name: "Ledger",
+          }),
+          createMockTable({
+            id: getNextId(OTHER_DB_TABLE_ID),
+            db_id: OTHER_DB_ID,
+            schema: "finance",
+            display_name: "Budget",
+          }),
+        ],
+      });
+      setup({ ...setupOpts, databases: [twoSchemaDatabase] });
+
+      await userEvent.click(await screen.findByText("Raw Data"));
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Two Schema Database")).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
     });
   });
 
@@ -697,6 +1260,158 @@ describe("DataSourceSelector", () => {
       expect(screen.getByText("Saved Questions")).toBeInTheDocument();
     });
 
+    it('should open the tables, not the saved questions, when joining data on a question and `entityTypes` = ["table"]', async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        isJoinStep: true,
+        querySourceType: "question",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not the saved questions, when joining data on a question with nested queries disabled", async () => {
+      setup({
+        ...setupOpts,
+        // Without nested queries, the backend leaves out the Saved Questions database
+        availableModels: ["table"],
+        hasNestedQueriesEnabled: false,
+        isJoinStep: true,
+        querySourceType: "question",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the data types, not the saved questions, when a join on a question is reopened with nested queries disabled and a Library", async () => {
+      const question = createMockCard({ id: 140, name: "Orders question" });
+      setupCardEndpoints(question);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(question.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        // Without nested queries, the backend leaves out the Saved Questions database
+        availableModels: ["table"],
+        hasNestedQueriesEnabled: false,
+        isJoinStep: true,
+        // The Library as a second data type, so the data types don't skip to the tables
+        libraryCollection: LIBRARY_COLLECTION,
+        querySourceType: "question",
+        selectedDatabaseId: SAMPLE_DB_ID,
+        selectedTable: {
+          id: getQuestionVirtualTableId(question.id),
+          databaseId: SAMPLE_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the saved questions, not the tables, when joining data on a question before the database list has loaded", async () => {
+      const databaseList = defer<void>();
+      // Registered before `setupDatabasesEndpoints`' database list, so this one answers
+      fetchMock.get({
+        url: "path:/api/database",
+        query: { saved: true },
+        response: () =>
+          databaseList.promise.then(() => ({
+            data: [...DATABASES, SAVED_QUESTIONS_DATABASE],
+            total: DATABASES.length + 1,
+          })),
+        name: "deferred-database-list",
+      });
+      setupDatabasesEndpoints(DATABASES);
+      fetchMock.get({
+        url: "path:/api/search",
+        query: {
+          calculate_available_models: true,
+          limit: 0,
+          models: ["dataset", "metric"],
+        },
+        response: {
+          data: [],
+          limit: 0,
+          models: ["dataset", "metric"],
+          offset: 0,
+          table_db_id: null,
+          engine: "search.engine/in-place",
+          total: 1,
+          available_models: ["table", "card"],
+        },
+      });
+      setupCollectionsEndpoints({ collections: [] });
+      setupCollectionItemsEndpoint({
+        collection: ROOT_COLLECTION,
+        collectionItems: [],
+      });
+
+      // The models search has loaded before the picker mounts, as when an
+      // earlier picker loaded it
+      function SearchCachedFirst({ children }: { children: ReactNode }) {
+        const { isSuccess } = useSearchQuery({
+          calculate_available_models: true,
+          limit: 0,
+          models: ["dataset", "metric"],
+          context: "data-picker",
+        });
+        return isSuccess ? children : null;
+      }
+
+      renderWithProviders(
+        <SearchCachedFirst>
+          <DataSourceSelector
+            isInitiallyOpen
+            querySourceType="question"
+            canChangeDatabase={false}
+            selectedDatabaseId={SAMPLE_DB_ID}
+            canSelectModel
+            canSelectTable
+            canSelectQuestion
+            canSelectMetric
+            canSelectSemanticLayer
+            triggerElement={<div>Click me to open or close data picker</div>}
+            setSourceTableFn={jest.fn()}
+          />
+        </SearchCachedFirst>,
+        {
+          storeInitialState: createMockState({
+            currentUser: createMockUser({
+              permissions: createMockUserPermissions({
+                can_create_queries: true,
+              }),
+            }),
+            settings: createMockSettingsState({
+              "enable-nested-queries": true,
+            }),
+          }),
+        },
+      );
+
+      // The picker has mounted and the database list is still loading
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("deferred-database-list")).toBe(
+          true,
+        );
+      });
+      databaseList.resolve();
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+    });
+
     it("should return to the bucket step when closing the saved entity picker via its back button", async () => {
       setup(setupOpts);
 
@@ -710,6 +1425,86 @@ describe("DataSourceSelector", () => {
       expect(
         screen.queryByTestId("saved-entity-back-navigation"),
       ).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not the saved questions, when reopened on a question with nested queries disabled", async () => {
+      const question = createMockCard({ id: 140, name: "Orders question" });
+      setupCardEndpoints(question);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(question.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        // Without nested queries, the backend leaves out the Saved Questions database
+        availableModels: ["table"],
+        hasNestedQueriesEnabled: false,
+        selectedTable: {
+          id: getQuestionVirtualTableId(question.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the saved questions with the question selected when reopened before the database list has loaded", async () => {
+      const question = createMockCard({ id: 140, name: "Orders question" });
+      setupCardEndpoints(question);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(question.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+      const databaseList = defer<void>();
+      // Registered before `setup`'s database list, so this one answers
+      fetchMock.get({
+        url: "path:/api/database",
+        query: { saved: true },
+        response: () =>
+          databaseList.promise.then(() => ({
+            data: [createSampleDatabase(), SAVED_QUESTIONS_DATABASE],
+            total: 2,
+          })),
+        name: "deferred-database-list",
+      });
+
+      const { store } = setup({
+        ...setupOpts,
+        entityTypes: ["table", "question"],
+        selectedTable: {
+          id: getQuestionVirtualTableId(question.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+      setupCollectionItemsEndpoint({
+        collection: ROOT_COLLECTION,
+        collectionItems: [
+          createMockCollectionItem({
+            id: question.id,
+            name: question.name,
+            model: "card",
+          }),
+        ],
+      });
+
+      // The card's type arrives first, while the database list is still loading
+      await waitFor(() =>
+        expect(
+          getShallowQuestions(store.getState())[question.id],
+        ).toBeDefined(),
+      );
+      databaseList.resolve();
+
+      expect(await screen.findByLabelText(question.name)).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
     });
   });
 
@@ -737,11 +1532,9 @@ describe("DataSourceSelector", () => {
         selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
       });
 
-      // Go back from the table step to the database step, which offers no
-      // way back to a bucket step when metrics are the only other option
-      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
-
-      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      // Metrics are the only other bucket, so there's no bucket step to go back to
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
       expect(
         screen.queryByLabelText("chevronleft icon"),
       ).not.toBeInTheDocument();
@@ -765,6 +1558,33 @@ describe("DataSourceSelector", () => {
 
     it("should not offer metrics when nested queries are disabled", async () => {
       setup({ ...setupOpts, hasNestedQueriesEnabled: false });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+
+    it("should open the tables, not the metrics, when reopened on a metric with nested queries disabled", async () => {
+      const metric = createMockCard({
+        id: 140,
+        name: "Orders metric",
+        type: "metric",
+      });
+      setupCardEndpoints(metric);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(metric.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        hasNestedQueriesEnabled: false,
+        selectedTable: {
+          id: getQuestionVirtualTableId(metric.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
       expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
@@ -883,6 +1703,22 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Library")).not.toBeInTheDocument();
     });
 
+    it("should show an empty state, not the tables, when only the Library is allowed and it has nothing to pick from", async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION_WITH_ONLY_DASHBOARDS,
+        entityTypes: ["semantic-layer"],
+      });
+
+      expect(
+        await screen.findByText(
+          "To pick some data, you'll need to add some first",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+    });
+
     it("should not offer a Library with only metrics when joining", async () => {
       setup({
         ...setupOpts,
@@ -891,11 +1727,9 @@ describe("DataSourceSelector", () => {
         selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
       });
 
-      // Go back from the table step to the database step, which offers no
-      // way back to a bucket step when the Library has nothing joinable
-      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
-
-      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      // The Library has nothing joinable, so there's no bucket step to go back to
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
       expect(
         screen.queryByLabelText("chevronleft icon"),
       ).not.toBeInTheDocument();
@@ -912,12 +1746,42 @@ describe("DataSourceSelector", () => {
 
       // Go back from the table step to the bucket step
       await userEvent.click(await screen.findByLabelText("chevronleft icon"));
-      await userEvent.click(await screen.findByLabelText("chevronleft icon"));
       await userEvent.click(await screen.findByText("Library"));
 
       expect(await screen.findByText("Published Orders")).toBeInTheDocument();
       expect(screen.queryByText("Published Elsewhere")).not.toBeInTheDocument();
       expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+
+    it('should open a join on the Library\'s tables, with no way back to the raw tables, when `entityTypes` = ["semantic-layer"]', async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION,
+        entityTypes: ["semantic-layer"],
+        isJoinStep: true,
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Published Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Published Elsewhere")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+      expect(screen.getByTestId("saved-entity-title")).toHaveTextContent(
+        "Data",
+      );
+    });
+
+    it('should open on the Library, not the raw tables, when reopened with a published table and `entityTypes` = ["semantic-layer"]', async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION,
+        entityTypes: ["semantic-layer"],
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(await screen.findByText("Data")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
     });
 
     it("should return to the bucket step when closing the Library via its back button", async () => {
