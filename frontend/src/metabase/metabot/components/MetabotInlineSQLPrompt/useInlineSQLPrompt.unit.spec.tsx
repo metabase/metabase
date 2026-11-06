@@ -33,11 +33,12 @@ import {
 import { getDiffControls } from "metabase/querying/components/CodeMirrorEditor/test-utils";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor/NativeQueryEditor";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockDatabase,
-  createMockNativeDatasetQuery,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -59,10 +60,10 @@ const OTHER_DB = createMockDatabase({ id: 2, name: "Other Database" });
 
 const TEST_CARD = createMockCard({
   id: 1,
-  dataset_query: createMockNativeDatasetQuery({
-    database: TEST_DB.id,
-    native: { query: "SELECT 1" },
-  }),
+  query_type: "native",
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
+  ),
 });
 
 const CODE_EDIT_RESPONSE: SSEEvent[] = [

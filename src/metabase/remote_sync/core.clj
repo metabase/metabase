@@ -77,3 +77,11 @@
                    [(:id inst)
                     (boolean (contains? remote-synced-coll-ids (:collection_id inst)))]))
             instances))))
+
+(defenterprise dangling-dependencies
+  "The `[from to]` pairs of `[model-name id]` of what remote sync exports and the remote-sync content it depends on
+  that remote sync does not export: those from the `:from` entities, or on the `:to` entities, given as maps of
+  model-name to ids, a Collection standing for everything in it. None on OSS, which has no remote sync."
+  metabase-enterprise.remote-sync.core
+  [_opts]
+  [])

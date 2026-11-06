@@ -4,14 +4,13 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-studio.db :as data-studio.db]
-   [metabase-enterprise.serialization.core :as serialization]
-   [metabase-enterprise.serialization.dump :as serialization.dump]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.actions.core :as actions]
    [metabase.collections.core :as collections]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
@@ -40,15 +39,16 @@
   "The text of the collection file for a data app's collection with `entity-id`, in the data-apps namespace."
   [entity-id collection-name]
   (yaml/generate-string {:name        collection-name
+                         :slug        (collections/slugify collection-name)
                          :namespace   "data-apps"
                          :entity_id   entity-id
-                         :serdes/meta [{:model "Collection" :id entity-id :label (serialization/slugify-name collection-name)}]}))
+                         :serdes/meta [{:model "Collection"}]}))
 
 (defn collection-dir
   "The directory under `collections/data_apps/` that holds what the collection named `collection-name` holds, and the
   stem of the collection's own file, as serialization writes them."
   [collection-name]
-  (serialization/slugify-name collection-name))
+  (ee.serialization/slugify-name collection-name))
 
 (defn collection-path
   "The repo path of the file of the collection named `collection-name`, as serialization writes it."
@@ -72,7 +72,7 @@
     (merge
      {(format "data_apps/%s/data_app.yaml" dir)
       (yaml/generate-string
-       (cond-> {:serdes/meta [{:model "DataApp" :id entity-id :label slug}]
+       (cond-> {:serdes/meta [{:model "DataApp"}]
                 :entity_id   entity-id
                 :slug        slug
                 :name        name
@@ -80,7 +80,7 @@
          collection          (assoc :collection collection)
          description         (assoc :description description)
          version             (assoc :version version)
-         (seq allowed_hosts) (assoc :allowed_hosts allowed_hosts)))
+         true                (assoc :allowed_hosts (or allowed_hosts []))))
       (format "data_apps/%s/%s" dir path) bundle}
      resources)))
 
@@ -108,12 +108,9 @@
           :parameters [] :parameter_mappings [] :result_metadata nil :dimensions nil :dimension_mappings nil}))
 
 (defn- action-copy [action entity-id]
-  (merge (select-keys action [:name :description :type :parameters :parameter_mappings :visualization_settings])
+  (merge action
          (select-keys instance-fields [:archived :public_uuid :made_public_by_id :created_at])
-         {:creator_id (mt/user->id :crowberto)}
-         {:query    (t2/select :model/QueryAction :action_id (:id action))
-          :implicit (t2/select :model/ImplicitAction :action_id (:id action))}
-         {:entity_id entity-id :model_id nil}))
+         {:creator_id (mt/user->id :crowberto) :entity_id entity-id :model_id nil :collection_id nil}))
 
 (defn- collection [entity-id collection-name]
   {:entity_id entity-id :name collection-name :slug nil :description nil :location "/" :namespace :data-apps :type nil
@@ -123,11 +120,10 @@
 (defn- file-path
   "The repo path of an entity of the collection named `collection-name`: the collection's own file, or a file in the
   collection's directory named after the entity, with its entity ID so a test can find it."
-  [collection-name entity]
-  (let [{:keys [model id label]} (last (:serdes/meta entity))]
-    (if (= model "Collection")
-      (collection-path collection-name)
-      (format "collections/data_apps/%s/%s_%s.yaml" (collection-dir collection-name) (serialization/slugify-name label) id))))
+  [collection-name {:keys [entity_id] entity-name :name :as entity}]
+  (if (= :model/Collection (serialization/model-of entity))
+    (collection-path collection-name)
+    (format "collections/data_apps/%s/%s_%s.yaml" (collection-dir collection-name) (ee.serialization/slugify-name entity-name) entity_id)))
 
 (defn build-resources
   "The files an author commits for the collection named `collection-name` with `collection-entity-id`, keyed by their
@@ -142,18 +138,17 @@
                     {:spec spec :query (lib/test-query mp query)})
         actions   (map #(t2/select-one :model/Action :id %) action-ids)
         copy-id   (fn [action] (copy-entity-id "action" collection-entity-id (:entity_id action)))
-        extract   (fn [model-name instance]
-                    (cond-> (serdes/extract-one model-name {} instance)
-                      (not= "Collection" model-name) (assoc :collection_id collection-entity-id)))
-        entities  (serdes/with-cache
-                    (doall
-                     (concat
-                      [(extract "Collection" (collection collection-entity-id collection-name))]
-                      (for [{:keys [spec query]} resolved]
-                        (extract "Card" (question spec query)))
-                      (for [action actions]
-                        (extract "Action" (action-copy action (copy-id action)))))))]
-    (into (sorted-map) (map (juxt (partial file-path collection-name) serialization.dump/yaml-content)) entities)))
+        export    (fn [model instances]
+                    (for [exported (serialization/export-batch model instances)]
+                      (if (instance? Exception exported)
+                        (throw exported)
+                        (cond-> exported
+                          (not= :model/Collection model) (assoc :collection_id collection-entity-id)))))
+        entities  (concat
+                   (export :model/Collection [(collection collection-entity-id collection-name)])
+                   (export :model/Card (for [{:keys [spec query]} resolved] (question spec query)))
+                   (export :model/Action (for [action actions] (action-copy action (copy-id action)))))]
+    (into (sorted-map) (map (juxt (partial file-path collection-name) ee.serialization/entity-yaml)) entities)))
 
 (defn do-with-app-collection
   "Call `f` with the id of the resource collection of a data app named `birds`, with the data-apps feature on; deleting

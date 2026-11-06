@@ -7,6 +7,7 @@ import type { Field, FieldDimension, FieldId } from "./field";
 import type { Group } from "./group";
 import type { Measure, MeasureId } from "./measure";
 import type { Metric } from "./metric";
+import type { FieldReference } from "./query";
 import type { Segment, SegmentId } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type {
@@ -25,6 +26,9 @@ export type NormalizedCard = Card;
 export type NormalizedNativeQuerySnippet = NativeQuerySnippet;
 export type NormalizedGroup = Group;
 
+export type NormalizedTableId = TableId | string;
+export type NormalizedFieldId = FieldId | FieldReference;
+
 export interface NormalizedDatabase extends Omit<
   Database,
   "tables" | "schemas"
@@ -38,9 +42,16 @@ export interface NormalizedSchema extends Omit<Schema, "database" | "tables"> {
   tables?: TableId[];
 }
 
-export interface NormalizedTable extends Omit<
+interface NormalizedTableBase extends Omit<
   Table,
-  "db" | "fields" | "fks" | "segments" | "measures" | "metrics" | "schema"
+  | "id"
+  | "db"
+  | "fields"
+  | "fks"
+  | "segments"
+  | "measures"
+  | "metrics"
+  | "schema"
 > {
   db?: DatabaseId;
   fields?: FieldId[];
@@ -52,6 +63,16 @@ export interface NormalizedTable extends Omit<
   schema_name?: SchemaName;
   original_fields?: Field[];
 }
+
+export interface NormalizedRealTable extends NormalizedTableBase {
+  id: TableId;
+}
+
+export interface NormalizedVirtualTable extends NormalizedTableBase {
+  id: NormalizedTableId;
+}
+
+export type NormalizedTable = NormalizedRealTable | NormalizedVirtualTable;
 
 export interface NormalizedForeignKey extends Omit<
   ForeignKey,
@@ -68,9 +89,9 @@ export interface NormalizedFieldDimension extends Omit<
   human_readable_field?: FieldId;
 }
 
-export interface NormalizedField extends Omit<
+interface NormalizedFieldBase extends Omit<
   Field,
-  "target" | "table" | "name_field" | "dimensions"
+  "table_id" | "target" | "table" | "name_field" | "dimensions"
 > {
   uniqueId: string;
   target?: FieldId;
@@ -78,6 +99,22 @@ export interface NormalizedField extends Omit<
   name_field?: FieldId;
   dimensions?: NormalizedFieldDimension[];
 }
+
+export interface NormalizedRealTableField extends NormalizedFieldBase {
+  table_id: TableId;
+}
+
+export interface NormalizedVirtualTableField extends Omit<
+  NormalizedFieldBase,
+  "id"
+> {
+  id: NormalizedFieldId;
+  table_id: NormalizedTableId;
+}
+
+export type NormalizedField =
+  | NormalizedRealTableField
+  | NormalizedVirtualTableField;
 
 export interface NormalizedSegment extends Omit<Segment, "table"> {
   table?: TableId;

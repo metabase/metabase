@@ -86,18 +86,5 @@ describe("Metadata", () => {
         expect(metadata.field(1, 2)).toBe(field);
       });
     });
-
-    describe("when given a fieldId and a virtual card tableId", () => {
-      it("should return the matching Field instance, stored using the field's `uniqueId`", () => {
-        const metadata = createMockMetadata({
-          fields: [createMockField({ id: 1, table_id: "card__123" })],
-        });
-
-        const field = metadata.field(1, "card__123");
-        expect(field).toBeDefined();
-        expect(metadata.field("card__123:1")).toBe(field);
-        expect(metadata.field(1)).toBeNull();
-      });
-    });
   });
 });

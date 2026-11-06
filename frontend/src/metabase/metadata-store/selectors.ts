@@ -12,7 +12,6 @@ import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import {
   getFieldValues,
@@ -20,7 +19,6 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  Field as ApiField,
   Table as ApiTable,
   Card,
   DatabaseId,
@@ -31,6 +29,7 @@ import type {
   Metric,
   NormalizedDatabase,
   NormalizedField,
+  NormalizedFieldId,
   NormalizedForeignKey,
   NormalizedMeasure,
   NormalizedMetric,
@@ -148,7 +147,7 @@ const isResolvedField = (
  */
 export const getShallowTableFieldIds = createSelector(
   [getVisibleTable, getVisibleFields],
-  (table, fields): ApiField["id"][] => {
+  (table, fields): NormalizedFieldId[] => {
     if (table == null) {
       return [];
     }
@@ -461,7 +460,9 @@ function hydrateDatabaseTables(
 
   return Object.values(metadata.tables).filter(
     (table) =>
-      !isVirtualCardId(table.id) && table.schema && table.db_id === database.id,
+      typeof table.id === "number" &&
+      table.schema &&
+      table.db_id === database.id,
   );
 }
 
@@ -628,6 +629,7 @@ function hydrateMeasureTable(
     return undefined;
   }
   const {
+    id,
     db: _db,
     fields: _fields,
     fks: _fks,
@@ -639,7 +641,10 @@ function hydrateMeasureTable(
     original_fields: _original_fields,
     ...rest
   } = normalized;
-  return { ...rest, schema: schema_name ?? "" };
+  if (typeof id !== "number") {
+    return undefined;
+  }
+  return { ...rest, id, schema: schema_name ?? "" };
 }
 
 /**

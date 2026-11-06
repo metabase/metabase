@@ -15,7 +15,6 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   ActionFormSettings,
   DatabaseId,
-  NativeDatasetQuery,
   WritebackParameter,
   WritebackQueryAction,
 } from "metabase-types/api";
@@ -52,8 +51,7 @@ function convertQuestionToAction(
     // Unjustified type cast. FIXME
     name: question.displayName() as string,
     description: question.description(),
-    // Unjustified type cast. FIXME
-    dataset_query: cleanQuestion.datasetQuery() as NativeDatasetQuery,
+    dataset_query: cleanQuestion.datasetQuery(),
     // Unjustified type cast. FIXME
     parameters: parameters as WritebackParameter[],
     visualization_settings: formSettings,

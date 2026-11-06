@@ -191,7 +191,7 @@ For others to view the app, you'll need to grant them permissions.
 3. On the **Permissions** tab, add the groups that can open the app.
 4. Check the **Data access** column. If it says **Missing N tables**, [give the group access to those tables](./manage.md#check-that-groups-can-see-the-apps-data).
 
-People in those groups can now open the app at `/apps/<slug>`. The app runs with each person's [data permissions](../permissions/data.md), so people see only the data that they're allowed to see. For more, see [Choose who can open an app](./manage.md#choose-who-can-open-an-app).
+People in those groups can now open the app at `/apps/<slug>`. The app runs with each person's [data permissions](../permissions/data.md), so people see only the Metabase data that they're allowed to see. For more, see [Choose who can open an app](./manage.md#choose-who-can-open-an-app).
 
 ## Edit the app
 

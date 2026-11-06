@@ -6,7 +6,7 @@ import type {
   EmbedResourceParameter,
   GuestEmbedResourceType,
 } from "metabase/embedding/types";
-import { Group, Icon, Modal, UnstyledButton } from "metabase/ui";
+import { Modal } from "metabase/ui";
 import type { EmbeddingParameters } from "metabase-types/api";
 
 import S from "./EmbedModal.module.css";
@@ -33,43 +33,20 @@ export const EmbedModal = ({
   onBack,
   onClose,
 }: EmbedModalProps) => (
-  <Modal.Root
+  <Modal
     opened={opened}
-    onClose={onClose}
+    title={t`Static embedding`}
     size="auto"
     classNames={{ content: S.content, header: S.header, body: S.body }}
+    onBack={onBack}
+    onClose={onClose}
   >
-    <Modal.Overlay />
-    <Modal.Content>
-      <Modal.Header>
-        <Group gap="sm" wrap="nowrap" flex="1 1 auto" miw={0}>
-          {onBack && (
-            <UnstyledButton
-              className={S.backButton}
-              aria-label={t`Back`}
-              onClick={onBack}
-            >
-              <Icon name="chevronleft" />
-            </UnstyledButton>
-          )}
-          <Modal.Title
-            className={onBack ? S.clickableTitle : undefined}
-            onClick={onBack}
-          >
-            {t`Static embedding`}
-          </Modal.Title>
-        </Group>
-        <Modal.CloseButton />
-      </Modal.Header>
-      <Modal.Body>
-        <StaticEmbedSetupPane
-          resource={resource}
-          resourceType={resourceType}
-          resourceParameters={resourceParameters}
-          onUpdateEnableEmbedding={onUpdateEnableEmbedding}
-          onUpdateEmbeddingParams={onUpdateEmbeddingParams}
-        />
-      </Modal.Body>
-    </Modal.Content>
-  </Modal.Root>
+    <StaticEmbedSetupPane
+      resource={resource}
+      resourceType={resourceType}
+      resourceParameters={resourceParameters}
+      onUpdateEnableEmbedding={onUpdateEnableEmbedding}
+      onUpdateEmbeddingParams={onUpdateEmbeddingParams}
+    />
+  </Modal>
 );

@@ -14,10 +14,10 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type {
-  ConcreteTableId,
   InspectorCard,
   InspectorSource,
   InspectorTarget,
+  TableId,
 } from "metabase-types/api";
 
 import { FieldInfoSection } from "./components/FieldInfoSection/FieldInfoSection";
@@ -121,10 +121,18 @@ export const GenericSummarySection = ({
         <Box>
           <SimpleGrid cols={2} spacing="xl">
             <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={inputInstance} styles={treeTableStyles} />
+              <TreeTable
+                instance={inputInstance}
+                static
+                styles={treeTableStyles}
+              />
             </Card>
             <Card p={0} shadow="none" withBorder>
-              <TreeTable instance={outputInstance} styles={treeTableStyles} />
+              <TreeTable
+                instance={outputInstance}
+                static
+                styles={treeTableStyles}
+              />
             </Card>
           </SimpleGrid>
         </Box>
@@ -135,7 +143,7 @@ export const GenericSummarySection = ({
 };
 
 function getTableName(
-  tableId: ConcreteTableId | undefined,
+  tableId: TableId | undefined,
   tables: Array<InspectorSource | InspectorTarget>,
 ): string | undefined {
   if (!tableId) {
