@@ -428,11 +428,12 @@
   "Throw the curation refusal for the entity named by `label` (a URI or a short description such as \"table 12\",
   never the entity's own name): it exists and the user can read it, but this Metabot only uses curated content. An
   agent error with status 400, so that neither [[metabase.metabot.tools.util/handle-agent-or-api-error]] nor a
-  404 branch reads it as an API refusal or a missing entity; the recovery step is part of the message."
+  404 branch reads it as an API refusal or a missing entity. The message names no tool: it is raised by tools
+  that do not record which tools their profile offers, so a sentence about `search` could reach a profile without
+  it; the `:uncurated-source` hint in [[metabase.metabot.tools.recovery-hints]] names `search` where it is offered."
   [{:keys [label]}]
   (throw (ex-info (str "`" label "` is not available: this Metabot only uses curated content (verified, official, or "
-                       "Library content). Call `search` to find curated tables, models, or metrics and use one of "
-                       "those instead.")
+                       "Library content). Use a curated table, model, or metric instead.")
                   {:agent-error? true
                    :status-code  400
                    :error        :not-curated

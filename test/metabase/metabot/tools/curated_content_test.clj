@@ -19,6 +19,7 @@
    [metabase.metabot.tools.explorations :as explorations-tools]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.metadata :as metadata-tools]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as tools.shared]
@@ -1433,3 +1434,14 @@
                 "PRODUCTS is one FK hop from curated ORDERS")
             (is (false? (curation/measure-or-segment-curated? :measure raw-measure)))
             (is (true? (curation/measure-or-segment-curated? :measure hop-measure)))))))))
+
+(deftest refusal-names-search-only-where-it-is-offered-test
+  (testing "the refusal names no tool: the tools that raise it don't all record their profile's tools"
+    (is (not (str/includes? (answer-text #(curation/not-curated! {:label "table 1"})) "`search`"))))
+  (testing "the construct tools' hint names `search` only in a profile that offers it"
+    (let [hint #(recovery-hints/recovery-hint {:error :uncurated-source})]
+      (is (nil? (hint)) "no recorded tools, no sentence")
+      (binding [tools.shared/*memory-atom* (atom {:tool-names #{"construct_notebook_query"}})]
+        (is (nil? (hint))))
+      (binding [tools.shared/*memory-atom* (atom {:tool-names #{"construct_notebook_query" "search"}})]
+        (is (str/includes? (hint) "`search`"))))))
