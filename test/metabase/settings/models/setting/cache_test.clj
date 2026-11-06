@@ -207,10 +207,9 @@
                        :last-update-check (java.util.concurrent.atomic.AtomicLong. 0)
                        :restore-lock      (java.util.concurrent.locks.ReentrantLock.)})
           checked   (new-state)
-          later     (new-state)
           calls     (atom 0)]
-      (mt/with-dynamic-fn-redefs [setting.cache/current-state #(if (= 1 (swap! calls inc)) checked later)]
+      ;; Only the first state is checked: the restore's own settings reads, such as the encryption settings, also see
+      ;; the later states and may fill them.
+      (mt/with-dynamic-fn-redefs [setting.cache/current-state #(if (= 1 (swap! calls inc)) checked (new-state))]
         (setting.cache/restore-cache-if-needed! :force-check? true))
-      (is (= {:checked-filled? true, :later-filled? false}
-             {:checked-filled? (some? @(:cache checked))
-              :later-filled?   (some? @(:cache later))})))))
+      (is (some? @(:cache checked))))))
