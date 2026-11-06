@@ -55,11 +55,8 @@ export type HydratedFieldDimension = Omit<
   human_readable_field?: Field;
 };
 
-// This interface is intentionally empty: a class cannot `extends` a type alias,
-// so merging an interface with the class is how instances inherit the API
-// field's properties without re-declaring them. The class declares the rest.
-//
-// eslint-disable-next-line typescript-js/no-empty-object-type
+// A class cannot `extends` a type alias, so merging an interface with the class
+// is how instances inherit the API field's properties without re-declaring them.
 interface Field extends Omit<
   ApiField,
   "id" | "table" | "target" | "name_field" | "fingerprint" | "dimensions"
