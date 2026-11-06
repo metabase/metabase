@@ -76,9 +76,9 @@
                         block-ms
                         sleep-ms))
 
-(defonce ^{:private true :tag AtomicLong} delay-sequence (AtomicLong.))
+(defonce ^{:private true, :tag AtomicLong} delay-sequence (AtomicLong.))
 
-(defrecord DelayValue [value ^Instant ready-at ^long sequence]
+(defrecord DelayValue [value ^Instant ready-at ^long order]
   Delayed
   (getDelay [_ unit]
     (.convert unit (- (.toEpochMilli ready-at) (System/currentTimeMillis)) TimeUnit/MILLISECONDS))
@@ -86,7 +86,7 @@
     (let [^DelayValue other other
           ready-order       (Long/compare (.toEpochMilli ready-at) (.toEpochMilli ^Instant (.-ready-at other)))]
       (if (zero? ready-order)
-        (Long/compare sequence (.-sequence other))
+        (Long/compare order (.-order other))
         ready-order))))
 
 (defn delay-queue
