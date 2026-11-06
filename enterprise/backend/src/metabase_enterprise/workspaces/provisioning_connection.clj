@@ -23,7 +23,7 @@
   [database-id :- ::lib.schema.id/database]
   (:details (ws.db/provisioning-connection database-id)))
 
-(defn- warehouse-or-throw
+(defn warehouse-or-throw
   "The Database with `database-id`. Throws a 404 when there is none, and a 400 when it is not an ordinary warehouse
   the admin connected: the audit database (whose connections go to Metabase's own app DB), the sample database, an
   attached data warehouse, or a database-routing destination."

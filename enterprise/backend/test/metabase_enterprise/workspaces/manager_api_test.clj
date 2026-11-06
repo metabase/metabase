@@ -185,6 +185,30 @@
        (is (= "mb__isolation_abcdefgh_s1_x"
               (mt/user-http-request :crowberto :post 400 url (create-body db-id ["mb__isolation_abcdefgh_s1_x"]))))
        (is (= "pg_catalog" (mt/user-http-request :crowberto :post 400 url (create-body db-id ["pg_catalog"])))))
+     (testing "400 for a database behind an SSH tunnel, before anything is inserted"
+       (let [tunnelled (t2/insert-returning-pk! :model/Database
+                                                {:name    (mt/random-name)
+                                                 :engine  :postgres
+                                                 :details (assoc (superuser-details)
+                                                                 :tunnel-enabled true, :tunnel-host "bastion.example.com"
+                                                                 :tunnel-port 22, :tunnel-user "tunnel")})]
+         (try
+           (is (= {:message "SSH tunnels are not supported for workspaces.", :error-code "workspaces_unsupported"}
+                  (mt/user-http-request :crowberto :post 400 url
+                                        {:name "x", :databases [{:database_id db-id, :schemas ["sales"]}
+                                                                {:database_id tunnelled, :schemas ["sales"]}]})))
+           (finally
+             (t2/delete! :model/Database :id tunnelled)))))
+     (testing "400 for a database that is not an ordinary warehouse, such as a routing destination"
+       (let [routed (t2/insert-returning-pk! :model/Database {:name               (mt/random-name)
+                                                              :engine             :postgres
+                                                              :details            (superuser-details)
+                                                              :router_database_id db-id})]
+         (try
+           (is (=? {:error-code "workspaces_unsupported"}
+                   (mt/user-http-request :crowberto :post 400 url (create-body routed ["sales"]))))
+           (finally
+             (t2/delete! :model/Database :id routed)))))
      (testing "404 for an unknown database"
        (is (= "Database 2147483647 not found."
               (mt/user-http-request :crowberto :post 404 url (create-body Integer/MAX_VALUE ["sales"])))))
