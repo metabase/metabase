@@ -6,10 +6,10 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -77,7 +77,8 @@
 (t2/define-after-select :model/DashboardCard
   [dashcard]
   (if (contains? dashcard :visualization_settings)
-    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
+    (update dashcard :visualization_settings
+            #(first (serialization/import-visualizer-settings serialization/app-db-store [%] {:lenient? true})))
     dashcard))
 
 (declare series)
@@ -294,7 +295,7 @@
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
 (def ^:private link-card-models
-  (set (keys serdes/link-card-model->toucan-model)))
+  (set (keys serialization/link-card-model->toucan-model)))
 
 (defn link-card-entity
   "The instance of the link-card `model` (a string like \"card\" or \"table\") with `id`, or nil."
@@ -323,7 +324,7 @@
             model-and-id->info
             (-> (m/index-by (juxt :model :id) (dashboards.db/link-card-info-rows model-and-ids))
                 (update-vals (fn [{model :model :as instance}]
-                               (if (mi/can-read? (t2/instance (serdes/link-card-model->toucan-model model) instance))
+                               (if (mi/can-read? (t2/instance (serialization/link-card-model->toucan-model model) instance))
                                  instance
                                  {:restricted true}))))]
         (map (fn [card]
@@ -345,26 +346,20 @@
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 
-(defmethod serdes/generate-path "DashboardCard" [_ dashcard]
-  (remove nil?
-          [(serdes/infer-self-path "Dashboard" (dashboards.db/dashboard (:dashboard_id dashcard)))
-           (when (:dashboard_tab_id dashcard)
-             (serdes/infer-self-path "DashboardTab" (dashboards.db/dashboard-tab (:dashboard_tab_id dashcard))))
-           (serdes/infer-self-path "DashboardCard" dashcard)]))
-
-(defmethod serdes/make-spec "DashboardCard" [_model-name opts]
+(defmethod serialization/spec :model/DashboardCard [_]
   {:schema    ::dashboards.schema/external-dashboard-card
    :copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
-   :skip      []
-   :transform {:dashboard_id           (serdes/parent-ref)
-               :card_id                (serdes/fk :model/Card)
-               :action_id              (serdes/fk :model/Action)
-               :dashboard_tab_id       (serdes/fk :model/DashboardTab)
-               :parameter_mappings     {:export serdes/export-parameter-mappings
-                                        :import serdes/import-parameter-mappings}
-               :visualization_settings {:export serdes/export-visualization-settings
-                                        :import serdes/import-visualization-settings}
-               :series                 (serdes/nested :model/DashboardCardSeries :dashboardcard_id
-                                                      (assoc opts
-                                                             :sort-by :position
-                                                             :key-field :card_id))}})
+   :parent    {:model :model/Dashboard
+               :key   :dashboard_id
+               :order (juxt :dashboard_tab_id :row :col :entity_id)}
+   :children  {:series :model/DashboardCardSeries}
+   :transform {:dashboard_id           serialization/import-only-transform
+               :card_id                (serialization/fk-transform :model/Card)
+               :action_id              (serialization/fk-transform :model/Action)
+               :dashboard_tab_id       (update (serialization/fk-transform :model/DashboardTab) :import
+                                               (fn [import-ids]
+                                                 (fn [store batch refs opts]
+                                                   (import-ids store batch (map serialization/owned-entity-id refs)
+                                                               opts))))
+               :parameter_mappings     serialization/parameter-mappings-transform
+               :visualization_settings serialization/visualization-settings-transform}})
