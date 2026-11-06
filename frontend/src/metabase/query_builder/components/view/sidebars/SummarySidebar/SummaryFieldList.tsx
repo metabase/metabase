@@ -1,3 +1,5 @@
+import { useDraggable } from "@dnd-kit/core";
+import cx from "classnames";
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -123,6 +125,7 @@ export function SummaryFieldList({
               {section.items.map((item) => (
                 <FieldListItem
                   key={item.key}
+                  id={`field:${section.key}/${item.key}`}
                   query={query}
                   stageIndex={stageIndex}
                   item={item}
@@ -186,6 +189,7 @@ function CollapsibleSection({
 }
 
 type FieldListItemProps = {
+  id: string;
   query: Lib.Query;
   stageIndex: number;
   item: SummaryFieldItem;
@@ -195,6 +199,7 @@ type FieldListItemProps = {
 };
 
 function FieldListItem({
+  id,
   query,
   stageIndex,
   item,
@@ -202,14 +207,20 @@ function FieldListItem({
   onSelect,
   onAdd,
 }: FieldListItemProps) {
+  const { listeners, setNodeRef, isDragging } = useDraggable({
+    id,
+    data: { kind: "field", field: item.field, label: item.name },
+  });
   const pick = (event: MouseEvent | KeyboardEvent) =>
     event.altKey ? onAdd(item.field) : onSelect(item.field);
 
   return (
     <HoverParent as="li" data-testid="summary-field-item">
       <UnstyledButton
-        className={S.fieldItem}
+        ref={setNodeRef}
+        className={cx(S.fieldItem, { [S.isDragging]: isDragging })}
         aria-label={item.name}
+        {...listeners}
         onClick={pick}
         onKeyDown={(event) => {
           // a click from Enter or Space carries no modifier, so the key handles alt itself
@@ -231,6 +242,7 @@ function FieldListItem({
           <Icon name={item.icon} c="text-secondary" aria-hidden />
         )}
         <MatchedLabel label={item.name} searchText={searchText} />
+        <Icon name="grabber" className={S.grabber} aria-hidden />
       </UnstyledButton>
     </HoverParent>
   );

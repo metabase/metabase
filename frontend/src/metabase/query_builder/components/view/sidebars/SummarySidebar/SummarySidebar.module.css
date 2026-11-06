@@ -45,6 +45,23 @@
     0 0 0 1px var(--mb-color-core-brand);
 }
 
+.well[data-drop="accepts"] {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-core-summarize);
+}
+
+.well[data-drop="over"] {
+  box-shadow:
+    var(--mantine-shadow-sm_outline),
+    0 0 0 2px var(--mb-color-core-summarize);
+  background-color: var(--mb-color-background_surface-success);
+}
+
+.well[data-drop="rejects"] {
+  opacity: 0.5;
+}
+
 .wellHeader {
   align-items: center;
   justify-content: space-between;
@@ -133,6 +150,19 @@
   font-weight: bold;
   color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-core-summarize);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.dragPreview {
+  composes: chip;
+  cursor: grabbing;
+  box-shadow: var(--mantine-shadow-sm_outline);
+}
+
+.isDragging {
+  opacity: 0.4;
 }
 
 .chipLabel {
@@ -294,14 +324,29 @@
     calc(var(--field-list-gutter) + 12px + 0.375rem);
   border-radius: 10px;
   color: var(--mb-color-text-primary);
+  touch-action: none;
+  user-select: none;
 
   &:hover {
     background-color: var(--mb-color-background_surface-hover);
   }
 
+  &:hover .grabber,
+  &:focus-visible .grabber {
+    opacity: 1;
+  }
+
   &:focus-visible {
     outline-offset: -2px;
   }
+}
+
+.grabber {
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0;
+  color: var(--mb-color-text-secondary);
+  transition: opacity 100ms ease-out;
 }
 
 .fieldListEmpty {

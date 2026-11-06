@@ -34,7 +34,7 @@ export function ValueChip({
   onRemove,
 }: ValueChipProps) {
   return (
-    <WellChip label={item.label} onRemove={onRemove}>
+    <WellChip drag={{ kind: "value", item }} onRemove={onRemove}>
       {item.kind === "column" ? (
         <ColumnValueMenu
           query={query}

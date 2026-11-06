@@ -1,3 +1,4 @@
+import { useDndContext } from "@dnd-kit/core";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -11,12 +12,14 @@ import type {
   SummaryWellId,
 } from "../types";
 import {
+  canDropOnWell,
   getDimensionItems,
+  getDragItem,
   getValueItems,
   getWellFieldSections,
 } from "../utils";
 
-import { SummaryWell } from "./SummaryWell";
+import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
 import { WellChip } from "./WellChip";
@@ -36,6 +39,8 @@ export function SummaryWells({
   onPick,
   onChange,
 }: SummaryWellsProps) {
+  const { active } = useDndContext();
+  const draggedItem = getDragItem(active?.data.current);
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
@@ -56,9 +61,22 @@ export function SummaryWells({
   const handleRemove = (clause: Lib.AggregationClause | Lib.BreakoutClause) =>
     onChange(Lib.removeClause(query, stageIndex, clause));
 
+  const getDropState = (wellId: SummaryWellId): WellDropState | null => {
+    if (draggedItem == null) {
+      return null;
+    }
+    return canDropOnWell(query, stageIndex, draggedItem, wellId)
+      ? "accepts"
+      : "rejects";
+  };
+
   return (
     <Box className={S.wells} data-testid="summary-wells">
-      <SummaryWell wellId="values" title={t`Summarize by`}>
+      <SummaryWell
+        wellId="values"
+        title={t`Summarize by`}
+        dropState={getDropState("values")}
+      >
         <SummaryWellInput
           wellId="values"
           sections={valueSections}
@@ -84,7 +102,11 @@ export function SummaryWells({
           ))}
         </SummaryWellInput>
       </SummaryWell>
-      <SummaryWell wellId="columns" title={t`Group by`}>
+      <SummaryWell
+        wellId="columns"
+        title={t`Group by`}
+        dropState={getDropState("columns")}
+      >
         <SummaryWellInput
           wellId="columns"
           sections={columnSections}
@@ -100,7 +122,7 @@ export function SummaryWells({
           {dimensionItems.map((item) => (
             <WellChip
               key={item.key}
-              label={item.label}
+              drag={{ kind: "dimension", item }}
               onRemove={() => handleRemove(item.clause)}
             >
               <span className={S.chipLabel}>{item.label}</span>

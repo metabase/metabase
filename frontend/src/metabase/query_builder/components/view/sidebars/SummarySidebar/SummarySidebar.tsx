@@ -1,3 +1,10 @@
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+} from "@dnd-kit/core";
 import { useId, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -8,6 +15,7 @@ import * as Lib from "metabase-lib";
 
 import type { UpdateQueryHookProps } from "../../../../hooks/types";
 
+import { SummaryDragPreview } from "./SummaryDragPreview";
 import { SummaryFieldList } from "./SummaryFieldList";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
@@ -16,11 +24,15 @@ import {
   addField,
   areQueriesEqual,
   clearWell,
+  dropOnWell,
+  getDragItem,
   getFieldSections,
   replaceWellWithField,
 } from "./utils";
 
 type SummarySidebarProps = UpdateQueryHookProps;
+
+const DRAG_ACTIVATION_DISTANCE_PX = 5;
 
 function translateSections(
   sections: SummaryFieldSection[],
@@ -35,6 +47,15 @@ function translateSections(
 
 function getFieldWellId(field: SummaryField): SummaryWellId {
   return field.kind === "column" ? "columns" : "values";
+}
+
+function getDropWellId(data: unknown): SummaryWellId | null {
+  if (typeof data !== "object" || data == null || !("wellId" in data)) {
+    return null;
+  }
+  return data.wellId === "values" || data.wellId === "columns"
+    ? data.wellId
+    : null;
 }
 
 export function SummarySidebar({
@@ -79,6 +100,18 @@ export function SummarySidebar({
       clearWell(clearWell(query, stageIndex, "columns"), stageIndex, "values"),
     );
 
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE_PX },
+  });
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    const drag = getDragItem(active.data.current);
+    const wellId = getDropWellId(over?.data.current);
+    if (drag != null && wellId != null) {
+      handleWellAdd(dropOnWell(query, stageIndex, drag, wellId), wellId);
+    }
+  };
+
   const [isFieldListOpen, setIsFieldListOpen] = useState(true);
   const fieldListDrawerId = useId();
   const fieldListToggleLabel = isFieldListOpen
@@ -86,53 +119,64 @@ export function SummarySidebar({
     : t`Show fields`;
 
   return (
-    <Box className={S.sidebar} data-testid="summary-sidebar">
-      <Box className={S.wellsColumn}>
-        <SummaryWells
-          query={query}
-          stageIndex={stageIndex}
-          sections={sections}
-          onPick={handleAdd}
-          onChange={onQueryChange}
-        />
-        <Flex className={S.wellsFooter} align="center" justify="space-between">
-          <Button
-            variant="subtle"
-            size="compact-sm"
-            disabled={!hasItems}
-            onClick={handleClearAll}
+    <DndContext
+      sensors={[pointerSensor]}
+      collisionDetection={pointerWithin}
+      onDragEnd={handleDragEnd}
+    >
+      <Box className={S.sidebar} data-testid="summary-sidebar">
+        <Box className={S.wellsColumn}>
+          <SummaryWells
+            query={query}
+            stageIndex={stageIndex}
+            sections={sections}
+            onPick={handleAdd}
+            onChange={onQueryChange}
+          />
+          <Flex
+            className={S.wellsFooter}
+            align="center"
+            justify="space-between"
           >
-            {t`Clear all`}
-          </Button>
-          <Tooltip label={fieldListToggleLabel}>
-            <ActionIcon
+            <Button
               variant="subtle"
-              aria-label={fieldListToggleLabel}
-              aria-expanded={isFieldListOpen}
-              aria-controls={fieldListDrawerId}
-              onClick={() => setIsFieldListOpen(!isFieldListOpen)}
+              size="compact-sm"
+              disabled={!hasItems}
+              onClick={handleClearAll}
             >
-              <Icon
-                name={isFieldListOpen ? "sidebar_open" : "sidebar_closed"}
-              />
-            </ActionIcon>
-          </Tooltip>
-        </Flex>
+              {t`Clear all`}
+            </Button>
+            <Tooltip label={fieldListToggleLabel}>
+              <ActionIcon
+                variant="subtle"
+                aria-label={fieldListToggleLabel}
+                aria-expanded={isFieldListOpen}
+                aria-controls={fieldListDrawerId}
+                onClick={() => setIsFieldListOpen(!isFieldListOpen)}
+              >
+                <Icon
+                  name={isFieldListOpen ? "sidebar_open" : "sidebar_closed"}
+                />
+              </ActionIcon>
+            </Tooltip>
+          </Flex>
+        </Box>
+        <Box
+          id={fieldListDrawerId}
+          className={S.fieldListDrawer}
+          data-open={isFieldListOpen || undefined}
+          data-testid="summary-field-list-drawer"
+        >
+          <SummaryFieldList
+            query={query}
+            stageIndex={stageIndex}
+            sections={sections}
+            onSelect={handleFieldSelect}
+            onAdd={(field) => handleAdd(getFieldWellId(field), field)}
+          />
+        </Box>
       </Box>
-      <Box
-        id={fieldListDrawerId}
-        className={S.fieldListDrawer}
-        data-open={isFieldListOpen || undefined}
-        data-testid="summary-field-list-drawer"
-      >
-        <SummaryFieldList
-          query={query}
-          stageIndex={stageIndex}
-          sections={sections}
-          onSelect={handleFieldSelect}
-          onAdd={(field) => handleAdd(getFieldWellId(field), field)}
-        />
-      </Box>
-    </Box>
+      <SummaryDragPreview />
+    </DndContext>
   );
 }

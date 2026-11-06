@@ -1,8 +1,17 @@
+import type * as DndKit from "@dnd-kit/core";
+import type { Active, ClientRect, DndContextProps, Over } from "@dnd-kit/core";
 import userEvent from "@testing-library/user-event";
+import type * as React from "react";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  fireEvent,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -17,10 +26,128 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { SummarySidebar } from "./SummarySidebar";
-import type { SummaryWellId } from "./types";
-import { getDimensionItems, getValueItems } from "./utils";
+import type { SummaryDragItem, SummaryWellId } from "./types";
+import { getDimensionItems, getFieldSections, getValueItems } from "./utils";
 
 const STAGE_INDEX = -1;
+
+const mockDnd: Pick<DndContextProps, "onDragEnd"> & {
+  setActive?: (active: Active | null) => void;
+} = {};
+
+jest.mock("@dnd-kit/core", () => {
+  const actual = jest.requireActual<typeof DndKit>("@dnd-kit/core");
+  const { createContext, useContext, useState } =
+    jest.requireActual<typeof React>("react");
+  const ActiveContext = createContext<Active | null>(null);
+  return {
+    ...actual,
+    DndContext: ({ children, onDragEnd }: DndContextProps) => {
+      const [active, setActive] = useState<Active | null>(null);
+      mockDnd.onDragEnd = onDragEnd;
+      mockDnd.setActive = setActive;
+      return (
+        <ActiveContext.Provider value={active}>
+          {children}
+        </ActiveContext.Provider>
+      );
+    },
+    useDndContext: () => ({
+      ...actual.useDndContext(),
+      active: useContext(ActiveContext),
+    }),
+    DragOverlay: ({ children }: DndKit.DragOverlayProps) => children,
+  };
+});
+
+const EMPTY_RECT: ClientRect = {
+  width: 0,
+  height: 0,
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+};
+
+function createActive(item: SummaryDragItem): Active {
+  return {
+    id: "dragged",
+    data: { current: item },
+    rect: { current: { initial: null, translated: null } },
+  };
+}
+
+function createOver(wellId: SummaryWellId): Over {
+  return {
+    id: `well:${wellId}`,
+    data: { current: { wellId } },
+    rect: EMPTY_RECT,
+    disabled: false,
+  };
+}
+
+let dragged: Active | null = null;
+
+function startDrag(item: SummaryDragItem) {
+  dragged = createActive(item);
+  const active = dragged;
+  act(() => mockDnd.setActive?.(active));
+}
+
+function endDrag(wellId: SummaryWellId | null) {
+  if (dragged == null) {
+    throw new Error("No drag to end");
+  }
+  const active = dragged;
+  dragged = null;
+  act(() => {
+    mockDnd.onDragEnd?.({
+      active,
+      activatorEvent: new Event("pointerup"),
+      collisions: null,
+      delta: { x: 0, y: 0 },
+      over: wellId && createOver(wellId),
+    });
+    mockDnd.setActive?.(null);
+  });
+}
+
+function drop(item: SummaryDragItem, wellId: SummaryWellId | null) {
+  startDrag(item);
+  endDrag(wellId);
+}
+
+function getFieldDrag(
+  query: Lib.Query,
+  sectionName: string,
+  name: string,
+): SummaryDragItem {
+  const section = getFieldSections(query, STAGE_INDEX).find(
+    (section) => section.name === sectionName,
+  );
+  const item = section?.items.find((item) => item.name === name);
+  if (item == null) {
+    throw new Error(`No field ${name} in ${sectionName}`);
+  }
+  return { kind: "field", field: item.field, label: item.name };
+}
+
+const SUMMARIZED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [
+        { type: "operator", operator: "count" },
+        {
+          type: "operator",
+          operator: "sum",
+          args: [{ type: "column", name: "TOTAL" }],
+        },
+      ],
+      breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+    },
+  ],
+});
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -285,6 +412,83 @@ describe("SummarySidebar", () => {
     expect(getLastQuery()).toEqual({ values: [], dimensions: [] });
     expect(getChipLabels("values")).toEqual([]);
     expect(screen.getByRole("button", { name: "Clear all" })).toBeDisabled();
+  });
+
+  describe("drag and drop", () => {
+    it("adds a dragged field to the well it's dropped on", () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+      const { onQueryChange, getLastQuery } = setup({ query });
+
+      drop(getFieldDrag(query, "Orders", "Quantity"), "values");
+      expect(getLastQuery()).toEqual({
+        values: ["Sum of Quantity"],
+        dimensions: [],
+      });
+
+      drop(getFieldDrag(query, "Product", "Category"), "columns");
+      expect(getLastQuery()).toEqual({
+        values: ["Sum of Quantity"],
+        dimensions: ["Product → Category"],
+      });
+      expect(onQueryChange).toHaveBeenCalledTimes(2);
+      expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+    });
+
+    it("shows a preview and which wells take the dragged item until the drag ends", () => {
+      const query = createQueryWithMetric();
+      setup({ query });
+      const valuesWell = screen.getByTestId("summary-well-values");
+      const columnsWell = screen.getByTestId("summary-well-columns");
+
+      startDrag(getFieldDrag(query, "Metrics", "Revenue"));
+      expect(valuesWell).toHaveAttribute("data-drop", "accepts");
+      expect(columnsWell).toHaveAttribute("data-drop", "rejects");
+      expect(screen.getByTestId("summary-drag-preview")).toHaveTextContent(
+        "Revenue",
+      );
+
+      endDrag(null);
+      expect(valuesWell).not.toHaveAttribute("data-drop");
+      expect(columnsWell).not.toHaveAttribute("data-drop");
+      expect(
+        screen.queryByTestId("summary-drag-preview"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("moves a grouping chip to Summarize by", () => {
+      const { getLastQuery } = setup({ query: SUMMARIZED_QUERY });
+      const [item] = getDimensionItems(SUMMARIZED_QUERY, STAGE_INDEX);
+
+      drop({ kind: "dimension", item }, "values");
+
+      expect(getLastQuery()).toEqual({
+        values: ["Count", "Sum of Total", "Distinct values of Created At"],
+        dimensions: [],
+      });
+    });
+
+    it("moves a column value chip to Group by", () => {
+      const { getLastQuery } = setup({ query: SUMMARIZED_QUERY });
+      const [, item] = getValueItems(SUMMARIZED_QUERY, STAGE_INDEX);
+
+      drop({ kind: "value", item }, "columns");
+
+      expect(getLastQuery()).toEqual({
+        values: ["Count"],
+        dimensions: ["Created At: Month", "Total: Auto binned"],
+      });
+    });
+
+    it("leaves the query alone when the drop is rejected or misses", () => {
+      const { onQueryChange } = setup({ query: SUMMARIZED_QUERY });
+      const [countItem] = getValueItems(SUMMARIZED_QUERY, STAGE_INDEX);
+
+      drop({ kind: "value", item: countItem }, "columns");
+      drop({ kind: "value", item: countItem }, "values");
+      drop(getFieldDrag(SUMMARIZED_QUERY, "Orders", "Quantity"), null);
+
+      expect(onQueryChange).not.toHaveBeenCalled();
+    });
   });
 
   it("hides and shows the field list from the footer button", async () => {
