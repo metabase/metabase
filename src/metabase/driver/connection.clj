@@ -166,7 +166,7 @@
   nil)
 
 (defenterprise database-admin-details
-  "Returns the `:admin-details` for a database, or `nil` if the connection-overlays feature is not available.
+  "Returns the `:admin-details` for a database, or `nil` if the workspaces feature is not available.
    OSS implementation always returns `nil`."
   metabase-enterprise.connection-overlays.core
   [_database]

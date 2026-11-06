@@ -263,9 +263,12 @@
                                                      :admin_details      admin-details}]
               (let [db-id             (u/the-id database)
                     default-cache-key [db-id :default]
-                    write-cache-key   [db-id :write-data]]
+                    write-cache-key   [db-id :write-data]
+                    admin-cache-key   [db-id :admin]]
                 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                 (driver.conn/with-write-connection
+                  (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database)))
+                (driver.conn/with-admin-connection
                   (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database)))
                 (testing "all pools exist before invalidation"
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
