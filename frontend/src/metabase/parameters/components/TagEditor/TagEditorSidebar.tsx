@@ -10,8 +10,8 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatabaseId,
-  EmbeddingParameterVisibility,
   DatasetQuery,
+  EmbeddingParameterVisibility,
   Parameter,
   ParameterId,
   ParameterValuesConfig,

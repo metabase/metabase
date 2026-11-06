@@ -10,7 +10,8 @@ import {
 } from "metabase-types/api";
 
 export function useTableCard(table: Table | undefined): UnsavedCard | null {
-  const tableId = table != null && isConcreteTableId(table.id) ? table.id : null;
+  const tableId =
+    table != null && isConcreteTableId(table.id) ? table.id : null;
   const { data: loadedTable } = useGetTableQueryMetadataQuery(
     tableId != null ? { id: tableId } : skipToken,
   );

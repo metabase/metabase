@@ -7,8 +7,8 @@ import CS from "metabase/css/core/index.css";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Button, Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
-import type Database from "metabase-lib/v1/metadata/Database";
 import * as Lib from "metabase-lib";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseId,
   DatasetQuery,
@@ -47,8 +47,7 @@ const SQL_EXAMPLES: Record<string, QueryExample> = {
     },
   },
   optional: {
-    query:
-      "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
+    query: "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
     templateTags: {
       category: {
         id: uuid(),
@@ -80,8 +79,7 @@ const SQL_EXAMPLES: Record<string, QueryExample> = {
     },
   },
   optionalDimension: {
-    query:
-      "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
+    query: "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
     templateTags: {
       category: {
         id: uuid(),
@@ -133,8 +131,7 @@ const MONGO_EXAMPLES: Record<string, QueryExample> = {
     },
   },
   multipleOptional: {
-    query:
-      "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
+    query: "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
     templateTags: {
       id: {
         id: uuid(),
@@ -177,10 +174,7 @@ const TagExample = ({ example, onTry }: TagExampleProps) => (
     <Box py="sm">
       <Code block>{example.query}</Code>
       {onTry && (
-        <Button
-          className={CS.mt1}
-          onClick={() => onTry(example)}
-        >
+        <Button className={CS.mt1} onClick={() => onTry(example)}>
           {t`Try it`}
         </Button>
       )}
@@ -236,10 +230,7 @@ export const TagEditorHelp = ({
           <Code key="code">{"{{variable_name}}"}</Code>
         )} creates a variable in this query template called "variable_name". Variables can be given types in the side panel, which changes their behavior. All variable types other than "Field Filter" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template.`}
       </p>
-      <TagExample
-        example={examples.variable}
-        onTry={handleTryExample}
-      />
+      <TagExample example={examples.variable} onTry={handleTryExample} />
 
       <h4 className={CS.pt2}>{t`Field Filters`}</h4>
       <p>
@@ -248,10 +239,7 @@ export const TagEditorHelp = ({
       <p>
         {t`When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a "WHERE" clause.`}
       </p>
-      <TagExample
-        example={examples.dimension}
-        onTry={handleTryExample}
-      />
+      <TagExample example={examples.dimension} onTry={handleTryExample} />
 
       <h4 className={CS.pt2}>{t`Optional Clauses`}</h4>
       <p>
@@ -259,10 +247,7 @@ export const TagEditorHelp = ({
           <Code key="code">{"[[{{variable}}]]"}</Code>
         )} create an optional clause in the template. If "variable" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored.`}
       </p>
-      <TagExample
-        example={examples.optional}
-        onTry={handleTryExample}
-      />
+      <TagExample example={examples.optional} onTry={handleTryExample} />
 
       <p>
         {t`To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with "AND".`}

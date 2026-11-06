@@ -1,7 +1,6 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type { NormalizedDatabase } from "metabase-types/api";
 
-
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
 import type Table from "./Table";

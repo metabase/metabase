@@ -37,11 +37,11 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
+import { useTableCard } from "metabase-enterprise/sandboxes/hooks/use-table-card";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
-import { useTableCard } from "metabase-enterprise/sandboxes/hooks/use-table-card";
 import * as Lib from "metabase-lib";
 import type {
   GroupId,

@@ -1,4 +1,3 @@
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardQueryMetadata,
@@ -15,6 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import { createMockEntityId } from "./entity-id";
+import { EMPTY_STRUCTURED_QUERY } from "./query";
 import { createMockUser } from "./user";
 
 const MOCK_CARD_ENTITY_ID = createMockEntityId();
@@ -27,7 +27,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   description: "",
   display: "table",
   public_uuid: null,
-  dataset_query: STRUCTURED_QUERY_TEMPLATE,
+  dataset_query: EMPTY_STRUCTURED_QUERY,
   visualization_settings: createMockVisualizationSettings(),
   result_metadata: [],
   type: "question",
@@ -69,7 +69,7 @@ export const createMockUnsavedCard = (
   opts?: Partial<UnsavedCard>,
 ): UnsavedCard => ({
   display: "table",
-  dataset_query: STRUCTURED_QUERY_TEMPLATE,
+  dataset_query: EMPTY_STRUCTURED_QUERY,
   visualization_settings: createMockVisualizationSettings(),
   ...opts,
 });

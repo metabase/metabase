@@ -4,7 +4,6 @@ import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
 import type { MeasureId } from "./measure";
 import type { MetricId } from "./metric";
-import type { NormalizedQueryParameter } from "./parameters";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
 

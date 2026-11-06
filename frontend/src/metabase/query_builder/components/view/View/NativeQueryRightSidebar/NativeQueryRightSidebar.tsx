@@ -8,8 +8,8 @@ import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CollectionId,
-  EmbeddingParameterVisibility,
   DatasetQuery,
+  EmbeddingParameterVisibility,
   NativeQuerySnippet,
   RowValue,
   TemplateTag,
