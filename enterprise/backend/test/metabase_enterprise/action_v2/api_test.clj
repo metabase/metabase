@@ -21,6 +21,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
@@ -413,6 +414,16 @@
                   [verb response] responses]
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected-msg (error-or-ok response))))))))))
+
+(deftest ^:synchronized editing-refused-in-workspace-mode-test
+  (mt/with-premium-features #{actions-feature-flag}
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "a workspace instance refuses data-grid edits: they would write past the workspace's table remapping"
+        (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
+          (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+            (is (= "Actions is not supported on a workspace instance."
+                   (action-v2.tu/create-rows! table-id :crowberto 400 [{:name "Pidgey" :song "Car alarms"}]))))
+          (is (= [] (table-rows table-id))))))))
 
 (defn- check-coercion-fn-coverage
   ([test-cases]
