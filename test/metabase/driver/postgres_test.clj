@@ -2918,6 +2918,10 @@
             workspace (merge {:id ws-id}
                              (driver/workspace-isolation-details :postgres (mt/db) {:id ws-id}))]
         (try
-          (is (= :ok (do (driver/init-workspace-isolation! :postgres database workspace) :ok)))
+          ;; the shared test cluster grants CREATE on public to PUBLIC before Postgres 15, which init refuses;
+          ;; metabase.driver.postgres.workspace-test covers that check
+          (is (= :ok (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+                       (driver/init-workspace-isolation! :postgres database workspace)
+                       :ok)))
           (finally
             (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))

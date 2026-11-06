@@ -33,6 +33,7 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -105,7 +106,11 @@
                                            :input_schemas    input-schemas
                                            :database_details {}
                                            :output_namespace ""})]
-      (provisioning/provision-single! wsd-id))))
+      ;; Postgres init refuses a cluster where PUBLIC can create objects in any database, the default before Postgres
+      ;; 15, and the shared test cluster is not this test's to change: metabase.driver.postgres.workspace-test covers
+      ;; that check against a database of its own
+      (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+        (provisioning/provision-single! wsd-id)))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
