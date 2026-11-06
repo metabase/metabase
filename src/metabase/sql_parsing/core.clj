@@ -1,7 +1,7 @@
 (ns metabase.sql-parsing.core
   "Stateless SQL parsing via GraalPy or Java SQLGlot.
 
-  This module provides dialect-aware SQL parsing with no Metabase dependencies.
+  This module provides dialect-aware SQL parsing. It uses only the Metabase util, settings and analytics modules.
   All functions take strings and return strings/simple data structures.
 
   API (`parser` is a [[parser]], chosen by the caller):
