@@ -5,9 +5,8 @@
    reads from the `table_remapping` app-DB table via Toucan2. Tests can bind
    [[*remapping-store*]] with a simple map-backed implementation to avoid DB access."
   (:require
-   [metabase-enterprise.workspaces.models.table-remapping]
-   [metabase.app-db.core :as app-db]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping]))
 
 (comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
 
@@ -64,41 +63,18 @@
 (defrecord AppDBRemappingStore []
   RemappingStore
   (enabled-for-db?* [_ db-id]
-    (t2/exists? :model/TableRemapping :database_id db-id))
+    (ws.db/table-remappings-exist? db-id))
   (remappings-for-db* [_ db-id]
-    (into {} (map row->spec-pair) (t2/select :model/TableRemapping :database_id db-id)))
+    (into {} (map row->spec-pair) (ws.db/table-remappings-of-database db-id)))
   (get-mapping* [_ db-id {:keys [db schema table]}]
-    (when-let [row (t2/select-one :model/TableRemapping
-                                  :database_id     db-id
-                                  :from_db         db
-                                  :from_schema     schema
-                                  :from_table_name table)]
+    (when-let [row (ws.db/table-remapping db-id {:db db :schema schema :table table})]
       {:db (:to_db row) :schema (:to_schema row) :table (:to_table_name row)}))
   (insert-mapping!* [_ db-id from-spec to-spec]
-    ;; Idempotent on the unique constraint `(database_id, from_db, from_schema, from_table_name)`.
-    ;; `app-db/update-or-insert!` handles the concurrent-insert race portably -- if a duplicate
-    ;; insert loses the race, it retries the lookup and returns the existing row's id. The
-    ;; update-fn returns nil on existing (no-op).
-    (app-db/update-or-insert!
-     :model/TableRemapping
-     {:database_id     db-id
-      :from_db         (:db from-spec)
-      :from_schema     (:schema from-spec)
-      :from_table_name (:table from-spec)}
-     (fn [existing]
-       (when-not existing
-         {:to_db         (:db to-spec)
-          :to_schema     (:schema to-spec)
-          :to_table_name (:table to-spec)}))))
+    (ws.db/upsert-table-remapping! db-id from-spec to-spec))
   (remove-mapping!* [_ db-id {:keys [db schema table]}]
-    (long
-     (t2/delete! :model/TableRemapping
-                 :database_id     db-id
-                 :from_db         db
-                 :from_schema     schema
-                 :from_table_name table)))
+    (long (ws.db/delete-table-remapping! db-id {:db db :schema schema :table table})))
   (clear-for-db!* [_ db-id]
-    (long (t2/delete! :model/TableRemapping :database_id db-id))))
+    (long (ws.db/delete-table-remappings-of-database! db-id))))
 
 (def app-db-store
   "Default remapping store backed by the `table_remapping` app-DB table."
@@ -160,10 +136,12 @@
 
 ;;; ------------------------------------------------ Dynamic vars -------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *remapping-store*
   "The active remapping store. Defaults to [[app-db-store]]. Bind in tests to avoid DB access."
   app-db-store)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-remapping?*
   "When true, [[enabled-for-db?]] always returns false. Used by workspace execution contexts
    that need to query the isolation schema directly without remapping."
