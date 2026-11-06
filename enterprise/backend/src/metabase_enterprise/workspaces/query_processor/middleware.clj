@@ -164,7 +164,7 @@
    (see `metabase-enterprise.advanced-config.file/initialize!`). A child whose remap rows
    exist but whose `:workspaces` token isn't yet active must still rewrite reads — otherwise
    the child silently leaks production data. The same rationale documented on
-   [[metabase-enterprise.workspaces.transform-hooks/resolve-transform-target]] applies here:
+   [[metabase-enterprise.workspaces.transform-hooks/workspace-transform-target]] applies here:
    if remap rows exist, isolation must engage regardless of token state. The internal
    `(ws.remapping/enabled-for-db? db-id)` check is the actual gate."
   :feature :none

@@ -1,11 +1,9 @@
 (ns metabase.transforms.execute
   (:require
    [metabase.indexes.models.table-index :as table-index]
-   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.query-impl :as transforms.query-impl]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -14,8 +12,10 @@
 
 (mu/defn- resolve-target :- ::transforms-base.schema/transform
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
-  instance for `(:database target)`, the hook rewrites `:schema` to the workspace
-  output schema and records a TableRemapping for the canonical (schema, name).
+  instance for `(:database target)`, the hook rewrites `:schema` and `:name` to the
+  workspace copy, and the canonical target is stashed as `:workspace-canonical-target`.
+  Nothing is recorded here: the executor records the TableRemapping only once the run
+  has succeeded (see [[transforms-base.u/record-workspace-target-remapping!]]).
   Off-workspace and OSS: no-op pass-through.
 
   Lives at the dispatch wrapper so every transform type (`:query`, `:python`, and
@@ -24,7 +24,7 @@
   `(:target transform)` to decide where to write.
 
   When `target-db-id` returns nil (no per-type impl, or transform shape doesn't
-  identify a target DB), the hook is skipped — workspace rewriting requires a
+  identify a target DB), the rewrite is skipped — workspace rewriting requires a
   known DB id to look up `db-workspace-namespace`.
 
   Also hydrates the declared indexes and their request ids onto the target so the base reads them off
@@ -32,10 +32,7 @@
   `:full-incremental-run?` so that (DB-backed) decision is made once and stays stable for the whole run."
   [transform :- ::transforms.schema/transform]
   (let [requests (table-index/select-applicable-for-transform (:id transform))]
-    (-> (if-let [db-id (transforms-base.i/target-db-id transform)]
-          (assoc transform :target
-                 (transforms.query-impl/resolve-transform-target db-id (:target transform)))
-          transform)
+    (-> (transforms-base.u/resolve-workspace-target transform)
         (assoc-in [:target :indexes] (mapv :structured requests))
         (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))

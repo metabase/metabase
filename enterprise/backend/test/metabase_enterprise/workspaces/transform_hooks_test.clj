@@ -9,51 +9,35 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.interface :as transforms.i]
+   [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:workspaces} (f))))
 
-(deftest resolve-transform-target-no-workspace-passthrough-test
+(deftest workspace-transform-target-no-workspace-passthrough-test
   (testing "without a provisioned WorkspaceDatabase, target passes through unchanged"
     (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace  (constantly nil)
-                                ws.table-remapping/add-transform-target-mapping!
-                                (fn [& _] (throw (ex-info "add-transform-target-mapping! must not be called when no workspace is active" {})))]
+                                ws.table-remapping/transform-target-remapping
+                                (fn [& _] (throw (ex-info "transform-target-remapping must not be called when no workspace is active" {})))]
       (let [target {:schema "public" :name "orders" :type :table}]
-        (is (= target (ws.transform-hooks/resolve-transform-target 42 target)))))))
+        (is (= target (ws.transform-hooks/workspace-transform-target 42 target)))))))
 
-(deftest resolve-transform-target-rewrites-schema-test
-  (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the recorded to-spec"
-    (let [recorded (atom nil)]
-      (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
-                                  ws.table-remapping/add-transform-target-mapping!
-                                  (fn [db-id target]
-                                    (reset! recorded {:db-id db-id :target target})
-                                    ;; Mimic real return: collision-resistant to-spec.
-                                    {:db nil :schema "ws_alice" :name "public__orders"})]
-        (let [target {:schema "public" :name "orders" :type :table}
-              result (ws.transform-hooks/resolve-transform-target 42 target)]
-          (is (= "ws_alice" (:schema result))
-              "schema comes from the recorded to-spec (workspace output schema)")
-          (is (= "public__orders" (:name result))
-              "name comes from the recorded to-spec (collision-resistant rename)")
-          (is (= :table (:type result))
-              "other target keys are preserved"))))))
-
-(deftest resolve-transform-target-records-remapping-test
-  (testing "with a workspace active, the canonical->workspace remapping is recorded"
-    (let [recorded (atom nil)]
-      (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
-                                  ws.table-remapping/add-transform-target-mapping!
-                                  (fn [db-id target]
-                                    (reset! recorded {:db-id db-id :target target})
-                                    {:db nil :schema "ws_alice" :name "public__orders"})]
-        (ws.transform-hooks/resolve-transform-target 42 {:schema "public" :name "orders" :type :table})
-        (is (= {:db-id  42
-                :target {:schema "public" :name "orders" :type :table}}
-               @recorded)
-            "add-transform-target-mapping! receives the db-id and the canonical target map verbatim")))))
+(deftest workspace-transform-target-rewrites-schema-test
+  (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the computed to-spec, and nothing is recorded"
+    (mt/with-dynamic-fn-redefs [ws/db-workspace-namespace  (constantly {:schema "ws_alice"})
+                                ws.table-remapping/transform-target-remapping
+                                (constantly {:db nil :schema "ws_alice" :name "public__orders"})
+                                ws.table-remapping/add-transform-target-mapping!
+                                (fn [& _] (throw (ex-info "rewriting the target must not record a remapping" {})))]
+      (let [result (ws.transform-hooks/workspace-transform-target 42 {:schema "public" :name "orders" :type :table})]
+        (is (= {:db nil :schema "ws_alice" :name "public__orders" :type :table} result)
+            "schema and collision-resistant name come from the to-spec; other target keys are preserved")))))
 
 (defn- with-instance-workspace-for-db!
   "Set the `instance-workspace` setting so that `db-workspace-namespace` returns
@@ -68,26 +52,26 @@
     (finally
       (ws/clear-instance-workspace!))))
 
-(deftest resolve-transform-target-end-to-end-test
-  (testing "end-to-end against the test app DB: a remapping row appears after the hook fires"
+(deftest workspace-target-end-to-end-test
+  (testing "end-to-end against the test app DB"
     (with-instance-workspace-for-db! "ws_test_schema"
       (fn []
         (try
           (ws.table-remapping/clear-mappings-for-db! (mt/id))
-          (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}
-                result (ws.transform-hooks/resolve-transform-target (mt/id) target)]
-            (is (= {:db nil :schema "ws_test_schema" :name "PUBLIC__ORDERS" :type :table}
-                   result)
-                "the executor target gets the workspace schema and the collision-resistant name")
-            (testing "TableRemapping row was inserted with the canonical (schema, name) on the from-side"
+          (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}]
+            (testing "the rewrite gives the workspace schema and the collision-resistant name, and records nothing"
+              (is (= {:db nil :schema "ws_test_schema" :name "PUBLIC__ORDERS" :type :table}
+                     (ws.transform-hooks/workspace-transform-target (mt/id) target)))
+              (is (zero? (t2/count :model/TableRemapping :database_id (mt/id)))))
+            (testing "recording inserts the row the rewrite pointed at, with the canonical (schema, name) on the from-side"
+              (ws.transform-hooks/record-workspace-target-remapping! (mt/id) target)
               (let [row (t2/select-one :model/TableRemapping
                                        :database_id     (mt/id)
                                        :from_schema     "PUBLIC"
                                        :from_table_name "ORDERS")]
-                (is (some? row))
                 (is (= "ws_test_schema" (:to_schema row)))
                 (is (= "PUBLIC__ORDERS" (:to_table_name row))
-                    "to-side is rewritten via remapped-table-name; executor and row agree byte-for-byte"))))
+                    "executor target and row agree byte-for-byte"))))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
@@ -123,44 +107,39 @@
                 "Python transform's :target.schema is rewritten before dispatch")
             (is (= "PUBLIC__FOO" (get-in @captured [:target :name]))
                 ":name is rewritten to the collision-resistant warehouse identifier")
-            (testing "TableRemapping row was recorded for the Python path too"
-              (let [row (t2/select-one :model/TableRemapping
-                                       :database_id     (mt/id)
-                                       :from_schema     "PUBLIC"
-                                       :from_table_name "FOO")]
-                (is (some? row) "Python target rewrite records a TableRemapping row")
-                (is (= "ws_test_schema" (:to_schema row)))
-                (is (= "PUBLIC__FOO"    (:to_table_name row))))))
+            (is (= {:database (mt/id) :schema "PUBLIC" :name "FOO" :type "table"}
+                   (:workspace-canonical-target @captured))
+                "the canonical target travels with the transform so the executor can record its remapping")
+            (is (zero? (t2/count :model/TableRemapping :database_id (mt/id)))
+                "the rewrite itself records nothing; the executor records after the run succeeds"))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
 (defn- execute-failing-mid-run!
   "Run a Python-typed transform at `target-name` whose per-type executor throws after the target
-  rewrite. Returns whether a remapping row for the canonical target existed while it ran."
+  rewrite. Returns the number of remapping rows for the test database while it ran."
   [target-name]
-  (let [mapped-mid-run? (atom nil)]
+  (let [rows-mid-run (atom nil)]
     (with-redefs [transforms.i/execute! (fn [_transform _opts]
-                                          (reset! mapped-mid-run?
-                                                  (ws.table-remapping/transform-target-mapped?
-                                                   (mt/id) {:schema "PUBLIC" :name target-name}))
+                                          (reset! rows-mid-run (t2/count :model/TableRemapping :database_id (mt/id)))
                                           (throw (ex-info "Transform failed mid-run" {})))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Transform failed mid-run"
                             (transforms.execute/execute!
                              {:id     997
                               :source {:type :python :body "" :source-tables []}
                               :target {:database (mt/id) :schema "PUBLIC" :name target-name :type "table"}}))))
-    @mapped-mid-run?))
+    @rows-mid-run))
 
-(deftest failed-run-removes-new-remapping-test
+(deftest failed-run-records-no-remapping-test
   (testing "a run that fails after the target rewrite leaves no remapping row for its target"
     (with-instance-workspace-for-db! "ws_test_schema"
       (fn []
         (try
           (ws.table-remapping/clear-mappings-for-db! (mt/id))
-          (is (true? (execute-failing-mid-run! "FAILS"))
-              "the remapping is in place while the run executes")
+          (is (zero? (execute-failing-mid-run! "FAILS"))
+              "nothing is recorded before the run succeeds")
           (is (empty? (t2/select :model/TableRemapping :database_id (mt/id)))
-              "the failed run's remapping row is gone")
+              "the failed run left no remapping row")
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
@@ -170,19 +149,99 @@
       (fn []
         (try
           (ws.table-remapping/clear-mappings-for-db! (mt/id))
-          (with-stubbed-execute-multimethod! (atom nil)
-            (fn []
-              (transforms.execute/execute!
-               {:id     996
-                :source {:type :python :body "" :source-tables []}
-                :target {:database (mt/id) :schema "PUBLIC" :name "SUCCEEDED" :type "table"}})))
+          (ws.table-remapping/add-transform-target-mapping! (mt/id) {:schema "PUBLIC" :name "SUCCEEDED"})
           (let [before (t2/select :model/TableRemapping :database_id (mt/id))]
-            (is (= 1 (count before)) "the successful run recorded its remapping")
+            (is (= 1 (count before)))
             (execute-failing-mid-run! "SUCCEEDED")
             (is (= before (t2/select :model/TableRemapping :database_id (mt/id)))
                 "the earlier row survives the failed run unchanged, id included"))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
+(defn- with-pg-workspace-transform!
+  "Postgres: with a workspace whose output schema is `iso-schema`, call `body-fn` with a native
+  `SELECT 1 AS x` transform targeting `public.<table-name>`. Cleans up the remappings, the
+  transform and the workspace schema."
+  [iso-schema table-name body-fn]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+    (with-instance-workspace-for-db! iso-schema
+      (fn []
+        (try
+          (ws.table-remapping/clear-mappings-for-db! (mt/id))
+          (mt/with-temp [:model/Transform transform
+                         {:name   (str "ws-remap-" table-name)
+                          :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")}
+                          :target {:type :table :schema "public" :name table-name}}]
+            (body-fn transform))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" iso-schema)])))))))
+
+(deftest post-success-failure-keeps-remapping-test
+  (testing "a run marked succeeded whose post-run processing throws keeps its remapping"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+        (with-pg-workspace-transform! "ws_post_success_iso" "ws_post_success"
+          (fn [transform]
+            (let [real-complete transforms-base.u/complete-execution!]
+              (mt/with-dynamic-fn-redefs [transforms-base.u/complete-execution! (fn [& args]
+                                                                                  (apply real-complete args)
+                                                                                  (throw (ex-info "post-run step failed" {})))]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"post-run step failed"
+                                      (transforms.execute/execute! transform {:run-method :manual})))))
+            (is (= :succeeded (t2/select-one-fn :status :model/TransformRun :transform_id (:id transform))))
+            (is (= [{:from_schema "public" :from_table_name "ws_post_success"}]
+                   (t2/select [:model/TableRemapping :from_schema :from_table_name] :database_id (mt/id))))))))))
+
+(deftest refused-overlapping-run-keeps-remapping-test
+  (testing "a run refused because the transform is already running leaves the running run's remapping in place"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+        (with-pg-workspace-transform! "ws_overlap_iso" "ws_overlap"
+          (fn [transform]
+            ;; Order the two runs so the refused one resolves its target first, then is held
+            ;; before it asks for the run lock until the other run holds it.
+            (let [refused-resolved (promise)
+                  running-started  (promise)
+                  refused-done     (promise)
+                  refused-thread   (atom nil)
+                  real-check       transforms.u/check-source-query-permissions!
+                  real-base        transforms-base.i/execute-base!]
+              (with-redefs [transforms.u/check-source-query-permissions!
+                            (fn [& args]
+                              (when (= (Thread/currentThread) @refused-thread)
+                                (deliver refused-resolved true)
+                                @running-started)
+                              (apply real-check args))
+                            transforms-base.i/execute-base!
+                            (fn [& args]
+                              (deliver running-started true)
+                              @refused-done
+                              (apply real-base args))]
+                (let [refused (future
+                                (reset! refused-thread (Thread/currentThread))
+                                (try (transforms.execute/execute! transform {:run-method :manual})
+                                     :ran
+                                     (catch Throwable t (:error (ex-data t)))
+                                     (finally (deliver refused-done true))))
+                      _       @refused-resolved
+                      running (future (transforms.execute/execute! transform {:run-method :manual}))]
+                  (is (= :already-running (deref refused 60000 ::timeout)))
+                  (is (nil? (deref running 60000 ::timeout)))))
+              (is (= [{:from_schema "public" :from_table_name "ws_overlap"}]
+                     (t2/select [:model/TableRemapping :from_schema :from_table_name] :database_id (mt/id)))
+                  "the run that succeeded keeps its remapping"))))))))
+
+(deftest no-workspace-target-handling-makes-no-app-db-calls-test
+  (testing "off-workspace, rewriting and recording the target cost no app-DB calls"
+    (ws/clear-instance-workspace!)
+    (let [target {:database (mt/id) :schema "PUBLIC" :name "X" :type "table"}]
+      (ws/instance-workspace)
+      (t2/with-call-count [call-count]
+        (is (= target (ws.transform-hooks/workspace-transform-target (mt/id) target)))
+        (transforms-base.u/record-workspace-target-remapping!
+         {:id 995 :source {:type :python :body "" :source-tables []} :target target})
+        (is (zero? (call-count)))))))
 
 (deftest non-workspaced-db-target-passthrough-via-execute-test
   (testing "When no WorkspaceDatabase is provisioned, the wrapper passes target through unchanged"

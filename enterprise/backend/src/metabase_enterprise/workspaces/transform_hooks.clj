@@ -8,24 +8,17 @@
 
 (set! *warn-on-reflection* true)
 
-(defenterprise resolve-transform-target
-  "Enterprise impl of the transform-target rewrite hook.
+(defenterprise workspace-transform-target
+  "Enterprise impl of the read-only transform-target hook.
 
-   When a `WorkspaceDatabase` is provisioned for `db-id`, the transform should write to
-   the workspace's output schema rather than the canonical target schema. This:
-
-     1. Records a `TableRemapping` from the canonical `(schema, name)` to the workspace's
-        `(workspace-schema, remapped-name)` via [[ws.table-remapping/add-transform-target-mapping!]].
-        The remap is normalized per-driver (3-slot for SQL Server/BigQuery,
-        2-slot for Postgres/ClickHouse, 1-slot for MySQL). The remapped table name is
-        derived deterministically from the canonical `(schema, name)` so that two source
-        tables sharing a name across different schemas land at distinct warehouse
-        identifiers in the single workspace schema.
-     2. Returns the target with `:schema` and `:name` rewritten to the recorded warehouse
-        identifier, so the transform executor writes to the same place the row points.
-
-   Subsequent reads of the canonical `(schema, name)` pair will resolve to the workspace
-   copy via the QP middleware (see `metabase-enterprise.workspaces.query-processor.middleware`).
+   When a `WorkspaceDatabase` is provisioned for `db-id`, the transform writes to the
+   workspace's output namespace rather than the canonical target. Returns the target with
+   `:db`, `:schema` and `:name` rewritten to the to-side
+   [[ws.table-remapping/transform-target-remapping]] computes, without recording anything.
+   The remapped table name is derived deterministically from the canonical `(schema, name)`
+   so that two source tables sharing a name across different schemas land at distinct
+   warehouse identifiers in the single workspace namespace, and so that the row
+   [[record-workspace-target-remapping!]] records later points at the same place.
 
    When no workspace is active for `db-id`, the canonical target passes through unchanged.
 
@@ -36,51 +29,30 @@
   [db-id target]
   (if (some? (ws/db-workspace-namespace db-id))
     (let [{to-db :db to-schema :schema to-name :name}
-          (ws.table-remapping/add-transform-target-mapping! db-id target)]
+          (ws.table-remapping/transform-target-remapping db-id target)]
       ;; **Replace** `:db` and `:schema` on the target with the to-spec's values
       ;; — not just merge in the populated ones. The canonical target carries the
       ;; input namespace; after rewriting, the target points at the iso namespace
       ;; which on MySQL lives at `:db`, not `:schema`. Failing to clear the
       ;; canonical `:schema` leaves the SQL compiler with two competing
       ;; qualifiers and the output lands in the wrong place.
-      ;;
-      ;; `add-transform-target-mapping!` returns the to-side denormalized (`""`
-      ;; sentinels already converted to nil), so we can `assoc` directly without
-      ;; a per-call shim.
       (assoc target :db to-db :schema to-schema :name to-name))
     target))
 
-(defenterprise call-with-transform-target-rollback
-  "Enterprise impl of the transform-target rollback hook. [[resolve-transform-target]] records
-   the canonical -> workspace `TableRemapping` before the run, because the post-run sync reads
-   it. When the run then throws, a row this run added would point the canonical table at a
-   workspace copy that was never written, so remove it. A row that existed before the run (from
-   an earlier successful run) stays as it was.
+(defenterprise record-workspace-target-remapping!
+  "Enterprise impl: record the `TableRemapping` from the canonical transform `target` to its
+   workspace copy via [[ws.table-remapping/add-transform-target-mapping!]] (idempotent, so a row
+   from an earlier successful run stays as it was). Executors call this only after the run has
+   succeeded, so a failed run leaves the canonical table's remapping state unchanged.
 
-   Deliberately ungated on premium features, like [[resolve-transform-target]]."
-  :feature :none
-  [db-id target thunk]
-  (if (and (some? (ws/db-workspace-namespace db-id))
-           (not (ws.table-remapping/transform-target-mapped? db-id target)))
-    (try
-      (thunk)
-      (catch Throwable t
-        (ws.table-remapping/remove-transform-target-mapping! db-id target)
-        (throw t)))
-    (thunk)))
-
-(defenterprise workspace-transform-target
-  "Enterprise impl of the read-only transform-target hook: the target
-   [[resolve-transform-target]] would return, computed via
-   [[ws.table-remapping/transform-target-remapping]] so no `TableRemapping` is recorded.
-   Ungated on premium features for the same reason as [[resolve-transform-target]]."
+   Subsequent reads of the canonical `(schema, name)` pair resolve to the workspace copy via
+   the QP middleware (see `metabase-enterprise.workspaces.query-processor.middleware`).
+   Deliberately ungated on premium features, like [[workspace-transform-target]]."
   :feature :none
   [db-id target]
-  (if (some? (ws/db-workspace-namespace db-id))
-    (let [{to-db :db to-schema :schema to-name :name}
-          (ws.table-remapping/transform-target-remapping db-id target)]
-      (assoc target :db to-db :schema to-schema :name to-name))
-    target))
+  (when (some? (ws/db-workspace-namespace db-id))
+    (ws.table-remapping/add-transform-target-mapping! db-id target))
+  nil)
 
 (defenterprise rewrite-native-sql-for-workspace
   "Workspace-isolation SQL rewrite for the native-transform exec path. Reuses the same
@@ -89,7 +61,7 @@
 
    Short-circuits when no remappings are active for `db-id`.
 
-   Deliberately ungated on premium features. See [[resolve-transform-target]] for the
+   Deliberately ungated on premium features. See [[workspace-transform-target]] for the
    rationale -- if a workspace child has `TableRemapping` rows, isolation must engage
    regardless of token state."
   :feature :none

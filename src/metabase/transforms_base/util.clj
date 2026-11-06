@@ -585,6 +585,30 @@
     (target-table-exists? (update transform :target #(transforms-base.workspace-hooks/workspace-transform-target db-id %)))
     (target-table-exists? transform)))
 
+(mu/defn resolve-workspace-target :- ::transforms-base.schema/transform
+  "Rewrite `transform`'s `:target` to the table it writes to. On a workspaced database that is the
+  workspace's copy, and the canonical target is kept as `:workspace-canonical-target` so
+  [[record-workspace-target-remapping!]] can record the remapping once the run succeeds. Records
+  nothing itself. Unchanged off-workspace, or when the transform has no target database."
+  [transform :- ::transforms-base.schema/transform]
+  (if-let [db-id (transforms-base.i/target-db-id transform)]
+    (let [canonical (:target transform)
+          rewritten (transforms-base.workspace-hooks/workspace-transform-target db-id canonical)]
+      (cond-> (assoc transform :target rewritten)
+        (not= rewritten canonical) (assoc :workspace-canonical-target canonical)))
+    transform))
+
+(mu/defn record-workspace-target-remapping! :- :nil
+  "Record the workspace `TableRemapping` for a transform whose target [[metabase.transforms.execute]]
+  rewrote to a workspace copy. Call after the run succeeds and before [[complete-execution!]]: the
+  post-run sync looks the canonical table up through the remapping. A no-op for a transform that
+  wasn't rewritten."
+  [transform :- ::transforms-base.schema/transform]
+  (when-let [canonical (:workspace-canonical-target transform)]
+    (transforms-base.workspace-hooks/record-workspace-target-remapping!
+     (transforms-base.i/target-db-id transform) canonical))
+  nil)
+
 (defn- canonicalize-target
   "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
    to-side of an active TableRemapping for `db-id`), return `target` with

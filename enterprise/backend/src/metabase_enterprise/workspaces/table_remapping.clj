@@ -635,7 +635,7 @@
    Inputs:
    - `db-id` -- the canonical `:model/Database` id.
    - `target` -- the transform's target map, with `:schema` and `:name` for the canonical
-     identifier the transform was configured to write to. Same shape `resolve-transform-target`
+     identifier the transform was configured to write to. Same shape `workspace-transform-target`
      already passes around.
 
    Resolution:
@@ -662,21 +662,3 @@
     ;; below the line. Symmetric with the read hooks (`workspace-remap-schema+name`,
     ;; `canonical-schema+name`) which also denormalize at the boundary.
     (spec->consumer-shape to-spec)))
-
-(defn- transform-target-from-spec
-  "Canonical from-side `::table-spec` for a transform `target` on `db-id`, with the slots the
-   driver emits per [[spec-for-table]]. Matches the from-side [[add-transform-target-mapping!]]
-   records."
-  [db-id {table-name :name from-schema :schema}]
-  (spec-for-table (ws.db/database db-id) {:name table-name :schema from-schema}))
-
-(defn transform-target-mapped?
-  "True when a remapping row already exists for the canonical transform `target` on `db-id`."
-  [db-id target]
-  (some? (ws.remapping/get-mapping db-id (transform-target-from-spec db-id target))))
-
-(defn remove-transform-target-mapping!
-  "Remove the remapping row for the canonical transform `target` on `db-id`. Returns the number
-   of rows removed (0 or 1)."
-  [db-id target]
-  (ws.remapping/remove-mapping! db-id (transform-target-from-spec db-id target)))
