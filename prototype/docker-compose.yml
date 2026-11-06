@@ -1,0 +1,26 @@
+# Postgres for the filter prototypes. Metabase uses it as its app DB and seeds the prototype dataset into its
+# `prototype_data` schema at startup. See PROTOTYPE.md.
+#
+#   docker compose -f prototype/docker-compose.yml up -d --wait
+#
+# `bun run dev-prototype` runs this for you.
+services:
+  postgres:
+    image: postgres:17
+    container_name: metabase-prototype-postgres
+    environment:
+      POSTGRES_USER: metabase
+      POSTGRES_PASSWORD: metabase
+      POSTGRES_DB: metabase
+    ports:
+      - "55432:5432"
+    volumes:
+      - prototype-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U metabase -d metabase"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  prototype-pgdata:

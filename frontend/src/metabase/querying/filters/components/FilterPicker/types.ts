@@ -10,6 +10,8 @@ export type FilterPickerWidgetProps = {
   withAddButton: boolean;
   withSubmitButton: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
+  /** Prototype: receives the filter the picker would apply now, as the user changes it. */
+  onDraftChange?: (filter: Lib.ExpressionClause | undefined) => void;
   onBack?: () => void;
   readOnly?: boolean;
 };
