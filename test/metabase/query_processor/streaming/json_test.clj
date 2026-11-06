@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr])
   (:import
    [java.io ByteArrayOutputStream OutputStream]))
 
@@ -51,3 +53,14 @@
          (qp/process-query (mt/mbql-query orders) rff)))
       (is (< 0 (count @flushes) 6))
       (is (pos? @closes)))))
+
+(deftest ^:parallel json-export-matches-response-schema-test
+  (testing "A JSON export body matches the schema the export routes document"
+    (let [os (ByteArrayOutputStream.)]
+      (qp.streaming/do-with-streaming-rff
+       :json os
+       (fn [rff]
+         (qp/process-query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2}) rff)))
+      (let [rows (json/decode (.toString os "UTF-8"))]
+        (is (= 2 (count rows)))
+        (is (mr/validate ::qp.streaming/json-export-rows rows))))))

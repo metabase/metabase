@@ -136,7 +136,7 @@
     (keyword json-key)))
 
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
-  :- ::qp.streaming/query-result-response
+  :- ::qp.streaming/export-response
   "Execute a query and download the result data as a file in the specified format."
   {:scope api-scope/data-app}
   [{:keys [export-format]} :- [:map {:closed true}
