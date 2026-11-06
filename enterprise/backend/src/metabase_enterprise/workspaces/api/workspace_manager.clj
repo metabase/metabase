@@ -23,7 +23,6 @@
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
    [:name         ms/NonBlankString]
-   ;; when omitted, the workspace gets every database with workspaces enabled
    [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
