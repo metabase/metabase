@@ -4739,7 +4739,6 @@
            settings
            sql-tools
            util
-           warehouse-schema-overlay
            warehouses.secrets
            workspaces}
    :model-exports #{:model/Workspace}
