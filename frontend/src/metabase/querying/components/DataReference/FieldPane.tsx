@@ -5,10 +5,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/QueryColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { getTableColumnListInfo } from "metabase/querying/common/utils";
 import * as Lib from "metabase-lib";
 
 import type { DataReferenceFieldItem, DataReferencePaneProps } from "./types";
+import { getTableColumnListInfo } from "./utils";
 
 export const FieldPane = ({
   onBack,
