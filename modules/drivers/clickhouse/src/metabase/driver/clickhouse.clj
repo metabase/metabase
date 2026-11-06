@@ -693,7 +693,7 @@
     ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
     ;; immediately. Failure recovery is compensation via the idempotent destroy.
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [stmt (.createStatement conn)]
          (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
@@ -740,7 +740,7 @@
                          (quote-schema schema)
                          quoted-user))]
       (sql-jdbc.execute/do-with-connection-with-options
-       driver database {:write? true}
+       driver (driver.u/ensure-lib-database database) {:write? true}
        (fn [^Connection conn]
          (with-open [stmt (.createStatement conn)]
            (doseq [sql sqls]
@@ -757,7 +757,7 @@
         quoted-db    (quote-schema db-name)
         quoted-user  (quote-field username)]
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [stmt (.createStatement conn)]
          (doseq [sql [;; DROP DATABASE cascades to all tables within it

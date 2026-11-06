@@ -1417,7 +1417,7 @@
     ;; per statement, so a transaction wrapper would be decorative. Failure
     ;; recovery is compensation via the idempotent destroy, not rollback.
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (let [user-sql (if (mysql-user-exists? {:connection conn} user)
                         (format "ALTER USER %s@'%%' IDENTIFIED BY '%s'"
@@ -1450,7 +1450,7 @@
         quoted-db   (quote-schema db-name)
         quoted-user (quote-field username)]
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
          (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS %s" quoted-db)]
@@ -1485,7 +1485,7 @@
   (let [username (-> workspace :database_details :user)
         sqls     (grant-workspace-read-access-sqls username schemas)]
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
          (doseq [sql sqls]

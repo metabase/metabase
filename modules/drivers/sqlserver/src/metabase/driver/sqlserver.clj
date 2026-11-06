@@ -1377,7 +1377,7 @@
     ;; SQL Server: create login (server level), then user (database level), then schema
     (try
       (sql-jdbc.execute/do-with-connection-with-options
-       driver database {:write? true}
+       driver (driver.u/ensure-lib-database database) {:write? true}
        (fn [^Connection conn]
          (with-open [^Statement stmt (.createStatement conn)]
            (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
@@ -1414,7 +1414,7 @@
         quoted-schema    (quote-schema schema-name)
         quoted-user      (quote-field username)]
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
          ;; mssql-jdbc runs the whole batch in one T-SQL scope, so DECLAREd
@@ -1460,7 +1460,7 @@
           (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
                           {:database-id (:id database) :step :grant}))))
       (sql-jdbc.execute/do-with-connection-with-options
-       driver database {:write? true}
+       driver (driver.u/ensure-lib-database database) {:write? true}
        (fn [^Connection conn]
          (with-open [^Statement stmt (.createStatement conn)]
            (doseq [schema schemas]

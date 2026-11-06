@@ -1080,7 +1080,7 @@
         escaped-password (sql.u/escape-sql (:password read-user) :ansi)
         quoted-schema    (quote-schema schema-name)
         quoted-user      (quote-field (:user read-user))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))]
       (let [user-sql (if (user-exists? t-conn (:user read-user))
                        (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user escaped-password)
                        (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user escaped-password))]
@@ -1106,7 +1106,7 @@
   (let [username       (-> workspace :database_details :user)
         quoted-user    (quote-field username)
         source-schemas (set schemas)
-        spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        spec           (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))]
     ;; Pre-flight check (read-only, one connection, no transaction). Redshift's
     ;; GRANT statements error loudly when grant authority is missing, so PG's
     ;; silent-skip USAGE/SELECT class doesn't reproduce here. But two ALTER
@@ -1118,7 +1118,7 @@
     ;;   grantor we can't impersonate at destroy time -> `DROP USER` fails
     ;;   (GHY-3709).
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database nil
+     driver (driver.u/ensure-lib-database database) nil
      (fn [^Connection conn]
        (let [check-conn {:connection conn}]
          (doseq [s source-schemas]
@@ -1222,7 +1222,7 @@
         username      (-> workspace :database_details :user)
         quoted-user   (quote-field username)
         quoted-schema (quote-schema schema-name)
-        spec          (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+        spec          (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))]
     ;; One transactional batch: foreign-grantor default-priv revokes, relation
     ;; revokes, iso-schema bare REVOKE, DROP SCHEMA, DROP USER. Redshift has no
     ;; SAVEPOINT and aborts the whole transaction on the first error, so a

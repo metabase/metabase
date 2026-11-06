@@ -800,7 +800,7 @@
     ;; transaction, so a wrapper would be decorative. Failure recovery is
     ;; compensation via the idempotent destroy, not rollback.
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
          (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username escaped-password)
@@ -821,7 +821,7 @@
   (let [schema-name (:schema workspace)
         username    (-> workspace :database_details :db get-user-from-connection-string)]
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
          (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
@@ -842,7 +842,7 @@
     ;; Schema-wide grant covers existing + future tables. Per-table grants
     ;; are not emitted: workspace input shape is per-namespace, not per-table.
     (sql-jdbc.execute/do-with-connection-with-options
-     driver database {:write? true}
+     driver (driver.u/ensure-lib-database database) {:write? true}
      (fn [^Connection conn]
        (with-open [^Statement stmt (.createStatement conn)]
          (doseq [schema schemas]

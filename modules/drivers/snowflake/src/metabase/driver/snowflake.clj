@@ -1469,7 +1469,7 @@
       ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
       (try
         (sql-jdbc.execute/do-with-connection-with-options
-         driver database {:write? true}
+         driver (driver.u/ensure-lib-database database) {:write? true}
          (fn [^Connection conn]
            (with-open [^Statement stmt (.createStatement conn)]
              (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" qualified-schema)
@@ -1507,7 +1507,7 @@
           quoted-role      (quote-field role-name)]
       ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
       (sql-jdbc.execute/do-with-connection-with-options
-       driver database {:write? true}
+       driver (driver.u/ensure-lib-database database) {:write? true}
        (fn [^Connection conn]
          (with-open [^Statement stmt (.createStatement conn)]
            (doseq [sql [(format "DROP SCHEMA IF EXISTS %s CASCADE" qualified-schema)
@@ -1539,7 +1539,7 @@
           (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
                           {:database-id (:id database) :step :grant}))))
       (sql-jdbc.execute/do-with-connection-with-options
-       driver database {:write? true}
+       driver (driver.u/ensure-lib-database database) {:write? true}
        (fn [^Connection conn]
          (with-open [^Statement stmt (.createStatement conn)]
            (doseq [schema schemas
