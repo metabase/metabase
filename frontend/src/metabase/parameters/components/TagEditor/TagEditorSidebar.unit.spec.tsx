@@ -141,10 +141,10 @@ describe("TagEditorSidebar", () => {
       "widget-type": "none",
     });
 
-    it("should not render the default value and required controls (metabase#52812)", () => {
+    it("should not render the default value and required controls (metabase#52812)", async () => {
       setup({ query: "SELECT {{x}}", templateTags: { x: FIELD_FILTER_TAG } });
 
-      expect(screen.getByText("Field to map to")).toBeInTheDocument();
+      expect(await screen.findByText("Field to map to")).toBeInTheDocument();
       expect(
         screen.queryByText("Default filter widget value"),
       ).not.toBeInTheDocument();
