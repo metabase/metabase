@@ -33,16 +33,11 @@ import {
   ScrollArea,
   Stack,
   Text,
-  Tooltip,
-  UnstyledButton,
 } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import { SemanticTypeSelect, SubjectSelect } from "../SemanticInputs";
-import {
-  InferredIcon,
-  NeedsReviewBadge,
-} from "../TableSection/InferenceReview";
+import { InferredIcon } from "../TableSection/InferenceReview";
 
 type SchemaRef = Pick<Table, "db_id" | "schema">;
 
@@ -72,26 +67,6 @@ export function SemanticReviewButton({ table }: { table: Table }) {
         }
         onClick={open}
       >{t`Review types`}</Button>
-      <SemanticReviewModal
-        schema={table}
-        initialTableId={table.id}
-        opened={isOpen}
-        onClose={close}
-      />
-    </>
-  );
-}
-
-export function NeedsReviewButton({ table }: { table: Table }) {
-  const [isOpen, { open, close }] = useDisclosure(false);
-
-  return (
-    <>
-      <Tooltip label={t`Review`}>
-        <UnstyledButton aria-label={t`Review`} onClick={open}>
-          <NeedsReviewBadge />
-        </UnstyledButton>
-      </Tooltip>
       <SemanticReviewModal
         schema={table}
         initialTableId={table.id}
@@ -454,14 +429,11 @@ function SuggestionRow({
         onChange={(event) => onToggle(event.target.checked)}
       />
       <Stack gap={2} flex={1} miw={0}>
-        <Group gap="xs" wrap="nowrap">
-          <Text fw="bold" truncate>
-            {suggestion.kind === "subject"
-              ? table.display_name
-              : suggestion.field.display_name}
-          </Text>
-          {resolved.needsReview && <NeedsReviewBadge />}
-        </Group>
+        <Text fw="bold" truncate>
+          {suggestion.kind === "subject"
+            ? table.display_name
+            : suggestion.field.display_name}
+        </Text>
         <Text size="sm" c="text-secondary" truncate>
           {getSuggestionContext(suggestion)}
         </Text>

@@ -1,5 +1,4 @@
 export {
-  NeedsReviewButton,
   SemanticReviewButton,
   SemanticReviewModal,
   SemanticReviewSection,

@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import {
@@ -33,8 +34,7 @@ import type { Field, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../DetailPanel";
 import { SemanticTypeSelect } from "../SemanticInputs";
-import { NeedsReviewButton } from "../SemanticReview";
-import { InferredIcon } from "../TableSection/InferenceReview";
+import { InferredValue } from "../TableSection/InferenceReview";
 
 interface FieldSemanticsSectionProps {
   field: Field;
@@ -66,19 +66,10 @@ export function FieldSemanticsSection({
         <DetailsRow
           label={t`Semantic type`}
           fillValue
-          labelAside={
-            resolved.needsReview && !readOnly ? (
-              <NeedsReviewButton table={table} />
-            ) : (
-              <InferredIcon description={getInferenceDescription(resolved)} />
-            )
-          }
           value={
-            <SemanticTypeSelect
+            <SemanticTypeInput
               field={field}
-              value={semanticType}
-              markedValue={getMarkedType(field, resolved)}
-              classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+              resolved={resolved}
               disabled={readOnly}
               onChange={(value) =>
                 setFieldType(field, {
@@ -125,6 +116,50 @@ export function FieldSemanticsSection({
         )}
       </DetailsTable>
     </SidebarSection>
+  );
+}
+
+function SemanticTypeInput({
+  field,
+  resolved,
+  disabled,
+  onChange,
+}: {
+  field: Field;
+  resolved: ResolvedFieldType;
+  disabled: boolean;
+  onChange: (value: string | null) => void;
+}) {
+  const [isSelectOpenOnMount, { open: openSelectOnMount }] =
+    useDisclosure(false);
+  const unconfirmedType = resolved.hasSuggestion ? resolved.semanticType : null;
+
+  if (unconfirmedType != null) {
+    return (
+      <InferredValue
+        value={getFieldTypeLabel(unconfirmedType)}
+        inference={getInferenceDescription(resolved)}
+        readOnly={disabled}
+        onConfirm={() => onChange(unconfirmedType)}
+        onChange={() => {
+          openSelectOnMount();
+          onChange(unconfirmedType);
+        }}
+        data-testid="field-semantic-type-review"
+      />
+    );
+  }
+
+  return (
+    <SemanticTypeSelect
+      field={field}
+      value={resolved.semanticType}
+      markedValue={getMarkedType(field, resolved)}
+      classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+      disabled={disabled}
+      isOpenOnMount={isSelectOpenOnMount}
+      onChange={onChange}
+    />
   );
 }
 

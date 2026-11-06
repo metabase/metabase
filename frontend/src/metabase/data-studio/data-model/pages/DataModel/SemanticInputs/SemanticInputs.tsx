@@ -14,7 +14,12 @@ import type { Field, IconName } from "metabase-types/api";
 
 const NO_TYPE = "none";
 
-type InputProps = Pick<SelectProps, "classNames" | "disabled" | "size" | "w">;
+type InputProps = Pick<
+  SelectProps,
+  "classNames" | "disabled" | "size" | "w"
+> & {
+  isOpenOnMount?: boolean;
+};
 
 function markInferred<T extends { value: string; label: string }>(
   groups: { group: string; items: T[] }[],
@@ -67,6 +72,7 @@ export function SemanticTypeSelect({
   value,
   markedValue = null,
   onChange,
+  isOpenOnMount = false,
   ...props
 }: SemanticTypeSelectProps) {
   const options = [
@@ -84,6 +90,8 @@ export function SemanticTypeSelect({
       value={value ?? NO_TYPE}
       searchable
       allowDeselect={false}
+      autoFocus={isOpenOnMount}
+      defaultDropdownOpened={isOpenOnMount}
       leftSection={<Icon name={getFieldTypeIcon(value)} />}
       renderOption={renderIconOption(getTypeOptionIcon)}
       onOptionSubmit={(nextValue) =>
@@ -104,6 +112,7 @@ export function SubjectSelect({
   value,
   markedValue = null,
   onChange,
+  isOpenOnMount = false,
   ...props
 }: SubjectSelectProps) {
   return (
@@ -113,6 +122,8 @@ export function SubjectSelect({
       value={value ?? NO_SUBJECT}
       searchable
       allowDeselect={false}
+      autoFocus={isOpenOnMount}
+      defaultDropdownOpened={isOpenOnMount}
       leftSection={<Icon name={getTableSubjectIcon(value)} />}
       renderOption={renderIconOption(getSubjectOptionIcon)}
       onOptionSubmit={(nextValue) => {

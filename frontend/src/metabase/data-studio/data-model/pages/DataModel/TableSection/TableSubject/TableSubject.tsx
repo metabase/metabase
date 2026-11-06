@@ -1,9 +1,11 @@
+import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { DetailsRow } from "metabase/common/components/DetailSidebar";
 import {
   type ResolvedSubject,
   type RowNouns,
+  getTableSubjectLabel,
   useTableSemantics,
 } from "metabase/metadata/semantic-types";
 import { Divider, Flex } from "metabase/ui";
@@ -14,8 +16,7 @@ import {
   DetailsEditableText,
 } from "../../DetailPanel";
 import { SubjectSelect } from "../../SemanticInputs";
-import { NeedsReviewButton } from "../../SemanticReview";
-import { InferredIcon } from "../InferenceReview";
+import { InferredValue } from "../InferenceReview";
 
 interface TableSubjectRowsProps {
   table: Table;
@@ -24,30 +25,40 @@ interface TableSubjectRowsProps {
 
 export function TableSubjectRow({ table, disabled }: TableSubjectRowsProps) {
   const { subject, setTableSubject } = useTableSemantics(table);
+  const [isSelectOpenOnMount, { open: openSelectOnMount }] =
+    useDisclosure(false);
+  const inferredSubject = subject.inference.subject;
+  const unconfirmedSubject = subject.hasSuggestion ? subject.subject : null;
 
   return (
     <DetailsRow
       label={t`Subject`}
       fillValue
-      labelAside={
-        subject.needsReview && !disabled ? (
-          <NeedsReviewButton table={table} />
-        ) : (
-          <InferredIcon description={getSubjectInference(subject)} />
-        )
-      }
       value={
-        <SubjectSelect
-          value={subject.subject}
-          markedValue={
-            subject.subject !== subject.inference.subject
-              ? subject.inference.subject
-              : null
-          }
-          classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-          disabled={disabled}
-          onChange={(value) => setTableSubject(table, value)}
-        />
+        unconfirmedSubject != null ? (
+          <InferredValue
+            value={getTableSubjectLabel(unconfirmedSubject)}
+            inference={getSubjectInference(subject)}
+            readOnly={disabled}
+            onConfirm={() => setTableSubject(table, unconfirmedSubject)}
+            onChange={() => {
+              openSelectOnMount();
+              setTableSubject(table, unconfirmedSubject);
+            }}
+            data-testid="table-subject-review"
+          />
+        ) : (
+          <SubjectSelect
+            value={subject.subject}
+            markedValue={
+              subject.subject !== inferredSubject ? inferredSubject : null
+            }
+            classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+            disabled={disabled}
+            isOpenOnMount={isSelectOpenOnMount}
+            onChange={(value) => setTableSubject(table, value)}
+          />
+        )
       }
     />
   );
