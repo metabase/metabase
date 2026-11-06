@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.serialization.cmd :as cmd]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -13,7 +14,6 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
-   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1399,7 +1399,7 @@
                   (is (= (t2/select-one-pk :model/Transform :name "Revenue Report")
                          (:transform_id imported))))
                 (testing "serdes import gets the same validation as a POST: what it stored satisfies the schema"
-                  (is (mr/validate ::transform-testing.schema/expectations expectations))
+                  (is (mr/validate ::data-testing.schema/expectations expectations))
                   (testing "and normalization ran, so a type arrives as a keyword rather than the YAML's string"
                     (is (= [:equals :empty] (mapv :type expectations)))))
                 (testing "the payload is unchanged, row keys still strings"
