@@ -19,7 +19,7 @@
   repopulates an empty cache is zeroed too, so the next read restores it whole instead of going to the DB row by row."
   []
   (reset! (#'setting.cache/cache*) nil)
-  (.set ^java.util.concurrent.atomic.AtomicLong (:last-update-check @@#'setting.cache/per-app-db) 0))
+  (.set ^java.util.concurrent.atomic.AtomicLong (:last-update-check (setting.cache/current-state)) 0))
 
 (defn do-with-secret-key! [^String secret-key thunk]
   (clear-setting-cache!)
