@@ -197,15 +197,18 @@
   forcing the model to keep emitting tool calls under `:required-tool-call?`.
 
   Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
-  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct; nor
+  does a successful one whose result is marked `:non-terminal?`, such as SQL with reference warnings."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
      (let [outputs (u/index-by :id (filter #(= :tool-output (:type %)) parts))]
        (some (fn [p]
-               (and (= (:type p) :tool-input)
-                    (contains? terminal-tools (:function p))
-                    (successful-tool-output? (get outputs (:id p)))))
+               (let [output (get outputs (:id p))]
+                 (and (= (:type p) :tool-input)
+                      (contains? terminal-tools (:function p))
+                      (successful-tool-output? output)
+                      (not (get-in output [:result :non-terminal?])))))
              parts)))))
 
 (defn- truncated?

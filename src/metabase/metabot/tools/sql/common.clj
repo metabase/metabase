@@ -148,6 +148,30 @@
    [:validation-result ::metabot.tools.sql.validation/validation-result]
    [:action-result {:optional true} ::action-result]])
 
+(defn- quoted-snippet-names
+  [snippet-names]
+  (str/join ", " (map quoting/quoted snippet-names)))
+
+(tools/defrecoverable missing-references!
+  "The proposed SQL references a model, question, or snippet that does not exist or that the user cannot read."
+  {:payload [:map {:closed true}
+             [:card-ids [:sequential :int]]
+             [:snippet-names [:sequential :string]]]
+   :quoted  {:snippet-names quoted-snippet-names}}
+  [{:keys [card-ids snippet-names]}]
+  ;; One message for "missing", "on another database" and "not readable", so it does not tell which card exists.
+  {:message  (str/join " " (concat
+                            (when (seq card-ids)
+                              [(str "Card " (str/join ", " card-ids)
+                                    " does not exist, is on another database, or you cannot read it.")])
+                            (when (seq snippet-names)
+                              [(str "Snippet " (quoted-snippet-names snippet-names)
+                                    " does not exist, or you cannot read it.")])
+                            ["No changes were saved."]))
+   :recovery [{:uses #{} :text (str "Use `{{#id}}` only with the ID of a model or question on this database, and "
+                                    "`{{snippet: name}}` only with a snippet that exists. Refer to tables by their "
+                                    "`fully_qualified_name` from the metadata. Then retry.")}]})
+
 (defn validated-sql-action!
   "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation.
 
@@ -159,6 +183,9 @@
       (= :multiple-statements reason)     (multiple-sql-statements! {})
       (= :invalid-template-syntax reason) (invalid-template-syntax! {:error-message error-message
                                                                      :edit?         (boolean edit?)})
+      (= :missing-references reason)      (missing-references!
+                                           {:card-ids      (:missing-card-ids validation-result)
+                                            :snippet-names (:missing-snippet-names validation-result)})
       :else                               (sql-syntax-error! {:dialect dialect :error-message error-message}))))
 
 (def notebook-instead-step
@@ -211,6 +238,13 @@
     (lib-be/normalize-query query)
     (catch Exception _
       nil)))
+
+(defn stored-template-tags
+  "The template tags of the stored native `query`, or nil when it has none or is not a native query."
+  [query]
+  (when-let [normalized (maybe-normalize-query query)]
+    (when (lib/native-only-query? normalized)
+      (not-empty (lib/template-tags normalized)))))
 
 (defn update-query-sql
   "Update a dataset_query map with new SQL content.
