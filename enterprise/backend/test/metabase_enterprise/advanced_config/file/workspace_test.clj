@@ -382,7 +382,7 @@
   "Run `initialize!` on [[metadata-file-config]], recording the databases a sync was started for. Returns their ids."
   [path]
   (let [synced (atom #{})]
-    (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [database & _] (swap! synced conj (:id database)) nil)]
+    (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [database-id & _] (swap! synced conj database-id) nil)]
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (advanced-config.file/initialize! (metadata-file-config "ws-load-db" path)))
       ;; syncs run on the quick-task thread

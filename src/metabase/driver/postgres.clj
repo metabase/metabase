@@ -1728,7 +1728,7 @@
         escaped-password (sql.u/escape-sql (:password read-user) :ansi)
         quoted-schema    (quote-schema schema-name)
         quoted-user      (quote-field (:user read-user))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
       ;; Create user if not exists, otherwise update password
       ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
       (let [user-sql (if (user-exists? t-conn (:user read-user))
@@ -1795,7 +1795,7 @@
         username      (-> workspace :database_details :user)
         quoted-schema (quote-schema schema-name)
         quoted-user   (quote-field username)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS %s CASCADE" quoted-schema)]
                       (user-exists? t-conn username)
@@ -1847,7 +1847,7 @@
                               (assert-has-grant-option!             check-conn s)
                               (assert-can-alter-default-privileges! check-conn s)))))
         sqls           (grant-workspace-read-access-sqls username schemas)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
           (.addBatch ^Statement stmt ^String sql))

@@ -371,7 +371,7 @@
                                      "which the workspace config-loader merges over canonical :details "
                                      "and breaks the connection's bound database for sync."))
                             (mt/with-db ws-db
-                              (sync/sync-database! ws-db {:scan :schema})
+                              (sync/sync-database! (:id ws-db) {:scan :schema})
                               ;; Diagnostic: enumerate what sync produced so a missing src-table
                               ;; gives us a useful error instead of `(some? nil)`.
                               (let [synced (->> (t2/select :model/Table :db_id (:id ws-db) :active true)
@@ -696,7 +696,7 @@
                     (advanced-config.file/initialize! reparsed)
                     (let [ws-db (t2/select-one :model/Database :id (:id ws-db))]
                       (mt/with-db ws-db
-                        (sync/sync-database! ws-db {:scan :schema})
+                        (sync/sync-database! (:id ws-db) {:scan :schema})
                         (let [src-table (t2/select-one :model/Table
                                                        :db_id  (:id ws-db)
                                                        :schema tbl-schema

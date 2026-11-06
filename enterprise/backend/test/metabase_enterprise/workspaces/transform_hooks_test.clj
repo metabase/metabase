@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
@@ -159,7 +160,7 @@
     (mt/test-driver :postgres
       (mt/with-premium-features #{:workspaces :advanced-permissions :transforms-basic :hosting}
         (let [iso-schema "ws_target_check_iso"
-              spec       (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              spec       (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (mt/id)))
               query      (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")
               create!    (fn [status table-name]
                            (mt/user-http-request :crowberto :post status "transform"

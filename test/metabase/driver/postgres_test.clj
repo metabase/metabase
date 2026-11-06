@@ -2724,7 +2724,7 @@
   (mt/test-driver :postgres
     (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
       (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (mt/id)))
               role       "ws_pre_usage_role"
               schema     "ws_pre_usage_schema"
               password   (str (random-uuid))]
@@ -2755,7 +2755,7 @@
   (mt/test-driver :postgres
     (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
       (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (mt/id)))
               role       "ws_pre_table_role"
               schema     "ws_pre_table_schema"
               table      "ws_pre_table_t"
@@ -2792,7 +2792,7 @@
   (mt/test-driver :postgres
     (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
       (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (mt/id)))
               role       "ws_pre_adp_role"
               owner      "ws_pre_adp_other_owner"
               schema     "ws_pre_adp_schema"
@@ -2838,7 +2838,7 @@
   (mt/test-driver :postgres
     (testing "destroy succeeds when a non-current_user grantor seeded a default-priv targeting the iso-user"
       (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (mt/id)))
               grantor    "ws_destroy_foreign_grantor"
               schema     "ws_destroy_foreign_schema"
               qgrantor   (sql.u/quote-name :postgres :field grantor)
@@ -2892,7 +2892,7 @@
   ;; the owner, misses them, so `DROP USER` used to fail.
   (mt/test-driver :postgres
     (mt/with-empty-db
-      (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+      (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (mt/id)))
             login      "ws_destroy_grantor_login"
             owner      "ws_destroy_grantor_owner"
             schema     "ws_destroy_grantor_input"

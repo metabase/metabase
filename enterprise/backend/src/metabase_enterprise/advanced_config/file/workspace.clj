@@ -99,7 +99,7 @@
             :when (and (not (loaded (:id db)))
                        (not= "complete" (:initial_sync_status db)))]
       (log/infof "Database %s wasn't loaded from the metadata file; syncing it" (pr-str (:name db)))
-      (quick-task/submit-task! (fn [] (sync/sync-database! db))))))
+      (quick-task/submit-task! (fn [] (sync/sync-database! (:id db)))))))
 
 (defn apply-workspace-section!
   "Boot-time materialization of the parsed `:workspace` section.
