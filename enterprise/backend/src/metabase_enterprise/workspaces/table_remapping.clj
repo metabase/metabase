@@ -47,6 +47,7 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase.driver :as driver]
@@ -56,8 +57,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -77,7 +77,7 @@
   "A driver-resolved table identifier. `:table` is required; `:schema` and `:db` default
    to the empty-string sentinel when absent. Produced by [[spec-for-table]] and consumed
    by [[add-mapping!]]."
-  [:map
+  [:map {:closed true}
    [:table  :string]
    [:schema {:optional true} [:maybe :string]]
    [:db     {:optional true} [:maybe :string]]])
@@ -108,8 +108,8 @@
      (spec-for-table {:engine :bigquery-cloud-sdk, :details {:project-id \"p\"}}
                      {:name \"orders\", :schema \"ds\"})
      ;; => {:db \"p\", :schema \"ds\", :table \"orders\"}"
-  [database :- [:map [:engine :keyword]]
-   table    :- [:map [:name :string]]]
+  [database :- [:map {::mr/deliberately-open true, :description "a Database row"} [:engine :keyword]]
+   table    :- [:map {::mr/deliberately-open true, :description "a Table row"} [:name :string]]]
   (let [components (set (driver/qualified-name-components (:engine database)))
         positions  (ws/engine-namespace-positions database table)]
     {:db     (normalize-level (when (:db components)     (:db positions)))
@@ -237,19 +237,13 @@
 (defn table-spec->sqlglot-key
   "Translate our `::table-spec` (`{:db :schema :table}` with our AST-position vocab,
    where `:db` ↔ `Table.catalog` and `:schema` ↔ `Table.db`) into the slot vocabulary
-   `metabase.sql-parsing/replace-names` (SQLGlot) expects.
-
-   SQLGlot's `replace-names` matcher uses `:schema` for the db-position qualifier
-   (the leftmost in `db.tbl`) and `:catalog` for the catalog-position (the leftmost
-   in `catalog.db.tbl`). Empirically:
-
-     {:db \"x\"         :table \"t\"} -> doesn't match `x.t` on MySQL
-     {:schema \"x\"     :table \"t\"} -> matches `x.t` (and `db.x.t`)
-     {:catalog \"x\" :db \"y\" :table \"t\"} -> matches `x.y.t`
+   `metabase.sql-tools/replace-names` (SQLGlot) expects: `:db` for the catalog position
+   (the leftmost in `catalog.db.tbl`) and `:schema` for SQLGlot's `db` position (the
+   leftmost in `db.tbl`).
 
    The translation:
      - Our `:schema` -> SQLGlot's `:schema` (same name, same slot — unchanged).
-     - Our `:db`     -> SQLGlot's `:catalog` *if* `:schema` is also populated
+     - Our `:db`     -> SQLGlot's `:db` *if* `:schema` is also populated
                         (i.e. 3-part SQL Server/BigQuery shape),
                         otherwise SQLGlot's `:schema` (the 2-part MySQL case
                         where our `:db` IS the leftmost qualifier in the SQL).
@@ -261,7 +255,7 @@
         db?    (contains? pruned :db)
         sch?   (contains? pruned :schema)]
     (cond-> {:table table}
-      (and db? sch?) (assoc :catalog db :schema schema)
+      (and db? sch?) (assoc :db db :schema schema)
       (and db? (not sch?)) (assoc :schema db)
       (and (not db?) sch?) (assoc :schema schema))))
 
@@ -342,7 +336,7 @@
    `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
    slots the driver doesn't emit."
   [database-id from-spec]
-  (when-let [database (t2/select-one :model/Database :id database-id)]
+  (when-let [database (ws.db/database database-id)]
     (let [driver   (keyword (:engine database))
           enriched (enrich-from-spec database from-spec)]
       (some-> (canonical->isolated driver
@@ -423,7 +417,7 @@
    connection, so the iso `:db` matches canonical and this collapses to the
    single-canonical-run path."
   [db-id]
-  (let [database     (t2/select-one :model/Database :id db-id)
+  (let [database     (ws.db/database db-id)
         canonical-db (-> database :details :db)
         iso-dbs      (into #{}
                            (comp (map (comp denormalize-level :db second))
@@ -527,7 +521,7 @@
    leaks above this boundary."
   :feature :none
   [db-id to-spec]
-  (when-let [driver (some-> (t2/select-one [:model/Database :engine] :id db-id) :engine keyword)]
+  (when-let [driver (some-> (ws.db/database-engine db-id) keyword)]
     (some-> (isolated->canonical driver
                                  (all-mappings-for-db db-id)
                                  (consumer-shape->spec to-spec))
@@ -630,7 +624,7 @@
     (when-not workspace-ns
       (throw (ex-info "Cannot record transform-target remapping: database is not workspaced"
                       {:db-id db-id :target target})))
-    (let [database     (or (t2/select-one :model/Database :id db-id)
+    (let [database     (or (ws.db/database db-id)
                            (throw (ex-info "Database not found"
                                            {:db-id db-id :target target})))
           {table-name :name from-schema :schema} target

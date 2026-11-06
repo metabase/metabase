@@ -232,7 +232,7 @@
   (testing "Phase 2 throws when the request is db-routed -- workspace remap is incompatible"
     (mt/with-premium-features #{:workspaces}
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
-        (with-redefs [qp.middleware.enterprise/currently-db-routed? (constantly true)]
+        (mt/with-dynamic-fn-redefs [qp.middleware.enterprise/currently-db-routed? (constantly true)]
           (let [next-called? (atom false)
                 mock-qp      (fn [_ _] (reset! next-called? true) :ok)
                 wrapped      (#'ws.middleware/apply-workspace-sql-remapping mock-qp)
@@ -253,7 +253,7 @@
   (testing "Phase 2 throws when the user has connection-impersonation enforced -- iso role mismatch"
     (mt/with-premium-features #{:workspaces}
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
-        (with-redefs [qp.middleware.enterprise/currently-db-routed? (constantly false)
+        (mt/with-dynamic-fn-redefs [qp.middleware.enterprise/currently-db-routed? (constantly false)
                       perms/impersonation-enforced-for-db?          (constantly true)]
           (binding [api/*current-user-id* 1]
             (let [next-called? (atom false)
@@ -277,7 +277,7 @@
     (mt/with-premium-features #{:workspaces}
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (let [impersonation-checked? (atom false)]
-          (with-redefs [qp.middleware.enterprise/currently-db-routed? (constantly false)
+          (mt/with-dynamic-fn-redefs [qp.middleware.enterprise/currently-db-routed? (constantly false)
                         perms/impersonation-enforced-for-db?
                         (fn [_db]
                           (reset! impersonation-checked? true)
@@ -309,12 +309,12 @@
       (is (= {:schema "mb_iso" :table "users"}
              (get result {:schema "public" :table "users"})))))
   (testing "3-level remappings (BigQuery-style) preserve :db"
-    ;; 3-slot specs translate to SQLGlot's `:catalog`+`:schema`+`:table` shape.
-    ;; Our `:db` -> SQLGlot's `:catalog`; our `:schema` stays as `:schema`.
+    ;; 3-slot specs translate to SQLGlot's `:db`+`:schema`+`:table` shape.
+    ;; Our `:db` -> SQLGlot's `:db` (the catalog slot); our `:schema` stays as `:schema`.
     (let [remappings {{:db "proj" :schema "ds" :table "orders"} {:db "proj" :schema "ws_ds" :table "orders"}}
           result (#'ws.table-remapping/build-table-replacements remappings)]
-      (is (= {:catalog "proj" :schema "ws_ds" :table "orders"}
-             (get result {:catalog "proj" :schema "ds" :table "orders"})))))
+      (is (= {:db "proj" :schema "ws_ds" :table "orders"}
+             (get result {:db "proj" :schema "ds" :table "orders"})))))
   (testing "schema-less drivers (MySQL-style) prune both :db and :schema"
     (let [remappings {{:db "" :schema "" :table "orders"} {:db "" :schema "ws_db" :table "orders"}}
           result (#'ws.table-remapping/build-table-replacements remappings)]

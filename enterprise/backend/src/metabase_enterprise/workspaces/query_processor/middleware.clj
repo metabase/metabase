@@ -71,6 +71,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   ;; the remapping middleware swaps a remapping metadata provider into the QP store mid-preprocess
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]))
 
