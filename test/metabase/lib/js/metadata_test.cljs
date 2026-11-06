@@ -3,7 +3,10 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.js.metadata :as lib.js.metadata]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.test-runner.assert-exprs.approximately-equal]))
+
+(comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
 
 (deftest ^:parallel parse-fields-test
   (let [metadata-fragment #js {:fields #js {"card__1234:5678" #js {:id 0}
