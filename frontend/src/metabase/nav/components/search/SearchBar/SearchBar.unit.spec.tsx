@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCollectionsEndpoints,
@@ -89,6 +90,18 @@ const getSearchBar = () => {
   return screen.getByPlaceholderText("Search…");
 };
 
+const getSearchRequestsByContext = (context: string) =>
+  fetchMock.callHistory.calls().filter((call) => {
+    const url = new URL(call.url);
+    return (
+      url.pathname === "/api/search" &&
+      url.searchParams.get("context") === context
+    );
+  });
+
+const getFloatingContainer = () =>
+  screen.getByTestId("search-results-floating-container");
+
 describe("SearchBar", () => {
   describe("typing a search query", () => {
     it("should change URL when user types a query and hits `Enter`", async () => {
@@ -163,6 +176,71 @@ describe("SearchBar", () => {
           within(filteredElement as HTMLElement).getByText("Our analytics"),
         ).toHaveFocus();
       }
+    });
+  });
+
+  describe("accessing full page search with `Enter`", () => {
+    it("should only search and open full page search when a text query is entered", async () => {
+      const { router } = setup({
+        searchResultItems: [
+          createMockCollectionItem({ id: 11, name: "Orders in a dashboard" }),
+        ],
+      });
+
+      await userEvent.click(getSearchBar());
+      await userEvent.keyboard("{Enter}");
+
+      expect(
+        await within(getFloatingContainer()).findByText("Recently viewed"),
+      ).toBeInTheDocument();
+      expect(router.location.pathname).toBe("/");
+
+      await userEvent.type(getSearchBar(), " ");
+      expect(getSearchBar()).toHaveValue(" ");
+      expect(
+        within(getFloatingContainer()).getByText("Recently viewed"),
+      ).toBeInTheDocument();
+      await userEvent.keyboard("{Enter}");
+      expect(router.location.pathname).toBe("/");
+      expect(getSearchRequestsByContext("search-bar")).toHaveLength(0);
+
+      await userEvent.clear(getSearchBar());
+      // pasted, so that "ord" is one change, like the Cypress test under a fake clock
+      await userEvent.click(getSearchBar());
+      await userEvent.paste("ord");
+      expect(getSearchBar()).toHaveValue("ord");
+      await waitFor(() =>
+        expect(getSearchRequestsByContext("search-bar")).toHaveLength(1),
+      );
+      expect(
+        new URL(
+          getSearchRequestsByContext("search-bar")[0].url,
+        ).searchParams.get("q"),
+      ).toBe("ord");
+      expect(
+        await screen.findByTestId("search-bar-results-container"),
+      ).toBeVisible();
+
+      await userEvent.clear(getSearchBar());
+      await userEvent.paste(" ");
+      expect(getSearchBar()).toHaveValue(" ");
+      expect(
+        await within(getFloatingContainer()).findByText("Recently viewed"),
+      ).toBeVisible();
+      expect(
+        screen.queryByTestId("search-bar-results-container"),
+      ).not.toBeInTheDocument();
+      expect(getSearchRequestsByContext("search-bar")).toHaveLength(1);
+    });
+
+    it("should only search and open full page search when a text query is entered (open the search app)", async () => {
+      const { router } = setup();
+
+      await userEvent.click(getSearchBar());
+      await userEvent.type(getSearchBar(), "orders{Enter}");
+
+      expect(router.location.pathname).toBe("/search");
+      expect(router.location.search).toBe("?q=orders");
     });
   });
 
