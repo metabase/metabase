@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import _ from "underscore";
 
 import { useLazyGetAdhocQueryMetadataQuery } from "metabase/api";
+import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -11,12 +12,10 @@ export function useQueryMetadata(question: Question) {
 
   const isSourceTableLoaded = useMemo(() => {
     const query = question.query();
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    const sourceTable =
-      sourceTableId != null
-        ? Lib.tableOrCardMetadata(query, sourceTableId)
-        : null;
-    return sourceTableId == null || sourceTable != null;
+    const hasPrimarySource =
+      Lib.primarySourceTableId(query) != null ||
+      Lib.primarySourceCardId(query) != null;
+    return !hasPrimarySource || getPrimarySourceMetadata(query) != null;
   }, [question]);
 
   useEffect(() => {

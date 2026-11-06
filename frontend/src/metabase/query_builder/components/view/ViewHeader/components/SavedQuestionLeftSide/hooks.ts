@@ -1,4 +1,5 @@
 import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
+import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -8,7 +9,6 @@ export function useHiddenSourceTables(
   const datasetQuery = question.datasetQuery();
   const metadataProvider = useMetadataProviderUnfiltered(datasetQuery.database);
   const query = Lib.fromJsQuery(metadataProvider, datasetQuery);
-  const sourceTableId = Lib.sourceTableOrCardId(query);
 
   const joinTablesInfo = Lib.stageIndexes(query).flatMap((stageIndex) =>
     Lib.joins(query, stageIndex)
@@ -17,15 +17,10 @@ export function useHiddenSourceTables(
       .map((joinTable) => Lib.displayInfo(query, stageIndex, joinTable)),
   );
 
-  if (sourceTableId) {
-    const sourceTableMetadata = Lib.tableOrCardMetadata(
-      metadataProvider,
-      sourceTableId,
-    );
-    if (sourceTableMetadata) {
-      const sourceTableInfo = Lib.displayInfo(query, -1, sourceTableMetadata);
-      joinTablesInfo.unshift(sourceTableInfo);
-    }
+  const sourceTableMetadata = getPrimarySourceMetadata(query);
+  if (sourceTableMetadata) {
+    const sourceTableInfo = Lib.displayInfo(query, -1, sourceTableMetadata);
+    joinTablesInfo.unshift(sourceTableInfo);
   }
 
   return joinTablesInfo.filter(

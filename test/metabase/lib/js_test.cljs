@@ -715,6 +715,23 @@
     (testing "returns nil for unknown card id"
       (is (nil? (lib.js/card-metadata mp 999999))))))
 
+(deftest ^:parallel table-metadata-test
+  (testing "returns metadata of table with given id"
+    (is (=? {:lib/type :metadata/table
+             :id       (meta/id :orders)}
+            (lib.js/table-metadata meta/metadata-provider (meta/id :orders)))))
+  (testing "returns nil for unknown table id"
+    (is (nil? (lib.js/table-metadata meta/metadata-provider 999999)))))
+
+(deftest ^:parallel primary-source-table-id-test
+  (let [mp   (lib.tu/metadata-provider-with-mock-cards)
+        card (:orders (lib.tu/mock-cards))]
+    (testing "returns id of source table"
+      (is (= (meta/id :orders)
+             (lib.js/primary-source-table-id (lib/query mp (lib.metadata/table mp (meta/id :orders)))))))
+    (testing "returns nil for source card"
+      (is (nil? (lib.js/primary-source-table-id (lib/query mp (lib.metadata/card mp (:id card)))))))))
+
 (deftest ^:parallel primary-source-card-id-test
   (let [mp   (lib.tu/metadata-provider-with-mock-cards)
         card (:orders (lib.tu/mock-cards))]

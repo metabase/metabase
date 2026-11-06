@@ -5,7 +5,6 @@ import _ from "underscore";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
@@ -393,13 +392,12 @@ class Question {
     }
 
     const metadata = this.metadataProvider();
-    const tableId = getQuestionVirtualTableId(this.id());
-    const table = Lib.tableOrCardMetadata(metadata, tableId);
-    if (!table) {
+    const card = Lib.cardMetadata(metadata, this.id());
+    if (!card) {
       return this;
     }
 
-    const query = Lib.queryFromTableOrCardMetadata(metadata, table);
+    const query = Lib.queryFromTableOrCardMetadata(metadata, card);
     return this.setQuery(query);
   }
 
