@@ -128,26 +128,29 @@
    *  The cache is empty (the `(cache*` atom is `nil`), which of course means it needs to be updated
    *  There is a value of `settings-last-updated` in the cache, and it is older than the value of in the DB. (There
       will be no value until the first time a normal Setting is updated; thus if it is not yet set, we do not yet need
-      to invalidate our cache.)"
-  []
-  (log/debug "Checking whether settings cache is out of date (requires DB call)...")
-  (let [current-cache (cache)]
-    (boolean
-     (or
-      ;; is the cache empty?
-      (not current-cache)
-      ;; if not, get the cached value of `settings-last-updated`, and if it exists...
-      (when-let [last-known-update (cache-last-updated-at)]
-        ;; compare it to the value in the DB. This is done be seeing whether a row exists
-        ;; WHERE value > <local-value>
-        ;; compared here rather than in SQL: what is stored is ciphertext, so only the decrypted timestamps can be ordered
-        (u/prog1 (when-let [db-value (settings.db/setting-value settings-last-updated-key)]
-                   (when (pos? (compare db-value last-known-update))
-                     db-value))
-          (log/trace "last known Settings update: " (pr-str last-known-update))
-          (log/trace "actual last Settings update:" (pr-str <>))
-          (when <>
-            (log/info (u/format-color :red "Settings have been changed on another instance, and will be reloaded here.")))))))))
+      to invalidate our cache.)
+
+  Reads the cache in `state`, by default the one for the application DB this thread sees."
+  ([] (cache-out-of-date? (current-state)))
+  ([state]
+   (log/debug "Checking whether settings cache is out of date (requires DB call)...")
+   (let [current-cache (cache state)]
+     (boolean
+      (or
+       ;; is the cache empty?
+       (not current-cache)
+       ;; if not, get the cached value of `settings-last-updated`, and if it exists...
+       (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
+         ;; compare it to the value in the DB. This is done be seeing whether a row exists
+         ;; WHERE value > <local-value>
+         ;; compared here rather than in SQL: what is stored is ciphertext, so only the decrypted timestamps can be ordered
+         (u/prog1 (when-let [db-value (settings.db/setting-value settings-last-updated-key)]
+                    (when (pos? (compare db-value last-known-update))
+                      db-value))
+           (log/trace "last known Settings update: " (pr-str last-known-update))
+           (log/trace "actual last Settings update:" (pr-str <>))
+           (when <>
+             (log/info (u/format-color :red "Settings have been changed on another instance, and will be reloaded here."))))))))))
 
 (def ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
@@ -172,7 +175,7 @@
   `cache-update-check-interval-ms`; pass `:force-check? true` to skip that throttle and check now. Returns truthy when
   a reload happened."
   [& {:keys [force-check?]}]
-  (let [{:keys [^AtomicLong last-update-check ^ReentrantLock restore-lock]} (current-state)]
+  (let [{:keys [^AtomicLong last-update-check ^ReentrantLock restore-lock] :as state} (current-state)]
     (when (or force-check? (time-for-another-update-check? last-update-check))
       ;; There's a potential race condition here where two threads both call this at the exact same moment, and both
       ;; get `true` from `cache-out-of-date?`, and then both simultaneously try to update the cache. Better to just add
@@ -182,8 +185,8 @@
         (when (.tryLock restore-lock)
           (try
             (.set last-update-check (System/nanoTime))
-            (when (cache-out-of-date?)
-              (restore-cache!)
+            (when (cache-out-of-date? state)
+              (restore-cache! state)
               true)
             (finally
               (.unlock restore-lock))))))))
