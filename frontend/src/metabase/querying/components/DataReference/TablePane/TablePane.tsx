@@ -14,8 +14,8 @@ import CS from "metabase/css/core/index.css";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { isConcreteTableId } from "metabase-types/api";
 
-import { ConnectedTableList } from "./ConnectedTableList";
-import { FieldList } from "./FieldList";
+import { ConnectedTableList } from "../ConnectedTableList";
+import { FieldList } from "../FieldList";
 import {
   NodeListIcon,
   NodeListItemIcon,
@@ -24,9 +24,9 @@ import {
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-} from "./NodeList";
-import type { DataReferencePaneProps, DataReferenceTableItem } from "./types";
-import { getTableColumnListInfo } from "./utils";
+} from "../NodeList";
+import type { DataReferencePaneProps, DataReferenceTableItem } from "../types";
+import { getTableColumnListInfo } from "../utils";
 
 export function TablePane({
   id,
