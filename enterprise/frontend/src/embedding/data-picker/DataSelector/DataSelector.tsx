@@ -63,7 +63,11 @@ import {
 import { CONTAINER_WIDTH, DATA_BUCKET } from "../constants";
 import { LibraryPicker } from "../library-picker/LibraryPicker";
 import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
-import type { DataPickerDataType, SavedEntityType } from "../types";
+import type {
+  DataPickerDataType,
+  DataTypeInfoItem,
+  SavedEntityType,
+} from "../types";
 import { getDataTypes } from "../utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
@@ -540,14 +544,15 @@ export class UnconnectedDataSelector extends Component<
     return this.hasMetrics() && this.props.hasNestedQueriesEnabled;
   };
 
-  hasUsableSavedEntities = (): boolean => {
-    return (
-      this.hasUsableModels() ||
-      this.hasSavedQuestions() ||
-      this.hasUsableMetrics() ||
-      this.hasLibrary()
-    );
-  };
+  getUsableDataTypes = (): DataTypeInfoItem[] =>
+    getDataTypes({
+      hasModels: this.hasModels(),
+      hasTables: this.props.canSelectTable,
+      hasSavedQuestions: this.hasSavedQuestions(),
+      hasMetrics: this.hasMetrics(),
+      hasLibrary: this.hasLibrary(),
+      hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
+    });
 
   hasSavedQuestions = (): boolean => {
     const { availableModels, canSelectQuestion } = this.props;
@@ -571,15 +576,7 @@ export class UnconnectedDataSelector extends Component<
 
   // With a single bucket, `skipSteps` opens it straight away, so there's no
   // bucket step to go back to
-  hasDataBucketChoice = (): boolean =>
-    getDataTypes({
-      hasModels: this.hasModels(),
-      hasTables: this.props.canSelectTable,
-      hasSavedQuestions: this.hasSavedQuestions(),
-      hasMetrics: this.hasMetrics(),
-      hasLibrary: this.hasLibrary(),
-      hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
-    }).length > 1;
+  hasDataBucketChoice = (): boolean => this.getUsableDataTypes().length > 1;
 
   isJoinStep(): boolean {
     return !this.props.canChangeDatabase;
@@ -726,14 +723,7 @@ export class UnconnectedDataSelector extends Component<
       }
     }
     if (activeStep === DATA_BUCKET_STEP) {
-      const dataTypes = getDataTypes({
-        hasModels: this.hasModels(),
-        hasTables: this.props.canSelectTable,
-        hasSavedQuestions: this.hasSavedQuestions(),
-        hasMetrics: this.hasMetrics(),
-        hasLibrary: this.hasLibrary(),
-        hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
-      });
+      const dataTypes = this.getUsableDataTypes();
       if (dataTypes.length === 1) {
         this.onChangeDataBucket(dataTypes[0].id);
       }
@@ -1012,7 +1002,6 @@ export class UnconnectedDataSelector extends Component<
   }
 
   renderActiveStep(): ReactNode {
-    const { hasNestedQueriesEnabled } = this.props;
     const hasNextStep = this.getNextStep() != null;
     const hasPreviousStep = this.getPreviousStep() != null;
 
@@ -1039,14 +1028,7 @@ export class UnconnectedDataSelector extends Component<
         return (
           <Box p="sm">
             <DataBucketPicker
-              dataTypes={getDataTypes({
-                hasModels: this.hasModels(),
-                hasTables: this.props.canSelectTable,
-                hasSavedQuestions: this.hasSavedQuestions(),
-                hasMetrics: this.hasMetrics(),
-                hasLibrary: this.hasLibrary(),
-                hasNestedQueriesEnabled,
-              })}
+              dataTypes={this.getUsableDataTypes()}
               {...props}
             />
           </Box>
@@ -1104,9 +1086,7 @@ export class UnconnectedDataSelector extends Component<
     const selectedSource = getSelectedSource(selectedCardId, selectedTable);
 
     const hasNothingToPick =
-      activeStep === DATA_BUCKET_STEP &&
-      !this.props.canSelectTable &&
-      !this.hasUsableSavedEntities();
+      activeStep === DATA_BUCKET_STEP && this.getUsableDataTypes().length === 0;
 
     if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
