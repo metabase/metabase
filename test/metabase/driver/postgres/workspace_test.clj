@@ -212,8 +212,10 @@
        (testing "the statements sent to the server never carry the password, which the server logs when one fails"
          ;; the batch wrapper's message quotes the statement as sent
          (mt/with-dynamic-fn-redefs [driver.u/batch-exception identity]
-           (let [e (is (thrown? java.sql.SQLException
+           (let [e (is (thrown? clojure.lang.ExceptionInfo
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (testing "a failed init tells the caller there is nothing to tear down"
+               (is (false? (:workspace/cleanup? (ex-data e)))))
              (is (some #(str/includes? % "CREATE USER") (messages e)))
              (is (not-any? #(str/includes? % "PASSWORD") (messages e)))
              (is (not-any? #(str/includes? % password) (messages e))))))
@@ -225,6 +227,32 @@
                                "SCRAM-SHA-256$"))
          (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest init-lock-timeout-leaves-nothing-to-clean-up-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2112)
+           ws-user   (-> workspace :database_details :user)
+           {:keys [host port db user password]} (superuser-details)
+           ;; a raw connection is the point here: its transaction must stay open across the code under test
+           other     (java.sql.DriverManager/getConnection (format "jdbc:postgresql://%s:%s/%s" host port db)
+                                                           ^String user ^String password)]
+       (try
+         (.setAutoCommit other false)
+         ;; another session creating a role of the same name, not yet committed: init does not see it, and its
+         ;; CREATE USER waits on it
+         (with-open [stmt (.createStatement other)]
+           (.execute stmt (format "CREATE ROLE \"%s\"" ws-user)))
+         (testing "an init that times out on that lock is a 409 that tells the caller not to tear anything down"
+           (with-redefs [postgres/workspace-lock-timeout "2s"]
+             (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                  (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+               (is (= {:status-code 409, :workspace/cleanup? false} (ex-data e))))))
+         (finally
+           (.rollback other)
+           (.close other)))
+       (is (nil? (schema-owner spec (:schema workspace))))
+       (is (not (role-exists? spec ws-user)))))))
 
 (deftest destroy-ends-the-workspace-users-sessions-test
   (do-with-warehouse!
