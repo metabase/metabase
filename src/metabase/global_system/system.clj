@@ -347,8 +347,11 @@
     (mc/without-binding handle #(mc/with-slot-lock handle nil))))
 
 (defn- begin-halt!
-  "Refuse every later start, then wait for the starts already in flight to register or fail."
+  "Refuse every later start, then wait for the starts already in flight to register or fail.
+  Throws, before refusing anything, if called from a component's start, whose own start it could not wait for."
   []
+  (when (some #(= (Thread/currentThread) (:thread %)) (vals (:starting @admissions)))
+    (throw (ex-info "A component's start cannot halt the system" {})))
   (close-admission!)
   (await-starts!))
 
@@ -357,7 +360,7 @@
    The `dependencies` map takes a component key to the keys of the components it uses, and defaults to empty.
    A component stops before everything it uses, directly or through other components, even one that started later.
    Components with no such path between them stop in the reverse of the order they first started in.
-   Throws before stopping anything if `dependencies` has a cycle.
+   Throws before stopping anything if `dependencies` has a cycle, or if called from a component's start.
    From the moment it begins, every start throws until [[reopen!]], so nothing a stopping component starts again is
    left running.
    It waits for the starts already running, so it stops those too, and holds no lock while it waits.

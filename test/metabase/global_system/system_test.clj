@@ -632,6 +632,18 @@
           (system/reopen!)
           (cleanup! [a b c]))))))
 
+(deftest ^:synchronized halt-from-a-start-is-refused-test
+  (testing "a halt called from a component's start throws, and leaves starts admitted"
+    (let [halter (system/mutable-component-handle ::halts-in-start (constantly nil))
+          other  (system/mutable-component-handle ::after-refused-halt (constantly nil))]
+      (try
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A component's start cannot halt the system"
+                              (system/ensure-started! halter #(#'system/begin-halt!) (constantly nil))))
+        (is (= :started (system/ensure-started! other (constantly :started) (constantly nil))))
+        (finally
+          (system/reopen!)
+          (cleanup! [halter other]))))))
+
 (deftest ^:synchronized start-returning-false-test
   (testing "a start that returns false still counts as started, so it runs once"
     (let [handle (system/mutable-component-handle ::starts-false (constantly nil))
