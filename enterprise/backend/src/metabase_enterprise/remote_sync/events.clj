@@ -110,24 +110,6 @@
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
-(defn backfill-custom-viz-plugin-tracking!
-  "Insert a 'create' ledger row for every bundled CustomVizPlugin that has none, returning the number of rows
-  inserted. Dev-only plugins have no bundle and are never synced."
-  []
-  (let [plugin-spec (spec/spec-for-model-key :model/CustomVizPlugin)
-        tracked     (remote-sync.db/tracked-model-ids "CustomVizPlugin")
-        timestamp   (t/offset-date-time)
-        rows        (for [plugin (remote-sync.db/instances-where :model/CustomVizPlugin (spec/export-conditions plugin-spec))
-                          :when (not (contains? tracked (:id plugin)))]
-                      (merge {:model_type        "CustomVizPlugin"
-                              :model_id          (:id plugin)
-                              :status            "create"
-                              :status_changed_at timestamp}
-                             (spec/build-sync-object-fields plugin-spec plugin)))]
-    (when (seq rows)
-      (remote-sync.db/insert-rsos! rows))
-    (count rows)))
-
 (defn disable-library-tracking!
   "Remove all snippet, data action, their namespaces' collection, and glossary tracking entries."
   []
