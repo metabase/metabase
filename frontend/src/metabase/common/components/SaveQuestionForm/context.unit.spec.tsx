@@ -134,10 +134,8 @@ describe("SaveQuestionContext", () => {
 
         setup();
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "10",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("10"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -147,8 +145,8 @@ describe("SaveQuestionContext", () => {
 
         setup();
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent(
             "1337", // Users personal collection id
           ),
         );
@@ -163,10 +161,8 @@ describe("SaveQuestionContext", () => {
 
         setup({ initialCollectionId: 42 });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "42",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("42"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -179,10 +175,8 @@ describe("SaveQuestionContext", () => {
 
         setup({ initialCollectionId: 42 });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "42",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("42"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -247,10 +241,8 @@ describe("SaveQuestionContext", () => {
           }),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "99",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("99"),
         );
       });
 
@@ -314,10 +306,8 @@ describe("SaveQuestionContext", () => {
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "20",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("20"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
@@ -338,10 +328,8 @@ describe("SaveQuestionContext", () => {
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "11",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("11"),
         );
 
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
@@ -388,8 +376,8 @@ describe("SaveQuestionContext", () => {
           ),
         });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent(
             defaultAuditInfo.custom_reports.toString(),
           ),
         );
@@ -455,10 +443,8 @@ describe("SaveQuestionContext", () => {
 
         setup({ ...getProps() });
 
-        await waitFor(async () =>
-          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
-            "10",
-          ),
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent("10"),
         );
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });

@@ -51,18 +51,18 @@ const setup = async ({ dashboardId }: SetupOpts = {}) => {
 };
 
 describe("HomePage", () => {
-  it("should not load metabot-related data when it is disabled", () => {
-    setup();
+  it("should not load metabot-related data when it is disabled", async () => {
+    await setup();
     expect(screen.getByText(new RegExp(TEST_USER_NAME))).toBeInTheDocument();
   });
 
   it("should redirect you to a dashboard when one has been defined to be used as a homepage", async () => {
-    setup({ dashboardId: 1 });
+    await setup({ dashboardId: 1 });
     expect(await screen.findByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
   });
 
-  it("should render the homepage when a custom dashboard is not set", () => {
-    setup();
+  it("should render the homepage when a custom dashboard is not set", async () => {
+    await setup();
     expect(screen.queryByText(TEST_DASHBOARD_NAME)).not.toBeInTheDocument();
   });
 });
