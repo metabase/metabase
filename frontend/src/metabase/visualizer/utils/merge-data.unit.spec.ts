@@ -1,6 +1,11 @@
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
-import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockDataset,
+  createMockReferencedEntitiesResults,
+  createMockReferencedEntityResult,
+} from "metabase-types/api/mocks";
 
 import { mergeVisualizerData } from "./merge-data";
 
@@ -246,6 +251,85 @@ describe("mergeVisualizerData", () => {
     expect(result.referenced_entities).toEqual({
       card: { 10: completed(10) },
       measure: { 20: completed(20) },
+    });
+  });
+
+  it("should take the answer of the last data source when two answer the same referenced entity", () => {
+    const result = mergeVisualizerData({
+      columns: [createMockColumn(NumberColumn({ name: "COLUMN_1" }))],
+      columnValuesMapping: {
+        COLUMN_1: [
+          { sourceId: "card:1", originalName: "count", name: "COLUMN_1" },
+        ],
+      },
+      datasets: {
+        "card:1": createMockDataset({
+          data: {
+            cols: [createMockColumn(NumberColumn({ name: "count" }))],
+            rows: [[1]],
+            referenced_entities: createMockReferencedEntitiesResults({
+              value: 100,
+            }),
+          },
+        }),
+        "card:2": createMockDataset({
+          data: {
+            cols: [createMockColumn(NumberColumn({ name: "count" }))],
+            rows: [[2]],
+            referenced_entities: createMockReferencedEntitiesResults({
+              value: 200,
+            }),
+          },
+        }),
+      },
+      // the order of the data sources decides, not the order of the datasets
+      dataSources: [
+        { id: "card:2", sourceId: 2, type: "card", name: "Chart 2" },
+        { id: "card:1", sourceId: 1, type: "card", name: "Chart 1" },
+      ],
+    });
+
+    expect(result.referenced_entities?.card).toEqual({
+      9: createMockReferencedEntityResult({ value: 100 }),
+    });
+  });
+
+  it("should not combine the columns that two data sources answer for the same referenced entity", () => {
+    const result = mergeVisualizerData({
+      columns: [createMockColumn(NumberColumn({ name: "COLUMN_1" }))],
+      columnValuesMapping: {
+        COLUMN_1: [
+          { sourceId: "card:1", originalName: "count", name: "COLUMN_1" },
+        ],
+      },
+      datasets: {
+        "card:1": createMockDataset({
+          data: {
+            cols: [createMockColumn(NumberColumn({ name: "count" }))],
+            rows: [[1]],
+            referenced_entities: createMockReferencedEntitiesResults({
+              column: "goal",
+            }),
+          },
+        }),
+        "card:2": createMockDataset({
+          data: {
+            cols: [createMockColumn(NumberColumn({ name: "count" }))],
+            rows: [[2]],
+            referenced_entities: createMockReferencedEntitiesResults({
+              column: "target",
+            }),
+          },
+        }),
+      },
+      dataSources: [
+        { id: "card:1", sourceId: 1, type: "card", name: "Chart 1" },
+        { id: "card:2", sourceId: 2, type: "card", name: "Chart 2" },
+      ],
+    });
+
+    expect(result.referenced_entities?.card).toEqual({
+      9: createMockReferencedEntityResult({ column: "target" }),
     });
   });
 

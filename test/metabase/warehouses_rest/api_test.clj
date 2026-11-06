@@ -15,6 +15,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -45,6 +46,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.core :as warehouses]
@@ -295,18 +297,14 @@
      :model/Segment  _                {:table_id table-id-2}
      :model/Transform _                {:name   "Source DB transform"
                                         :source {:type  :query
-                                                 :query {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "select 1"}}}
+                                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
                                         :target {:type     "table"
                                                  :database db-id
                                                  :schema "PUBLIC"
                                                  :name "source_db_transform_target"}}
      :model/Transform _                {:name   "Target DB transform"
                                         :source {:type  :query
-                                                 :query {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "select 1"}}}
+                                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
                                         :target {:type     "table"
                                                  :database db-id
                                                  :schema "PUBLIC"
@@ -1121,14 +1119,20 @@
                                            (mt/user-http-request :rasta :get 200
                                                                  (format "database/%d/autocomplete_suggestions" (mt/id))
                                                                  :prefix "price"))))]
-      (testing "a user-set semantic_type replaces the sync value"
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id          field-id
-                                                   :semantic_type     :type/Currency
-                                                   :semantic_type_set true}]
-          (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))))
-      (testing "a user-set sensitive visibility_type hides the Field"
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :visibility_type :sensitive}]
-          (is (nil? (venues-row))))))))
+      (mt/with-temp-vals-in-db :model/Field field-id (select-keys (t2/select-one :model/Field :id field-id)
+                                                                  [:semantic_type :visibility_type])
+        (testing "a user-set semantic_type replaces the sync value"
+          (try
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Currency})
+            (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))
+            (finally
+              (field-user-settings/delete-field-user-settings! [field-id]))))
+        (testing "a user-set sensitive visibility_type hides the Field"
+          (try
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:visibility_type :sensitive})
+            (is (nil? (venues-row)))
+            (finally
+              (field-user-settings/delete-field-user-settings! [field-id]))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"

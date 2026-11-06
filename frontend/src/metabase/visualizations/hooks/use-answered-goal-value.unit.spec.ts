@@ -141,6 +141,26 @@ describe("useAnsweredGoalValue", () => {
       }),
     );
   });
+
+  it("keeps the dataset's column-not-found error when re-running for the column fails", async () => {
+    setupCardDataset({ status: 500 });
+    const data = {
+      ...DATA,
+      referenced_entities: createReferencedEntitiesAnswer(["other"], [1])
+        .referenced_entities,
+    };
+
+    const { result } = setup(data, CARD_REF);
+    expect(result.current).toEqual(RESOLVING);
+
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        value: null,
+        error: { ...CARD_REF, reason: "column-not-found" },
+      }),
+    );
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
+  });
 });
 
 function createReferencedEntitiesAnswer(

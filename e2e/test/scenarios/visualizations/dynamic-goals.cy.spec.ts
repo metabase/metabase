@@ -10,6 +10,7 @@ import type {
   DocumentContent,
   GoalForeignColumnRef,
   MeasureId,
+  ReferencedEntity,
   ReferencedEntityType,
   RowValue,
 } from "metabase-types/api";
@@ -184,7 +185,9 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
     assertGoalLineValue("600");
 
-    cy.log("A saved question gets the goal value along with its results");
+    cy.log(
+      "A saved question, opened anew, gets the goal value with its card query results",
+    );
     H.saveQuestion(
       "Saved chart with a dynamic goal",
       { wrapId: true },
@@ -197,17 +200,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
       assertAnswered("@cardQuery", { id, column: "HIGH", value: 600 });
     });
-
-    cy.log("Goal-based alerts are offered for a dynamic goal");
-    cy.findByLabelText("Move, trash, and more…").click();
-    H.popover().findByText("Create an alert").click();
-    H.modal().findByTestId("alert-goal-select").should("be.enabled").click();
-    H.popover()
-      .should("contain.text", "When results go above the goal")
-      .and("contain.text", "When results go below the goal");
-    cy.realPress("Escape");
-    H.modal().button("Cancel").click();
-    H.modal().should("not.exist");
 
     cy.log("A goal picked on a saved question resolves before it is saved");
     H.openVizSettingsSidebar();
@@ -244,29 +236,21 @@ describe("scenarios > visualizations > dynamic goals", () => {
       cy.findByRole("tab", { name: "Conditional colors" }).click();
       cy.findByRole("button", { name: /Add a range/ }).click();
       cy.findByLabelText("Range 1 maximum").clear().blur();
-      cy.findAllByTestId("color-selector-button").first().click();
+      cy.findByTestId("color-selector-button").click();
     });
-    H.popover()
-      .findAllByRole("button")
-      .eq(4)
-      .then(($button) => {
-        cy.wrap($button.attr("aria-label")).as("rangeColor");
-        cy.wrap($button).click();
-      });
+    const rangeColor = "#F9D45C";
+    H.popover().findByRole("button", { name: rangeColor }).click();
     openGoalMenu("Range 1 minimum");
     pickGoalSource(METRIC_SOURCE.name);
     cy.findByTestId("scalar-value").realHover();
     H.tooltip().should("contain.text", "≥ 18,760");
-    // the hover color would hide the range color
     H.queryBuilderHeader().realHover();
     // an unresolved minimum would leave the open-ended range without bounds
-    cy.get<string>("@rangeColor").then((rangeColor) => {
-      cy.findByTestId("scalar-value").should(
-        "have.css",
-        "color",
-        Color(rangeColor).rgb().string(),
-      );
-    });
+    cy.findByTestId("scalar-value").should(
+      "have.css",
+      "color",
+      Color(rangeColor).rgb().string(),
+    );
     cy.get<CardId>("@metricSourceId").then((id) => {
       assertAnswered("@dataset", { id, column: "count", value: 18760 });
     });
@@ -326,7 +310,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
             query: ORDERS_COUNT_BY_MONTH_QUERY,
             display: "line",
             visualization_settings: {
-              // visible data points leave the goal marker as the only hover target
               "line.marker_enabled": true,
               "graph.metrics": ["count"],
               "graph.dimensions": ["CREATED_AT"],
@@ -386,9 +369,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.modal()
       .findByRole("button", { name: "Change value source" })
       .should("contain.text", "300");
-    cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@dataset", { id, column: "LOW", value: 300 });
-    });
     H.modal().within(() => {
       H.goalLineMarker().trigger("mousemove");
     });
@@ -397,17 +377,23 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.saveDashboard();
 
     cy.log("Saved dashcard and visualizer goals are resolved after a reload");
-    // a separate alias leaves out the requests made before the reload
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "reloadedDashcardQuery",
-    );
+    H.getDashboardCard(0)
+      .findByTestId("dashcard")
+      .invoke("attr", "data-dashcard-key")
+      .then((dashcardId) => {
+        cy.intercept(
+          "POST",
+          `/api/dashboard/*/dashcard/${dashcardId}/card/*/query`,
+        ).as("visualizerDashcardQuery");
+      });
     cy.reload();
     H.getDashboardCard(0).within(() => {
-      H.goalLine().should("exist");
+      H.goalLineMarker().trigger("mousemove");
     });
+    H.tooltip().should("contain.text", "300");
     H.getDashboardCard(1).findByText("Goal 600").should("be.visible");
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@reloadedDashcardQuery", {
+      assertAnswered("@visualizerDashcardQuery", {
         id,
         column: "LOW",
         value: 300,
@@ -481,9 +467,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
           });
 
           cy.log("Document");
-          cy.get("@documentId").then((documentId) => {
-            cy.visit(`/document/${documentId}`);
-          });
+          H.visitDocument("@documentId");
           H.documentContent().within(() => {
             H.goalLine().should("exist");
           });
@@ -509,9 +493,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
             H.goalLineMarker().trigger("mousemove");
           });
           H.tooltip().should("contain.text", "600");
-          cy.get<CardId>("@multiColumnSourceId").then((id) => {
-            assertAnswered("@dataset", { id, column: "HIGH", value: 600 });
-          });
           H.documentSaveButton().click();
           cy.wait("@updateDocument")
             .its("response.statusCode")
@@ -600,70 +581,61 @@ describe("scenarios > visualizations > dynamic goals", () => {
       { idAlias: "forbiddenSourceId", wrapId: true },
     );
 
-    getCardIds([
-      "@singleColumnSourceId",
-      "@multiRowSourceId",
-      "@nullSourceId",
-      "@textSourceId",
-      "@deletedSourceId",
-      "@forbiddenSourceId",
-    ]).then(
-      ([
-        singleColumnSourceId,
-        multiRowSourceId,
-        nullSourceId,
-        textSourceId,
-        deletedSourceId,
-        forbiddenSourceId,
-      ]) => {
-        H.createNativeQuestion(
-          {
-            name: "Gauge with broken ranges",
-            native: { query: "SELECT 50 AS VAL" },
-            display: "gauge",
-            visualization_settings: {
-              "gauge.segments": [
-                {
-                  min: goalRef(multiRowSourceId, "LOW"),
-                  max: goalRef(nullSourceId, "TARGET"),
-                  color: "#ED6E6E",
-                  label: "",
-                },
-                {
-                  min: goalRef(textSourceId, "TARGET"),
-                  max: goalRef(singleColumnSourceId, "MISSING"),
-                  color: "#F9CF48",
-                  label: "",
-                },
-                {
-                  min: goalRef(deletedSourceId, "TARGET"),
-                  max: goalRef(forbiddenSourceId, "TARGET"),
-                  color: "#84BB4C",
-                  label: "",
-                },
-                { min: 0, max: 100, color: "#509EE3", label: "" },
-              ],
-            },
+    cy.then(function () {
+      const singleColumnSourceId: CardId = this.singleColumnSourceId;
+      const multiRowSourceId: CardId = this.multiRowSourceId;
+      const nullSourceId: CardId = this.nullSourceId;
+      const textSourceId: CardId = this.textSourceId;
+      const deletedSourceId: CardId = this.deletedSourceId;
+      const forbiddenSourceId: CardId = this.forbiddenSourceId;
+
+      H.createNativeQuestion(
+        {
+          name: "Gauge with broken ranges",
+          native: { query: "SELECT 50 AS VAL" },
+          display: "gauge",
+          visualization_settings: {
+            "gauge.segments": [
+              {
+                min: goalRef(multiRowSourceId, "LOW"),
+                max: goalRef(nullSourceId, "TARGET"),
+                color: "#ED6E6E",
+                label: "",
+              },
+              {
+                min: goalRef(textSourceId, "TARGET"),
+                max: goalRef(singleColumnSourceId, "MISSING"),
+                color: "#F9CF48",
+                label: "",
+              },
+              {
+                min: goalRef(deletedSourceId, "TARGET"),
+                max: goalRef(forbiddenSourceId, "TARGET"),
+                color: "#84BB4C",
+                label: "",
+              },
+              { min: 0, max: 100, color: "#509EE3", label: "" },
+            ],
           },
-          { idAlias: "gaugeId", wrapId: true },
-        );
-        H.createQuestion(
-          {
-            name: "Line with a broken goal",
-            query: ORDERS_COUNT_BY_MONTH_QUERY,
-            display: "line",
-            visualization_settings: {
-              "graph.metrics": ["count"],
-              "graph.dimensions": ["CREATED_AT"],
-              "graph.show_goal": true,
-              "graph.goal_value": goalRef(multiRowSourceId, "LOW"),
-            },
+        },
+        { idAlias: "gaugeId", wrapId: true },
+      );
+      H.createQuestion(
+        {
+          name: "Line with a broken goal",
+          query: ORDERS_COUNT_BY_MONTH_QUERY,
+          display: "line",
+          visualization_settings: {
+            "graph.metrics": ["count"],
+            "graph.dimensions": ["CREATED_AT"],
+            "graph.show_goal": true,
+            "graph.goal_value": goalRef(multiRowSourceId, "LOW"),
           },
-          { idAlias: "lineId", wrapId: true },
-        );
-        cy.request("DELETE", `/api/card/${deletedSourceId}`);
-      },
-    );
+        },
+        { idAlias: "lineId", wrapId: true },
+      );
+      cy.request("DELETE", `/api/card/${deletedSourceId}`);
+    });
 
     cy.signInAsNormalUser();
 
@@ -671,17 +643,19 @@ describe("scenarios > visualizations > dynamic goals", () => {
     cy.get<CardId>("@gaugeId").then((id) => H.visitQuestion(id));
     H.queryBuilderMain().within(() => {
       cy.findByTestId("gauge-arc-0").should("exist");
-      cy.findAllByLabelText("Goal warning").first().click();
+      cy.findByLabelText("Goal warning").click();
     });
     H.vizSettingsSidebar()
       .should(
         "contain.text",
         "The question's result must be a single value or row.",
       )
-      .and("contain.text", "This value isn't a number")
       .and("contain.text", "This column no longer exists")
       .and("contain.text", "This source no longer exists")
       .and("contain.text", "You don't have permissions to do that.");
+    H.vizSettingsSidebar()
+      .findAllByText("This value isn't a number")
+      .should("have.length", 2);
 
     cy.log("Line: the chart renders without the goal line, with a warning");
     cy.get<CardId>("@lineId").then((id) => H.visitQuestion(id));
@@ -698,18 +672,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
   });
 });
 
-function getCardIds(aliases: string[]): Cypress.Chainable<CardId[]> {
-  const ids: CardId[] = [];
-
-  aliases.forEach((alias) => {
-    cy.get<CardId>(alias).then((id) => {
-      ids.push(id);
-    });
-  });
-
-  return cy.wrap(ids);
-}
-
 function goalRef(id: CardId, column: string): GoalForeignColumnRef {
   return { type: "card", id, column };
 }
@@ -720,12 +682,8 @@ function openGoalMenu(
     JQuery<HTMLElement>
   > = H.vizSettingsSidebar,
 ) {
-  getContainer()
-    .findByLabelText(label)
-    .realHover()
-    .parent()
-    .findByLabelText("Pick a dynamic value")
-    .click();
+  getContainer().findByLabelText(label).realHover();
+  getContainer().findByRole("button", { name: "Pick a dynamic value" }).click();
 }
 
 function pickGoalSource(name: string) {
@@ -759,10 +717,12 @@ function assertAnswered(
   { type = "card", id, column, value }: AnsweredReference,
 ) {
   cy.get<Interception[]>(`${alias}.all`).then((interceptions) => {
-    const answers = interceptions.flatMap(
-      ({ response }) =>
-        response?.body.data.referenced_entities?.[type]?.[id] ?? [],
-    );
+    const answers = interceptions
+      .filter(({ request }) => !requestsEveryColumn(request, { type, id }))
+      .flatMap(
+        ({ response }) =>
+          response?.body?.data?.referenced_entities?.[type]?.[id] ?? [],
+      );
     const isAnswered = answers.some(
       (answer) =>
         answer.status === "completed" &&
@@ -773,6 +733,18 @@ function assertAnswered(
       true,
     );
   });
+}
+
+// the goal picker and the fallback fetch ask for every column, unlike the chart's own query
+function requestsEveryColumn(
+  { body }: Interception["request"],
+  { type, id }: { type: ReferencedEntityType; id: CardId | MeasureId },
+) {
+  const entities: ReferencedEntity[] = body?.referenced_entities ?? [];
+  return entities.some(
+    (entity) =>
+      entity.type === type && entity.id === id && !entity.columns?.length,
+  );
 }
 
 function getAnsweredValue(

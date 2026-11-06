@@ -20,10 +20,11 @@
   (atom #{}))
 
 (mu/defn start-run! :- ::transform-testing.schema/transform-test-run
-  "Create a started run for `transform-test-id` and register it as owned by this process."
-  ([transform-test-id :- ms/PositiveInt]
+  "Create a started run for `transform-test-id`, nil for a test that is not saved, and register it as owned by this
+  process."
+  ([transform-test-id :- [:maybe ms/PositiveInt]]
    (start-run! transform-test-id nil))
-  ([transform-test-id :- ms/PositiveInt
+  ([transform-test-id :- [:maybe ms/PositiveInt]
     initiated-by      :- [:maybe ::lib.schema.id/user]]
    (let [run (transform-testing.db/insert-transform-test-run! transform-test-id initiated-by)]
      (events/publish-event! :event/transform-test-run-start
@@ -43,12 +44,12 @@
     (finally
       (swap! active-runs disj run-id))))
 
-(defn heartbeat-runs!
+(mu/defn heartbeat-runs!
   "Stamp a heartbeat on the given runs while they are still started."
-  [run-ids]
+  [run-ids :- [:sequential ms/PositiveInt]]
   (rt/heartbeat-ids! :model/TransformTestRun [:status "started"] :last_heartbeat run-ids))
 
-(defn heartbeat-and-reconcile-runs!
+(mu/defn heartbeat-and-reconcile-runs! :- :nil
   "Heartbeat the runs owned by this process and forget any that became terminal elsewhere."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/TransformTestRun
@@ -57,9 +58,9 @@
                                 :heartbeat! heartbeat-runs!
                                 :on-gone    #(swap! active-runs disj %)}))
 
-(defn reap-orphaned-runs!
+(mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transform-testing.schema/transform-test-run]]
   "Time out started runs whose owning process has stopped heartbeating."
-  [stale-minutes]
+  [stale-minutes :- ms/PositiveInt]
   (let [reaped (rt/reap-orphaned! {:model    :model/TransformTestRun
                                    :active   [:status "started"]
                                    :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]

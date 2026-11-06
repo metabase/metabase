@@ -290,7 +290,6 @@ jobs:
       release: true
 
   tests-complete-message:
-    if: always()
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs:
       [
@@ -317,17 +316,36 @@ jobs:
           script: | # js
             const { sendTestsCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const allJobsSuccessful =
-              '${{ needs.run-sanity-check.result }}' === 'success' &&
-              '${{ needs.check-uberjar-health.result }}' === 'success' &&
-              '${{ needs.containerize-ee.result }}' === 'success' &&
-              '${{ needs.containerize-oss.result }}' === 'success';
-
             await sendTestsCompleteMessage({
               owner: context.repo.owner,
               repo: context.repo.repo,
               version: '${{ inputs.version }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              testStatus: allJobsSuccessful ? 'success' : 'failure',
             }).catch(console.error);
+
+  notify-failure:
+    needs:
+      - test-mode-config
+      - release-artifact
+      - check-uberjar-health
+      - run-sanity-check
+      - containerize-oss
+      - containerize-ee
+      - tests-complete-message
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Send release failure message
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Pre-release tests for
+          version: ${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}

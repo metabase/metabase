@@ -8,6 +8,7 @@ interface ChartSettingInputProps {
   "aria-label"?: string;
   value: string | undefined;
   placeholder: string;
+  title?: string;
   onChange: (value: string) => void;
   id?: string;
   disabled?: boolean;
@@ -20,6 +21,7 @@ export const ChartSettingInput = ({
   value,
   onChange,
   placeholder,
+  title,
   id,
   disabled,
   leftSection,
@@ -43,6 +45,7 @@ export const ChartSettingInput = ({
       data-testid={id}
       aria-label={ariaLabel}
       placeholder={placeholder}
+      title={title}
       disabled={disabled}
       leftSection={leftSection}
       leftSectionPointerEvents={leftSection == null ? undefined : "all"}

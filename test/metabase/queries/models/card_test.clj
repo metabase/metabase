@@ -26,7 +26,6 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
@@ -37,8 +36,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -1024,6 +1021,15 @@
     (let [card (assoc complete-card :card_schema (inc card/current-card-schema-version))]
       (is (= card
              (#'card/upgrade-card-schema-to-latest card))))))
+
+(deftest ^:parallel upgrade-card-schema-to-22-keeps-nil-result-metadata-test
+  (testing "Upgrade 22 keeps NULL result metadata as nil, so readers still know that the metadata is missing"
+    (is (nil? (:result_metadata (#'card/upgrade-card-schema-to complete-card 22)))))
+  (testing "Upgrade 22 removes idents from result metadata columns"
+    (is (= [{:name "ID"}]
+           (:result_metadata (#'card/upgrade-card-schema-to
+                              (assoc complete-card :result_metadata [{:name "ID", :ident "x", :model/inner_ident "y"}])
+                              22))))))
 
 (deftest ^:parallel upgrade-card-schema-requires-every-trigger-column-test
   (testing (str "Reading a schema-governed column without the rest of the columns an upgrade needs is a "
@@ -2161,6 +2167,32 @@
         (is (not (contains? extracted (eid summary-card)))
             "a card belonging to an exploration Summary is never exported — its name and dataset_query
              carry values discovered under the creator's lens, and its parent document is excluded")))))
+
+(deftest exploration-summary-cards-are-never-writable-test
+  (testing "a Summary card is writable by nobody, superusers included"
+    (mt/with-temp [:model/Collection  {coll-id :id}      {}
+                   :model/Exploration {expl-id :id}      {:name "Explo" :creator_id (mt/user->id :rasta)}
+                   :model/Document    {summary-id :id}   {:name           "Summary"
+                                                          :creator_id     (mt/user->id :rasta)
+                                                          :collection_id  coll-id
+                                                          :exploration_id expl-id}
+                   :model/Document    {plain-doc :id}    {:name "Plain doc" :creator_id (mt/user->id :rasta)
+                                                          :collection_id coll-id}
+                   :model/Card        {doc-card :id}     {:collection_id coll-id :document_id plain-doc
+                                                          :creator_id (mt/user->id :rasta)}
+                   :model/Card        {summary-card :id} {:collection_id coll-id :document_id summary-id
+                                                          :creator_id (mt/user->id :rasta)}]
+      (doseq [user-kw [:rasta :crowberto]]
+        (testing user-kw
+          (testing "control: a card in an ordinary document in the same collection is writable"
+            (is (true? (mt/with-current-user (mt/user->id user-kw)
+                         (mi/can-write? (t2/select-one :model/Card :id doc-card))))))
+          (testing "through mi/can-write?"
+            (is (false? (mt/with-current-user (mt/user->id user-kw)
+                          (mi/can-write? (t2/select-one :model/Card :id summary-card))))))
+          (testing "through PUT /api/card/:id"
+            (mt/user-http-request user-kw :put 403 (str "card/" summary-card) {:name "Renamed"})
+            (is (not= "Renamed" (t2/select-one-fn :name :model/Card :id summary-card)))))))))
 
 (deftest before-update-schema-upgrade-uses-incoming-query-test
   (testing "a query edit to a legacy metric persists dimensions derived from the new query, not the old one"

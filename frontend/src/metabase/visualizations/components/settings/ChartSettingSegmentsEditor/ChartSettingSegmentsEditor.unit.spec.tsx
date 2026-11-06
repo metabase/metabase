@@ -6,7 +6,13 @@ import {
   setupCardEndpoints,
   setupMeasureEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type * as Analytics from "metabase/analytics";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -403,13 +409,14 @@ describe("ChartSettingSegmentsEditor", () => {
 
     await userEvent.clear(min);
     await userEvent.type(min, "20");
-    fireEvent.blur(min);
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
-        expect.objectContaining(DEFAULT_VALUE[1]),
-      ]),
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ ...DEFAULT_VALUE[0], min: 20 }),
+          expect.objectContaining(DEFAULT_VALUE[1]),
+        ]),
+      ),
     );
   });
 
@@ -469,6 +476,38 @@ describe("ChartSettingSegmentsEditor", () => {
         max: 400,
         color: expect.anything(),
       }),
+    ]);
+  });
+
+  it("adds a range from 0 to 1 in the next color after a range with a dynamic max", async () => {
+    const palette = getColorPalette();
+    const dynamicMaxSegment = createMockSegment({
+      max: { type: "card", id: CARD_ID, column: "total" },
+      color: palette[0],
+    });
+    const { onChange } = setup({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+        rows: [[10]],
+        referenced_entities: {
+          card: {
+            [CARD_ID]: createMockReferencedEntityResult({
+              column: "total",
+              value: 250,
+            }),
+          },
+        },
+      }),
+      value: [dynamicMaxSegment],
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Add a range/ }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith([
+      dynamicMaxSegment,
+      { min: 0, max: 1, color: palette[1], label: "" },
     ]);
   });
 
