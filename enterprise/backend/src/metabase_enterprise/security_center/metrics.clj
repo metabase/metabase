@@ -9,13 +9,12 @@
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.util.log :as log])
   (:import
    (java.time.temporal Temporal ChronoField)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private severities [:critical :high :medium :low])
 
 (def ^:private vulnerable-statuses #{:active :error})
 
@@ -24,7 +23,7 @@
    :acknowledged (str ack?)})
 
 (def ^:private vulnerable-advisory-labels
-  (vec (for [severity severities
+  (vec (for [severity security-center.schema/severities
              ack?     [true false]]
          (label-of severity ack?))))
 
@@ -67,8 +66,6 @@
 
 ;;; Health checks
 
-(def ^:private health-check-statuses [:pass :fail :unknown])
-
 (defn- health-check-label
   [{:keys [id severity]} status]
   {:check_id (name id)
@@ -78,7 +75,7 @@
 (defmethod analytics.core/known-labels :metabase-security-center/health-checks
   [_]
   (vec (for [check  (health-checks/all-checks)
-             status health-check-statuses]
+             status security-center.schema/health-check-statuses]
          (health-check-label check status))))
 
 (defn set-health-check-gauges!
@@ -89,7 +86,7 @@
   (try
     (let [status-of-id (into {} (map (juxt :id :status)) checks)]
       (doseq [check  (health-checks/all-checks)
-              status health-check-statuses]
+              status security-center.schema/health-check-statuses]
         (analytics/set-gauge! :metabase-security-center/health-checks
                               (health-check-label check status)
                               (if (= status (status-of-id (:id check))) 1 0))))

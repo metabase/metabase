@@ -11,8 +11,12 @@
 (mr/def ::semver
   [:re #"^\d+(?:\.\d+)*$"])
 
+(def severities
+  "Every severity of an advisory or a health check, highest first."
+  [:critical :high :medium :low])
+
 (mr/def ::severity
-  [:enum :critical :high :medium :low])
+  (into [:enum] severities))
 
 (mr/def ::match-status
   [:enum :unknown :active :resolved :not_affected :error])
@@ -104,9 +108,12 @@
    :https-site-url :https-redirect :sso-login :scim-provisioning :mfa-required
    :read-only-connections :all-users-permissions])
 
+(def health-check-statuses
+  "Every status a health check can have. `:unknown` means the check could not tell."
+  [:pass :fail :unknown])
+
 (mr/def ::health-check-status
-  "`:unknown` means the check could not tell."
-  [:enum :pass :fail :unknown])
+  (into [:enum] health-check-statuses))
 
 (mr/def ::health-check-entity-type
   [:enum :database :collection :group])
