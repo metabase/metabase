@@ -222,7 +222,7 @@ This proxy is development-only and only applies to `/api` requests.
 
 ### Multiple Instances
 
-By default Rspack runs the development server on port `8088`. You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
+By default Rspack runs the development server on port `8080`. You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
 
 Frontend:
 
