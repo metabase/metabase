@@ -14,6 +14,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.protocol :as protocol]
+   [metabase.sql-parsing.settings :as sql-parsing.settings]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.field-references :as field-references]
    [metabase.sql-parsing.sqlglot-java.qualify :as qualify]
@@ -25,7 +26,8 @@
    [metabase.util.log :as log])
   (:import
    (com.metabase.sqlglot.reference Parser$DialectError)
-   (java.util.concurrent ExecutionException TimeoutException)))
+   (java.util.concurrent Callable ExecutionException Executors ExecutorService ThreadFactory TimeoutException)
+   (java.util.concurrent.atomic AtomicInteger)))
 
 (set! *warn-on-reflection* true)
 
@@ -74,17 +76,32 @@
       (let [error (str (error-type e) ": " (ex-message e))]
         (throw (common/call-failed-ex error (ex-info error {} e)))))))
 
-(def ^:private call-timeout-ms
-  "How long a call may take, as for the GraalPy parser: a degenerate query can keep the port busy for much longer."
-  30000)
+(def ^:private max-concurrent-calls
+  "How many calls may run at the same time, as for the GraalPy context pool. Other calls wait."
+  3)
+
+(defonce ^:private ^ExecutorService executor
+  (Executors/newFixedThreadPool
+   max-concurrent-calls
+   (let [n (AtomicInteger.)]
+     (reify ThreadFactory
+       (newThread [_ r]
+         (doto (Thread. r (str "sqlglot-java-" (.incrementAndGet n)))
+           (.setDaemon true)))))))
 
 (defn- call
-  "[[call-port]] on another thread, with [[call-timeout-ms]] to finish. A call that takes longer is cancelled, which
-  interrupts its thread (the port stops at the interrupt), and throws a TimeoutException, as the GraalPy parser does."
+  "[[call-port]] on the bounded executor, with the `sql-parsing-timeout-ms` setting to finish after it starts. A call
+  that takes longer is cancelled, which interrupts its thread (the port stops at the interrupt), and throws a
+  TimeoutException, as the GraalPy parser does."
   [f]
-  (let [fut (future (call-port f))]
+  (let [started    (promise)
+        timeout-ms (sql-parsing.settings/sql-parsing-timeout-ms)
+        fut        (.submit executor ^Callable (bound-fn* (fn []
+                                                           (deliver started true)
+                                                           (call-port f))))]
     (try
-      (let [result (deref fut call-timeout-ms ::timeout)]
+      @started
+      (let [result (deref fut timeout-ms ::timeout)]
         (if (= result ::timeout)
           (do
             (future-cancel fut)
@@ -92,7 +109,7 @@
             (try (analytics/inc! :metabase-sql-parsing/sqlglot-java-timeouts)
                  (catch Throwable e
                    (log/warn e "Failed to increment :metabase-sql-parsing/sqlglot-java-timeouts")))
-            (throw (TimeoutException. (str "SQL parsing timed out after " call-timeout-ms "ms"))))
+            (throw (TimeoutException. (str "SQL parsing timed out after " timeout-ms "ms"))))
           result))
       (catch ExecutionException e
         (throw (or (.getCause e) e)))

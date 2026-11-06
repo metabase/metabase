@@ -88,14 +88,23 @@
 (deftest slow-call-times-out-test
   (testing "a call that takes longer than the deadline throws a TimeoutException and interrupts the port's thread"
     (let [interrupted (promise)]
-      (with-redefs [sqlglot-java/call-timeout-ms 50]
-        (is (thrown? TimeoutException
-                     (#'sqlglot-java/call (fn []
-                                            (try
-                                              (Thread/sleep 10000)
-                                              (catch InterruptedException _
-                                                (deliver interrupted true))))))))
+      (mt/with-temp-env-var-value! [mb-sql-parsing-timeout-ms 50]
+        (is (thrown-with-msg? TimeoutException #"after 50ms"
+                              (#'sqlglot-java/call (fn []
+                                                     (try
+                                                       (Thread/sleep 10000)
+                                                       (catch InterruptedException _
+                                                         (deliver interrupted true))))))))
       (is (true? (deref interrupted 5000 false)))))
+  (testing "at most three calls run at the same time; the others wait"
+    (let [running (atom 0)
+          peak    (atom 0)
+          f       (fn []
+                    (swap! peak max (swap! running inc))
+                    (Thread/sleep 50)
+                    (swap! running dec))]
+      (run! deref (doall (repeatedly 8 #(future (#'sqlglot-java/call f)))))
+      (is (= 3 @peak))))
   (testing "a port error inside the deadline is reported as before"
     (is (thrown-with-msg? Exception #"ParseError"
                           (protocol/referenced-tables (sqlglot-java/parser) "postgres" "SELECT FROM WHERE (")))))
