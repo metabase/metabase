@@ -332,12 +332,12 @@ Metabase couldn't sample this field from the database, so there are no statistic
 {% endif %}
 {% endif %}
 {% if is_field_metadata %}
-{% if field_metadata_value_xml %}
+{% if any field_metadata_value_xml field_metadata_source field_metadata_reference %}
 <field-metadata field_id="{{field_metadata_field_id}}">
 {% if field_metadata_source %}    Source table: {{field_metadata_source}}
 {% endif %}{% if field_metadata_reference %}    Reference (copy into a field clause): {{field_metadata_reference|safe}}
-{% endif %}    {{field_metadata_value_xml|safe}}
-</field-metadata>
+{% endif %}{% if field_metadata_value_xml %}    {{field_metadata_value_xml|safe}}
+{% endif %}</field-metadata>
 {% else %}
 No metadata available to display. This doesn't mean the column is empty or cannot be queried - there may be various reasons why values aren't shown here.
 {% endif %}

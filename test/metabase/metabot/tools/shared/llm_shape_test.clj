@@ -851,7 +851,21 @@
   (testing "handles nil value_metadata"
     (let [metadata {:field_id "f1" :value_metadata nil}
           xml (llm-shape/field-metadata->xml metadata)]
-      (is (str/includes? xml "No metadata available to display")))))
+      (is (str/includes? xml "No metadata available to display"))))
+  (testing "a computed column without value metadata still shows its reference (a sandboxed user's drill-in)"
+    (let [xml (llm-shape/field-metadata->xml {:field_id       "Double price"
+                                              :reference_name "Double price"
+                                              :value_metadata nil})]
+      (is (str/includes? xml "<field-metadata field_id=\"Double price\">"))
+      (is (str/includes? xml "Reference (copy into a field clause): \"Double price\""))
+      (is (not (str/includes? xml "No metadata available to display")))))
+  (testing "a field that two FK routes reach, without value metadata, still shows its source table and no reference"
+    (let [xml (llm-shape/field-metadata->xml {:field_id       7
+                                              :source_table   ["DB" "PUBLIC" "CATEGORIES"]
+                                              :value_metadata nil})]
+      (is (str/includes? xml "Source table: PUBLIC.CATEGORIES\n"))
+      (is (not (str/includes? xml "Reference")))
+      (is (not (str/includes? xml "No metadata available to display"))))))
 
 (deftest ^:parallel get-metadata-result->xml-test
   (testing "formats metadata with metrics, tables, and models"
