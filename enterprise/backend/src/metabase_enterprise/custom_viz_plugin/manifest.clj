@@ -122,9 +122,10 @@
   (str/ends-with? (u/lower-case-en path) icon-extension))
 
 (defn icon-error
-  "Why `icon` can't name a plugin's icon, or nil. The icon is the one asset an instance serves, and it must be an SVG file."
+  "Why `icon` can't name a plugin's icon, or nil. The icon is the one asset an instance serves, and it must be an SVG file.
+   A blank icon means no icon, as it does in the CLI's `pack`."
   [icon]
-  (when (and (string? icon) (not (svg-file? icon)))
+  (when (and (string? icon) (not (str/blank? icon)) (not (svg-file? icon)))
     (format "Plugin icon \"%s\" must be an SVG file" icon)))
 
 (defn safe-relative-path?

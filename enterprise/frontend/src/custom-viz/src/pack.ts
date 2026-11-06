@@ -45,7 +45,9 @@ export async function packPlugin(dir: string = process.cwd()) {
     throw new Error('package.json is missing a "version" field.');
   }
 
-  const icon: string | undefined = manifest.icon || undefined;
+  const icon: string | undefined = manifest.icon?.trim()
+    ? manifest.icon
+    : undefined;
 
   if (icon && !icon.toLowerCase().endsWith(".svg")) {
     throw new Error(
