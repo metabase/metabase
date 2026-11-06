@@ -19,7 +19,7 @@ import {
 } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
-import { getDataAppSourceLocation, isDataAppOpenable } from "../../../utils";
+import { getDataAppSourceLocation, isDataAppOpenable } from "../../../../utils";
 
 type DataAppAboutSidebarProps = {
   app: DataApp;
