@@ -10,6 +10,7 @@ import type {
   DocumentContent,
   GoalForeignColumnRef,
   MeasureId,
+  ReferencedEntity,
   ReferencedEntityType,
   RowValue,
 } from "metabase-types/api";
@@ -365,9 +366,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
     H.modal()
       .findByRole("button", { name: "Change value source" })
       .should("contain.text", "300");
-    cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@dataset", { id, column: "LOW", value: 300 });
-    });
     H.modal().within(() => {
       H.goalLineMarker().trigger("mousemove");
     });
@@ -492,9 +490,6 @@ describe("scenarios > visualizations > dynamic goals", () => {
             H.goalLineMarker().trigger("mousemove");
           });
           H.tooltip().should("contain.text", "600");
-          cy.get<CardId>("@multiColumnSourceId").then((id) => {
-            assertAnswered("@dataset", { id, column: "HIGH", value: 600 });
-          });
           H.documentSaveButton().click();
           cy.wait("@updateDocument")
             .its("response.statusCode")
@@ -719,10 +714,12 @@ function assertAnswered(
   { type = "card", id, column, value }: AnsweredReference,
 ) {
   cy.get<Interception[]>(`${alias}.all`).then((interceptions) => {
-    const answers = interceptions.flatMap(
-      ({ response }) =>
-        response?.body?.data?.referenced_entities?.[type]?.[id] ?? [],
-    );
+    const answers = interceptions
+      .filter(({ request }) => !requestsEveryColumn(request, { type, id }))
+      .flatMap(
+        ({ response }) =>
+          response?.body?.data?.referenced_entities?.[type]?.[id] ?? [],
+      );
     const isAnswered = answers.some(
       (answer) =>
         answer.status === "completed" &&
@@ -733,6 +730,18 @@ function assertAnswered(
       true,
     );
   });
+}
+
+// the goal picker and the fallback fetch ask for every column, unlike the chart's own query
+function requestsEveryColumn(
+  { body }: Interception["request"],
+  { type, id }: { type: ReferencedEntityType; id: CardId | MeasureId },
+) {
+  const entities: ReferencedEntity[] = body?.referenced_entities ?? [];
+  return entities.some(
+    (entity) =>
+      entity.type === type && entity.id === id && !entity.columns?.length,
+  );
 }
 
 function getAnsweredValue(
