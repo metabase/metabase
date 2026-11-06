@@ -846,8 +846,11 @@
                     :else              :question)
          :middleware   {:process-viz-settings? false})))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
-  :- ::qp.streaming/query-result-response
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
