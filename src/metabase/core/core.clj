@@ -104,6 +104,13 @@
   (setup/create-token!)   ; we need this here to create the initial token
   (print-setup-url))
 
+;; Named here because no one module can see both sides: the web server's requests run queries on warehouse pools and
+;; record traces.
+(def ^:private system-dependencies
+  "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
+  {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
+                                      :metabase.tracing.core/otel-sdk}})
+
 (defn- shutdown-steps
   "The steps [[destroy!]] runs, in order, as `[label thunk]` pairs."
   []
@@ -117,9 +124,9 @@
    ["shut down notifications"     #(notification/shutdown!)]
    ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
    ["release migration locks"     #(mdb/release-migration-locks! 20)]
-   ;; whatever else the global system started, such as warehouse connection pools, last started first; after the
-   ;; migration locks are released, since a component this halts could be one that release needs
-   ["halt the global system"      #(global-system/halt!)]
+   ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;
+   ;; after the migration locks are released, since a component this halts could be one that release needs
+   ["halt the global system"      #(global-system/halt! system-dependencies)]
    ["stop performance monitoring" #(perf/stop-monitoring!)]
    ["shut down agents"            shutdown-agents]])
 
