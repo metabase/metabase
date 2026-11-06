@@ -2867,7 +2867,7 @@
                                                "RESET ROLE;")
                                           qgrantor qschema qiso)])
                   (testing "destroy completes without error"
-                    (is (some? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
+                    (is (nil? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
                   (testing "the iso-user has been dropped"
                     (is (empty? (jdbc/query admin-spec
                                             ["SELECT 1 FROM pg_roles WHERE rolname = ?" iso-user]))))
