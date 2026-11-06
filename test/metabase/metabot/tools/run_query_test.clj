@@ -100,15 +100,18 @@
 
 (def ^:private notebook-query-step
   "Recover from a refusal by building a notebook query."
-  "To get values, build the question with `construct_notebook_query`, then run that query with `run_query`.")
+  (str "To get values, build the question with `construct_notebook_query` (pass `show_chart: false`), then run that"
+       " query with `run_query`."))
 
 (def ^:private sql-card-step
   "Build a notebook query from tables after a saved SQL question is refused."
-  "To get values, build the question from tables with `construct_notebook_query` instead.")
+  (str "To get values, build the question from tables with `construct_notebook_query` (pass `show_chart: false`)"
+       " instead."))
 
 (def ^:private sql-query-step
   "Recover from a refusal by writing SQL in the SQL-only profile."
-  "To get values, write the question as SQL with `create_sql_query`, then run that query with `run_query`.")
+  (str "To get values, write the question as SQL with `create_sql_query` (pass `show_chart: false`), then run that"
+       " query with `run_query`."))
 
 (def ^:private no-values-step
   "Tell the user that results are unavailable when no offered tool can fetch them."
@@ -116,14 +119,25 @@
 
 (def ^:private rewrite-step
   "Rewrite refused SQL as a single read-only SELECT in a profile that can write SQL."
-  "Use `create_sql_query` to rewrite it as one SELECT that changes and locks nothing, then run that query.")
+  (str "Use `create_sql_query` (pass `show_chart: false`) to rewrite it as one SELECT that changes and locks nothing,"
+       " then run that query."))
 
 (def ^:private write-select-step
   "Replace a saved question's SQL when Metabot wrote it and it is not a read-only SELECT."
-  "Write a read-only SELECT with `create_sql_query` and run that instead.")
+  "Write a read-only SELECT with `create_sql_query` (pass `show_chart: false`) and run that instead.")
 
 (def ^:private sql-refused
   (refusal ::run-query/sql-not-allowed "This query is SQL, and SQL can't run here." notebook-query-step))
+
+(deftest create-sql-query-to-read-test
+  (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+            scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+    (testing "where SQL can run, create_sql_query takes show_chart, so the step names it"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (is (= "`create_sql_query` (pass `show_chart: false`)" (run-query/create-sql-query-to-read)))))
+    (testing "where SQL can't run, the argument isn't declared, so the step leaves it out"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+        (is (= "`create_sql_query`" (run-query/create-sql-query-to-read)))))))
 
 (defn- venues-by-id
   []
@@ -994,9 +1008,10 @@
       (testing "a viewed metric is refused with how to query it, whatever type the client gives the item"
         (doseq [item-type ["metric" "question"]]
           (is (= (metric-refusal metric-card
-                                 (str "To get its values, use `construct_notebook_query` to build a notebook query "
-                                      "with the metric's base table as its source. Put the metric in `aggregation`, "
-                                      "then run the query with `run_query`."))
+                                 (str "To get its values, use `construct_notebook_query` (pass "
+                                      "`show_chart: false`) to build a notebook query with the metric's base table "
+                                      "as its source. Put the metric in `aggregation`, then run the query with "
+                                      "`run_query`."))
                  (run-viewing! [{:type item-type, :id metric-card}] (str metric-card))))))
       (testing "a metric over a table the user can't query offers no way to its values"
         (mt/with-no-data-perms-for-all-users!
@@ -1023,10 +1038,10 @@
                                                                :type          :metric}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) open)
             (is (= (metric-refusal on-open
-                                   (str "To get its values, use `construct_notebook_query` to build a notebook query "
-                                        "with the model that the metric is built on as its `source-card` (portable "
-                                        "entity ID " entity-id "). Put the metric in `aggregation`, then run the "
-                                        "query with `run_query`."))
+                                   (str "To get its values, use `construct_notebook_query` (pass "
+                                        "`show_chart: false`) to build a notebook query with the model that the "
+                                        "metric is built on as its `source-card` (portable entity ID " entity-id
+                                        "). Put the metric in `aggregation`, then run the query with `run_query`."))
                    (run-viewing! [{:type "metric", :id on-open}] (str on-open))))
             (testing "and offers no way to its values when they can't"
               (is (= (metric-refusal on-hidden no-values-step)
@@ -1040,9 +1055,10 @@
                                                                       (lib/aggregate (lib/count)))
                                                    :type          :metric}]
             (is (= (metric-refusal metric
-                                   (str "To get its values, use `construct_notebook_query` to build a notebook query "
-                                        "with the metric's base table as its source. Put the metric in `aggregation`, "
-                                        "then run the query with `run_query`."))
+                                   (str "To get its values, use `construct_notebook_query` (pass "
+                                        "`show_chart: false`) to build a notebook query with the metric's base table "
+                                        "as its source. Put the metric in `aggregation`, then run the query with "
+                                        "`run_query`."))
                    (run-viewing! [{:type "metric", :id metric}] (str metric)))))))
       (testing "a viewed metric the user can't read is refused like an id that names nothing"
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -1087,8 +1103,8 @@
       (is (= (refusal ::recoverable.common/unknown-query-id
                       (str "Query \"nope\" was not found. Available query IDs: \"q1\". The ID of a saved question or "
                            "model is not a query ID.")
-                      (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
-                           "`run_query`."))
+                      (str "To run one, write SQL that reads it with `create_sql_query` (pass `show_chart: false`), "
+                           "then run that query with `run_query`."))
              (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
     (testing "a query that is not SQL"
       (is (= (refusal ::run-query/not-sql "You may only run SQL queries, and query q1 is not one." sql-query-step)
@@ -1133,8 +1149,8 @@
 (deftest run-query-many-query-ids-test
   (let [built-or-saved (str "Use the ID of a query that you built, or a saved question or model that the user can "
                             "read.")
-        write-sql      (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
-                            "`run_query`.")]
+        write-sql      (str "To run one, write SQL that reads it with `create_sql_query` (pass `show_chart: false`), "
+                            "then run that query with `run_query`.")]
     (testing "a long list of known IDs is cut to complete IDs, so the advice after it survives the runtime's cut"
       (doseq [[id-kind ids]        {"NanoIDs" (repeatedly 200 u/generate-nano-id)
                                     "UUIDs"   (repeatedly 100 #(str (random-uuid)))}
@@ -1158,8 +1174,8 @@
       (is (= (refusal ::recoverable.common/unknown-query-id
                       (str "Query \"" (subs query-id 0 100) "\" was not found. Available query IDs: \"q1\". The ID of "
                            "a saved question or model is not a query ID.")
-                      (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
-                           "`run_query`."))
+                      (str "To run one, write SQL that reads it with `create_sql_query` (pass `show_chart: false`), "
+                           "then run that query with `run_query`."))
              (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id query-id}))))))
 
 (deftest run-query-description-test
