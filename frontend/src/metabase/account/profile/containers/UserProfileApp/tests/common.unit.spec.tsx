@@ -27,6 +27,7 @@ describe("UserProfileApp (OSS)", () => {
       setup({
         user: createMockUser({
           sso_source: ssoSource,
+          has_used_password: false,
           slack_account_status: null,
         }),
       });
@@ -39,6 +40,23 @@ describe("UserProfileApp (OSS)", () => {
       expect(screen.queryByLabelText("First name")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Last name")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+    },
+  );
+
+  it.each(["google", "jwt", "saml", "ldap"] as const)(
+    "should show only language field for %s user who has used password",
+    (ssoSource) => {
+      setup({
+        user: createMockUser({
+          sso_source: ssoSource,
+          has_used_password: true,
+        }),
+      });
+
+      expect(screen.queryByText(/first name/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/last name/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/email/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/language/i)).toBeInTheDocument();
     },
   );
 });

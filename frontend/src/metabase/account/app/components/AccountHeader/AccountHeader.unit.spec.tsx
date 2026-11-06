@@ -146,7 +146,11 @@ describe("AccountHeader", () => {
       "should prevent %s users from editing SSO credentials (metabase#23298)",
       (ssoSource) => {
         setup({
-          user: getUser({ sso_source: ssoSource, slack_account_status: null }),
+          user: getUser({
+            sso_source: ssoSource,
+            has_used_password: false,
+            slack_account_status: null,
+          }),
           isMfaEnabled: false,
         });
 

@@ -2,6 +2,7 @@
   "SQL tool wrappers."
   (:require
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -161,13 +162,15 @@
                          [:replace_all {:optional true} [:maybe :boolean]]]]]
    [:title :string]])
 
-(defn- sql-edit-result
+(defn- sql-edit-result!
   [operation-result title instruction-fn ctx & {:keys [edit?]}]
-  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action!
-                                                            operation-result {:edit? edit?})
+  (let [{:keys [query-id query query-content] :as action-result} (sql.common/validated-sql-action!
+                                                                  operation-result {:edit? edit?})
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         instr (instruction-fn query-id (some? buffer-id))]
+    ;; The calls after this one in the same model response read this query before the agent loop stores the results
+    (some-> (:memory-atom ctx) (swap! memory/set-query query-id query))
     {:output (format-query-output structured instr)
      :structured-output structured
      :data-parts [(if buffer-id
@@ -182,15 +185,16 @@
                        "human-friendly `title` shown above the results.")
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
+     :metabot/runs-alone? true
      :args edit-sql-schema})
   (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
-    (sql-edit-result (do-with-notebook-fallback
-                      ctx #(edit-sql-query-tools/edit-sql-query
-                            {:query-id query-id
-                             :edits edits
-                             :checklist checklist
-                             :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/edit-sql-query-instructions-for ctx {:edit? true})))
+    (sql-edit-result! (do-with-notebook-fallback
+                       ctx #(edit-sql-query-tools/edit-sql-query
+                             {:query-id query-id
+                              :edits edits
+                              :checklist checklist
+                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
+                      title instructions/edit-sql-query-instructions-for ctx {:edit? true})))
 
 (def edit-sql-query-tool
   "The tool that applies structured edits to a stored SQL query."
@@ -215,15 +219,16 @@
                        "human-friendly `title` shown above the results.")
      :scope scope/agent-sql-edit
      :metabot/capabilities #{:permission-write-sql-queries}
+     :metabot/runs-alone? true
      :args replace-sql-schema})
   (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]
-    (sql-edit-result (do-with-notebook-fallback
-                      ctx #(replace-sql-query-tools/replace-sql-query
-                            {:query-id query-id
-                             :sql new-query
-                             :checklist checklist
-                             :queries-state (shared/current-queries-state (:memory-atom ctx))}))
-                     title instructions/replace-sql-query-instructions-for ctx)))
+    (sql-edit-result! (do-with-notebook-fallback
+                       ctx #(replace-sql-query-tools/replace-sql-query
+                             {:query-id query-id
+                              :sql new-query
+                              :checklist checklist
+                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
+                      title instructions/replace-sql-query-instructions-for ctx)))
 
 (def replace-sql-query-tool
   "The tool that replaces the SQL in a stored query."
