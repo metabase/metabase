@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
    [metabase.transforms.schema :as transforms.schema]
@@ -100,14 +100,15 @@
                                 tag-id->transform-ids)]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
 
-(defmethod serdes/make-spec "TransformTag"
-  [_model-name _opts]
+(defmethod serialization/spec :model/TransformTag [_]
   {:schema    ::transforms.schema/external-transform-tag
-   :copy [:entity_id :built_in_type]
-   :transform {:name {:export str :import identity}}})
+   :copy      [:entity_id :built_in_type]
+   :transform {:name {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}}})
 
-(defmethod serdes/storage-path "TransformTag" [tt _ctx]
-  [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
+(defmethod serialization/storage-paths :model/TransformTag [_ entities _ctx]
+  (mapv (fn [tt]
+          [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
+        entities))
 
 ;; Event hooks for remote-sync tracking
 (t2/define-after-insert :model/TransformTag [tag]

@@ -28,7 +28,6 @@
   create-library-collection!
   ensure-library-dashboards-collection!
   descendant-ids
-  ineligible-dependencies
   instance-analytics-collection-type
   library-collection
   library-collection-type
@@ -41,10 +40,8 @@
   location-path->ids
   moving-from-remote-synced?
   moving-into-remote-synced?
-  non-remote-synced-dependencies
   remote-synced-collection
   remote-synced-collection?
-  remote-synced-dependents
   root-collection-type-by-id
   shared-tenant-collection?
   slugify
