@@ -44,6 +44,10 @@ export function SegmentGroupModal({
   onClose,
 }: SegmentGroupModalProps) {
   const [name, setName] = useState(group?.name ?? "");
+  // Required: an empty name turns red once someone has been in it and left
+  const [isNameFocused, setIsNameFocused] = useState(false);
+  const [isNameTouched, setIsNameTouched] = useState(false);
+  const isNameMissing = isNameTouched && !isNameFocused && name.trim() === "";
   const [kind, setKind] = useState<SegmentGroupKind>(
     group?.kind ?? "partition",
   );
@@ -89,7 +93,14 @@ export function SegmentGroupModal({
           label={t`Name`}
           placeholder={t`Deal outcome`}
           value={name}
+          required
+          error={isNameMissing}
           onChange={(event) => setName(event.target.value)}
+          onFocus={() => setIsNameFocused(true)}
+          onBlur={() => {
+            setIsNameFocused(false);
+            setIsNameTouched(true);
+          }}
           data-autofocus
         />
 

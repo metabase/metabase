@@ -49,14 +49,7 @@ export function GroupMemberList<T>({
             draggingStyle={{ opacity: 0.5 }}
           >
             {({ dragHandleRef, dragHandleListeners }) => (
-              <Card
-                withBorder
-                shadow="none"
-                radius="md"
-                px="sm"
-                py="xs"
-                mb="xs"
-              >
+              <Card shadow="none" radius="md" px="sm" py="xs" mb="xs">
                 <Group gap="sm" wrap="nowrap">
                   <Box
                     component="span"
