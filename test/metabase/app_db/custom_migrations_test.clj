@@ -26,6 +26,7 @@
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -1801,7 +1802,7 @@
 ;;; 50 tests
 ;;;
 
-(deftest ^:mb/old-migrations-test delete-send-pulse-job-on-migrate-down-test
+(deftest ^:mb/old-migrations-test ^:synchronized delete-send-pulse-job-on-migrate-down-test
   (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
     (migrate!)
     (pulse-channel-test/with-send-pulse-setup!
@@ -1824,8 +1825,8 @@
             (is (= #{} (scheduler-job-keys))))
           (testing "the init-send-pulse-triggers job should be re-run after migrate up"
             (migrate!)
-            ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
-            (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
+            ;; quartz triggers run on other threads, so install this test's app DB as the root for them to see
+            (mdb.test-util/with-application-db-as-root (mdb.connection/current-application-db)
               ;; simulate starting MB after migrate up, which will trigger this function
               (task/init! ::task.send-pulses/SendPulses)
               ;; wait a bit for the InitSendPulseTriggers to run

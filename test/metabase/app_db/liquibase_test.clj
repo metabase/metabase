@@ -48,7 +48,7 @@
                              mdb.test-util/->ClojureJDBCSpecDataSource)]
         ;; the version-tracking tail of the printed SQL uses the application-db dialect, so the application db must
         ;; BE this MySQL database (as it is on every real path that prints migration SQL)
-        (binding [mdb.connection/*application-db* (mdb.connection/application-db :mysql data-source)]
+        (mdb/with-application-db (mdb.connection/application-db :mysql data-source)
           (liquibase/with-liquibase [liquibase data-source]
             (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
               (doseq [line  (split-migrations-sqls (liquibase/migrations-sql liquibase))

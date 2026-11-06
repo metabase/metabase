@@ -1119,7 +1119,7 @@
                  (let [db-def      {:database-name "field-test-db"}
                        data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
                    (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
-                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
+                   (mdb/with-application-db (mdb.connection/application-db original-app-db-type data-source)
                      (load-from-h2/load-from-h2! h2-filename)
                      (testing "The defective field should still exist after loading from H2"
                        (is (= #{defective-field-id}
@@ -2920,7 +2920,9 @@
                   "v60.2026-04-02T00:00:23"]] ; ALTER TABLE segment DROP COLUMN
         (testing (str id " is recorded as MARK_RAN")
           (is (= "MARK_RAN"
-                 (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* id)))))))))
+                 (:exectype (liquibase/changelog-by-id
+                             (mdb.connection/current-application-db)
+                             id)))))))))
 
 ;;;
 ;;; 62 tests

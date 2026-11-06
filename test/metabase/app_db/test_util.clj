@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.driver.test-util :as driver.tu]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.random :as u.random]
    [metabase.util.yaml :as u.yaml]
@@ -15,6 +16,30 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private app-db-root-lock (Object.))
+
+;; Calls are serialized because two overlapping save/restore pairs would leave the second caller's DB installed as the
+;; "original" root once both finish.
+(defn do-with-application-db-as-root
+  "Install `app-db` as the root application DB for the extent of `thunk`, then restore the root it replaced.
+  Unlike a binding, the root is seen by threads that do not inherit this thread's bindings, such as Quartz workers
+  and the threads serving `mt/client`, so tests that call this must be `^:synchronized`.
+  Calls are serialized, but only against each other: other code that reads or writes the root takes no lock."
+  [app-db thunk]
+  (locking app-db-root-lock
+    (let [handle (mdb/application-db-handle)
+          before (mc/alter-root handle app-db)]
+      (try
+        (thunk)
+        (finally
+          (mc/alter-root handle before))))))
+
+(defmacro with-application-db-as-root
+  "Run `body` with `app-db` installed as the root application DB. See [[do-with-application-db-as-root]]."
+  {:style/indent [:defn]}
+  [app-db & body]
+  `(do-with-application-db-as-root ~app-db (^:once fn* [] ~@body)))
 
 (p/deftype+ ClojureJDBCSpecDataSource [jdbc-spec]
   pretty/PrettyPrintable
