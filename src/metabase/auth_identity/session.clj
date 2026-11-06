@@ -47,7 +47,7 @@
                                                            :saml_name_id_format (:saml-name-id-format opts))
                      (when provider-str
                        (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
-                       (t2/update! :model/AuthIdentity auth-identity-id {:last_used_at :%now}))
+                       (t2/update! :model/AuthIdentity :id auth-identity-id {:last_used_at :%now}))
                      (when device-info
                        (login-history/record-login-history! session-id user device-info))))]
      (assoc session

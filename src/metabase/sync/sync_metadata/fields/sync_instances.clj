@@ -157,7 +157,7 @@
   [table          :- i/TableInstance
    metabase-field :- common/TableMetadataFieldWithID]
   (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
-  (when (pos? (t2/update! :model/Field (u/the-id metabase-field) {:active false}))
+  (when (pos? (t2/update! :model/Field :id (u/the-id metabase-field) {:active false}))
     1))
 
 (mu/defn- retire-fields! :- ms/IntGreaterThanOrEqualToZero

@@ -147,7 +147,7 @@
              reactivated? (and (#{:active :error} match-status)
                                currently-unaffected
                                (some? (:acknowledged_at advisory)))]
-         (t2/update! :model/SecurityAdvisory (:id advisory)
+         (t2/update! :model/SecurityAdvisory :id (:id advisory)
                      (cond-> {:match_status      match-status
                               :last_evaluated_at (mi/now)}
                        reactivated? (assoc :acknowledged_at nil
@@ -165,6 +165,6 @@
                (evaluate-advisory! advisory instance-version)
                (catch Exception e
                  (log/warnf e "Error evaluating advisory %s" (:advisory_id advisory))
-                 (t2/update! :model/SecurityAdvisory (:id advisory)
+                 (t2/update! :model/SecurityAdvisory :id (:id advisory)
                              {:match_status      :error
                               :last_evaluated_at (mi/now)}))))))))

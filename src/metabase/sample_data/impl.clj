@@ -81,7 +81,7 @@
     (log/info "Loading sample database")
     (let [details (try-to-extract-sample-database!)
           db (if (t2/exists? :model/Database :is_sample true)
-               (t2/select-one :model/Database (first (t2/update-returning-pks! :model/Database :is_sample true {:details details})))
+               (t2/select-one :model/Database :id (first (t2/update-returning-pks! :model/Database :is_sample true {:details details})))
                (first (t2/insert-returning-instances! :model/Database
                                                       :name      sample-database-name
                                                       :details   details
@@ -109,7 +109,7 @@
       (t2/query {:update (t2/table-name :model/Database)
                  :set    {:engine "h2"}
                  :where  [:= :id (:id old-sample-db)]})
-      (t2/update! :model/Database (:id old-sample-db) {:details details})
+      (t2/update! :model/Database :id (:id old-sample-db) {:details details})
       (t2/update! :model/Table :db_id (:id old-sample-db) {:schema "PUBLIC"}))
     (sync/sync-database! (t2/select-one :model/Database :id (:id old-sample-db)))))
 
@@ -127,4 +127,4 @@
        (migrate-sample-database-engine-in-place! sample-db)
        (let [intended (try-to-extract-sample-database!)]
          (when (not= (:details sample-db) intended)
-           (t2/update! :model/Database (:id sample-db) {:details intended})))))))
+           (t2/update! :model/Database :id (:id sample-db) {:details intended})))))))

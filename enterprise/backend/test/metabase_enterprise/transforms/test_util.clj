@@ -168,7 +168,7 @@
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."
   []
-  (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
+  (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products)))
 
 (defmulti delete-schema!
   "Deletes a schema."

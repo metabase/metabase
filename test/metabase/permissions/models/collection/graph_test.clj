@@ -594,5 +594,5 @@
               new-graph (assoc before :groups {(u/the-id (perms-group/all-users)) {collection-id :read}})]
           @(graph/update-graph! new-graph)
           (is (malli= [:map [:id :int] [:user_id :int] [:before :some] [:after :some]]
-                      (t2/select-one :model/CollectionPermissionGraphRevision (inc (:revision before))))
+                      (t2/select-one :model/CollectionPermissionGraphRevision :id (inc (:revision before))))
               "Values for before and after should be present in the revision."))))))

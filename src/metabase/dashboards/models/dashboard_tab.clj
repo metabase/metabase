@@ -93,7 +93,7 @@
 
                          new-tabs)]
     (doseq [tab to-update-tabs]
-      (t2/update! :model/DashboardTab (:id tab) (select-keys tab update-ks)))
+      (t2/update! :model/DashboardTab :id (:id tab) (select-keys tab update-ks)))
     nil))
 
 (mu/defn delete-tabs! :- nil?

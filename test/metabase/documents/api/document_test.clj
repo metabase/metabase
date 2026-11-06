@@ -1713,17 +1713,18 @@
 
         ;; Simulate a failure during card archiving
       (testing "failure during card archiving rolls back document archiving"
-        (with-redefs [t2/update! (fn [model id updates]
-                                   (if (and (= model :model/Card) (:archived updates))
-                                     (throw (ex-info "Simulated card archive failure" {}))
-                                     (t2/update! model id updates)))]
-          (mt/user-http-request :crowberto
-                                :put 500 (format "document/%s" doc-id)
-                                {:archived true})
+        (let [orig-update! t2/update!]
+          (with-redefs [t2/update! (fn [model & args]
+                                     (if (and (= model :model/Card) (:archived (last args)))
+                                       (throw (ex-info "Simulated card archive failure" {}))
+                                       (apply orig-update! model args)))]
+            (mt/user-http-request :crowberto
+                                  :put 500 (format "document/%s" doc-id)
+                                  {:archived true})
 
             ;; Verify document wasn't archived due to rollback
-          (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
-          (is (false? (:archived (t2/select-one :model/Card :id card-id)))))))))
+            (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
+            (is (false? (:archived (t2/select-one :model/Card :id card-id))))))))))
 
 (deftest document-archive-mixed-scenarios-test
   (testing "Mixed archiving scenarios - documents with different archival states"
@@ -2212,7 +2213,7 @@
             (is (= 200
                    (:status (mt/client-full-response :get (str "public/document/" uuid))))))
           (testing "Document is not accessible after archiving"
-            (t2/update! :model/Document (:id document) {:archived true})
+            (t2/update! :model/Document :id (:id document) {:archived true})
             (is (= "Not found."
                    (mt/client :get 404 (str "public/document/" uuid))))))))))
 
@@ -2244,7 +2245,7 @@
                                                    :document {:type "doc"
                                                               :content [{:type "cardEmbed"
                                                                          :attrs {:id card-id}}]}}]
-        (t2/update! :model/Card card-id {:document_id doc-id})
+        (t2/update! :model/Card :id card-id {:document_id doc-id})
 
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
           (testing "Read-only users can download"
@@ -2281,7 +2282,7 @@
                                      :pivot_results false})))
 
           (testing "Archived document returns 404"
-            (t2/update! :model/Document doc-id {:archived true})
+            (t2/update! :model/Document :id doc-id {:archived true})
             (mt/user-http-request :rasta
                                   :post 404
                                   (format "document/%s/card/%s/query/csv" doc-id card-id)
@@ -2301,7 +2302,7 @@
                                                    :collection_id coll-id
                                                    :document (documents.test-util/text->prose-mirror-ast "no cards here")}]
         ;; Force a pre-fix orphan: the FK points at the document, but the card is absent from the document's content.
-        (t2/update! :model/Card card-id {:document_id doc-id})
+        (t2/update! :model/Card :id card-id {:document_id doc-id})
         (mt/with-group-for-user [group :rasta {:name "Rasta Group"}]
           (perms/grant-collection-read-permissions! group coll-id)
           (testing "a user who can read the document still cannot pull the orphaned card"
@@ -2324,7 +2325,7 @@
                                                       :document {:type "doc"
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id card-id}}]}}]
-           (t2/update! :model/Card card-id {:document_id doc-id})
+           (t2/update! :model/Card :id card-id {:document_id doc-id})
 
            (let [all-users-group (perms/all-users-group)]
               ;; Grant collection read permissions so user can access the document

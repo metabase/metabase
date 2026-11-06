@@ -1167,7 +1167,7 @@
         (migrate!)
         (testing "After the migration, fields are deactivated correctly"
           (doseq [[active? field] active+field]
-            (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
+            (is (= active? (t2/select-one-fn :active :metabase_field :id (:id field))))))))))
 
 (deftest ^:mb/old-migrations-test populate-new-permission-fields-works
   (testing "Migration v49.2024-08-21T08:33:10"
@@ -2555,9 +2555,9 @@
                                                     :model_id  dash-id
                                                     :timestamp :%now}))]
         (migrate!)
-        (is (= 1 (t2/select-one-fn :view_count :metabase_table table-id)))
-        (is (= 1 (t2/select-one-fn :view_count :report_card card-id)))
-        (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
+        (is (= 1 (t2/select-one-fn :view_count :metabase_table :id table-id)))
+        (is (= 1 (t2/select-one-fn :view_count :report_card :id card-id)))
+        (is (= 2 (t2/select-one-fn :view_count :report_dashboard :id dash-id)))))))
 
 (deftest ^:mb/old-migrations-test trash-migrations-test
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
@@ -2782,7 +2782,7 @@
   (testing "Site locale is migrated from zh to zh_CN"
     (impl/test-migrations "v54.2025-03-17T18:52:59" [migrate!]
       (let [user-id (:id (create-raw-user! (mt/random-email)))]
-        (t2/update! (t2/table-name :model/User) user-id {:locale "zh"})
+        (t2/update! (t2/table-name :model/User) :id user-id {:locale "zh"})
         (migrate!)
         (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))
 

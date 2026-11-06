@@ -172,7 +172,7 @@
     ;; `rnq_a_b`, so the rename lands on a different table instead of failing
     (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
       (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
-        (let [schema (t2/select-one-fn :schema :model/Table (mt/id :venues))
+        (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
               src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
           (try
             (driver/create-table! driver/*driver* (mt/id) (keyword schema src)

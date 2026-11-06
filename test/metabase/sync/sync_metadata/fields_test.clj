@@ -124,8 +124,8 @@
                                    :table_id [:in tables]))
             field-to-drop   (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
             field-to-update (get-field-to-update)]
-        (t2/update! :model/Field (u/the-id field-to-update) {:semantic_type      :type/FK
-                                                             :fk_target_field_id (u/the-id field-to-drop)})
+        (t2/update! :model/Field :id (u/the-id field-to-update) {:semantic_type      :type/FK
+                                                                 :fk_target_field_id (u/the-id field-to-drop)})
         ;; get the field before sync
         (let [field-before-sync (get-field-to-update)]
           ;; ok cool! now delete one of those columns...
@@ -212,7 +212,7 @@
                   :semantic_type  :type/PK}
                  (get-pk-details))))
         (testing "Clear out the semantic type"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type nil})
           (is (= {:database_is_pk true
                   :semantic_type  nil}
                  (get-pk-details))))
@@ -222,12 +222,12 @@
                   :semantic_type  :type/PK}
                  (get-pk-details))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type :type/Latitude})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type :type/Latitude})
           (is (= {:database_is_pk true
                   :semantic_type  :type/Latitude}
                  (get-pk-details))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
-          (t2/update! :model/Field (mt/id :venues :id) {:semantic_type nil})
+          (t2/update! :model/Field :id (mt/id :venues :id) {:semantic_type nil})
           (sync/sync-table! (t2/select-one :model/Table :id (mt/id :venues)))
           (is (= {:database_is_pk true
                   :semantic_type  :type/PK}
@@ -261,7 +261,7 @@
           []]]
         (let [db (mt/db)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
-              get-fk #(t2/select-one :model/Field (mt/id :country :continent_id))]
+              get-fk #(t2/select-one :model/Field :id (mt/id :country :continent_id))]
           ;; 1. add FK relationship in the database targeting continent_1
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
           (sync/sync-database! db {:scan :schema})
@@ -303,7 +303,7 @@
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
-        (t2/update! :model/Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
+        (t2/update! :model/Field :id (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
           (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
                   :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
@@ -461,7 +461,7 @@
                   (mapv :visibility_type)
                   frequencies)))
       ;; remove cruft column directive:
-      (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns []}})
+      (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns []}})
       (sync-metadata/sync-db-metadata! db)
       (is (= {:details-only 12}
              (->> (db->fields db)
@@ -478,8 +478,8 @@
                  :preview_display true}
                 details-field)
             "before auto-cruft: field has default visibility and preview_display")
-        (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
-        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database (u/the-id db)))
+        (t2/update! :model/Database :id (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
+        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :id (u/the-id db)))
         (is (=? {:visibility_type :details-only
                  :preview_display false}
                 (t2/select-one :model/Field :id (:id details-field)))
@@ -553,7 +553,7 @@
           (is (nil? (:fk_target_field_id flocks-example-bird-name-field)))
           (is (not= :type/FK (:semantic_type flocks-example-bird-name-field))))
 
-        (t2/update! :model/Field (u/the-id flocks-example-bird-name-field)
+        (t2/update! :model/Field :id (u/the-id flocks-example-bird-name-field)
                     {:semantic_type :type/FK
                      :fk_target_field_id (u/the-id birds-example-name-field)})
 

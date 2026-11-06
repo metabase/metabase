@@ -60,8 +60,8 @@
                                              :active true)]
          (if field-name
            (t2/update! :model/Field {:name field-name, :table_id table-id} {k value})
-           (t2/update! :model/Table table-id {k value})))
-       (t2/update! :model/Database (u/the-id database) {k value})))))
+           (t2/update! :model/Table :id table-id {k value})))
+       (t2/update! :model/Database :id (u/the-id database) {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insensitive) which includes descriptions or other

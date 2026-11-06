@@ -129,10 +129,10 @@
                                (unpersist! [_ _database _persisted-info]))
               original-update! t2/update!]
           (testing "If saving the `persisted` (or `error`) state fails..."
-            (with-redefs [t2/update! (fn [model id update]
-                                       (when (= "persisted" (:state update))
+            (with-redefs [t2/update! (fn [model & args]
+                                       (when (= "persisted" (:state (last args)))
                                          (throw (ex-info "simulated error" {})))
-                                       (original-update! model id update))]
+                                       (apply original-update! model args))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"simulated error"
                                     (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher))))
             (testing "the PersistedInfo is left in the `refreshing` state"

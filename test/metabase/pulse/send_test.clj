@@ -142,7 +142,7 @@
                             (pulse.test-util/with-captured-channel-send-messages!
                               (mt/with-temporary-setting-values [site-url "https://testmb.com"]
                                 (notification.tu/with-javascript-visualization-stub
-                                  (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))))))
+                                  (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))))))
                       (thunk []
                         (if fixture
                           (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
@@ -200,12 +200,12 @@
 
      :http
      (fn [{:keys [card-id pulse-id]} [request]]
-       (let [pulse (t2/select-one :model/Pulse pulse-id)
-             card  (t2/select-one :model/Card card-id)]
+       (let [pulse (t2/select-one :model/Pulse :id pulse-id)
+             card  (t2/select-one :model/Card :id card-id)]
          (is (=? {:body {:type               "alert"
                          :alert_id           pulse-id
                          :alert_creator_id   (mt/malli=? int?)
-                         :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
+                         :alert_creator_name (t2/select-one-fn :common_name :model/User :id (:creator_id pulse))
                          :data               {:type          "question"
                                               :question_id   card-id
                                               :question_name (:name card)
@@ -624,7 +624,7 @@
             (is (= {:channel/email 1}
                    (update-vals
                     (pulse.test-util/with-captured-channel-send-messages!
-                      (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                      (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))
                     count)))))))))
 
 (deftest alert-send-to-channel-e2e-test
@@ -651,7 +651,7 @@
                :model/PulseChannel _              {:pulse_id pulse-id
                                                    :channel_type "http"
                                                    :channel_id   (:id channel)}]
-              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+              (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))
               (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
                               :alert_creator_name "Rasta Toucan"
                               :alert_id           pulse-id

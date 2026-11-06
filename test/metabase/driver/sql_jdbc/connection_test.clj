@@ -219,7 +219,7 @@
                   (testing "The calculated hash should be different"
                     (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
                               (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
-                  (t2/update! :model/Database (mt/id) {:details (:details db-perturbed)})
+                  (t2/update! :model/Database :id (mt/id) {:details (:details db-perturbed)})
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
@@ -244,7 +244,7 @@
                     (is (not= db-hash-1 db-hash-2)))))))
           (finally
             ;; restore the original test DB details, no matter what just happened
-            (t2/update! :model/Database (mt/id) {:details (:details db)})))))))
+            (t2/update! :model/Database :id (mt/id) {:details (:details db)})))))))
 
 ;;; Postgres-specific, so ok to hardcode driver names below.
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}

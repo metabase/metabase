@@ -5,6 +5,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -106,7 +107,7 @@
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
   [params :- FilterParams]
-  (t2/count :model/TaskHistory ((fnil identity {}) (params->where params))))
+  (t2/count :model/TaskHistory (h2x/assert-map-or-nil! ((fnil identity {}) (params->where params)))))
 
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
@@ -140,7 +141,7 @@
   (let [updated-info (merge {:ended_at (t/instant)
                              :duration (ns->ms (- (System/nanoTime) startime-ns))}
                             info)]
-    (t2/update! :model/TaskHistory th-id updated-info)))
+    (t2/update! :model/TaskHistory :id th-id updated-info)))
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."

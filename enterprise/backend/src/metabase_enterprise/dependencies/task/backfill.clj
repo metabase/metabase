@@ -79,7 +79,7 @@
   (let [update-count (t2/update! :model/Card id :dependency_analysis_version [:< target-version]
                                  {:dependency_analysis_version target-version})]
     (when-let [card (and (pos? update-count)
-                         (t2/select-one :model/Card id))]
+                         (t2/select-one :model/Card :id id))]
       (events/publish-event! :event/card-dependency-backfill {:object card}))
     update-count))
 

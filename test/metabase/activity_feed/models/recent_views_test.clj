@@ -365,7 +365,7 @@
       (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
       (testing "archived dashboards are not returned (#45223)"
-        (t2/update! :model/Dashboard dash-id-3 {:archived true})
+        (t2/update! :model/Dashboard :id dash-id-3 {:archived true})
         (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
 
 (deftest id-pruning-test

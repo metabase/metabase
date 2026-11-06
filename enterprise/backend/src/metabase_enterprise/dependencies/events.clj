@@ -45,7 +45,7 @@
                                                (ignore-errors
                                                 (deps.calculation/upstream-deps:card object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/Card (:id object)
+        (t2/update! :model/Card :id (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::card-delete :metabase/event)
@@ -69,7 +69,7 @@
                                                (ignore-errors
                                                 (deps.calculation/upstream-deps:snippet object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/NativeQuerySnippet (:id object)
+        (t2/update! :model/NativeQuerySnippet :id (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::snippet-delete :metabase/event)
@@ -118,7 +118,7 @@
                                                (ignore-errors
                                                 (deps.calculation/upstream-deps:transform object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/Transform (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
+        (t2/update! :model/Transform :id (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
       (drop-outdated-target-dep! object))))
 
 (derive ::transform-delete :metabase/event)
@@ -166,7 +166,7 @@
                                                  (ignore-errors
                                                   (deps.calculation/upstream-deps:dashboard dashboard))))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/Dashboard (:id object)
+        (t2/update! :model/Dashboard :id (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::dashboard-delete :metabase/event)
@@ -190,7 +190,7 @@
                                                (ignore-errors
                                                 (deps.calculation/upstream-deps:document object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/Document (:id object)
+        (t2/update! :model/Document :id (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::document-delete :metabase/event)
@@ -213,7 +213,7 @@
       (models.dependency/replace-dependencies! :sandbox (:id object) (ignore-errors
                                                                       (deps.calculation/upstream-deps:sandbox object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/Sandbox (:id object)
+        (t2/update! :model/Sandbox :id (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::sandbox-delete :metabase/event)
@@ -237,7 +237,7 @@
                                                (ignore-errors
                                                 (deps.calculation/upstream-deps:segment object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
-        (t2/update! :model/Segment (:id object)
+        (t2/update! :model/Segment :id (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
 
 (derive ::segment-delete :metabase/event)

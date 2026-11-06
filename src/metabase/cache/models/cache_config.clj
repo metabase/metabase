@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -56,7 +57,7 @@
        {:collection_id (target-collection-id instance)}
        :write))))
   ([_model pk]
-   (mi/can-write? (t2/select-one :model/CacheConfig pk))))
+   (mi/can-write? (t2/select-one :model/CacheConfig :id pk))))
 
 (defmethod mi/can-read? :model/CacheConfig
   ([instance]
@@ -66,7 +67,7 @@
      "dashboard" (mi/can-read? :model/Dashboard (:model_id instance))
      "question"  (mi/can-read? :model/Card (:model_id instance))))
   ([_model pk]
-   (mi/can-read? (t2/select-one :model/CacheConfig pk))))
+   (mi/can-read? (t2/select-one :model/CacheConfig :id pk))))
 
 (defn- can-set-cache-policy?
   "Check if the current user can set a cache policy for an entity.
@@ -199,7 +200,7 @@
                 apply-sorting? (assoc :order-by [[(sort-column->order-by sort_column) sort_direction]])
                 limit          (assoc :limit limit)
                 offset         (assoc :offset offset))]
-    (->> (t2/select :model/CacheConfig query)
+    (->> (t2/select :model/CacheConfig (h2x/assert-map-or-nil! query))
          (mapv row->config))))
 
 (mu/defn get-list-total

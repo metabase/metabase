@@ -15,6 +15,7 @@
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -329,7 +330,7 @@
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
   [table]
   (when (not= (:initial_sync_status table) "complete")
-    (t2/update! :model/Table (u/the-id table) {:initial_sync_status "complete"})))
+    (t2/update! :model/Table :id (u/the-id table) {:initial_sync_status "complete"})))
 
 (def ^:private sync-tables-kv-args
   {:active          true
@@ -349,7 +350,7 @@
                                    (map (partial into [:=]))
                                    (merge sync-tables-kv-args
                                           {:db_id (u/the-id database-or-id)}))}
-        ids (t2/select-fn-vec :id :model/Table where-clause)]
+        ids (t2/select-fn-vec :id :model/Table (h2x/assert-map-or-nil! where-clause))]
     (reduce (fn [acc ids']
               (+ acc (t2/update! :model/Table :id [:in ids'] {:initial_sync_status "complete"})))
             0
@@ -359,13 +360,13 @@
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (t2/update! :model/Database (u/the-id database) {:initial_sync_status "complete"})))
+    (t2/update! :model/Database :id (u/the-id database) {:initial_sync_status "complete"})))
 
 (defn set-initial-database-sync-aborted!
   "Marks initial sync as aborted for this database so that an error can be displayed on the UI"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (t2/update! :model/Database (u/the-id database) {:initial_sync_status "aborted"})))
+    (t2/update! :model/Database :id (u/the-id database) {:initial_sync_status "aborted"})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |

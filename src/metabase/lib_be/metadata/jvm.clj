@@ -16,6 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
@@ -390,7 +391,7 @@
                             `lib.metadata.protocols/database
                             `UncachedApplicationDatabaseMetadataProvider)
                     {})))
-  (t2/select-one :metadata/database database-id))
+  (t2/select-one :metadata/database :id database-id))
 
 (defn- db-id-key [metadata-type]
   (case metadata-type
@@ -492,7 +493,7 @@
    {metadata-type :lib/type, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [query (metadata-spec->honey-sql database-id metadata-spec)]
     (lib.util/recover
-     (fn [] (t2/select metadata-type query))
+     (fn [] (t2/select metadata-type (h2x/assert-map-or-nil! query)))
      (fn [e]
        (throw (ex-info "Error fetching metadata with spec"
                        {:metadata-spec metadata-spec, :query query}

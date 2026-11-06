@@ -70,7 +70,7 @@
                                             [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                             [:name     {:optional true} [:maybe ::api-keys.schema/name]]]]
   (api/check-superuser)
-  (api/let-404 [api-key-before (t2/select-one :model/ApiKey id)]
+  (api/let-404 [api-key-before (t2/select-one :model/ApiKey :id id)]
     (-> api-key-before
         (m/assoc-some ::api-keys/group-id group-id, :name key-name)
         t2/save!
@@ -85,7 +85,7 @@
   [{:keys [id]} :- [:map
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/ApiKey id))
+  (api/check-404 (t2/exists? :model/ApiKey :id id))
   (let [regenerated (api-key/regenerate! id)]
     {:id           id
      :unmasked_key (u.secret/expose (:unmasked-key regenerated))
@@ -112,8 +112,8 @@
   [{:keys [id]} :- [:map
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/ApiKey id))
-  (t2/delete! :model/ApiKey id)
+  (api/check-404 (t2/exists? :model/ApiKey :id id))
+  (t2/delete! :model/ApiKey :id id)
   api/generic-204-no-content)
 
 #_:clj-kondo/ignore

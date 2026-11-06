@@ -23,7 +23,7 @@
 
         (testing "removing the entity_ids"
           (doseq [id coll-ids]
-            (t2/update! :model/Collection id {:entity_id nil}))
+            (t2/update! :model/Collection :id id {:entity_id nil}))
           (is (every? nil? (all-eids))))
 
         (testing "backfill now recreates them"
@@ -35,7 +35,7 @@
     (ts/with-temp-dpc [:model/Collection {c1-id :id c1-eid :entity_id} {:name "some collection"}
                        :model/Collection {c2-id :id}                   {:name "other collection"}]
       (testing "deleting the entity_id for one of them"
-        (t2/update! :model/Collection c2-id {:entity_id nil})
+        (t2/update! :model/Collection :id c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
                (t2/select-fn-set :entity_id :model/Collection :type nil))))
 
@@ -51,14 +51,14 @@
     (ts/with-temp-dpc [:model/Collection {c1-eid :entity_id} {:name "some collection"}
                        :model/Collection {c2-id :id}         {:name "other collection"}]
       (testing "deleting the entity_id for one of them"
-        (t2/update! :model/Collection c2-id {:entity_id nil})
+        (t2/update! :model/Collection :id c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
                (t2/select-fn-set :entity_id :model/Collection :type nil))))
 
       (testing "backfilling twice"
         (serdes.backfill/backfill-ids-for! :model/Collection)
         (let [first-eid (t2/select-one-fn :entity_id :model/Collection :id c2-id)]
-          (t2/update! :model/Collection c2-id {:entity_id nil})
+          (t2/update! :model/Collection :id c2-id {:entity_id nil})
           (is (= #{c1-eid nil}
                  (t2/select-fn-set :entity_id :model/Collection :type nil)))
           (serdes.backfill/backfill-ids-for! :model/Collection)

@@ -1071,11 +1071,11 @@
           ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
           (doseq [setting-kw (keys pending-settings)]
             (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)))
-        (t2/update! :model/Database id updates)
+        (t2/update! :model/Database :id id updates)
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
        ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
-          (t2/update! :model/Database id {:cache_ttl cache_ttl}))
+          (t2/update! :model/Database :id id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one :model/Database :id id)]
           ;; the details in db and existing-database have been normalized so they are the same here

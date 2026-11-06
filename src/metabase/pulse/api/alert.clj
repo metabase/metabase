@@ -23,7 +23,7 @@
   [notification]
   (let [subscription      (-> notification :subscriptions first)
         notification-card (-> notification :payload)
-        card              (->> notification :payload :card_id (t2/select-one :model/Card))]
+        card              (->> notification :payload :card_id (t2/select-one :model/Card :id))]
     (merge
      (select-keys notification [:id :creator_id :creator :created_at :updated_at])
      {:name                nil

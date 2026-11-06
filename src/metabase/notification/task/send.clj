@@ -99,9 +99,9 @@
 
 (defn- send-notification*
   [subscription-id]
-  (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
+  (let [subscription    (t2/select-one :model/NotificationSubscription :id subscription-id)
         notification-id (:notification_id subscription)
-        notification    (t2/select-one :model/Notification notification-id)]
+        notification    (t2/select-one :model/Notification :id notification-id)]
     (log/with-context {:subscription-id subscription-id
                        :notification-id notification-id}
 

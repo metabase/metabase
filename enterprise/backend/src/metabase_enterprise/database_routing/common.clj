@@ -27,7 +27,7 @@
         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400
                                                                                                 :database-routing-enabled true
                                                                                                 :database-or-id db-or-id
-                                                                                                :database-name (t2/select-one-fn :name :model/Database (u/the-id db-or-id))}))
+                                                                                                :database-name (t2/select-one-fn :name :model/Database :id (u/the-id db-or-id))}))
 
         (= database-name "__METABASE_ROUTER__")
         nil

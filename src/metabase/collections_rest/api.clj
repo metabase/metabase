@@ -1600,7 +1600,7 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
-        (t2/update! :model/Collection id updates)))
+        (t2/update! :model/Collection :id id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (let [updated-collection (t2/select-one :model/Collection :id id)]
@@ -1619,7 +1619,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
-  (let [collection (t2/select-one :model/Collection id)
+  (let [collection (t2/select-one :model/Collection :id id)
         old-children-location (collection/children-location collection)
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)

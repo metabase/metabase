@@ -45,12 +45,12 @@
                (is (=? {:display_name "Venues"
                         :collection_id nil
                         :is_published false}
-                       (t2/select-one :model/Table (mt/id :venues)))))))
+                       (t2/select-one :model/Table :id (mt/id :venues)))))))
          (testing "deleting the collection unpublishes"
            (is (=? {:display_name "Users"
                     :collection_id nil
                     :is_published false}
-                   (t2/select-one :model/Table (mt/id :users))))))
+                   (t2/select-one :model/Table :id (mt/id :users))))))
        (testing "returns 404 when no library-data collection exists"
          (is (= "Not found."
                 (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
@@ -461,7 +461,7 @@
                     response))))
 
         (testing "if products is already published, it appears in published_downstream when selecting it"
-          (t2/update! :model/Table products-id {:is_published true})
+          (t2/update! :model/Table :id products-id {:is_published true})
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [products-id]})]
             (is (=? {:selected_table               {:id           products-id
@@ -477,8 +477,8 @@
             (is (= [] (:published_downstream_tables response)))))
 
         (testing "when orders is published and we select products, orders appears in published_downstream"
-          (t2/update! :model/Table orders-id {:is_published true})
-          (t2/update! :model/Table products-id {:is_published true})
+          (t2/update! :model/Table :id orders-id {:is_published true})
+          (t2/update! :model/Table :id products-id {:is_published true})
           (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/selection"
                                                {:table_ids [products-id]})]
             (is (=? {:selected_table               {:id           products-id
@@ -626,7 +626,7 @@
         (testing "publishing orders also publishes products (upstream dependency)"
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
                                 {:table_ids [orders-id]})
-          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table :id table-id))
             orders-id products-id))))))
 
 (deftest publish-tables-recursive-upstream-test
@@ -664,7 +664,7 @@
         (testing "publishing order_items also publishes orders and customers (recursive upstream)"
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
                                 {:table_ids [items-id]})
-          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table :id table-id))
             items-id orders-id customers-id))))))
 
 (deftest unpublish-tables-with-downstream-dependents-test
@@ -693,7 +693,7 @@
         (testing "unpublishing products also unpublishes orders (downstream dependent)"
           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
                                 {:table_ids [products-id]})
-          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table :id table-id))
             products-id orders-id))))))
 
 (deftest unpublish-tables-recursive-downstream-test
@@ -734,5 +734,5 @@
         (testing "unpublishing customers also unpublishes orders and order_items (recursive downstream)"
           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
                                 {:table_ids [customers-id]})
-          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table :id table-id))
             customers-id orders-id items-id))))))

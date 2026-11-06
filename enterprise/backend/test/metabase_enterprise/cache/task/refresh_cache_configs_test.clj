@@ -10,6 +10,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -153,28 +154,28 @@
       (testing "Happy path: we find the query and card ID for a query to rerun"
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:card_id card-id})]
           (is (= [{:query {} :card-id card-id}]
-                 (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id))))))
+                 (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))
 
       (testing "We don't rerun a query execution older than 30 days"
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query)
                                                        {:started_at (t/minus (t/offset-date-time) (t/days 31))})]
-          (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id))))))
+          (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))
 
       (testing "We don't rerun a cache refresh query execution"
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:context :cache-refresh})]
-          (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id))))))
+          (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))
 
       (testing "We don't rerun an errored query execution"
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:error "Error"})]
-          (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id))))))
+          (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))
 
       (testing "We don't rerun a sandboxed query execution"
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:is_sandboxed true})]
-          (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id))))))
+          (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))
 
       (testing "We don't rerun a parameterized query execution"
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:parameterized true})]
-          (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))))
+          (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id))))))))))
 
 (deftest scheduled-parameterized-queries-to-rerun-edge-cases-test
   (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
@@ -190,18 +191,18 @@
                                                           :parameterized true
                                                           :started_at (t/plus rerun-cutoff (t/days 1))})]
             (is (= [{:query {} :card-id card-id}]
-                   (t2/select :model/Query (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
-                                            card-id
-                                            rerun-cutoff))))))
+                   (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
+                                                                    card-id
+                                                                    rerun-cutoff)))))))
 
         (testing "We don't rerun a query execution older than the provided cutoff"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query)
                                                          {:card_id card-id
                                                           :parameterized true
                                                           :started_at (t/minus rerun-cutoff (t/days 1))})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
-                                               card-id
-                                               rerun-cutoff))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
+                                                                       card-id
+                                                                       rerun-cutoff)))))))
 
         (testing "We don't rerun a cache refresh query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query)
@@ -209,9 +210,9 @@
                                                           :parameterized true
                                                           :started_at (t/minus rerun-cutoff (t/days 1))
                                                           :context :cache-refresh})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
-                                               card-id
-                                               rerun-cutoff))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
+                                                                       card-id
+                                                                       rerun-cutoff)))))))
 
         (testing "We don't rerun an errored query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query)
@@ -219,9 +220,9 @@
                                                           :parameterized true
                                                           :started_at (t/minus rerun-cutoff (t/days 1))
                                                           :error "Error"})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
-                                               card-id
-                                               rerun-cutoff))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
+                                                                       card-id
+                                                                       rerun-cutoff)))))))
 
         (testing "We don't rerun a sandboxed query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query)
@@ -229,18 +230,18 @@
                                                           :parameterized true
                                                           :started_at (t/minus rerun-cutoff (t/days 1))
                                                           :is_sandboxed true})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
-                                               card-id
-                                               rerun-cutoff))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
+                                                                       card-id
+                                                                       rerun-cutoff)))))))
 
         (testing "We don't rerun a non-parameterized query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query)
                                                          {:card_id card-id
                                                           :parameterized false
                                                           :started_at (t/minus rerun-cutoff (t/days 1))})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
-                                               card-id
-                                               rerun-cutoff))))))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/scheduled-parameterized-queries-to-rerun-honeysql
+                                                                       card-id
+                                                                       rerun-cutoff)))))))))))
 
 (deftest duration-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
@@ -344,16 +345,16 @@
             (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                            {:card_id card-id-1})]
               (is (= [query-1-rerun-def]
-                     (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                   [question-cache-config-1] false))
+                     (->> (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                           [question-cache-config-1] false)))
                           (map #(update % :cache-hash vec)))))
 
               (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-2)
                                                              {:card_id card-id-2})]
                 (is (= (->> [query-1-rerun-def query-2-rerun-def]
                             (sort-by :card-id))
-                       (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                     [question-cache-config-1 question-cache-config-2] false))
+                       (->> (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                             [question-cache-config-1 question-cache-config-2] false)))
                             (map #(update % :cache-hash vec))
                             (sort-by :card-id)))))))
 
@@ -365,8 +366,8 @@
               (is (= (->> [(assoc query-1-rerun-def :dashboard-id dashboard-id)
                            (assoc query-2-rerun-def :dashboard-id dashboard-id)]
                           (sort-by :card-id))
-                     (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                   [dashboard-cache-config] false))
+                     (->> (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                           [dashboard-cache-config] false)))
                           (map #(update % :cache-hash vec))
                           (sort-by :card-id)))))))
 
@@ -374,29 +375,29 @@
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :started_at (t/minus (t/offset-date-time) (t/days 32))})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] false))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                       [question-cache-config-1] false)))))))
 
         (testing "We don't rerun an errored query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :error "Error"})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] false))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                       [question-cache-config-1] false)))))))
 
         (testing "We don't rerun a sandboxed query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :is_sandboxed true})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] false))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                       [question-cache-config-1] false)))))))
 
         (testing "We don't rerun a parameterized query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :parameterized true})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] false))))))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                       [question-cache-config-1] false)))))))))))
 
 (deftest duration-parameterized-queries-to-rerun-edge-cases-test
   (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
@@ -437,8 +438,8 @@
                                                             :cache_hit true
                                                             :parameterized true})]
               (is (= [query-1-rerun-def]
-                     (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                   [question-cache-config-1] true))
+                     (->> (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                           [question-cache-config-1] true)))
                           (map #(update % :cache-hash vec)))))
 
               (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-2)
@@ -448,8 +449,8 @@
                 (is (= (->> [query-1-rerun-def query-2-rerun-def]
                             (sort-by :card-id))
 
-                       (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                     [question-cache-config-1 question-cache-config-2] true))
+                       (->> (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                             [question-cache-config-1 question-cache-config-2] true)))
                             (map #(update % :cache-hash vec))
                             (sort-by :card-id)))))))
 
@@ -467,8 +468,8 @@
               (is (= (->> [(assoc query-1-rerun-def :dashboard-id dashboard-id)
                            (assoc query-2-rerun-def :dashboard-id dashboard-id)]
                           (sort-by :card-id))
-                     (->> (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                                   [dashboard-cache-config] true))
+                     (->> (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                           [dashboard-cache-config] true)))
                           (map #(update % :cache-hash vec))
                           (sort-by :card-id)))))))
 
@@ -477,32 +478,32 @@
                                                          {:card_id card-id-1
                                                           :cache_hit true
                                                           :started_at (t/minus (t/offset-date-time) (t/days 32))})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] true))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                       [question-cache-config-1] true)))))))
 
         (testing "We don't rerun an errored query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :cache_hit true
                                                           :error "Error"})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] true))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                       [question-cache-config-1] true)))))))
 
         (testing "We don't rerun a sandboxed query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :cache_hit true
                                                           :is_sandboxed true})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] true))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                       [question-cache-config-1] true)))))))
 
         (testing "We don't rerun a non parameterized query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query-1)
                                                          {:card_id card-id-1
                                                           :cache_hit true
                                                           :parameterized false})]
-            (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
-                                               [question-cache-config-1] true))))))))))
+            (is (= [] (t2/select :model/Query (h2x/assert-map-or-nil! (@#'task.cache/duration-queries-to-rerun-honeysql
+                                                                       [question-cache-config-1] true)))))))))))
 
 (defn- compare-query-results
   "Compares a normal query result with a query result generated after a preemptive caching job runs, and asserts
@@ -685,7 +686,7 @@
             (is (= 0 @call-count))
 
             (mt/with-additional-premium-features #{:cache-preemptive}
-              (t2/update! :model/CacheConfig (:id cc) (assoc cc :next_run_at nil))
+              (t2/update! :model/CacheConfig :id (:id cc) (assoc cc :next_run_at nil))
               (is (true? (premium-features/enable-preemptive-caching?)))
               (@#'task.cache/refresh-cache-configs!)
               (is (= 2 @call-count)))))))))

@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -54,7 +55,7 @@
       (premium-features/assert-has-feature :content-verification (tru "Content verification")))
     (let [old-vals (select-keys old-metabot (keys metabot-updates))]
       (when (not= old-vals metabot-updates)
-        (t2/update! :model/Metabot id metabot-updates)
+        (t2/update! :model/Metabot :id id metabot-updates)
         (metabot-v3.suggested-prompts/delete-all-metabot-prompts id)
         (metabot-v3.suggested-prompts/generate-sample-prompts id))
       (t2/select-one :model/Metabot :id id))))
@@ -104,7 +105,7 @@
                                     [:= :metabot_prompt.metabot_id id]]}
                      model    (update :where conj [:= :card.type model])
                      model_id (update :where conj [:= :card.id model_id]))
-        total (t2/count :model/MetabotPrompt base-query)
+        total (t2/count :model/MetabotPrompt (h2x/assert-map-or-nil! base-query))
         order-by (if sample
                    [[[rand-fn]]]
                    [[:card.name :asc]
@@ -117,10 +118,10 @@
                             [:card.name :model_name]
                             :created_at
                             :updated_at]
-                           (cond-> base-query
-                             true             (assoc :order-by order-by)
-                             (request/limit)  (assoc :limit    (request/limit))
-                             offset           (assoc :offset   offset)))]
+                           (h2x/assert-map-or-nil! (cond-> base-query
+                                                     true             (assoc :order-by order-by)
+                                                     (request/limit)  (assoc :limit    (request/limit))
+                                                     offset           (assoc :offset   offset))))]
     {:prompts prompts
      :limit   (request/limit)
      :offset  offset

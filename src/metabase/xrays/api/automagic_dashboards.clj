@@ -377,8 +377,8 @@
   [{:keys [model-index-id pk-id]} :- [:map
                                       [:model-index-id :int]
                                       [:pk-id          :int]]]
-  (api/let-404 [model-index (t2/select-one :model/ModelIndex model-index-id)
-                model (t2/select-one :model/Card (:model_id model-index))]
+  (api/let-404 [model-index (t2/select-one :model/ModelIndex :id model-index-id)
+                model (t2/select-one :model/Card :id (:model_id model-index))]
     ;; `->entity` does a read check on the model but this is here as well to be extra sure.
     (api/read-check :model/Card (:model_id model-index))
     (let [linked (linked-entities {:model       model

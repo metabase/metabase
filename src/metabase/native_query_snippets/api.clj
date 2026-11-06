@@ -93,7 +93,7 @@
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
       (t2/with-transaction [_conn]
-        (t2/update! :model/NativeQuerySnippet id changes)
+        (t2/update! :model/NativeQuerySnippet :id id changes)
         (collections/check-for-remote-sync-update snippet)))
     (get-native-query-snippet id)))
 

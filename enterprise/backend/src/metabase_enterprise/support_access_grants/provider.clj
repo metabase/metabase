@@ -71,7 +71,7 @@
                       {:status-code 400})))
     (u/prog1 (auth-identity/generate-reset-token user-id)
       (t2/with-transaction [_]
-        (let [user (t2/select-one :model/User user-id)
+        (let [user (t2/select-one :model/User :id user-id)
               auth-identity {:user_id user-id
                              :provider "support-access-grant"
                              :provider_id (:email user)
@@ -79,7 +79,7 @@
                              :credentials (create-support-access-reset-token-credentials <> grant-ends-at)
                              :metadata (auth-identity/create-reset-token-metadata (:email user))}]
           (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant")]
-            (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
+            (t2/update! :model/AuthIdentity :id auth-identity-id auth-identity)
             (t2/insert! :model/AuthIdentity auth-identity)))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
@@ -104,6 +104,6 @@
       (log/infof "Setting password expiration for user %s to %s based on support access grant"
                  (:id user) grant-ends-at)
       (t2/with-transaction [_]
-        (t2/update! :model/AuthIdentity (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
+        (t2/update! :model/AuthIdentity :id (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
         (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at}))))
   result)

@@ -260,7 +260,7 @@
         (if (-> e ex-data :terminal)
           (log/info "Migration interrupted due to terminal state")
           (do
-            (t2/update! :model/CloudMigration id {:state :error})
+            (t2/update! :model/CloudMigration :id id {:state :error})
             (log/info "Migration failed")
             (throw (ex-info "Error performing migration" {} e)))))
       (finally

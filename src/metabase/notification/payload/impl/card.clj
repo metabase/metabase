@@ -24,7 +24,7 @@
                          :status (:status card-result)
                          :error  (:error card-result)})))
       {:card_part        part
-       :card             (t2/select-one :model/Card card-id)
+       :card             (t2/select-one :model/Card :id card-id)
        :style            {:color_text_dark   channel.render/color-text-dark
                           :color_text_light  channel.render/color-text-light
                           :color_text_medium channel.render/color-text-medium}
@@ -73,7 +73,7 @@
   (when (and (-> notification-info :payload :send_once)
              (not skipped?))
     (log/info "Archiving due to send_once")
-    (t2/update! :model/Notification (:id notification-info) {:active false}))
+    (t2/update! :model/Notification :id (:id notification-info) {:active false}))
   (try
     (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (notification.payload/cleanup! rows))

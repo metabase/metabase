@@ -180,7 +180,7 @@
   ;; or the creator if it hasn't been modified.
   ;; Or the admins if the creator is not active.
   ;; We hope that this will be the most recent user.
-  (let [job (t2/select-one :model/TransformJob job-id)
+  (let [job (t2/select-one :model/TransformJob :id job-id)
         failures (map (fn [failure]
                         (let [transform (::transform failure)]
                           (assoc failure ::emails (->> transform
@@ -204,7 +204,7 @@
 (defn- notify-job-failure
   "Notify admins of a catastrophic job failure (not individual transform failures)."
   [job-id message]
-  (let [job (t2/select-one :model/TransformJob job-id)
+  (let [job (t2/select-one :model/TransformJob :id job-id)
         admin-emails (keep :email (active-admins))]
     (doseq [email admin-emails]
       (events/publish-event! :event/transform-failed

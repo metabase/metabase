@@ -744,9 +744,9 @@
                         new-coll-id (t2/select-one-pk :model/Collection :entity_id coll-eid)
                         new-card-id (t2/select-one-pk :model/Card :entity_id card-eid)]
                     (is (= new-dash-id (:dashboard_id
-                                        (t2/select-one :model/Card new-card-id))))
+                                        (t2/select-one :model/Card :id new-card-id))))
                     (is (= new-coll-id (:collection_id
-                                        (t2/select-one :model/Card new-card-id))))))))))))))
+                                        (t2/select-one :model/Card :id new-card-id))))))))))))))
 
 (deftest database-routing-test
   (testing "Destination Databases and Database Routers are excluded from serialization"

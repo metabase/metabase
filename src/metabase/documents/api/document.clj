@@ -257,7 +257,7 @@
         (when collection_position
           (api/maybe-reconcile-collection-position! existing-document {:collection_id       target-collection-id
                                                                        :collection_position collection_position}))
-        (t2/update! :model/Document document-id
+        (t2/update! :model/Document :id document-id
                     (cond-> document-updates
                       document (merge (update-cards-in-ast
                                        {:document document
@@ -320,7 +320,7 @@
     (if-let [existing-uuid (t2/select-one-fn :public_uuid :model/Document :id document-id)]
       {:uuid existing-uuid}
       (do
-        (t2/update! :model/Document document-id
+        (t2/update! :model/Document :id document-id
                     {:public_uuid       (str (random-uuid))
                      :made_public_by_id api/*current-user-id*})
         ;; Always select after update to ensure we return what's actually stored
@@ -345,7 +345,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
-  (t2/update! :model/Document document-id
+  (t2/update! :model/Document :id document-id
               {:public_uuid       nil
                :made_public_by_id nil})
   api/generic-204-no-content)

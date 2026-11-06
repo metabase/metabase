@@ -277,7 +277,7 @@
          (:db_id instance)
          (:id instance))))
   ([_ pk]
-   (mi/can-read? (t2/select-one :model/Table pk))))
+   (mi/can-read? (t2/select-one :model/Table :id pk))))
 
 (defenterprise current-user-can-write-table?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -289,7 +289,7 @@
   ([instance]
    (current-user-can-write-table? instance))
   ([_ pk]
-   (mi/can-write? (t2/select-one :model/Table pk))))
+   (mi/can-write? (t2/select-one :model/Table :id pk))))
 
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
 
@@ -317,7 +317,7 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (t2/update! :model/Field (u/the-id field) {:position new-position}))
+                  (t2/update! :model/Field :id (u/the-id field) {:position new-position}))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
                 (t2/select [:model/Field :id]
                            :table_id  (u/the-id table)
@@ -346,11 +346,11 @@
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
   (t2/with-transaction [_]
-    (t2/update! :model/Table (u/the-id table) {:field_order :custom})
+    (t2/update! :model/Table :id (u/the-id table) {:field_order :custom})
     (dorun
      (map-indexed (fn [position field-id]
-                    (t2/update! :model/Field field-id {:position        position
-                                                       :custom_position position}))
+                    (t2/update! :model/Field :id field-id {:position        position
+                                                           :custom_position position}))
                   field-order))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------

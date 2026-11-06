@@ -15,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -151,7 +152,7 @@
 
 (defn- sync-user-settings [field]
   ;; we transparently prevent updates that would override user-set values
-  (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
+  (let [user-settings (t2/select-one :model/FieldUserSettings :field_id (:id field))
         updated-field (merge field (u/select-keys-when user-settings :non-nil field-user-settings))]
     (t2.protocols/with-current field updated-field)))
 
@@ -162,9 +163,9 @@
     (let [k {:fk_target_field_id (:id field)}
           upds {:semantic_type      nil
                 :fk_target_field_id nil}]
-      (t2/update! :model/Field k upds)
+      (t2/update! :model/Field (h2x/assert-map-or-nil! k) upds)
       ;; we must explicitly clear user-set fks in this case
-      (t2/update! :model/FieldUserSettings k upds)))
+      (t2/update! :model/FieldUserSettings (h2x/assert-map-or-nil! k) upds)))
   (sync-user-settings field))
 
 (t2/define-before-delete :model/Field
@@ -193,7 +194,7 @@
          (field->db-id instance)
          (:table_id instance))))
   ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+   (mi/can-read? (t2/select-one model :toucan/pk pk))))
 
 (defenterprise current-user-can-write-field?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -205,7 +206,7 @@
   ([instance]
    (current-user-can-write-field? instance))
   ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+   (mi/can-write? (t2/select-one model :toucan/pk pk))))
 
 (defmethod serdes/hash-fields :model/Field
   [_field]
@@ -401,7 +402,7 @@
   (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
         table               (serdes/load-find-local table-path)
         field-q             (serdes/recursively-find-field-q (:id table) (map :id (reverse fields)))]
-    (t2/select-one :model/Field field-q)))
+    (t2/select-one :model/Field (h2x/assert-map-or-nil! field-q))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.

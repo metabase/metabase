@@ -27,6 +27,7 @@
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -337,7 +338,7 @@
           notification->alert))
 
 (defn- query-as [model query]
-  (t2/select model query))
+  (t2/select model (h2x/assert-map-or-nil! query)))
 
 (mu/defn retrieve-alerts :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Fetch all Alerts."
@@ -591,7 +592,7 @@
                     [:channels            {:optional true} [:sequential :map]]
                     [:archived            {:optional true} boolean?]
                     [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
-  (t2/update! :model/Pulse (u/the-id notification)
+  (t2/update! :model/Pulse :id (u/the-id notification)
               (u/select-keys-when notification
                                   :present [:collection_id :collection_position :archived]
                                   :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))

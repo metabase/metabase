@@ -105,14 +105,14 @@
   [user-id :- ms/PositiveInt]
   (u/prog1 (generate-reset-token user-id)
     (t2/with-transaction [_]
-      (let [user (t2/select-one :model/User user-id)
+      (let [user (t2/select-one :model/User :id user-id)
             auth-identity {:user_id user-id
                            :provider "emailed-secret-password-reset"
                            :provider_id (:email user)
                            :credentials (create-reset-token-credentials <>)
                            :metadata (create-reset-token-metadata (:email user))}]
         (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")]
-          (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
+          (t2/update! :model/AuthIdentity :id auth-identity-id auth-identity)
           (t2/insert! :model/AuthIdentity auth-identity))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
@@ -189,6 +189,6 @@
   (when (:success? result)
     (if (:last_login user)
       (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
-      (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User (:id user))))
+      (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id (:id user))))
     (auth-identity/set-password! (:id user) password))
   result)

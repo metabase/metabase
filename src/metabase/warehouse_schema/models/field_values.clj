@@ -479,7 +479,7 @@
         (and field-values values)
         (do
           (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-          (t2/update! :model/FieldValues (u/the-id field-values)
+          (t2/update! :model/FieldValues :id (u/the-id field-values)
                       (m/remove-vals nil?
                                      {:has_more_values       has_more_values
                                       :values                values
@@ -523,10 +523,10 @@
 
           (do
             (when existing
-              (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now}))
+              (t2/update! :model/FieldValues :id (:id existing) {:last_used_at :%now}))
             (get-latest-full-field-values field-id)))
         (do
-          (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now})
+          (t2/update! :model/FieldValues :id (:id existing) {:last_used_at :%now})
           existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

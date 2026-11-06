@@ -233,7 +233,7 @@
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
       (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                                  :+fns [default-have-select-privilege?]})
-        (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+        (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
               (doseq [auto-commit [true false]]
@@ -298,7 +298,7 @@
 
 (defn- run-retry-have-select-privilege!
   [probe-errors query-canceled probe-error-fn]
-  (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+  (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
     (sql-jdbc.execute/do-with-connection-with-options
      driver/*driver* (mt/db) nil
      (fn [^Connection conn]

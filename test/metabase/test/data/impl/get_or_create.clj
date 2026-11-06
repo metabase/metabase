@@ -104,7 +104,7 @@
           (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
             (when-let [v (get field-definition property)]
               (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (t2/update! :model/Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
+              (t2/update! :model/Field :id (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -247,7 +247,7 @@
                                            :table_id (:id table)
                                            :%lower.name (u/lower-case-en field-name))]
       (when (and source-field target-pk-field)
-        (t2/update! :model/Field (:id source-field)
+        (t2/update! :model/Field :id (:id source-field)
                     {:fk_target_field_id (:id target-pk-field)})))))
 
 ;; ---------------------- Main Entry Point ----------------------
@@ -490,7 +490,7 @@
             (load-dataset-data-if-needed! driver dbdef)
             ;; update the `created_at` timestamp for the test data so the next call to `get-or-create-database!` doesn't
             ;; need to go thru this again.
-            (t2/update! :model/Database (u/the-id existing-database) {:created_at (t/offset-date-time)})))
+            (t2/update! :model/Database :id (u/the-id existing-database) {:created_at (t/offset-date-time)})))
         (finally
           (.. lock writeLock unlock))))))
 

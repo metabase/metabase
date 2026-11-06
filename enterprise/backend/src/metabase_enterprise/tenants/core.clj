@@ -14,7 +14,7 @@
   :feature :tenants
   [{:keys [tenant_id] :as _user}]
   (or (when (and (perms/use-tenants) tenant_id)
-        (when-let [{:keys [slug attributes]} (t2/select-one :model/Tenant tenant_id)]
+        (when-let [{:keys [slug attributes]} (t2/select-one :model/Tenant :id tenant_id)]
           (merge attributes {"@tenant.slug" slug})))
       {}))
 

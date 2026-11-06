@@ -47,7 +47,7 @@
       (u/ignore-exceptions
         (let [trigger-key (model-index-trigger-key model-index-id)]
           (task/delete-trigger! trigger-key)
-          (t2/delete! :model/ModelIndex model-index-id)))
+          (t2/delete! :model/ModelIndex :id model-index-id)))
       (model-index/add-values! model-index))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true

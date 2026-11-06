@@ -42,7 +42,7 @@
 (deftest cleanup-permissions-after-delete-db-test
   (mt/with-temp [:model/Database {db-id :id} {}]
     (is (true? (t2/exists? :model/DataPermissions :db_id db-id)))
-    (t2/delete! :model/Database db-id)
+    (t2/delete! :model/Database :id db-id)
     (testing "All permissions are deleted when we delete the database"
       (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
@@ -195,13 +195,13 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (t2/update! :model/Database (:id database) {:settings {:database-enable-actions true}})))))
+             (t2/update! :model/Database :id (:id database) {:settings {:database-enable-actions true}})))))
     (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
       (mt/with-temp [:model/Database database {:engine :h2 :settings {:database-enable-actions true}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
-             (t2/update! :model/Database (:id database) {:engine :sqlite})))))))
+             (t2/update! :model/Database :id (:id database) {:engine :sqlite})))))))
 
 (deftest ^:parallel sensitive-data-redacted-test
   (let [encode-decode (comp json/decode json/encode)
@@ -345,7 +345,7 @@
             (is (= (:details db)
                    (database/maybe-test-and-migrate-details! db)))
             (is (= (:details db)
-                   (t2/select-one-fn :details :model/Database (:id db)))
+                   (t2/select-one-fn :details :model/Database :id (:id db)))
                 [(:id db) "query"])))))))
 
 (deftest maybe-test-and-migrate-details!-password-test
@@ -363,7 +363,7 @@
                     :password "secret"}
                    (database/maybe-test-and-migrate-details! db)))
             (is (= {:password "secret"}
-                   (t2/select-one-fn :details :model/Database (:id db))))))))))
+                   (t2/select-one-fn :details :model/Database :id (:id db))))))))))
 
 (deftest maybe-test-and-migrate-details!-keystore-test
   (mt/with-driver
@@ -379,7 +379,7 @@
             (is (= {:keystore-id (get-in db [:details :keystore-id])}
                    (database/maybe-test-and-migrate-details! db)))
             (is (= {:keystore-id (get-in db [:details :keystore-id])}
-                   (t2/select-one-fn :details :model/Database (:id db))))))))))
+                   (t2/select-one-fn :details :model/Database :id (:id db))))))))))
 
 (deftest secrets-in-details-test
   (mt/with-driver :secret-test-driver
@@ -392,8 +392,8 @@
                                                      :created_at (t/instant)
                                                      :updated_at (t/instant)
                                                      :details json-details}]
-            (is (= json-details (t2/select-one-fn :details database-table db-id)))
-            (is (= {:host "localhost" :keystore-id secret-id} (t2/select-one-fn :details :model/Database db-id)))
+            (is (= json-details (t2/select-one-fn :details database-table :id db-id)))
+            (is (= {:host "localhost" :keystore-id secret-id} (t2/select-one-fn :details :model/Database :id db-id)))
             (is (= {:host "localhost" :keystore-id secret-id :keystore-options "uploaded" :keystore-value secret/protected-password}
                    (:details (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))))
                 "API request")))))
@@ -405,8 +405,8 @@
                                                    :created_at (t/instant)
                                                    :updated_at (t/instant)
                                                    :details json-details}]
-          (is (= json-details (t2/select-one-fn :details database-table db-id)))
-          (is (= {:host "localhost"} (t2/select-one-fn :details :model/Database db-id)))
+          (is (= json-details (t2/select-one-fn :details database-table :id db-id)))
+          (is (= {:host "localhost"} (t2/select-one-fn :details :model/Database :id db-id)))
           (is (= {:host "localhost"}
                  (:details (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))))
               "API request"))))))
@@ -418,29 +418,29 @@
     (let [db-id (:id db)
           secret-id (get-in db [:details :keystore-id])
           expected {:keystore-id secret-id}]
-      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
+      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
               (secret/latest-for-id secret-id)))
 
-      (t2/update! :model/Database db-id {:details {:keystore-path "secret-path"}})
-      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
+      (t2/update! :model/Database :id db-id {:details {:keystore-path "secret-path"}})
+      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
               (secret/latest-for-id secret-id)))
 
-      (t2/update! :model/Database db-id {:details {:keystore-path "ignore-path" :keystore-value "prefer-value"}})
-      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
+      (t2/update! :model/Database :id db-id {:details {:keystore-path "ignore-path" :keystore-value "prefer-value"}})
+      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
               (secret/latest-for-id secret-id)))
 
-      (t2/update! :model/Database db-id {:details {:keystore-options "local"
-                                                   :keystore-path "prefer-path"
-                                                   :keystore-value "ignore-value"}})
-      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
+      (t2/update! :model/Database :id db-id {:details {:keystore-options "local"
+                                                       :keystore-path "prefer-path"
+                                                       :keystore-value "ignore-value"}})
+      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
               (secret/latest-for-id secret-id)))
 
-      (t2/update! :model/Database db-id {:details {:keystore-value nil}})
-      (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) db-id)))
+      (t2/update! :model/Database :id db-id {:details {:keystore-value nil}})
+      (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? nil
               (secret/latest-for-id secret-id))))))
 
@@ -469,7 +469,7 @@
                                                                    :keystore-path "local.key"
                                                                    :keystore-options "local")}))))
           (is (=? (=?/malli host-and-keystore-id)
-                  (json/decode (:details (t2/select-one db-table db-id)) keyword))
+                  (json/decode (:details (t2/select-one db-table :id db-id)) keyword))
               "Database value")
 
           (is (=? (=?/malli expected-path-response)
@@ -487,7 +487,7 @@
                                                                    :keystore-options "uploaded")}))))
 
           (is (=? (=?/malli host-and-keystore-id)
-                  (json/decode (:details (t2/select-one db-table db-id)) keyword))
+                  (json/decode (:details (t2/select-one db-table :id db-id)) keyword))
               "Database value")
 
           (is (=? (=?/malli (conj host-and-keystore-id
@@ -587,7 +587,7 @@
                                        :version 1
                                        :value   "new-password"})
                 (testing " updating the value works as expected"
-                  (t2/update! :model/Database id {:details (assoc details :password-path "/path/to/my/password-file")})
+                  (t2/update! :model/Database :id id {:details (assoc details :password-path "/path/to/my/password-file")})
                   (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
                                                                        :source  :file-path
                                                                        :version 2
@@ -608,16 +608,16 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"The engine on a sample database cannot be changed."
-           (t2/update! :model/Database id {:engine :sqlite})))
+           (t2/update! :model/Database :id id {:engine :sqlite})))
       (testing "is refused before the details are validated against the new driver"
         (mt/with-dynamic-fn-redefs [driver.u/validate-connection-parameters! (fn [& _]
                                                                                (throw (ex-info "validated" {})))]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"The engine on a sample database cannot be changed."
-               (t2/update! :model/Database id {:engine :postgres}))))))
+               (t2/update! :model/Database :id id {:engine :postgres}))))))
     (testing " updating other attributes of a sample database is allowed"
-      (t2/update! :model/Database id {:name "My New Name"})
+      (t2/update! :model/Database :id id {:name "My New Name"})
       (is (= "My New Name" (t2/select-one-fn :name :model/Database :id id))))))
 
 (driver/register! ::test, :abstract? true)
@@ -640,7 +640,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"private or internal network address"
-           (t2/update! :model/Database (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
+           (t2/update! :model/Database :id (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
 
 ;; master also has `overlay-details-are-validated-the-way-they-are-resolved-test` here; this branch predates the
 ;; `:write_data_details`/`:admin_details` overlay columns, so there is nothing to exercise.
@@ -659,12 +659,12 @@
     (mt/with-temp [:model/Database db {:engine :postgres :details {:host "db.example.com"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"dangerous"
-           (t2/update! :model/Database (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}})))))
+           (t2/update! :model/Database :id (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}})))))
   (testing "a database whose driver isn't registered (e.g. an uninstalled plugin) can still be saved"
     (mt/with-temp [:model/Database db {:engine "not-a-registered-driver" :details {:host "db.example.com"}}]
-      (t2/update! :model/Database (:id db) {:details {:host "db2.example.com"}})
+      (t2/update! :model/Database :id (:id db) {:details {:host "db2.example.com"}})
       (is (=? {:details {:host "db2.example.com"}}
-              (t2/select-one :model/Database (:id db)))))))
+              (t2/select-one :model/Database :id (:id db)))))))
 
 (deftest audit-db-is-not-subject-to-the-network-policy-test
   ;; The Audit DB is a clone of the *application* database, not a warehouse an admin pointed somewhere: it carries no
@@ -679,7 +679,7 @@
     (testing "the audit db can be created"
       (mt/with-temp [:model/Database db {:is_audit true, :engine :h2, :details {}}]
         (testing "and its engine can be flipped the way installing analytics flips it"
-          (is (pos? (t2/update! :model/Database (:id db) {:engine "postgres"}))))))
+          (is (pos? (t2/update! :model/Database :id (:id db) {:engine "postgres"}))))))
     (testing "an ordinary database with the same empty details is still refused"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo

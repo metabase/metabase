@@ -8,6 +8,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.task.core :as task]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -140,8 +141,8 @@
   []
   (let [cache-configs (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true)]
     (when (seq cache-configs)
-      (let [base-queries          (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs false))
-            parameterized-queries (t2/select :model/Query (duration-queries-to-rerun-honeysql cache-configs true))]
+      (let [base-queries          (t2/select :model/Query (h2x/assert-map-or-nil! (duration-queries-to-rerun-honeysql cache-configs false)))
+            parameterized-queries (t2/select :model/Query (h2x/assert-map-or-nil! (duration-queries-to-rerun-honeysql cache-configs true)))]
         (concat base-queries (select-parameterized-queries parameterized-queries))))))
 
 (defn- clear-caches-for-queries!
@@ -211,8 +212,8 @@
   "Returns a list containing all of the parameterized query definitions that we should preemptively rerun for a given
   card that uses :schedule caching."
   [card-id rerun-cutoff]
-  (let [base-query (t2/select-one :model/Query (scheduled-base-query-to-rerun-honeysql card-id))
-        parameterized-queries (t2/select :model/Query (scheduled-parameterized-queries-to-rerun-honeysql card-id rerun-cutoff))]
+  (let [base-query (t2/select-one :model/Query (h2x/assert-map-or-nil! (scheduled-base-query-to-rerun-honeysql card-id)))
+        parameterized-queries (t2/select :model/Query (h2x/assert-map-or-nil! (scheduled-parameterized-queries-to-rerun-honeysql card-id rerun-cutoff)))]
     (->> (concat (when base-query [base-query])
                  parameterized-queries)
          (map :query)

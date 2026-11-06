@@ -12,11 +12,11 @@
   "Create a data-oriented summary of a dashboard as input to an LLM for summarization."
   [dashboard-id]
   (let [{dashboard-name :name :keys [parameters dashcards]}
-        (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) [:dashcards
-                                                                   :card
-                                                                   :series
-                                                                   :dashcard/action
-                                                                   :dashcard/linkcard-info]
+        (t2/hydrate (t2/select-one :model/Dashboard :id dashboard-id) [:dashcards
+                                                                       :card
+                                                                       :series
+                                                                       :dashcard/action
+                                                                       :dashcard/linkcard-info]
                     :tabs
                     :param_fields)
         param-id->param (zipmap

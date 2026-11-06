@@ -47,7 +47,7 @@
                        (not custom-display-name?))
               (log/infof "Updating display name for %s '%s': '%s' -> '%s'"
                          (name model) internal-name display-name new-strategy-display-name)
-              (t2/update! model id
+              (t2/update! model :toucan/pk id
                           {:display_name new-strategy-display-name}))))
         (t2/reducible-select [model :id :name :display_name])))
 

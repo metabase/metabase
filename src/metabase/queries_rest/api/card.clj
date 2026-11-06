@@ -508,7 +508,7 @@
   (let [[_ collection-id :as specified-collection-id?] (find body :collection_id)
         ;; unlike collection_id, `dashboard_id=null` isn't different than not specifying it at all.
         dashboard-id (:dashboard_id body)
-        dashboard-id->collection-id #(t2/select-one-fn :collection_id [:model/Dashboard :collection_id] %)]
+        dashboard-id->collection-id #(t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id %)]
     (cond
       ;; you specified both - they must match
       (and specified-collection-id? dashboard-id)
@@ -825,7 +825,7 @@
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
             (t2/update! :model/Card
-                        (u/the-id card)
+                        :id (u/the-id card)
                         {:collection_position idx
                          :collection_id       new-collection-id-or-nil}))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
@@ -980,11 +980,11 @@
                  (u/prog1 (str (random-uuid))
                    ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
                    (t2/with-transaction [_conn]
-                     (t2/update! :model/Card card-id
+                     (t2/update! :model/Card :id card-id
                                  {:public_uuid       <>
                                   :made_public_by_id api/*current-user-id*})
                      (events/publish-event! :event/card-public-link-created
-                                            {:object    (t2/select-one :model/Card card-id)
+                                            {:object    (t2/select-one :model/Card :id card-id)
                                              :object-id card-id
                                              :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
@@ -1004,11 +1004,11 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
   (t2/with-transaction [_conn]
-    (t2/update! :model/Card card-id
+    (t2/update! :model/Card :id card-id
                 {:public_uuid       nil
                  :made_public_by_id nil})
     (events/publish-event! :event/card-public-link-deleted
-                           {:object    (t2/select-one :model/Card card-id)
+                           {:object    (t2/select-one :model/Card :id card-id)
                             :object-id card-id
                             :user-id   api/*current-user-id*}))
   {:status 204, :body nil})

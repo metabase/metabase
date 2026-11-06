@@ -34,7 +34,7 @@
   [job-ids]
   (when (seq job-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
-          (t2/reducible-select :model/TransformJobRun (latest-runs-query job-ids)))))
+          (t2/reducible-select :model/TransformJobRun (h2x/assert-map-or-nil! (latest-runs-query job-ids))))))
 
 (defn start-run!
   "Start a run"

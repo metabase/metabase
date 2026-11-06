@@ -245,7 +245,7 @@
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
-   (mi/can-write? (t2/select-one :model/Collection pk))))
+   (mi/can-write? (t2/select-one :model/Collection :id pk))))
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
@@ -1476,7 +1476,7 @@
           affected-collection-ids (cons (u/the-id collection)
                                         (collection->descendant-ids collection
                                                                     :archived [:not= true]))]
-      (t2/update! :model/Collection (u/the-id collection)
+      (t2/update! :model/Collection :id (u/the-id collection)
                   {:archive_operation_id archive-operation-id
                    :archived_directly    true
                    :archived             true})
@@ -1539,7 +1539,7 @@
        (:can_restore (t2/hydrate collection :can_restore))))
 
     (t2/with-transaction [_conn]
-      (t2/update! :model/Collection (u/the-id collection)
+      (t2/update! :model/Collection :id (u/the-id collection)
                   {:location             new-location
                    :is_remote_synced (boolean new-parent-is-remote-synced?)
                    :archive_operation_id nil
@@ -1600,7 +1600,7 @@
                (u/the-id collection) (:location collection) new-location)
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
-      (t2/update! :model/Collection (u/the-id collection)
+      (t2/update! :model/Collection :id (u/the-id collection)
                   {:location new-location
                    :is_remote_synced (boolean will-be-in-remote-synced?)})
       ;; we need to update all the descendant collections as well...
@@ -1623,7 +1623,7 @@
 (defn- assert-not-personal-collection-for-api-key [collection]
   (when-not config/is-prod?
     (when-let [user-id (:personal_owner_id collection)]
-      (when (= :api-key (t2/select-one-fn :type :model/User user-id))
+      (when (= :api-key (t2/select-one-fn :type :model/User :id user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
 (t2/define-before-insert :model/Collection
@@ -2013,7 +2013,7 @@
   (if-not parent-id
     "/"
     ;; It would be great to use a cache rather than a database call to fetch the parent.
-    (let [{:keys [id location]} (t2/select-one :model/Collection parent-id)]
+    (let [{:keys [id location]} (t2/select-one :model/Collection :id parent-id)]
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]

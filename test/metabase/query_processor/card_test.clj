@@ -254,7 +254,7 @@
           (testing "anonymous GET /api/public/card/:uuid/query (error body is sanitized, so assert on the 400)"
             (mt/with-temporary-setting-values [enable-public-sharing true]
               (let [uuid (str (random-uuid))]
-                (t2/update! :model/Card card-id {:public_uuid uuid, :made_public_by_id (mt/user->id :crowberto)})
+                (t2/update! :model/Card :id card-id {:public_uuid uuid, :made_public_by_id (mt/user->id :crowberto)})
                 (is (= "An error occurred."
                        (client/client :get 400 (format "public/card/%s/query" uuid)
                                       :parameters (json/encode (:parameters attack))))))))

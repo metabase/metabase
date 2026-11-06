@@ -16,7 +16,7 @@
                        ["monthly" (i18n/trs "monthly")]]]
     (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
       (is (= name
-             (str (:name (t2/select-one :model/TransformTag (:id tag)))))))))
+             (str (:name (t2/select-one :model/TransformTag :id (:id tag)))))))))
 
 (deftest initial-tags-translated-on-update
   (doseq [type ["hourly" "daily" "weekly" "monthly"]]
@@ -24,4 +24,4 @@
       (t2/update! :model/TransformTag :id (:id tag)
                   {:name "default2"})
       (is (= "default2"
-             (:name (t2/select-one :model/TransformTag (:id tag))))))))
+             (:name (t2/select-one :model/TransformTag :id (:id tag))))))))

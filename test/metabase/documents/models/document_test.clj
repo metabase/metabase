@@ -95,7 +95,7 @@
                                    :collection_id old-collection-id}]
 
       ;; Update the document's collection_id
-      (t2/update! :model/Document document-id {:collection_id new-collection-id})
+      (t2/update! :model/Document :id document-id {:collection_id new-collection-id})
 
       ;; Verify that associated cards were updated to match the new collection
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
@@ -112,7 +112,7 @@
                                   :collection_id collection-id}]
 
       ;; Move document to no collection (nil)
-      (t2/update! :model/Document document-id {:collection_id nil})
+      (t2/update! :model/Document :id document-id {:collection_id nil})
 
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
@@ -138,7 +138,7 @@
                                           :collection_id old-collection-id}]
 
       ;; Update the document's collection_id
-      (t2/update! :model/Document document-id {:collection_id new-collection-id})
+      (t2/update! :model/Document :id document-id {:collection_id new-collection-id})
 
       ;; Verify only the correct card was updated
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id in-document-card-id))))
@@ -164,7 +164,7 @@
         (testing "moving document to personal collection moves associated cards"
           (mt/with-current-user user-id
             ;; As the personal collection owner, update should succeed
-            (t2/update! :model/Document document-id {:collection_id personal-collection-id})
+            (t2/update! :model/Document :id document-id {:collection_id personal-collection-id})
 
             ;; Verify both document and card moved to personal collection
             (is (= personal-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
@@ -173,7 +173,7 @@
         (testing "moving document from personal collection works"
           (mt/with-current-user user-id
             ;; Move back to regular collection
-            (t2/update! :model/Document document-id {:collection_id regular-collection-id})
+            (t2/update! :model/Document :id document-id {:collection_id regular-collection-id})
 
             ;; Verify both document and card moved back
             (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
@@ -442,12 +442,12 @@
           (is (= 5 (:collection_position document)))))
 
       (testing "collection_position can be updated"
-        (t2/update! :model/Document document-id {:collection_position 10})
+        (t2/update! :model/Document :id document-id {:collection_position 10})
         (let [updated-document (t2/select-one :model/Document :id document-id)]
           (is (= 10 (:collection_position updated-document)))))
 
       (testing "collection_position can be set to nil"
-        (t2/update! :model/Document document-id {:collection_position nil})
+        (t2/update! :model/Document :id document-id {:collection_position nil})
         (let [updated-document (t2/select-one :model/Document :id document-id)]
           (is (nil? (:collection_position updated-document))))))))
 

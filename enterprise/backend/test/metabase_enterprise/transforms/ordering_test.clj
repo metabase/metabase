@@ -86,7 +86,7 @@
                                                                   LIMIT 100"}}
                                                 "orders_transform_products_transform")]
         (is (= #{{:transform t1} {:transform t2}}
-               (transform-deps-for-db (t2/select-one :model/Transform  t4))))
+               (transform-deps-for-db (t2/select-one :model/Transform  :id t4))))
         (is (= {t1 #{}
                 t2 #{}
                 t3 #{t1}
@@ -115,7 +115,7 @@
           (transforms.execute/execute! transform1 {:run-method :manual})
           (let [table1 (t2/select-one-pk :model/Table :name "checkins_transform")]
             (is (= #{{:table table1} {:transform t2}}
-                   (transform-deps-for-db (t2/select-one :model/Transform  t3)))))
+                   (transform-deps-for-db (t2/select-one :model/Transform  :id t3)))))
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
@@ -148,7 +148,7 @@
                                                                             LIMIT 100" dataset dataset)}}
                                                   "venues_transform_2" dataset)]
           (is (= #{{:table table1} {:transform t2}}
-                 (transform-deps-for-db (t2/select-one :model/Transform  t3))))
+                 (transform-deps-for-db (t2/select-one :model/Transform  :id t3))))
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}

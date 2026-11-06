@@ -189,7 +189,7 @@
             (let [keys-remaining (-> test-details keys set)
                   [_ removed _] (data/diff keys-remaining (-> details keys set))]
               (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
-              (t2/update! :model/Database (:id database) {:details test-details})
+              (t2/update! :model/Database :id (:id database) {:details test-details})
               test-details)
             (recur tail))
           ;; if we go through the list and we can't fine a working detail to test, keep original value
@@ -224,7 +224,7 @@
                  (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
                                            (:name database) (:id database)
                                            (:provider_name database) provider))
-                 (t2/update! :model/Database (:id database) {:provider_name provider})
+                 (t2/update! :model/Database :id (:id database) {:provider_name provider})
                  (catch Throwable provider-e
                    (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database))))))
 

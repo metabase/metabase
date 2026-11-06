@@ -51,7 +51,7 @@
   ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
    (try
      (let [db (get-in source [:query :database])
-           {driver :engine :as database} (t2/select-one :model/Database db)
+           {driver :engine :as database} (t2/select-one :model/Database :id db)
            ;; important to test routing before calling compile-source (whose qp middleware will also throw)
            _ (throw-if-db-routing-enabled transform driver database)
            transform-details {:db-id db

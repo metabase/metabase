@@ -97,7 +97,7 @@
     (when (api/column-will-change? :timeline_id existing timeline-event-updates)
       (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (t2/update! :model/TimelineEvent id
+    (t2/update! :model/TimelineEvent :id id
                 (u/select-keys-when timeline-event-updates
                                     :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
                                     :non-nil #{:name}))

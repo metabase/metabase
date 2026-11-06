@@ -19,7 +19,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You cannot change the table ID of a sandbox once it has been created"
-           (t2/update! :model/Sandbox (:id gtap) {:table_id (mt/id :checkins)}))))))
+           (t2/update! :model/Sandbox :id (:id gtap) {:table_id (mt/id :checkins)}))))))
 
 (deftest disallow-queries-that-add-columns-test
   (testing "Don't allow saving a Sandboxing query that contains columns not in the Table it replaces (#13715)"
@@ -38,7 +38,7 @@
                                                                           :result_metadata (qp.preprocess/query->expected-cols query)}
                                       :model/Sandbox gtap {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))}]
-                         (t2/update! :model/Sandbox (:id gtap) {:card_id (:id card)})
+                         (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -48,7 +48,7 @@
                                       :model/Sandbox _    {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))
                                                            :card_id  (:id card)}]
-                         (t2/update! :model/Card (:id card) {:dataset_query query})
+                         (t2/update! :model/Card :id (:id card) {:dataset_query query})
                          :ok))}]
       (testing (str "\n" msg "\n")
         (testing "sanity check"
@@ -81,7 +81,7 @@
                                                                             :result_metadata metadata}
                                         :model/Sandbox gtap {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))}]
-                           (t2/update! :model/Sandbox (:id gtap) {:card_id (:id card)})
+                           (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
                            :ok))
 
                        "Update query for Card associated with an existing GTAP"
@@ -91,7 +91,7 @@
                                         :model/Sandbox _    {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))
                                                              :card_id  (:id card)}]
-                           (t2/update! :model/Card (:id card) {:result_metadata metadata})
+                           (t2/update! :model/Card :id (:id card) {:result_metadata metadata})
                            :ok))}]
         (testing (str "\n" msg "\n")
           (is (thrown-with-msg?
@@ -164,32 +164,32 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You do not have permissions to modify a question that is used for row and column level security"
-               (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query checkins)}))))
+               (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query checkins)}))))
         (testing "nor of a Card that one reads, however deep"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You do not have permissions to modify a question that is used for row and column level security"
-               (t2/update! :model/Card source-id {:dataset_query (mt/mbql-query checkins)}))))
+               (t2/update! :model/Card :id source-id {:dataset_query (mt/mbql-query checkins)}))))
         (testing "nor change its result metadata, which is the sandbox's column allow-list"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You do not have permissions to modify a question that is used for row and column level security"
-               (t2/update! :model/Card card-id {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")}))))
+               (t2/update! :model/Card :id card-id {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")}))))
         (testing "nor archive it, which would leave the sandbox filtering nothing"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You do not have permissions to modify a question that is used for row and column level security"
-               (t2/update! :model/Card card-id {:archived true}))))
+               (t2/update! :model/Card :id card-id {:archived true}))))
         (testing "nor delete it"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You do not have permissions to modify a question that is used for row and column level security"
                (t2/delete! :model/Card :id card-id))))
         (testing "a Card no sandbox is built out of is none of this check's business"
-          (is (pos? (t2/update! :model/Card other-id {:dataset_query (mt/mbql-query checkins)})))))
+          (is (pos? (t2/update! :model/Card :id other-id {:dataset_query (mt/mbql-query checkins)})))))
       (testing "an admin may do it"
         (mt/with-test-user :crowberto
-          (is (pos? (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query venues {:fields [$id]})}))))))))
+          (is (pos? (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:fields [$id]})}))))))))
 
 (defn- api-venues-col
   "The VENUES Field named `col-name`, as a client would send it in a Card's `:result_metadata`."
@@ -244,13 +244,13 @@
                                                    :group_id (u/the-id (perms-group/all-users))
                                                    :card_id  card-id}]
         (let [stored (mt/with-test-user :crowberto
-                       (t2/update! :model/Card card-id
+                       (t2/update! :model/Card :id card-id
                                    {:result_metadata (mapv #(assoc % :metabase.lib.query/transformation-added-base-type true)
                                                            (venues-cols "ID" "NAME"))})
                        (t2/select-one-fn :result_metadata :model/Card :id card-id))]
           (is (every? :metabase.lib.query/transformation-added-base-type stored))
           (mt/with-test-user :rasta
-            (is (pos? (t2/update! :model/Card card-id
+            (is (pos? (t2/update! :model/Card :id card-id
                                   {:name            "Renamed"
                                    :result_metadata (mapv #(dissoc % :metabase.lib.query/transformation-added-base-type)
                                                           stored)})))
@@ -258,7 +258,7 @@
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"You do not have permissions to modify a question that is used for row and column level security"
-                   (t2/update! :model/Card card-id
+                   (t2/update! :model/Card :id card-id
                                {:result_metadata (mapv #(assoc % :display_name "Something else") stored)}))))))))))
 
 (deftest running-a-policy-card-with-drifted-metadata-as-a-non-admin-test
@@ -272,7 +272,7 @@
               run-card     (fn [user]
                              (mt/rows (mt/user-http-request user :post 202 (format "card/%d/query" card-id))))]
           (mt/with-test-user :crowberto
-            (t2/update! :model/Card card-id {:result_metadata (venues-cols "ID" "NAME")}))
+            (t2/update! :model/Card :id card-id {:result_metadata (venues-cols "ID" "NAME")}))
           (testing "the non-admin's query succeeds"
             (is (seq (run-card :rasta))))
           (testing "the drifted metadata is not overwritten by the non-admin's run"

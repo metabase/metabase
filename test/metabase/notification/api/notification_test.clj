@@ -283,7 +283,7 @@
           (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
                                 (update notification :handlers (fn [[handler]]
                                                                  [(dissoc handler :template)])))
-          (is (false? (t2/exists? :model/ChannelTemplate (:id created-template)))))
+          (is (false? (t2/exists? :model/ChannelTemplate :id (:id created-template)))))
 
         (testing "and re-create it again"
           (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
@@ -508,14 +508,14 @@
           (testing "\nthe notification and its payload keep their primary keys"
             (is (=? {:active     false
                      :payload_id payload-id}
-                    (t2/select-one :model/Notification notification-id)))
+                    (t2/select-one :model/Notification :id notification-id)))
             (is (true? (t2/exists? :model/NotificationCard :id payload-id)))))
         (testing "a body naming a different notification id is ignored - the URL row is updated in place"
           (is (=? {:id notification-id}
                   (put! 200 (assoc notification :id (inc notification-id)))))
           (is (=? {:active     true
                    :payload_id payload-id}
-                  (t2/select-one :model/Notification notification-id))))
+                  (t2/select-one :model/Notification :id notification-id))))
         (testing "a body payload naming a different payload row is ignored - the payload keeps its primary key"
           (is (=? {:id notification-id}
                   (put! 200 (assoc-in notification [:payload :id] (inc payload-id)))))
@@ -737,9 +737,9 @@
               change-notification-creator (fn [user-id]
                                             ;; :model/Notification prevents updating creator_id, so we need to use table
                                             ;; name
-                                            (t2/update! :notification (:id notification) {:creator_id user-id}))
+                                            (t2/update! :notification :id (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
-                                            (t2/update! :model/Card (-> notification :payload :card_id)
+                                            (t2/update! :model/Card :id (-> notification :payload :card_id)
                                                         {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
           (mt/with-premium-features #{}
             (testing "admin can update"
@@ -880,17 +880,17 @@
                                                                :details      {:type    :email/handlebars-text
                                                                               :subject "updated subject"
                                                                               :body    "<h1>updated body</h1>"}})]))
-                original        (t2/select-one :model/ChannelTemplate system-template-id)]
+                original        (t2/select-one :model/ChannelTemplate :id system-template-id)]
             (testing "the owner (non-admin) cannot overwrite the referenced template - the row is untouched"
               (put! :rasta 403 (overwrite-with "renamed"))
               (is (=? (select-keys original [:name :details])
-                      (select-keys (t2/select-one :model/ChannelTemplate system-template-id) [:name :details]))))
+                      (select-keys (t2/select-one :model/ChannelTemplate :id system-template-id) [:name :details]))))
             (testing "the owner (non-admin) cannot delete the referenced template by omitting it"
               (put! :rasta 403 (fn [[handler]] [(dissoc handler :template :template_id)]))
-              (is (true? (t2/exists? :model/ChannelTemplate system-template-id))))
+              (is (true? (t2/exists? :model/ChannelTemplate :id system-template-id))))
             (testing "an admin can overwrite the template"
               (put! :crowberto 200 (overwrite-with "admin-renamed"))
-              (is (= "admin-renamed" (t2/select-one-fn :name :model/ChannelTemplate system-template-id))))))))))
+              (is (= "admin-renamed" (t2/select-one-fn :name :model/ChannelTemplate :id system-template-id))))))))))
 
 (deftest send-saved-notification-permissions-test
   (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
@@ -1142,7 +1142,7 @@
                                                                  :handlers     [{:channel_type "channel/email"
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
-        (let [card-id (-> (t2/select-one :model/Notification rasta-noti)
+        (let [card-id (-> (t2/select-one :model/Notification :id rasta-noti)
                           models.notification/hydrate-notification
                           :payload
                           :card_id)]
@@ -1180,7 +1180,7 @@
                                                                  :handlers     [{:channel_type "channel/email"
                                                                                  :recipients   [{:type    :notification-recipient/user
                                                                                                  :user_id (mt/user->id :lucky)}]}]}]
-        (let [card-id (-> (t2/select-one :model/Notification rasta-noti)
+        (let [card-id (-> (t2/select-one :model/Notification :id rasta-noti)
                           models.notification/hydrate-notification
                           :payload
                           :card_id)]
@@ -1233,7 +1233,7 @@
                                                                              {:type    :notification-recipient/user
                                                                               :user_id (mt/user->id :lucky)}]}]}]
                               (mt/user-http-request user :post status (format "notification/%d/unsubscribe" noti-id))
-                              (thunk (models.notification/hydrate-notification (t2/select-one :model/Notification noti-id)))))
+                              (thunk (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id)))))
           email-recipients (fn [notification]
                              (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :recipients))]
       (testing "creator can unsubscribe themselves"
@@ -1270,7 +1270,7 @@
     (notification.tu/with-channel-fixtures [:channel/email]
       (mt/with-model-cleanup [:model/Notification]
         (let [email-recipients (fn [noti-id]
-                                 (->> (t2/select-one :model/Notification noti-id)
+                                 (->> (t2/select-one :model/Notification :id noti-id)
                                       models.notification/hydrate-notification
                                       :handlers
                                       (m/find-first #(= :channel/email (:channel_type %)))

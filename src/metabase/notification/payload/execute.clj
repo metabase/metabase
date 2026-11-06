@@ -16,6 +16,7 @@
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -105,7 +106,7 @@
         (let [{:keys [model id]} (:entity link-card)
               instance           (t2/select-one
                                   (serdes/link-card-model->toucan-model model)
-                                  (dashboard-card/link-card-info-query-for-model model id))]
+                                  (h2x/assert-map-or-nil! (dashboard-card/link-card-info-query-for-model model id)))]
           (when (mi/can-read? instance)
             (link-card->text-part (assoc link-card :entity instance))))))
     (catch Throwable e
@@ -351,6 +352,6 @@
                      format-qp-result))]
 
     (log/debugf "Result has %d rows" (:row_count result))
-    {:card   (t2/select-one :model/Card card-id)
+    {:card   (t2/select-one :model/Card :id card-id)
      :result result
      :type   :card}))
