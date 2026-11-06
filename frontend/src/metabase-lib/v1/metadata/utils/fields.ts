@@ -1,4 +1,3 @@
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   BOOLEAN,
   COORDINATE,
@@ -11,7 +10,12 @@ import {
   TEMPORAL,
 } from "metabase-lib/v1/types/constants";
 import { getFieldType } from "metabase-lib/v1/types/utils/isa";
-import type { FieldId, FieldReference, TableId } from "metabase-types/api";
+import {
+  type FieldId,
+  type FieldReference,
+  type TableId,
+  isConcreteTableId,
+} from "metabase-types/api";
 
 const ICON_MAPPING: Record<string, string> = {
   [TEMPORAL]: "calendar",
@@ -44,7 +48,7 @@ export function getUniqueFieldId({
 }): number | string {
   const fieldIdentifier = getFieldIdentifier({ id, name });
 
-  if (isVirtualCardId(table_id)) {
+  if (table_id != null && !isConcreteTableId(table_id)) {
     return `${table_id}:${fieldIdentifier}`;
   }
 
