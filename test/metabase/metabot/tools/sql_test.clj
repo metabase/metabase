@@ -234,9 +234,12 @@
                     (is (= {:parts ["generated_entity"], :run-it? false}
                            (run tool-name (disj readable "run_query") {} {:show_chart false}))))
                   (when-not (= tool-name "create_sql_query")
-                    (testing "in an open SQL editor the query is proposed there whatever the argument says"
+                    (testing "in an open SQL editor, a query built only to be read is not proposed there"
+                      (is (= {:parts [], :run-it? true}
+                             (run tool-name readable editor {:show_chart false}))))
+                    (testing "in an open SQL editor, a query left to show is proposed there"
                       (is (= {:parts ["code_edit"], :run-it? false}
-                             (run tool-name readable editor {:show_chart false}))))))))))))))
+                             (run tool-name readable editor {}))))))))))))))
 
 (deftest ^:parallel create-sql-query-editor-variant-has-no-show-chart-test
   (is (nil? (mut/get (:args (tools.core/declaration sql/create-sql-query-code-edit-tool)) :show_chart))))

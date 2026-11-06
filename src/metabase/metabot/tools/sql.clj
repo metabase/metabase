@@ -108,9 +108,10 @@
    as a chart."
   [buffer-id show-chart readable?]
   (cond
+    ;; A query built only to be read is never proposed over the user's buffer.
+    (and (false? show-chart) readable?) :hidden
     buffer-id                           :editor
     ;; Where the model cannot read the results, the chart is the one way the user sees anything.
-    (and (false? show-chart) readable?) :hidden
     :else                               :link))
 
 (defn- delivery-parts
@@ -197,8 +198,7 @@
         buffer-id                                   (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         ;; Readability reads the app DB, so it is checked only when it can change the delivery.
         delivery                                    (query-delivery buffer-id show-chart
-                                                                    (and (not buffer-id)
-                                                                         (false? show-chart)
+                                                                    (and (false? show-chart)
                                                                          (tools.run-query/sql-results-readable?)))]
     ;; The calls after this one in the same model response read this query before the agent loop stores the results
     (some-> (:memory-atom ctx) (swap! memory/set-query query-id query))
