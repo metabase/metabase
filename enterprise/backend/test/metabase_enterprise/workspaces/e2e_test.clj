@@ -35,6 +35,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
@@ -510,7 +511,7 @@
                                   ;; that's always null, same as `:model/Table.schema`. Use `tbl-schema`
                                   ;; (the per-driver translation we already do for synced rows).
                                   (testing "describe-database returns only input-schema tables"
-                                    (let [described (into [] (:tables (driver/describe-database admin-driver ws-db)))
+                                    (let [described (into [] (:tables (driver/describe-database admin-driver (driver.u/ensure-lib-database ws-db))))
                                           iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
                                       (is (some #(and (= tbl-schema (:schema %))
                                                       (= src-name (:name %)))
@@ -779,10 +780,8 @@
                                                      (qualified-table-sql admin-driver admin-details main-schema tgt-a-name))]
                               (mt/with-temp [:model/Transform transform-b
                                              {:name   (str "transform-b-" run-id)
-                                              :source {:type :query
-                                                       :query {:database (:id ws-db)
-                                                               :type     :native
-                                                               :native   {:query native-sql}}}
+                                              :source {:type  :query
+                                                       :query (lib/native-query mp native-sql)}
                                               :target {:type   :table
                                                        :schema main-schema
                                                        :name   tgt-b-name}}]
