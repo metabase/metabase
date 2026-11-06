@@ -4116,6 +4116,70 @@
       (migrate!)
       (is (not (t2/exists? :collection :entity_id "librarylibrarydashbrd"))))))
 
+(defn- insert-legacy-library-dashboards!
+  "Inserts a Library and its Dashboards section with `attrs`, returning the section's id."
+  [attrs]
+  (let [library-id (insert-legacy-library-collection! {:type "library" :entity_id "librarylibrarylibrary"})]
+    (insert-legacy-library-collection! (merge {:name      "Dashboards"
+                                               :type      "library-dashboards"
+                                               :location  (str "/" library-id "/")
+                                               :entity_id "librarylibrarydashbrd"}
+                                              attrs))))
+
+(defn- insert-legacy-collection-rso!
+  "Inserts a remote-sync tracking row with `status` for the collection with `collection-id`, returning its id."
+  [collection-id status]
+  (t2/insert-returning-pk! :remote_sync_object {:model_type        "Collection"
+                                                :model_id          collection-id
+                                                :model_name        "Dashboards"
+                                                :status            status
+                                                :status_changed_at :%now}))
+
+(deftest drop-empty-library-dashboards-test
+  (testing "pj1awi through pj1awj: empty Dashboards section is dropped with its permissions"
+    (doseq [[label remote-sync-type status expected] [["read-write instance marks pushed row deleted" "read-write" "synced" "delete"]
+                                                      ["read-write instance drops never-pushed row" "read-write" "create" nil]
+                                                      ["read-only instance drops row" "read-only" "synced" nil]
+                                                      ["instance without remote-sync type drops row" nil "synced" nil]]]
+      (testing label
+        (impl/test-migrations ["pj1awi" "pj1awj"] [migrate!]
+          (when remote-sync-type
+            (t2/insert! :setting {:key "remote-sync-type" :value remote-sync-type}))
+          (let [id        (insert-legacy-library-dashboards! {:is_remote_synced true})
+                library   (t2/select-one-pk :collection :entity_id "librarylibrarylibrary")
+                group-id  (t2/insert-returning-pk! :permissions_group {:name (mt/random-name) :entity_id (u/generate-nano-id)})
+                own-rso   (insert-legacy-collection-rso! id status)
+                other-rso (insert-legacy-collection-rso! library "synced")]
+            (t2/insert! :permissions {:group_id      group-id
+                                      :object        (format "/collection/%d/" id)
+                                      :perm_type     "perms/collection-access"
+                                      :perm_value    "read-and-write"
+                                      :collection_id id})
+            (migrate!)
+            (is (not (t2/exists? :collection :id id)))
+            (is (not (t2/exists? :permissions :collection_id id)))
+            (is (= expected (t2/select-one-fn :status :remote_sync_object :id own-rso)))
+            (is (= "synced" (t2/select-one-fn :status :remote_sync_object :id other-rso))))))))
+  (doseq [[label seed!] {"dashboard"      (fn [id] (t2/insert! :report_dashboard {:name          (mt/random-name)
+                                                                                  :entity_id     (u/generate-nano-id)
+                                                                                  :collection_id id
+                                                                                  :creator_id    (mt/user->id :rasta)
+                                                                                  :parameters    "[]"
+                                                                                  :created_at    :%now
+                                                                                  :updated_at    :%now}))
+                         "sub-collection" (fn [id] (insert-legacy-library-collection!
+                                                    {:location (str (t2/select-one-fn :location :collection :id id) id "/")
+                                                     :archived true}))}]
+    (testing (str "pj1awi through pj1awj: Dashboards section holding " label " is kept with its remote-sync row")
+      (impl/test-migrations ["pj1awi" "pj1awj"] [migrate!]
+        (t2/insert! :setting {:key "remote-sync-type" :value "read-write"})
+        (let [id  (insert-legacy-library-dashboards! {})
+              rso (insert-legacy-collection-rso! id "synced")]
+          (seed! id)
+          (migrate!)
+          (is (t2/exists? :collection :id id))
+          (is (= "synced" (t2/select-one-fn :status :remote_sync_object :id rso))))))))
+
 (deftest metabot-message-finish-reason-column-test
   (testing "v65.2026-10-08T00:00:00: metabot_message gains a nullable finish_reason, and finished is left alone"
     (impl/test-migrations ["v65.2026-10-08T00:00:00"] [migrate!]

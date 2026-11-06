@@ -139,7 +139,10 @@
         (is (str/includes? xml "NAME"))
         ;; the pasteable form carries the join-alias; a bare `[db,schema,table,field]` here would
         ;; dead-end on :no-fk-path (BOT-1612)
-        (is (str/includes? xml "[\"field\",{\"join-alias\":\"Campaign\"},[\"Sample\",\"PUBLIC\",\"CAMPAIGNS\",\"NAME\"]]"))))))
+        (is (str/includes? xml "[\"field\",{\"join-alias\":\"Campaign\"},[\"Sample\",\"PUBLIC\",\"CAMPAIGNS\",\"NAME\"]]")))
+      (testing "the Reference header tells the LLM to copy a full field clause as is, not to wrap it"
+        (is (str/includes? xml (str "Reference (copy as is if it starts with [\"field\"; "
+                                    "else put it in a field clause)")))))))
 
 (deftest ^:parallel format-metric-dimensions-table-test
   (testing "dimensions carry their source table + a copy-paste portable FK, disambiguating
@@ -186,7 +189,7 @@
     (let [xml (llm-shape/field-metadata->xml
                {:field_id 1 :value_metadata {:field_values ["x"]}})]
       (is (not (str/includes? xml "Source table:")))
-      (is (not (str/includes? xml "Reference (copy")))))
+      (is (not (str/includes? xml "Reference (")))))
   (testing "XML structural chars in a portable-FK segment are escaped (the template uses |safe)"
     (let [xml (llm-shape/field-metadata->xml
                {:field_id 1
@@ -536,6 +539,26 @@
       (is (not (str/includes? xml-missing "<query>")))
       (is (not (str/includes? xml-empty "<query>"))))))
 
+(deftest ^:parallel question->xml-fields-test
+  (testing "renders the result columns under ### Fields when :fields is provided"
+    ;; Native aliases and aggregates have no Field row, so their ids are strings.
+    (let [xml (llm-shape/question->xml
+               {:id     203
+                :name   "Q"
+                :fields [{:field_id 7 :name "CATEGORY" :display_name "Category"
+                          :type :type/Text :database_type "VARCHAR"}
+                         {:field_id "count" :name "count" :display_name "Count"
+                          :type :type/Integer :database_type "BIGINT"}]})]
+      (is (str/includes? xml "### Fields"))
+      (is (str/includes? xml "The following fields are returned by this question"))
+      (is (str/includes? xml "<field id=\"7\" name=\"CATEGORY\" display_name=\"Category\""))
+      (is (str/includes? xml "<field id=\"count\" name=\"count\" display_name=\"Count\""))))
+  (testing "omits the fields section when :fields is missing or empty"
+    (let [xml-missing (llm-shape/question->xml {:id 204 :name "Q"})
+          xml-empty   (llm-shape/question->xml {:id 205 :name "Q" :fields []})]
+      (is (not (str/includes? xml-missing "### Fields")))
+      (is (not (str/includes? xml-empty "### Fields"))))))
+
 (deftest ^:parallel dashboard->xml-test
   (testing "formats dashboard matching Python"
     (let [dashboard {:id 50
@@ -851,7 +874,22 @@
   (testing "handles nil value_metadata"
     (let [metadata {:field_id "f1" :value_metadata nil}
           xml (llm-shape/field-metadata->xml metadata)]
-      (is (str/includes? xml "No metadata available to display")))))
+      (is (str/includes? xml "No metadata available to display"))))
+  (testing "a computed column without value metadata still shows its reference (a sandboxed user's drill-in)"
+    (let [xml (llm-shape/field-metadata->xml {:field_id       "Double price"
+                                              :reference_name "Double price"
+                                              :value_metadata nil})]
+      (is (str/includes? xml "<field-metadata field_id=\"Double price\">"))
+      (is (str/includes? xml (str "Reference (copy as is if it starts with [\"field\"; "
+                                  "else put it in a field clause): \"Double price\"")))
+      (is (not (str/includes? xml "No metadata available to display")))))
+  (testing "a field that two FK routes reach, without value metadata, still shows its source table and no reference"
+    (let [xml (llm-shape/field-metadata->xml {:field_id       7
+                                              :source_table   ["DB" "PUBLIC" "CATEGORIES"]
+                                              :value_metadata nil})]
+      (is (str/includes? xml "Source table: PUBLIC.CATEGORIES\n"))
+      (is (not (str/includes? xml "Reference")))
+      (is (not (str/includes? xml "No metadata available to display"))))))
 
 (deftest ^:parallel get-metadata-result->xml-test
   (testing "formats metadata with metrics, tables, and models"
@@ -874,7 +912,19 @@
     (let [result {:metrics [] :tables [] :models [] :errors ["Error 1"]}
           xml (llm-shape/get-metadata-result->xml result)]
       (is (str/includes? xml "<errors>"))
-      (is (str/includes? xml "Error 1")))))
+      (is (str/includes? xml "Error 1"))))
+  (testing "names questions as questions, and mentions their <query> only when one has a query"
+    (let [note       "The cards in <questions> are saved questions, not metrics or models."
+          query-note "The <query> of a question shows the table and filters it uses."
+          xml        (fn [questions] (llm-shape/get-metadata-result->xml {:questions questions}))
+          with-query {:id 1 :name "Q1" :query_json {"lib/type" "mbql/query"}}]
+      (doseq [questions [[{:id 2 :name "Q2"}]
+                         [{:id 2 :name "Q2" :query_json {}}]]]
+        (is (str/includes? (xml questions) note))
+        (is (not (str/includes? (xml questions) "<query>")))
+        (is (not (str/includes? (xml questions) query-note))))
+      (is (str/includes? (xml [with-query]) "<query>"))
+      (is (str/includes? (xml [with-query {:id 2 :name "Q2"}]) query-note)))))
 
 (deftest ^:parallel entity->xml-test
   (testing "dispatches to correct formatter based on type"
@@ -1131,6 +1181,29 @@
       (testing "the two renderings are identical: the metric's source does not change the reference form"
         (is (= (re-find #"(?s)\| Field Name \|.*?\n\n" table-xml)
                (re-find #"(?s)\| Field Name \|.*?\n\n" card-xml)))))))
+
+(deftest ^:parallel metric->xml-dimension-prefers-reference-test
+  (testing "A dimension row renders its own Reference and Source table when it carries them"
+    (let [clause ["field"
+                  {"source-field"      ["Sample" "PUBLIC" "VENUES" "CATEGORY_ID"]
+                   "source-field-name" "Peer__CATEGORY_ID"}
+                  ["Sample" "PUBLIC" "CATEGORIES" "NAME"]]
+          xml    (llm-shape/metric->xml
+                  {:id 1 :name "Metric" :database_name "Sample"
+                   :source_card_portable_entity_id "T4wA_GPFwGb6R4FxIDGTo"
+                   :queryable-dimensions [{:name "NAME" :field_id 2 :type "string"
+                                           :table_reference "Peer → Category"
+                                           :portable_fk ["Sample" "PUBLIC" "CATEGORIES" "NAME"]
+                                           :reference clause}
+                                          {:name "NAME_2" :field_id "NAME_2" :type "string"
+                                           :source_table ["Sample" "PUBLIC" "VENUES"]}]})]
+      (testing "`:reference` wins over the portable FK"
+        (is (str/includes? xml (str "| " (json/encode clause) " |")))
+        (is (not (str/includes? xml "| [\"Sample\",\"PUBLIC\",\"CATEGORIES\",\"NAME\"] |"))))
+      (testing "the FK label names the FK column the row comes through"
+        (is (str/includes? xml "| PUBLIC.CATEGORIES (via Peer → Category) |")))
+      (testing "`:source_table` fills Source table for a row without a portable FK"
+        (is (str/includes? xml "| PUBLIC.VENUES | \"NAME_2\" |"))))))
 
 (deftest ^:parallel metric->xml-dimension-reference-omitted-without-portable-fk-test
   (testing "A database field without a portable FK is listed without a reference"

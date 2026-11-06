@@ -47,7 +47,7 @@
   [:and
    {:error/message "must be lowercase letters, numbers, and dashes"}
    [:string {:max 100}]
-   [:re #"\A[a-z0-9]+(?:-[a-z0-9]+)*\z"]
+   [:re #"^[a-z0-9]+(?:-[a-z0-9]+)*(?![\s\S])"]
    [:fn {:error/message "must not be a reserved slug"} (complement reserved-slugs)]])
 
 (mr/def ::display-name
@@ -79,7 +79,7 @@
   [:re
    (merge {:error/message "must be an origin like https://api.example.com or https://*.example.com"}
           (decoders origin))
-   #"\Ahttps?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?\z"])
+   #"^https?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?(?![\s\S])"])
 
 (mr/def ::allowed-hosts
   "The origins a data app's sandboxed bundle may fetch, `[]` when nil."

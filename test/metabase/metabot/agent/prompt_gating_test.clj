@@ -10,19 +10,34 @@
   than on those tools being absent."
   ["construct_notebook_query" "create_sql_query"])
 
-(defn- render-internal-template
-  "Render internal.selmer for `perms`, the scopes they grant, and `active-tool-names` (default
-  [[active-sql-tool-names]]). The prompt builder reads only tool names, so a name->nil map stands in for the real
-  name->var one."
-  ([perms] (render-internal-template perms active-sql-tool-names))
-  ([perms active-tool-names]
+(def ^:private query-templates
+  "The system prompts of the profiles that build queries."
+  ["embedding-next.selmer"
+   "internal.selmer"
+   "natural-language-querying-fallback.selmer"
+   "natural-language-querying-only.selmer"
+   "slackbot.selmer"
+   "sql-querying-only.selmer"])
+
+(defn- render-template
+  "Render `template` for `perms` and the scopes they grant. `active-tool-names` defaults to none. The prompt builder
+  reads only tool names, so a name->nil map stands in for the real name->var one."
+  ([template perms]
+   (render-template template perms []))
+  ([template perms active-tool-names]
    (binding [scope/*current-user-metabot-permissions* perms
              scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
      (prompts/build-system-message-content
-      {:prompt-template "internal.selmer"}
+      {:prompt-template template}
       {:current_time "2026-03-25T12:00:00Z"}
       (zipmap active-tool-names (repeat nil))
       []))))
+
+(defn- render-internal-template
+  "Render internal.selmer for `perms` and `active-tool-names` (default [[active-sql-tool-names]])."
+  ([perms] (render-internal-template perms active-sql-tool-names))
+  ([perms active-tool-names]
+   (render-template "internal.selmer" perms active-tool-names)))
 
 (def ^:private all-yes-perms
   {:permission/metabot-sql-generation :yes
@@ -156,12 +171,7 @@
 (defn- render-slackbot-template
   "Render the slackbot.selmer template with given permission flags."
   [perms]
-  (binding [scope/*current-user-metabot-permissions* perms]
-    (prompts/build-system-message-content
-     {:prompt-template "slackbot.selmer"}
-     {:current_time "2026-03-25T12:00:00Z"}
-     {}
-     [])))
+  (render-template "slackbot.selmer" perms))
 
 (deftest ^:parallel slackbot-nlq-sections-gated-test
   (let [with-nlq    (render-slackbot-template all-yes-perms)
@@ -238,16 +248,6 @@
 ;;; Custom system prompt injection
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn- render-template
-  "Render a template with given permission flags and optional setting overrides."
-  [template-name perms]
-  (binding [scope/*current-user-metabot-permissions* perms]
-    (prompts/build-system-message-content
-     {:prompt-template template-name}
-     {:current_time "2026-03-25T12:00:00Z"}
-     {}
-     [])))
-
 (deftest custom-chat-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
     (mt/with-temporary-setting-values [metabot-chat-system-prompt "Always respond in French."]
@@ -302,6 +302,13 @@
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (not (re-find #"NLQ only instruction" rendered)))))))
 
+(deftest ^:parallel every-query-prompt-has-the-save-rule-test
+  (testing "every prompt that builds queries tells the model when it can say that something is saved"
+    (doseq [template query-templates]
+      (testing template
+        (is (re-find #"Say that it is saved only when a tool result says that it was saved"
+                     (render-template template all-yes-perms active-sql-tool-names)))))))
+
 (deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
   (testing "templates for surfaces with a reasoning timeline skip the narration guidance"
     (doseq [template ["internal.selmer"
@@ -325,6 +332,28 @@
       (is (re-find #"To read a saved question or model, run it with `run_query`" rendered))
       (is (re-find #"pass `show_chart: false` to `construct_notebook_query`" rendered))
       (is (not (re-find #"you cannot see query results" rendered))))))
+
+(deftest ^:parallel prompt-answers-questions-about-the-screen-from-it-test
+  (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
+    (testing "with run_query, a request to analyze or explain what the user is viewing is answered from that query"
+      (is (re-find #"When the user asks you to analyze or explain what they are viewing" rendered))
+      (is (re-find #"answer from the query on their screen and don't build another one" rendered)))
+    (testing "an answer from rows that were cut off says so and offers a query over all of them"
+      (is (re-find #"If only its first rows are shown, say that your answer covers only those rows" rendered))
+      (is (re-find #"offer a query that computes the answer over all of them" rendered)))
+    (testing "a chart that needs a measure the query lacks still gets a query that computes it"
+      (is (re-find #"a pie of a list with no numeric column, also gets a query that computes the measure" rendered))))
+  (testing "without run_query it can't read that query, so it is not told to"
+    (is (not (re-find #"answer from the query on their screen"
+                      (render-internal-template all-yes-perms ["construct_notebook_query"]))))))
+
+(deftest ^:parallel prompt-keeps-tools-out-of-answers-test
+  (doseq [template ["embedding-next.selmer"
+                    "internal.selmer"
+                    "natural-language-querying-fallback.selmer"
+                    "natural-language-querying-only.selmer"]]
+    (testing template
+      (is (re-find #"Don't mention your tools in your answer" (render-template template all-yes-perms))))))
 
 (deftest prompt-gates-sql-execution-guidance-test
   (let [tools ["construct_notebook_query" "create_sql_query" "run_query"]]
@@ -360,42 +389,22 @@
             (is (not (re-find #"write SQL with `create_sql_query`" rendered)))))))))
 
 (deftest every-results-template-follows-sql-execution-test
-  (doseq [template ["embedding-next.selmer"
-                    "internal.selmer"
-                    "natural-language-querying-fallback.selmer"
-                    "natural-language-querying-only.selmer"
-                    "slackbot.selmer"
-                    "sql-querying-only.selmer"]
+  (doseq [template query-templates
           [sql-on? expected] [[true #"write SQL with `create_sql_query` and run it"]
                               [false #"`run_query` runs notebook queries only"]]]
     (testing (str template ", SQL execution " (if sql-on? "on" "off"))
       (mt/with-temporary-setting-values [metabot-sql-execution-enabled? sql-on?]
-        (binding [scope/*current-user-metabot-permissions* all-yes-perms
-                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes all-yes-perms)]
-          (is (re-find expected (prompts/build-system-message-content
-                                 {:prompt-template template}
-                                 {}
-                                 (zipmap ["construct_notebook_query" "create_sql_query" "run_query"] (repeat nil))
-                                 []))))))))
+        (is (re-find expected (render-template template all-yes-perms
+                                               ["construct_notebook_query" "create_sql_query" "run_query"])))))))
 
 (deftest no-template-says-results-are-hidden-when-run-query-is-active-test
-  (doseq [template ["embedding-next.selmer"
-                    "internal.selmer"
-                    "natural-language-querying-fallback.selmer"
-                    "natural-language-querying-only.selmer"
-                    "slackbot.selmer"
-                    "sql-querying-only.selmer"]
+  (doseq [template query-templates
           [tools hidden?] [[["construct_notebook_query" "create_sql_query" "run_query"] false]
                            [["construct_notebook_query" "create_sql_query"] true]]]
     (testing (str template (if hidden? " without run_query" " with run_query"))
-      (binding [scope/*current-user-metabot-permissions* all-yes-perms
-                scope/*current-user-scope*               (scope/user-metabot-perms->scopes all-yes-perms)]
-        (is (= hidden?
-               (some? (re-find #"(?i)cannot (see (the actual |query )?results|execute queries)"
-                               (prompts/build-system-message-content {:prompt-template template}
-                                                                     {}
-                                                                     (zipmap tools (repeat nil))
-                                                                     [])))))))))
+      (is (= hidden?
+             (some? (re-find #"(?i)cannot (see (the actual |query )?results|execute queries)"
+                             (render-template template all-yes-perms tools))))))))
 
 (deftest prompt-without-notebook-builder-test
   (testing "with NLQ permitted but no construct_notebook_query, as in :internal-sql, nothing names the builder"

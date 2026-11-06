@@ -242,6 +242,17 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual("123");
     });
 
+    it("should keep a relative date value of a month-year parameter (metabase#34129)", () => {
+      const parameter = createMockParameter({
+        slug: "time",
+        type: "date/month-year",
+      });
+
+      expect(
+        getParameterValueFromQueryParams(parameter, { time: "thisday" }),
+      ).toEqual("thisday");
+    });
+
     it("should not normalize parameters mapped to non-field targets", () => {
       parameter1.type = "category";
       parameter1.hasVariableTemplateTagTarget = true;
@@ -405,6 +416,10 @@ describe("parameters/utils/parameter-values", () => {
         expect(runGetParameterValueFromQueryParams("123.456")).toEqual([
           123.456,
         ]);
+      });
+
+      it("should keep a zero value of a number parameter without fields (metabase#27257)", () => {
+        expect(runGetParameterValueFromQueryParams("0")).toEqual([0]);
       });
 
       describe("when parsing parameter value that is a comma-separated list of numbers", () => {

@@ -12,7 +12,7 @@ import {
 } from "./constants";
 import type { PositionedLegendItem } from "./types";
 
-const calculateItemWidth = (
+export const calculateItemWidth = (
   item: LegendItem,
   fontSize: number,
   fontWeight: number,
@@ -104,7 +104,7 @@ export const calculateLegendRows = ({
         color: item.color,
         name: truncateText(
           item.name,
-          availableTotalWidth,
+          availableTotalWidth - LEGEND_CIRCLE_SIZE - LEGEND_CIRCLE_MARGIN_RIGHT,
           (text, style) =>
             measureTextWidth(text, Number(style.size), Number(style.weight)),
           {
