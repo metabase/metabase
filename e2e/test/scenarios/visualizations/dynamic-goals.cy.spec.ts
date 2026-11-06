@@ -184,7 +184,9 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
     assertGoalLineValue("600");
 
-    cy.log("A saved question gets the goal value along with its results");
+    cy.log(
+      "A saved question, opened anew, gets the goal value with its card query results",
+    );
     H.saveQuestion(
       "Saved chart with a dynamic goal",
       { wrapId: true },
