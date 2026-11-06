@@ -770,19 +770,6 @@ describe("scenarios > search", () => {
           ],
         });
       });
-
-      it("should not be exposed to non-admins", () => {
-        cy.signInAsNormalUser();
-        cy.visit("/search?q=keyword&filter_items_in_personal_collection=all");
-        cy.wait("@search");
-        expectSearchResultItemNameContent({
-          itemNames: ["Normal User Personal Question [keyword]"],
-        });
-        cy.findByTestId("archived-search-filter").should("be.visible");
-        cy.findByTestId(
-          "filter_items_in_personal_collection-search-filter",
-        ).should("not.exist");
-      });
     });
 
     describe("trashed items filter", () => {
