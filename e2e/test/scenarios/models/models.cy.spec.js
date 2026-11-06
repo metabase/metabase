@@ -10,7 +10,6 @@ import {
   assertIsQuestion,
   assertQuestionIsBasedOnModel,
   saveQuestionBasedOnModel,
-  selectDimensionOptionFromSidebar,
   selectFromDropdown,
   turnIntoModel,
 } from "./helpers/e2e-models-helpers";
@@ -441,9 +440,15 @@ describe("scenarios > models", () => {
 
       H.summarize();
 
-      selectDimensionOptionFromSidebar("Created At");
+      // the model's own columns come first, before the linked tables' "Created At"s
+      H.summaryFieldList()
+        .findAllByRole("button", { name: "Created At" })
+        .first()
+        .click();
       cy.wait("@dataset");
-      cy.button("Done").click();
+      // the field list also names the model, so close the sidebar before asserting on the header
+      H.summarize();
+      H.summaryWell("values").should("not.exist");
 
       assertQuestionIsBasedOnModel({
         questionName: "Count by Created At: Month",

@@ -174,9 +174,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
       cy.button(/Summarize/).click();
     });
 
-    H.rightSidebar().within(() => {
-      cy.findByText("Total").click();
-    });
+    H.clickSummaryField("Total", { section: "Orders" });
 
     H.queryBuilderHeader().within(() => {
       cy.findByText("Save").click();

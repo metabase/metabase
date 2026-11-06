@@ -8,10 +8,7 @@ describe("scenarios > question > snowplow", () => {
       H.summarize();
 
       // Change query to render a bar chart
-      H.rightSidebar().within(() => {
-        cy.findByText("Quantity").click();
-        cy.button("Done").click();
-      });
+      H.clickSummaryField("Quantity", { section: "Orders" });
       H.echartsContainer().findByText("Count").should("be.visible");
     };
 

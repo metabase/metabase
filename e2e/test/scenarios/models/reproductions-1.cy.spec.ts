@@ -643,7 +643,7 @@ describe("issue 43088", () => {
     H.getPinnedSection().findByText("People").scrollIntoView().click();
     cy.wait("@dataset");
     H.summarize();
-    H.rightSidebar().button("Done").click();
+    H.addSummaryValue("Count of rows");
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(1);
   });

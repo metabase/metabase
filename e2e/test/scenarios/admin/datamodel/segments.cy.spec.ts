@@ -167,7 +167,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findAllByTestId("cell-data").should("contain", "37.65");
 
       H.summarize();
-      cy.findAllByTestId("sidebar-right").button("Done").click();
+      H.addSummaryValue("Count of rows");
       cy.findByTestId("scalar-value").should("have.text", "13,005");
       H.saveQuestion("Foo");
 
