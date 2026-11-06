@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
-   [metabase.global-system.system :as system]
    [metabase.settings.db :as settings.db]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -27,14 +26,12 @@
   {:arglists '([old new])}
   (constantly :default))
 
-;; Each application DB value has its own cache, with its own update-check clock and restore lock, so a test that
-;; binds another app DB gets fresh state, and so does a new app-DB value from
-;; [[mdb/increment-app-db-unique-indentifier!]].
-(def ^:private per-app-db
-  (system/derived-component-handle
-   ::per-app-db
-   [(mdb/application-db-handle)]
-   (fn [_app-db]
+;; Each application DB has its own cache, with its own update-check clock and restore lock, so a test that binds
+;; another app DB gets fresh state, and so does a bump from [[mdb/increment-app-db-unique-indentifier!]].
+;; Keyed on the app DB's id, like every other per-app-DB cache, and never evicted.
+(def ^:private ^{:arglists '([])} per-app-db
+  (mdb/memoize-for-application-db
+   (fn []
      {:cache             (doto (atom nil)
                            (add-watch :call-on-change (fn [_key _ref old new]
                                                         (call-on-change old new))))
@@ -44,9 +41,10 @@
 (defn current-state
   "The settings cache state for the application DB this thread sees.
   Pass it to the functions here that take one, so that a series of reads and writes uses one cache even if the app DB
-  this thread sees changes midway."
+  this thread sees changes midway.
+  It holds the cache only: the database those functions read and write is still the one this thread sees."
   []
-  @per-app-db)
+  (per-app-db))
 
 (defn- cache*
   "The settings cache atom in `state`, by default the one for the application DB this thread sees."
