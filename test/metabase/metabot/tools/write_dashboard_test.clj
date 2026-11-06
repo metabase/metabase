@@ -191,7 +191,8 @@
   (mt/with-model-cleanup [:model/Dashboard]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "the result groups the dashcards under their tabs"
-        (is (re-find #"<tab id=\"\d+\" name=\"Revenue\">\n      <dashcard id=\"\d+\" display=\"text\" row=\"0\""
+        (is (re-find (re-pattern (str "<tab tab_id=\"\\d+\" name=\"Revenue\">\n"
+                                      "      <dashcard dashcard_id=\"\\d+\" display=\"text\" row=\"0\""))
                      (:output (call {:name "Tabbed"
                                      :ops  [{:op "add_tab", :id -1, :name "Revenue"}
                                             {:op "add_text", :id -2, :markdown "Notes", :tab -1}]}))))))))
@@ -236,7 +237,7 @@
              (is (=? {:name "Revenue by month", :archived false} (t2/select-one :model/Card :id card-id)))
              (is (= "Marketing" (t2/select-one-fn :name :model/Dashboard :id other-id))))
            (testing "the result shows the layout with real ids"
-             (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" card_id=\"" (:id new-card)
+             (is (re-find (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" card_id=\"" (:id new-card)
                                            "\" name=\"Venues\" display=\"bar\" row=\"0\" col=\"0\""
                                            " size_x=\"24\" size_y=\"6\"/>"))
                           (:output result))))))))))
@@ -257,7 +258,7 @@
        (mt/with-current-user (mt/user->id :rasta)
          (let [output (:output (call {:dashboard_id dash-id, :name "Sales summary"}))]
            (testing "a card the user can't read shows its slot without its id or name"
-             (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
+             (is (re-find (re-pattern (str "<dashcard dashcard_id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
                                            " size_y=\"6\"/>"))
                           output))
              (is (not (re-find #"Secret revenue" output))))))))))
