@@ -250,6 +250,7 @@
       (reset-capture!)
       (let [id (t2/insert-returning-pk! ::bird (bird 74 "consumer-interrupt"))]
         (is (= 1 (t2/delete! ::bird :id id)))
+        ;; Clears any status the delete left, so later tests start uninterrupted.
         (Thread/interrupted)
         (is (false? (t2/exists? ::bird :id id)))))))
 

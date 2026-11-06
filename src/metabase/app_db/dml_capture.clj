@@ -86,8 +86,8 @@
   [model event]
   (try
     (captured! model event)
-    ;; The delete has already run, so a consumer's interrupt is not ours to swallow: log it, and keep the thread's
-    ;; interrupt status for whoever is waiting on it.
+    ;; The delete has already run, so a consumer's interrupt is not ours to swallow: restore the thread's interrupt
+    ;; status rather than clearing it.
     (catch InterruptedException e
       (.interrupt (Thread/currentThread))
       (log/errorf e "Interrupted delivering DML capture event for %s %s" model (:op event)))
