@@ -1,66 +1,45 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQueryMetadataQuery,
-  useGetFieldQuery,
-  useGetTableQueryMetadataQuery,
-} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/QueryColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { useMetadataProvider } from "metabase/metadata-store";
-import { getQueryAndColumns } from "metabase/querying/common/utils";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { FieldId } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
-import type {
-  DataReferenceFieldItem,
-  DataReferencePaneProps,
-  UniqueFieldId,
-} from "./types";
-
-const STAGE_INDEX = -1;
+import type { DataReferenceFieldItem, DataReferencePaneProps } from "./types";
+import { useTableColumns } from "./use-table-columns";
 
 export const FieldPane = ({
   onBack,
   onClose,
-  id,
+  tableId,
+  columnName,
 }: DataReferencePaneProps<DataReferenceFieldItem>) => {
-  const { field, table, isLoading, error } = useGetFieldAndTable(id);
-  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
-  const queryAndColumns = useMemo(
-    () =>
-      getQueryAndColumns(
-        metadataProvider,
-        table,
-        field !== undefined ? [field] : [],
-      ),
-    [metadataProvider, table, field],
-  );
+  const { table, queryAndColumns, isLoading, error } = useTableColumns(tableId);
 
-  if (isLoading || error || !field) {
+  if (isLoading || error || !queryAndColumns) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const queryAndColumn = queryAndColumns.get(field);
-  if (!queryAndColumn) {
+  const { query, stageIndex, columns } = queryAndColumns;
+  const column = columns.find(
+    (column) => Lib.displayInfo(query, stageIndex, column).name === columnName,
+  );
+  if (!column) {
     return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
   }
 
   return (
     <SidebarContent
-      title={field.name}
+      title={columnName}
       icon="field"
       onBack={onBack}
       onClose={onClose}
     >
       <SidebarContent.Pane>
         <QueryColumnInfo
-          query={queryAndColumn.query}
-          stageIndex={STAGE_INDEX}
-          column={queryAndColumn.column}
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
           timezone={table?.db?.timezone}
           showAllFieldValues
           showFingerprintInfo
@@ -69,67 +48,3 @@ export const FieldPane = ({
     </SidebarContent>
   );
 };
-
-function useGetFieldAndTable(id: FieldId | UniqueFieldId) {
-  const fromFieldId = useGetFieldAndTableFromFieldId(
-    typeof id === "number" ? id : null,
-  );
-
-  const fromCardMetadata = useGetVirtualFieldFromCardMetadata(
-    typeof id === "string" ? id : null,
-  );
-
-  if (typeof id === "number") {
-    return fromFieldId;
-  } else {
-    return fromCardMetadata;
-  }
-}
-
-function useGetFieldAndTableFromFieldId(id: FieldId | null) {
-  const {
-    data: field,
-    isLoading: isLoadingField,
-    error: fieldError,
-  } = useGetFieldQuery(id != null ? { id } : skipToken);
-
-  const {
-    data: table,
-    isLoading: isLoadingTable,
-    error: tableError,
-  } = useGetTableQueryMetadataQuery(
-    field?.table_id != null ? { id: field.table_id } : skipToken,
-  );
-
-  return {
-    field,
-    table,
-    isLoading: isLoadingField || isLoadingTable,
-    error: fieldError ?? tableError,
-  };
-}
-
-function useGetVirtualFieldFromCardMetadata(id: UniqueFieldId | null) {
-  const virtualTableId = id?.split(":")[0];
-  const cardId =
-    id != null ? getQuestionIdFromVirtualTableId(virtualTableId) : null;
-
-  const cardMetadata = useGetCardQueryMetadataQuery(
-    cardId != null ? cardId : skipToken,
-  );
-
-  const virtualTable = cardMetadata.data?.tables.find(
-    (table) => table.id === virtualTableId,
-  );
-
-  const field = virtualTable?.fields?.find(
-    (field) => `${field.table_id}:${field.name}` === id,
-  );
-
-  return {
-    field,
-    table: virtualTable,
-    isLoading: cardMetadata.isLoading,
-    error: cardMetadata.error,
-  };
-}

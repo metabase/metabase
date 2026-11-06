@@ -2,9 +2,8 @@ import type {
   CardId,
   ConcreteTableId,
   DatabaseId,
-  FieldId,
   SchemaName,
-  VirtualTableId,
+  TableId,
 } from "metabase-types/api";
 
 import { DatabasePane } from "./DatabasePane";
@@ -64,9 +63,8 @@ export type DataReferenceQuestionItem = {
   id: CardId;
 };
 
-export type UniqueFieldId = `${VirtualTableId}:${string}`;
-
 export type DataReferenceFieldItem = {
   type: "field";
-  id: FieldId | UniqueFieldId;
+  tableId: TableId;
+  columnName: string;
 };
