@@ -1,0 +1,120 @@
+import {
+  setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
+  setupFieldEndpoints,
+  setupFieldValuesEndpoint,
+  setupTableQueryMetadataEndpoint,
+} from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { Card } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockField,
+  createMockFieldValues,
+} from "metabase-types/api/mocks";
+import {
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import { FieldPane } from "./FieldPane";
+import type { DataReferenceFieldItem } from "./types";
+
+const CARD_ID = 1;
+const STAGE_INDEX = -1;
+
+interface SetupOpts {
+  item: DataReferenceFieldItem;
+  card?: Card;
+}
+
+const setup = async ({ item, card }: SetupOpts) => {
+  const database = createSampleDatabase();
+  const table = checkNotNull(
+    database.tables?.find((table) => table.id === PRODUCTS_ID),
+  );
+  setupTableQueryMetadataEndpoint(table);
+  table.fields?.forEach((field) => {
+    setupFieldEndpoints(field);
+    if (typeof field.id === "number") {
+      setupFieldValuesEndpoint(createMockFieldValues({ field_id: field.id }));
+    }
+  });
+  if (card) {
+    setupCardEndpoints(card);
+    setupCardQueryMetadataEndpoint(card, {
+      databases: [database],
+      tables: [],
+      fields: [],
+    });
+  }
+
+  renderWithProviders(
+    <FieldPane {...item} onItemClick={jest.fn()} onClose={jest.fn()} />,
+  );
+  await waitForLoaderToBeRemoved();
+};
+
+describe("FieldPane", () => {
+  it("should show column of question with aggregation (metabase#86298)", async () => {
+    await setup({
+      item: { type: "field", cardId: CARD_ID, columnIndex: 0 },
+      card: createMockCard({
+        id: CARD_ID,
+        database_id: SAMPLE_DB_ID,
+        result_metadata: [
+          createMockField({
+            id: ["field", "count", { "base-type": "type/BigInteger" }],
+            name: "count",
+            display_name: "Count",
+            description: "Number of orders",
+            base_type: "type/BigInteger",
+            effective_type: "type/BigInteger",
+            semantic_type: "type/Quantity",
+            field_ref: ["aggregation", 0],
+          }),
+        ],
+      }),
+    });
+
+    expect(screen.getByText("count")).toBeInTheDocument();
+    expect(screen.getByText("Number of orders")).toBeInTheDocument();
+  });
+
+  it("should show table column at given index", async () => {
+    const columnIndex = 2;
+    const tableMetadata = checkNotNull(
+      Lib.tableOrCardMetadata(SAMPLE_PROVIDER, PRODUCTS_ID),
+    );
+    const query = Lib.queryFromTableOrCardMetadata(
+      SAMPLE_PROVIDER,
+      tableMetadata,
+    );
+    const column = Lib.returnedColumns(query, STAGE_INDEX)[columnIndex];
+    const { name } = Lib.displayInfo(query, STAGE_INDEX, column);
+
+    await setup({
+      item: { type: "field", tableId: PRODUCTS_ID, columnIndex },
+    });
+
+    expect(screen.getByText(name)).toBeInTheDocument();
+  });
+
+  it("should show error for missing column index", async () => {
+    await setup({
+      item: { type: "field", tableId: PRODUCTS_ID, columnIndex: 100 },
+    });
+
+    expect(
+      screen.getByText("Failed to load field metadata"),
+    ).toBeInTheDocument();
+  });
+});
