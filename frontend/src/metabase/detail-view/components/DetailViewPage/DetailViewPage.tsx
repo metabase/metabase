@@ -19,7 +19,7 @@ import type {
   DatasetColumn,
   ForeignKey,
   RowValues,
-  Table,
+  TableEntityType,
 } from "metabase-types/api";
 
 import S from "./DetailViewPage.module.css";
@@ -29,7 +29,7 @@ interface Props {
   isNavBarOpen: boolean;
   row: RowValues;
   rowId: string | number;
-  entityType?: Table["entity_type"];
+  entityType?: TableEntityType | null;
   tableForeignKeys?: ForeignKey[];
 }
 

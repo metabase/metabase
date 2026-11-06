@@ -26,6 +26,7 @@ import type {
   RowValue,
   Series,
   Table,
+  TableEntityType,
 } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
 import {
@@ -180,7 +181,7 @@ export const getColumnTitle = (
   });
 };
 
-export const getEntityIcon = (entityType?: Table["entity_type"]) => {
+export const getEntityIcon = (entityType?: TableEntityType | null) => {
   switch (entityType) {
     case "entity/UserTable":
       return "person";
