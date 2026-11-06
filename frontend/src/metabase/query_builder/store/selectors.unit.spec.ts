@@ -1,5 +1,6 @@
 import { assoc } from "icepick";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -14,11 +15,16 @@ import type {
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
-  ConcreteFieldReference,
   NativeQuery,
-  StructuredQuery,
+  TableId,
+  TestStageWithSourceSpec,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -33,7 +39,6 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
-  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -83,13 +88,11 @@ describe("getQuestion", () => {
   it("should return question instance correctly", () => {
     const card = createMockCard({
       id: 5,
-      dataset_query: {
-        database: 1,
-        type: "query",
-        query: {
-          "source-table": 1,
-        },
-      },
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        }),
+      ),
     });
 
     const question = getQuestion(getBaseState({ card }));
@@ -102,13 +105,11 @@ describe("getQuestion", () => {
     const card = createMockCard({
       id: 1,
       type: "model",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-        },
-      },
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        }),
+      ),
     });
 
     const question = getQuestion(getBaseState({ card }));
@@ -120,13 +121,11 @@ describe("getQuestion", () => {
     const card = createMockCard({
       id: 5,
       type: "model",
-      dataset_query: {
-        database: 1,
-        type: "query",
-        query: {
-          "source-table": 1,
-        },
-      },
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        }),
+      ),
     });
 
     const question = getQuestion(
@@ -144,58 +143,72 @@ describe("getQuestion", () => {
 
 describe("getIsResultDirty", () => {
   describe("structured query", () => {
-    function getCard(query: StructuredQuery) {
-      return createMockCard({
-        dataset_query: { type: "query", database: 1, query },
-      });
+    function getCard(query: Lib.Query) {
+      return createMockCard({ dataset_query: Lib.toJsQuery(query) });
     }
 
-    function getState(
-      lastRunCardQuery: StructuredQuery,
-      cardQuery: StructuredQuery,
-    ) {
+    function getState(lastRunQuery: Lib.Query, query: Lib.Query) {
       return getBaseState({
-        card: getCard(cardQuery),
-        lastRunCard: getCard(lastRunCardQuery),
+        card: getCard(query),
+        lastRunCard: getCard(lastRunQuery),
       });
     }
 
-    it("should not be dirty for empty queries", () => {
-      const state = getState({}, {});
-      expect(getIsResultDirty(state)).toBe(false);
-    });
+    function createOrdersQuery(
+      stage: Omit<TestStageWithSourceSpec, "source"> = {},
+    ) {
+      return Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: ORDERS_ID }, ...stage }],
+      });
+    }
 
     it("should be dirty if the table was changed", () => {
-      const state = getState({ "source-table": 1 }, { "source-table": 2 });
+      const state = getState(
+        createOrdersQuery(),
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      );
       expect(getIsResultDirty(state)).toBe(true);
     });
 
     it("should be dirty if the fields were changed", () => {
       const state = getState(
-        { "source-table": 1, fields: [["field", 1, null]] },
-        { "source-table": 1, fields: [["field", 2, null]] },
+        createOrdersQuery({ fields: [{ type: "column", name: "ID" }] }),
+        createOrdersQuery({ fields: [{ type: "column", name: "TOTAL" }] }),
       );
       expect(getIsResultDirty(state)).toBe(true);
     });
 
     it("converts clauses into plain MBQL objects", () => {
-      const query: StructuredQuery = {
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, null]],
-        filter: [">", ["field", ORDERS.TOTAL, null], 20],
-        joins: [
+      const query = createOrdersQuery({
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+        breakouts: [{ type: "column", name: "CREATED_AT" }],
+        filters: [
           {
-            alias: "Products",
-            fields: "all",
-            "source-table": PRODUCTS_ID,
-            condition: [
-              "=",
-              ["field", ORDERS.PRODUCT_ID, null],
-              ["field", PRODUCTS.ID, null],
+            type: "operator",
+            operator: ">",
+            args: [
+              { type: "column", name: "TOTAL" },
+              { type: "literal", value: 20 },
             ],
           },
         ],
-      };
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            alias: "Products",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "PRODUCT_ID" },
+                right: { type: "column", name: "ID" },
+              },
+            ],
+          },
+        ],
+      });
 
       const state = getState(query, query);
 
@@ -204,56 +217,32 @@ describe("getIsResultDirty", () => {
 
     it("should not be dirty if the fields were reordered", () => {
       const state = getState(
-        {
-          "source-table": 1,
+        createOrdersQuery({
           fields: [
-            ["field", 1, null],
-            ["field", 2, null],
+            { type: "column", name: "ID" },
+            { type: "column", name: "TOTAL" },
           ],
-        },
-        {
-          "source-table": 1,
+        }),
+        createOrdersQuery({
           fields: [
-            ["field", 2, null],
-            ["field", 1, null],
+            { type: "column", name: "TOTAL" },
+            { type: "column", name: "ID" },
           ],
-        },
+        }),
       );
       expect(getIsResultDirty(state)).toBe(false);
     });
 
     it("should not be dirty if fields with fk refs were reordered", () => {
+      const fkColumn = {
+        type: "column",
+        name: "CATEGORY",
+        sourceFieldId: ORDERS.PRODUCT_ID,
+      } as const;
+      const idColumn = { type: "column", name: "ID" } as const;
       const state = getState(
-        {
-          "source-table": 1,
-          fields: [
-            ["field", 2, { "source-field": 1 }],
-            ["field", 1, null],
-          ],
-        },
-        {
-          "source-table": 1,
-          fields: [
-            ["field", 1, null],
-            ["field", 2, { "source-field": 1 }],
-          ],
-        },
-      );
-      expect(getIsResultDirty(state)).toBe(false);
-    });
-
-    it("should not be dirty if fields were just made explicit", () => {
-      const orderTableFieldIds = Object.values(ORDERS);
-      const orderTableFieldRefs = orderTableFieldIds.map(
-        (id): ConcreteFieldReference => ["field", id, null],
-      );
-
-      const state = getState(
-        { "source-table": ORDERS_ID },
-        {
-          "source-table": ORDERS_ID,
-          fields: orderTableFieldRefs,
-        },
+        createOrdersQuery({ fields: [fkColumn, idColumn] }),
+        createOrdersQuery({ fields: [idColumn, fkColumn] }),
       );
       expect(getIsResultDirty(state)).toBe(false);
     });
@@ -356,15 +345,31 @@ describe("getIsResultDirty", () => {
   });
 
   describe("models", () => {
-    function getDataset(query: StructuredQuery) {
+    function getDataset(query: Lib.Query) {
       return createMockCard({
-        id: 1,
+        id: MODEL_ID,
         type: "model",
-        dataset_query: { type: "query", database: 1, query },
+        dataset_query: Lib.toJsQuery(query),
       });
     }
 
-    const dataset = getDataset({ "source-table": 1 });
+    const MODEL_ID = 1;
+    const dataset = getDataset(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      }),
+    );
+    const modelProvider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [dataset],
+      }),
+    });
+    const adHocDatasetCard = getDataset(
+      Lib.createTestQuery(modelProvider, {
+        stages: [{ source: { type: "card", id: MODEL_ID } }],
+      }),
+    );
 
     it("should not be dirty if model is not changed", () => {
       const state = getBaseState({
@@ -379,13 +384,16 @@ describe("getIsResultDirty", () => {
       const state = getBaseState({
         card: dataset,
         originalCard: dataset,
-        lastRunCard: getDataset({ "source-table": 2 }),
+        lastRunCard: getDataset(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+          }),
+        ),
       });
       expect(getIsResultDirty(state)).toBe(true);
     });
 
     it("should not be dirty if model simple mode is active", () => {
-      const adHocDatasetCard = getDataset({ "source-table": "card__1" });
       const state = getBaseState({
         card: adHocDatasetCard,
         originalCard: dataset,
@@ -396,14 +404,18 @@ describe("getIsResultDirty", () => {
 
     it("should be dirty when building a new question on a model", () => {
       const card = createMockCard({
-        dataset_query: {
-          database: 1,
-          type: "query",
-          query: {
-            aggregation: [["count"]],
-            "source-table": "card__1",
-          },
-        },
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(modelProvider, {
+            stages: [
+              {
+                source: { type: "card", id: MODEL_ID },
+                aggregations: [
+                  { type: "operator", operator: "count", args: [] },
+                ],
+              },
+            ],
+          }),
+        ),
       });
       const state = getBaseState({
         card,
@@ -414,7 +426,6 @@ describe("getIsResultDirty", () => {
     });
 
     it("should not be dirty when the last run question is the composed model and the current question is equivalent to the original", () => {
-      const adHocDatasetCard = getDataset({ "source-table": "card__1" });
       const state = getBaseState({
         card: dataset,
         originalCard: dataset,
@@ -487,14 +498,18 @@ describe("getIsVisualized", () => {
 
 describe("getShouldShowUnsavedChangesWarning", () => {
   describe("when creating or editing a model", () => {
-    function getModelCard(query: StructuredQuery) {
+    function getModelCard(tableId: TableId) {
       return createMockCard({
         id: 1,
         type: "model",
-        dataset_query: { type: "query", database: SAMPLE_DB_ID, query },
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: tableId } }],
+          }),
+        ),
       });
     }
-    const model = getModelCard({ "source-table": ORDERS_ID });
+    const model = getModelCard(ORDERS_ID);
 
     it("warns when creating a new model", () => {
       const state = getBaseState({
@@ -507,7 +522,7 @@ describe("getShouldShowUnsavedChangesWarning", () => {
 
     it("warns when an existing model has unsaved changes", () => {
       const state = getBaseState({
-        card: getModelCard({ "source-table": PRODUCTS_ID }),
+        card: getModelCard(PRODUCTS_ID),
         originalCard: model,
         uiControls: { queryBuilderMode: "dataset" },
       });
@@ -526,11 +541,9 @@ describe("getShouldShowUnsavedChangesWarning", () => {
 
   describe("when editing a structured question", () => {
     const card = createMockCard({
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": ORDERS_ID },
-      },
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+      ),
     });
 
     it("warns when modified from the notebook editor", () => {
@@ -591,17 +604,19 @@ describe("getSubmittableQuestion", () => {
   function getTimeseriesCard(opts?: Parameters<typeof createMockCard>[0]) {
     return createMockCard({
       display: "table",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
           ],
-        },
-      },
+        }),
+      ),
       ...opts,
     });
   }

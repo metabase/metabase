@@ -38,6 +38,8 @@ import { serializeCardForUrl } from "metabase/common/utils/card";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
   Database,
@@ -56,8 +58,6 @@ import {
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockSettings,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
   createMockUnsavedCard,
   createMockUser,
   createMockUserPermissions,
@@ -82,54 +82,56 @@ export const TEST_CARD = createMockCard({
 export const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
   type: "question",
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, null]],
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
+        },
+      ],
+    }),
+  ),
 });
 
 export const TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD = createMockCard({
   ...TEST_CARD,
   type: "question",
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["expression", "Custom Created At"]],
-      expressions: {
-        "Custom Created At": ["field", ORDERS.CREATED_AT, null],
-      },
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            {
+              name: "Custom Created At",
+              value: { type: "column", name: "CREATED_AT" },
+            },
+          ],
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "Custom Created At" }],
+        },
+      ],
+    }),
+  ),
 });
 
 export const TEST_CARD_VISUALIZATION = createMockCard({
   ...TEST_CARD,
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
 });
 
 export const TEST_MODEL_CARD = createMockCard({
-  dataset_query: {
-    database: SAMPLE_DB_ID,
-    type: "query",
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 1,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 1 }],
+    }),
+  ),
   type: "model",
   display: "table",
   description: "Test description",
@@ -171,22 +173,19 @@ export const TEST_UNSAVED_NATIVE_CARD = createMockUnsavedCard({
 
 export const TEST_STRUCTURED_CARD = createMockCard({
   name: "Orders question",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: createMockStructuredQuery({
-      "source-table": ORDERS_ID,
-      limit: 1,
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 1 }],
     }),
-  }),
+  ),
 });
 
 export const TEST_UNSAVED_STRUCTURED_CARD = createMockUnsavedCard({
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: createMockStructuredQuery({
-      "source-table": ORDERS_ID,
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
     }),
-  }),
+  ),
 });
 
 export const TEST_MODEL_DATASET_COLUMN = createMockColumn({
