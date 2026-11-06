@@ -113,7 +113,6 @@ export type HealthCheck = {
   docs: HealthCheckDocs;
   requires_restart: boolean;
   status: HealthCheckStatus;
-  running: boolean;
   checked_at: string;
   items: HealthCheckItem[];
 };
