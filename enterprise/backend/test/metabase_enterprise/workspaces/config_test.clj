@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.config-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
@@ -53,6 +54,37 @@
                   {:input_schemas ["raw_github"]
                    :output        {:schema "mb_isolation_github"}}}
                  (-> cfg :config :workspace :databases))))))))
+
+(deftest build-workspace-config-drops-tunnel-secrets-of-a-disabled-tunnel-test
+  (let [tunnel-secrets {:tunnel-pass                   "tunnel-pass"
+                        :tunnel-private-key            "tunnel-key"
+                        :tunnel-private-key-passphrase "tunnel-key-pass"}
+        ssl-secrets    {:ssl-key-value          "client-key"
+                        :ssl-key-password-value "client-key-pass"}
+        details-for    (fn [details]
+                         (mt/with-temp [:model/Database {db-id :id}
+                                        {:name    "Secret DW" :engine :postgres
+                                         :details (merge {:host "h" :port 5432 :user "admin" :ssl true}
+                                                         tunnel-secrets ssl-secrets details)}
+                                        :model/Workspace {ws-id :id} {:name "secrets" :creator_id (mt/user->id :crowberto)}
+                                        :model/WorkspaceDatabase _
+                                        {:workspace_id     ws-id :database_id db-id
+                                         :database_details {:user "iso" :password "iso-pass"}
+                                         :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+                           (->> (config/build-workspace-config ws-id) :config :databases
+                                (some #(when (= "Secret DW" (:name %)) (:details %))))))]
+    (testing "tunnel off: the tunnel credentials are not emitted"
+      (is (= {} (select-keys (details-for {:tunnel-enabled false}) (keys tunnel-secrets)))))
+    (testing "tunnel on without an auth option: every credential stays, nothing says which is in use"
+      (is (= tunnel-secrets (select-keys (details-for {:tunnel-enabled true}) (keys tunnel-secrets)))))
+    (testing "tunnel on with password auth: only the password ships"
+      (is (= {:tunnel-pass "tunnel-pass"}
+             (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "password"}) (keys tunnel-secrets)))))
+    (testing "tunnel on with SSH-key auth: only the key and its passphrase ship"
+      (is (= {:tunnel-private-key "tunnel-key" :tunnel-private-key-passphrase "tunnel-key-pass"}
+             (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "ssh-key"}) (keys tunnel-secrets)))))
+    (testing ":secret properties never reach the config as values; the Secret table keeps them"
+      (is (= {} (select-keys (details-for {:tunnel-enabled true}) (keys ssl-secrets)))))))
 
 (deftest build-workspace-config-three-slot-engine-test
   (when (workspaces.tu/driver-loadable? :sqlserver)
@@ -267,3 +299,74 @@
                  (first samples))))
         (testing "sample entry is NOT also marked as a stub"
           (is (not (:is_stub (first samples)))))))))
+
+(deftest build-workspace-config-drops-parent-auth-provider-test
+  (testing "The parent's auth-provider properties stay out of the config: the workspace user authenticates by
+            password, and the provider settings (which can carry a client secret) belong to the parent's identity."
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Auth Provider DW"
+                    :engine  :postgres
+                    :details {:host                "h"
+                              :port                5432
+                              :use-auth-provider   true
+                              :auth-provider       "oauth"
+                              :oauth-token-url     "https://idp.example/token"
+                              :oauth-token-headers "{\"client_secret\":\"s3cret\"}"}}
+                   :model/Workspace {ws-id :id} {:name       "authp"
+                                                 :creator_id (mt/user->id :crowberto)}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_namespace "ws_alice"
+                    :input_schemas    ["public"]
+                    :status           :provisioned}]
+      (let [details (->> (config/build-workspace-config ws-id)
+                         :config
+                         :databases
+                         (remove (some-fn :is_stub :is_sample))
+                         first
+                         :details)]
+        (is (= {:host "h" :port 5432 :user "u" :password "p"}
+               (select-keys details [:host :port :user :password :use-auth-provider :auth-provider
+                                     :oauth-token-url :oauth-token-headers :azure-managed-identity-client-id])))))))
+
+(deftest build-workspace-config-drops-parent-sqlserver-ad-login-test
+  (when (workspaces.tu/driver-loadable? :sqlserver)
+    (testing "A SQL Server parent on Azure AD auth: `:auth-mode` picks the login, so leaving it in the config would
+              make the child connect as the parent's AD identity and ignore the workspace :user/:password. The
+              config drops `:auth-mode` and every `ad-*` property, so the child falls back to SQL login."
+      (doseq [[auth-mode ad-details]
+              {"ad-service-principal"             {:ad-client-id     "parent-client-id"
+                                                   :ad-client-secret "parent-client-secret"}
+               "ad-service-principal-certificate" {:ad-client-id                        "parent-client-id"
+                                                   :ad-client-certificate-options       "uploaded"
+                                                   :ad-client-certificate-value         "parent-cert"
+                                                   :ad-client-certificate-password-value "parent-cert-password"
+                                                   :ad-client-key-options               "uploaded"
+                                                   :ad-client-key-value                 "parent-key"
+                                                   :ad-client-key-password-value        "parent-key-password"}
+               "ad-managed-identity"              {:ad-managed-identity-client-id "parent-identity"}}]
+        (testing auth-mode
+          (mt/with-temp [:model/Database {db-id :id}
+                         {:name    (str "MSSQL " auth-mode)
+                          :engine  :sqlserver
+                          :details (merge {:host "h" :db "AnalyticsDB" :auth-mode auth-mode} ad-details)}
+                         :model/Workspace {ws-id :id} {:name       (str "mssql-" auth-mode)
+                                                       :creator_id (mt/user->id :crowberto)}
+                         :model/WorkspaceDatabase _
+                         {:workspace_id     ws-id
+                          :database_id      db-id
+                          :database_details {:user "ws_user" :password "ws_password"}
+                          :output_namespace "ws_alice"
+                          :input_schemas    ["dbo"]
+                          :status           :provisioned}]
+            (let [details (->> (config/build-workspace-config ws-id)
+                               :config
+                               :databases
+                               (u/seek #(= :sqlserver (:engine %)))
+                               :details)]
+              (is (= {:user "ws_user" :password "ws_password"}
+                     (select-keys details [:user :password])))
+              (is (not (contains? details :auth-mode)))
+              (is (= [] (filterv #(str/starts-with? (name %) "ad-") (keys details)))))))))))
