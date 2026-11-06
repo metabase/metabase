@@ -1,9 +1,13 @@
 import * as Lib from "metabase-lib";
 import type { CardId, TableId } from "metabase-types/api";
 
-import type { ColumnListInfo } from "./types";
-
 const STAGE_INDEX = -1;
+
+type ColumnListInfo = {
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
+};
 
 const getColumnListInfo = (
   metadataProvider: Lib.MetadataProvider,
