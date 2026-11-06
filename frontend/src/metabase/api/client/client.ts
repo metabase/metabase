@@ -56,6 +56,19 @@ export class ApiClient extends EventEmitter<EventMap> {
       headers["traceparent"] = traceparent;
     }
 
+    // Prototype: the "Data" prototype setting (`DATA_SPEED` in
+    // `metabase/prototype`). The backend delays queries when it is "slow". The
+    // API client reads local storage directly, so it does not depend on the
+    // prototype module.
+    try {
+      if (
+        localStorage.getItem("metabase-prototype-setting:data-speed") ===
+        JSON.stringify("slow")
+      ) {
+        headers["X-Metabase-Prototype-Data-Speed"] = "slow";
+      }
+    } catch {}
+
     return {
       ...headers,
       ...extraHeaders,

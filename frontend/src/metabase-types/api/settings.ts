@@ -456,6 +456,13 @@ export type CustomGeoJSONMap = {
 
 export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
+/**
+ * The prototype dataset (see PROTOTYPE.md).
+ */
+export interface PrototypeDataInfo {
+  database_id: DatabaseId;
+}
+
 interface InstanceSettings {
   "admin-email": string | null;
   "email-from-address-override": string | null;
@@ -483,6 +490,8 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
+  "prototype-data"?: PrototypeDataInfo | null;
+  "prototype-slow-query-delay-ms"?: number;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;

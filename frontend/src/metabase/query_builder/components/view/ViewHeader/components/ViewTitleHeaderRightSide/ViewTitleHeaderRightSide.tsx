@@ -64,6 +64,7 @@ interface ViewTitleHeaderRightSideProps {
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
+  onAddFilter: () => void;
   toggleBookmark: () => void;
   onOpenQuestionInfo: () => void;
   onCloseQuestionInfo: () => void;
@@ -94,6 +95,7 @@ export function ViewTitleHeaderRightSide({
   areFiltersExpanded,
   onExpandFilters,
   onCollapseFilters,
+  onAddFilter,
   toggleBookmark,
   onOpenQuestionInfo,
   onCloseQuestionInfo,
@@ -176,6 +178,7 @@ export function ViewTitleHeaderRightSide({
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
+          onAddFilter={onAddFilter}
         />
       )}
       {QuestionSummarizeWidget.shouldRender({
