@@ -13,7 +13,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -220,7 +220,7 @@
                           filters)
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
-                   (t2/hydrate :personal_collection_id :tenant_collection_id)
+                   (t2/hydrate :personal_collection_id :tenant_collection_id :has_used_password)
 
                    (or api/*is-superuser?*
                        api/*is-group-manager?*)
@@ -291,15 +291,11 @@
             :can_create_queries        can-create-queries
             :can_create_native_queries can-create-native-queries)))
 
-(defn- maybe-add-advanced-permissions
+(defenterprise maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
+  metabase-enterprise.advanced-permissions.oss-hooks
   [user]
-  (if-let [with-advanced-permissions
-           (and (premium-features/enable-advanced-permissions?)
-                config/ee-available?
-                (requiring-resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
-    (with-advanced-permissions user)
-    user))
+  user)
 
 (defn- maybe-add-sso-source
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
@@ -383,6 +379,7 @@
    [:slack_account_status       [:maybe [:enum "active" "inactive"]]]
    [:can_write_any_collection   :boolean]
    [:sso_source                 [:maybe :keyword]]
+   [:has_used_password          :boolean]
    [:locale                     [:maybe :string]]
    [:tenant_id                  [:maybe ms/PositiveInt]]
    [:tenant_collection_id       [:maybe ms/PositiveInt]]
@@ -403,7 +400,8 @@
       ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
       ;; endpoint's response
       (dissoc :type)
-      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id
+                  :has_used_password)
       add-has-question-and-dashboard
       add-first-login
       add-query-permissions
@@ -438,6 +436,7 @@
       (perms/check-group-manager)))
   (-> (api/check-404 (users/fetch-user :id id, :type :personal))
       (t2/hydrate :user_group_memberships)
+      (cond-> (or api/*is-superuser?* (= id api/*current-user-id*)) (t2/hydrate :has_used_password))
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -641,11 +640,10 @@
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
-    ;; admins can't give a password to a user who signs in through an enabled SSO provider; that would let them log
-    ;; in as that user while bypassing the provider.
+    ;; admins can't give a password to an SSO-only user (see `sso/sso-only-user?`); that would let them log in as that
+    ;; user while bypassing SSO. A user who already logs in with a password gains no new way in.
     (when api/*is-superuser?*
-      (api/check-404 (or (nil? (:sso_source user))
-                         (not (sso/sso-source-enabled? (:sso_source user))))))
+      (api/check-404 (not (sso/sso-only-user? id (:email user) (:sso_source user)))))
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -689,8 +687,7 @@
   (let [user (api/check-404 (users-rest.db/user-active-type-and-sso-source id))]
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
-    (api/check-404 (or (nil? (:sso_source user))
-                       (not (sso/sso-source-enabled? (:sso_source user)))))
+    (api/check-404 (not (sso/sso-only-user? id (:email user) (:sso_source user))))
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated

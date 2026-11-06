@@ -26,7 +26,6 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
@@ -37,8 +36,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -1024,6 +1021,15 @@
     (let [card (assoc complete-card :card_schema (inc card/current-card-schema-version))]
       (is (= card
              (#'card/upgrade-card-schema-to-latest card))))))
+
+(deftest ^:parallel upgrade-card-schema-to-22-keeps-nil-result-metadata-test
+  (testing "Upgrade 22 keeps NULL result metadata as nil, so readers still know that the metadata is missing"
+    (is (nil? (:result_metadata (#'card/upgrade-card-schema-to complete-card 22)))))
+  (testing "Upgrade 22 removes idents from result metadata columns"
+    (is (= [{:name "ID"}]
+           (:result_metadata (#'card/upgrade-card-schema-to
+                              (assoc complete-card :result_metadata [{:name "ID", :ident "x", :model/inner_ident "y"}])
+                              22))))))
 
 (deftest ^:parallel upgrade-card-schema-requires-every-trigger-column-test
   (testing (str "Reading a schema-governed column without the rest of the columns an upgrade needs is a "

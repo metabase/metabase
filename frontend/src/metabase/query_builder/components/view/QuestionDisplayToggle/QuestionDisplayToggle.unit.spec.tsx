@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import { type KBarQuery, useKBar } from "kbar";
 
+import { renderWithRegisterActionsSpy } from "__support__/kbar";
 import { renderWithProviders, screen } from "__support__/ui";
 
 import {
@@ -8,38 +8,15 @@ import {
   type QuestionDisplayToggleProps,
 } from "./QuestionDisplayToggle";
 
-type ProbeProps = {
-  onQuery: (query: KBarQuery) => void;
-};
-
-// Renders before the toggle, so `onQuery` sees the kbar query before the
-// toggle's first effect registers the shortcut.
-const KBarQueryProbe = ({ onQuery }: ProbeProps) => {
-  const { query } = useKBar();
-  onQuery(query);
-  return null;
-};
-
 const setupWithKBar = (props: QuestionDisplayToggleProps) => {
-  let registerActions:
-    | jest.SpiedFunction<KBarQuery["registerActions"]>
-    | undefined;
-  const onQuery = (query: KBarQuery) => {
-    registerActions ??= jest.spyOn(query, "registerActions");
-  };
-
-  const ui = (props: QuestionDisplayToggleProps) => (
-    <>
-      <KBarQueryProbe onQuery={onQuery} />
-      <QuestionDisplayToggle {...props} />
-    </>
+  const { rerender, getRegisterActions } = renderWithRegisterActionsSpy(
+    <QuestionDisplayToggle {...props} />,
   );
 
-  const { rerender } = renderWithProviders(ui(props), { withKBar: true });
-
   return {
-    rerender: (props: QuestionDisplayToggleProps) => rerender(ui(props)),
-    getRegisterActions: () => registerActions,
+    rerender: (props: QuestionDisplayToggleProps) =>
+      rerender(<QuestionDisplayToggle {...props} />),
+    getRegisterActions,
   };
 };
 

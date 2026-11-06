@@ -7,11 +7,11 @@ summary: Upload a translation dictionary to translate the UI and content of embe
 
 {% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embedding=true %}
 
-You can set a locale on modular embeds (guest, SSO, and SDK) to translate Metabase's UI. If you've uploaded a translation dictionary, Metabase will also translate content strings (like dashboard names and filter labels) for all [modular embeds](./modular-embedding.md).
+On every plan, you can set a locale on modular embeds (guest, SSO, and SDK) to translate Metabase's UI. On Pro and Enterprise plans, you can also upload a translation dictionary so that Metabase translates content strings (like dashboard names and filter labels) for all [modular embeds](./modular-embedding.md).
 
 ## Set a locale to translate UI, and upload a dictionary to translate content
 
-To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest, SSO, and SDK). Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
+To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest, SSO, and SDK) on every plan. Metabase translates UI elements (like menus) automatically. You don't need to add translations for them to your dictionary.
 
 For guest and SSO embeds (not the SDK), set the `locale` in `window.metabaseConfig`:
 

@@ -9,7 +9,6 @@
    [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def non-blob-columns
@@ -154,15 +153,14 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (if (seq table-ids)
     (t2/select :model/Table
-               {:from     [(warehouse-schema-overlay/table-query)]
-                :where    [:and [:= :active true] [:in :id table-ids]]
+               {:where    [:and [:= :active true] [:in :id table-ids]]
                 :order-by [[:name :asc] [:id :asc]]})
     []))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table {:from [(warehouse-schema-overlay/table-query)] :where [:= :id table-id]}))
+  (t2/select-one :model/Table {:where [:= :id table-id]}))
 
 (mu/defn resource-cards
   "The unarchived Cards in the collection with `collection-id`, in name then id order."
@@ -214,7 +212,7 @@
 (mu/defn field-ids-and-table-ids
   "The id and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
 
 (mu/defn card-dimensions
   "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Card with `card-id`,
@@ -225,20 +223,19 @@
 (mu/defn table-names
   "The id, database id, name, and display name of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids]))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :table_id :model/Field :id field-id))
 
 (mu/defn published-tables-in-collections
   "The active, published Tables in `collection-ids`, in name then id order."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (if (seq collection-ids)
     (t2/select :model/Table
-               {:from     [(warehouse-schema-overlay/table-query)]
-                :where    [:and
+               {:where    [:and
                            [:= :active true]
                            [:= :is_published true]
                            [:in :collection_id collection-ids]]

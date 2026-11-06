@@ -39,7 +39,7 @@
       (message/msg ["`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."]))))
 
 (defn- usable-sources-hint
-  "Return the usable source IDs from an `:incompatible-metric` error as MCP guidance."
+  "Return the usable source IDs from an `:incompatible-metric` or `:metric-as-source-card` error as MCP guidance."
   [usable-sources]
   (when (seq usable-sources)
     (apply message/msg
@@ -59,10 +59,15 @@
 
 (defn recovery-hint
   "The v2 recovery message for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id usable-sources source-card source-card-type]}]
+  [{:keys [error entity-type entity-id metric-ids usable-sources source-card source-card-type]}]
   (case error
     :incompatible-metric
     (usable-sources-hint usable-sources)
+
+    :metric-as-source-card
+    (when-let [sources-hint (usable-sources-hint usable-sources)]
+      (message/msg ["%s Then reference the metric by its numeric ID: `aggregation: [[\"metric\", {}, %s]]`."]
+                   sources-hint (first metric-ids)))
 
     :uri-in-source-table
     (uri-hint entity-type entity-id)
@@ -110,10 +115,10 @@
     (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the table that "
                        "owns the segment and use the numeric id from its segments list.")])
 
-    (:cross-database-card :cross-database-measure :cross-database-segment)
-    (message/msg [(str "A query can only reference saved questions, models, metrics, measures and segments "
-                       "from its own database. Use one from that database, or change the source to a table "
-                       "in the referenced item's database.")])
+    (:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table)
+    (message/msg [(str "Don't combine data from two databases in Metabase (two different `database_id`s) in one "
+                       "query, in a structured query or in SQL. Tell the user that you can't combine data from these "
+                       "two databases in one query, and say what you can do instead.")])
 
     (:unknown-database :ambiguous-database-name)
     (message/msg [(str "Use a numeric table id in `source-table:` (from \"browse_data\" "

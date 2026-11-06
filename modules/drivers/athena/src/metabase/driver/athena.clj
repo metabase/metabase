@@ -57,6 +57,7 @@
                               :native-pivot-tables              true
                               :nested-fields                    false
                               :regex/lookaheads-and-lookbehinds false
+                              :stage-ctes                       true
                               :test/jvm-timezone-setting        false
                               :uuid-type                        true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
@@ -177,10 +178,6 @@
             s))))
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
-
-(defmethod sql.qp/use-ctes-for-stages? :athena
-  [_driver]
-  true)
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
@@ -687,8 +684,8 @@
                      init-sync-state
                      (if (seq dbname) [dbname] (remove nil? schema-names))))))))))
 
-;; one-off REPL script kept for reference; requires test namespaces a driver module can't normally use
-#_{:clj-kondo/ignore [:discouraged-var :metabase/modules]}
+;; one-off REPL script kept for reference
+#_{:clj-kondo/ignore [:discouraged-var]}
 (comment
   (require
    '[metabase.test.data.dataset-definitions]

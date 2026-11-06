@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.field-stats
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
@@ -100,11 +101,16 @@
   FK + join label (via `->result-column`) so a drilled-into field/dimension detail tells the LLM
   exactly how to reference the column."
   [query col field-id limit]
-  {:structured-output (merge {:result-type    :field-metadata
-                              :field_id       field-id
-                              :value_metadata (field-statistics query col limit)}
-                             (select-keys (metabot.tools.u/->result-column query col)
-                                          [:portable_fk :table_reference]))})
+  (let [;; `field-id` is the field ID, maybe as a string, or a column alias. A column with a field ID that is found by
+        ;; its alias is a later column of one field, see `column-field-ids`.
+        column-id (if (= (str field-id) (str (:id col)))
+                    (:id col)
+                    field-id)]
+    {:structured-output (merge {:result-type    :field-metadata
+                                :field_id       field-id
+                                :value_metadata (field-statistics query col limit)}
+                               (select-keys (metabot.tools.u/->result-column query col column-id)
+                                            [:portable_fk :table_reference]))}))
 
 (def ^:private max-suggested-field-ids 100)
 
@@ -127,14 +133,24 @@
                        "Choose another data source.")
                :uses #{}}]})
 
+(defn- usable-columns
+  "Keep the columns of `columns`, a list of columns a query can use, that the current user can see, and of these the
+  first column of each field ID. Two columns of such a list with one field ID are paths to one field, not two result
+  columns, so a later one gets no alias ID.
+
+  The permission filter runs first, because it decides per FK path: the first path to a field can be hidden while a
+  later path is visible."
+  [columns]
+  (m/distinct-by metabot.tools.u/column-field-id (entity-details/permission-filter-columns columns)))
+
 (defn- field-column
+  "Find the column of `field-id` in `columns`. The caller removes the columns that the current user cannot see."
   [entity-type entity-id field-id columns]
-  (let [columns (entity-details/permission-filter-columns columns)]
-    (or (metabot.tools.u/find-column-by-field-id field-id columns)
-        (let [available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct)) columns)]
-          (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
-                           :available-ids (vec (take max-suggested-field-ids available-ids))
-                           :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))})))))
+  (or (metabot.tools.u/find-column-by-field-id field-id columns)
+      (let [available-ids (into [] (distinct) (metabot.tools.u/column-field-ids columns))]
+        (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
+                         :available-ids (vec (take max-suggested-field-ids available-ids))
+                         :remaining-count (max 0 (- (count available-ids) max-suggested-field-ids))}))))
 
 (defn- check-curated-field-owner!
   "Under [[shared/curated-only?]], require that the Field behind `col`, a result column of the card `card-id`, belongs
@@ -151,7 +167,7 @@
 (defn- table-field-stats
   [table-id field-id limit]
   (let [query (metabot.tools.u/table-query table-id)
-        col (field-column "table" table-id field-id (lib/visible-columns query))]
+        col (field-column "table" table-id field-id (usable-columns (lib/visible-columns query)))]
     (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
@@ -160,20 +176,28 @@
         ;; which is what `construct_notebook_query` lets a curated card cover (see
         ;; `metabase.metabot.curation`). The definition of a question reads more: a verified `count` over a raw
         ;; table would otherwise serve every column of that table.
-        query   (if (shared/curated-only?)
-                  (metabot.tools.u/card-results-query card-id (keyword entity-type))
-                  (metabot.tools.u/card-query card-id (keyword entity-type)))
-        columns (if (= entity-type "question")
-                  (lib/returned-columns query)
-                  (distinct (concat (lib/returned-columns query) (lib/visible-columns query))))
-        col     (field-column entity-type card-id field-id columns)]
+        query    (if (shared/curated-only?)
+                   (metabot.tools.u/card-results-query card-id (keyword entity-type))
+                   (metabot.tools.u/card-query card-id (keyword entity-type)))
+        returned (entity-details/permission-filter-columns (lib/returned-columns query))
+        ;; Result columns keep their own field IDs, see `column-field-ids`. A visible column adds a field ID only
+        ;; when no result column has it.
+        columns  (if (= entity-type "question")
+                   returned
+                   (let [returned-ids (set (metabot.tools.u/column-field-ids returned))]
+                     (concat returned
+                             (->> (usable-columns (lib/visible-columns query))
+                                  (remove (comp returned-ids metabot.tools.u/column-field-id))))))
+        col      (field-column entity-type card-id field-id columns)]
     (check-curated-field-owner! card-id col)
     (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
-        col (field-column "metric" metric-id field-id (lib/filterable-columns query))]
+        col (field-column "metric" metric-id field-id
+                          (m/distinct-by metabot.tools.u/column-field-id
+                                         (entity-details/metric-dimension-columns query metric-id)))]
     (check-curated-field-owner! metric-id col)
     (field-metadata-output query col field-id limit)))
 

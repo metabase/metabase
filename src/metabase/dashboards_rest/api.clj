@@ -1062,7 +1062,7 @@
              (when parameters
                (handle-broken-subscriptions id original-params)))
            (when update-dashcards-and-tabs?
-             (when (not (false? (:archived false)))
+             (when (not (false? (:archived dash-updates)))
                (api/check-not-archived current-dash))
              (let [{current-dashcards :dashcards
                     current-tabs      :tabs

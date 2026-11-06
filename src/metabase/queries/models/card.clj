@@ -675,7 +675,7 @@
 (defmethod upgrade-card-schema-to 22
   [card _schema-version]
   (update card :result_metadata (fn [cols]
-                                  (mapv #(dissoc % :ident :model/inner_ident) cols))))
+                                  (some->> cols (mapv #(dissoc % :ident :model/inner_ident))))))
 
 ;; Schema upgrade: 22 to 23 ==========================================================================================
 ;; #66199 shows a customer upgrading to 57 breaking certain cards
@@ -1702,7 +1702,8 @@
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
+  {:schema ::queries.schema/external-card
+   :copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
    :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the

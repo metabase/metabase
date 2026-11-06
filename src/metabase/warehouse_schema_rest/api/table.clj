@@ -53,7 +53,7 @@
 (def ^:private EntityType
   "Schema for a valid table entity type, as either a keyword or a string."
   (mu/with-api-error-message
-   [:fn #(isa? types/entity-hierarchy (keyword %) :entity/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? types/entity-hierarchy (keyword %) :entity/*)]
    (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (mr/def ::data-authority-write
@@ -186,7 +186,7 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+   [:data_authority          {:optional true} ::data-authority-write]
    [:data_source             {:optional true} [:maybe :string]]
    [:data_layer              {:optional true} [:maybe :string]]
    [:owner_email             {:optional true} [:maybe :string]]
@@ -216,7 +216,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (schema.table-user-settings/upsert-user-settings existing-table changes))
+    (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
   (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?

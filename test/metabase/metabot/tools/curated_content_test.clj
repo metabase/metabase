@@ -31,6 +31,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (def ^:private curation-features
@@ -277,11 +278,12 @@
                                         :aggregation  [["metric" {} metric-eid]]}]})]
             (testing "an uncurated native question isn't readable through the metric URI"
               (is (denied? (read native-question)))
-              (is (some #(str/includes? % "not a metric") (:errors (metadata native-question)))
-                  "list_available_fields checks the kind first"))
+              (is (some #(str/includes? % "only uses curated content") (:errors (metadata native-question)))
+                  "list_available_fields reads a question passed as a metric as a question, and judges it on curation"))
             (testing "an uncurated model on a curated table isn't readable through the metric URI"
               (is (denied? (read plain-model)))
-              (is (some #(str/includes? % "not a metric") (:errors (metadata plain-model)))))
+              (is (some #(str/includes? % "only uses curated content") (:errors (metadata plain-model)))
+                  "list_available_fields reads a model passed as a metric as a model, and judges it on curation"))
             (testing "an uncurated metric with a native definition is denied: it references no tables to judge it by"
               (is (denied? (read native-metric)))
               (testing "and construct_notebook_query refuses it before repair as an uncurated source"
@@ -299,8 +301,8 @@
 
 (deftest curated-non-metric-card-through-metric-paths-test
   (testing "a curated Card named where a metric is expected passes on its own curation; the metric paths then refuse
-            it by kind, as they do for the unrestricted Metabot, and an uncurated question referenced as a metric
-            fails closed"
+            it by kind, as they do for the unrestricted Metabot, list_available_fields reads it at its own type, and
+            an uncurated question referenced as a metric fails closed"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {model-id :id} {:type :model :name "verified model" :dataset_query (orders-query)}
                      :model/Card {question-id :id} {:type :question :name "plain question"
@@ -311,9 +313,9 @@
           (let [read (fn [mb] (:error (first (read-uris mb :internal (str "metabase://metric/" model-id)))))]
             (is (str/includes? (read metabot) "not a metric"))
             (is (= (read nil) (read metabot)))))
-        (testing "list_available_fields metric_ids"
+        (testing "list_available_fields metric_ids reads the model as a model"
           (let [errors (fn [mb] (as-metabot mb :internal #(metadata-errors (fields-args :metric_ids [model-id]))))]
-            (is (some #(str/includes? % "not a metric") (errors metabot)))
+            (is (= [] (errors metabot)))
             (is (= (errors nil) (errors metabot)))))
         (testing "a question referenced as a metric in a query is judged as missing, not by its definition"
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
@@ -398,8 +400,12 @@
                       :name          "plain metric"
                       :dataset_query (count-metric-query (orders-query))}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        ;; The stage aggregates the metric: construct_notebook_query rejects a metric `source-card` that the stage
+        ;; does not aggregate, with `:metric-as-source-card`.
         (let [q         {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/mbql" :source-card metric-eid}]}
+                         :stages   [{:lib/type    "mbql.stage/mbql"
+                                     :source-card metric-eid
+                                     :aggregation [["metric" {} metric-eid]]}]}
               construct (fn [metabot profile-id]
                           (as-metabot metabot profile-id #(construct/execute-representations-query q)))
               rejected? (fn []
@@ -1023,15 +1029,13 @@
     (testing "a table published through the Data Studio keeps its published flag in its user settings, and the read
             check sees it: a user with no query permission reads it through its Library collection"
       (mt/with-temp [:model/Collection {lib :id} {:type "library-data" :name "data library"}
-                     :model/Table {table-id :id} {:db_id      (mt/id)
-                                                  :name       "published_by_settings"
-                                                  :schema     "LIBRARY_SCHEMA"
-                                                  :active     true
-                                                  :data_layer :final}
-                     :model/TableUserSettings _ {:table_id      table-id
-                                                 :is_published  true
-                                                 :collection_id lib}
+                     :model/Table {table-id :id :as table} {:db_id      (mt/id)
+                                                            :name       "published_by_settings"
+                                                            :schema     "LIBRARY_SCHEMA"
+                                                            :active     true
+                                                            :data_layer :final}
                      :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id lib})
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-current-user (mt/user->id :rasta)
@@ -1281,6 +1285,22 @@
               (is (nil? (:error resource)) (:error resource))
               (is (= (mt/id :reviews) (get-in resource [:content :structured-output :base_table_id]))
                   "a metric's base table is its source"))))))))
+
+(deftest curated-metric-over-a-deleted-source-is-marked-unavailable-test
+  (testing "a curated metric whose source card was deleted is marked unavailable"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {question :id} {:name "doomed question" :dataset_query (orders-query)}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {metric :id} {:type          :metric
+                                                   :name          "metric on a doomed question"
+                                                   :dataset_query (count-metric-query
+                                                                   (lib/query mp (lib.metadata/card mp question)))}]
+            (verify-card! metric)
+            (t2/delete! :model/Card :id question)
+            (let [resource (first (read-uris metabot :internal (str "metabase://metric/" metric)))]
+              (is (nil? (:error resource)) (:error resource))
+              (is (true? (get-in resource [:content :structured-output :source_unavailable]))))))))))
 
 (deftest uncurated-metric-over-an-unreadable-table-fails-closed-test
   ;; the user reads the published table through the Library grant, which exists only on EE
