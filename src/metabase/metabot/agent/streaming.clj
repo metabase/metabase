@@ -29,10 +29,7 @@
   ;; state is diffed separately into the row's state column
   ;; search_results and tool_title render under the client-only chain of
   ;; thought, never rehydrated
-  ;; TODO (Chris 2026-11-05) -- Persist dashboard_saved once the frontend renders it (BOT-2573). Until then a
-  ;; reloaded conversation would hand it to the message renderer, whose exhaustive match throws on an unknown type.
-  #{dashboard-saved-type
-    search-results-type
+  #{search-results-type
     state-type
     tool-title-type})
 
@@ -137,7 +134,7 @@
   "Create a DASHBOARD_SAVED data part for streaming.
   The `value` describes a dashboard a tool created, edited, trashed or restored:
   `{:dashboard_id :action :name :url :collection_id :open :saved_charts}`.
-  The frontend links it, reloads it when it is open, and opens it after the reply when `:open` is true."
+  The frontend links it, reloads it when it is open, and opens it when `:open` is true."
   [value]
   {:type :data
    :data-type dashboard-saved-type

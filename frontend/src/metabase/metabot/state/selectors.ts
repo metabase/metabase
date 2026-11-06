@@ -4,6 +4,7 @@ import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
+import type { DashboardId } from "metabase-types/api";
 
 import {
   CONTEXT_FULL_ERROR_CODE,
@@ -70,6 +71,15 @@ export const getMetabotReactionsState = createSelector(
 export const getNavigateToPath = createSelector(
   getMetabotReactionsState,
   (reactionsState) => reactionsState.navigateToPath,
+);
+
+export const getDashboardSaveId = createSelector(
+  [
+    getMetabotReactionsState,
+    (_state: State, dashboardId: DashboardId) => dashboardId,
+  ],
+  (reactionsState, dashboardId): string | undefined =>
+    reactionsState.dashboardSaveIds[dashboardId],
 );
 
 /*

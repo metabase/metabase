@@ -64,20 +64,13 @@
 (defn- failure [args]
   (test-util/tool-failure write-dashboard/write-dashboard-tool args tool-names))
 
-(defn- data-parts
-  "The result's data parts by type, checking it has no other types."
+(defn- event
+  "The result's one data part, a `dashboard_saved` event."
   [result]
-  (let [by-type (into {} (map (juxt :data-type :data)) (:data-parts result))]
-    (is (every? #{"dashboard_saved" "generated_entity"} (keys by-type)))
-    by-type))
-
-(defn- event [result]
-  (get (data-parts result) "dashboard_saved"))
-
-(defn- opened
-  "The dashboard the frontend navigates to, if any."
-  [result]
-  (get (data-parts result) "generated_entity"))
+  (let [[part & more] (:data-parts result)]
+    (is (empty? more))
+    (is (= "dashboard_saved" (:data-type part)))
+    (:data part)))
 
 (defn- dashcards [dashboard-id]
   (t2/select [:model/DashboardCard :id :card_id :row :col :size_x :size_y :dashboard_tab_id :parameter_mappings]
@@ -137,9 +130,7 @@
                   :collection_id personal
                   :open          true
                   :saved_charts  []}
-                 data))
-          (is (= {:type "dashboard", :id dashboard_id, :title "Q4 planning", :url (str "/dashboard/" dashboard_id)}
-                 (opened result))))
+                 data)))
         (testing "the model reads where it was saved and how to link it"
           (is (re-find #"<dashboard_saved action=\"created\" url=\"metabase://dashboard/\d+\">" (:output result)))
           (is (re-find #"<collection id=\"\d+\" name=\"Rasta Toucan's Personal Collection\"/>" (:output result)))
@@ -192,8 +183,7 @@
                                               " connected_dashcards=\"\\d+, \\d+, \\d+\"/>"))
                              (:output result))))
               (testing "opens the dashboard only in internal Metabot"
-                (is (= open? (:open data)))
-                (is (= open? (some? (opened result)))))
+                (is (= open? (:open data))))
               (testing "leaves other dashboards alone"
                 (is (empty? (dashcards other-id)))))))))))
 
@@ -241,8 +231,7 @@
              (is (=? {:action       "updated"
                       :open         true
                       :saved_charts [{:chart_id "A", :card_id (:id new-card)}]}
-                     (event result)))
-             (is (=? {:id dash-id} (opened result))))
+                     (event result))))
            (testing "leaves the replaced question and the other dashboard unchanged"
              (is (=? {:name "Revenue by month", :archived false} (t2/select-one :model/Card :id card-id)))
              (is (= "Marketing" (t2/select-one-fn :name :model/Dashboard :id other-id))))
@@ -336,8 +325,7 @@
        (let [result (call {:dashboard_id dash-id, :archived true} :internal)]
          (testing "moves the dashboard to the trash without asking"
            (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
-           (is (=? {:action "trashed", :open false} (event result)))
-           (is (nil? (opened result))))
+           (is (=? {:action "trashed", :open false} (event result))))
          (testing "the result is the header only"
            (is (not (re-find #"<dashboard " (:output result))))
            (is (re-find #"restore it from there" (:output result))))
@@ -345,9 +333,8 @@
            (is (=? {:class :recoverable, :code ::save-entity/destination-archived}
                    (failure {:dashboard_id dash-id, :name "New name"}))))
          (testing "restores it"
-           (let [result (call {:dashboard_id dash-id, :archived false} :internal)]
-             (is (=? {:action "restored", :open true} (event result)))
-             (is (=? {:id dash-id} (opened result))))
+           (is (=? {:action "restored", :open true}
+                   (event (call {:dashboard_id dash-id, :archived false} :internal))))
            (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id))))
          (testing "leaves other dashboards alone"
            (is (false? (t2/select-one-fn :archived :model/Dashboard :id other-id)))))))))

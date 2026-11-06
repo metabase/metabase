@@ -48,6 +48,7 @@ import type {
   MetabotAgentId,
   MetabotMessage,
   MetabotMessagePart,
+  MetabotSavedDashboard,
   MetabotState,
   MetabotToolCall,
   MetabotUserTextChatMessage,
@@ -369,6 +370,12 @@ export const metabot = createSlice({
     // REACTIONS REDUCERS
     setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;
+    },
+    dashboardSaved: (
+      state,
+      { payload }: PayloadAction<MetabotSavedDashboard>,
+    ) => {
+      state.reactions.dashboardSaveIds[payload.dashboardId] = payload.saveId;
     },
     addSuggestedCodeEdit: (
       state,
