@@ -116,7 +116,7 @@
                    :candidates  (vec folded)}))
           (throw (transform-testing.errors/ex
                   ::transform-testing.errors/unknown-column
-                  (tru "Expectation {0} compares column {1}, which the transform output does not have. It has: {2}"
+                  (tru "Expectation {0} compares column {1}, which the output of the query under test does not have. It has: {2}"
                        (pr-str expectation-name) (pr-str declared-name)
                        (str/join ", " output-columns))
                   {:expectation expectation-name

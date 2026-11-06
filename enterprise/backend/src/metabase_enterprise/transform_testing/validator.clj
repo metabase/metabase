@@ -48,7 +48,7 @@
 (mu/defn table-label :- :string
   "A human/agent-facing name for a table ref: `schema.name`, or just `name` when the schema is
   unknown. For error messages — never surface the raw `{:schema :name}` map."
-  [{:keys [schema name]} :- ::transform-testing.schema/table]
+  [{:keys [schema name]} :- ::transform-testing.compile/output-table]
   (if schema (str schema \. name) name))
 
 (mu/defn- missing-inputs :- [:sequential ::transform-testing.schema/table]
@@ -138,9 +138,9 @@
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/unremapped-reference
             (if source
-              (tru "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the transform''s output and its declared inputs."
+              (tru "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the output of the query under test and its declared inputs."
                    (pr-str source) (str/join ", " surviving))
-              (tru "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+              (tru "The test could not fully remap the query under test to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
                    (str/join ", " surviving)))
             (cond-> {:references (vec surviving)}
               source (assoc :expectation source))))))
@@ -168,12 +168,12 @@
         (throw e)))))
 
 (mu/defn validate :- :nil
-  "Refuse the test unless it is complete against the transform it tests and every query it will run reads only the
-  run's temp tables. Returns nil when there is nothing to refuse, and otherwise throws a typed refusal from
-  [[metabase-enterprise.transform-testing.errors]].
+  "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
+  temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a
+  typed refusal from [[metabase-enterprise.transform-testing.errors]].
 
-  `referenced-tables` are the tables the transform's source reads, parsed before any replacement; `rewritten-transform`
-  is that source after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
+  `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-transform`
+  is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
   the temp tables everything may read; `default-schema` is the schema an unqualified reference resolves to in the
   database under test."
   [driver :- :keyword
@@ -188,14 +188,14 @@
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/missing-inputs
-            (tru "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+            (tru "The query under test reads table(s) with no declared test input: {0}. Add an input for each."
                  (str/join ", " (map table-label missing)))
             {:tables (mapv table-label missing)
              :response/keys #{:tables}})))
   (when-let [unused (seq (unused-inputs inputs referenced-tables default-schema))]
     (throw (transform-testing.errors/ex
             ::transform-testing.errors/unused-inputs
-            (tru "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+            (tru "Test input(s) declared for table(s) the query under test does not read: {0}. Remove them."
                  (str/join ", " (map table-label unused)))
             {:tables (mapv table-label unused)
              :response/keys #{:tables}})))
@@ -211,4 +211,9 @@
     (doseq [{:keys [name sql]} expectations
             :when              sql]
       (check-expectation-sql driver name sql replacements temp-tables)))
+  (when (empty? expectations)
+    (throw (transform-testing.errors/ex
+            ::transform-testing.errors/no-expectations
+            (tru "The test has no expectations, so it checks nothing. Add at least one.")
+            {})))
   nil)
