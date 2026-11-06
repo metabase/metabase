@@ -765,12 +765,12 @@
 
 (defn- dashboard-history->xml
   "The lines saying who created the dashboard and who last edited it, and when, or nil when neither is known."
-  [{:keys [creator created_at last_edited_by last_edited_at]}]
+  [{:keys [created_by created_at last_edited_by last_edited_at]}]
   (not-empty
-   (str (when creator
-          (str "  <created by=\"" (escape-xml (:name creator)) "\" at=\"" created_at "\"/>\n"))
+   (str (when created_by
+          (str "  <created by=\"" (escape-xml created_by) "\" at=\"" created_at "\"/>\n"))
         (when last_edited_by
-          (str "  <last_edited by=\"" (escape-xml (:name last_edited_by)) "\" at=\"" last_edited_at "\"/>\n")))))
+          (str "  <last_edited by=\"" (escape-xml last_edited_by) "\" at=\"" last_edited_at "\"/>\n")))))
 
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
