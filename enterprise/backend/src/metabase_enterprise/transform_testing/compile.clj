@@ -1,9 +1,9 @@
 (ns metabase-enterprise.transform-testing.compile
-  "Pure SQL for a transform test run: the transform's source rewritten to read temp tables, and every query the run
-  executes against them. No I/O.
+  "Pure SQL for a test run: the subject's query rewritten to read temp tables, and every query the run executes against
+  them. No I/O.
 
-    parsing  — `compile-source`, `referenced-tables`, `dangling-qualifiers`
-    rewrite  — `table-replacements`, `replace-tables`, `compile-transform`
+    parsing  — `referenced-tables`, `dangling-qualifiers`
+    rewrite  — `table-replacements`, `replace-tables`, `rewrite-query`
     queries  — `compile-input`, `rows-query`, `columns-query`, `row-count-query`, `comparison-query`
 
   Every identifier is built with `h2x/identifier` and every cast with `h2x/cast`, which quote what cannot be written
@@ -14,8 +14,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.transforms-base.schema :as transforms-base.schema]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -29,13 +27,6 @@
   [:map {:closed true}
    [:query  :string]
    [:params [:maybe [:sequential ::lib.schema.common/field-value]]]])
-
-(mr/def ::compiled-source
-  "The transform's source compiled to SQL, before any temp-table replacement, with the tables it reads."
-  [:map {:closed true}
-   [:query             :string]
-   [:params            [:maybe [:sequential ::lib.schema.common/field-value]]]
-   [:referenced-tables [:set ::transform-testing.schema/table]]])
 
 (mr/def ::table-key
   "A way a query can refer to a table, as a `sql-tools/replace-names` key."
@@ -71,15 +62,6 @@
               (map :name))
         (:errors (sql-tools/field-references driver sql))))
 
-(mu/defn compile-source :- ::compiled-source
-  "The transform's source compiled to SQL, with the tables it reads."
-  [driver    :- :keyword
-   transform :- ::transforms-base.schema/transform]
-  (let [{:keys [query params]} (transforms-base.u/compile-source transform nil)]
-    {:query             query
-     :params            params
-     :referenced-tables (referenced-tables driver query)}))
-
 ;;; ------------------------------------------------- Rewrite -------------------------------------------------
 
 (mu/defn table-keys :- [:sequential ::table-key]
@@ -98,18 +80,17 @@
     (conj {:table table})))
 
 (mu/defn table-replacements :- ::table-replacements
-  "The replacements mapping each input's table to its temp table in `input->table`, and the transform's target table to
+  "The replacements mapping each input's table to its temp table in `input->table`, and each of `output-tables` to
   `output-table`."
-  [transform      :- ::transforms-base.schema/transform
+  [output-tables  :- [:sequential ::transform-testing.schema/table]
    input->table   :- [:map-of ::transform-testing.schema/input ::lib.schema.common/non-blank-string]
    output-table   :- ::lib.schema.common/non-blank-string
    default-schema :- [:maybe :string]]
-  (let [{target-schema :schema target-name :name} (:target transform)]
-    (into {}
-          (for [[{:keys [schema name]} table] (conj (mapv (fn [[input table]] [(:table input) table]) input->table)
-                                                    [{:schema target-schema :name target-name} output-table])
-                table-key                    (table-keys schema name default-schema)]
-            [table-key {:db nil :schema nil :table table}]))))
+  (into {}
+        (for [[{:keys [schema name]} table] (concat (map (fn [[input table]] [(:table input) table]) input->table)
+                                                    (map (fn [output] [output output-table]) output-tables))
+              table-key                    (table-keys schema name default-schema)]
+          [table-key {:db nil :schema nil :table table}])))
 
 (mu/defn replace-tables :- :string
   "`sql` reading from the temp tables of `replacements` instead of the tables they replace."
@@ -118,13 +99,12 @@
    replacements :- ::table-replacements]
   (sql-tools/replace-names driver sql {:tables replacements} {:allow-unused? true}))
 
-(mu/defn compile-transform :- ::compiled-query
-  "`compiled-source` reading from the temp tables of `replacements` instead of the tables they replace."
-  [driver          :- :keyword
-   compiled-source :- ::compiled-source
-   replacements    :- ::table-replacements]
-  {:query  (replace-tables driver (:query compiled-source) replacements)
-   :params (:params compiled-source)})
+(mu/defn rewrite-query :- ::compiled-query
+  "`compiled` reading from the temp tables of `replacements` instead of the tables they replace."
+  [driver       :- :keyword
+   compiled     :- ::compiled-query
+   replacements :- ::table-replacements]
+  (update compiled :query #(replace-tables driver % replacements)))
 
 ;;; ------------------------------------------------- Queries -------------------------------------------------
 

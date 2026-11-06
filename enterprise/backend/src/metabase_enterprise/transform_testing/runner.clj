@@ -1,18 +1,18 @@
 (ns metabase-enterprise.transform-testing.runner
-  "Orchestrates a transform test run over the module's separated concerns. Callers hand the runner the definitions of the
-  transform and the test; the runner owns the connection lifecycle, hands ordinary arguments to each concern (no
+  "Orchestrates a test run over the module's separated concerns. Callers hand the runner the definitions of the
+  subject and the test; the runner owns the connection lifecycle, hands ordinary arguments to each concern (no
   marshaled plan object), and owns the HTTP decisions.
 
-    db           — app-db reads (database)
-    compile      — pure: source → SQL + referenced tables (once), then rewrites to temp tables
+    subject      — the subject's database and its query compiled to SQL, one method per subject type
+    compile      — pure: referenced tables (once), then rewrites to temp tables
     validator    — pure: may this test run? every read faked, every rewritten query on temp tables
     executor     — the one place warehouse I/O lives: create/drop temp tables, run read-backs
     expectations — check each expectation against the output temp table (via executor)
 
-  Flow — compile the source once, then thread that one result so the guard and the rewrite agree:
+  Flow — compile the subject once, then thread that one result so the guard and the rewrite agree:
 
-    resolve the database (app-db)
-      → compile-source (pure)   : the transform's SQL + the tables it reads
+    subject-plan              : the database, the subject's SQL, the names of its output
+      → referenced tables (pure): the tables the SQL reads
       → name + rewrite (pure)   : a temp table per input, and the source reading them
       → validate (pure)         : reject a test that is incomplete, or whose queries would still
                                   read a real table
@@ -21,7 +21,6 @@
   Everything before the connection is pure; a bad test is rejected before any temp table exists."
   (:require
    [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
-   [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
    [metabase-enterprise.transform-testing.executor :as transform-testing.executor]
    [metabase-enterprise.transform-testing.expectations.empty]
@@ -29,15 +28,15 @@
    [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.transform-testing.run-tracking :as transform-testing.run-tracking]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase-enterprise.transform-testing.subject :as transform-testing.subject]
+   [metabase-enterprise.transform-testing.subject.transform]
    [metabase-enterprise.transform-testing.util :as transform-testing.u]
    [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [tru]]
@@ -47,10 +46,12 @@
 
 (set! *warn-on-reflection* true)
 
-;;; Required for the [[expectations.protocol/build]] methods and result schemas each type registers.
+;;; Required for the [[expectations.protocol/build]] methods and result schemas each type registers, and the
+;;; [[transform-testing.subject/subject-plan]] method of each subject type.
 (comment
   metabase-enterprise.transform-testing.expectations.empty/keep-me
-  metabase-enterprise.transform-testing.expectations.equals/keep-me)
+  metabase-enterprise.transform-testing.expectations.equals/keep-me
+  metabase-enterprise.transform-testing.subject.transform/keep-me)
 
 (mr/def ::labels
   "The table the author wrote for each temp table of the run."
@@ -106,12 +107,12 @@
      [:actual-count {:optional true} result]]))
 
 (mu/defn- table-labels :- ::labels
-  "The map from each temp table of the run to the table the author wrote, for rewriting warehouse error messages that
+  "The map from each temp table of the run to the name the author wrote, for rewriting warehouse error messages that
   can only speak in generated names."
-  [transform    :- ::transforms.schema/transform.definition
+  [output-label :- :string
    input->table :- [:map-of ::transform-testing.schema/input :string]
    output-table :- :string]
-  (into {output-table (transform-testing.validator/table-label (select-keys (:target transform) [:schema :name]))}
+  (into {output-table output-label}
         (map (fn [[input table]] [table (transform-testing.validator/table-label (:table input))]))
         input->table))
 
@@ -174,36 +175,12 @@
         (doseq [table (vals @temp-tables)]
           (transform-testing.executor/drop-temp-table! driver conn table))))))
 
-(mu/defn- check-testable-transform :- :nil
-  "Refuse `transform` unless it is one a test can run."
-  [transform :- ::transforms.schema/transform.definition]
-  (when-not (transforms-base.u/query-transform? transform)
-    (throw (transform-testing.errors/ex
-            ::transform-testing.errors/unsupported-transform
-            (tru "Only query transforms can be tested.")
-            {}))))
-
-(mu/defn- testable-database :- ::lib.schema.metadata/database
-  "The database `transform` reads, if its driver can run a transform test."
-  [transform :- ::transforms.schema/transform.definition]
-  (let [database-id (transforms-base.u/transform-source-database transform)
-        _           (api/check-404 (some-> database-id transform-testing.db/database-exists?))
-        database    (driver.u/lib-database database-id)
-        driver   (keyword (:engine database))]
-    (when-not (driver.u/supports? driver :transforms/testing database)
-      (throw (transform-testing.errors/ex
-              ::transform-testing.errors/unsupported-driver
-              (tru "The {0} database of this transform does not support transform testing."
-                   (name driver))
-              {:driver driver})))
-    database))
-
-(mu/defn- parsed-source :- ::transform-testing.compile/compiled-source
-  "The transform's source compiled to SQL, with the tables it reads, or a refusal naming what would not parse."
-  [driver    :- :keyword
-   transform :- ::transforms.schema/transform.definition]
+(mu/defn- source-tables :- [:set ::transform-testing.schema/table]
+  "The tables the subject's `sql` reads, or a refusal naming what would not parse."
+  [driver :- :keyword
+   sql    :- :string]
   (try
-    (transform-testing.compile/compile-source driver transform)
+    (transform-testing.compile/referenced-tables driver sql)
     (catch Exception e
       (if (sql-parsing/parse-error? e)
         (throw (transform-testing.errors/ex
@@ -259,40 +236,41 @@
           expectations)))
 
 (mu/defn- validated-plan :- ::plan
-  "Everything a run needs, resolved and checked but not yet executed: the database and driver the transform runs
-  against, a temp table per input and one for its output, the source rewritten to read them, and the labels a
+  "Everything a run needs, resolved and checked but not yet executed: the database and driver the subject runs
+  against, a temp table per input and one for its output, the subject's query rewritten to read them, and the labels a
   message renders them as.
 
-  Throws the run's typed refusals — an untestable transform or driver, SQL that will not parse, a test the
-  validator rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan
-  and discarding it."
-  [transform    :- ::transforms.schema/transform.definition
+  Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a test the validator
+  rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan and
+  discarding it."
+  [subject-type :- ::transform-testing.subject/subject-type
+   subject      :- ::transform-testing.subject/subject
    inputs       :- ::transform-testing.schema/inputs
    expectations :- ::transform-testing.schema/expectations]
-  (check-testable-transform transform)
-  (let [database       (testable-database transform)
+  (let [{:keys [database compiled output-tables output-label]}
+        (transform-testing.subject/subject-plan subject-type subject)
         driver         (keyword (:engine database))
-        source         (parsed-source driver transform)
+        source-tables  (source-tables driver (:query compiled))
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table   (driver/temp-table-name driver)
         default-schema (:default-schema database)
-        replacements   (transform-testing.compile/table-replacements transform input->table output-table default-schema)
-        compiled       (transform-testing.compile/compile-transform driver source replacements)]
+        replacements   (transform-testing.compile/table-replacements output-tables input->table output-table default-schema)
+        rewritten      (transform-testing.compile/rewrite-query driver compiled replacements)]
     (transform-testing.validator/validate
      driver
      {:inputs              inputs
       :expectations        expectations
-      :referenced-tables   (:referenced-tables source)
-      :rewritten-transform (:query compiled)
+      :referenced-tables   source-tables
+      :rewritten-transform (:query rewritten)
       :replacements        replacements
       :default-schema      default-schema})
     {:driver       driver
      :database     database
      :input->table input->table
      :output-table output-table
-     :labels       (table-labels transform input->table output-table)
+     :labels       (table-labels output-label input->table output-table)
      :replacements replacements
-     :compiled     compiled}))
+     :compiled     rewritten}))
 
 (mu/defn validate-test :- :nil
   "Refuse a test of `transform` with these `inputs` and `expectations` unless it could run: the same
@@ -303,7 +281,7 @@
   [transform    :- ::transforms.schema/transform.definition
    inputs       :- ::transform-testing.schema/inputs
    expectations :- ::transform-testing.schema/expectations]
-  (validated-plan transform inputs expectations)
+  (validated-plan :transform transform inputs expectations)
   nil)
 
 (mu/defn run-test! :- ::transform-testing.schema/run-result
@@ -316,7 +294,7 @@
    {:keys [inputs expectations]}                    :- ::transform-testing.schema/transform-test.definition
    transform-test-id                                :- [:maybe ms/PositiveInt]]
   (let [{:keys [driver database input->table output-table labels replacements compiled]}
-        (validated-plan transform inputs expectations)
+        (validated-plan :transform transform inputs expectations)
         {run-id :id} (transform-testing.run-tracking/start-run! transform-test-id api/*current-user-id*)
         final-status (atom :error)]
     (try
