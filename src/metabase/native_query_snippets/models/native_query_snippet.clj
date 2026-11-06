@@ -11,6 +11,7 @@
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -266,3 +267,101 @@
     (recur (update ingested :name str " (copy)")
            maybe-local)
     (serdes/default-load-one! ingested maybe-local)))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defn- walk-export-renames
+  "The renames of the card tags in `template-tags` whose `#<id>-slug` name embeds this instance's card id, with the
+  card entity ids `visit` resolves."
+  [visit template-tags]
+  (serialization/card-template-tag-renames
+   (partial serialization/card-template-tag-export-rename (partial serialization/card-entity-id visit))
+   (vals template-tags)))
+
+(defn- walk-import-template-tags
+  "The `template-tags` of a snippet imported with `visit`, and the renames of the card tags whose name embeds the
+  exporting instance's card id."
+  [visit template-tags]
+  (let [[visit' card-entity-id] (serialization/recording-card-entity-ids visit)]
+    (when-let [tags (some->> template-tags (serialization/walk-import visit'))]
+      (if (serialization/collecting? visit)
+        {:tags tags :renames {}}
+        (let [tags (lib/normalize :metabase.lib.schema.template-tag/template-tag-map tags)]
+          {:tags    tags
+           :renames (serialization/card-template-tag-renames
+                     (partial serialization/card-template-tag-import-rename card-entity-id)
+                     (vals tags))})))))
+
+(defn- rename-in-text [content renames]
+  (cond-> content
+    (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames)))
+
+(defmethod serialization/spec :model/NativeQuerySnippet [_]
+  {:schema    ::native-query-snippets.schema/external-native-query-snippet
+   :copy      [:archived :description :entity_id :name]
+   :transform {:collection_id (serialization/fk-transform :model/Collection)
+               :creator_id    serialization/user-transform
+               :content       {:export (fn [store snippets _ _]
+                                         (serialization/export-in-bulk
+                                          store
+                                          snippets
+                                          (fn [visit {:keys [content template_tags]}]
+                                            (rename-in-text content (walk-export-renames visit template_tags)))))
+                               :import (fn [store entities _ opts]
+                                         (serialization/import-in-bulk
+                                          store
+                                          entities
+                                          opts
+                                          (fn [visit {:keys [content template_tags]}]
+                                            (rename-in-text content (:renames (walk-import-template-tags
+                                                                               visit template_tags))))))}
+               :template_tags {:export (fn [store _ tag-maps _]
+                                         (serialization/export-in-bulk
+                                          store
+                                          tag-maps
+                                          (fn [visit tags]
+                                            (serialization/walk-export
+                                             visit
+                                             (some-> tags
+                                                     (lib/rename-template-tags (walk-export-renames visit tags)))))))
+                               :import (fn [store _ tag-maps opts]
+                                         (serialization/import-in-bulk
+                                          store
+                                          tag-maps
+                                          opts
+                                          (fn [visit tags]
+                                            (let [{:keys [tags renames]} (walk-import-template-tags visit tags)]
+                                              (some-> tags (lib/rename-template-tags renames))))))}}
+   :defaults  {:archived false}})
+
+(defmethod serialization/storage-paths :model/NativeQuerySnippet [_ entities ctx]
+  (mapv (fn [snippet]
+          (serialization/storage-default-collection-path snippet ctx "snippets"))
+        entities))
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/NativeQuerySnippet [_ entities]
+  (mapv (fn [{:keys [collection_id template_tags]}]
+          (set (concat (when collection_id [[:model/Collection collection_id]])
+                       (serialization/import-mbql-dependencies template_tags))))
+        entities))
+
+(defmethod serialization/export-dependencies :model/NativeQuerySnippet [_ snippets]
+  (mapv (fn [{:keys [collection_id template_tags]}]
+          (set (concat (when collection_id [[:model/Collection collection_id]])
+                       (serialization/export-mbql-dependencies template_tags))))
+        snippets))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/NativeQuerySnippet [_ items]
+  (let [taken (when-let [names (seq (distinct (keep (comp :name :row) items)))]
+                (into {} (map (juxt :name :entity_id)) (native-query-snippets.db/snippet-names-and-entity-ids (vec names))))]
+    (first
+     (reduce (fn [[items taken] {{:keys [entity_id] snippet-name :name} :row :as item}]
+               (let [free? #(let [owner (get taken %)] (or (nil? owner) (= owner entity_id)))
+                     n     (first (filter free? (iterate #(str % " (copy)") snippet-name)))]
+                 [(conj items (assoc-in item [:row :name] n)) (assoc taken n entity_id)]))
+             [[] taken]
+             items))))

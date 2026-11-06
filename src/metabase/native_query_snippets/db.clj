@@ -70,3 +70,9 @@
                                             (when include-root? [:= :collection_id nil])]]
                                 :order-by serdes/stable-storage-order}
                          filter-column (sql.helpers/where :or [:in filter-column filter-ids]))))
+
+(mu/defn snippet-names-and-entity-ids
+  "The name and entity id of the NativeQuerySnippets whose name starts with one of `snippet-names`."
+  [snippet-names :- [:sequential :string]]
+  (t2/select [:model/NativeQuerySnippet :name :entity_id]
+             {:where (into [:or] (map (fn [n] [:like :name [:auto/param (str n "%")]])) snippet-names)}))

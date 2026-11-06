@@ -950,6 +950,7 @@
            query-permissions
            query-processor
            search
+           serialization
            settings
            staleness
            util}
@@ -1886,6 +1887,7 @@
            permissions
            premium-features
            remote-sync
+           serialization
            users.schema
            util}
    :model-exports #{:model/NativeQuerySnippet}
