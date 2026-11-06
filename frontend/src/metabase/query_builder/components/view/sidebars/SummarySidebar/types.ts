@@ -32,7 +32,6 @@ export type SummaryOperatorOption = {
 
 export type SummaryValueItem = {
   clause: Lib.AggregationClause;
-  /** The name of the aggregation's result column, unique within the stage. */
   key: string;
   label: string;
 } & (
@@ -49,7 +48,6 @@ export type SummaryValueItem = {
 
 export type SummaryDimensionItem = {
   clause: Lib.BreakoutClause;
-  /** The name of the breakout's result column, unique within the stage. */
   key: string;
   label: string;
 };

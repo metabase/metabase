@@ -11,7 +11,6 @@ export type DropdownFrame = {
   offset: { mainAxis: number; crossAxis: number };
 };
 
-// the side is picked here rather than by flipping: the offset that clears the card differs per side
 export function getCardFrame(field: HTMLElement): DropdownFrame | null {
   const card = field.parentElement;
   if (card == null) {

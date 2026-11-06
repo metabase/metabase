@@ -22,6 +22,7 @@ import {
 import type { SummaryField, SummaryFieldSection } from "./types";
 import {
   addField,
+  areQueriesEqual,
   changeValueOperator,
   clearWell,
   filterFieldSections,
@@ -458,6 +459,42 @@ describe("addField", () => {
         query,
       ),
     ).toBe(true);
+  });
+});
+
+describe("areQueriesEqual", () => {
+  const query = createOrdersQuery({
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+      },
+    ],
+  });
+  const sections = getFieldSections(query, STAGE_INDEX);
+
+  it("ignores clause ids", () => {
+    const rebuilt = replaceWellWithField(
+      query,
+      STAGE_INDEX,
+      "columns",
+      findField(sections, "Created At"),
+    );
+
+    expect(isSameQuery(query, rebuilt)).toBe(false);
+    expect(areQueriesEqual(query, rebuilt)).toBe(true);
+  });
+
+  it("tells a different grouping apart", () => {
+    const regrouped = replaceWellWithField(
+      query,
+      STAGE_INDEX,
+      "columns",
+      findField(sections, "Category"),
+    );
+
+    expect(areQueriesEqual(query, regrouped)).toBe(false);
   });
 });
 

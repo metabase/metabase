@@ -70,7 +70,7 @@ export function SummaryWellInput({
     () => filterFieldSections(sections, searchText),
     [sections, searchText],
   );
-  // highlight the best match once the filtered options render, so Enter picks it
+
   const comboboxRef = useLatest(combobox);
   useEffect(() => {
     if (searchText.length > 0) {
@@ -94,7 +94,6 @@ export function SummaryWellInput({
     }
   };
 
-  // the dropdown waits for the first character, so focusing a well doesn't cover the one below
   const handleSearchChange = (text: string) => {
     setSearchText(text);
     if (text.trim().length > 0) {
