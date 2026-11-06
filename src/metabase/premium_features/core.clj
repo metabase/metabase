@@ -98,6 +98,7 @@
   enable-python-transforms?
   enable-transform-testing?
   enable-upload-management?
+  enable-workspaces?
   enable-whitelabeling?
   enable-writable-connection?
   has-attached-dwh?

@@ -55,6 +55,7 @@
 (t2/deftransforms :model/Database
   {:details                        (mi/transform-encrypted-json "metabase_database.details")
    :write_data_details             (mi/transform-encrypted-json "metabase_database.write_data_details")
+   :admin_details                  (mi/transform-encrypted-json "metabase_database.admin_details")
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
@@ -164,6 +165,14 @@
   [_db-id]
   (mi/superuser?))
 
+(defenterprise reconcile-workspace-database-refs-before-delete!
+  "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
+   the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
+   and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
+   implementation is a no-op: OSS has nothing to reconcile."
+  metabase-enterprise.workspaces.models.workspace-database
+  [_db-id]
+  nil)
 (defn- can-write?
   [db-id]
   (or (some-> db-id db-id->router-db-id can-write?)
@@ -287,6 +296,7 @@
   "Checks database health off-thread.
    - checks connectivity for the default connection
    - checks connectivity for the write connection (if configured)
+   - checks connectivity for the admin connection (if configured)
    - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
@@ -311,7 +321,10 @@
                    (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
          (when (driver.conn/database-write-data-details lib-db)
            (let [write-details (merge details (driver.conn/details-for-exact-type lib-db :write-data))]
-             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data"))))))))
+             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))
+         (when (driver.conn/database-admin-details lib-db)
+           (let [admin-details (merge details (driver.conn/details-for-exact-type lib-db :admin))]
+             (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
 
 (defn- health-check-candidates
   "The databases to health check at startup: one representative per unique engine — the lowest-id regular database of
@@ -384,7 +397,8 @@
                driver
                (-> db
                    (m/update-existing-in [:details :auth-provider] keyword)
-                   (m/update-existing-in [:write_data_details :auth-provider] keyword)))))]
+                   (m/update-existing-in [:write_data_details :auth-provider] keyword)
+                   (m/update-existing-in [:admin_details :auth-provider] keyword)))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
@@ -414,6 +428,11 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
+  ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
+  ;; rows must be cleaned up explicitly, and non-:unprovisioned rows must refuse the delete.
+  ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
+  ;; / fields for a Database whose deletion is about to be refused.
+  (reconcile-workspace-database-refs-before-delete! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
@@ -453,7 +472,7 @@
 
 (def ^:private details-keys
   "Every place a Database stores a set of connection details."
-  [:details :write_data_details])
+  [:details :write_data_details :admin_details])
 
 (defn- validate-connection-details!
   "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
@@ -517,7 +536,8 @@
                infer-db-schedules
 
                (or (some? (:details changes))
-                   (some? (:write_data_details changes)))
+                   (some? (:write_data_details changes))
+                   (some? (:admin_details changes)))
                secret/handle-incoming-client-secrets!
 
                (:uploads_enabled changes)
@@ -608,7 +628,7 @@
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details`, `write_data_details`, and
+  "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
   `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
@@ -622,12 +642,13 @@
     (next-method
      (let [db (if (not (mi/can-write? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details :initial_sync_error))
+                    (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                     (-> db
                         (secret/to-json-hydrate-redacted-secrets)
                         (update :details redact-sensitive-fields)
-                        (m/update-existing :write_data_details redact-sensitive-fields))))]
+                        (m/update-existing :write_data_details redact-sensitive-fields)
+                        (m/update-existing :admin_details redact-sensitive-fields))))]
        (update db :settings
                (fn [settings]
                  (when (map? settings)
@@ -672,6 +693,7 @@
    :skip      [:cache_ttl :initial_sync_error :dbms_version]
    :transform {:details                     serialization/import-only-transform
                :write_data_details          serialization/import-only-transform
+               :admin_details               serialization/import-only-transform
                :cache_field_values_schedule serialization/import-only-transform
                :metadata_sync_schedule      serialization/import-only-transform
                :initial_sync_status         {:import (import-constantly "complete")}
@@ -764,5 +786,6 @@
               keep-local-audit-columns
               (update :row #(cond-> %
                               (:details %)            (update :details driver/sanitize-db-details)
-                              (:write_data_details %) (update :write_data_details driver/sanitize-db-details)))))
+                              (:write_data_details %) (update :write_data_details driver/sanitize-db-details)
+                              (:admin_details %)      (update :admin_details driver/sanitize-db-details)))))
         items))

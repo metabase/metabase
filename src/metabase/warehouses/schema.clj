@@ -35,6 +35,10 @@
   "The `:write_data_details` column of a Database, decoded."
   [:or ms/DatabaseDetails ::database.undecryptable-column])
 
+(mr/def ::database.admin-details
+  "The `:admin_details` column of a Database, decoded."
+  [:or ms/DatabaseDetails ::database.undecryptable-column])
+
 (mr/def ::database
   "A Database as selected from the app DB: every column of `:metabase_database`, plus `:features` added by the model's after-select hook."
   [:merge
@@ -86,6 +90,7 @@
    [:router_database_id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:provider_name               {:optional true} [:maybe :string]]
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
+   [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database-or-metadata
@@ -103,7 +108,7 @@
                               :is_full_sync :is_on_demand :default_schema :name :points_of_interest :provider_name
                               :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
                               :uploads_table_prefix :cache_field_values_schedule :metadata_sync_schedule :details
-                              :write_data_details :creator_id :router_database_id :initial_sync_status :is_sample
-                              :is_stub]]
+                              :write_data_details :admin_details :creator_id :router_database_id :initial_sync_status
+                              :is_sample :is_stub]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
