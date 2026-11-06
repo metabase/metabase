@@ -110,15 +110,15 @@
                           {:flavor flavor, :detected detected}))))
       (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." flavor through))
       ;; the same bindings [[impl/do-with-temp-empty-app-db]] installs, plus the sample content every test app DB is
-      ;; set up without: custom migrations read the app DB through the dynamic var, and must not hand work to Quartz
-      ;; against a DB that is about to vanish
-      (binding [mdb.connection/*application-db*                (mdb.connection/application-db db-type data-source)
-                custom-migrations.util/*allow-temp-scheduling* false
-                custom-migrations/*create-sample-content*      false]
-        ;; without version tracking: the snapshot then looks like an install from before `databasechangelog_version`
-        ;; existed, and whatever loads it backfills its version from the `vNN.` ids, the way such an install is
-        ;; upgraded. Migration tests split it into per-major deployments as they would a full replay.
-        (impl/run-migrations-in-range! conn ["v00.00-000" through] {:track-versions? false}))
+      ;; set up without: custom migrations read the app DB this thread sees, and must not hand work to Quartz against
+      ;; a DB that is about to vanish
+      (mdb.connection/with-application-db (mdb.connection/application-db db-type data-source)
+        (binding [custom-migrations.util/*allow-temp-scheduling* false
+                  custom-migrations/*create-sample-content*      false]
+          ;; without version tracking: the snapshot then looks like an install from before `databasechangelog_version`
+          ;; existed, and whatever loads it backfills its version from the `vNN.` ids, the way such an install is
+          ;; upgraded. Migration tests split it into per-major deployments as they would a full replay.
+          (impl/run-migrations-in-range! conn ["v00.00-000" through] {:track-versions? false})))
       (stamp-changelog! conn (snapshot/executed-at version))
       {:flavor  flavor
        :content (file-content version flavor
