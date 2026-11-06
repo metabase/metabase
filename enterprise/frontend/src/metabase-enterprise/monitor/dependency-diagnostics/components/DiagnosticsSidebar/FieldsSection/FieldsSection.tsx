@@ -18,7 +18,7 @@ import {
   getNodeFieldsLabel,
 } from "metabase-enterprise/dependencies/utils";
 import * as Lib from "metabase-lib";
-import type { DependencyNode, Field } from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
 import S from "./FieldsSection.module.css";
 

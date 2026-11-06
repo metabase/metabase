@@ -13,7 +13,7 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
   PRODUCT_EAT_VALUES,
@@ -60,7 +60,7 @@ describe("FieldPane", () => {
         id: CARD_ID,
         database_id: SAMPLE_DB_ID,
         result_metadata: [
-          createMockField({
+          createMockColumn({
             id: undefined,
             name: "count",
             display_name: "Count",

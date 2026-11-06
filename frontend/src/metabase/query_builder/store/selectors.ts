@@ -49,7 +49,6 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
-  NormalizedField,
   NormalizedFieldId,
   Series,
   TimelineEventsVisibility,

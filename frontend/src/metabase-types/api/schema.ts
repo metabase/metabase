@@ -4,10 +4,10 @@ import type { Dashboard } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { Document } from "./document";
 import type { Field, FieldDimension, FieldId } from "./field";
-import type { FieldReference } from "./query";
 import type { Group } from "./group";
 import type { Measure, MeasureId } from "./measure";
 import type { Metric } from "./metric";
+import type { FieldReference } from "./query";
 import type { Segment, SegmentId } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type {
@@ -104,8 +104,10 @@ export interface NormalizedRealTableField extends NormalizedFieldBase {
   table_id: TableId;
 }
 
-export interface NormalizedVirtualTableField
-  extends Omit<NormalizedFieldBase, "id"> {
+export interface NormalizedVirtualTableField extends Omit<
+  NormalizedFieldBase,
+  "id"
+> {
   id: NormalizedFieldId;
   table_id: NormalizedTableId;
 }

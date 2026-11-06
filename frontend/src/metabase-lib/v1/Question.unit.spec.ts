@@ -5,7 +5,6 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockField,
   createMockParameter,
 } from "metabase-types/api/mocks";
 import {
@@ -451,7 +450,10 @@ describe("Question", () => {
 
   describe("Question.prototype.getResultMetadata", () => {
     it("should return the `result_metadata` property off the underlying card", () => {
-      const columns = [createMockField({ id: 1 }), createMockField({ id: 2 })];
+      const columns = [
+        createMockColumn({ id: 1 }),
+        createMockColumn({ id: 2 }),
+      ];
       const question = base_question.setResultsMetadata({ columns });
       expect(question.getResultMetadata()).toEqual(columns);
     });

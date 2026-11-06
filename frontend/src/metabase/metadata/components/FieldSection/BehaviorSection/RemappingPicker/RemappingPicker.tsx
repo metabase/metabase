@@ -12,7 +12,6 @@ import {
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { FieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import {
@@ -91,7 +90,7 @@ export const RemappingPicker = ({
   const [isChoosingDisplayValue, setIsChoosingDisplayValue] = useState(false);
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken

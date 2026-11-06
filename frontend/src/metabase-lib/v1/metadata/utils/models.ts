@@ -4,7 +4,6 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   DatasetColumn,
-  Field,
   FieldId,
   FieldReference,
   ModelCacheRefreshStatus,

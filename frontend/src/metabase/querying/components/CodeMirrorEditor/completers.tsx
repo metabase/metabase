@@ -16,7 +16,6 @@ import type {
   CardId,
   DatabaseId,
   DatasetColumn,
-  Field,
 } from "metabase-types/api";
 
 import { source } from "./language";

@@ -14,7 +14,7 @@ import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockField,
+  createMockColumn,
 } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
@@ -65,7 +65,7 @@ describe("QuestionPane", () => {
         name: "Orders count",
         database_id: SAMPLE_DB_ID,
         result_metadata: [
-          createMockField({
+          createMockColumn({
             id: undefined,
             name: "count",
             display_name: "Count",

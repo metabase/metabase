@@ -1,5 +1,5 @@
 import type { RowValue } from "./dataset";
-import type { DimensionReference, FieldReference } from "./query";
+import type { DimensionReference } from "./query";
 import type { Table, TableId } from "./table";
 
 export type FieldId = number;

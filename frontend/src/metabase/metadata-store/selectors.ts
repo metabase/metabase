@@ -19,9 +19,9 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
+  Table as ApiTable,
   Card,
   DatabaseId,
-  Field as ApiField,
   FieldId,
   FieldReference,
   FieldValue,
@@ -38,7 +38,6 @@ import type {
   NormalizedTable,
   SchemaId,
   Segment,
-  Table as ApiTable,
   TableId,
 } from "metabase-types/api";
 

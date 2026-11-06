@@ -39,6 +39,7 @@ import {
   createMockCardQueryMetadata,
   createMockCollection,
   createMockCollectionItem,
+  createMockColumn,
   createMockDatabase,
   createMockField,
   createMockParameterValues,
@@ -220,7 +221,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 1,
                   name: "id",
                   display_name: "ID",
@@ -228,7 +229,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/BigInteger",
                   semantic_type: "type/PK",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -267,7 +268,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -304,7 +305,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 1,
                   name: "id",
                   display_name: "ID",
@@ -312,7 +313,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/BigInteger",
                   semantic_type: "type/PK",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -320,7 +321,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 3,
                   name: "title",
                   display_name: "Title",
@@ -368,7 +369,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -376,7 +377,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 3,
                   name: "title",
                   display_name: "Title",
@@ -418,7 +419,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -551,7 +552,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -586,7 +587,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -617,7 +618,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 2,
                 display_name: "Category",
                 base_type: "type/Text",
@@ -629,7 +630,7 @@ describe("ValuesSourceModal", () => {
             id: 3,
             name: "People",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 4,
                 display_name: "Source",
                 base_type: "type/Text",
@@ -1063,7 +1064,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 1,
                 name: "id",
                 display_name: "ID",
@@ -1071,7 +1072,7 @@ describe("ValuesSourceModal", () => {
                 effective_type: "type/BigInteger",
                 semantic_type: "type/PK",
               }),
-              createMockField({
+              createMockColumn({
                 id: 2,
                 name: "category",
                 display_name: "Category",
@@ -1112,7 +1113,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 2,
                 name: "category",
                 display_name: "Category",

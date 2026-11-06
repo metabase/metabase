@@ -4,7 +4,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
-  createProductsTitleField,
+  createProductsTitleDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -87,7 +87,7 @@ describe("order by", () => {
     });
 
     it("returns metadata for columns in source question/model", () => {
-      const field = createProductsTitleField();
+      const field = createProductsTitleDatasetColumn();
       const card = createMockCard({
         name: "Product Model",
         result_metadata: [field],

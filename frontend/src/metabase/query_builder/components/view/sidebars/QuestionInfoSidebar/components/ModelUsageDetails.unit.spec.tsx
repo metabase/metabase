@@ -24,6 +24,7 @@ import type { Card, Collection, Database, Settings } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockColumn,
   createMockDatabase,
   createMockField,
   createMockTable,
@@ -62,6 +63,27 @@ const TEST_FIELDS = [
     semantic_type: TYPE.FK,
     fk_target_field_id: TEST_FK_FIELD_ID,
     target: TEST_FK_FIELD,
+  }),
+];
+
+const TEST_COLUMNS = [
+  createMockColumn({
+    id: 1,
+    display_name: "Field 1",
+    semantic_type: TYPE.PK,
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 2,
+    display_name: "Field 2",
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 3,
+    display_name: "Field 3",
+    table_id: TEST_TABLE_ID,
+    semantic_type: TYPE.FK,
+    fk_target_field_id: TEST_FK_FIELD_ID,
   }),
 ];
 
@@ -114,7 +136,7 @@ function createStructuredModelCard(card?: Partial<Card>) {
     type: "model",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
+    result_metadata: TEST_COLUMNS,
   });
 }
 
@@ -123,7 +145,7 @@ function createNativeModelCard(card?: Partial<Card>) {
     type: "model",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
+    result_metadata: TEST_COLUMNS,
   });
 }
 

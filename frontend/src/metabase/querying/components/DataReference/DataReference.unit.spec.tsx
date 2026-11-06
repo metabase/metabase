@@ -17,7 +17,7 @@ import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
-  createMockField,
+  createMockColumn,
   createMockFieldValues,
 } from "metabase-types/api/mocks";
 import {
@@ -58,7 +58,7 @@ const MODEL = createMockCard({
     query: "SELECT ID AS RENAMED_ID FROM PRODUCTS",
   }),
   result_metadata: [
-    createMockField({
+    createMockColumn({
       id: PRODUCTS.ID,
       name: "RENAMED_ID",
       display_name: "RENAMED_ID",

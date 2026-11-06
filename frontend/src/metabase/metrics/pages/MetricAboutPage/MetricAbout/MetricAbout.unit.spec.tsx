@@ -14,14 +14,13 @@ import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { Card, Dataset, Field, Metric } from "metabase-types/api";
+import type { Card, Dataset, DatasetColumn, Metric } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockField,
   createMockMetric,
   createMockMetricDimension,
   createMockNumericColumn,
@@ -51,7 +50,7 @@ const mockUrls = {
   history: (id: number) => `/metric/${id}/history`,
 };
 
-function makeMetricCard(resultMetadata: Field[]): Card {
+function makeMetricCard(resultMetadata: DatasetColumn[]): Card {
   return createMockCard({
     id: 42,
     type: "metric",
@@ -162,7 +161,7 @@ describe("MetricAbout", () => {
   it("renders the Explore button on the chart card for numeric metrics", async () => {
     setup(
       makeMetricCard([
-        createMockField({ name: "count", base_type: "type/Integer" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
       ]),
     );
 
@@ -175,7 +174,7 @@ describe("MetricAbout", () => {
   it("does not render the Explore button when the metric has no summable column", async () => {
     setup(
       makeMetricCard([
-        createMockField({ name: "category", base_type: "type/Text" }),
+        createMockColumn({ name: "category", base_type: "type/Text" }),
       ]),
     );
 
@@ -231,8 +230,8 @@ describe("MetricAbout", () => {
 
       setup(
         makeMetricCard([
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
         { metric, metricDataset: categoryDataset },
@@ -280,7 +279,7 @@ describe("MetricAbout", () => {
         ],
       });
 
-      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+      setup(makeMetricCard([createMockColumn({ name: "count" })]), undefined, {
         metric,
         metricDataset: TIME_SERIES,
       });
@@ -365,7 +364,7 @@ describe("MetricAbout", () => {
         }),
       });
 
-      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+      setup(makeMetricCard([createMockColumn({ name: "count" })]), undefined, {
         metric,
         metricDataset,
       });
@@ -450,7 +449,7 @@ describe("MetricAbout", () => {
         }),
       });
 
-      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+      setup(makeMetricCard([createMockColumn({ name: "count" })]), undefined, {
         metric,
         metricDataset,
       });
@@ -473,8 +472,8 @@ describe("MetricAbout", () => {
     it("shows a scalar when the curated default cannot be charted", async () => {
       setup(
         makeMetricCard([
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
         {
@@ -541,8 +540,8 @@ describe("MetricAbout", () => {
 
       setup(
         makeMetricCard([
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
         { metric, metricDataset: SCALAR_DATASET },
@@ -566,8 +565,8 @@ describe("MetricAbout", () => {
     it("shows a scalar when there are no curated dimensions", async () => {
       setup(
         makeMetricCard([
-          createMockField({ name: "created_at", base_type: "type/DateTime" }),
-          createMockField({ name: "count", base_type: "type/Integer" }),
+          createMockColumn({ name: "created_at", base_type: "type/DateTime" }),
+          createMockColumn({ name: "count", base_type: "type/Integer" }),
         ]),
         TIME_SERIES,
         {

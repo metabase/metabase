@@ -26,7 +26,8 @@ export const canIndexField = (
   return !!(isString(field) && !isBoolean(field) && hasSingleIntegerPk(model));
 };
 
-export const getPkRef = (fields?: DatasetColumn[]) => fields?.find(isPK)?.field_ref;
+export const getPkRef = (fields?: DatasetColumn[]) =>
+  fields?.find(isPK)?.field_ref;
 
 export const fieldHasIndex = (
   modelIndexes: ModelIndex[] | undefined,

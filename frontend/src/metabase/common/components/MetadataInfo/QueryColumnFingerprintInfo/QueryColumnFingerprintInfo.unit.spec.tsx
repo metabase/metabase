@@ -16,8 +16,8 @@ import { SAMPLE_PROVIDER, columnFinder } from "metabase-lib/test-helpers";
 import type { FieldFingerprint, FieldReference } from "metabase-types/api";
 import {
   createMockCard,
+  createMockColumn,
   createMockDateTimeFieldFingerprint,
-  createMockField,
   createMockFingerprint,
   createMockGlobalFieldFingerprint,
   createMockNumberFieldFingerprint,
@@ -144,7 +144,7 @@ const setupNativeModel = ({ mappedToField }: SetupNativeModelOpts) => {
       query: "select * from products limit 5",
     }),
     result_metadata: [
-      createMockField({
+      createMockColumn({
         name: "CATEGORY",
         display_name: "Category",
         base_type: "type/Text",
@@ -156,7 +156,7 @@ const setupNativeModel = ({ mappedToField }: SetupNativeModelOpts) => {
         }),
         ...(mappedToField
           ? { id: PRODUCTS.CATEGORY, table_id: PRODUCTS_ID }
-          : { id: UNMAPPED_FIELD_REF }),
+          : { id: undefined, table_id: undefined }),
         field_ref: mappedToField
           ? ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]
           : UNMAPPED_FIELD_REF,
