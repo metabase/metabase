@@ -535,11 +535,11 @@
 
 (defmethod display-info-method :metadata/table
   [query stage-number table]
-  (merge (default-display-info query stage-number table)
-         {:is-source-table (= (lib.util/source-table-id query) (:id table))
-          :schema (:schema table)
-          :description (:description table)
-          :visibility-type (:visibility-type table)}))
+  (cond-> (merge (default-display-info query stage-number table)
+                 {:is-source-table (= (lib.util/source-table-id query) (:id table))
+                  :schema (:schema table)
+                  :visibility-type (:visibility-type table)})
+    (:description table) (assoc :description (:description table))))
 
 (mr/def ::column-metadata-with-source
   "Schema for the column metadata that should be returned by [[metadata]]. A column metadata that is also required to

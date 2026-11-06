@@ -169,7 +169,7 @@ export type DatabaseDisplayInfo = {
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
-  description?: string | null;
+  description?: string;
   isSourceTable?: boolean;
   isSourceCard?: boolean;
   isFromJoin: boolean;
