@@ -14,7 +14,6 @@
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.models.serialization :as serdes]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
    [metabase.settings.db :as settings.db]
@@ -98,20 +97,6 @@
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 
 (declare export?)
-
-(defmethod serdes/extract-all "Setting" [_model _opts]
-  (for [{:keys [key value is_env_setting]} (admin-writable-site-wide-settings
-                                            :getter (partial get-value-of-type :string))
-        :when (and (export? key) (not is_env_setting))]
-    {:serdes/meta [{:model "Setting" :id (name key)}]
-     :key key
-     :value value}))
-
-(defmethod serdes/load-find-local "Setting" [[{:keys [id]}]]
-  (get-value-of-type :string (keyword id)))
-
-(defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
-  (set-value-of-type! :string key (some-> value str)))
 
 (defn exportable-settings
   "The site-wide settings an admin can write, that serialization exports, as `{:key :value}` maps with string values:

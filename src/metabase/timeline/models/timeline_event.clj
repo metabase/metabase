@@ -1,7 +1,6 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
@@ -97,23 +96,6 @@
   (let [timelines (timeline.db/timelines-for-collection collection_id false)]
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
-
-;;;; model
-
-;;;; serialization
-
-(defmethod serdes/generate-path "TimelineEvent" [_ event]
-  [(serdes/infer-self-path "Timeline" (timeline.db/timeline (:timeline_id event)))
-   (serdes/infer-self-path "TimelineEvent" event)])
-
-(defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:schema    ::timeline.schema/external-timeline-event
-   :copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
-   :skip      []
-   :transform {:creator_id  (serdes/fk :model/User)
-               :timeline_id (serdes/parent-ref)
-               :timestamp   (serdes/date)}
-   :defaults {:archived false}})
 
 ;;;; model
 

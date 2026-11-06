@@ -2,7 +2,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -116,60 +115,7 @@
   [table-id :- ::lib.schema.id/table]
   (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-table table-id))))
 
-(defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids] :as opts}]
-  (if (= filter-column :table_id)
-    (warehouse-schema.db/field-user-settings-for-tables filter-ids)
-    (serdes/extract-query-collections :model/FieldUserSettings opts)))
-
-(defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
-
-(defmethod serdes/generate-path "FieldUserSettings" [_ {:keys [field_id]}]
-  (conj (serdes/generate-path "Field" {:id field_id})
-        {:model "FieldUserSettings" :id "1"}))
-
-(defmethod serdes/load-find-local "FieldUserSettings" [path]
-  (when-let [field (serdes/load-find-local (pop path))]
-    (warehouse-schema.db/field-user-settings (:id field))))
-
-(defmethod serdes/load-update! "FieldUserSettings" [model-name ingested local]
-  ((get-method serdes/load-update! :default)
-   model-name
-   (merge (zipmap user-settings/user-settable-field-columns (repeat nil)) ingested)
-   local))
-
-(defmethod serdes/load-one! "FieldUserSettings" [ingested maybe-local]
-  (t2/with-transaction [_]
-    (u/prog1 (serdes/default-load-one! ingested maybe-local)
-      (when-let [field-id (or (:field_id maybe-local) (:field_id <>))]
-        (let [settings (warehouse-schema.db/field-user-settings field-id)]
-          (warehouse-schema.db/update-field! field-id (select-keys settings (user-settings/user-set-field-columns settings))))))))
-
-(defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
-  {:schema    ::warehouse-schema.schema/external-field-user-settings
-   :copy      [:semantic_type :description :display_name :visibility_type
-               :has_field_values :effective_type :coercion_strategy :caveats
-               :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
-               :description_set :semantic_type_set :fk_target_field_id_set]
-   :skip      [:nfc_path]
-   :defaults  {:description_set        false
-               :semantic_type_set      false
-               :fk_target_field_id_set false}
-   :transform {:fk_target_field_id (serdes/fk :model/Field)
-               :field_id     {::serdes/fk true
-                              :export     #(serdes/*export-field-fk* %)
-                              :import-with-context (fn [current _ _]
-                                                     (serdes/*import-field-fk*
-                                                      (serdes/field-path->field-ref (pop (serdes/path current)))))}}})
-
-(defmethod serdes/ingested-path "FieldUserSettings" [_ {:keys [field_id]}]
-  (conj (serdes/field->path field_id) {:model "FieldUserSettings" :id "1"}))
-
 (def ^:private field-user-settings-slug "___fieldusersettings")
-
-(defmethod serdes/storage-path "FieldUserSettings" [field-user-settings _ctx]
-  (let [field-path (serdes/storage-path-prefixes (pop (serdes/path field-user-settings)))]
-    (update field-path (dec (count field-path))
-            (fn [segment] (assoc segment :suffix field-user-settings-slug)))))
 
 (defmethod serialization/spec :model/FieldUserSettings [_]
   {:schema    ::warehouse-schema.schema/external-field-user-settings
