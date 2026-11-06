@@ -1,4 +1,3 @@
-import type { Store } from "@reduxjs/toolkit";
 import { type ComponentProps, Fragment, createElement } from "react";
 
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -19,7 +18,6 @@ import {
   PLUGIN_WRITABLE_CONNECTION,
   PerformanceTabId,
 } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
 
 import type { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
@@ -127,16 +125,22 @@ const modelPersistence = () =>
   }));
 
 // `route.lazy` supplies a component and no props, so the four routes that
-// share this layout bind theirs here.
+// share this layout bind theirs here. A getter rather than the props
+// themselves, so props that follow a feature are read when the route resolves
+// and not while the tree is built.
 const metabotLayout =
-  (props: ComponentProps<typeof MetabotAdminLayout> = {}) =>
+  (getProps: () => ComponentProps<typeof MetabotAdminLayout> = () => ({})) =>
   () =>
     import(/* webpackChunkName: "admin" */ "./ai/MetabotAdminLayout").then(
-      ({ MetabotAdminLayout }) => ({
-        Component: function MetabotAdminLayoutRoute() {
-          return <MetabotAdminLayout {...props} />;
-        },
-      }),
+      ({ MetabotAdminLayout }) => {
+        const props = getProps();
+
+        return {
+          Component: function MetabotAdminLayoutRoute() {
+            return <MetabotAdminLayout {...props} />;
+          },
+        };
+      },
     );
 
 const aiSettings = () =>
@@ -164,7 +168,6 @@ const help = () =>
   );
 
 export const getRoutes = (
-  store: Store<State>,
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
@@ -344,7 +347,7 @@ export const getRoutes = (
           path="settings"
           element={createElement(createAdminRouteGuard("settings"))}
         >
-          {getSettingsRoutes(store)}
+          {getSettingsRoutes()}
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" element={<IsAdmin />}>
@@ -380,49 +383,46 @@ export const getRoutes = (
           </Route>
           <Route
             key="mcp-authorizations-layout"
-            lazy={metabotLayout({
+            lazy={metabotLayout(() => ({
               fullWidth: true,
               innerContentProps: { fullWidth: true, fullHeight: true },
-            })}
+            }))}
           >
             <Route path="mcp/authorizations" lazy={oauthAuthorizations} />
           </Route>
           <Route
             key="mcp-tools-access-layout"
-            lazy={metabotLayout({
+            lazy={metabotLayout(() => ({
               fullWidth: true,
               innerContentProps: { fullWidth: true, fullHeight: true },
-            })}
+            }))}
           >
             {PLUGIN_AI_CONTROLS.getMcpToolsAccessRoutes()}
           </Route>
           <Route
             key="layout"
-            lazy={metabotLayout({
+            lazy={metabotLayout(() => ({
               fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
               innerContentProps: {
                 fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
                 fullHeight: !PLUGIN_AI_CONTROLS.isEnabled,
               },
-            })}
+            }))}
           >
             {PLUGIN_AI_CONTROLS.getAiControlsRoutes()}
           </Route>
         </Route>
 
-        {PLUGIN_SECURITY_CENTER.isEnabled && (
-          <Route element={<IsAdmin />}>
-            <Route
-              path="security-center"
-              lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
-            />
-          </Route>
-        )}
+        <Route element={<IsAdmin />}>
+          <Route
+            path="security-center"
+            lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
+          />
+        </Route>
 
         <Route element={createElement(createAdminRouteGuard("help"))}>
           <Route path="help" lazy={help}>
-            {PLUGIN_SUPPORT.isEnabled &&
-              modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
+            {modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
           </Route>
         </Route>
       </Route>

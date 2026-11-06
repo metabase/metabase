@@ -5,12 +5,9 @@ import { PLUGIN_DATA_APPS, reinitialize } from "metabase/plugins";
 import type * as Router from "metabase/router";
 import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-import {
-  getAiAuditingRoutes,
-  getAiAuditingUpsellRoutes,
-  registerAiAuditingPagePrefetch,
-} from "./routes";
+import { getAiAuditingRoutes, registerAiAuditingPagePrefetch } from "./routes";
 
 jest.mock("metabase/router", () => ({
   ...jest.requireActual<typeof Router>("metabase/router"),
@@ -87,23 +84,28 @@ function setup({
   mcpEnabled = true,
   hasDataApps = false,
 }: SetupOpts) {
-  // The routes read it as they're built, so set it first.
-  PLUGIN_DATA_APPS.isEnabled = hasDataApps;
-  const settings = mockSettings({
-    "ai-features-enabled?": aiFeaturesEnabled,
-    "llm-metabot-configured?": isConfigured,
-    "mcp-enabled?": mcpEnabled,
-  });
-
   return renderWithProviders(
     <Route path="/monitor/ai-auditing">
-      {upsell ? getAiAuditingUpsellRoutes() : getAiAuditingRoutes()}
+      {getAiAuditingRoutes()}
       <Route path="*" element={<div>Not found</div>} />
     </Route>,
     {
       initialRoute: route,
       withRouter: true,
-      storeInitialState: createMockState({ settings }),
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "ai-features-enabled?": aiFeaturesEnabled,
+          "llm-metabot-configured?": isConfigured,
+          "mcp-enabled?": mcpEnabled,
+          // One tree serves both worlds; the features decide what each leaf
+          // renders, read through MetabaseSettings when a route resolves.
+          "token-features": createMockTokenFeatures({
+            audit_app: true,
+            ai_controls: !upsell,
+            "data-apps": hasDataApps,
+          }),
+        }),
+      }),
     },
   );
 }
@@ -290,14 +292,16 @@ describe("AI Auditing routes", () => {
       ).toBeInTheDocument();
     });
 
-    it("does not mount the section without the data-apps feature", async () => {
+    it("shows the not found page without the data-apps feature", async () => {
       setup({
         route: Urls.monitorAiAuditingDataApps(),
         upsell,
         hasDataApps: false,
       });
 
-      expect(await screen.findByText("Not found")).toBeInTheDocument();
+      expect(
+        await screen.findByText("We're a little lost..."),
+      ).toBeInTheDocument();
       expect(
         screen.queryByText("Data app analytics page"),
       ).not.toBeInTheDocument();

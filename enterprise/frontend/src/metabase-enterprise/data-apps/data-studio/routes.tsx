@@ -1,8 +1,10 @@
 import type { ComponentType } from "react";
 
+import { dataAppsUpsellPage } from "metabase/data-studio/routes";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 const sectionLayout = () =>
   import(
@@ -72,41 +74,33 @@ const actionDependenciesPage = () =>
 export function getDataStudioDataAppRoutes(IsAdmin: ComponentType) {
   return (
     <Route path={Urls.DATA_APP_URL_SEGMENT} element={<IsAdmin />}>
-      <Route lazy={sectionLayout}>
+      <Route
+        lazy={featureGatedRoute("data-apps", sectionLayout, dataAppsUpsellPage)}
+      >
         <Route index lazy={listPage} />
         <Route path=":name" lazy={overviewPage} />
         <Route path=":name/questions" lazy={questionsPage} />
         <Route path=":name/actions" lazy={actionsPage} />
         <Route path=":name/permissions" lazy={permissionsPage} />
         <Route path=":name/questions/:cardId" lazy={questionPage} />
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route
-            path=":name/questions/:cardId/dependencies"
-            lazy={questionDependenciesPage}
-          >
-            <Route
-              index
-              element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />}
-            />
-          </Route>
-        )}
+        <Route
+          path=":name/questions/:cardId/dependencies"
+          lazy={questionDependenciesPage}
+        >
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+        </Route>
         <Route path=":name/actions/:actionId" lazy={actionDefinitionPage} />
         <Route path=":name/actions/:actionId/fields" lazy={actionFieldsPage} />
         <Route
           path=":name/actions/:actionId/fields/:fieldId"
           lazy={actionFieldsPage}
         />
-        {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route
-            path=":name/actions/:actionId/dependencies"
-            lazy={actionDependenciesPage}
-          >
-            <Route
-              index
-              element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />}
-            />
-          </Route>
-        )}
+        <Route
+          path=":name/actions/:actionId/dependencies"
+          lazy={actionDependenciesPage}
+        >
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+        </Route>
       </Route>
     </Route>
   );

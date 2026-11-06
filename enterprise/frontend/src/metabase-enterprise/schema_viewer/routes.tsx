@@ -1,5 +1,7 @@
+import { schemaViewerUpsellPage } from "metabase/data-studio/routes";
 import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 import { loadSchemaViewerPage } from "./lazy";
 
@@ -10,7 +12,7 @@ const schemaViewerPage = () =>
 
 /**
  * Called from the licensed branch of `initializePlugin`, so only a page this
- * instance mounts is registered. The background pass reads the registrations too,
+ * instance can open is registered. The background pass reads the registrations too,
  * and fetching a page nobody can reach would spend a download on nothing.
  */
 export function registerSchemaViewerPagePrefetch(): void {
@@ -18,5 +20,14 @@ export function registerSchemaViewerPagePrefetch(): void {
 }
 
 export function getDataStudioSchemaViewerRoutes() {
-  return <Route index lazy={schemaViewerPage} />;
+  return (
+    <Route
+      path="schema-viewer"
+      lazy={featureGatedRoute(
+        "schema-viewer",
+        schemaViewerPage,
+        schemaViewerUpsellPage,
+      )}
+    />
+  );
 }

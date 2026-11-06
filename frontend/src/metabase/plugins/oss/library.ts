@@ -75,8 +75,10 @@ export type GetEntityPickerSyntheticLibraryItemFunction = {
 
 type LibraryPlugin = {
   isEnabled: boolean;
-  getDataStudioLibraryRoutes: (IsAdmin: ComponentType) => ReactNode;
-  getDataStudioDashboardRoutes: () => ReactNode;
+  // Optional, not a no-op default: an OSS build has no plugin to fill these, and
+  // the mount reads the absence to put its upsell page in their place.
+  getDataStudioLibraryRoutes?: (IsAdmin: ComponentType) => ReactNode;
+  getDataStudioDashboardRoutes?: () => ReactNode;
   useGetLibraryCollection: (params?: { skip?: boolean }) => {
     data: undefined | LibraryCollection;
     isLoading: boolean;
@@ -124,8 +126,6 @@ type LibraryPlugin = {
 
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isEnabled: false,
-  getDataStudioLibraryRoutes: () => null,
-  getDataStudioDashboardRoutes: () => null,
   useGetLibraryCollection: () => ({ isLoading: false, data: undefined }),
   useGetLibraryChildCollectionByType: () => ({
     data: undefined,

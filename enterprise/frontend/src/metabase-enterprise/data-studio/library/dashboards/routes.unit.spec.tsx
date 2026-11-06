@@ -70,6 +70,12 @@ beforeEach(() => {
 });
 
 describe("Data Studio dashboard routes without plugins", () => {
+  beforeEach(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ library: true }),
+    });
+  });
+
   it("has no Dependencies tab", async () => {
     setup({ initialRoute: CONTENTS_PATH });
 
@@ -82,10 +88,10 @@ describe("Data Studio dashboard routes without plugins", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("has no Dependencies page", async () => {
+  it("shows the not found page instead of the Dependencies page", async () => {
     setup({ initialRoute: DEPENDENCIES_PATH });
 
-    expect(await screen.findByText("No route matched")).toBeInTheDocument();
+    expect(await screen.findByText(/We're a little lost/)).toBeInTheDocument();
   });
 
   it("has no Usage stats tab", async () => {
@@ -97,10 +103,10 @@ describe("Data Studio dashboard routes without plugins", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("has no Usage stats page", async () => {
+  it("shows the not found page instead of the Usage stats page", async () => {
     setup({ initialRoute: USAGE_PATH });
 
-    expect(await screen.findByText("No route matched")).toBeInTheDocument();
+    expect(await screen.findByText(/We're a little lost/)).toBeInTheDocument();
   });
 
   it.each([SUBSCRIPTIONS_PATH, SUBSCRIPTION_PATH])(
@@ -122,7 +128,10 @@ describe("Data Studio dashboard routes without plugins", () => {
 describe("Data Studio dashboard routes with the dependencies plugin", () => {
   beforeEach(() => {
     mockSettings({
-      "token-features": createMockTokenFeatures({ dependencies: true }),
+      "token-features": createMockTokenFeatures({
+        library: true,
+        dependencies: true,
+      }),
     });
     setupEnterpriseOnlyPlugin("dependencies");
   });
@@ -151,6 +160,7 @@ describe("Data Studio dashboard routes with the audit app plugin", () => {
   beforeEach(() => {
     mockSettings({
       "token-features": createMockTokenFeatures({
+        library: true,
         dependencies: true,
         audit_app: true,
       }),
