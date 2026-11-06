@@ -595,7 +595,8 @@
                            log/warn pointing at the caller's source/tag.
 
   `llm-opts` is an optional map of provider-facing call options — see
-  [[parse-provider-model]]'s adapters for what each one honors.
+  [[parse-provider-model]]'s adapters for what each one honors. With `:tool-choice \"none\"` the tools are still
+  declared, but no tool runs, even when a provider that ignores the field returns a call.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip as an
   OTel span and retries transient errors with exponential backoff. Global usage
@@ -624,7 +625,7 @@
                                      tool-choice)           (assoc :tool_choice tool-choice)
                                 (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
                make-source    (fn []
-                                (eduction (comp (core/tool-executor-xf tools)
+                                (eduction (comp (core/tool-executor-xf (if (= "none" tool-choice) {} tools))
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
