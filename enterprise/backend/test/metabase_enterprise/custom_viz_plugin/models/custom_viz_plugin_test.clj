@@ -151,7 +151,7 @@
 (deftest load-insert-validates-bundle-test
   (testing "loading an exported plugin with a valid bundle makes it :active"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (let [bundle (cv.tu/valid-bundle-bytes "imported-viz" {:icon "chart"})]
+      (let [bundle (cv.tu/valid-bundle-bytes "imported-viz" {:icon "chart.svg"})]
         (serdes/load-one! (ingested-plugin "imported-viz" bundle) nil)
         (is (=? {:status        :active
                  :error_message nil
@@ -168,7 +168,7 @@
 (deftest load-update-validates-bundle-test
   (testing "re-importing over an existing plugin re-validates the new bundle"
     (let [old-bundle (cv.tu/valid-bundle-bytes "updated-viz")
-          new-bundle (cv.tu/valid-bundle-bytes "updated-viz" {:icon "star"})]
+          new-bundle (cv.tu/valid-bundle-bytes "updated-viz" {:icon "star.svg"})]
       (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "updated-viz" old-bundle)
                                                             :status        :error
                                                             :error_message "stale")]
@@ -176,7 +176,7 @@
         (is (=? {:id            id
                  :status        :active
                  :error_message nil
-                 :icon          "star"
+                 :icon          "star.svg"
                  :bundle_hash   (cv.tu/bundle-hash new-bundle)}
                 (t2/select-one :model/CustomVizPlugin :id id)))))))
 
