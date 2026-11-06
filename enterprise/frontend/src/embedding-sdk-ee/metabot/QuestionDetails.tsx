@@ -62,12 +62,12 @@ function getAllTableNames(question?: Question) {
   }
 
   const query = question.query();
-  const sourceTable = getPrimarySourceMetadata(query);
+  const source = getPrimarySourceMetadata(query);
   const joinedTables = Lib.joins(query, -1).map((join) =>
     Lib.joinedThing(query, join),
   );
 
-  return [sourceTable, ...joinedTables]
+  return [source, ...joinedTables]
     .filter(isNotNull)
     .map((table) => Lib.displayInfo(query, -1, table).displayName);
 }

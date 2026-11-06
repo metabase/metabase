@@ -17,10 +17,10 @@ export function useHiddenSourceTables(
       .map((joinTable) => Lib.displayInfo(query, stageIndex, joinTable)),
   );
 
-  const sourceTableMetadata = getPrimarySourceMetadata(query);
-  if (sourceTableMetadata) {
-    const sourceTableInfo = Lib.displayInfo(query, -1, sourceTableMetadata);
-    joinTablesInfo.unshift(sourceTableInfo);
+  const sourceMetadata = getPrimarySourceMetadata(query);
+  if (sourceMetadata) {
+    const sourceInfo = Lib.displayInfo(query, -1, sourceMetadata);
+    joinTablesInfo.unshift(sourceInfo);
   }
 
   return joinTablesInfo.filter(

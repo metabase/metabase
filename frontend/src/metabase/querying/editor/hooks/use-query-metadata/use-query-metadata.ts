@@ -10,7 +10,7 @@ export function useQueryMetadata(question: Question) {
   const [loadMetadata, { error }] = useLazyGetAdhocQueryMetadataQuery();
   const dependenciesRef = useRef<Lib.DependentItem[]>([]);
 
-  const isSourceTableLoaded = useMemo(() => {
+  const isSourceLoaded = useMemo(() => {
     const query = question.query();
     const hasPrimarySource =
       Lib.primarySourceTableId(query) != null ||
@@ -31,7 +31,7 @@ export function useQueryMetadata(question: Question) {
   }, [question, loadMetadata]);
 
   return {
-    isLoading: !isSourceTableLoaded,
+    isLoading: !isSourceLoaded,
     error,
   };
 }
