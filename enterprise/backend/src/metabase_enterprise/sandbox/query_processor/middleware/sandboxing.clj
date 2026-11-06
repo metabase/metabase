@@ -487,7 +487,8 @@
 
 (mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
   [query :- ::lib.schema/query]
-  (mapv lib/lib-metadata-column->legacy-metadata-column
+  ;; the internal remap lists every value of the column, so it must not be merged back into sandboxed results
+  (mapv #(dissoc (lib/lib-metadata-column->legacy-metadata-column %) :lib/internal-remap)
         (lib.metadata.result-metadata/returned-columns query)))
 
 (defn- sandboxed-query
