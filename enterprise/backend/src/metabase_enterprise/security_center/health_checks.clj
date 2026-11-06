@@ -91,7 +91,8 @@
 
 (defn- store-result!
   [id result]
-  ;; Overlapping refreshes of the same check are harmless: each one rewrites only its own key, and the last one wins.
+  ;; Read, then write the whole map: two refreshes of different checks that store at the same moment can lose one
+  ;; key. Acceptable while there is one background check; the next refresh stores it again.
   (settings/security-center-health-check-results!
    (assoc (settings/security-center-health-check-results) id {:result     result
                                                               :checked_at (t/offset-date-time)})))
@@ -428,7 +429,6 @@
   (run! refresh-check! (background-checks))
   (run-checks))
 
-(defn background-check-without-result?
 (defn last-refreshed-at
   "When the newest stored refresh of a background check ran, or nil while no refresh has stored a result."
   []
@@ -438,6 +438,7 @@
            seq
            (apply t/max)))
 
+(defn background-check-without-result?
   "Whether a background check that applies has no stored result yet."
   []
   (boolean (some #(nil? (stored (:id %))) (background-checks))))
