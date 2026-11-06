@@ -657,15 +657,15 @@
       (try
         (doseq [handle handles]
           (system/ensure-started! handle (constantly :running) (constantly nil)))
-        (is (= {:no-dependencies    [c b a]
-                :a-uses-c           [b a c]
-                :a-uses-c-via-x     [b a c]
-                :stopped-user-of-c  [c b a]}
-               {:no-dependencies    (filterv (set handles) (halt-order))
-                :a-uses-c           (filterv (set handles) (halt-order {::deps-a #{::deps-c}}))
-                :a-uses-c-via-x     (filterv (set handles) (halt-order {::deps-a        #{::never-started}
-                                                                        ::never-started #{::deps-c}}))
-                :stopped-user-of-c  (filterv (set handles) (halt-order {::never-started #{::deps-c}}))}))
+        (is (= {:no-dependencies   [c b a]
+                :a-uses-c          [b a c]
+                :a-uses-c-via-x    [b a c]
+                :stopped-user-of-c [c b a]}
+               {:no-dependencies   (filterv (set handles) (halt-order))
+                :a-uses-c          (filterv (set handles) (halt-order {::deps-a #{::deps-c}}))
+                :a-uses-c-via-x    (filterv (set handles) (halt-order {::deps-a        #{::never-started}
+                                                                       ::never-started #{::deps-c}}))
+                :stopped-user-of-c (filterv (set handles) (halt-order {::never-started #{::deps-c}}))}))
         (finally
           (cleanup! handles))))))
 
