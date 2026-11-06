@@ -3,12 +3,14 @@
   returns.
 
   A check is one entry in the registry, with the texts as deferred translations and two zero-argument functions,
-  `:applicable?` and `:run`. The registry is read through [[all-checks]], [[check-by-id]]
-  and [[check-ids]] only, so the way it is stored can change without touching its callers."
+  `:applicable?` and `:run`. A background check also has `:refresh`, see [[refresh-and-run-checks]]. The registry is
+  read through [[all-checks]], [[check-by-id]] and [[check-ids]] only, so the way it is stored can change without
+  touching its callers."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase-enterprise.security-center.settings :as settings]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -27,7 +29,8 @@
 
 (mr/def ::entry
   "One check as registered: the texts and the docs link the API returns, and the functions that compute the check.
-  `:applicable?` says whether the check is returned at all. `:run` computes the items and is always fast."
+  `:applicable?` says whether the check is returned at all. `:run` computes the items and is always fast. `:refresh`,
+  on a background check only, does the slow work and returns a JSON value; `:run` reads it with [[stored-result]]."
   [:map {:closed true}
    [:id                ::security-center.schema/health-check-id]
    [:severity          ::security-center.schema/severity]
@@ -38,7 +41,8 @@
    [:docs-anchor       {:optional true} ms/NonBlankString]
    [:requires-restart? :boolean]
    [:applicable?       fn?]
-   [:run               fn?]])
+   [:run               fn?]
+   [:refresh           {:optional true} fn?]])
 
 (mr/def ::items
   "What `:run` returns: at least one item, so a check always reports something."
@@ -68,6 +72,30 @@
   (if ok?
     (item :pass pass-message)
     (item :fail fail-message)))
+
+;;; Background checks
+
+(defn- stored
+  [id]
+  (get (settings/security-center-health-check-results) id))
+
+(defn stored-result
+  "What the last refresh of the background check `id` returned, read back from JSON: map keys are keywords, other
+  keywords are strings. Nil until a refresh has stored a result."
+  [id]
+  (:result (stored id)))
+
+(defn- stored-checked-at
+  [id]
+  (some-> (:checked_at (stored id)) t/offset-date-time))
+
+(defn- store-result!
+  [id result]
+  ;; Read, then write the whole map: two refreshes of different checks that store at the same moment can lose one
+  ;; key. Acceptable while there is one background check; the next refresh stores it again.
+  (settings/security-center-health-check-results!
+   (assoc (settings/security-center-health-check-results) id {:result     result
+                                                              :checked_at (t/offset-date-time)})))
 
 ;;; The checks
 
@@ -355,7 +383,8 @@
 
 (mu/defn run-check :- ::security-center.schema/health-check
   "Runs `entry` and returns the `HealthCheck` the API serves: the texts in the current user's locale, the items of this
-  run, and the status that [[status-of]] derives from them."
+  run, and the status that [[status-of]] derives from them. `checked_at` is when the items were computed: for a
+  background check, the time of its last stored refresh."
   [{:keys [id severity title description remediation docs-page docs-anchor requires-restart?] :as entry} :- ::entry]
   (let [items (run-items entry)]
     {:id               id
@@ -367,7 +396,8 @@
                          docs-anchor (assoc :anchor docs-anchor))
      :requires_restart requires-restart?
      :status           (status-of items)
-     :checked_at       (t/offset-date-time)
+     :checked_at       (or (when (:refresh entry) (stored-checked-at id))
+                           (t/offset-date-time))
      :items            items}))
 
 (mu/defn run-checks :- [:sequential ::security-center.schema/health-check]
@@ -377,3 +407,38 @@
         (comp (filter applicable?)
               (map run-check))
         (all-checks)))
+
+(defn- background-checks
+  "Every registered background check that applies."
+  []
+  (filter #(and (:refresh %) (applicable? %)) (all-checks)))
+
+(mu/defn- refresh-check!
+  "Runs the `:refresh` of `entry` and stores what it returns. A throw keeps the result stored before."
+  [{:keys [id refresh]} :- ::entry]
+  (try
+    (store-result! id (refresh))
+    (catch Exception e
+      (log/errorf e "Health check %s could not refresh" (name id)))))
+
+(mu/defn refresh-and-run-checks :- [:sequential ::security-center.schema/health-check]
+  "Refreshes every background check that applies, then runs every check that applies, as [[run-checks]] does. Blocks
+  until every refresh is done; each `:refresh` caps its own duration."
+  []
+  ;; one after the other: there is one background check so far
+  (run! refresh-check! (background-checks))
+  (run-checks))
+
+(defn last-refreshed-at
+  "When the newest stored refresh of a background check ran, or nil while no refresh has stored a result."
+  []
+  (some->> (all-checks)
+           (filter :refresh)
+           (keep (comp stored-checked-at :id))
+           seq
+           (apply t/max)))
+
+(defn background-check-without-result?
+  "Whether a background check that applies has no stored result yet."
+  []
+  (boolean (some #(nil? (stored (:id %))) (background-checks))))

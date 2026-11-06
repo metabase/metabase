@@ -139,3 +139,25 @@
           "sso-login"      "pass"    0.0
           "sso-login"      "fail"    0.0
           "sso-login"      "unknown" 0.0)))))
+
+(def ^:private two-background-checks
+  "A registry of two background checks, enough for the last-run gauge."
+  {:read-only-connections {:id :read-only-connections, :severity :high, :refresh (constantly {})}
+   :https-redirect        {:id :https-redirect, :severity :medium, :refresh (constantly {})}})
+
+(deftest set-health-checks-last-run!-test
+  (mt/with-premium-features #{:admin-security-center}
+    (with-redefs [health-checks/checks two-background-checks]
+      (testing "sets nothing while no refresh has stored a result"
+        (mt/with-temporary-setting-values [security-center-health-check-results nil]
+          (mt/with-prometheus-system! [_ system]
+            (metrics/set-health-checks-last-run!)
+            (is (= 0.0 (mt/metric-value system :metabase-security-center/health-checks-last-run-timestamp-seconds))))))
+      (testing "sets the time of the newest stored refresh"
+        (mt/with-temporary-setting-values [security-center-health-check-results
+                                           {:read-only-connections {:result {}, :checked_at "2026-11-06T10:00:00Z"}
+                                            :https-redirect        {:result {}, :checked_at "2026-11-06T12:00:00Z"}}]
+          (mt/with-prometheus-system! [_ system]
+            (metrics/set-health-checks-last-run!)
+            (is (= 1793966400.0
+                   (mt/metric-value system :metabase-security-center/health-checks-last-run-timestamp-seconds)))))))))
