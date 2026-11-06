@@ -88,8 +88,6 @@ The semantic layer lives in a special collection called Library, which has two r
 
 These root sections are predefined. You can't rename or archive them, but you can use [permissions](#library-permissions) to control who sees them.
 
-If your Library already has a **Dashboards** collection, see [Existing Dashboards collections](#existing-dashboards-collections).
-
 Each of these sections can have subcollections. For example, if your Metabase has a lot of published tables, you might want to organize the **Library > Data** collection into "Sales", "Marketing", and "Product" subcollections.
 
 ![Library organization](./images/library-data-picker.png)

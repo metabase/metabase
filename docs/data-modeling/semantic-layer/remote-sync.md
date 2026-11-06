@@ -104,8 +104,6 @@ Create a personal access token with read and write repository access. Copy the t
 
 ### 3. Connect your development Metabase to your repository
 
-![Development settings](./images/read-write-settings.png)
-
 You can put any Metabase into Read-write mode. We also offer [Development instances](../../installation-and-operation/development-instance.md) that you can use for Remote sync or any other kind of development.
 
 In the Metabase that you use for development:
@@ -170,8 +168,6 @@ Create a personal access token with read-only repository access. Copy the token 
   - `pullrequest`
 
 ### 6. Connect your production Metabase to your repository
-
-![Production settings](./images/read-only-settings.png)
 
 In your production Metabase:
 
