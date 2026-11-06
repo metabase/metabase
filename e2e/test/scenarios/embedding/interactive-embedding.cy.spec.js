@@ -1270,8 +1270,7 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("data").findByText("Products").should("be.visible");
       });
 
-      // TODO (Kelvin 2026-10-15) unskip with EMB-2489: the Library bucket counts trashed cards
-      it.skip("should not offer a Library whose only content is archived", () => {
+      it("should not offer a Library whose only content is archived", () => {
         cy.signInAsAdmin();
         H.unpublishTables({ table_ids: [ORDERS_ID] });
         cy.request("GET", "/api/ee/library").then(({ body }) => {
@@ -1286,6 +1285,25 @@ describe("scenarios > embedding > full app", () => {
               cy.request("PUT", `/api/card/${metric.id}`, { archived: true });
             },
           );
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("not.exist");
+        });
+      });
+
+      it("should not offer a Library whose only content the user can't read", () => {
+        cy.signInAsAdmin();
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          cy.updateCollectionGraph({
+            [ALL_USERS_GROUP]: { [dataCollection.id]: "none" },
+          });
         });
         cy.signInAsNormalUser();
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
