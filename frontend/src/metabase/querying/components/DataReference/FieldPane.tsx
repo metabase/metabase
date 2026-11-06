@@ -1,12 +1,14 @@
 import { t } from "ttag";
 
+import { useGetTableQueryMetadataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/QueryColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { useMetadataProvider } from "metabase/metadata-store";
+import { getTableQueryAndColumns } from "metabase/querying/common/utils";
 import * as Lib from "metabase-lib";
 
 import type { DataReferenceFieldItem, DataReferencePaneProps } from "./types";
-import { useTableColumns } from "./use-table-columns";
 
 export const FieldPane = ({
   onBack,
@@ -14,18 +16,24 @@ export const FieldPane = ({
   tableId,
   columnIndex,
 }: DataReferencePaneProps<DataReferenceFieldItem>) => {
-  const { table, queryAndColumns, isLoading, error } = useTableColumns(tableId);
+  const {
+    data: table,
+    isLoading,
+    error,
+  } = useGetTableQueryMetadataQuery({ id: tableId });
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
 
-  if (isLoading || error || !queryAndColumns) {
+  if (table == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const { query, stageIndex, columns } = queryAndColumns;
-  const column = columns.at(columnIndex);
-  if (!column) {
+  const queryAndColumns = getTableQueryAndColumns(metadataProvider, table.id);
+  const column = queryAndColumns?.columns.at(columnIndex);
+  if (queryAndColumns == null || column == null) {
     return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
   }
 
+  const { query, stageIndex } = queryAndColumns;
   const { name } = Lib.displayInfo(query, stageIndex, column);
 
   return (
@@ -35,7 +43,7 @@ export const FieldPane = ({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          timezone={table?.db?.timezone}
+          timezone={table.db?.timezone}
           showAllFieldValues
           showFingerprintInfo
         />

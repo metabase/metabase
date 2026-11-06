@@ -5,6 +5,7 @@ import {
   skipToken,
   useGetCardQuery,
   useGetCollectionQuery,
+  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -13,6 +14,8 @@ import {
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { useMetadataProvider } from "metabase/metadata-store";
+import { getTableQueryAndColumns } from "metabase/querying/common/utils";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -24,7 +27,6 @@ import type {
   DataReferencePaneProps,
   DataReferenceQuestionItem,
 } from "../types";
-import { useTableColumns } from "../use-table-columns";
 
 import S from "./QuestionPane.module.css";
 
@@ -51,11 +53,11 @@ export const QuestionPane = ({
     id,
   });
   const {
-    table,
-    queryAndColumns,
+    data: table,
     isLoading: isLoadingTable,
     error: tableError,
-  } = useTableColumns(getQuestionVirtualTableId(id));
+  } = useGetTableQueryMetadataQuery({ id: getQuestionVirtualTableId(id) });
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const {
     data: collection,
     isLoading: isLoadingCollection,
@@ -70,6 +72,7 @@ export const QuestionPane = ({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  const queryAndColumns = getTableQueryAndColumns(metadataProvider, table.id);
   const lastEditInfo = card["last-edit-info"];
 
   const handleColumnClick = (columnIndex: number) => {

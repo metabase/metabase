@@ -1,6 +1,9 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { useListTableForeignKeysQuery } from "metabase/api";
+import {
+  useGetTableQueryMetadataQuery,
+  useListTableForeignKeysQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Description,
@@ -8,6 +11,8 @@ import {
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
+import { useMetadataProvider } from "metabase/metadata-store";
+import { getTableQueryAndColumns } from "metabase/querying/common/utils";
 import { isConcreteTableId } from "metabase-types/api";
 
 import { ConnectedTableList } from "./ConnectedTableList";
@@ -22,7 +27,6 @@ import {
   NodeListTitleText,
 } from "./NodeList";
 import type { DataReferencePaneProps, DataReferenceTableItem } from "./types";
-import { useTableColumns } from "./use-table-columns";
 
 export function TablePane({
   id,
@@ -30,7 +34,12 @@ export function TablePane({
   onBack,
   onClose,
 }: DataReferencePaneProps<DataReferenceTableItem>) {
-  const { table, queryAndColumns, isLoading, error } = useTableColumns(id);
+  const {
+    data: table,
+    isLoading,
+    error,
+  } = useGetTableQueryMetadataQuery({ id });
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const {
     data: foreignKeys,
     isLoading: isLoadingForeignKeys,
@@ -45,6 +54,8 @@ export function TablePane({
       />
     );
   }
+
+  const queryAndColumns = getTableQueryAndColumns(metadataProvider, table.id);
 
   const handleColumnClick = (columnIndex: number) => {
     onItemClick({ type: "field", tableId: table.id, columnIndex });
