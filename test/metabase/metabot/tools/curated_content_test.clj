@@ -216,6 +216,28 @@
       (testing "a curated dashboard reads"
         (is (not (denied? (first (read-uris metabot :internal (str "metabase://dashboard/" curated-dash))))))))))
 
+(deftest read-resource-curated-only-dashboard-filters-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mapping (fn [card-id] {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})]
+      (mt/with-temp [:model/Collection    {official :id}    {:authority_level "official"}
+                     :model/Card          {curated-id :id}  {:collection_id official}
+                     :model/Card          {plain-id :id}    {}
+                     :model/Dashboard     {dash-id :id}     {:collection_id official
+                                                             :parameters    [{:id "date", :name "Date", :slug "date"
+                                                                              :type :date/all-options}]}
+                     :model/DashboardCard {curated-dc :id}  {:dashboard_id       dash-id
+                                                             :card_id            curated-id
+                                                             :parameter_mappings [(mapping curated-id)]}
+                     :model/DashboardCard _                 {:dashboard_id       dash-id
+                                                             :card_id            plain-id
+                                                             :parameter_mappings [(mapping plain-id)]}
+                     :model/Metabot       metabot           {:name "curated metabot", :use_verified_content true}]
+        (testing "a filter lists only the dashcards of curated questions, as the dashboard's items do"
+          (is (=? [{:id "date", :connected_dashcards [curated-dc]}]
+                  (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
+                      first
+                      (get-in [:content :structured-output :parameters])))))))))
+
 (deftest excluded-signals-test
   (testing "search never returns these, so they aren't curated whatever their signals"
     (mt/with-current-user (mt/user->id :crowberto)

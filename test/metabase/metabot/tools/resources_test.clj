@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api-scope.core :as api-scope]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -670,6 +671,21 @@
           (testing "gives each filter's default and the dashcards it filters that the user can see"
             (is (str/includes? output (str "<filter id=\"date\" name=\"Date\" type=\"date/all-options\""
                                            " default=\"past30days\" connected_dashcards=\"" dc-id "\"/>")))))))))
+
+(deftest read-dashboard-in-personal-collection-test
+  (mt/with-temp [:model/User      {sso-id :id}  {:first_name nil, :last_name nil, :email "sso@example.com"}
+                 :model/Dashboard {dash-id :id} {:name          "Mine"
+                                                 :collection_id (:id (collection/user->personal-collection
+                                                                      (mt/user->id :rasta)))
+                                                 :creator_id    sso-id}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id)]})]
+        (testing "a personal collection's path starts at the collection, under the name the user sees"
+          (is (re-find (re-pattern (str "<collection id=\"\\d+\" name=\"Rasta Toucan&#39;s Personal Collection\""
+                                        " path=\"Rasta Toucan&#39;s Personal Collection\">"))
+                       output)))
+        (testing "a creator without a first or last name goes by their email"
+          (is (str/includes? output "<created by=\"sso@example.com\"")))))))
 
 (deftest read-document-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
