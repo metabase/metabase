@@ -328,7 +328,7 @@
         ;; an object no component key can equal, used by every relevant component, so each is a node even when it
         ;; has no edges
         placeholder (Object.)
-        graph       (reduce (fn [g k]
+        sortable    (reduce (fn [g k]
                               (reduce #(dep/depend %1 k %2)
                                       (dep/depend g k placeholder)
                                       (dep/immediate-dependencies graph k)))
@@ -337,7 +337,7 @@
     ;; topo-sort lists users after what they use, and among components it is free to order, puts the one with the
     ;; greatest position last
     (keep #(get-in running [% :handle])
-          (reverse (dep/topo-sort #(compare (position %1 -1) (position %2 -1)) graph)))))
+          (reverse (dep/topo-sort #(compare (position %1 -1) (position %2 -1)) sortable)))))
 
 (defn- close-admission!
   "Refuse every later start, once the starts already running have finished and registered."
@@ -351,7 +351,7 @@
 
 (defn halt!
   "Stop every running component [[start!]] started.
-   `dependencies` maps a component key to the keys of the components it uses, and defaults to none.
+   The `dependencies` map takes a component key to the keys of the components it uses, and defaults to empty.
    A component stops before everything it uses, directly or through other components, even one that started later.
    Components with no such path between them stop in the reverse of the order they first started in.
    Throws before stopping anything if `dependencies` has a cycle.
