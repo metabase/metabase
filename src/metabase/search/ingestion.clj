@@ -295,8 +295,8 @@
                           (comp (map :id) (take fetch-limit))
                           (search.db/spec-index-doc-ids-reducible search-model where-clause fetch-limit))]
     (if (< max-enumerated-documents (count ids))
-      (do (log/errorf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
-                      search-model max-enumerated-documents)
+      (do (log/warnf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
+                     search-model max-enumerated-documents)
           nil)
       (set ids))))
 

@@ -291,8 +291,9 @@
                     :when (seq ids)]
                 [search-model ids])))))
 
-;; The ingestion worker ORs a whole batch of same-model selectors into a single query, so an unbounded id list here
-;; makes an unbounded statement, and for string ids such as indexed entities' an unbounded bind-parameter count.
+;; The ingestion worker ORs a whole batch of same-model selectors into a single query, so one unchunked id list
+;; would put up to the enumeration ceiling's worth of bind parameters in every statement it joins. Chunking caps a
+;; worker batch at its message limit times this size; the synchronous path still ORs every chunk into one statement.
 ;; A statement the database rejects loses the entire batch, not just the oversized message.
 (def ^:private reindex-batch-size
   "Ids per re-derivation message."
