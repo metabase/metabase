@@ -78,7 +78,9 @@
       (sql.helpers/where where-clause)))
 
 (defn doc-id-select-item
-  "The `:this`-qualified select item `search-model`'s documents take their id from."
+  "The select item `search-model`'s documents take their id from, qualified to `:this` as [[spec-index-query]]
+  qualifies it: a bare column gains the prefix, but a compound expression such as indexed entities' `concat_ws`
+  keeps its columns bare."
   [search-model]
   ;; Built through the same attr machinery as [[spec-index-query]], so a compound `:id` lands identically here.
   (first (search.spec/qualify-columns
@@ -86,7 +88,7 @@
           (attrs->select-items {:id (-> (search.spec/spec search-model) :attrs :id)}))))
 
 (defn doc-id-expression
-  "The `:this`-qualified expression `search-model`'s documents take their id from, without any alias."
+  "[[doc-id-select-item]] without any alias."
   [search-model]
   (let [select-item (doc-id-select-item search-model)]
     (if (vector? select-item) (first select-item) select-item)))
