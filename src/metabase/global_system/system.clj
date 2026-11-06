@@ -19,7 +19,6 @@
    (clojure.lang IDeref)
    (java.io Writer)
    (java.util.concurrent ConcurrentHashMap)
-   (java.util.concurrent.locks ReentrantReadWriteLock)
    (java.util.function Function)))
 
 (set! *warn-on-reflection* true)
@@ -162,25 +161,19 @@
   start-order
   (atom []))
 
-(defonce ^{:doc "Component key -> the thread running that component's start function."
-           :private true}
-  starting
-  (atom {}))
-
 (defonce ^{:doc "The keys of the components whose stop function is running."
            :private true}
   stopping
   (atom #{}))
 
-;; A start holds the read side from its check of [[halted]] until it registers, and [[halt!]] takes the write side to
-;; set it, so a halt waits for the starts already running and sees them registered.
-(defonce ^:private admission
-  (ReentrantReadWriteLock.))
-
-(defonce ^{:doc "Whether [[halt!]] has run, so components may no longer start."
+;; One atom, so a start's check that no halt has begun and its mark as in flight are a single step, and a halt that
+;; sets `:halted?` sees every start that passed the check.
+(defonce ^{:doc "Whether [[halt!]] has run, so components may no longer start, under `:halted?`, and the starts in
+             flight under `:starting`, as component key -> `{:thread t, :handle h}`, from their check until they
+             register or fail."
            :private true}
-  halted
-  (atom false))
+  admissions
+  (atom {:halted? false, :starting {}}))
 
 (defn- handle-key
   [^ComponentHandle handle]
@@ -191,18 +184,28 @@
   [handle]
   (contains? *bound-boxes* (handle-key handle)))
 
+(defn- admit!
+  "Mark the start of `handle` under `k` as in flight on this thread.
+  Throws if a halt has begun, or if this thread is already starting `k`."
+  [k handle]
+  (swap! admissions
+         (fn [{:keys [halted? starting] :as state}]
+           (cond
+             halted?
+             (throw (ex-info (str "The system has halted, so a component cannot start: " k) {:component k}))
+
+             (= (Thread/currentThread) (get-in starting [k :thread]))
+             (throw (ex-info (str "Starting component started itself: " k) {:component k}))
+
+             :else
+             (assoc-in state [:starting k] {:thread (Thread/currentThread), :handle handle})))))
+
 (defn- run-start
   "Call `start` for the component under `k` and return its value, which must not be nil.
   It runs with no bindings, so a root is made from roots even when the calling thread binds another component."
   [k start]
-  (when (= (Thread/currentThread) (get @starting k))
-    (throw (ex-info (str "Starting component started itself: " k) {:component k})))
-  (swap! starting assoc k (Thread/currentThread))
-  (let [value (try
-                (clojure.core/binding [*bound-boxes* {}]
-                  (start))
-                (finally
-                  (swap! starting dissoc k)))]
+  (let [value (clojure.core/binding [*bound-boxes* {}]
+                (start))]
     (when (nil? value)
       (throw (ex-info (str "Starting component returned nil: " k) {:component k})))
     value))
@@ -215,25 +218,20 @@
     (let [current @handle]
       (if (some? current)
         [current false]
-        ;; the read side before the slot lock: a nested start takes another slot lock while holding it, and a start
-        ;; holding a slot lock must never wait behind a halt that is itself waiting for that nested start
-        (let [read-lock (.readLock ^ReentrantReadWriteLock admission)]
-          (.lock read-lock)
-          (try
-            (mc/with-slot-lock handle
-              (let [k       (handle-key handle)
-                    current @handle]
-                (cond
-                  (some? current)
-                  [current false]
+        (mc/with-slot-lock handle
+          (let [k       (handle-key handle)
+                current @handle]
+            (cond
+              (some? current)
+              [current false]
 
-                  @halted
-                  (throw (ex-info (str "The system has halted, so a component cannot start: " k) {:component k}))
+              (contains? @stopping k)
+              (throw (ex-info (str "Component is stopping: " k) {:component k}))
 
-                  (contains? @stopping k)
-                  (throw (ex-info (str "Component is stopping: " k) {:component k}))
-
-                  :else
+              :else
+              (do
+                (admit! k handle)
+                (try
                   (let [started (run-start k start)]
                     ;; Registered before the root is published, so the root is never visible unregistered, and
                     ;; anything that starts after seeing it, and so may depend on it, comes after it in
@@ -241,16 +239,17 @@
                     (swap! start-order (fn [ks] (cond-> ks (not (some #{k} ks)) (conj k))))
                     (swap! started-components assoc k {:handle handle, :stop stop})
                     (mc/reset! handle started)
-                    [started true]))))
-            (finally
-              (.unlock read-lock))))))))
+                    [started true])
+                  (finally
+                    ;; only once registered, so a halt that finds nothing in flight finds this registered
+                    (swap! admissions update :starting dissoc k)))))))))))
 
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
    Starting calls `start` with no arguments and with no bindings in place, which must return a non-nil value,
    installs that as the root, and records `stop`, a function of the value, for [[stop!]] and [[halt!]].
    Threads racing to start the component start it once, and `start` runs holding the component's slot lock.
-   So `start` must not wait for another thread that writes this component or starts any component.
+   So `start` must not wait for another thread that writes this component.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
    Throws if the component is being stopped, if `start` tries to start the component it is starting, or once
    [[halt!]] has begun, until [[reopen!]].
@@ -334,14 +333,24 @@
           (reverse (dep/topo-sort #(compare (position %1 -1) (position %2 -1)) sortable)))))
 
 (defn- close-admission!
-  "Refuse every later start, once the starts already running have finished and registered."
+  "Refuse every later start."
   []
-  (let [write-lock (.writeLock ^ReentrantReadWriteLock admission)]
-    (.lock write-lock)
-    (try
-      (reset! halted true)
-      (finally
-        (.unlock write-lock)))))
+  (swap! admissions assoc :halted? true)
+  nil)
+
+(defn- await-starts!
+  "Wait for every start in flight to register or fail, by taking its component's slot lock, which the start holds
+  throughout.
+  Called after [[close-admission!]], when no more starts can be admitted, so none is missed."
+  []
+  (doseq [{:keys [handle]} (vals (:starting @admissions))]
+    (mc/without-binding handle #(mc/with-slot-lock handle nil))))
+
+(defn- begin-halt!
+  "Refuse every later start, then wait for the starts already in flight to register or fail."
+  []
+  (close-admission!)
+  (await-starts!))
 
 (defn halt!
   "Stop every running component [[start!]] started.
@@ -351,16 +360,17 @@
    Throws before stopping anything if `dependencies` has a cycle.
    From the moment it begins, every start throws until [[reopen!]], so nothing a stopping component starts again is
    left running.
+   It waits for the starts already running, so it stops those too, and holds no lock while it waits.
    Throws after trying them all if any stop threw; see [[stop-all!]]."
   ([]
    (halt! {}))
   ([dependencies]
    (let [graph (dependency-graph dependencies)]
-     (close-admission!)
+     (begin-halt!)
      (stop-all! (halt-order graph)))))
 
 (defn reopen!
   "Let components start again after [[halt!]], for a REPL that halts the system and starts it again in one JVM."
   []
-  (reset! halted false)
+  (swap! admissions assoc :halted? false)
   nil)

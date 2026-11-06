@@ -41,7 +41,6 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection ComboPooledDataSource)
    (java.sql DriverManager)
-   (java.util.concurrent.locks ReentrantReadWriteLock)
    (org.h2.tools Server)))
 
 (set! *warn-on-reflection* true)
@@ -971,55 +970,6 @@
         (stop {:pools {[1 :default] ::pool-1, [2 :write] ::pool-2}}))
       (is (= #{[1 ::pool-1] [2 ::pool-2]}
              (set @destroyed))))))
-
-(deftest ^:synchronized pools-write-while-a-halt-waits-test
-  (testing "a write that starts the pools while a halt waits behind another start finishes instead of deadlocking"
-    (let [admission ^ReentrantReadWriteLock @#'system/admission
-          blocker   (system/mutable-component-handle ::blocker (constantly nil))
-          go        (promise)
-          result    (promise)
-          ;; holds the admission read lock through its start, which then writes the pools
-          start     (fn []
-                      @go
-                      (#'sql-jdbc.conn/swap-pools-state! identity)
-                      :started)
-          starter   (Thread. ^Runnable #(system/ensure-started! blocker start (constantly nil)))
-          ;; queues for the write lock behind the starter
-          halter    (Thread. ^Runnable #(#'system/close-admission!))
-          writer    (Thread. ^Runnable #(deliver result (try
-                                                          (#'sql-jdbc.conn/swap-pools-state! identity)
-                                                          :wrote
-                                                          (catch Throwable e
-                                                            e))))
-          ;; throws if a thread never gets there, so the race is set up or the test fails, never passes without it
-          wait-for  (fn [ready?]
-                      (loop [tries 0]
-                        (cond
-                          (ready?)       nil
-                          (< tries 500)  (do (Thread/sleep 10)
-                                             (recur (inc tries)))
-                          :else          (throw (ex-info "A thread never reached the lock state the race needs" {})))))]
-      ;; daemons, so a deadlock fails this test without keeping the JVM alive
-      (doseq [^Thread thread [starter halter writer]]
-        (.setDaemon thread true))
-      (system/stop! @#'sql-jdbc.conn/pools-component)
-      (try
-        (.start starter)
-        (wait-for #(pos? (.getReadLockCount admission)))
-        (.start halter)
-        (wait-for #(.hasQueuedThread admission halter))
-        (.start writer)
-        (wait-for #(.hasQueuedThread admission writer))
-        (deliver go true)
-        (is (= :wrote (deref result 10000 ::deadlocked)))
-        (finally
-          (deliver go true)
-          (.join starter 10000)
-          (.join halter 10000)
-          (system/reopen!)
-          ;; a starter still alive holds the blocker's slot lock, which stopping it would wait for
-          (when-not (.isAlive starter)
-            (system/stop! blocker)))))))
 
 (deftest pool-that-cannot-be-cached-is-destroyed-test
   (testing "a new pool that cannot be cached, as while the pools state is stopping, is destroyed and the error rethrown"

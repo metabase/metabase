@@ -520,7 +520,7 @@
           (cleanup! [handle]))))))
 
 ;; halt! is only called in these tests with dependencies it refuses: a halt stops every component this test JVM has
-;; started, such as the test web server, which later tests need. It is only (dependency-graph), (close-admission!) and
+;; started, such as the test web server, which later tests need. It is only (dependency-graph), (begin-halt!) and
 ;; (stop-all! (halt-order)), and these tests drive each part on throwaway components, reopening afterwards, so a
 ;; regression in any of them fails here.
 (deftest ^:synchronized halt-order-test
@@ -575,7 +575,7 @@
                                                       #(do (deliver inside true) @leave :started)
                                                       (constantly nil)))
               _       @inside
-              closing (future (#'system/close-admission!))]
+              closing (future (#'system/begin-halt!))]
           (is (= ::still-waiting (deref closing 200 ::still-waiting)))
           (deliver leave true)
           @starter
@@ -584,6 +584,53 @@
         (finally
           (system/reopen!)
           (cleanup! [handle]))))))
+
+(deftest ^:synchronized halt-waits-without-holding-a-lock-test
+  (testing "starts that hold a slot lock while a halt waits are refused at once, so nothing deadlocks"
+    (let [a        (system/mutable-component-handle ::waits-a (constantly nil))
+          b        (system/mutable-component-handle ::waits-b (constantly nil))
+          c        (system/mutable-component-handle ::waits-c (constantly nil))
+          go       (promise)
+          outcome  (fn [thunk]
+                     (try
+                       (thunk)
+                       :started
+                       (catch clojure.lang.ExceptionInfo e
+                         (ex-message e))))
+          refusal  #(str "The system has halted, so a component cannot start: " %)
+          wait-for (fn [ready?]
+                     (loop [tries 0]
+                       (cond
+                         (ready?)      nil
+                         (< tries 500) (do (Thread/sleep 10)
+                                           (recur (inc tries)))
+                         :else         (throw (ex-info "A thread never reached the state the test needs" {})))))
+          start-a  (fn []
+                     @go
+                     (system/ensure-started! b (constantly :b) (constantly nil))
+                     :a)
+          ;; in flight while the halt begins, then starts b
+          starter  (future (outcome #(system/ensure-started! a start-a (constantly nil))))
+          halter   (doto (Thread. ^Runnable #(#'system/begin-halt!))
+                     (.setDaemon true))]
+      (try
+        (wait-for #(contains? (:starting @@#'system/admissions) ::waits-a))
+        (.start halter)
+        (wait-for #(#{Thread$State/BLOCKED Thread$State/WAITING} (.getState halter)))
+        ;; a start made while holding another component's slot lock
+        (let [writer (future (mc/with-slot-lock b
+                               (outcome #(system/ensure-started! c (constantly :c) (constantly nil)))))]
+          (is (= (refusal ::waits-c)
+                 (deref writer 5000 ::deadlocked))))
+        (deliver go true)
+        (.join halter 5000)
+        (is (= {:starter (refusal ::waits-b), :halt-finished? true}
+               {:starter        (deref starter 5000 ::deadlocked)
+                :halt-finished? (not (.isAlive halter))}))
+        (finally
+          (deliver go true)
+          (system/reopen!)
+          (cleanup! [a b c]))))))
 
 (deftest ^:synchronized start-returning-false-test
   (testing "a start that returns false still counts as started, so it runs once"
