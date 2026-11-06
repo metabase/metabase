@@ -206,6 +206,14 @@
       (is (= :mismatch (shadow/classify :transpile-sql
                                         (outcome {:status "error" :reason "multiple_statements"})
                                         (outcome {:status "error" :reason "parse_error"})))))
+    (testing "single-stmt-of-type: the error message, when both report an error"
+      (let [failed (fn [error] {:is_single_stmt? false :allowed_stmt_type? false :reason "unparseable" :error error})]
+        (is (= :match (shadow/classify :single-stmt-of-type
+                                       (outcome (failed "Invalid expression / Unexpected token. Line 1, Col: 8."))
+                                       (outcome (failed "Expected table name but got <Token token_type: ...>")))))
+        (is (= :mismatch (shadow/classify :single-stmt-of-type
+                                          (outcome (failed "Invalid expression"))
+                                          (outcome (dissoc (failed "Invalid expression") :error)))))))
     (testing "field-references: the shape of an error, as the parsers return it"
       (is (= :match (shadow/classify :field-references
                                      (outcome {:used_fields [] :returned_fields [] :errors [[["type" "syntax_error"]]]})
