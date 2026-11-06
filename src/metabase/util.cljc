@@ -105,6 +105,19 @@
                          :clj  'Throwable)
                       ~'_)))
 
+(defn run-each!
+  "Call each thunk in `steps`, a sequence of `[label thunk]` pairs, in order, whether or not an earlier one throws.
+  Returns the `[label exception]` pairs of the thunks that threw, in order, or an empty vector."
+  [steps]
+  (into []
+        (keep (fn [[label thunk]]
+                (try
+                  (thunk)
+                  nil
+                  (catch #?(:clj Throwable :cljs :default) e
+                    [label e]))))
+        steps))
+
 (defn strip-error
   "Transforms the error in a list of strings to log"
   ([e]

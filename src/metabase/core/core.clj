@@ -17,6 +17,7 @@
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
+   [metabase.global-system.system :as global-system]
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
@@ -103,24 +104,49 @@
   (setup/create-token!)   ; we need this here to create the initial token
   (print-setup-url))
 
+;; Named here because no one module can see both sides: the web server's requests run queries on warehouse pools and
+;; record traces.
+(def ^:private system-dependencies
+  "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
+  {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
+                                      :metabase.tracing.core/otel-sdk}})
+
+(defn- shutdown-steps
+  "The steps [[destroy!]] runs, in order, as `[label thunk]` pairs."
+  []
+  [["stop queue listeners"        #(queue/stop-listeners!)]
+   ["stop the token refresher"    #(premium-features/stop-refresher!)]
+   ["run shutdown logic"          #(startup/run-shutdown-logic!)]
+   ["stop the scheduler"          #(task/stop-scheduler!)]
+   ["stop the web server"         #(server/stop-web-server!)]
+   ["shut down tracing"           #(tracing/shutdown!)]
+   ["shut down analytics"         #(analytics.core/shutdown!)]
+   ["shut down notifications"     #(notification/shutdown!)]
+   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
+   ["release migration locks"     #(mdb/release-migration-locks! 20)]
+   ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;
+   ;; after the migration locks are released, since a component this halts could be one that release needs
+   ["halt the global system"      #(global-system/halt! system-dependencies)]
+   ["stop performance monitoring" #(perf/stop-monitoring!)]
+   ["shut down agents"            shutdown-agents]])
+
+;; Every step runs even when an earlier one throws, so one failing stop cannot leave the migration locks held or the
+;; web server running. Each failure is logged as it happens, so it is not lost when a later step outlasts the time the
+;; process has to shut down.
 (defn- destroy!
   "General application shutdown function which should be called once at application shutdown."
   []
   (log/info "Metabase Shutting Down ...")
-  (queue/stop-listeners!)
-  (premium-features/stop-refresher!)
-  (startup/run-shutdown-logic!)
-  (task/stop-scheduler!)
-  (server/stop-web-server!)
-  (tracing/shutdown!)
-  (analytics.core/shutdown!)
-  (notification/shutdown!)
-  ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
-  (let [timeout-seconds 20]
-    (mdb/release-migration-locks! timeout-seconds))
-  (perf/stop-monitoring!)
-  (shutdown-agents)
-  (log/info "Metabase Shutdown COMPLETE"))
+  (let [failures (u/run-each! (for [[step thunk] (shutdown-steps)]
+                                [step (fn []
+                                        (try
+                                          (thunk)
+                                          (catch Throwable e
+                                            (log/errorf e "Shutdown step failed: %s" step)
+                                            (throw e))))]))]
+    (if (seq failures)
+      (log/warnf "Metabase Shutdown COMPLETE, with %d failed steps" (count failures))
+      (log/info "Metabase Shutdown COMPLETE"))))
 
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS

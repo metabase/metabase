@@ -2,8 +2,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
+   [metabase.test :as mt]
    [metabase.tracing.core :as tracing]
-   [metabase.tracing.test-util :as tracing.tu])
+   [metabase.tracing.settings :as tracing.settings]
+   [metabase.tracing.test-util :as tracing.tu]
+   [steffan-westcott.clj-otel.api.otel :as otel]
+   [steffan-westcott.clj-otel.sdk.otel-sdk :as otel-sdk])
   (:import
    (org.apache.logging.log4j ThreadContext)))
 
@@ -347,3 +351,16 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!)))))
+
+(deftest failed-init-closes-the-sdk-test
+  (testing "an init that fails after building the SDK closes it and never makes it the default"
+    (let [closed   (atom [])
+          defaults (atom [])]
+      (mt/with-dynamic-fn-redefs [tracing.settings/tracing-enabled (constantly true)
+                                  tracing/build-otel-sdk          (constantly ::sdk)
+                                  tracing/init-enabled-groups!    (fn [& _] (throw (ex-info "bad groups" {})))
+                                  otel/set-default-otel!          #(swap! defaults conj %)
+                                  otel-sdk/close-otel-sdk!        #(swap! closed conj %)]
+        (tracing/init!))
+      (is (= {:closed [::sdk], :defaults []}
+             {:closed @closed, :defaults @defaults})))))
