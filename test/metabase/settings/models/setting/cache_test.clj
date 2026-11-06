@@ -190,7 +190,8 @@
 
 (deftest held-cache-state-test
   (testing "reads and writes through one cache state stay on its cache when the app DB this thread sees changes"
-    (let [state (setting.cache/current-state)]
+    (let [state  (setting.cache/current-state)
+          before (setting.cache/cache state)]
       (try
         (mdb/with-application-db (assoc (mdb/app-db) :id Integer/MAX_VALUE)
           (setting.cache/update-cache! state "held-cache-test-key" "held")
@@ -198,7 +199,8 @@
                  {:through-state (get (setting.cache/cache state) "held-cache-test-key")
                   :current       (get (setting.cache/cache) "held-cache-test-key")})))
         (finally
-          (setting.cache/update-cache! state "held-cache-test-key" nil))))))
+          ;; puts the cache back as it was: a nil cache reads as not yet loaded, and an empty one would not
+          (reset! (#'setting.cache/cache* state) before))))))
 
 (deftest restore-uses-the-state-it-checked-test
   (testing "a restore fills the cache whose clock and lock it checked, even if the state this thread sees changes"
