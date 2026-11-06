@@ -112,7 +112,9 @@ describe.each(["pulse", "notification"] as const)(
       setup({ subscriptionType });
 
       await screen.findByRole("button", { name: "Confirm unsubscribe" });
-      expect(screen.getByText("recipient@example.com")).toBeInTheDocument();
+      expect(
+        screen.getByText("Are you sure you want to unsubscribe?"),
+      ).toBeInTheDocument();
       expect(fetchMock.callHistory.calls(`path:${endpoint}`)).toHaveLength(0);
       expect(fetchMock.callHistory.calls(`path:${endpoint}/undo`)).toHaveLength(
         0,
@@ -121,9 +123,9 @@ describe.each(["pulse", "notification"] as const)(
       await userEvent.click(
         screen.getByRole("button", { name: "Confirm unsubscribe" }),
       );
-      expect(await screen.findByText(/You've unsubscribed/)).toHaveTextContent(
-        'You\'ve unsubscribed recipient@example.com from the "Orders alert" alert.',
-      );
+      expect(
+        await screen.findByText("You've unsubscribed."),
+      ).toBeInTheDocument();
       expect(fetchMock.callHistory.calls(`path:${endpoint}`)).toHaveLength(1);
       const body: unknown = await fetchMock.callHistory
         .lastCall(`path:${endpoint}`)
@@ -136,9 +138,9 @@ describe.each(["pulse", "notification"] as const)(
       });
 
       await userEvent.click(screen.getByRole("button", { name: "Undo" }));
-      expect(await screen.findByText(/is subscribed to/)).toHaveTextContent(
-        'Okay, recipient@example.com is subscribed to the "Orders alert" alert again.',
-      );
+      expect(
+        await screen.findByText("You're subscribed again."),
+      ).toBeInTheDocument();
       expect(fetchMock.callHistory.calls(`path:${endpoint}/undo`)).toHaveLength(
         1,
       );

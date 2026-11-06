@@ -1,6 +1,6 @@
 import { type JSX, useMemo, useState } from "react";
 import { useAsync } from "react-use";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import {
   useUndoUnsubscribeFromNotificationByEmailMutation,
@@ -9,7 +9,6 @@ import {
   useUnsubscribeFromPulseMutation,
 } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
@@ -43,7 +42,7 @@ export const UnsubscribePage = (): JSX.Element => {
   const notificationHandlerId =
     searchParams.get("notification-handler-id") ?? undefined;
 
-  const { data, isLoading, error } = useUnsubscribeRequest({
+  const { isLoading, error } = useUnsubscribeRequest({
     hash,
     email,
     pulseId,
@@ -76,11 +75,7 @@ export const UnsubscribePage = (): JSX.Element => {
       <UnsubscribeRoot>
         <Stack align="center">
           <Text fw={700} c="text-secondary" ta="center">
-            {jt`Are you sure you want to unsubscribe ${(
-              <ExternalLink key="link" href={`mailto:${email}`}>
-                {email}
-              </ExternalLink>
-            )}?`}
+            {t`Are you sure you want to unsubscribe?`}
           </Text>
           <Button
             variant="filled"
@@ -97,14 +92,10 @@ export const UnsubscribePage = (): JSX.Element => {
     <UnsubscribeRoot>
       {subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE ? (
         <SuccessfulUnsubscribe
-          email={email}
-          alertTitle={data?.title}
           action={() => setSubscriptionChange(SUBSCRIPTION.RESUBSCRIBE)}
         />
       ) : (
         <SuccessfulResubscribe
-          email={email}
-          alertTitle={data?.title}
           action={() => setSubscriptionChange(SUBSCRIPTION.UNSUBSCRIBE)}
         />
       )}
@@ -112,36 +103,20 @@ export const UnsubscribePage = (): JSX.Element => {
   );
 };
 
-function SuccessfulUnsubscribe({
-  email,
-  alertTitle,
-  action,
-}: SubscriptionDetailProps) {
+function SuccessfulUnsubscribe({ action }: SubscriptionDetailProps) {
   return (
     <SuccessfulRequestWrapper
-      text={jt`You've unsubscribed ${(
-        <ExternalLink key="link" href={`mailto:${email}`}>
-          {email}
-        </ExternalLink>
-      )} from the "${alertTitle}" alert.`}
+      text={t`You've unsubscribed.`}
       buttonText={t`Undo`}
       action={action}
     />
   );
 }
 
-function SuccessfulResubscribe({
-  email,
-  alertTitle,
-  action,
-}: SubscriptionDetailProps) {
+function SuccessfulResubscribe({ action }: SubscriptionDetailProps) {
   return (
     <SuccessfulRequestWrapper
-      text={jt`Okay, ${(
-        <ExternalLink key="link" href={`mailto:${email}`}>
-          {email}
-        </ExternalLink>
-      )} is subscribed to the "${alertTitle}" alert again.`}
+      text={t`You're subscribed again.`}
       buttonText={t`Unsubscribe`}
       action={action}
     />
@@ -304,8 +279,6 @@ function ErrorDisplay() {
 }
 
 interface SubscriptionDetailProps {
-  email: string;
-  alertTitle: string | undefined;
   action: () => void;
 }
 
