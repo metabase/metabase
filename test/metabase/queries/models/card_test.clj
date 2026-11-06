@@ -975,6 +975,15 @@
       (is (= card
              (#'card/upgrade-card-schema-to-latest card))))))
 
+(deftest ^:parallel upgrade-card-schema-to-22-keeps-nil-result-metadata-test
+  (testing "Upgrade 22 keeps NULL result metadata as nil, so readers still know that the metadata is missing"
+    (is (nil? (:result_metadata (#'card/upgrade-card-schema-to complete-card 22)))))
+  (testing "Upgrade 22 removes idents from result metadata columns"
+    (is (= [{:name "ID"}]
+           (:result_metadata (#'card/upgrade-card-schema-to
+                              (assoc complete-card :result_metadata [{:name "ID", :ident "x", :model/inner_ident "y"}])
+                              22))))))
+
 (deftest ^:parallel upgrade-card-schema-requires-every-trigger-column-test
   (testing (str "Reading a schema-governed column without the rest of the columns an upgrade needs is a "
                 "programming error in the query, not a condition to recover from at read time. It throws "
