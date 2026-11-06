@@ -6,6 +6,7 @@
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
@@ -51,12 +52,8 @@
   "Throw a 400 when a plugin already has `identifier`, or has it in another case: a repository names a plugin's
    directory by its identifier, and case-insensitive filesystems would merge the two."
   [identifier]
-  (when-let [existing (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier nil)]
-    (throw (ex-info (if (= existing identifier)
-                      (format "A custom visualization with identifier \"%s\" already exists." identifier)
-                      (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
-                              identifier existing))
-                    {:status-code 400}))))
+  (custom-viz-plugin/check-identifier-free!
+   identifier nil (format "A custom visualization with identifier \"%s\" already exists." identifier)))
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 

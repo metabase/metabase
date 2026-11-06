@@ -207,21 +207,16 @@
          :icon             nil
          :metabase_version nil}))))
 
-(defn- check-identifier-free!
-  "Throws if another plugin than `maybe-local` already holds `identifier`, ignoring case, so case-only variants
-  can't become two plugins."
-  [identifier maybe-local]
-  (when-let [existing (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier (:id maybe-local))]
-    (if (= existing identifier)
-      ;; the unique index would refuse the write anyway, but with an error that doesn't say what to do
-      (throw (ex-info (format (str "A custom viz plugin \"%s\" already exists on this instance. Delete it and pull "
-                                   "again: cards reference the plugin by its identifier, so they keep working once "
-                                   "it is pulled.")
-                              identifier)
-                      {:status-code 400}))
-      (throw (ex-info (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
-                              identifier existing)
-                      {:status-code 400})))))
+(defn check-identifier-free!
+  "Throws a 400 if a plugin other than `except-id` (nil for none) already holds `identifier`, ignoring case, so
+  case-only variants can't become two plugins. `exists-message` is the error when it holds exactly `identifier`."
+  [identifier except-id exists-message]
+  (when-let [existing (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier except-id)]
+    (throw (ex-info (if (= existing identifier)
+                      exists-message
+                      (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
+                              identifier existing))
+                    {:status-code 400}))))
 
 (defmethod serdes/load-one! "CustomVizPlugin"
   [{:keys [identifier] :as ingested} maybe-local]
@@ -229,7 +224,12 @@
   (when (nil? maybe-local)
     (when-let [error (manifest/directory-name-error identifier)]
       (throw (ex-info error {:status-code 400}))))
-  (check-identifier-free! identifier maybe-local)
+  ;; the unique index would refuse the write anyway, but with an error that doesn't say what to do
+  (check-identifier-free! identifier (:id maybe-local)
+                          (format (str "A custom viz plugin \"%s\" already exists on this instance. Delete it and pull "
+                                       "again: cards reference the plugin by its identifier, so they keep working "
+                                       "once it is pulled.")
+                                  identifier))
   (serdes/default-load-one! ingested maybe-local))
 
 (defmethod serdes/load-insert! "CustomVizPlugin"
