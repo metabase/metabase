@@ -106,13 +106,13 @@ describe("BrowseNavSection", () => {
     setup();
 
     expect(
-      screen.getByRole("listitem", { name: "Browse models" }),
+      screen.getByRole("link", { name: "Browse models" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("listitem", { name: "Browse databases" }),
+      screen.getByRole("link", { name: "Browse databases" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("listitem", { name: "Browse metrics" }),
+      screen.getByRole("link", { name: "Browse metrics" }),
     ).toBeInTheDocument();
   });
 
@@ -121,13 +121,13 @@ describe("BrowseNavSection", () => {
       setup({ isEmbeddingIframe: true });
 
       expect(
-        screen.getByRole("listitem", { name: "Browse models" }),
+        screen.getByRole("link", { name: "Browse models" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("listitem", { name: "Browse databases" }),
+        screen.getByRole("link", { name: "Browse databases" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("listitem", { name: "Browse metrics" }),
+        screen.queryByRole("link", { name: "Browse metrics" }),
       ).not.toBeInTheDocument();
     });
 
@@ -135,13 +135,13 @@ describe("BrowseNavSection", () => {
       setup({ isEmbeddingIframe: true, entityTypes: ["model", "table"] });
 
       expect(
-        screen.getByRole("listitem", { name: "Browse models" }),
+        screen.getByRole("link", { name: "Browse models" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("listitem", { name: "Browse databases" }),
+        screen.getByRole("link", { name: "Browse databases" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("listitem", { name: "Browse metrics" }),
+        screen.queryByRole("link", { name: "Browse metrics" }),
       ).not.toBeInTheDocument();
     });
 
@@ -149,13 +149,13 @@ describe("BrowseNavSection", () => {
       setup({ isEmbeddingIframe: true, entityTypes: ["model"] });
 
       expect(
-        screen.getByRole("listitem", { name: "Browse models" }),
+        screen.getByRole("link", { name: "Browse models" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("listitem", { name: "Browse databases" }),
+        screen.queryByRole("link", { name: "Browse databases" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("listitem", { name: "Browse metrics" }),
+        screen.queryByRole("link", { name: "Browse metrics" }),
       ).not.toBeInTheDocument();
     });
 
@@ -163,13 +163,13 @@ describe("BrowseNavSection", () => {
       setup({ isEmbeddingIframe: true, entityTypes: ["table"] });
 
       expect(
-        screen.queryByRole("listitem", { name: "Browse models" }),
+        screen.queryByRole("link", { name: "Browse models" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.getByRole("listitem", { name: "Browse databases" }),
+        screen.getByRole("link", { name: "Browse databases" }),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("listitem", { name: "Browse metrics" }),
+        screen.queryByRole("link", { name: "Browse metrics" }),
       ).not.toBeInTheDocument();
     });
   });

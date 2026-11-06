@@ -86,7 +86,7 @@ describe("BookmarkList", () => {
       />,
     );
 
-    const bookmarkItem = screen.getByRole("listitem", {
+    const bookmarkItem = screen.getByRole("link", {
       name: "Total revenue",
     });
     expect(
