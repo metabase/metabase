@@ -59,16 +59,6 @@
        (boolean (setting/with-database database
                   (ws.settings/database-enable-workspaces)))))
 
-(defn workspaces-enabled-database-ids
-  "IDs of all Databases eligible for workspaces (see
-   [[database-eligible-for-workspaces?]]), sorted."
-  []
-  (->> (ws.db/databases-with-settings)
-       (filter database-eligible-for-workspaces?)
-       (map :id)
-       sort
-       vec))
-
 (defn database-input-schemas
   "The distinct non-blank schema names of `database`'s active tables, sorted.
    Empty for schemaless drivers (e.g. MySQL)."

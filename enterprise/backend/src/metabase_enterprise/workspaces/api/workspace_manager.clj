@@ -8,7 +8,6 @@
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
-   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,7 +24,7 @@
   [:map {:closed true}
    [:name         ms/NonBlankString]
    ;; when omitted, the workspace gets every database with workspaces enabled
-   [:database_ids {:optional true} [:sequential {:min 1} ::lib.schema.id/database]]])
+   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -101,18 +100,12 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) — or, when `database_ids` is omitted, to every database with
-   workspaces enabled — and provision it (blocking)."
+   for workspaces) and provision it (blocking)."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (let [database-ids (or (:database_ids params)
-                         (workspace-database/workspaces-enabled-database-ids))]
-    (api/check-400 (seq database-ids) "No databases have workspaces enabled.")
-    (present-workspace
-     (ws/create-workspace!
-      (assoc params
-             :database_ids database-ids
-             :creator_id   api/*current-user-id*)))))
+  (present-workspace
+   (ws/create-workspace!
+    (assoc params :creator_id api/*current-user-id*))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."

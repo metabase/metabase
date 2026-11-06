@@ -55,11 +55,6 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
 
-(mu/defn databases-with-settings
-  "Every Database's `:id`, `:engine` and `:settings`."
-  []
-  (t2/select [:model/Database :id :engine :settings]))
-
 (mu/defn active-table-schemas
   "The set of schemas of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
