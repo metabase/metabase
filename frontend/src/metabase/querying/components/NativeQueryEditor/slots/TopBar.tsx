@@ -1,7 +1,9 @@
 import { type PropsWithChildren, type ReactNode, forwardRef } from "react";
 
 import { useLazyGetTableQuery } from "metabase/api";
+import { setNativeQueryDatabaseId } from "metabase/querying/native";
 import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
@@ -26,7 +28,7 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
     isNativeEditorOpen,
     readOnly,
     editorContext,
-    setDatasetQuery,
+    setQuery,
     onSetDatabaseId,
     focusEditor,
     databaseIsDisabled,
@@ -40,14 +42,16 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
 
   const setTableId = async (tableId: TableId) => {
     const table = await fetchTable({ id: tableId }).unwrap();
-    if (table.name !== query.collection()) {
-      setDatasetQuery(query.setCollectionName(table.name));
+    if (table.name !== Lib.nativeExtras(query)?.collection) {
+      setQuery(Lib.withNativeExtras(query, { collection: table.name }));
     }
   };
 
   const setDatabaseId = (databaseId: DatabaseId) => {
     if (question.databaseId() !== databaseId) {
-      setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
+      setQuery(
+        setNativeQueryDatabaseId(query, databaseId, question.metadata()),
+      );
       onSetDatabaseId?.(databaseId);
       focusEditor();
     }

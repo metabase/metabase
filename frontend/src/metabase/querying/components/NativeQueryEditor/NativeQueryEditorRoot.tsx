@@ -30,7 +30,6 @@ import type { QueryModalType } from "metabase/redux/store";
 import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
   DatabaseId,
@@ -56,6 +55,7 @@ import {
   canFormatForEngine,
   formatQuery,
   getInitialEditorHeight,
+  updateSnippet,
 } from "./utils";
 
 /**
@@ -104,12 +104,11 @@ export type NativeQueryEditorCoreProps = Omit<
   openSnippetModalWithSelectedText?: () => void;
   placeholder?: string;
   proposedQuestion?: Question | undefined;
-  query: NativeQuery;
   question: Question;
   readOnly?: boolean;
   resizable?: boolean;
   runQuery?: () => void;
-  setDatasetQuery: (query: NativeQuery) => void;
+  setQuery: (query: Lib.Query) => void;
   setIsNativeEditorOpen?: (
     isOpen: boolean,
     shouldOpenDataReference?: boolean,
@@ -164,12 +163,11 @@ export const NativeQueryEditorRoot = forwardRef<
     openSnippetModalWithSelectedText,
     placeholder,
     proposedQuestion,
-    query,
     question,
     readOnly,
     resizable = true,
     runQuery,
-    setDatasetQuery,
+    setQuery,
     setIsNativeEditorOpen,
     setNativeEditorSelectedRange,
     setParameterValue,
@@ -223,17 +221,17 @@ export const NativeQueryEditorRoot = forwardRef<
   // The editor reconfigures itself whenever the identity of its callbacks
   // changes, so they must not depend on the query, which changes on every
   // keystroke.
-  const queryRef = useLatest(query);
+  const query = question.query();
   const questionRef = useLatest(question);
 
   const applyQueryText = useCallback(
     (queryText: string) => {
-      const currentQuery = queryRef.current;
-      if (currentQuery.queryText() !== queryText) {
-        setDatasetQuery(currentQuery.setQueryText(queryText));
+      const currentQuery = questionRef.current.query();
+      if (Lib.rawNativeQuery(currentQuery) !== queryText) {
+        setQuery(Lib.withNativeQuery(currentQuery, queryText));
       }
     },
-    [queryRef, setDatasetQuery],
+    [questionRef, setQuery],
   );
 
   // Putting the edit in the store rerenders the query builder, which is far
@@ -257,21 +255,19 @@ export const NativeQueryEditorRoot = forwardRef<
   }, [handleChange, onBlur]);
 
   const handleAcceptProposed = useCallback(() => {
-    const proposedQuery = proposedQuestion?.legacyNativeQuery();
-    if (proposedQuery) {
-      handleChange(proposedQuery.queryText());
+    if (proposedQuestion) {
+      handleChange(Lib.rawNativeQuery(proposedQuestion.query()));
       handleChange.flush();
-      onAcceptProposed?.(proposedQuery.datasetQuery());
+      onAcceptProposed?.(proposedQuestion.datasetQuery());
     }
   }, [proposedQuestion, handleChange, onAcceptProposed]);
 
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
-      // get the query instance with the latest Metadata that has the updated snippet
-      const updatedQuery = query.updateSnippet(oldSnippet, newSnippet);
-      setDatasetQuery(updatedQuery);
+      const updatedQuery = updateSnippet(question, oldSnippet, newSnippet);
+      setQuery(updatedQuery);
     },
-    [query, setDatasetQuery],
+    [question, setQuery],
   );
 
   const handleRightClickSelection = useCallback(() => {
@@ -326,7 +322,7 @@ export const NativeQueryEditorRoot = forwardRef<
   const contextValue: NativeQueryEditorContextValue = {
     question,
     query,
-    setDatasetQuery,
+    setQuery,
     focusEditor,
     onFormatQuery: handleFormatQuery,
     readOnly,
@@ -396,7 +392,7 @@ export const NativeQueryEditorRoot = forwardRef<
               <Flex w="100%" flex="1" className={S.resizableBoxContent}>
                 <CodeMirrorEditor
                   ref={editorRef}
-                  query={question.query()}
+                  query={query}
                   proposedQuery={proposedQuestion?.query()}
                   readOnly={readOnly}
                   placeholder={placeholder}

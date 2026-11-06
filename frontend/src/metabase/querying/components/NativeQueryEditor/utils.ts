@@ -1,7 +1,12 @@
 import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
+import _ from "underscore";
 
 import { getEngineNativeType } from "metabase/databases/utils/engine";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { updateSnippetNames } from "metabase/querying/native";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { NativeQuerySnippet } from "metabase-types/api";
 
 import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
 
@@ -31,7 +36,7 @@ export function getMaxAutoSizeLines(availableHeight: number) {
 }
 
 type GetVisibleLinesCountParams = {
-  query?: NativeQuery;
+  query?: Lib.Query;
   availableHeight?: number | "full";
 };
 
@@ -39,11 +44,13 @@ function getVisibleLinesCount({
   query,
   availableHeight,
 }: {
-  query?: NativeQuery;
+  query?: Lib.Query;
   availableHeight: number;
 }) {
   const maxAutoSizeLines = getMaxAutoSizeLines(availableHeight);
-  const queryLineCount = query?.lineCount() || maxAutoSizeLines;
+  const queryLineCount =
+    (query != null ? getLineCount(Lib.rawNativeQuery(query)) : 0) ||
+    maxAutoSizeLines;
   return Math.max(Math.min(queryLineCount, maxAutoSizeLines), MIN_HEIGHT_LINES);
 }
 
@@ -112,4 +119,30 @@ export function formatQuery(queryText: string, engine: string) {
       ],
     },
   });
+}
+
+function getLineCount(queryText: string): number {
+  return queryText ? queryText.split(/\n/g).length : 0;
+}
+
+export function updateSnippet(
+  question: Question,
+  oldSnippet: NativeQuerySnippet,
+  newSnippet: NativeQuerySnippet,
+): Lib.Query {
+  const metadata = new Metadata(question.metadata());
+  metadata.snippets = {
+    ..._.omit(metadata.snippets, String(oldSnippet.id)),
+    [newSnippet.id]: newSnippet,
+  };
+
+  const query = Lib.fromJsQuery(
+    Lib.metadataProvider(question.databaseId(), metadata),
+    question.datasetQuery(),
+  );
+  const renamedQuery =
+    newSnippet.name !== oldSnippet.name
+      ? updateSnippetNames(query, [newSnippet])
+      : query;
+  return Lib.withNativeQuery(renamedQuery, Lib.rawNativeQuery(renamedQuery));
 }

@@ -12,7 +12,6 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -60,9 +59,8 @@ const setup = ({ query, templateTags = {}, loadedTableIds }: SetupOpts) => {
 
   const setTemplateTag = jest.fn<void, [TemplateTag]>();
   const props = {
-    query: checkNotNull(question.legacyNativeQuery()),
     question,
-    setDatasetQuery: jest.fn(),
+    setQuery: jest.fn(),
     setTemplateTag,
     setTemplateTagConfig: jest.fn(),
     setParameterValue: jest.fn(),

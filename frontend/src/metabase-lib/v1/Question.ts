@@ -8,7 +8,6 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import {
   NATIVE_QUERY_TEMPLATE,
   STRUCTURED_QUERY_TEMPLATE,
@@ -144,49 +143,6 @@ class Question {
         .dissoc("description")
         .value(),
     );
-  }
-
-  /**
-   * A question contains either a:
-   * - StructuredQuery for queries written in MBQL
-   * - NativeQuery for queries written in data source's native query language
-   *
-   * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
-   */
-  _legacyNativeQuery = _.once((): NativeQuery | undefined => {
-    const datasetQuery = this._card.dataset_query;
-
-    if (this.isNative()) {
-      return new NativeQuery(this, datasetQuery);
-    }
-
-    const isVirtualDashcard = !this._card.id;
-    // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-    if (!isVirtualDashcard) {
-      const queryType =
-        datasetQuery != null && "type" in datasetQuery
-          ? datasetQuery.type
-          : undefined;
-      console.warn("Unknown query type: " + queryType);
-    }
-  });
-
-  legacyNativeQuery(): NativeQuery | undefined {
-    return this._legacyNativeQuery();
-  }
-
-  /**
-   * Returns a new Question object with an updated query.
-   * The query is saved to the `dataset_query` field of the Card object.
-   */
-  setLegacyQuery(newQuery: NativeQuery): Question {
-    if (this._card.dataset_query !== newQuery.datasetQuery()) {
-      return this.setCard(
-        assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
-      );
-    }
-
-    return this;
   }
 
   datasetQuery(): DatasetQuery {
@@ -340,10 +296,12 @@ class Question {
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative
-      ? (this.legacyNativeQuery()?.canRun() ?? false)
-      : Lib.canRun(this.query(), this.type());
+    const query = this.query();
+    const { isNative } = Lib.queryDisplayInfo(query);
+    return (
+      Lib.canRun(query, this.type()) &&
+      (!isNative || Lib.validateTemplateTags(query).length === 0)
+    );
   }
 
   canWrite(): boolean {

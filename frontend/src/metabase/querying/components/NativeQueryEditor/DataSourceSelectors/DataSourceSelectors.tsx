@@ -12,17 +12,17 @@ import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/querying/common/components/DataSelector";
+import { requiresNativeCollection } from "metabase/querying/native";
 import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Database, DatabaseId, TableId } from "metabase-types/api";
 
 type EditorContext = "action" | "question";
 
 interface DataSourceSelectorsProps {
   isNativeEditorOpen: boolean;
-  query: NativeQuery;
+  query: Lib.Query;
   question: Question;
   readOnly?: boolean;
   setDatabaseId: (databaseId: DatabaseId) => void;
@@ -76,6 +76,7 @@ export const DataSourceSelectors = ({
       database={database}
       databases={databases}
       query={query}
+      question={question}
       readOnly={readOnly}
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
@@ -89,7 +90,8 @@ interface PopulatedDataSourceSelectorsProps {
   database: Database | null;
   databases: Database[];
   isNativeEditorOpen: boolean;
-  query: NativeQuery;
+  query: Lib.Query;
+  question: Question;
   readOnly?: boolean;
   setDatabaseId: (databaseId: DatabaseId) => void;
   setTableId: (tableId: TableId) => void;
@@ -103,6 +105,7 @@ const PopulatedDataSourceSelectors = ({
   database,
   databases,
   query,
+  question,
   readOnly,
   setDatabaseId,
   setTableId,
@@ -134,13 +137,13 @@ const PopulatedDataSourceSelectors = ({
     );
   }
 
-  if (query.requiresTable()) {
+  if (requiresNativeCollection(query)) {
     dataSourceSelectors.push(
       <TableSelector
         database={database}
         key="table_selector"
         readOnly={readOnly}
-        selectedTable={query.table()}
+        selectedTableId={getCollectionTableId(query, question)}
         setTableId={setTableId}
       />,
     );
@@ -148,6 +151,19 @@ const PopulatedDataSourceSelectors = ({
 
   return dataSourceSelectors;
 };
+
+function getCollectionTableId(
+  query: Lib.Query,
+  question: Question,
+): TableId | null {
+  const collection = Lib.nativeExtras(query)?.collection;
+  const table = question
+    .metadata()
+    .database(Lib.databaseID(query))
+    ?.getTables()
+    .find((table) => table.name === collection);
+  return typeof table?.id === "number" ? table.id : null;
+}
 
 const checkIfThereAreMultipleDatabases = (
   database: Database | null,
@@ -217,14 +233,14 @@ const SingleDatabaseName = ({ database }: SingleDatabaseNameProps) => (
 interface TableSelectorProps {
   database: Database | null;
   readOnly?: boolean;
-  selectedTable: Table | null;
+  selectedTableId: TableId | null;
   setTableId: (tableId: TableId) => void;
 }
 
 const TableSelector = ({
   database,
   readOnly,
-  selectedTable,
+  selectedTableId,
   setTableId,
 }: TableSelectorProps) => (
   <div
@@ -238,9 +254,7 @@ const TableSelector = ({
     data-testid="gui-builder-data"
   >
     <SchemaAndTableDataSelector
-      selectedTableId={
-        typeof selectedTable?.id === "number" ? selectedTable.id : null
-      }
+      selectedTableId={selectedTableId}
       selectedDatabaseId={database?.id}
       databases={database ? [database] : []}
       setSourceTableFn={setTableId}
@@ -251,7 +265,7 @@ const TableSelector = ({
 );
 
 interface PlaceholderProps {
-  query: NativeQuery;
+  query: Lib.Query;
   editorContext?: EditorContext;
 }
 
@@ -260,7 +274,7 @@ const Placeholder = ({ query, editorContext }: PlaceholderProps) => {
     return null;
   }
 
-  const language = getNativeQueryLanguage(query.engine() ?? undefined);
+  const language = getNativeQueryLanguage(Lib.engine(query) ?? undefined);
   return (
     <Flex
       align="center"

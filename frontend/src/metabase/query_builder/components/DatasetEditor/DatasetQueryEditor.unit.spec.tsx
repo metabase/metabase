@@ -159,7 +159,7 @@ const setup = async ({
         readOnly={readOnly}
         onResizeStop={_.noop}
         onSetDatabaseId={onSetDatabaseId}
-        setDatasetQuery={_.noop}
+        setQuery={_.noop}
         isNativeEditorOpen
       />,
     ),
@@ -230,7 +230,7 @@ describe("DatasetQueryEditor", () => {
         readOnly={false}
         onResizeStop={_.noop}
         onSetDatabaseId={onSetDatabaseId}
-        setDatasetQuery={_.noop}
+        setQuery={_.noop}
         isNativeEditorOpen
       />,
     );

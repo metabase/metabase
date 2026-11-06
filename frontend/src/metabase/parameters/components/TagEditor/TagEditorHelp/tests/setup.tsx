@@ -39,7 +39,7 @@ export const setup = ({
     <TagEditorHelp
       database={new Database({ ...createMockDatabase(), tables: [] })}
       sampleDatabaseId={sampleDatabaseId ?? undefined}
-      setDatasetQuery={jest.fn()}
+      setQuery={jest.fn()}
       switchToSettings={jest.fn()}
     />,
     {

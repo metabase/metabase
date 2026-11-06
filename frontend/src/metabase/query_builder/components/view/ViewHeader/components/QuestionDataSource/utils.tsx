@@ -6,7 +6,6 @@ import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { DatabaseId, IconName, TableId } from "metabase-types/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
@@ -100,8 +99,10 @@ function getNativeDataSourceParts(
     });
   }
 
-  // Unjustified type cast. FIXME
-  const table = (question.legacyNativeQuery() as NativeQuery).table();
+  const collection = Lib.nativeExtras(question.query())?.collection;
+  const table = database
+    ?.getTables()
+    .find((table) => table.name === collection);
   if (table == null) {
     return filterParts(parts);
   }

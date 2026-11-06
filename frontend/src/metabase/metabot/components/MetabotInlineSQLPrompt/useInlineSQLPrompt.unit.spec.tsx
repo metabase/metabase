@@ -127,18 +127,13 @@ function TestEditor({ question }: { question: Question }) {
     handleAcceptProposed,
     handleRejectProposed,
   } = useInlineSQLPrompt(currentQuestion, "qb");
-  const query = checkNotNull(currentQuestion.legacyNativeQuery());
-
   return (
     <>
       <NativeQueryEditor
         question={currentQuestion}
-        query={query}
         proposedQuestion={proposedQuestion}
-        setDatasetQuery={(nextQuery) =>
-          setCurrentQuestion(
-            currentQuestion.setDatasetQuery(nextQuery.datasetQuery()),
-          )
+        setQuery={(nextQuery) =>
+          setCurrentQuestion(currentQuestion.setQuery(nextQuery))
         }
         onAcceptProposed={handleAcceptProposed}
         onRejectProposed={handleRejectProposed}
@@ -159,7 +154,7 @@ function TestEditor({ question }: { question: Question }) {
       </NativeQueryEditor>
       {portalElement}
       <output data-testid="proposed-sql">
-        {proposedQuestion?.legacyNativeQuery()?.queryText()}
+        {proposedQuestion && Lib.rawNativeQuery(proposedQuestion.query())}
       </output>
     </>
   );
