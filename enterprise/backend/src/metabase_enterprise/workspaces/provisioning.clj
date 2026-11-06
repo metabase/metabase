@@ -102,44 +102,50 @@
 (defn provision-workspace-database!
   "Provision an isolated output schema and user for a `:provisioning`
   WorkspaceDatabase row. State transitions: `:provisioning` -> `:provisioned`
-  on success, or back to `:unprovisioned` on failure. A failure that leaves
-  nothing to tear down deletes the row instead."
+  on success, or back to `:unprovisioned` on failure. An init failure that
+  leaves nothing to tear down deletes the row instead."
   [workspace-database-id provisioner]
-  (try
-    (with-workspace-database-lock workspace-database-id
-      (let [wsd (ws.db/workspace-database workspace-database-id)]
-        (when-not wsd
-          (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
-        (when-not (= :provisioning (:status wsd))
-          (throw (ex-info "WorkspaceDatabase must be :provisioning to provision"
-                          {:id workspace-database-id :status (:status wsd)})))
-        (let [db         (ws.db/database (:database_id wsd))
-              driver     (driver.u/database->driver db)
-              workspace  (wsd-iso-workspace workspace-database-id)
-              ws-details (merge workspace (details provisioner driver db workspace))
-              schemas    (vec (:input_schemas wsd))]
-          (try
-            (init! provisioner driver db ws-details)
-            (grant! provisioner driver db ws-details schemas)
-            (catch Throwable t
-              (when-not (nothing-to-tear-down? t)
-                (try
-                  (destroy! provisioner driver db ws-details)
-                  (catch Throwable destroy-t
-                    (log/warnf destroy-t "Failed to clean up after provisioning failure for WorkspaceDatabase %s"
-                               workspace-database-id))))
-              (throw t)))
-          (ws.db/update-workspace-database! workspace-database-id
-                                            {:output_namespace (:schema ws-details)
-                                             :database_details (:database_details ws-details)
-                                             :status           :provisioned}))))
-    (catch Throwable t
-      (if (nothing-to-tear-down? t)
-        ;; the row is the record that warehouse objects may exist; there are none, and a later teardown of the row
-        ;; would drop the user init refused
-        (ws.db/delete-workspace-database! workspace-database-id)
-        (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned}))
-      (throw t)))
+  ;; only init's error can say that nothing is left to tear down: see [[driver/init-workspace-isolation!]]
+  (let [init-left-nothing? (volatile! false)]
+    (try
+      (with-workspace-database-lock workspace-database-id
+        (let [wsd (ws.db/workspace-database workspace-database-id)]
+          (when-not wsd
+            (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
+          (when-not (= :provisioning (:status wsd))
+            (throw (ex-info "WorkspaceDatabase must be :provisioning to provision"
+                            {:id workspace-database-id :status (:status wsd)})))
+          (let [db         (ws.db/database (:database_id wsd))
+                driver     (driver.u/database->driver db)
+                workspace  (wsd-iso-workspace workspace-database-id)
+                ws-details (merge workspace (details provisioner driver db workspace))
+                schemas    (vec (:input_schemas wsd))]
+            (try
+              (try
+                (init! provisioner driver db ws-details)
+                (catch Throwable t
+                  (vreset! init-left-nothing? (nothing-to-tear-down? t))
+                  (throw t)))
+              (grant! provisioner driver db ws-details schemas)
+              (catch Throwable t
+                (when-not @init-left-nothing?
+                  (try
+                    (destroy! provisioner driver db ws-details)
+                    (catch Throwable destroy-t
+                      (log/warnf destroy-t "Failed to clean up after provisioning failure for WorkspaceDatabase %s"
+                                 workspace-database-id))))
+                (throw t)))
+            (ws.db/update-workspace-database! workspace-database-id
+                                              {:output_namespace (:schema ws-details)
+                                               :database_details (:database_details ws-details)
+                                               :status           :provisioned}))))
+      (catch Throwable t
+        (if @init-left-nothing?
+          ;; the row is the record that warehouse objects may exist; there are none, and a later teardown of the row
+          ;; would drop the user init refused
+          (ws.db/delete-workspace-database! workspace-database-id)
+          (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned}))
+        (throw t))))
   (ws.db/workspace-database workspace-database-id))
 
 (defn deprovision-workspace-database!
