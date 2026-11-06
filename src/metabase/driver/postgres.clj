@@ -42,7 +42,7 @@
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql Array Connection ResultSet ResultSetMetaData Statement Types)
+   (java.sql Array Connection ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql PGConnection)
@@ -1537,6 +1537,9 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- current-login [conn]
+  (:current_user (first (jdbc/query conn ["SELECT current_user"]))))
+
 (defn- public-create-grant?
   "True if `schema-name` grants CREATE to the PUBLIC pseudo-role on PostgreSQL.
 
@@ -1548,15 +1551,12 @@
 
    Historical default on PostgreSQL ≤14; PostgreSQL 15 changed the default to
    drop CREATE for PUBLIC on `public`. Redshift uses a different check (see
-   the redshift driver) because it can't cast `aclitem[]` to text."
+   the redshift driver)."
   [conn schema-name]
-  (let [{:keys [acl]} (first (jdbc/query conn ["SELECT nspacl::text AS acl FROM pg_namespace WHERE nspname = ?" schema-name]))]
-    (boolean
-     (when (and acl (> (count acl) 1))
-       ;; nspacl text form: `{<grantee>=<perms>/<grantor>,...}`. PUBLIC entries
-       ;; have an empty grantee, so they appear as `=<perms>/<grantor>` after
-       ;; the opening `{` or after a comma.
-       (re-find #"(?:^\{|,)=[^/]*C" acl)))))
+  (boolean (seq (jdbc/query conn [(str "SELECT 1 FROM pg_catalog.pg_namespace n "
+                                       "CROSS JOIN LATERAL pg_catalog.aclexplode(n.nspacl) a "
+                                       "WHERE n.nspname = ?::text AND a.grantee = 0 AND a.privilege_type = 'CREATE'")
+                                  schema-name]))))
 
 (defn raise-public-create-grant!
   "Throw the standard ex-info for the public-CREATE-grant pre-condition. Shared
@@ -1572,9 +1572,7 @@
 
 (defn assert-no-public-create-grant!
   "Throws when `schema-name` has CREATE granted to PUBLIC on PostgreSQL. Called
-   from `grant-workspace-read-access!` for each input schema being granted —
-   we want this check per-schema (only the schemas actually used as inputs
-   matter), not a blanket check on `public` at init time."
+   from `grant-workspace-read-access!` for each input schema being granted."
   [conn schema-name]
   (when (public-create-grant? conn schema-name)
     (raise-public-create-grant! schema-name)))
@@ -1586,19 +1584,20 @@
   [conn schema-name]
   (let [row (first (jdbc/query
                     conn
-                    ["SELECT has_schema_privilege(current_user, ?, 'USAGE WITH GRANT OPTION') AS can_grant"
+                    [(str "SELECT pg_catalog.has_schema_privilege(current_user, ?::text, 'USAGE WITH GRANT OPTION') "
+                          "AS can_grant")
                      schema-name]))]
     (not (:can_grant row))))
 
 (defn raise-missing-usage-grant-option!
-  "Throw the standard ex-info for the schema-USAGE-grant-option pre-condition."
-  [schema-name]
+  "Throw the standard ex-info for the schema-USAGE-grant-option pre-condition, naming the fix for `login`."
+  [login schema-name]
   (let [quoted-schema (quote-schema schema-name)]
-    (throw (ex-info (format (str "Current user lacks USAGE WITH GRANT OPTION on schema %s. "
+    (throw (ex-info (format (str "The admin connection's login %s lacks USAGE WITH GRANT OPTION on schema %s. "
                                  "Cannot grant USAGE to the workspace user. Have the schema owner "
-                                 "run `GRANT USAGE ON SCHEMA %s TO CURRENT_USER WITH GRANT OPTION` "
+                                 "run `GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION` "
                                  "and retry.")
-                            quoted-schema quoted-schema)
+                            (quote-field login) quoted-schema quoted-schema (quote-field login))
                     {:status-code 412
                      :schema      schema-name}))))
 
@@ -1607,7 +1606,7 @@
    `schema-name`. Called from `grant-workspace-read-access!` per input schema."
   [conn schema-name]
   (when (schema-missing-usage-grant-option? conn schema-name)
-    (raise-missing-usage-grant-option! schema-name)))
+    (raise-missing-usage-grant-option! (current-login conn) schema-name)))
 
 (defn tables-missing-grant-option
   "Return objects in `schema-name` for which the current PostgreSQL user does
@@ -1619,29 +1618,31 @@
   (jdbc/query
    conn
    [(str "SELECT n.nspname AS schema, c.relname AS object "
-         "FROM pg_class c "
-         "JOIN pg_namespace n ON n.oid = c.relnamespace "
-         "WHERE n.nspname = ? "
+         "FROM pg_catalog.pg_class c "
+         "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+         "WHERE n.nspname = ?::text "
          "  AND c.relkind IN ('r','p','v','m','f') "
-         "  AND NOT has_table_privilege(current_user, c.oid, 'SELECT WITH GRANT OPTION') "
+         "  AND NOT pg_catalog.has_table_privilege(current_user, c.oid, 'SELECT WITH GRANT OPTION') "
          "ORDER BY c.relname")
     schema-name]))
 
 (defn raise-missing-grant-option!
   "Throw the standard ex-info for the SELECT-WITH-GRANT-OPTION pre-condition,
-   naming the objects the current user cannot re-grant SELECT on."
-  [schema-name objects]
+   naming the objects `login` cannot re-grant SELECT on."
+  [login schema-name objects]
   (let [qualified     (map #(str (quote-schema (:schema %)) "." (quote-table (:object %)))
                            objects)
         quoted-schema (quote-schema schema-name)]
-    (throw (ex-info (format (str "Current user lacks SELECT WITH GRANT OPTION on %d object(s) in "
+    (throw (ex-info (format (str "The admin connection's login %s lacks SELECT WITH GRANT OPTION on %d object(s) in "
                                  "schema %s: %s. Cannot grant SELECT to the workspace user. "
                                  "Have the object owner run `GRANT SELECT ON ALL TABLES IN SCHEMA "
-                                 "%s TO CURRENT_USER WITH GRANT OPTION` and retry.")
+                                 "%s TO %s WITH GRANT OPTION` and retry.")
+                            (quote-field login)
                             (count objects)
                             quoted-schema
                             (str/join ", " qualified)
-                            quoted-schema)
+                            quoted-schema
+                            (quote-field login))
                     {:status-code 412
                      :schema      schema-name
                      :objects     (vec qualified)}))))
@@ -1654,7 +1655,7 @@
    objects and the workspace user can't read them."
   [conn schema-name]
   (when-let [missing (seq (tables-missing-grant-option conn schema-name))]
-    (raise-missing-grant-option! schema-name missing)))
+    (raise-missing-grant-option! (current-login conn) schema-name missing)))
 
 (defn unmemberable-owners-in-schema
   "Return distinct roles owning objects in `schema-name` that the current
@@ -1668,12 +1669,12 @@
   [conn schema-name]
   (jdbc/query
    conn
-   [(str "SELECT DISTINCT pg_get_userbyid(c.relowner) AS owner "
-         "FROM pg_class c "
-         "JOIN pg_namespace n ON n.oid = c.relnamespace "
-         "WHERE n.nspname = ? "
+   [(str "SELECT DISTINCT pg_catalog.pg_get_userbyid(c.relowner) AS owner "
+         "FROM pg_catalog.pg_class c "
+         "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+         "WHERE n.nspname = ?::text "
          "  AND c.relkind IN ('r','p','v','m','f') "
-         "  AND NOT pg_has_role(current_user, c.relowner, 'MEMBER') "
+         "  AND NOT pg_catalog.pg_has_role(current_user, c.relowner, 'MEMBER') "
          "ORDER BY owner")
     schema-name]))
 
@@ -1704,27 +1705,120 @@
   (when-let [missing (seq (unmemberable-owners-in-schema conn schema-name))]
     (raise-unmemberable-default-priv-owners! schema-name missing)))
 
-;;; Isolation limit, checked at grant time in [[grant-workspace-read-access!]] via
-;;; [[assert-no-public-create-grant!]]: PostgreSQL's permission model lets a user
-;;; receive privileges either directly or through PUBLIC (the implicit pseudo-role
-;;; every login is a member of). REVOKE-ing CREATE from a specific user only
-;;; removes their *direct* grant — it can't override a PUBLIC grant. So if any
-;;; input schema (most commonly `public` itself, on PostgreSQL ≤14 where that
-;;; was the default) grants CREATE to PUBLIC, the workspace user inherits it
-;;; transitively and our isolation contract leaks: the user can create tables
-;;; in input schemas, becoming their owner, which then makes `DROP USER` fail
-;;; at deprovisioning. The probe at grant time fails fast with a 412 so the
-;;; cluster admin can run `REVOKE CREATE ON SCHEMA <name> FROM PUBLIC` before
-;;; retrying. PostgreSQL 15+ removed the permissive default on `public`, so
-;;; fresh PG15 clusters typically pass; PG14 and earlier need the manual revoke.
+(defn- table-creators
+  "The roles that own a relation in `schema`, own `schema`, or hold CREATE on it: the roles whose database-wide default
+  privileges apply to tables created there."
+  [conn schema]
+  (map :owner (jdbc/query conn [(str "WITH n AS (SELECT oid, nspowner, nspacl FROM pg_catalog.pg_namespace "
+                                     "           WHERE nspname = ?::text), "
+                                     "r AS (SELECT c.relowner AS role FROM pg_catalog.pg_class c, n "
+                                     "      WHERE c.relnamespace = n.oid AND c.relkind IN ('r','p','v','m','f') "
+                                     "      UNION SELECT nspowner FROM n "
+                                     "      UNION SELECT a.grantee FROM n, pg_catalog.aclexplode(n.nspacl) a "
+                                     "      WHERE a.privilege_type = 'CREATE' AND a.grantee <> 0) "
+                                     "SELECT pg_catalog.pg_get_userbyid(role) AS owner FROM r ORDER BY 1")
+                                schema])))
+
+(def ^:private public-write-privileges
+  "Privileges that let a grantee change a table or act through its owner: TRIGGER runs the grantee's function as
+  whoever writes the table, and REFERENCES can block the owner's writes. MAINTAIN exists from Postgres 17."
+  "('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'TRIGGER', 'REFERENCES', 'MAINTAIN')")
+
+(defn- public-writes
+  "Every grant to PUBLIC that lets the workspace user write to a table in `schema`, now or once it is created: on a
+  table, on a sequence, on a column, or in the default privileges of the schema or, for one of `creators`, of the
+  whole database."
+  [conn schema creators]
+  (let [privileges      "string_agg(DISTINCT a.privilege_type, ', ' ORDER BY a.privilege_type) AS privileges "
+        public          (str "a.grantee = 0 AND a.privilege_type IN " public-write-privileges " ")
+        public-sequence "a.grantee = 0 AND a.privilege_type IN ('UPDATE', 'USAGE') "]
+    (->> (jdbc/query
+          conn
+          [(str "SELECT 'table' AS kind, c.relname AS object, NULL AS col, NULL AS for_role, " privileges
+                "FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+                "CROSS JOIN LATERAL pg_catalog.aclexplode(c.relacl) a "
+                "WHERE n.nspname = ?::text AND c.relkind <> 'S' AND " public "GROUP BY c.relname "
+                "UNION ALL "
+                ;; nextval and setval change a sequence
+                "SELECT 'sequence', c.relname, NULL, NULL, " privileges
+                "FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+                "CROSS JOIN LATERAL pg_catalog.aclexplode(c.relacl) a "
+                "WHERE n.nspname = ?::text AND c.relkind = 'S' AND " public-sequence "GROUP BY c.relname "
+                "UNION ALL "
+                "SELECT 'column', c.relname, att.attname, NULL, " privileges
+                "FROM pg_catalog.pg_attribute att JOIN pg_catalog.pg_class c ON c.oid = att.attrelid "
+                "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+                "CROSS JOIN LATERAL pg_catalog.aclexplode(att.attacl) a "
+                "WHERE n.nspname = ?::text AND NOT att.attisdropped AND " public "GROUP BY c.relname, att.attname "
+                "UNION ALL "
+                "SELECT CASE WHEN d.defaclnamespace = 0 THEN 'database default' ELSE 'schema default' END "
+                "       || CASE WHEN d.defaclobjtype = 'S' THEN ' sequences' ELSE '' END, "
+                "       NULL, NULL, pg_catalog.pg_get_userbyid(d.defaclrole), " privileges
+                "FROM pg_catalog.pg_default_acl d CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) a "
+                "WHERE ((d.defaclobjtype = 'r' AND " public ") OR (d.defaclobjtype = 'S' AND " public-sequence ")) "
+                "  AND d.defaclnamespace IN (0, (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = ?::text)) "
+                "GROUP BY d.defaclrole, d.defaclnamespace, d.defaclobjtype "
+                "ORDER BY 1, 2, 3, 4")
+           schema schema schema schema])
+         (filter #(or (not (str/starts-with? (:kind %) "database default"))
+                      (contains? (set creators) (:for_role %)))))))
+
+(defn- public-write-label [{:keys [kind object col for_role]}]
+  (case kind
+    "table"                      object
+    "sequence"                   (str "sequence " object)
+    "column"                     (str object "." col)
+    "schema default"             (str "default privileges for " for_role)
+    "schema default sequences"   (str "default sequence privileges for " for_role)
+    "database default"           (str "database-wide default privileges for " for_role)
+    "database default sequences" (str "database-wide default sequence privileges for " for_role)))
+
+(defn- public-write-revoke [schema {:keys [kind object col for_role privileges]}]
+  (let [table #(str (quote-schema schema) "." (quote-table object))]
+    (case kind
+      "table"                      (format "REVOKE %s ON TABLE %s FROM PUBLIC;" privileges (table))
+      "sequence"                   (format "REVOKE %s ON SEQUENCE %s FROM PUBLIC;" privileges (table))
+      "column"                     (format "REVOKE %s (%s) ON TABLE %s FROM PUBLIC;" privileges (quote-field col) (table))
+      "schema default"             (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s REVOKE %s ON TABLES FROM PUBLIC;"
+                                           (quote-field for_role) (quote-schema schema) privileges)
+      "schema default sequences"   (format (str "ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA %s REVOKE %s ON SEQUENCES "
+                                                "FROM PUBLIC;")
+                                           (quote-field for_role) (quote-schema schema) privileges)
+      "database default"           (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s REVOKE %s ON TABLES FROM PUBLIC;"
+                                           (quote-field for_role) privileges)
+      "database default sequences" (format "ALTER DEFAULT PRIVILEGES FOR ROLE %s REVOKE %s ON SEQUENCES FROM PUBLIC;"
+                                           (quote-field for_role) privileges))))
+
+(defn- check-no-public-writes!
+  "The workspace user can write to an input table that grants a write privilege to PUBLIC, and no REVOKE from the
+  workspace user takes that back."
+  [conn schema]
+  (when-let [grants (seq (public-writes conn schema (table-creators conn schema)))]
+    (throw (ex-info (format "%d grant(s) let PUBLIC write to tables in schema %s: %s. Run `%s` and retry."
+                            (count grants) (quote-schema schema) (str/join ", " (map public-write-label grants))
+                            (str/join " " (map #(public-write-revoke schema %) grants)))
+                    {:status-code 412, :schema schema, :objects (mapv public-write-label grants)}))))
+
+;;; Isolation limit: PostgreSQL's permission model lets a user receive privileges
+;;; either directly or through PUBLIC (the implicit pseudo-role every login is a
+;;; member of). REVOKE-ing a privilege from a specific user only removes their
+;;; *direct* grant — it can't override a PUBLIC grant. So a schema that grants
+;;; CREATE to PUBLIC (most commonly `public` itself, on PostgreSQL ≤14 where that
+;;; was the default), or a table that grants a write to PUBLIC, leaks through
+;;; any grant this code makes. init refuses (412) a cluster where PUBLIC can
+;;; create objects in any database the workspace user may connect to, and
+;;; [[grant-workspace-read-access!]] refuses input schemas PUBLIC can write to.
 
 (def ^:private workspace-lock-timeout
   "How long workspace DDL waits for a lock: a session holding one, such as a workspace user's, cannot hang it."
   "30s")
 
 (defn- start-workspace-transaction!
-  "Runs first in every transaction of the workspace methods."
+  "Runs first in every transaction of the workspace methods. Pins search_path to pg_catalog: a function or operator
+  that a workspace user planted in a schema on the default search_path (`public` before Postgres 15) would otherwise
+  run with this login's privileges (CVE-2018-1058). Catalog functions are also schema-qualified where it matters."
   [conn]
+  (jdbc/execute! conn ["SET LOCAL search_path = pg_catalog, pg_temp"])
   (jdbc/execute! conn [(format "SET LOCAL lock_timeout = '%s'" workspace-lock-timeout)]))
 
 (defn- sql-state [t]
@@ -1797,6 +1891,142 @@
            {:status-code 409, :workspace/cleanup? false, :user user}
            cause))
 
+(defn- connectable-databases
+  "The databases of the cluster that any login, the workspace user included, may connect to: those that allow
+  connections and grant CONNECT to PUBLIC. template0 never allows them."
+  [conn]
+  (map :datname (jdbc/query conn [(str "SELECT d.datname FROM pg_catalog.pg_database d WHERE d.datallowconn "
+                                       "AND d.datname <> 'template0' AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode("
+                                       "  COALESCE(d.datacl, pg_catalog.acldefault('d', d.datdba))) a "
+                                       "  WHERE a.grantee = 0 AND a.privilege_type = 'CONNECT') "
+                                       "ORDER BY d.datname")])))
+
+(defn- current-database [conn]
+  (:db (first (jdbc/query conn ["SELECT pg_catalog.current_database() AS db"]))))
+
+(defn- do-in-other-database
+  "Calls `(f conn)` in a transaction on database `db` of the same cluster, as the login of the caller's connection
+  scope, and returns what it returns."
+  [database db f]
+  (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
+   :postgres
+   (assoc (driver.conn/effective-details (driver.u/lib-database (:id database))) :dbname db)
+   (fn [spec]
+     (jdbc/with-db-transaction [conn spec]
+       (start-workspace-transaction! conn)
+       (f conn)))))
+
+(defn- public-create-schemas
+  "The schemas of the connected database that grant CREATE to PUBLIC."
+  [conn]
+  (map :nspname (jdbc/query conn [(str "SELECT n.nspname FROM pg_catalog.pg_namespace n "
+                                       "CROSS JOIN LATERAL pg_catalog.aclexplode(n.nspacl) a "
+                                       "WHERE a.grantee = 0 AND a.privilege_type = 'CREATE' "
+                                       "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
+                                       "AND n.nspname NOT LIKE 'pg\\_toast%' "
+                                       "ORDER BY n.nspname")])))
+
+(defn- public-create-findings
+  "`[database-name schemas]` for each of `databases`: the schemas there that grant CREATE to PUBLIC, or `:unverifiable`
+  when this login cannot connect to check."
+  [database conn databases]
+  (let [current (current-database conn)]
+    (for [db databases]
+      [db (if (= db current)
+            (public-create-schemas conn)
+            (try
+              (do-in-other-database database db #(doall (public-create-schemas %)))
+              ;; any failure to check, including a name the connection guard refuses, leaves the database unverified,
+              ;; and init refuses it
+              (catch Exception _
+                :unverifiable)))])))
+
+(defn- check-no-public-create-anywhere!
+  "Every login, the workspace user included, can create objects in a schema that grants CREATE to PUBLIC, in any
+  database it may connect to (`public` before Postgres 15): writes outside its output schema, objects that keep it
+  from being dropped, and functions that shadow catalog ones for whoever runs with that schema on its search_path."
+  [database conn]
+  ;; the warehouse's own database too, even when CONNECT comes from a grant to the workspace user rather than PUBLIC
+  (let [findings     (doall (public-create-findings database conn (distinct (cons (current-database conn)
+                                                                                  (connectable-databases conn)))))
+        schemas      (for [[db found] findings :when (sequential? found), schema found] [db schema])
+        unverifiable (for [[db found] findings :when (= :unverifiable found)] db)]
+    (when (or (seq schemas) (seq unverifiable))
+      (throw (ex-info
+              (str "The workspace user could create objects outside its output schema."
+                   (when (seq schemas)
+                     (format " These schemas grant CREATE to PUBLIC: %s."
+                             (str/join ", " (for [[db schema] schemas] (str db "." schema)))))
+                   (when (seq unverifiable)
+                     (format " The admin connection's login cannot connect to check these databases: %s."
+                             (str/join ", " unverifiable)))
+                   (format (str " Run %s"
+                                (when (seq schemas)
+                                  (str ", or keep the workspace user out of a database with "
+                                       "`REVOKE CONNECT ON DATABASE <db> FROM PUBLIC;`"))
+                                ", and retry.")
+                           (str/join ", " (concat
+                                           (for [[db schema] schemas]
+                                             (format "`REVOKE CREATE ON SCHEMA %s FROM PUBLIC;` in database %s"
+                                                     (quote-schema schema) (quote-field db)))
+                                           (for [db unverifiable]
+                                             (format "`REVOKE CONNECT ON DATABASE %s FROM PUBLIC;`" (quote-field db)))))))
+              {:status-code  412
+               :schemas      (vec (for [[db schema] schemas] (str db "." schema)))
+               :unverifiable (vec unverifiable)})))))
+
+(defn- check-admin-login-privileges!
+  "init creates a role and a schema: without CREATEROLE or CREATE on the database, it would fail on the statement
+  itself. Throws a 412 naming what to grant."
+  [conn user]
+  (let [login (current-login conn)
+        db    (current-database conn)
+        {:keys [createrole create]}
+        (first (jdbc/query conn [(str "SELECT (r.rolcreaterole OR r.rolsuper) AS createrole, "
+                                      "pg_catalog.has_database_privilege(current_user, pg_catalog.current_database(), "
+                                      "'CREATE') AS \"create\" "
+                                      "FROM pg_catalog.pg_roles r WHERE r.rolname = current_user")]))
+        fixes (cond-> []
+                (not createrole) (conj (format "ALTER ROLE %s CREATEROLE;" (quote-field login)))
+                (not create)     (conj (format "GRANT CREATE ON DATABASE %s TO %s;" (quote-field db) (quote-field login))))]
+    (when (seq fixes)
+      (throw (ex-info (format (str "The admin connection's login %s lacks the privileges to create the workspace user and its "
+                                   "output schema. Have a superuser run `%s` and retry.")
+                              (quote-field login) (str/join " " fixes))
+                      {:status-code 412, :user user})))))
+
+(defn- check-holds-workspace-user-privileges!
+  "An admin connection login with NOINHERIT is a member of the workspace user without its privileges, and teardown, which
+  needs them, would fail for good. Throws a 412, rolling back init."
+  [conn user]
+  (when-not (:usage (first (jdbc/query conn [(str "SELECT pg_catalog.pg_has_role(current_user, ?::text, 'USAGE') "
+                                                  "AS usage")
+                                             user])))
+    (let [login (current-login conn)]
+      (throw (ex-info (format (str "The admin connection's login %s does not inherit the privileges of the roles it is a member "
+                                   "of, which removing a workspace needs. Run `ALTER ROLE %s INHERIT` and retry.")
+                              (quote-field login) (quote-field login))
+                      {:status-code 412, :user user})))))
+
+(defn- grant-connect!
+  "The workspace user can connect to this database: through PUBLIC, or through a grant made here, which teardown
+  revokes. Throws a 412 when neither is possible."
+  [conn user]
+  (let [db (current-database conn)]
+    (when-not (:connect (first (jdbc/query conn [(str "SELECT pg_catalog.has_database_privilege(?::text, "
+                                                      "pg_catalog.current_database(), 'CONNECT') AS connect")
+                                                 user])))
+      (if (:grantable (first (jdbc/query conn [(str "SELECT pg_catalog.has_database_privilege(current_user, "
+                                                    "pg_catalog.current_database(), 'CONNECT WITH GRANT OPTION') "
+                                                    "AS grantable")])))
+        (jdbc/execute! conn [(format "GRANT CONNECT ON DATABASE %s TO %s" (quote-field db) (quote-field user))])
+        (let [login (current-login conn)]
+          (throw (ex-info (format (str "Database %s does not grant CONNECT to PUBLIC, and the admin connection's login cannot "
+                                       "grant it to the workspace user. Have the database owner run `GRANT CONNECT ON "
+                                       "DATABASE %s TO %s WITH GRANT OPTION` and retry.")
+                                  (quote-field db) (quote-field db) (quote-field login))
+                          {:status-code 412, :user user})))))))
+
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
   (let [schema-name   (:schema workspace)
@@ -1807,10 +2037,12 @@
       (run-workspace-ddl!
        database [password]
        (fn [conn]
+         (check-no-public-create-anywhere! database conn)
          ;; a role of this name may be another workspace's: taking it over would hand that workspace's grants to this
          ;; one, and cleaning up after this init would drop it
          (when (role-exists? conn user)
            (throw (role-exists-error user nil)))
+         (check-admin-login-privileges! conn user)
          [;; PostgreSQL supports IF NOT EXISTS for schemas
           (format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
           (format "CREATE USER %s" quoted-user)
@@ -1821,7 +2053,9 @@
           (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)])
        (fn [conn]
          (set-password! conn user password)
-         (jdbc/execute! conn [(grant-membership-statement conn user)])))
+         (jdbc/execute! conn [(grant-membership-statement conn user)])
+         (check-holds-workspace-user-privileges! conn user)
+         (grant-connect! conn user)))
       (catch java.sql.SQLException e
         ;; a concurrent init of the same workspace created the role between the check and CREATE USER: a duplicate
         ;; role, or a duplicate key in pg_authid when both inserted at once
@@ -1963,31 +2197,6 @@
         (log/warnf "Could not revoke %s from workspace user %s: %s" (pr-str grant) user (ex-message e))
         (jdbc/execute! conn ["ROLLBACK TO SAVEPOINT workspace_revoke"])))))
 
-(defn- connectable-databases
-  "The databases of the cluster that any login, the workspace user included, may connect to: those that allow
-  connections and grant CONNECT to PUBLIC. template0 never allows them."
-  [conn]
-  (map :datname (jdbc/query conn [(str "SELECT d.datname FROM pg_catalog.pg_database d WHERE d.datallowconn "
-                                       "AND d.datname <> 'template0' AND EXISTS (SELECT 1 FROM pg_catalog.aclexplode("
-                                       "  COALESCE(d.datacl, pg_catalog.acldefault('d', d.datdba))) a "
-                                       "  WHERE a.grantee = 0 AND a.privilege_type = 'CONNECT') "
-                                       "ORDER BY d.datname")])))
-
-(defn- current-database [conn]
-  (:db (first (jdbc/query conn ["SELECT pg_catalog.current_database() AS db"]))))
-
-(defn- do-in-other-database
-  "Calls `(f conn)` in a transaction on database `db` of the same cluster, as the login of the caller's connection
-  scope, and returns what it returns."
-  [database db f]
-  (sql-jdbc.conn/do-with-connection-spec-for-testing-connection
-   :postgres
-   (assoc (driver.conn/effective-details (driver.u/lib-database (:id database))) :dbname db)
-   (fn [spec]
-     (jdbc/with-db-transaction [conn spec]
-       (start-workspace-transaction! conn)
-       (f conn)))))
-
 (defn- drop-user-error
   "`DROP USER` failing on objects the user still owns or privileges it still holds, often in another database, as a 409
   naming them."
@@ -2058,33 +2267,21 @@
             source-schemas)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
-  [driver database workspace schemas]
-  (let [username       (-> workspace :database_details :user)
-        source-schemas (set schemas)
-        ;; Pre-flight check: each input schema must not grant CREATE to PUBLIC. See
-        ;; the comment block above [[init-workspace-isolation! :postgres]] for the
-        ;; isolation hole this catches. We probe per-schema so only the schemas
-        ;; actually used as inputs need to be locked down — schemas the workspace
-        ;; never touches can keep their default ACLs.
-        ;; read-only probes — one connection, no transaction needed
-        _              (sql-jdbc.execute/do-with-connection-with-options
-                        driver (driver.u/ensure-lib-database database) nil
-                        (fn [^Connection conn]
-                          (let [check-conn {:connection conn}]
-                            (doseq [s source-schemas]
-                              (assert-no-public-create-grant!       check-conn s)
-                              (assert-has-usage-grant-option!       check-conn s)
-                              (assert-has-grant-option!             check-conn s)
-                              (assert-can-alter-default-privileges! check-conn s)))))
-        sqls           (grant-workspace-read-access-sqls username schemas)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:id database)))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^Statement stmt ^String sql))
-        (try
-          (.executeBatch ^Statement stmt)
-          (catch Throwable t
-            (throw (driver.u/batch-exception t))))))))
+  [_driver database workspace schemas]
+  (let [username (-> workspace :database_details :user)]
+    ;; the preconditions run in the same transaction as the grants, with its pinned search_path, and throw before any
+    ;; change. Probed per input schema, so only the schemas a workspace reads need to be locked down.
+    (run-workspace-ddl!
+     database [(-> workspace :database_details :password)]
+     (fn [conn]
+       (doseq [s (set schemas)]
+         (assert-no-public-create-grant!       conn s)
+         (check-no-public-writes!              conn s)
+         (assert-has-usage-grant-option!       conn s)
+         (assert-has-grant-option!             conn s)
+         (assert-can-alter-default-privileges! conn s))
+       (grant-workspace-read-access-sqls username schemas))
+     (constantly nil))))
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")
