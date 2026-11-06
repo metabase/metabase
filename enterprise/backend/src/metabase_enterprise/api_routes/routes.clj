@@ -22,6 +22,7 @@
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
    [metabase-enterprise.data-testing.api]
+   [metabase-enterprise.data-testing.run-api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
@@ -136,6 +137,7 @@
    ;; Endpoint is superuser-only so it's not exposed to regular users in the meantime.
    "/data-complexity-score"        metabase-enterprise.data-complexity-score.api/routes
    "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :library)
+   "/data-test-run"                (premium-handler metabase-enterprise.data-testing.run-api/routes :transforms-testing)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections)

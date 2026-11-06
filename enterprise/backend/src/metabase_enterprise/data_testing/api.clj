@@ -9,12 +9,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.parameters.dates :as params.dates]
-   [metabase.request.core :as request]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -90,18 +86,6 @@
   (data-testing.db/delete-transform-test! id)
   nil)
 
-(mu/defn- timestamp-range :- [:maybe [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]]
-  "The `[start end]` instants of the date filter `date-string`, or nil when it is nil."
-  [date-string :- [:maybe :string]]
-  (when date-string
-    (let [{:keys [start end]} (try
-                                (params.dates/date-string->range date-string {:inclusive-end? false})
-                                (catch Exception e
-                                  (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
-                                                  {:status-code 400}
-                                                  e))))]
-      [(some-> start u.date/parse) (some-> end u.date/parse)])))
-
 (api.macros/defendpoint :post "/run" :- ::data-testing.schema/run-result
   "Run a transform test that is not saved, of a transform that need not be saved either, as `POST /:id/run` runs a
   saved one. Needs what saving the test needs, apart from remote sync."
@@ -112,30 +96,6 @@
                                 [:test      ::data-testing.schema/transform-test.definition]]]
   (api/check-403 (data-testing.models/can-run-test? transform))
   (refusing #(data-testing.runner/run-test! transform test nil)))
-
-(api.macros/defendpoint :get "/:id/run" :- ::data-testing.schema/transform-test-runs.response
-  "List the runs of a transform test, newest first."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   {:keys [statuses start-time end-time]} :- [:map {:closed true}
-                                              [:statuses   {:optional true} [:maybe (ms/QueryVectorOf ::data-testing.schema/run-status)]]
-                                              [:start-time {:optional true} [:maybe ms/NonBlankString]]
-                                              [:end-time   {:optional true} [:maybe ms/NonBlankString]]]]
-  (api/read-check :model/TransformTest id)
-  (let [[started-at-start started-at-end] (timestamp-range start-time)
-        [ended-at-start ended-at-end]     (timestamp-range end-time)
-        filters                           {:transform-test-id id
-                                           :statuses          statuses
-                                           :started-at-start  started-at-start
-                                           :started-at-end    started-at-end
-                                           :ended-at-start    ended-at-start
-                                           :ended-at-end      ended-at-end}
-        limit                             (or (request/limit) 20)
-        offset                            (or (request/offset) 0)]
-    {:data   (t2/hydrate (data-testing.db/transform-test-runs filters limit offset) :initiated_by_user)
-     :limit  limit
-     :offset offset
-     :total  (data-testing.db/transform-test-run-count filters)}))
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
   "Run a transform test, which reading it is enough to do.
