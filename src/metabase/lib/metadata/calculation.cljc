@@ -98,6 +98,7 @@
                          (and (vector? x) (#{:asc :desc} (first x))) ::order-by
                          :else                                        ::expression))}
    [:metadata/column                    ::lib.schema.metadata/column]
+   [:metadata/database                  ::lib.schema.metadata/database]
    [:metadata/table                     ::lib.schema.metadata/table]
    [:metadata/card                      ::card-metadata]
    [:metadata/metric                    ::metric-metadata]
@@ -537,6 +538,7 @@
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table-id query) (:id table))
           :schema (:schema table)
+          :description (:description table)
           :visibility-type (:visibility-type table)}))
 
 (mr/def ::column-metadata-with-source

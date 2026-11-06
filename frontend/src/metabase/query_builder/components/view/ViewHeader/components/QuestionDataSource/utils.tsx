@@ -6,11 +6,8 @@ import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Table from "metabase-lib/v1/metadata/Table";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { IconName } from "metabase-types/api";
+import type { ConcreteTableId, DatabaseId, IconName } from "metabase-types/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -39,7 +36,9 @@ type TableDataSourceItem = {
   key: string;
   name: string;
   href: string;
-  table: Table;
+  tableId: ConcreteTableId;
+  schemaName: string | null;
+  description: string | null;
 };
 
 type CardDataSourceItem = {
@@ -57,19 +56,17 @@ type CardDataSourceModel = Extract<
 
 type DataSourceItem = TableDataSourceItem | CardDataSourceItem;
 
-export function getDataSourceParts({
-  question,
-  subHead,
-  isObjectDetail,
-  formatTableAsComponent = true,
-  hasMultipleSchemas = false,
-}: {
-  question: Question;
+type DataSourcePartsOpts = {
   subHead?: boolean;
   isObjectDetail?: boolean;
   formatTableAsComponent?: boolean;
   hasMultipleSchemas?: boolean;
-}): DataSourcePart[] {
+};
+
+export function getDataSourceParts({
+  question,
+  ...opts
+}: DataSourcePartsOpts & { question: Question }): DataSourcePart[] {
   if (!question) {
     return [];
   }
@@ -82,10 +79,17 @@ export function getDataSourceParts({
     return [];
   }
 
-  const parts: DataSourcePart[] = [];
+  return isNative
+    ? getNativeDataSourceParts(question, opts)
+    : getQueryDataSourceParts(query, opts);
+}
 
-  const metadata = question.metadata();
-  const database = metadata.database(Lib.databaseID(query));
+function getNativeDataSourceParts(
+  question: Question,
+  { subHead, isObjectDetail }: DataSourcePartsOpts,
+): DataSourcePart[] {
+  const database = question.metadata().database(question.databaseId());
+  const parts: DataSourcePart[] = [];
 
   if (database) {
     parts.push({
@@ -96,20 +100,45 @@ export function getDataSourceParts({
     });
   }
 
-  const hasTableLink = subHead || isObjectDetail;
+  // Unjustified type cast. FIXME
+  const table = (question.legacyNativeQuery() as NativeQuery).table();
+  if (table == null) {
+    return filterParts(parts);
+  }
 
-  if (isNative) {
-    // Unjustified type cast. FIXME
-    const table = (question.legacyNativeQuery() as NativeQuery).table();
-    if (table == null) {
-      return filterParts(parts);
-    }
-    return [
-      {
-        name: table.displayName(),
-        href: hasTableLink ? getTableURL(table) : "",
-      },
-    ];
+  const hasTableLink = subHead || isObjectDetail;
+  return [
+    {
+      name: table.displayName(),
+      href: hasTableLink ? Urls.question(table.newQuestion()) : "",
+    },
+  ];
+}
+
+function getQueryDataSourceParts(
+  query: Lib.Query,
+  {
+    subHead,
+    isObjectDetail,
+    formatTableAsComponent = true,
+    hasMultipleSchemas = false,
+  }: DataSourcePartsOpts,
+): DataSourcePart[] {
+  const parts: DataSourcePart[] = [];
+  const databaseId = Lib.databaseID(query);
+  const database = Lib.databaseMetadata(query);
+
+  if (databaseId != null && database != null) {
+    const databaseInfo = Lib.displayInfo(query, -1, database);
+    parts.push({
+      icon: !subHead ? "database" : undefined,
+      name: databaseInfo.displayName,
+      href:
+        databaseId >= 0
+          ? Urls.browseDatabase({ id: databaseId, name: databaseInfo.name })
+          : undefined,
+      model: "database",
+    });
   }
 
   const items = [
@@ -117,16 +146,22 @@ export function getDataSourceParts({
     ...Lib.joins(query, -1).map((join) => Lib.joinedThing(query, join)),
   ]
     .filter(isNotNull)
-    .map((source) => getDataSourceItem(query, metadata, source))
+    .map((source) => getDataSourceItem(query, source))
     .filter(isNotNull);
 
   const [sourceItem] = items;
-  if (sourceItem != null) {
-    if (sourceItem.type === "table") {
-      pushSchemaPart(parts, database, sourceItem.table, hasMultipleSchemas);
-    }
+  if (sourceItem == null) {
+    return filterParts(parts);
+  }
 
-    const part: DataSourcePart = formatTableAsComponent ? (
+  const schemaPart = getSchemaPart(sourceItem, databaseId, hasMultipleSchemas);
+  if (schemaPart != null) {
+    parts.push(schemaPart);
+  }
+
+  const hasTableLink = subHead || isObjectDetail;
+  parts.push(
+    formatTableAsComponent ? (
       <QuestionTableBadges
         items={items}
         subHead={subHead}
@@ -139,27 +174,37 @@ export function getDataSourceParts({
         href: hasTableLink ? sourceItem.href : "",
         model: sourceItem.type === "table" ? "table" : sourceItem.model,
       }
-    );
-
-    parts.push(part);
-  }
+    ),
+  );
 
   return filterParts(parts);
 }
 
-function pushSchemaPart(
-  parts: DataSourcePart[],
-  database: Database | null | undefined,
-  table: Table,
+function getSchemaPart(
+  sourceItem: DataSourceItem,
+  databaseId: DatabaseId | null,
   hasMultipleSchemas: boolean,
-) {
-  if (table.schema_name && hasMultipleSchemas && database != null) {
-    parts.push({
-      model: "schema",
-      name: table.schema_name,
-      href: database.id >= 0 ? Urls.browseSchema(table) : undefined,
-    });
+): DataSourceBadgePart | undefined {
+  if (
+    sourceItem.type !== "table" ||
+    sourceItem.schemaName == null ||
+    databaseId == null ||
+    !hasMultipleSchemas
+  ) {
+    return undefined;
   }
+
+  return {
+    model: "schema",
+    name: sourceItem.schemaName,
+    href:
+      databaseId >= 0
+        ? Urls.browseSchema({
+            db_id: databaseId,
+            schema_name: sourceItem.schemaName,
+          })
+        : undefined,
+  };
 }
 
 function filterParts(parts: DataSourcePart[]): DataSourcePart[] {
@@ -173,13 +218,15 @@ function filterParts(parts: DataSourcePart[]): DataSourcePart[] {
 
 function getDataSourceItem(
   query: Lib.Query,
-  metadata: Metadata,
   source: Lib.TableMetadata | Lib.CardMetadata,
 ): DataSourceItem | undefined {
   const pickerInfo = Lib.pickerInfo(query, source);
+  if (pickerInfo == null) {
+    return undefined;
+  }
 
-  if (pickerInfo?.cardId != null) {
-    const sourceInfo = Lib.displayInfo(query, -1, source);
+  const sourceInfo = Lib.displayInfo(query, -1, source);
+  if (pickerInfo.cardId != null) {
     return {
       type: "card",
       key: `card:${pickerInfo.cardId}`,
@@ -189,19 +236,27 @@ function getDataSourceItem(
     };
   }
 
-  const table =
-    pickerInfo?.tableId != null ? metadata.table(pickerInfo.tableId) : null;
-  if (table == null) {
-    return undefined;
-  }
-
   return {
     type: "table",
-    key: `table:${table.id}`,
-    name: table.displayName(),
-    href: getTableURL(table),
-    table,
+    key: `table:${pickerInfo.tableId}`,
+    name: sourceInfo.displayName,
+    href: getTableQueryUrl(query, source),
+    tableId: pickerInfo.tableId,
+    schemaName: sourceInfo.schema ?? null,
+    description: sourceInfo.description ?? null,
   };
+}
+
+function getTableQueryUrl(
+  query: Lib.Query,
+  table: Lib.TableMetadata | Lib.CardMetadata,
+) {
+  const tableQuery = Lib.queryFromTableOrCardMetadata(query, table);
+  return Urls.serializedQuestion({
+    display: "table",
+    visualization_settings: {},
+    dataset_query: Lib.toJsQuery(tableQuery),
+  });
 }
 
 function getCardModel(cardInfo: Lib.CardDisplayInfo): CardDataSourceModel {
@@ -241,7 +296,7 @@ function QuestionTableBadges({
         {!subHead && item.type === "table" && (
           <span className={S.IconWrapper}>
             <TableInfoIcon
-              table={item.table}
+              table={{ id: item.tableId, description: item.description }}
               icon="info"
               size={16}
               position="bottom"
@@ -261,8 +316,4 @@ function QuestionTableBadges({
       data-testid="question-table-badges"
     />
   );
-}
-
-function getTableURL(table: Table) {
-  return Urls.question(table.newQuestion());
 }

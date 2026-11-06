@@ -715,6 +715,20 @@
     (testing "returns nil for unknown card id"
       (is (nil? (lib.js/card-metadata mp 999999))))))
 
+(deftest ^:parallel database-metadata-test
+  (let [database (lib.js/database-metadata meta/metadata-provider)]
+    (testing "returns metadata of database"
+      (is (=? {:lib/type :metadata/database
+               :id       (meta/id)}
+              database)))
+    (testing "display info returns database name"
+      (is (=? {:name        (:name database)
+               :displayName (:name database)}
+              (js->clj (lib.js/display-info (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                            -1
+                                            database)
+                       :keywordize-keys true))))))
+
 (deftest ^:parallel table-metadata-test
   (testing "returns metadata of table with given id"
     (is (=? {:lib/type :metadata/table

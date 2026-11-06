@@ -100,3 +100,16 @@
           mp (lib.js.metadata/metadata-provider 1 metadata)]
       (is (= 1234
              (lib.metadata/setting mp :unaggregated-query-row-limit))))))
+
+(deftest ^:parallel parse-table-schema-name-test
+  (testing "table schema is the schema name, not the store's schema ID"
+    (let [metadata-fragment #js {:tables #js {"1" #js {:id          1
+                                                       :schema      "2:PUBLIC"
+                                                       :schema_name "PUBLIC"}
+                                              "2" #js {:id     2
+                                                       :schema "PUBLIC"}}}
+          parsed-fragment   (lib.js.metadata/parse-objects :table metadata-fragment)]
+      (is (=? {1 {:schema "PUBLIC"}
+               2 {:schema "PUBLIC"}}
+              (update-vals parsed-fragment deref)))
+      (is (not (contains? @(get parsed-fragment 1) :schema-name))))))
