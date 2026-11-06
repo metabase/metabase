@@ -1859,7 +1859,7 @@ function ClearButton({
         aria-label={t`Clear filters`}
         onClick={handleClick}
       >
-        <Icon name="close" />
+        <Icon name="trash" />
       </ActionIcon>
     </Tooltip>
   );
