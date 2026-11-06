@@ -1,9 +1,8 @@
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupFieldEndpoints,
+  setupDatabaseEndpoints,
   setupFieldValuesEndpoint,
-  setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -14,13 +13,10 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockField,
-  createMockFieldValues,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
+  PRODUCT_EAT_VALUES,
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -39,16 +35,8 @@ interface SetupOpts {
 
 const setup = async ({ item, card }: SetupOpts) => {
   const database = createSampleDatabase();
-  const table = checkNotNull(
-    database.tables?.find((table) => table.id === PRODUCTS_ID),
-  );
-  setupTableQueryMetadataEndpoint(table);
-  table.fields?.forEach((field) => {
-    setupFieldEndpoints(field);
-    if (typeof field.id === "number") {
-      setupFieldValuesEndpoint(createMockFieldValues({ field_id: field.id }));
-    }
-  });
+  setupDatabaseEndpoints(database);
+  setupFieldValuesEndpoint(PRODUCT_EAT_VALUES);
   if (card) {
     setupCardEndpoints(card);
     setupCardQueryMetadataEndpoint(card, {
