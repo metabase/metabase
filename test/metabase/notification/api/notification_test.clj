@@ -1465,34 +1465,28 @@
                     (mt/user-http-request :crowberto :post 200 "notification/send" echoed)))))))))
 
 (deftest send-unsaved-notification-response-test
-  (testing "POST /api/notification/send reports on the success status"
-    (testing "sent status"
-      (mt/with-model-cleanup [:model/Notification]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
-          (notification.tu/with-channel-fixtures [:channel/email]
-            (notification.tu/with-captured-channel-send!
-              (is (=? {:status "sent"}
-                      (mt/user-http-request :crowberto :post 200 "notification/send"
-                                            {:handlers [{:channel_type :channel/email
-                                                         :recipients   [{:type    :notification-recipient/user
-                                                                         :user_id (mt/user->id :crowberto)}]}]
-                                             :subscriptions [{:type :notification-subscription/cron
-                                                              :cron_schedule "0 0 0 * * ?"}]
-                                             :payload_type  :notification/card
-                                             :payload       {:card_id card-id
-                                                             :send_condition "has_result"}}))))))))
-    (testing "skipped status"
-      (mt/with-model-cleanup [:model/Notification]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:limit 0})}]
-          (notification.tu/with-channel-fixtures [:channel/email]
-            (notification.tu/with-captured-channel-send!
-              (is (=? {:status "skipped" :skip_reason "No results"}
-                      (mt/user-http-request :crowberto :post 200 "notification/send"
-                                            {:handlers [{:channel_type :channel/email
-                                                         :recipients   [{:type    :notification-recipient/user
-                                                                         :user_id (mt/user->id :crowberto)}]}]
-                                             :subscriptions [{:type :notification-subscription/cron
-                                                              :cron_schedule "0 0 0 * * ?"}]
-                                             :payload_type  :notification/card
-                                             :payload       {:card_id card-id
-                                                             :send_condition "has_result"}}))))))))))
+  (let [make-req (fn [card-id] {:handlers [{:channel_type :channel/email
+                                            :recipients   [{:type    :notification-recipient/user
+                                                            :user_id (mt/user->id :crowberto)}]}]
+                                :subscriptions [{:type :notification-subscription/cron
+                                                 :cron_schedule "0 0 0 * * ?"}]
+                                :payload_type  :notification/card
+                                :payload       {:card_id card-id
+                                                :send_condition "has_result"}})]
+    (testing "POST /api/notification/send reports on the success status"
+      (testing "sent status"
+        (mt/with-model-cleanup [:model/Notification]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+            (notification.tu/with-channel-fixtures [:channel/email]
+              (notification.tu/with-captured-channel-send!
+                (is (=? {:status "sent"}
+                        (mt/user-http-request :crowberto :post 200 "notification/send"
+                                              (make-req card-id)))))))))
+      (testing "skipped status"
+        (mt/with-model-cleanup [:model/Notification]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:limit 0})}]
+            (notification.tu/with-channel-fixtures [:channel/email]
+              (notification.tu/with-captured-channel-send!
+                (is (=? {:status "skipped" :skip_reason "No results"}
+                        (mt/user-http-request :crowberto :post 200 "notification/send"
+                                              (make-req card-id))))))))))))
