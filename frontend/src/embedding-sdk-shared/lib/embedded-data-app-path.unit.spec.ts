@@ -1,7 +1,22 @@
 import {
+  getDataAppEmbedUrl,
   getEmbeddedAppNameFromPath,
   isEmbeddedDataAppPath,
+  normalizeDataAppPath,
+  validateDataAppPath,
 } from "./embedded-data-app-path";
+
+const UNSAFE_PATHS = [
+  "sales/../other",
+  "sales/%2e%2e/other",
+  "sales/%2fother",
+  "sales/%5cother",
+  "sales/%",
+  "sales\\other",
+  "sales/\nother",
+  "sales/%00other",
+  "sales/%7fother",
+];
 
 describe("embedded data app route", () => {
   const originalRoot = window.MetabaseRoot;
@@ -15,6 +30,15 @@ describe("embedded data app route", () => {
       getEmbeddedAppNameFromPath("/sales/orders?active=true#details"),
     ).toBe("sales");
   });
+
+  it.each(["New York", "New%20York"])(
+    "allows spaces in nested routes: %s",
+    (region) => {
+      expect(getEmbeddedAppNameFromPath(`/sales/regions/${region}`)).toBe(
+        "sales",
+      );
+    },
+  );
 
   it.each<[string, string, boolean]>([
     ["/embed/embedded-apps/sales", "/", true],
@@ -31,15 +55,47 @@ describe("embedded data app route", () => {
     },
   );
 
-  it.each([
-    "sales/../other",
-    "sales/%2e%2e/other",
-    "sales/%2fother",
-    "sales/%",
-    "sales\\other",
-    "sales/\nother",
-    "sales/%00other",
-  ])("rejects unsafe paths: %s", (path) => {
+  it.each(UNSAFE_PATHS)("rejects unsafe paths: %s", (path) => {
     expect(getEmbeddedAppNameFromPath(path)).toBeUndefined();
+  });
+});
+
+describe("data app embed urls", () => {
+  it("preserves subpath and route", () => {
+    const url = getDataAppEmbedUrl(
+      "https://metabase.example.com/mb/",
+      "///sales/orders?active=true#details",
+    );
+
+    expect(url.href).toBe(
+      "https://metabase.example.com/mb/embed/embedded-apps/sales/orders?active=true#details",
+    );
+  });
+});
+
+describe("data app paths", () => {
+  it("strips leading slashes", () => {
+    expect(normalizeDataAppPath("///sales/orders")).toBe("sales/orders");
+  });
+
+  it("accepts leading slashes, nested routes, query params and hashes", () => {
+    expect(() =>
+      validateDataAppPath("///sales/orders?active=true#details"),
+    ).not.toThrow();
+  });
+
+  it.each(["New York", "New%20York"])(
+    "accepts spaces in nested routes: %s",
+    (region) => {
+      expect(() =>
+        validateDataAppPath(`///sales/regions/${region}?active=true#details`),
+      ).not.toThrow();
+    },
+  );
+
+  it.each(UNSAFE_PATHS)("rejects unsafe paths: %s", (path) => {
+    expect(() => validateDataAppPath(path)).toThrow(
+      "A valid data app path must be provided.",
+    );
   });
 });

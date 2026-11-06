@@ -1,10 +1,39 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
-import type { TableId } from "metabase-types/api";
+import type { DataApp, TableId } from "metabase-types/api";
 
 import { createLibrary, publishTables } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
-import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
+import {
+  LOCAL_GIT_PATH,
+  commitToRepo,
+  configureGitAndPullChanges,
+  setupGitSync,
+} from "./e2e-remote-sync-helpers";
+
+export type EmbeddedDataApp = DataApp;
+
+/** Imports the embedded-app fixture with its built bundle and saved question. */
+export function createEmbeddedDataApp(): Cypress.Chainable<EmbeddedDataApp> {
+  const slug = "embedded-app";
+
+  createLibrary();
+  publishTables({ table_ids: [SAMPLE_DB_TABLES.STATIC_ORDERS_ID] });
+  setupGitSync();
+  copyDataAppsFixture();
+  commitToRepo("Add data apps");
+  configureGitAndPullChanges("read-only");
+
+  return cy.request<DataApp[]>("/api/ee/apps").then(({ body: apps }) => {
+    const app = apps.find(({ name }) => name === slug);
+
+    if (!app) {
+      throw new Error(`The pull loaded no data app named ${slug}.`);
+    }
+
+    return app;
+  });
+}
 
 /**
  * Builds the apps of `e2e/support/assets/data-apps` and copies that repository,
