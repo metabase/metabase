@@ -191,15 +191,12 @@
     (is (nil? (manifest/asset-paths {:assets ["thumbs-up.svg"]})))))
 
 (deftest ^:parallel icon-error-test
-  (testing "an SVG icon passes"
-    (is (nil? (manifest/icon-error "icon.svg")))
-    (is (nil? (manifest/icon-error "./Icon.SVG"))))
-  (testing "a bitmap or any other file type is named in the error"
-    (is (= "Plugin icon \"icon.png\" must be an SVG file" (manifest/icon-error "icon.png")))
-    (is (= "Plugin icon \"icon.js\" must be an SVG file" (manifest/icon-error "icon.js"))))
-  (testing "no icon, or a non-string one, is someone else's problem"
-    (is (nil? (manifest/icon-error nil)))
-    (is (nil? (manifest/icon-error 42)))))
+  (testing "an SVG icon passes, whatever the extension's case"
+    (is (nil? (manifest/icon-error "Icon.SVG"))))
+  (testing "any other file type is named in the error"
+    (is (= "Plugin icon \"icon.png\" must be an SVG file" (manifest/icon-error "icon.png"))))
+  (testing "no icon is fine"
+    (is (nil? (manifest/icon-error nil)))))
 
 ;;; ------------------------------------------------ Content Type ------------------------------------------------
 

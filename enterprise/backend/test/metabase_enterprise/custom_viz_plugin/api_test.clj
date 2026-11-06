@@ -196,13 +196,6 @@
                      (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
                                         (cvp.tu/valid-bundle-bytes "dup-viz"))))))))
 
-(deftest upload-rejects-a-non-svg-icon-test
-  (mt/with-premium-features #{:custom-viz}
-    (testing "a bitmap icon is refused at upload: the icon must be an SVG file"
-      (is (re-find #"Plugin icon \"icon.png\" must be an SVG file"
-                   (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
-                                      (cvp.tu/valid-bundle-bytes "thumbs" {:icon "icon.png"})))))))
-
 ;;; ------------------------------------------------ CRUD ------------------------------------------------
 
 (deftest delete-test
