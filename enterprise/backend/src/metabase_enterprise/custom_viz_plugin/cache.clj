@@ -89,6 +89,14 @@
              (catch Exception e
                (log/warnf "Failed to delete %s: %s" p (ex-message e))))))))
 
+(defn- check-manifest-icon!
+  "Throw a 400 ex-info unless `manifest`'s icon is an SVG file (or absent). Returns `manifest`."
+  [manifest]
+  (when-let [error (manifest/icon-error (:icon manifest))]
+    (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
+                    {:status-code 400})))
+  manifest)
+
 (defn validate-bundle!
   "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
    validate its contents against the expected layout. Returns
@@ -130,9 +138,6 @@
           (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
                           {:status-code 400})))
         (when-let [error (manifest/identifier-error (:name parsed))]
-          (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
-                          {:status-code 400})))
-        (when-let [error (manifest/icon-error (:icon parsed))]
           (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
                           {:status-code 400})))
         {:bytes       bundle-bytes
@@ -226,6 +231,13 @@
       (delete-recursive! child))))
 
 ;;; ------------------------------------------------ Save Bundle ------------------------------------------------
+
+(defn check-bundle-icon!
+  "Throw a 400 ex-info unless `validated`'s icon is an SVG file (or absent). Returns `validated`.
+  Upload-only, so serdes imports of older bitmap-icon plugins keep working."
+  [validated]
+  (check-manifest-icon! (:manifest validated))
+  validated)
 
 (defn check-bundle-identifier!
   "Throw a 400 ex-info unless the `name` in `validated`'s manifest equals `identifier`, the identity an existing
@@ -412,10 +424,7 @@
       (when-let [error (manifest/validation-error parsed)]
         (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
                         {:status-code 400})))
-      (when-let [error (manifest/icon-error (:icon parsed))]
-        (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
-                        {:status-code 400})))
-      parsed)))
+      (check-manifest-icon! parsed))))
 
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL.

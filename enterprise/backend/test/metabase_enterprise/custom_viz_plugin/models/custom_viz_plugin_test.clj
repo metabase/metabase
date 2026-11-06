@@ -180,6 +180,20 @@
                  :bundle_hash   (cv.tu/bundle-hash new-bundle)}
                 (t2/select-one :model/CustomVizPlugin :id id)))))))
 
+(deftest load-keeps-a-plugin-with-a-bitmap-icon-active-test
+  (testing "a plugin exported with a bitmap icon, from before icons had to be SVG files, keeps working once imported"
+    (let [bundle (cv.tu/valid-bundle-bytes "bitmap-viz" {:icon "icon.png"})]
+      (testing "on insert"
+        (mt/with-model-cleanup [:model/CustomVizPlugin]
+          (serdes/load-one! (ingested-plugin "bitmap-viz" bundle) nil)
+          (is (=? {:status :active :error_message nil}
+                  (t2/select-one :model/CustomVizPlugin :identifier "bitmap-viz")))))
+      (testing "on update over an active plugin"
+        (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "bitmap-viz" bundle)]
+          (serdes/load-one! (ingested-plugin "bitmap-viz" bundle) (t2/select-one :model/CustomVizPlugin :id id))
+          (is (=? {:status :active :error_message nil}
+                  (t2/select-one :model/CustomVizPlugin :id id))))))))
+
 (deftest load-rejects-bundle-identifier-mismatch-test
   (testing "a bundle whose manifest name differs from the imported identifier lands as :error, never :active"
     (let [ingested (ingested-plugin "calendar-heatmap-viz" (cv.tu/valid-bundle-bytes "thumbs-viz"))]
