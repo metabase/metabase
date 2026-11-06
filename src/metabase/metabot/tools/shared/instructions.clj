@@ -51,24 +51,25 @@ The assistant needs to:
 - Use statistics ONLY for query planning (e.g., percent_null indicates whether to handle NULLs,
   distinct_count suggests field cardinality), NEVER to answer the user's question directly")
 
+(def not-saved-instruction
+  "Tells the model that what it just built has no card, so that it does not claim a save."
+  (str "- It is not saved. Do not bring this up unless the user asks about saving, "
+       "or what they asked for needs it saved. "
+       "Say that it is saved only after a tool result says so."))
+
 (defn chart-created-instructions
   "Generate instructions for chart creation result."
   [chart-id]
   (str "Chart created successfully.\n"
        "Present link to user using: [Chart](metabase://chart/" chart-id ")\n"
-       "Replace 'Chart' with a meaningful description of what the chart shows."))
+       "Replace 'Chart' with a meaningful description of what the chart shows.\n"
+       not-saved-instruction))
 
 (def answer-sources-instructions
   "Instructions for LLM when processing available answer sources (metrics and models)."
   "These are the available metrics and models for answering questions.
 Use this information to understand what data sources are available.
 Reference items using: [name](metabase://type/id)")
-
-(def not-saved-instruction
-  "Tells the model that what it just built has no card, so that it does not claim a save."
-  (str "- It is not saved. Do not bring this up unless the user asks about saving, "
-       "or what they asked for needs it saved. "
-       "Say that it is saved only after a tool result says so."))
 
 (defn query-created-instructions-for
   "Generate instructions for a newly created SQL query, embedding the query ID
