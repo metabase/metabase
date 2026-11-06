@@ -136,12 +136,19 @@
   [^java.sql.Connection conn db-type]
   (boolean (some->> (flavor conn db-type) flavors (snapshot-resource snapshot-version) some?)))
 
+(defn- comments-only?
+  "Whether every line of `chunk` is blank or a `--` comment."
+  [chunk]
+  (every? #(or (str/blank? %) (str/starts-with? (str/triml %) "--")) (str/split-lines chunk)))
+
 (defn statements
-  "Split the contents of a snapshot `.sql` file into individual statements."
+  "Split the contents of a snapshot `.sql` file into individual statements.
+  Chunks holding only comments, such as the file's header, are left out."
   [sql]
+  ;; sent as a statement, a comment-only chunk is an empty query, which not every server accepts
   (into []
         (comp (map str/trim)
-              (remove str/blank?))
+              (remove comments-only?))
         (str/split sql
                    (re-pattern (str "(?m)^" (java.util.regex.Pattern/quote statement-separator) "$")))))
 
