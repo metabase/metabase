@@ -12,9 +12,9 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -618,7 +618,7 @@
   current user cannot read. Swapped in for both so a test can tell which one a caller picked."
   [tag recorded]
   (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
-    (reify resolve.mp/ContentStore
+    (reify protocol.mp/ContentStore
       (card-by-entity-id    [_ _] (refuse))
       (measure-by-entity-id [_ _] (refuse))
       (segment-by-entity-id [_ _] (refuse))
