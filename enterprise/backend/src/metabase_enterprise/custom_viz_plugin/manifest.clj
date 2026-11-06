@@ -46,7 +46,9 @@
   (some-> (mr/explain ManifestFieldTypes manifest) me/humanize))
 
 (defn identifier-error
-  "Reject colons to prevent viz-settings key collisions. Serving enforces only this rule for legacy compatibility."
+  "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom:<identifier>:<setting id>`
+   viz-settings keys, so an identifier containing it could read another plugin's settings. Serving enforces only this
+   rule, so legacy plugins keep working; [[directory-name-error]] is stricter."
   [identifier]
   (when (and (string? identifier) (str/includes? identifier ":"))
     (format "Plugin identifier \"%s\" must not contain \":\"" identifier)))
