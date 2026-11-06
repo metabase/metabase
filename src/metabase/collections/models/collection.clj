@@ -614,13 +614,6 @@
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
-(defn assert-remote-syncable
-  "Throws when `collection` is remote-synced but remote sync can't sync it."
-  [{:keys [is_remote_synced] :as collection}]
-  (when (and is_remote_synced (not (remote-sync/collection-syncable? collection)))
-    (let [msg (tru "Remote sync syncs only the Library, transforms, snippets and data apps unless remote-sync-custom-collections-enabled is on.")]
-      (throw (ex-info msg {:status-code 400, :errors {:is_remote_synced msg}})))))
-
 (defenterprise check-library-content
   "Checks contents of a library collection before saving it. The OSS implementation is a no-op."
   metabase-enterprise.library.validation
@@ -1929,8 +1922,7 @@
                (assoc :slug (slugify collection-name))
                (cond->
                 (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
-    (assert-valid-remote-synced-parent <>)
-    (assert-remote-syncable <>)))
+    (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2152,9 +2144,7 @@
                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
                collection-name (assoc :slug (slugify collection-name)))
       (when-not *clearing-remote-sync*
-        (assert-valid-remote-synced-parent (merge collection-before-updates <>))
-        (when (contains? <> :is_remote_synced)
-          (assert-remote-syncable (merge collection-before-updates <>)))))))
+        (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
@@ -2316,8 +2306,8 @@
               :is_sample        false
               :is_remote_synced false}})
 
-;; An import writes the row directly, so `update-collection!` never refuses the archive. An export made before
-;; transforms folders could no longer be archived can still hold one.
+;; An import skips `update-collection!`, so an export from an older version can bring back an archived transforms
+;; folder.
 (defmethod serdes/load-one! "Collection" [ingested maybe-local]
   (when (and (:archived ingested)
              (= transforms-ns (some-> (:namespace ingested) keyword)))

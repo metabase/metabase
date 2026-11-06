@@ -894,7 +894,19 @@
     (let [result {:metrics [] :tables [] :models [] :errors ["Error 1"]}
           xml (llm-shape/get-metadata-result->xml result)]
       (is (str/includes? xml "<errors>"))
-      (is (str/includes? xml "Error 1")))))
+      (is (str/includes? xml "Error 1"))))
+  (testing "names questions as questions, and mentions their <query> only when one has a query"
+    (let [note       "The cards in <questions> are saved questions, not metrics or models."
+          query-note "The <query> of a question shows the table and filters it uses."
+          xml        (fn [questions] (llm-shape/get-metadata-result->xml {:questions questions}))
+          with-query {:id 1 :name "Q1" :query_json {"lib/type" "mbql/query"}}]
+      (doseq [questions [[{:id 2 :name "Q2"}]
+                         [{:id 2 :name "Q2" :query_json {}}]]]
+        (is (str/includes? (xml questions) note))
+        (is (not (str/includes? (xml questions) "<query>")))
+        (is (not (str/includes? (xml questions) query-note))))
+      (is (str/includes? (xml [with-query]) "<query>"))
+      (is (str/includes? (xml [with-query {:id 2 :name "Q2"}]) query-note)))))
 
 (deftest ^:parallel entity->xml-test
   (testing "dispatches to correct formatter based on type"
