@@ -33,7 +33,7 @@ export type ColumnListInfo = {
   columns: Lib.ColumnMetadata[];
 };
 
-const getMetadataColumnListInfo = (
+const getColumnListInfo = (
   metadataProvider: Lib.MetadataProvider,
   tableOrCardMetadata: Lib.TableMetadata | Lib.CardMetadata,
 ): ColumnListInfo => {
@@ -48,7 +48,7 @@ const getMetadataColumnListInfo = (
   };
 };
 
-export const getColumnListInfo = (
+export const getTableColumnListInfo = (
   metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
 ): ColumnListInfo | undefined => {
@@ -56,7 +56,7 @@ export const getColumnListInfo = (
   if (tableMetadata == null) {
     return undefined;
   }
-  return getMetadataColumnListInfo(metadataProvider, tableMetadata);
+  return getColumnListInfo(metadataProvider, tableMetadata);
 };
 
 export const getCardColumnListInfo = (
@@ -67,7 +67,7 @@ export const getCardColumnListInfo = (
   if (cardMetadata == null) {
     return undefined;
   }
-  return getMetadataColumnListInfo(metadataProvider, cardMetadata);
+  return getColumnListInfo(metadataProvider, cardMetadata);
 };
 
 export const getQueryAndColumns = (
