@@ -301,8 +301,7 @@
   (kondo-ratchet/discouraged-symbols :discouraged-var (kondo-ratchet/kondo-config)))
 
 (defn alias-keys
-  "A map from the ratchet key of each of the discouraged `vars` that is another under a second name, by `edges`
-  from [[alias-edges]], to the key its ignores count under."
+  "Ratchet keys of the discouraged `vars` that alias another by `edges`, mapped to the key their ignores count under."
   [edges vars]
   (-> (source-aliases edges vars)
       (update-keys kondo-ratchet/discouraged-count-key)
@@ -340,10 +339,10 @@
   ([]
    (ratchet-options alias-edges!))
   ([find-edges]
-   (let [vars  (delay (discouraged-vars))
-         edges (delay (find-edges @vars))]
-     {:attribute #(attribute-occurrences! % edges)
-      :aliases   #(alias-keys @edges @vars)})))
+   (let [vars-delay  (delay (discouraged-vars))
+         edges-delay (delay (find-edges @vars-delay))]
+     {:attribute #(attribute-occurrences! % edges-delay)
+      :aliases   #(alias-keys @edges-delay @vars-delay)})))
 
 (def keep-marker
   "Comment token marking an ignore as a verified `:redundant-ignore` false positive.
