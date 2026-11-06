@@ -388,12 +388,7 @@
            :message disabled-account-message)
     (let [{:keys [user device-info saml-data]} request
           session (auth-session/create-session-with-auth-tracking!
-                   user device-info
-                   ;; track against the per-IdP AuthIdentity row when the login carries one (see auth-identity-row)
-                   (or (:session/provider request)
-                       (some-> (get-in request [:user-data :identity-provider-name]) keyword)
-                       provider)
-                   nil
+                   user device-info (or (:session/provider request) provider) nil
                    ;; SAML logins carry the IdP's own identifiers; single logout needs them to
                    ;; name the session and subject to end. Other providers have none and store NULL.
                    {:saml-session-index  (:session-index saml-data)

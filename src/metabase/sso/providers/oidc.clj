@@ -375,6 +375,12 @@
 
 ;;; -------------------------------------------------- Login Implementation --------------------------------------------------
 
+(defn- attribute-session
+  "Attribute a successful login's session to the AuthIdentity named `pname`, the per-IdP row it linked."
+  [pname result]
+  (cond-> result
+    (true? (:success? result)) (assoc :session/provider (keyword pname))))
+
 (methodical/defmethod auth-identity/login! :provider/oidc
   [provider {:keys [user claims] :as request}]
   ;; `user` was resolved by email alone; before provisioning/session creation, require the token's
@@ -402,7 +408,7 @@
              :message "Metabase couldn't verify your email address, so an account can't be created for it. Please contact your administrator."})
         (with-identity-link-check* (provider-names pname config) nil (subject claims) (:iss claims)
           {:assumed-issuer (:assumed-issuer config)}
-          #(next-method provider request))))
+          #(attribute-session pname (next-method provider request)))))
 
     ;; a disabled account must not (re)link an identity; the session layer would only refuse the login
     ;; after the link had already been rewritten. One that provisioning reactivates still goes through the
@@ -417,7 +423,8 @@
     (let [result (verify-or-link-identity! provider user claims (:oidc-config request)
                                            (get-in request [:user-data :email]))]
       (if (:success? result)
-        (next-method provider request)
+        (attribute-session (auth-identity/identity-provider-name provider (:oidc-config request))
+                           (next-method provider request))
         result))))
 
 (methodical/defmethod auth-identity/login! :around :provider/oidc
