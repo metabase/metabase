@@ -186,8 +186,9 @@ const timeOf = (date: string, minutes: number) =>
 
 function getDimCustomerRows(): Row[] {
   let customerKey = 0;
-  return TIMELINES.flatMap((timeline) =>
-    timeline.versions.map((version, index) => {
+  return TIMELINES.flatMap((timeline) => {
+    const latest = timeline.versions[timeline.versions.length - 1].state;
+    return timeline.versions.map((version, index) => {
       const next = timeline.versions[index + 1];
       customerKey += 1;
       const hasGap = timeline.customerId === "C-107" && index === 0;
@@ -206,9 +207,11 @@ function getDimCustomerRows(): Row[] {
         valid_from: version.validFrom,
         valid_to: validTo,
         is_current: validTo == null || hasStaleFlag,
+        current_plan: latest.plan,
+        current_region: latest.region,
       };
-    }),
-  );
+    });
+  });
 }
 
 function snapshotVersions(timeline: CustomerTimeline) {

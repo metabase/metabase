@@ -12,9 +12,12 @@ import { Link } from "metabase/common/components/Link";
 import { useDataLayers } from "metabase/metadata/data-layers";
 import {
   type HistoryBinding,
+  type ScdDetailsOverrides,
   type TableStructure as TableStructureValue,
+  getHistoryShape,
   getPeriodGranularityOptions,
   getRowIdentityLabel,
+  getScdTypeForHistoryShape,
   getTableHiddenReason,
   getTableRoleLabel,
   getTableRoleOptions,
@@ -48,11 +51,18 @@ import { CustomPropertiesSection } from "../CustomProperties/CustomPropertiesSec
 import { EntityCustomPropertiesSection } from "../CustomProperties/EntityCustomPropertiesSection";
 import { InferredValue } from "../InferenceReview";
 import {
+  CurrentTableSelect,
+  CurrentValueFieldsInput,
+  FactKeyList,
   HistoryChecksStatus,
-  HistoryKindInput,
+  HistoryShapeValue,
   HistoryVersionsSummary,
+  PreviousValuesSection,
   SharedPointerNote,
+  getHistoryShapeInference,
   getValidToForDates,
+  useHistoryExampleSource,
+  useScdDetails,
 } from "../TableHistory";
 
 import S from "./TableStructure.module.css";
@@ -74,6 +84,7 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
     setPeriodGranularity,
     setHistoryBinding,
     setScdType,
+    setScdDetails,
     setEavBinding,
     setMainDate,
   } = useTableStructures();
@@ -205,8 +216,11 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
           disabled={readOnly}
           onChange={(history) => setHistoryBinding(table, history)}
           onScdTypeChange={(scdType) => setScdType(table, scdType)}
+          onScdDetailsChange={(scdDetails) => setScdDetails(table, scdDetails)}
         />
       )}
+
+      <PreviousValuesSection table={table} disabled={readOnly} />
 
       <RevealTransition
         key={table.id}
@@ -562,6 +576,7 @@ function HistoryBindingSection({
   disabled,
   onChange,
   onScdTypeChange,
+  onScdDetailsChange,
 }: {
   table: Table;
   fields: Field[];
@@ -569,8 +584,16 @@ function HistoryBindingSection({
   disabled: boolean;
   onChange: (binding: Partial<HistoryBinding>) => void;
   onScdTypeChange: (scdType: TableStructureValue["scdType"]) => void;
+  onScdDetailsChange: (scdDetails: ScdDetailsOverrides) => void;
 }) {
   const binding = structure.history;
+  const scd = useScdDetails(table);
+  const shape = getHistoryShape(
+    scd.resolution.scdType,
+    binding.validToFieldId != null,
+  );
+  const shapeInference = getHistoryShapeInference(structure, scd);
+  const exampleSource = useHistoryExampleSource(table, scd);
   const [isAdvancedOpen, { toggle: toggleAdvanced }] = useDisclosure(false);
   const hasCurrentFlag = binding.currentFlagFieldId != null;
 
@@ -579,26 +602,68 @@ function HistoryBindingSection({
       <DetailsTable>
         <DetailsRow
           label={t`History`}
+          fillValue
           value={
-            <HistoryKindInput
-              structure={structure}
-              fields={fields}
+            <HistoryShapeValue
+              shape={shape}
+              inference={shapeInference}
+              isInferred={!scd.resolution.isOverridden}
+              hasDateRange={getValidToForDates(fields, binding) != null}
+              exampleSource={exampleSource}
               disabled={disabled}
-              onConfirmGuess={() =>
-                onScdTypeChange(structure.scdTypeInference.scdType)
-              }
-              onChange={(kind) => {
-                onScdTypeChange(2);
-                onChange({
-                  validToFieldId:
-                    kind === "latest-row-per-key"
-                      ? null
-                      : getValidToForDates(fields, binding),
-                });
+              onConfirm={() => onScdTypeChange(scd.resolution.scdType)}
+              onChange={(shape) => {
+                onScdTypeChange(getScdTypeForHistoryShape(shape));
+                if (shape === "latest-row-per-key") {
+                  onChange({ validToFieldId: null });
+                }
+                if (shape === "versions-with-dates") {
+                  onChange({
+                    validToFieldId: getValidToForDates(fields, binding),
+                  });
+                }
               }}
             />
           }
         />
+        {shape === "current-table" && (
+          <DetailsRow
+            label={t`Current table`}
+            fillValue
+            value={
+              <CurrentTableSelect
+                tables={scd.otherTables}
+                value={scd.currentTable}
+                disabled={disabled}
+                onChange={(currentTableId) =>
+                  onScdDetailsChange({ currentTableId })
+                }
+              />
+            }
+          />
+        )}
+        {shape === "current-values" && (
+          <DetailsRow
+            label={t`Current values`}
+            fillValue
+            value={
+              <CurrentValueFieldsInput
+                fields={fields}
+                value={scd.currentValueFields}
+                disabled={disabled}
+                onChange={(currentValueFieldIds) =>
+                  onScdDetailsChange({ currentValueFieldIds })
+                }
+              />
+            }
+          />
+        )}
+        {shape === "fact-key" && (
+          <DetailsRow
+            label={t`Facts join on`}
+            value={<FactKeyList factKeyFields={scd.factKeyFields} />}
+          />
+        )}
         <DetailsRow
           label={t`Entity key`}
           fillValue

@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupDatabaseEndpoints,
   setupUserKeyValueEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
@@ -70,6 +71,7 @@ export function setup({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
+  setupDatabaseEndpoints({ ...database, tables: [tableWithSegments] });
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",

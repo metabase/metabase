@@ -38,6 +38,7 @@ export const DIM_PRODUCT_ID = 85;
 export const WORKER_POSITION_HISTORY_ID = 86;
 export const SUBSCRIPTION_HISTORY_ID = 87;
 export const PRICE_HISTORY_ID = 88;
+export const SUBSCRIPTIONS_ID = 89;
 
 export const DIM_CUSTOMER_ID_FIELD_ID = 8102;
 const DIM_CUSTOMER_PLAN_FIELD_ID = 8104;
@@ -143,6 +144,18 @@ const dimCustomerFields = createFields(DIM_CUSTOMER_ID, [
   { id: 8110, name: "valid_from", display_name: "Valid from", ...DATE },
   { id: 8111, name: "valid_to", display_name: "Valid to", ...DATE },
   { id: 8112, name: "is_current", display_name: "Is current", ...BOOLEAN },
+  {
+    id: 8113,
+    name: "current_plan",
+    display_name: "Current plan",
+    semantic_type: "type/Category",
+  },
+  {
+    id: 8114,
+    name: "current_region",
+    display_name: "Current region",
+    semantic_type: "type/Category",
+  },
 ]);
 
 const customersSnapshotFields = createFields(CUSTOMERS_SNAPSHOT_ID, [
@@ -284,6 +297,12 @@ const dimProductFields = createFields(DIM_PRODUCT_ID, [
     display_name: "Category",
     semantic_type: "type/Category",
   },
+  {
+    id: 8504,
+    name: "previous_category",
+    display_name: "Previous category",
+    semantic_type: "type/Category",
+  },
 ]);
 
 const workerPositionHistoryFields = createFields(WORKER_POSITION_HISTORY_ID, [
@@ -379,6 +398,30 @@ const subscriptionHistoryFields = createFields(SUBSCRIPTION_HISTORY_ID, [
     ...DECIMAL,
     semantic_type: "type/Currency",
   },
+]);
+
+const subscriptionsFields = createFields(SUBSCRIPTIONS_ID, [
+  {
+    id: 8901,
+    name: "id",
+    display_name: "ID",
+    ...INTEGER,
+    semantic_type: "type/PK",
+  },
+  {
+    id: 8902,
+    name: "plan",
+    display_name: "Plan",
+    semantic_type: "type/Category",
+  },
+  { id: 8903, name: "seats", display_name: "Seats", ...INTEGER },
+  {
+    id: 8904,
+    name: "status",
+    display_name: "Status",
+    semantic_type: "type/Category",
+  },
+  { id: 8905, name: "updated_at", display_name: "Updated at", ...DATETIME },
 ]);
 
 const priceHistoryFields = createFields(PRICE_HISTORY_ID, [
@@ -478,6 +521,14 @@ const TABLE_SPECS: TableSpec[] = [
     displayName: "Fct Orders",
     fields: fctOrdersFields,
     estimatedRowCount: 61840,
+  },
+  {
+    id: SUBSCRIPTIONS_ID,
+    schema: "analytics",
+    name: "subscriptions",
+    displayName: "Subscriptions",
+    fields: subscriptionsFields,
+    estimatedRowCount: 90,
   },
   {
     id: DIM_PRODUCT_ID,

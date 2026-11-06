@@ -9,7 +9,6 @@ import {
   BehaviorSection,
   CoercionStrategyPicker,
   FormattingSection,
-  MetadataSection,
 } from "metabase/metadata/components";
 import {
   useFieldCasting,
@@ -34,6 +33,7 @@ import {
   useIsHistoryAttribute,
   useIsHistoryTable,
 } from "./FieldHistoryRoleInput";
+import { FieldSemanticsSection } from "./FieldSemanticsSection";
 import { GroupingsSection } from "./GroupingsSection";
 import { ValueOrderSection } from "./ValueOrderSection";
 
@@ -47,11 +47,7 @@ interface FieldDetailsProps {
  * A field's settings in the drawer: an editable details table with the name,
  * description, and data type, followed by the shared metadata sections.
  */
-export function FieldDetails({
-  field,
-  table,
-  getFieldHref,
-}: FieldDetailsProps) {
+export function FieldDetails({ field, table }: FieldDetailsProps) {
   const readOnly = !table.can_write;
   const isHistoryTable = useIsHistoryTable(table);
   const isHistoryAttribute = useIsHistoryAttribute(field, table);
@@ -151,15 +147,7 @@ export function FieldDetails({
         </DetailsTable>
       </SidebarSection>
       <CustomFieldSection field={field} table={table} />
-      <SidebarSection title={t`Metadata`}>
-        <MetadataSection
-          field={field}
-          table={table}
-          getFieldHref={getFieldHref}
-          disabled={readOnly}
-          onTrackMetadataChange={trackMetadataChange}
-        />
-      </SidebarSection>
+      <FieldSemanticsSection field={field} table={table} />
       <ValueOrderSection field={field} table={table} />
       <GroupingsSection field={field} table={table} />
       <SidebarSection title={t`Behavior`}>
