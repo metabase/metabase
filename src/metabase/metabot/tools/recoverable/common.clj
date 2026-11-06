@@ -89,11 +89,12 @@
       {:sentence " Use the ID of a query that you built, or a saved question or model that the user can read."
        :recovery []}
 
+      ;; Only run_query gives this hint, and only where SQL can run, so create_sql_query takes `show_chart`
       :sql-query
       {:sentence " The ID of a saved question or model is not a query ID."
        :recovery [{:uses #{"create_sql_query" "run_query"}
-                   :text (str "To run one, write SQL that reads it with `create_sql_query`, then run that query"
-                              " with `run_query`.")}]}
+                   :text (str "To run one, write SQL that reads it with `create_sql_query` (pass `show_chart: false`),"
+                              " then run that query with `run_query`.")}]}
 
       :no-values
       {:sentence " The ID of a saved question or model is not a query ID, and no SQL can run here."
