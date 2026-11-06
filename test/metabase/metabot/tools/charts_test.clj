@@ -21,6 +21,7 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -158,6 +159,22 @@
 
 (def ^:private chart-args
   {:title "Orders by month" :description "Monthly count of orders."})
+
+(deftest chart-tools-say-that-the-chart-is-not-saved-test
+  (let [state {:queries {"q-1" count-by-category}
+               :charts  {"c-1" {:chart_id               "c-1"
+                                :query_id               "q-1"
+                                :queries                [count-by-category]
+                                :visualization_settings {:chart_type :bar}}}}]
+    (doseq [[tool-name args] [["create_chart" (assoc chart-args
+                                                     :data_source  {:query_id "q-1"}
+                                                     :viz_settings {:chart_type "bar"})]
+                              ["edit_chart" (assoc chart-args
+                                                   :chart_id         "c-1"
+                                                   :new_viz_settings {:chart_type "pie"})]]]
+      (testing tool-name
+        (is (str/includes? (:output (invoke tool-name args state))
+                           instructions/not-saved-instruction))))))
 
 (deftest create-chart-unknown-query-id-test
   (testing "a query ID that the conversation doesn't hold fails, and the model reads the query IDs that it does hold"
