@@ -96,10 +96,13 @@ Reference items using: [name](metabase://type/id)")
        "- Present what the query does in a way that matches the user's intent and follow up if they need clarification"))
 
 (defn query-hidden-instructions-for
-  "Instructions for a SQL query the model asked not to show the user."
+  "Instructions for a query, SQL or notebook, that the model asked not to show the user."
   [query-id]
-  (str "The user has not been shown this query. To read its values, call `run_query` with `query_id` `" query-id "`. "
-       "Give the user the values in your answer."))
+  (str "The user has not been shown this query.\n"
+       "- To read its values, call `run_query` with `query_id` `" query-id "`, then give the user the values in "
+       "your answer.\n"
+       "- If the user wants to open the query, link it using `[Link text](metabase://query/" query-id ")`.\n"
+       not-saved-instruction))
 
 (defn- delivery-instruction
   "The delivery line for an updated query, by how it reached the user: `:editor`, proposed in their open editor buffer
@@ -112,8 +115,7 @@ Reference items using: [name](metabase://type/id)")
                  "`[Updated Query](metabase://query/" query-id ")` "
                  "where Updated Query is a meaningful link text\n"
                  not-saved-instruction)
-    :hidden (str "- The user has not been shown the updated query. To read its values, call `run_query` with "
-                 "`query_id` `" query-id "`, and give the user the values in your answer")))
+    :hidden (query-hidden-instructions-for query-id)))
 
 (defn edit-sql-query-instructions-for
   "Generate instructions for an edited SQL query. `delivery` is how the result reached the user, as
