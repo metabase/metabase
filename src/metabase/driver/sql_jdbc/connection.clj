@@ -315,18 +315,12 @@
 (defn- swap-pools-state!
   "Apply `f` and `args` to the pools state, starting it first if needed, and return `[old new]`.
   Throws once the global system has halted.
-  It writes holding the component's slot lock, which [[system/stop!]] also takes, so no write lands between a stop
-  clearing the state and the next start, where it would bring back state the lifecycle no longer tracks."
+  It holds the component's slot lock, which [[system/stop!]] also takes, so no write lands between a stop clearing
+  the state and the next start, where it would bring back state the lifecycle no longer tracks."
   [f & args]
-  (loop []
-    ;; started before the slot lock is taken: a start takes the halt's admission lock first, and taking it while
-    ;; holding the slot lock can deadlock with a halt and another start
+  (mc/with-slot-lock pools-component
     (pools-state)
-    (let [result (mc/with-slot-lock pools-component
-                   ;; a stop can clear the state between the start and the lock, so start it again
-                   (when (some? @pools-component)
-                     (apply mc/swap-vals! pools-component f args)))]
-      (or result (recur)))))
+    (apply mc/swap-vals! pools-component f args)))
 
 (defn- pool-token
   "The c3p0 identity token of the pool in `pool-spec`, or nil if it is not a c3p0 pool."
