@@ -21,7 +21,6 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
