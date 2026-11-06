@@ -1098,12 +1098,11 @@ export const setParameterValuesFromQueryParams =
     dispatch(setParameterValues(parameterValues));
   };
 
-/**
- * Turns auto-apply filters on or off for the loaded dashboard without saving
- * it, applying the pending filter values first.
- */
-export const setAutoApplyFilters =
-  (isEnabled: boolean) => (dispatch: Dispatch, getState: GetState) => {
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
+  (isEnabled: boolean) => (dispatch, getState) => {
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {
@@ -1114,18 +1113,6 @@ export const setAutoApplyFilters =
           attributes: { auto_apply_filters: isEnabled },
         }),
       );
-    }
-  };
-
-export const TOGGLE_AUTO_APPLY_FILTERS =
-  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
-export const toggleAutoApplyFilters = createThunkAction(
-  TOGGLE_AUTO_APPLY_FILTERS,
-  (isEnabled: boolean) => (dispatch, getState) => {
-    const dashboardId = getDashboardId(getState());
-
-    if (dashboardId) {
-      dispatch(setAutoApplyFilters(isEnabled));
       dispatch(updateDashboard({ attributeNames: ["auto_apply_filters"] }));
       if (!isEnabled) {
         trackAutoApplyFiltersDisabled(dashboardId);
