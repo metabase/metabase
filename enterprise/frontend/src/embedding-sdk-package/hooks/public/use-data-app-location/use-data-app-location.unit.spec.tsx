@@ -11,6 +11,7 @@ describe("useDataAppLocation", () => {
   });
 
   it("navigate() updates the sub-path and the iframe URL", () => {
+    const pushState = jest.spyOn(window.history, "pushState");
     const { result } = renderHook(() => useDataAppLocation());
 
     act(() => {
@@ -19,6 +20,7 @@ describe("useDataAppLocation", () => {
 
     expect(result.current.pathname).toBe("/orders/42");
     expect(window.location.pathname).toBe("/orders/42");
+    expect(pushState).toHaveBeenCalledWith(null, "", "/orders/42");
   });
 
   it.each([

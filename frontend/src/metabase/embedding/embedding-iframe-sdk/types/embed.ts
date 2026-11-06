@@ -58,7 +58,8 @@ export type SdkIframeEmbedMessage =
   | SdkIframeEmbedReportAuthenticationError
   | SdkIframeEmbedReportAnalytics
   | SdkIframeEmbedHandleLinkResponse
-  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage;
+  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage
+  | SdkIframeEmbedNavigateToDataAppPathMessage;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -93,6 +94,10 @@ export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
   data: {
     guestToken: string;
   };
+};
+export type SdkIframeEmbedNavigateToDataAppPathMessage = {
+  type: "metabase.embed.navigateToDataAppPath";
+  data: { path: string };
 };
 
 export type SdkIframeEmbedComponentTagMessage =
