@@ -36,10 +36,10 @@
                                 :non-arg-vec-return-type-hint                              1
                                 :reduce-without-init                                       3
                                 :redundant-do                                              1
-                                :syntax                                                    2
+                                :syntax                                                    1
                                 :type-mismatch                                             2
                                 :unquote-not-syntax-quoted                                 1
-                                :unresolved-namespace                                      3
+                                :unresolved-namespace                                      2
                                 :unresolved-symbol                                         9
                                 :unsorted-required-namespaces                              :unlimited
                                 :unused-alias                                              2
