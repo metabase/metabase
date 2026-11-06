@@ -3885,8 +3885,12 @@
                     :model/Database
                     :model/Field
                     :model/Measure
+                    :model/Permissions
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
                     :model/Segment
-                    :model/Table}
+                    :model/Table
+                    :model/User}
    :model-exports #{:model/DataApp}}
 
   enterprise/data-studio

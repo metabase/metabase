@@ -262,7 +262,8 @@
   [:map
    [:id ms/PositiveInt]
    [:name :string]
-   [:member_count ms/IntGreaterThanOrEqualToZero]])
+   [:member_count ms/IntGreaterThanOrEqualToZero]
+   [:is_tenant_group :boolean]])
 
 (api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
   "List the groups other than Administrators that can read a data app's resource collection."
@@ -271,7 +272,7 @@
   (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
 (api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "Grant a batch of internal groups read access to a data app's resource collection atomically."
+  "Grant a batch of internal or tenant groups read access to a data app's resource collection atomically."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]
