@@ -19,23 +19,25 @@
    "slackbot.selmer"
    "sql-querying-only.selmer"])
 
-(defn- render-with-tools
-  "Render `template` for `perms`, the scopes they grant, and `active-tool-names`. The prompt builder reads only tool
-  names, so a name->nil map stands in for the real name->var one."
-  [template perms active-tool-names]
-  (binding [scope/*current-user-metabot-permissions* perms
-            scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
-    (prompts/build-system-message-content
-     {:prompt-template template}
-     {:current_time "2026-03-25T12:00:00Z"}
-     (zipmap active-tool-names (repeat nil))
-     [])))
+(defn- render-template
+  "Render `template` for `perms` and the scopes they grant. `active-tool-names` defaults to none. The prompt builder
+  reads only tool names, so a name->nil map stands in for the real name->var one."
+  ([template perms]
+   (render-template template perms []))
+  ([template perms active-tool-names]
+   (binding [scope/*current-user-metabot-permissions* perms
+             scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
+     (prompts/build-system-message-content
+      {:prompt-template template}
+      {:current_time "2026-03-25T12:00:00Z"}
+      (zipmap active-tool-names (repeat nil))
+      []))))
 
 (defn- render-internal-template
   "Render internal.selmer for `perms` and `active-tool-names` (default [[active-sql-tool-names]])."
   ([perms] (render-internal-template perms active-sql-tool-names))
   ([perms active-tool-names]
-   (render-with-tools "internal.selmer" perms active-tool-names)))
+   (render-template "internal.selmer" perms active-tool-names)))
 
 (def ^:private all-yes-perms
   {:permission/metabot-sql-generation :yes
@@ -169,12 +171,7 @@
 (defn- render-slackbot-template
   "Render the slackbot.selmer template with given permission flags."
   [perms]
-  (binding [scope/*current-user-metabot-permissions* perms]
-    (prompts/build-system-message-content
-     {:prompt-template "slackbot.selmer"}
-     {:current_time "2026-03-25T12:00:00Z"}
-     {}
-     [])))
+  (render-template "slackbot.selmer" perms))
 
 (deftest ^:parallel slackbot-nlq-sections-gated-test
   (let [with-nlq    (render-slackbot-template all-yes-perms)
@@ -251,16 +248,6 @@
 ;;; Custom system prompt injection
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn- render-template
-  "Render a template with given permission flags and optional setting overrides."
-  [template-name perms]
-  (binding [scope/*current-user-metabot-permissions* perms]
-    (prompts/build-system-message-content
-     {:prompt-template template-name}
-     {:current_time "2026-03-25T12:00:00Z"}
-     {}
-     [])))
-
 (deftest custom-chat-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
     (mt/with-temporary-setting-values [metabot-chat-system-prompt "Always respond in French."]
@@ -320,7 +307,7 @@
     (doseq [template query-templates]
       (testing template
         (is (re-find #"Say that it is saved only when a tool result says that it was saved"
-                     (render-with-tools template all-yes-perms active-sql-tool-names)))))))
+                     (render-template template all-yes-perms active-sql-tool-names)))))))
 
 (deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
   (testing "templates for surfaces with a reasoning timeline skip the narration guidance"
@@ -385,8 +372,8 @@
                               [false #"`run_query` runs notebook queries only"]]]
     (testing (str template ", SQL execution " (if sql-on? "on" "off"))
       (mt/with-temporary-setting-values [metabot-sql-execution-enabled? sql-on?]
-        (is (re-find expected (render-with-tools template all-yes-perms
-                                                 ["construct_notebook_query" "create_sql_query" "run_query"])))))))
+        (is (re-find expected (render-template template all-yes-perms
+                                               ["construct_notebook_query" "create_sql_query" "run_query"])))))))
 
 (deftest no-template-says-results-are-hidden-when-run-query-is-active-test
   (doseq [template query-templates
@@ -395,7 +382,7 @@
     (testing (str template (if hidden? " without run_query" " with run_query"))
       (is (= hidden?
              (some? (re-find #"(?i)cannot (see (the actual |query )?results|execute queries)"
-                             (render-with-tools template all-yes-perms tools))))))))
+                             (render-template template all-yes-perms tools))))))))
 
 (deftest prompt-without-notebook-builder-test
   (testing "with NLQ permitted but no construct_notebook_query, as in :internal-sql, nothing names the builder"
