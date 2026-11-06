@@ -159,9 +159,11 @@ runs:
           while ! nc -z localhost 1125; do sleep 1; done &&
           echo -e "${G}Maildev is up and running!"
 
+          # Only the web port: maildev's SMTPS server crashes ("Socket closed unexpectedly") when a client
+          # connects to 465 and hangs up without a TLS handshake, which is exactly what `nc -z` does. The web
+          # UI is served by the same process, so it is up once the SMTPS server is.
           echo -e "${Y}checking maildev-ssl container..." &&
           while ! nc -z localhost 1081; do sleep 1; done &&
-          while ! nc -z localhost 465; do sleep 1; done &&
           echo -e "${G}Maildev-ssl is up and running!"
         fi
 

@@ -289,43 +289,6 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot
 
-      # TEMPORARY (PR #86454): diagnose why the backend cannot reach maildev-ssl on localhost:465.
-      - name: Diagnose SMTP containers
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        timeout-minutes: 2
-        run: |
-          set +e
-          echo "::group::docker ps -a"; docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'; echo "::endgroup::"
-          echo "::group::maildev-ssl logs"; docker logs --tail 100 metabase-e2e-maildev-ssl-1 2>&1; echo "::endgroup::"
-          echo "::group::listening sockets"; sudo ss -ltnp | grep -E ':(465|1125|1180|1081) ' ; echo "::endgroup::"
-          echo "::group::getent localhost"; getent ahosts localhost; echo "::endgroup::"
-          for target in 127.0.0.1:465 localhost:465 '[::1]:465' 127.0.0.1:1125; do
-            echo "::group::TCP $target"
-            host=${target%:*}; host=${host#[}; host=${host%]}
-            timeout 3 bash -c "</dev/tcp/$host/${target##*:}" && echo "TCP OK $target" || echo "TCP FAIL $target"
-            echo "::endgroup::"
-          done
-          echo "::group::TLS 127.0.0.1:465"; timeout 5 openssl s_client -connect 127.0.0.1:465 -brief </dev/null 2>&1 | head -20; echo "::endgroup::"
-          echo "::group::Java connect to localhost:465"
-          cat > "$RUNNER_TEMP/Probe.java" <<'EOF'
-          import java.net.*;
-          public class Probe {
-            public static void main(String[] a) throws Exception {
-              for (InetAddress addr : InetAddress.getAllByName("localhost")) System.out.println("localhost -> " + addr);
-              long t = System.nanoTime();
-              try (Socket s = new Socket()) {
-                s.connect(new InetSocketAddress("localhost", 465), 1000);
-                System.out.println("connected to " + s.getRemoteSocketAddress() + " in " + (System.nanoTime() - t) / 1_000_000 + "ms");
-              } catch (Exception e) {
-                System.out.println("FAILED after " + (System.nanoTime() - t) / 1_000_000 + "ms: " + e);
-              }
-            }
-          }
-          EOF
-          timeout 30 java "$RUNNER_TEMP/Probe.java"
-          echo "::endgroup::"
-
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         id: split-e2e
         if: ${{ !inputs.specs }}
@@ -381,18 +344,6 @@ jobs:
           else
             echo "No ./target/junit directory; nothing to process."
           fi
-
-      # TEMPORARY (PR #86454): container state after the tests, in case maildev-ssl died mid-run.
-      - name: Diagnose SMTP containers after tests
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        timeout-minutes: 1
-        run: |
-          set +e
-          docker ps -a --format 'table {{.Names}}\t{{.Status}}'
-          docker logs --tail 50 metabase-e2e-maildev-ssl-1 2>&1
-          timeout 3 bash -c '</dev/tcp/127.0.0.1/465' && echo "TCP OK 127.0.0.1:465" || echo "TCP FAIL 127.0.0.1:465"
-          grep -i "smtp\|465" logs/test.log 2>/dev/null | tail -20
 
       - name: Quarantine gate
         # Only one of the two run steps executes; the other reports `skipped`. Only gate on actual failure.
