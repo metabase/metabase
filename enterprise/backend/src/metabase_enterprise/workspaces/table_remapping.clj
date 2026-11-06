@@ -336,13 +336,14 @@
    `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
    slots the driver doesn't emit."
   [database-id from-spec]
-  (when-let [database (ws.db/database database-id)]
-    (let [driver   (keyword (:engine database))
-          enriched (enrich-from-spec database from-spec)]
-      (some-> (canonical->isolated driver
-                                   (ws.remapping/remappings-for-db database-id)
-                                   (consumer-shape->spec enriched))
-              spec->consumer-shape))))
+  ;; Remappings first: they cost no query on a database without any, and then neither does this.
+  (let [remappings (ws.remapping/remappings-for-db database-id)]
+    (when (seq remappings)
+      (when-let [database (ws.db/database database-id)]
+        (let [driver   (keyword (:engine database))
+              enriched (enrich-from-spec database from-spec)]
+          (some-> (canonical->isolated driver remappings (consumer-shape->spec enriched))
+                  spec->consumer-shape))))))
 
 (defenterprise workspace-remap-schema+name
   "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
@@ -363,6 +364,13 @@
    [[metabase-enterprise.workspaces.query-processor.middleware]]."
   [database-id]
   (ws.remapping/remappings-for-db database-id))
+
+(defenterprise table-remappings-exist?
+  "Enterprise impl of the sync predicate. Like the other sync hooks, deliberately ungated on premium features:
+   if rows exist they must be respected, regardless of current token state."
+  :feature :none
+  [db-id]
+  (boolean (seq (all-mappings-for-db db-id))))
 
 (defenterprise filter-workspace-side-tables
   "Enterprise impl of the table-list filter. Drops tuples whose `(schema, name)`
@@ -417,13 +425,14 @@
    connection, so the iso `:db` matches canonical and this collapses to the
    single-canonical-run path."
   [db-id]
-  (let [database     (ws.db/database db-id)
-        canonical-db (-> database :details :db)
-        iso-dbs      (into #{}
+  (let [mappings (all-mappings-for-db db-id)
+        iso-dbs  (when (seq mappings)
+                   (let [canonical-db (-> (ws.db/database db-id) :details :db)]
+                     (into #{}
                            (comp (map (comp denormalize-level :db second))
                                  (remove nil?)
                                  (remove #(= % canonical-db)))
-                           (all-mappings-for-db db-id))]
+                           mappings)))]
     (if (seq iso-dbs)
       (map (fn [iso-db] {:db iso-db}) iso-dbs)
       [nil])))
@@ -521,11 +530,11 @@
    leaks above this boundary."
   :feature :none
   [db-id to-spec]
-  (when-let [driver (some-> (ws.db/database-engine db-id) keyword)]
-    (some-> (isolated->canonical driver
-                                 (all-mappings-for-db db-id)
-                                 (consumer-shape->spec to-spec))
-            spec->consumer-shape)))
+  (let [mappings (all-mappings-for-db db-id)]
+    (when (seq mappings)
+      (when-let [driver (some-> (ws.db/database-engine db-id) keyword)]
+        (some-> (isolated->canonical driver mappings (consumer-shape->spec to-spec))
+                spec->consumer-shape)))))
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1
