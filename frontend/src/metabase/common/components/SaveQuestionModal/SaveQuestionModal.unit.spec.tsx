@@ -4,6 +4,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
   type CollectionEndpoints,
+  findRequests,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -34,6 +35,7 @@ import Question from "metabase-lib/v1/Question";
 import type {
   BaseEntityId,
   CollectionId,
+  CollectionItem,
   DashboardId,
 } from "metabase-types/api";
 import {
@@ -69,8 +71,10 @@ const ROOT_TEST_COLLECTION = createMockCollection({
   id: "root",
 });
 
+const FOO_DASH_ID = 1;
+
 const FOO_DASH = createMockDashboard({
-  id: 1,
+  id: FOO_DASH_ID,
   collection_id: 1,
   name: "Foo Dashboard",
   tabs: [
@@ -94,9 +98,11 @@ const setup = async (
   {
     collectionEndpoints,
     createError,
+    personalCollectionItems = [],
   }: {
     collectionEndpoints?: CollectionEndpoints;
     createError?: unknown;
+    personalCollectionItems?: CollectionItem[];
   } = {},
 ) => {
   const onCreateMock = jest.fn<
@@ -125,7 +131,7 @@ const setup = async (
 
   setupCollectionItemsEndpoint({
     collection: BOBBY_TEST_COLLECTION,
-    collectionItems: [],
+    collectionItems: personalCollectionItems,
   });
   setupDashboardEndpoints(FOO_DASH);
   setupDashboardEndpoints(BAR_DASH);
@@ -640,6 +646,49 @@ describe("SaveQuestionModal", () => {
           await screen.findByLabelText(/Which tab should this go on/),
         ).toHaveValue("Foo Tab 1");
       });
+    });
+
+    it("should show a picked dashboard as the save location and record it as a recent selection", async () => {
+      mockGetBoundingClientRect();
+      await setup(getQuestion(), null, {
+        personalCollectionItems: [
+          createMockCollectionItem({
+            id: FOO_DASH_ID,
+            model: "dashboard",
+            name: FOO_DASH.name,
+            collection_id: BOBBY_TEST_COLLECTION.id,
+            can_write: true,
+          }),
+        ],
+      });
+
+      await userEvent.click(saveLocDropdown());
+      await userEvent.click(
+        await screen.findByRole("link", {
+          name: new RegExp(BOBBY_TEST_COLLECTION.name),
+        }),
+      );
+      await userEvent.click(await screen.findByText(FOO_DASH.name));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Select this dashboard" }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("dashboard-and-collection-picker-button"),
+        ).toHaveTextContent(FOO_DASH.name),
+      );
+      const recentSelections = await findRequests("POST");
+      expect(recentSelections).toEqual([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/activity/recents"),
+          body: {
+            context: "selection",
+            model: "dashboard",
+            model_id: FOO_DASH_ID,
+          },
+        }),
+      ]);
     });
 
     it("should now show tab input if selected dashboard has no tabs", async () => {

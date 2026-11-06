@@ -31,6 +31,7 @@
    [metabase.test.http-client :as client]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -505,9 +506,28 @@
                   (is (= nil
                          (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name))))))))))))
 
-(deftest create-dashboard-subscription-ignores-collection-keys-test
+(defn- create-dashboard-subscription-request
+  "Return a `POST /api/pulse` body for a subscription to `dashboard-id` with `card-id`, merged with `collection-keys`."
+  [pulse-name dashboard-id card-id collection-keys]
+  (merge {:name          pulse-name
+          :dashboard_id  dashboard-id
+          :cards         [{:id                card-id
+                           :include_csv       false
+                           :include_xls       false
+                           :dashboard_card_id nil}]
+          :channels      [daily-email-channel]
+          :skip_if_empty false}
+         collection-keys))
+
+(defn- stored-collection-keys
+  "Return the `:collection_id` and `:collection_position` of the pulse named `pulse-name`, or nil."
+  [pulse-name]
+  (some-> (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name)
+          mt/derecordize))
+
+(deftest create-dashboard-subscription-collection-keys-test
   (testing "POST /api/pulse"
-    (testing "A dashboard subscription ignores `collection_id` and `collection_position` from the request"
+    (testing "A dashboard subscription refuses a `collection_position` or a different `collection_id`"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/Pulse]
           (mt/with-temp [:model/Collection {coll-a :id} {}
@@ -521,25 +541,56 @@
             ;; :rasta cannot write to S. :crowberto can, so the request would pass the permission check for S.
             (doseq [user [:rasta :crowberto]]
               (testing (str "as " user)
-                (let [pulse-name (mt/random-name)]
-                  (mt/user-http-request user :post 200 "pulse"
-                                        {:name                pulse-name
-                                         :dashboard_id        dashboard-id
-                                         :cards               [{:id                card-id
-                                                                :include_csv       false
-                                                                :include_xls       false
-                                                                :dashboard_card_id nil}]
-                                         :channels            [daily-email-channel]
-                                         :skip_if_empty       false
-                                         :collection_id       coll-s
-                                         :collection_position 1})
-                  (testing "pinned cards in the other collection do not move"
-                    (is (= {pin-1 1, pin-2 2}
-                           (t2/select-pk->fn :collection_position :model/Card :id [:in [pin-1 pin-2]]))))
-                  (testing "the subscription is saved in the dashboard's collection, unpinned"
-                    (is (= {:collection_id coll-a, :collection_position nil}
-                           (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position]
-                                                          :name pulse-name))))))))))))))
+                (doseq [[collection-keys message]
+                        [[{:collection_id coll-s}
+                          (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                               coll-a coll-s)]
+                         [{:collection_position 1}
+                          "A dashboard subscription cannot have a collection position."]
+                         [{:collection_id coll-a :collection_position 1}
+                          "A dashboard subscription cannot have a collection position."]
+                         [{:collection_id coll-s :collection_position 1}
+                          "A dashboard subscription cannot have a collection position."]]]
+                  (testing (str "400 for " (pr-str collection-keys))
+                    (let [pulse-name (mt/random-name)]
+                      (is (= message
+                             (mt/user-http-request user :post 400 "pulse"
+                                                   (create-dashboard-subscription-request
+                                                    pulse-name dashboard-id card-id collection-keys))))
+                      (testing "no pulse is created"
+                        (is (nil? (stored-collection-keys pulse-name))))
+                      (testing "pinned cards in the other collection do not move"
+                        (is (= {pin-1 1, pin-2 2}
+                               (t2/select-pk->fn :collection_position :model/Card :id [:in [pin-1 pin-2]])))))))
+                (doseq [collection-keys [{}
+                                         {:collection_id nil :collection_position nil}
+                                         {:collection_id coll-a}]]
+                  (testing (str "200 for " (pr-str collection-keys))
+                    (let [pulse-name (mt/random-name)]
+                      (mt/user-http-request user :post 200 "pulse"
+                                            (create-dashboard-subscription-request
+                                             pulse-name dashboard-id card-id collection-keys))
+                      (testing "the subscription is saved in the dashboard's collection, unpinned"
+                        (is (= {:collection_id coll-a, :collection_position nil}
+                               (stored-collection-keys pulse-name)))))))))))))
+    (testing "A dashboard subscription for a dashboard in the root collection"
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Collection {coll-s :id} {}
+                       :model/Dashboard  {dashboard-id :id} {:collection_id nil}
+                       :model/Card       {card-id :id} {:collection_id nil}]
+          (testing "400 for a non-nil `collection_id`"
+            (let [pulse-name (mt/random-name)]
+              (mt/user-http-request :crowberto :post 400 "pulse"
+                                    (create-dashboard-subscription-request
+                                     pulse-name dashboard-id card-id {:collection_id coll-s}))
+              (is (nil? (stored-collection-keys pulse-name)))))
+          (testing "200 for a nil `collection_id`"
+            (let [pulse-name (mt/random-name)]
+              (mt/user-http-request :crowberto :post 200 "pulse"
+                                    (create-dashboard-subscription-request
+                                     pulse-name dashboard-id card-id {:collection_id nil}))
+              (is (= {:collection_id nil, :collection_position nil}
+                     (stored-collection-keys pulse-name))))))))))
 
 (deftest update-dashboard-subscription-collection-keys-test
   (testing "PUT /api/pulse/:id"

@@ -21,7 +21,15 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { NativeQueryEditor } from "./NativeQueryEditor";
 import { formatQuery } from "./utils";
 
-function setup({ text = "SELECT 1", proposedText = "SELECT 2" } = {}) {
+type SetupOpts = {
+  text?: string;
+  proposedText?: string | null;
+};
+
+function setup({
+  text = "SELECT 1",
+  proposedText = "SELECT 2",
+}: SetupOpts = {}) {
   setupNativeQuerySnippetEndpoints();
   setupCollectionsEndpoints({ collections: [] });
   const database = createSampleDatabase();
@@ -34,9 +42,12 @@ function setup({ text = "SELECT 1", proposedText = "SELECT 2" } = {}) {
   const initialQuestion = Question.create({ metadata }).setQuery(
     Lib.createTestNativeQuery(provider, { query: text }),
   );
-  const proposedQuestion = initialQuestion.setQuery(
-    Lib.withNativeQuery(initialQuestion.query(), proposedText),
-  );
+  const proposedQuestion =
+    proposedText === null
+      ? undefined
+      : initialQuestion.setQuery(
+          Lib.withNativeQuery(initialQuestion.query(), proposedText),
+        );
   const setDatasetQuery = jest.fn<void, [NativeQuery]>();
   const onAcceptProposed = jest.fn();
   const onRejectProposed = jest.fn();
@@ -99,7 +110,7 @@ describe("native query proposals", () => {
       "SELECT 2",
     );
     expect(onAcceptProposed).toHaveBeenCalledWith(
-      proposedQuestion.datasetQuery(),
+      checkNotNull(proposedQuestion).datasetQuery(),
     );
     expect(setDatasetQuery.mock.invocationCallOrder[0]).toBeLessThan(
       onAcceptProposed.mock.invocationCallOrder[0],
@@ -112,5 +123,22 @@ describe("native query proposals", () => {
     await userEvent.click(screen.getByRole("button", { name: /Reject/ }));
 
     expect(onRejectProposed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("native query formatting", () => {
+  it("formats the query with Shift+Ctrl+F", async () => {
+    const { setDatasetQuery } = setup({
+      text: "SELECT COUNT(*) FROM ORDERS",
+      proposedText: null,
+    });
+
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard("{Shift>}{Control>}f{/Control}{/Shift}");
+
+    await waitFor(() => expect(setDatasetQuery).toHaveBeenCalledTimes(1));
+    expect(checkNotNull(setDatasetQuery.mock.calls[0]?.[0]).queryText()).toBe(
+      "SELECT\n  COUNT(*)\nFROM\n  ORDERS",
+    );
   });
 });

@@ -20,9 +20,10 @@ const metadata = createMockMetadataFromState(state);
 
 interface SetupOpts {
   isRunning: boolean;
+  isResultDirty: boolean;
 }
 
-const setup = ({ isRunning }: SetupOpts) => {
+const setup = ({ isRunning, isResultDirty }: SetupOpts) => {
   const question = new Question(
     {
       dataset_query: {
@@ -37,21 +38,44 @@ const setup = ({ isRunning }: SetupOpts) => {
   );
 
   renderWithProviders(
-    <QueryVisualization question={question} isRunning={isRunning} />,
+    <QueryVisualization
+      question={question}
+      isRunning={isRunning}
+      isRunnable
+      isResultDirty={isResultDirty}
+    />,
     { storeInitialState: state },
   );
 };
 
 describe("QueryVisualization", () => {
-  it("should show the loading message while the query runs", async () => {
-    setup({ isRunning: true });
+  it("should show a run button before the query is ran", async () => {
+    setup({ isRunning: false, isResultDirty: true });
 
-    expect(await screen.findByText("Doing science...")).toBeInTheDocument();
-  });
-
-  it("should not show the loading message when the query does not run", () => {
-    setup({ isRunning: false });
+    const runButton = screen.getByTestId("run-button");
+    expect(runButton).toBeVisible();
+    expect(runButton).not.toHaveAttribute("aria-hidden", "true");
 
     expect(screen.queryByText("Doing science...")).not.toBeInTheDocument();
+  });
+
+  it("should show the loading message while the query runs", async () => {
+    setup({ isRunning: true, isResultDirty: false });
+
+    expect(await screen.findByText("Doing science...")).toBeInTheDocument();
+    expect(screen.getByTestId("run-button")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("should not show the loading message or run button once loaded", async () => {
+    setup({ isRunning: false, isResultDirty: false });
+
+    expect(screen.queryByText("Doing science...")).not.toBeInTheDocument();
+    expect(screen.getByTestId("run-button")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 });
