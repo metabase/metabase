@@ -242,6 +242,7 @@
   ([action              :- ::actions.schema/action.executable
     request-parameters  :- RequestParameters
     opts                :- [:maybe ExecuteActionOpts]]
+   (workspaces/check-not-in-workspace-mode! "Actions")
    (let [;; if a value is supplied for a hidden parameter, it should raise an error
          field-settings         (get-in action [:visualization_settings :fields])
          hidden-param-ids       (->> (vals field-settings)

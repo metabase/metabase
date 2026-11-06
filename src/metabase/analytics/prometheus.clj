@@ -726,7 +726,7 @@
                        {:description "JDBC connection pool acquisitions by connection type (default, write-data, or admin)."
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
-                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback."
+                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback or workspace swap."
                         :labels [:connection-type]})
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts

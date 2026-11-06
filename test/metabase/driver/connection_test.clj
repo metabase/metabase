@@ -4,6 +4,7 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -109,6 +110,17 @@
                          :details            {:host "read-host" :port 5432}
                          :write-data-details {:host "write-host"}}]
            (driver.conn/effective-details database)
+           (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
+                                                           {:connection-type "write-data"}))))))
+     (testing "type-resolved counter does NOT increment when workspace swap is active"
+       (mt/with-prometheus-system! [_ system]
+         (let [database {:lib/type           :metadata/database
+                         :id                 1
+                         :details            {:host "read-host" :port 5432}
+                         :write-data-details {:host "write-host"}}]
+           (driver.w/with-swapped-connection-details 1 {:user "ws-user"}
+             (driver.conn/with-write-connection
+               (driver.conn/effective-details database)))
            (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-db-connection/type-resolved
                                                            {:connection-type "write-data"}))))))
      (testing "type-resolved counter does NOT increment inside without-resolution-telemetry"
