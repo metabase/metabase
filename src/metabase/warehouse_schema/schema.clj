@@ -139,6 +139,47 @@
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(def ^:private event-column-roles
+  "The columns an event table's settings can name, one per product analytics role."
+  ["timestamp" "person" "session" "event_name" "url_path"])
+
+(defn- event-settings-schema
+  "Product analytics settings for an event table, with keys made by `k`: strings as stored, keywords as an API body
+  reads them. Each role names a column, or nil when none plays it; `pageviews` says which events are pageviews; and
+  `path_cleaning` lists the regex replacements applied, in order, to the URL path."
+  [k]
+  (into [:map {:closed true}]
+        (concat
+         (for [role event-column-roles]
+           [(k (str "columns." role)) {:optional true} [:maybe :string]])
+         [[(k "pageviews") {:optional true}
+           [:maybe [:or
+                    [:map {:closed true}
+                     [(k "type") [:= "every_event"]]]
+                    [:map {:closed true}
+                     [(k "type")   [:= "column_value"]]
+                     [(k "column") :string]
+                     [(k "value")  [:or :string :int :double]]]]]]
+          [(k "path_cleaning") {:optional true}
+           [:sequential [:map {:closed true}
+                         [(k "pattern")     :string]
+                         [(k "replacement") :string]
+                         [(k "description") {:optional true} :string]]]]])))
+
+(mr/def ::event-settings
+  "Product analytics settings a user set for an event table, as stored: string keys like `\"columns.person\"`."
+  (event-settings-schema identity))
+
+(mr/def ::event-settings.api
+  "[[::event-settings]] as a JSON request body reads them, with keyword keys."
+  (event-settings-schema keyword))
+
+(mr/def ::detected-event-settings
+  "The known event schema sync matched a table to, and the [[::event-settings]] it detected from it."
+  [:map {:closed true}
+   ["schema"   :string]
+   ["settings" ::event-settings]])
+
 (mr/def ::table-user-settings
   "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
   [:merge
@@ -225,7 +266,9 @@
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
-   [:transform_target        {:optional true} [:maybe :boolean]]])
+   [:transform_target        {:optional true} [:maybe :boolean]]
+   [:detected_event_settings {:optional true} [:maybe ::detected-event-settings]]
+   [:event_settings          {:optional true} [:maybe ::event-settings]]])
 
 (mr/def ::external-dimension
   "A Dimension as serialization writes it, with portable references in place of ids."
@@ -289,7 +332,7 @@
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                            :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable
                            :data_authority :data_source :owner_email :is_published :data_layer :db_id
-                           :collection_id :transform_id :owner_user_id]]
+                           :collection_id :transform_id :owner_user_id :detected_event_settings :event_settings]]
     [:map {:closed true}
      [:serdes/meta    {:optional true} ::models.schema/external-meta]
      [:archived_at    {:optional true} [:maybe ::models.schema/external-date]]

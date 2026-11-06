@@ -2,6 +2,7 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [clojure.walk :as walk]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -82,11 +83,12 @@
   - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the
     tables the user can read"
   [_
-   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
+   {:keys [term visibility-type entity-type data-layer data-source owner-user-id owner-email orphan-only unused-only
            published-only can-query include-editable-data-model include-transform-targets]}
    :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
+       [:entity-type {:optional true} EntityType]
        [:data-layer {:optional true} ::data-layers]
        [:data-source {:optional true} ::data-sources]
        [:owner-user-id {:optional true} [:maybe :int]]
@@ -102,6 +104,7 @@
     (as-> (warehouse-schema-rest.db/matching-tables
            {:term                       term
             :visibility-type            visibility-type
+            :entity-type                entity-type
             :data-layer                 data-layer
             :data-source                data-source
             :owner-user-id              owner-user-id
@@ -191,7 +194,8 @@
    [:data_layer              {:optional true} [:maybe :string]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
-   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:event_settings          {:optional true} [:maybe :metabase.warehouse-schema.schema/event-settings.api]]])
 
 (def ^:private TableUpdateBodySingle
   "Body of `PUT /api/table/:id`."
@@ -217,6 +221,10 @@
                          (u/update-some :data_source keyword)
                          not-empty)]
     (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
+  ;; Only users write `event_settings` (sync writes `detected_event_settings`), so it goes straight to the Table row;
+  ;; no settings left is stored as NULL, so the detected ones apply again
+  (when (contains? body :event_settings)
+    (warehouse-schema-rest.db/update-table! id {:event_settings (some-> (:event_settings body) not-empty walk/stringify-keys)}))
   (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
