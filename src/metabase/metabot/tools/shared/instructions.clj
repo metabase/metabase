@@ -88,7 +88,7 @@ Reference items using: [name](metabase://type/id)")
        "- Present what the query does in a way that matches the user's intent and follow up if they need clarification"))
 
 (defn query-hidden-instructions-for
-  "Instructions for a SQL query the model asked not to show the user."
+  "Instructions for a query, SQL or notebook, that the model asked not to show the user."
   [query-id]
   (str "The user has not been shown this query. To read its values, call `run_query` with `query_id` `" query-id "`. "
        "Give the user the values in your answer."))
@@ -103,8 +103,7 @@ Reference items using: [name](metabase://type/id)")
     :link   (str "- Always provide a direct link using: "
                  "`[Updated Query](metabase://query/" query-id ")` "
                  "where Updated Query is a meaningful link text")
-    :hidden (str "- The user has not been shown the updated query. To read its values, call `run_query` with "
-                 "`query_id` `" query-id "`, and give the user the values in your answer")))
+    :hidden (str "- " (query-hidden-instructions-for query-id))))
 
 (defn edit-sql-query-instructions-for
   "Generate instructions for an edited SQL query. `delivery` is how the result reached the user, as

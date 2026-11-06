@@ -1,1 +1,0 @@
-When you write SQL only to read its values, pass `show_chart: false` to `create_sql_query`, `edit_sql_query` or `replace_sql_query`, so the user is not shown a chart they did not ask for. The user sees nothing of such a query, so give them the values in your answer. Leave the argument out when the user asked to see the data or a chart.

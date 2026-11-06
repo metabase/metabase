@@ -1445,10 +1445,9 @@
           show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
       (if-not show-chart?
         (let [instruction-text (te/lines
-                                "Your query has been created. The user has not been shown it."
+                                "Your query has been created."
                                 ""
-                                (str "To read its values, call `run_query` with `query_id` `"
-                                     (:query-id structured) "`."))]
+                                (instructions/query-hidden-instructions-for (:query-id structured)))]
           {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
                                            instruction-text)
            :structured-output (assoc structured :result-type :query)})
