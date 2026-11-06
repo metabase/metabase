@@ -8,8 +8,15 @@ import {
 } from "@mantine/core";
 import cx from "classnames";
 import type { ReactNode } from "react";
+import { t } from "ttag";
 
-import { PreventEagerPortal } from "metabase/ui";
+import {
+  Group,
+  Icon,
+  PreventEagerPortal,
+  Stack,
+  UnstyledButton,
+} from "metabase/ui";
 import { useGatedCloseProps } from "metabase/ui/components/overlays/overlay-stack";
 import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
 
@@ -79,6 +86,17 @@ export interface ModalProps
     ModalLayoutProps {
   /** Rendered above the title. Only used by the `centered` layout. */
   illustration?: ReactNode;
+  /**
+   * Shows a Back button before the title, and makes clicking the title go
+   * back too. Escape, the close button and clicking outside still close the
+   * modal. Not supported by the `centered` layout.
+   */
+  onBack?: () => void;
+  /**
+   * Controls shown before the close button, such as an icon button. Not
+   * supported by the `centered` layout.
+   */
+  headerActions?: ReactNode;
 }
 
 /**
@@ -87,7 +105,7 @@ export interface ModalProps
  */
 export type ModalStepProps = Pick<
   ModalProps,
-  "layout" | "title" | "illustration"
+  "layout" | "title" | "illustration" | "onBack" | "headerActions"
 >;
 
 export interface ModalRootProps
@@ -112,6 +130,8 @@ export function Modal({
   density = "default",
   illustration,
   title,
+  onBack,
+  headerActions,
   children,
   ...props
 }: ModalProps) {
@@ -125,11 +145,13 @@ export function Modal({
 
   return (
     <PreventEagerPortal {...props}>
-      <MantineModal
+      <ModalFromParts
         {...props}
         data-layout={layout}
         data-density={density}
         title={isCentered ? undefined : title}
+        onBack={isCentered ? undefined : onBack}
+        headerActions={isCentered ? undefined : headerActions}
         transitionProps={withInstantExit(props.transitionProps)}
         closeOnClickOutside={closeProps.closeOnClickOutside}
         closeOnEscape={closeProps.closeOnEscape}
@@ -143,8 +165,59 @@ export function Modal({
           )}
           {children}
         </InModalProvider>
-      </MantineModal>
+      </ModalFromParts>
     </PreventEagerPortal>
+  );
+}
+
+type ModalFromPartsProps = MantineModalProps &
+  Pick<ModalProps, "onBack" | "headerActions">;
+
+// Mantine's `Modal` only puts the title and the close button in its header,
+// so this builds the same modal from the `Root` parts. Every modal renders
+// through here, so adding or removing `onBack` or `headerActions` between
+// steps only changes the header, and the body stays mounted
+function ModalFromParts({
+  title,
+  onBack,
+  headerActions,
+  withOverlay = true,
+  overlayProps,
+  withCloseButton = true,
+  closeButtonProps,
+  radius,
+  children,
+  ...props
+}: ModalFromPartsProps) {
+  const hasHeader = !!title || withCloseButton || !!onBack || !!headerActions;
+  const closeButton = withCloseButton && (
+    <MantineModal.CloseButton {...closeButtonProps} />
+  );
+
+  return (
+    <MantineModal.Root {...props} radius={radius}>
+      {withOverlay && <MantineModal.Overlay {...overlayProps} />}
+      <MantineModal.Content radius={radius}>
+        {hasHeader && (
+          <MantineModal.Header>
+            {onBack ? (
+              <ModalHeading onBack={onBack}>{title}</ModalHeading>
+            ) : (
+              title && <MantineModal.Title>{title}</MantineModal.Title>
+            )}
+            {headerActions ? (
+              <Group gap="sm" wrap="nowrap" ms="auto">
+                {headerActions}
+                {closeButton}
+              </Group>
+            ) : (
+              closeButton
+            )}
+          </MantineModal.Header>
+        )}
+        <MantineModal.Body>{children}</MantineModal.Body>
+      </MantineModal.Content>
+    </MantineModal.Root>
   );
 }
 
@@ -175,6 +248,55 @@ function ModalRoot({
   );
 }
 
+export interface ModalHeadingProps {
+  /** The title, which is also the modal's accessible name. */
+  children?: ReactNode;
+  /**
+   * Shows a Back button before the title, and makes clicking the title go
+   * back too.
+   */
+  onBack?: () => void;
+  /** Shown under the title, and left out of the modal's accessible name. */
+  subtitle?: ReactNode;
+}
+
+/**
+ * The title side of the header, as `Modal` renders it for `onBack`, for custom
+ * headers built from `Modal.Root`. Put it in `Modal.Header` before any header
+ * actions and `Modal.CloseButton`.
+ */
+function ModalHeading({ children, onBack, subtitle }: ModalHeadingProps) {
+  const title = children && (
+    <MantineModal.Title onClick={onBack}>{children}</MantineModal.Title>
+  );
+
+  return (
+    <Group gap="sm" wrap="nowrap" align="flex-start" flex="1 1 auto" miw={0}>
+      {onBack && <ModalBackButton onClick={onBack} />}
+      {subtitle ? (
+        <Stack gap="xs" flex="1 1 auto" miw={0}>
+          {title}
+          {subtitle}
+        </Stack>
+      ) : (
+        title
+      )}
+    </Group>
+  );
+}
+
+function ModalBackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <UnstyledButton
+      className={S.backButton}
+      aria-label={t`Back`}
+      onClick={onClick}
+    >
+      <Icon name="chevronleft" />
+    </UnstyledButton>
+  );
+}
+
 export interface ModalFooterProps extends BoxProps, ElementProps<"div"> {}
 
 function ModalFooter({ className, ...props }: ModalFooterProps) {
@@ -186,6 +308,7 @@ Modal.Overlay = MantineModal.Overlay;
 Modal.Content = MantineModal.Content;
 Modal.CloseButton = MantineModal.CloseButton;
 Modal.Header = MantineModal.Header;
+Modal.Heading = ModalHeading;
 Modal.Title = MantineModal.Title;
 Modal.Body = MantineModal.Body;
 Modal.Footer = ModalFooter;

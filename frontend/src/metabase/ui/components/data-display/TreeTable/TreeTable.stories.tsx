@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { Box, Icon, Text } from "metabase/ui";
+import { ActionIcon, Box, Icon, Menu, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import { EntityNameCell } from "./EntityNameCell";
@@ -239,6 +239,57 @@ export const LargeDataset = {
             }
           }}
         />
+      </Box>
+    );
+  },
+};
+
+function flattenItems(items: CollectionItem[]): CollectionItem[] {
+  return items.flatMap((item) =>
+    item.children ? flattenItems(item.children) : [item],
+  );
+}
+
+const staticColumns: TreeTableColumnDef<CollectionItem>[] = [
+  ...detailedColumns,
+  {
+    id: "actions",
+    header: "",
+    width: 56,
+    enableSorting: false,
+    cell: ({ row }) => (
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <ActionIcon aria-label={`Actions for ${row.original.name}`}>
+            <Icon name="ellipsis" />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item>Rename</Menu.Item>
+          <Menu.Item>Move to trash</Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+    ),
+  },
+];
+
+/**
+ * Rows are plain content: no hover or active highlight, no row click or
+ * keyboard row navigation. Header sorting and controls inside cells still work.
+ */
+export const Static = {
+  render: function StaticStory() {
+    const data = useMemo(() => flattenItems(mockData), []);
+
+    const instance = useTreeTableInstance({
+      data,
+      columns: staticColumns,
+      getNodeId: (node) => node.id,
+    });
+
+    return (
+      <Box h={400}>
+        <TreeTable instance={instance} hierarchical={false} static />
       </Box>
     );
   },
