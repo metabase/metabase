@@ -1088,6 +1088,7 @@
     (are [claims] (nil? (driver.u/jwt-expiry-ms (fake-jwt claims)))
       {:sub "s"}
       {:exp "nope"})))
+
 ;;; ---------------------------------------- scrub-exceptions -------------------------------------------------
 
 (deftest ^:parallel scrub-exceptions-test
