@@ -10,10 +10,10 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as u.str]))
 
+;; A MySQL app database can represent a boolean column as 0 or 1.
 (defn- as-boolean
-  "`x` as a boolean when SQL would compare it as one: a boolean, or a 0 or 1, which is how a MySQL app database
-  can represent a boolean column.
-  Nil otherwise."
+  "The boolean SQL would compare `x` as: a boolean itself, or a 0 or 1.
+  Nil for anything else."
   [x]
   (cond
     (boolean? x)                 x
@@ -21,7 +21,8 @@
 
 ;; Other numbers are never folded: Clojure equality tells 1M from 1, where SQL does not.
 (defn- comparable-literals
-  "`a` and `b` as a pair Clojure equality compares as SQL would, or nil when they are not constants of one kind."
+  "A pair that Clojure equality compares as SQL would compare `a` and `b`.
+  Nil unless both are constants of one kind."
   [a b]
   (cond
     (and (string? a) (string? b))
