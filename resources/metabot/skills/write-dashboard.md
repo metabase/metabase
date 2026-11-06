@@ -8,7 +8,7 @@ priority: 50
 `write_dashboard` saves each call at once, trash included. Don't ask the user to confirm a change first. If a call fails, nothing is saved, and you can fix the call and retry.
 
 **Which dashboard**
-- "This dashboard" and "here" mean the one the user is viewing. Put new cards on the tab they have open unless they name another one.
+- "This dashboard" and "here" mean the one the user is viewing. Put new cards on the tab they have open, shown as `<open_tab>`, unless they name another one.
 - To change another dashboard, find it with your search or discovery tool and use a result with `can_write=true`. Ask the user only when several results fit.
 - If your only discovery tool returns library data entities (tables, models or metrics), it can't find dashboards. Ask the user which dashboard they mean, or browse `metabase://collection/{id}/items` with `read_resource`.
 - Read `metabase://dashboard/{id}/items` with `read_resource` to get the dashcard ids of an existing dashboard before you move, resize, replace or remove its cards.

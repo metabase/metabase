@@ -1,8 +1,10 @@
 (ns metabase.metabot.tools.entity-details
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -14,6 +16,7 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.revisions.core :as revisions]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -112,19 +115,64 @@
                                  {:glossary glossary}))}
     {:output "current user not found"}))
 
+(defn- person
+  "The name and email of `user`, a map with `:first_name`, `:last_name` and `:email`, or nil."
+  [{:keys [first_name last_name email] :as user}]
+  (when user
+    {:name  (str/trim (str first_name " " last_name))
+     :email email}))
+
+(defn- dashboard-collection
+  "The collection with `collection-id`, nil for the root collection, with the path to it the current user can see."
+  [collection-id]
+  (let [collection (if collection-id
+                     (metabot.db/collection-with-ancestors collection-id)
+                     (collection/root-collection-with-ui-details nil))]
+    (when collection
+      {:id   collection-id
+       :name (:name collection)
+       :path (str/join " / " (map :name (concat (:effective_ancestors collection) [collection])))})))
+
+(defn- visible-dashcards
+  "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,
+  and charts whose question they can read."
+  [dashboard-id]
+  (let [dashcards (metabot.db/dashcards dashboard-id)
+        card-ids  (into #{} (keep #(when-not (:action_id %) (:card_id %))) dashcards)
+        readable  (if (seq card-ids)
+                    (into #{} (comp (filter mi/can-read?) (map :id)) (metabot.db/unarchived-card-summaries card-ids))
+                    #{})]
+    (filter #(or (:action_id %) (nil? (:card_id %)) (contains? readable (:card_id %))) dashcards)))
+
+(defn- with-filter-connections
+  "Each of `parameters` with the ids of the `dashcards` it filters, as `:connected_dashcards`."
+  [parameters dashcards]
+  (for [{parameter-id :id :as parameter} parameters]
+    (assoc parameter :connected_dashcards (for [{:keys [id parameter_mappings]} dashcards
+                                                :when (some #(= parameter-id (:parameter_id %)) parameter_mappings)]
+                                            id))))
+
 (defn get-dashboard-details
-  "Get information about the dashboard with ID `dashboard-id`."
+  "Get information about the dashboard with ID `dashboard-id`: its details, who created and last edited it, its
+  collection, and its filters with the dashcards each one filters."
   [{:keys [dashboard-id]}]
   (when-not (int? dashboard-id)
     (throw (ex-info "Invalid dashboard_id format"
                     {:agent-error? true :status-code 400})))
   (if-let [dashboard (metabot.db/dashboard-summary dashboard-id)]
     (do (api/read-check dashboard)
-        {:structured-output
-         (-> dashboard
-             (dissoc :collection_id)
-             (assoc :type :dashboard
-                    :verified (verified-review? dashboard-id "dashboard")))})
+        (let [last-edit (get-in (revisions/fetch-last-edited-info {:dashboard-ids [dashboard-id]})
+                                [:dashboard dashboard-id])]
+          {:structured-output
+           (-> dashboard
+               (dissoc :collection_id :creator_id)
+               (assoc :type           :dashboard
+                      :verified       (verified-review? dashboard-id "dashboard")
+                      :creator        (person (metabot.db/user-summary (:creator_id dashboard)))
+                      :last_edited_by (person last-edit)
+                      :last_edited_at (:timestamp last-edit)
+                      :collection     (dashboard-collection (:collection_id dashboard)))
+               (update :parameters with-filter-connections (visible-dashcards dashboard-id)))}))
     {:output "dashboard not found"}))
 
 (defn- get-field-values

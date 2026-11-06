@@ -1606,6 +1606,7 @@
               query-permissions
               query-processor
               request
+              revisions
               search
               search.entity-retrieval
               serialization

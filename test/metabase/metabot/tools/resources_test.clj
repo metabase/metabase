@@ -628,6 +628,49 @@
         (is (=? {:resources [{:error string?}]}
                 (read-uris {:uris ["metabase://dashboard/99999"]})))))))
 
+(defn- date-mapping
+  "A mapping that connects the dashboard filter \"date\" to the card with `card-id`."
+  [card-id]
+  {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})
+
+(deftest read-dashboard-details-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection    {parent-id :id} {:name "Sales"}
+                   :model/Collection    {coll-id :id}   {:name "EMEA", :location (str "/" parent-id "/")}
+                   :model/Collection    {secret-id :id} {:name "Secret"}
+                   :model/Card          {card-id :id}   {:name "Revenue", :collection_id coll-id}
+                   :model/Card          {hidden-id :id} {:name "Payroll", :collection_id secret-id}
+                   :model/Dashboard     {dash-id :id}   {:name          "EMEA overview"
+                                                         :collection_id coll-id
+                                                         :creator_id    (mt/user->id :crowberto)
+                                                         :parameters    [{:id      "date"
+                                                                          :name    "Date"
+                                                                          :slug    "date"
+                                                                          :type    :date/all-options
+                                                                          :default "past30days"}]}
+                   :model/DashboardCard {dc-id :id}     {:dashboard_id       dash-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [(date-mapping card-id)]}
+                   :model/DashboardCard _               {:dashboard_id       dash-id
+                                                         :card_id            hidden-id
+                                                         :parameter_mappings [(date-mapping hidden-id)]}
+                   :model/Revision      _               {:model    "Dashboard"
+                                                         :model_id dash-id
+                                                         :user_id  (mt/user->id :rasta)
+                                                         :object   {}}]
+      ;; Rasta can read the dashboard's collection, but neither its parent nor the hidden card's
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id)]})]
+          (testing "says who created and last edited the dashboard, and when"
+            (is (re-find #"<created by=\"Crowberto Corv\" at=\"\d{4}-\d\d-\d\d" output))
+            (is (re-find #"<last_edited by=\"Rasta Toucan\" at=\"\d{4}-\d\d-\d\d" output)))
+          (testing "gives the collection with the path the user can see"
+            (is (str/includes? output (str "<collection id=\"" coll-id "\" name=\"EMEA\" path=\"EMEA\">"))))
+          (testing "gives each filter's default and the dashcards it filters that the user can see"
+            (is (str/includes? output (str "<filter id=\"date\" name=\"Date\" type=\"date/all-options\""
+                                           " default=\"past30days\" connected_dashcards=\"" dc-id "\"/>")))))))))
+
 (deftest read-document-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card {card-id :id} {:name "Embedded chart"}
@@ -1440,12 +1483,14 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:name "Dash card"}
-                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id}]
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id
+                                                     :row 2 :col 4 :size_x 6 :size_y 3}]
       (testing "metabase://dashboard/{id}/items returns each dashcard with its dashcard_id"
         (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
           (is (str/includes? output "Dash card"))
           (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
-          (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
+          (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))
+          (is (str/includes? output "row=\"2\" col=\"4\" size_x=\"6\" size_y=\"3\"")))))))
 
 (deftest read-dashboard-items-groups-by-tab-test
   (mt/with-current-user (mt/user->id :crowberto)

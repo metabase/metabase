@@ -997,7 +997,7 @@
                       (get-in visualization_settings [:link :url]))}))
 
 (defn- fetch-dashboard-items
-  "One item per dashcard in row/col (layout) order, each carrying its `dashcard_id`. On a tabbed
+  "One item per dashcard in row/col (layout) order, each carrying its `dashcard_id`, position and size. On a tabbed
    dashboard the items come grouped by tab (nil-tab dashcards belong to the first tab, where the
    frontend renders them), each carries its `tab_id`, and the response's `:tabs` lists every tab —
    empty ones included — in display order. Card-backed dashcards keep the card fields; virtual
@@ -1020,7 +1020,7 @@
                          (select-keys readable (map second (curation/curated-ids (map #(vector "card" %)
                                                                                       action-card-ids)))))
                        readable)
-        ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
+        present      (fn [{:keys [id card_id action_id] :as dashcard}]
                        ;; action_id wins over card_id: an action button may reference its backing
                        ;; model through card_id but renders as a button — with a uri to that model
                        ;; so it stays drillable.
@@ -1029,6 +1029,8 @@
                            (assoc (present-card card) :dashcard_id id))
                          (cond-> (present-non-question-dashcard dashcard)
                            (get linkable card_id) (assoc :uri (:uri (present-card (get linkable card_id)))))))
+        ->item       (fn [dashcard]
+                       (some-> (present dashcard) (merge (select-keys dashcard [:row :col :size_x :size_y]))))
         items        (if (seq tabs)
                        ;; group by tab without emitting tab pseudo-items — those would inflate the
                        ;; paginated total; the tab list rides on the response as `:tabs` instead.
