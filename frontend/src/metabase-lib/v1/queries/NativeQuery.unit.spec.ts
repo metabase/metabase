@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import NativeQuery, {
@@ -58,15 +59,15 @@ function makeDatasetQuery(
   queryText: string,
   templateTags: TemplateTags | undefined,
   databaseId: DatabaseId,
+  metadata: Metadata,
 ): DatasetQuery {
-  return {
-    type: "native",
-    database: databaseId,
-    native: {
-      query: queryText,
-      "template-tags": templateTags,
-    },
-  };
+  const query = Lib.createTestNativeQuery(
+    createMetadataProvider({ databaseId, metadata }),
+    { query: queryText },
+  );
+  return Lib.toJsQuery(
+    templateTags ? Lib.withTemplateTags(query, templateTags) : query,
+  );
 }
 
 function makeQuery(
@@ -76,14 +77,14 @@ function makeQuery(
 ) {
   return new NativeQuery(
     Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
-    makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
+    makeDatasetQuery(query, templateTags, SAMPLE_DB_ID, metadata),
   );
 }
 
 function makeMongoQuery(query: string) {
   return new NativeQuery(
     Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata: METADATA }),
-    makeDatasetQuery(query, undefined, MONGO_DB_ID),
+    makeDatasetQuery(query, undefined, MONGO_DB_ID, METADATA),
   );
 }
 
@@ -542,15 +543,9 @@ describe("NativeQuery", () => {
       });
 
       it("should update snippet names that differ on spacing", () => {
-        const q = makeQuery("{{ snippet: foo }} {{snippet:  foo  }}", {
-          " snippet: foo ": createMockTemplateTag({
-            name: " snippet: foo ",
-            type: "snippet",
-            "snippet-id": SNIPPET_ID,
-            "snippet-name": "foo",
-          }),
-          "snippet:  foo  ": createMockTemplateTag({
-            name: "snippet:  foo  ",
+        const q = makeQuery("{{ snippet: foo }} {{snippet: foo}}", {
+          "snippet: foo": createMockTemplateTag({
+            name: "snippet: foo",
             type: "snippet",
             "snippet-id": SNIPPET_ID,
             "snippet-name": "foo",

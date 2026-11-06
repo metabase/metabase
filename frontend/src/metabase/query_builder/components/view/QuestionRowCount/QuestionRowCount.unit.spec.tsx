@@ -18,7 +18,6 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
@@ -28,9 +27,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  createAdHocNativeCard,
   createSampleDatabase,
-  createSavedNativeCard,
 } from "metabase-types/api/mocks/presets";
 
 import { QuestionRowCount } from "./QuestionRowCount";
@@ -50,9 +47,9 @@ function patchQuestion(question: Question) {
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
     return question.setQuery(nextQuery);
   } else {
-    // Unjustified type cast. FIXME
-    const query = question.legacyNativeQuery() as NativeQuery;
-    return query.setQueryText("SELECT * FROM __ORDERS__").question();
+    return question.setQuery(
+      Lib.withNativeQuery(query, "SELECT * FROM __ORDERS__"),
+    );
   }
 }
 
@@ -122,6 +119,25 @@ function createAdHocStructuredCard(opts?: Partial<UnsavedCard>) {
 function createSavedStructuredCard(opts?: Partial<Card>) {
   return createMockCard({
     dataset_query: getDatasetQueryWithLimit(),
+    ...opts,
+  });
+}
+
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>) {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>) {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
     ...opts,
   });
 }

@@ -14,6 +14,7 @@ import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -27,7 +28,6 @@ import type {
 import {
   createMockCard,
   createMockDatabase,
-  createMockNativeDatasetQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
@@ -78,8 +78,6 @@ function getMetadata() {
   });
 }
 
-const SOURCE_CARD = createMockCard({ id: SOURCE_QUESTION_ID });
-
 type QuerySpecOpts = {
   databaseId?: number;
   questions?: Card[];
@@ -121,11 +119,9 @@ const BASE_GUI_QUESTION: Partial<Card> = {
 const BASE_NATIVE_QUESTION: Partial<Card> = {
   display: "table",
   visualization_settings: {},
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: {
-      query: "select * from orders",
-    },
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from orders",
   }),
 };
 
@@ -137,6 +133,11 @@ const SAVED_QUESTION: Partial<Card> = {
 };
 
 const ORDERS_QUERY = createTableQuery(ORDERS_ID);
+
+const SOURCE_CARD = createMockCard({
+  id: SOURCE_QUESTION_ID,
+  dataset_query: createTableQuery(PRODUCTS_ID),
+});
 
 const PRODUCTS_QUERY = createTableQuery(PRODUCTS_ID);
 

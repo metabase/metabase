@@ -26,15 +26,8 @@ import {
   createMockCardQueryMetadata,
   createMockDatabase,
   createMockField,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
-import {
-  createNativeModelCard as _createNativeModelCard,
-  createSavedNativeCard,
-  createSavedStructuredCard,
-} from "metabase-types/api/mocks/presets";
 
 import { ModelUsageDetails } from "./ModelUsageDetails";
 import { DEFAULT_LIST_LIMIT } from "./hooks";
@@ -92,35 +85,45 @@ const TEST_DATABASE = createMockDatabase({
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
 });
 
-function createStructuredModelCard(card?: Partial<Card>) {
+const TEST_PROVIDER = createMetadataProvider({
+  databaseId: TEST_DATABASE_ID,
+  metadata: createMockMetadata({ databases: [TEST_DATABASE] }),
+});
+
+function createSavedStructuredCard(card?: Partial<Card>) {
   return createMockCard({
+    dataset_query: Lib.createTestJsQuery(TEST_PROVIDER, {
+      stages: [{ source: { type: "table", id: TEST_TABLE_ID } }],
+    }),
+    ...card,
+  });
+}
+
+function createSavedNativeCard(card?: Partial<Card>) {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(TEST_PROVIDER, {
+      query: `SELECT * FROM ${TEST_TABLE.name}`,
+    }),
+    ...card,
+  });
+}
+
+function createStructuredModelCard(card?: Partial<Card>) {
+  return createSavedStructuredCard({
     type: "model",
     can_write: true,
     ...card,
     result_metadata: TEST_FIELDS,
-    dataset_query: Lib.toJsQuery(
-      Lib.createTestQuery(
-        createMetadataProvider({
-          databaseId: TEST_DATABASE_ID,
-          metadata: createMockMetadata({ databases: [TEST_DATABASE] }),
-        }),
-        { stages: [{ source: { type: "table", id: TEST_TABLE_ID } }] },
-      ),
-    ),
   });
 }
 
 function createNativeModelCard(card?: Partial<Card>) {
-  return _createNativeModelCard({
+  return createSavedNativeCard({
+    type: "model",
     can_write: true,
     ...card,
     result_metadata: TEST_FIELDS,
-    dataset_query: createMockNativeDatasetQuery({
-      database: TEST_DATABASE_ID,
-      native: createMockNativeQuery({
-        query: `SELECT * FROM ${TEST_TABLE.name}`,
-      }),
-    }),
   });
 }
 

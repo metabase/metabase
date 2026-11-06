@@ -16,11 +16,7 @@ import {
   getTextTagFromTarget,
   isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
-import type {
-  Card,
-  ParameterDimensionTarget,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
+import type { Card, ParameterDimensionTarget } from "metabase-types/api";
 import {
   createMockCard,
   createMockField,
@@ -41,8 +37,6 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
-
-type StructuredCard = Card<StructuredDatasetQuery>;
 
 const sampleDb = createSampleDatabase();
 const savedQuestionsDb = createMockSavedQuestionsDatabase();
@@ -831,7 +825,7 @@ function createQuestion(query: Lib.Query) {
 function createModel(
   query: Lib.Query,
   /* result_metadata needs to be passed, otherwise test setup would be incorrect */
-  result_metadata: StructuredCard["result_metadata"],
+  result_metadata: Card["result_metadata"],
 ) {
   const card = createMockCard({ type: "model", result_metadata });
   const metadata = createMockMetadata({

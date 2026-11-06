@@ -68,7 +68,7 @@ export interface Card<
   name: string;
   description: string | null;
   type: CardType;
-  query_type: CardQueryType;
+  query_type?: CardQueryType;
   public_uuid: string | null;
 
   /* Indicates whether static embedding for this card has been published */

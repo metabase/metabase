@@ -22,8 +22,8 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
-  NativeQuery,
   TableId,
+  TestNativeQuerySpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
 import {
@@ -31,16 +31,13 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockNativeQuery,
   createMockTableColumnOrderSetting,
-  createMockTemplateTag,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -249,17 +246,17 @@ describe("getIsResultDirty", () => {
   });
 
   describe("native query", () => {
-    function getCard(native: NativeQuery) {
+    function getCard(spec: TestNativeQuerySpec) {
       return createMockCard({
-        dataset_query: {
-          database: 1,
-          type: "native",
-          native,
-        },
+        query_type: "native",
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, spec),
       });
     }
 
-    function getState(lastRunCardQuery: NativeQuery, cardQuery: NativeQuery) {
+    function getState(
+      lastRunCardQuery: TestNativeQuerySpec,
+      cardQuery: TestNativeQuerySpec,
+    ) {
       return getBaseState({
         card: getCard(cardQuery),
         lastRunCard: getCard(lastRunCardQuery),
@@ -271,21 +268,21 @@ describe("getIsResultDirty", () => {
         {
           query: "SELECT 1",
         },
-        { query: "SELECT 1", "template-tags": {} },
+        { query: "SELECT 1", templateTags: {} },
       );
       expect(getIsResultDirty(state)).toBe(false);
     });
 
     it("should be dirty if template-tags differ", () => {
       const state = getState(
-        createMockNativeQuery({
+        {
           query: "SELECT {{foo}}",
-          "template-tags": { foo: createMockTemplateTag({ name: "foo" }) },
-        }),
-        createMockNativeQuery({
+          templateTags: { foo: { type: "text", name: "foo" } },
+        },
+        {
           query: "SELECT {{bar}}",
-          "template-tags": { bar: createMockTemplateTag({ name: "bar" }) },
-        }),
+          templateTags: { bar: { type: "text", name: "bar" } },
+        },
       );
       expect(getIsResultDirty(state)).toBe(true);
     });
@@ -294,11 +291,10 @@ describe("getIsResultDirty", () => {
       function getStateWithSelectedQueryText(ranges: Range[]) {
         return getBaseState({
           card: createMockCard({
-            dataset_query: {
-              type: "native",
-              database: 1,
-              native: { query: "1\n22\n333" },
-            },
+            query_type: "native",
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "1\n22\n333",
+            }),
           }),
           uiControls: {
             nativeEditorSelectedRange: ranges,
@@ -574,11 +570,8 @@ describe("getShouldShowUnsavedChangesWarning", () => {
   describe("when creating a native question", () => {
     function getNativeCard(query: string) {
       return createMockCard({
-        dataset_query: {
-          type: "native",
-          database: SAMPLE_DB_ID,
-          native: createMockNativeQuery({ query }),
-        },
+        query_type: "native",
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, { query }),
       });
     }
 

@@ -1,36 +1,46 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { createMockNativeDatasetQuery } from "metabase-types/api/mocks";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
-  createSavedNativeCard,
 } from "metabase-types/api/mocks/presets";
 
 import { getNativeQueryTable } from "./native-query-table";
 
-const cardWithCollection = createSavedNativeCard({
+const database = createSampleDatabase({
+  features: ["native-requires-specified-collection"],
+});
+
+const provider = createMetadataProvider({
+  metadata: createMockMetadata({ databases: [database] }),
+});
+
+const cardWithCollection = createMockCard({
   id: 2,
-  dataset_query: createMockNativeDatasetQuery({
-    database: SAMPLE_DB_ID,
-    native: {
-      query: "select * from ORDERS",
-      collection: "PRODUCTS",
-    },
+  query_type: "native",
+  dataset_query: Lib.toJsQuery(
+    Lib.withNativeExtras(
+      Lib.createTestNativeQuery(provider, { query: "select * from ORDERS" }),
+      { collection: "PRODUCTS" },
+    ),
+  ),
+});
+
+const card = createMockCard({
+  id: 3,
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(provider, {
+    query: "select * from ORDERS",
   }),
 });
 
-const card = createSavedNativeCard({ id: 3 });
-
 const metadata = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      features: ["native-requires-specified-collection"],
-    }),
-  ],
+  databases: [database],
   questions: [card, cardWithCollection],
 });
 

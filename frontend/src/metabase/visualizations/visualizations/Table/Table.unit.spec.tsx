@@ -32,11 +32,11 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCategoryColumn,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockNativeCard,
   createMockNumericColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
@@ -286,7 +286,11 @@ describe("table.pivot", () => {
       const onUpdateWarnings = jest.fn<void, [string[]]>();
       const series: Series = [
         {
-          card: createMockNativeCard({
+          card: createMockCard({
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "",
+            }),
+            query_type: "native",
             display: "table",
             visualization_settings: {
               "table.pivot": true,

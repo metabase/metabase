@@ -47,7 +47,10 @@ import { addQueryPropTests } from "embedding-sdk-bundle/components/public/questi
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
+import type {
+  MetabaseQueryObject,
+  SdkQuestionId,
+} from "embedding-sdk-bundle/types/question";
 import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
 import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Lib from "metabase-lib";
@@ -138,6 +141,11 @@ const setup = async ({
     type: cardType,
     collection_id: COLLECTION_ID,
     collection: TEST_COLLECTION,
+    dataset_query: Lib.toLegacyQuery(
+      Lib.createTestQuery(TEST_PROVIDER, {
+        stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
+      }),
+    ),
   });
 
   setupCardEndpoints(card);
@@ -243,11 +251,12 @@ describe("InteractiveQuestion", () => {
     renderWithSDKProviders(
       <InteractiveQuestion
         card={{
+          // MetabaseQueryObject is the public structural mirror of the opaque internal query type
           query: Lib.toLegacyQuery(
             Lib.createTestQuery(TEST_PROVIDER, {
               stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
             }),
-          ),
+          ) as unknown as MetabaseQueryObject,
         }}
       />,
       {
