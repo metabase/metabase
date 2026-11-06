@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv empty? some]]
@@ -37,6 +38,22 @@
    (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
 
 (set! *warn-on-reflection* true)
+
+(defn jwt-claims
+  "Parse `jwt`'s payload as JSON and return the decoded claims. Throws on malformed input."
+  [^String jwt]
+  (let [^String payload (second (str/split jwt #"\." 3))
+        json-str        (String. (.decode (java.util.Base64/getUrlDecoder) payload) "UTF-8")]
+    (json/decode+kw json-str)))
+
+(defn jwt-expiry-ms
+  "The `exp` claim from `jwt`, in ms since epoch.
+
+  Returns nil when `exp` is missing or non-numeric. Throws on malformed JWT; see [[jwt-claims]]."
+  [^String jwt]
+  (let [exp (:exp (jwt-claims jwt))]
+    (when (number? exp)
+      (long (* exp 1000)))))
 
 (def ^:private connection-error-messages
   "Generic error messages that drivers should return in their implementation

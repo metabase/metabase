@@ -83,7 +83,7 @@
   #{})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *cache*
+(def ^:dynamic *content-gate-cache*
   "Cache atom bound by [[with-content-gate-cache]], or nil to adjudicate on every call."
   nil)
 
@@ -97,7 +97,7 @@
   such a loop; everywhere else reads through."
   {:style/indent 0}
   [& body]
-  `(binding [*cache* (or *cache* (atom {}))]
+  `(binding [*content-gate-cache* (or *content-gate-cache* (atom {}))]
      ~@body))
 
 (defn content-visible?
@@ -114,11 +114,11 @@
                     false
                     (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
                       (boolean (@doc-content-visibility-fn document)))))]
-    (if (and id *cache*)
-      (if-some [cached (get @*cache* k)]
+    (if (and id *content-gate-cache*)
+      (if-some [cached (get @*content-gate-cache* k)]
         cached
         (let [verdict (adjudge)]
-          (swap! *cache* assoc k verdict)
+          (swap! *content-gate-cache* assoc k verdict)
           verdict))
       (adjudge))))
 
@@ -156,11 +156,14 @@
    when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
-  (when old-collection-id
-    (api/write-check :model/Collection old-collection-id))
-  (when new-collection-id
-    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
-    (api/write-check :model/Collection new-collection-id)))
+  (if old-collection-id
+    (api/write-check :model/Collection old-collection-id)
+    (api/write-check collection/root-collection))
+  (if new-collection-id
+    (do
+      (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
+      (api/write-check :model/Collection new-collection-id))
+    (api/write-check collection/root-collection)))
 
 ;;; ------------------------------------------------ Write orchestration -------------------------------------------
 
@@ -664,7 +667,8 @@
 
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
+  {:schema    ::documents.schema/external-document
+   :copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
    :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder]
    :transform {:document {:export-with-context export-document-content
                           :import-with-context import-document-content}

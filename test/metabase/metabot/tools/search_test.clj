@@ -1279,7 +1279,7 @@
         (let [mp (lib-be/application-database-metadata-provider db-id)]
           (mt/with-temp [:model/Transform {transform-id :id}
                          {:name   "Test Transform"
-                          :source {:type  "query"
+                          :source {:type  :query
                                    :query (lib/native-query mp "SELECT 1")}}]
             (let [mock-results [{:id transform-id :type "transform" :name "Test Transform"}
                                 {:id 999 :type "dashboard" :name "Some Dashboard"}]]

@@ -1,13 +1,10 @@
-import cx from "classnames";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { ModalContent } from "metabase/common/components/ModalContent";
-import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Button } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 
 type Props = {
   onClose: () => void;
@@ -38,11 +35,13 @@ export function ImpossibleToCreateModelModal({ onClose }: Props) {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   return (
-    <ModalContent
+    <Modal
+      opened
+      size="lg"
       title={t`Variables in models aren't supported yet`}
       onClose={onClose}
     >
-      <p className={CS.textParagraph}>
+      <Text>
         {showMetabaseLinks
           ? jt`To solve this, just remove the variables in this question and try again. (It's okay to use ${(
               <SQLSnippetsDocLink key="link-1" />
@@ -50,10 +49,10 @@ export function ImpossibleToCreateModelModal({ onClose }: Props) {
               <ReferencingQuestionsDocLink key="link-2" />
             )} in your query.)`
           : t`To solve this, just remove the variables in this question and try again. (It's okay to use SQL snippets or reference the results of another saved question in your query.)`}
-      </p>
-      <div className={cx(CS.flex, CS.justifyCenter, CS.py1)}>
+      </Text>
+      <Modal.Footer>
         <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>
-      </div>
-    </ModalContent>
+      </Modal.Footer>
+    </Modal>
   );
 }

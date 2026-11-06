@@ -54,9 +54,9 @@ To connect an action field to a filter on a dashboard:
 
 While you can add actions to dashboards and use them in your Metabase, actions won't work on dashboards accessed via [public links](./introduction.md#sharing-dashboards-with-public-links), or dashboards in guest embeds.
 
-If you want people outside of your Metabase to use an action, you can create a [public form for an action](../data-modeling/models/actions/custom.md#make-public), or expose actions via [modular embedding](../embedding/modular-embedding.md) with SSO or [full app embedding](../embedding/full-app-embedding.md).
+If you want people outside of your Metabase to use an action, you can share a [data action as a public form](../data-modeling/data-actions.md#share-a-data-action-as-a-public-form), or expose actions via [modular embedding](../embedding/modular-embedding.md) with SSO or [full app embedding](../embedding/full-app-embedding.md).
 
 ## Further reading
 
-- [Actions](../data-modeling/models/actions/start.md)
+- [Model actions](../data-modeling/models/actions/start.md)
 - [Editable tables](../data-modeling/editable-tables.md)

@@ -109,7 +109,8 @@
 
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
-  {:copy           [:name :description :type :details :active]
+  {:schema    ::channel.schema/external-channel
+   :copy           [:name :description :type :details :active]
    :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -124,7 +125,7 @@
   "Entries every channel template has, whatever its `:channel_type`."
   [[:id           {:optional true} ms/PositiveInt]
    [:name         {:optional true} ms/NonBlankString]
-   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]])
+   [:channel_type                  [:fn {:json-schema {:type "string"}} #(= "channel" (-> % keyword namespace))]]])
 
 (def ^:private channel-template-row-entries
   "[[channel-template-entries]] plus the timestamps a stored template carries. Kept out of the user-provided schema

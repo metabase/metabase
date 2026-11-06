@@ -31,7 +31,7 @@ export const TransformsSyncRow = ({ isReadOnly }: TransformsSyncRowProps) => {
           <Switch
             checked={isChecked}
             onChange={(e) => handleToggle(e.currentTarget.checked)}
-            disabled={isReadOnly}
+            disabled={isReadOnly || isChecked}
             aria-label={t`Sync Transforms`}
           />
           <Text>{t`Sync`}</Text>

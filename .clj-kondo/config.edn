@@ -75,7 +75,6 @@
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/t2-implicit-pk                                   {:level :warning}
-  :metabase/table-or-field-query                             {:level :warning}
   ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
   ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
   ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
@@ -731,7 +730,6 @@
    metabase.mcp.v2.common/list-content                                                                                       hooks.metabase.agent-message/lint-list-content
    metabase.mcp.v2.common/success-content                                                                                    hooks.metabase.agent-message/lint-success-content
    metabase.mcp.v2.common/throw-teaching-error                                                                               hooks.metabase.agent-message/lint-teaching-exit
-   metabase.mcp.v2.dashboard-ops/op-error!                                                                                   hooks.metabase.agent-message/lint-op-error
    metabase.mcp.v2.message/msg                                                                                               hooks.metabase.agent-message/lint-msg
    metabase.mcp.v2.tools.browse/paged-list-content                                                                           hooks.metabase.agent-message/lint-list-content
    metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
@@ -974,12 +972,7 @@
    :name    agent-exit-namespaces}]
 
  :config-in-ns
- {metabase.app-db.custom-migrations
-  {:linters
-   ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
-   {:metabase/table-or-field-query {:level :off}}}
-
-  test-namespaces
+ {test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}

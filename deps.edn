@@ -117,7 +117,7 @@
                                                           org.bouncycastle/bcprov-jdk15on
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
-  metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
+  metabase/throttle                         {:mvn/version "1.0.3"}              ; Tools for throttling access to API endpoints and other code pathways
   methodical/methodical                     {:mvn/version "1.0.127"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
   metosin/malli                             {:git/url "https://github.com/metabase/malli" ; Data-driven Schemas for Clojure/Script and babashka
                                              :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
@@ -298,12 +298,15 @@
     io.zonky.test.postgres/embedded-postgres-binaries-linux-amd64    {:mvn/version "18.3.0"} ; Linux x86_64 (covers ubuntu-latest GH Actions runner)
     io.zonky.test.postgres/embedded-postgres-binaries-linux-arm64v8  {:mvn/version "18.3.0"} ; Linux arm64
     io.zonky.test.postgres/embedded-postgres-binaries-windows-amd64  {:mvn/version "18.3.0"} ; Windows x86_64
-    jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
-                                  :exclusions
-                                  [org.ow2.asm/asm-all]}
+    ;; Clojure 1.12 method values and parameter tags require the fork.
+    jonase/eastwood              {:git/url "https://github.com/crisptrutski/eastwood.git"
+                                  :git/sha "7b2d94e47a3149e28927db197b9c113c81ed6084"}
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
+    ;; starts the pinned server an app DB snapshot is generated from (metabase.app-db.snapshot-test-util.server);
+    ;; every other test DB is started outside the JVM and reached through MB_<DB>_TEST_*
+    org.testcontainers/testcontainers {:mvn/version "1.21.4"}
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
@@ -706,11 +709,7 @@
   {:exec-fn   metabase.linters.eastwood/eastwood-tests
    :exec-args {:exclude-linters [:wrong-arity [:suspicious-test :second-arg-is-not-string]]
                :exclude-namespaces
-               [;; byte/1 dispatch value trips up Eastwood's reader
-                metabase.test.http-client
-                ;; Cookie/.getName qualified method trips up Eastwood's analyzer
-                metabase.server.middleware.settings-cache-test
-                ;; .cljc syntax error during Eastwood's analyze+eval phase
+               [;; .cljc syntax error during Eastwood's analyze+eval phase
                 metabase.lib.query-test
                 ;; "count not supported on this type: Symbol" in Eastwood's analyzer
                 metabase.query-processor.parameters.temporal-units-test

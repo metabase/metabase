@@ -73,3 +73,8 @@
            :description (deferred-tru "value must be a valid MBQL query, or an empty query.")}
    [true  ::empty-query]
    [false ::maybe-legacy-query]])
+
+(def external-registry
+  "[[lib.schema/external-registry]] for a stored query as serialization writes it, which has portable references the
+  app DB normalization of [[::maybe-legacy-query]] cannot resolve, so it is normalized as a plain query."
+  (assoc lib.schema/external-registry ::maybe-legacy-query [:ref ::lib.schema/query]))

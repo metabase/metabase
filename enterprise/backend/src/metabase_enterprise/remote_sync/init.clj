@@ -45,7 +45,6 @@
   (when (and (not (settings/remote-sync-enabled)) (collection/has-remote-synced-collection?))
     (log/info "Remote sync is disabled but a remote-synced collection exists. Marking collections as not remote-sync.")
     (collection/clear-remote-synced-collection!))
-  (settings/pin-remote-sync-custom-collections-enabled!)
   (events/convert-legacy-transforms-root!)
   (when (settings/remote-sync-enabled)
     (when (= :read-only (settings/remote-sync-type))

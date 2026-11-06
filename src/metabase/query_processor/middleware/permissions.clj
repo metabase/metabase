@@ -68,7 +68,7 @@
   metabase-enterprise.audit-app.permissions
   [query]
   (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
-                  query)))
+                  {:type qp.error-type/disabled-feature, :query query})))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
