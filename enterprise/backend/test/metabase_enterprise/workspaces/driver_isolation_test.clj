@@ -1046,7 +1046,7 @@
                               (with-isolation-details driver low-priv-db ws-b))
                              nil
                              (catch Throwable t t)))]
-              (sql-jdbc.conn/invalidate-pool-for-db! low-priv-db)
+              (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id low-priv-db))
               (is (some? thrown)
                   "init-workspace-isolation! over a low-privilege connection should have thrown")
               (is (seq @generated)
