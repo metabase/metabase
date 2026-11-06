@@ -254,6 +254,28 @@
        (is (nil? (schema-owner spec (:schema workspace))))
        (is (not (role-exists? spec ws-user)))))))
 
+(deftest init-connection-failure-at-commit-leaves-cleanup-to-the-caller-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2113)
+           ws-user   (-> workspace :database_details :user)
+           commit    jdbc/db-transaction*]
+       (testing "a connection that drops at COMMIT may have committed, so init leaves the error unmarked for destroy"
+         ;; the transaction commits on the server, then the client sees the connection fail, as when it drops during
+         ;; COMMIT
+         (with-redefs [jdbc/db-transaction* (fn [db & more]
+                                              (let [result (apply commit db more)]
+                                                ;; the outermost transaction only: a nested one does not commit
+                                                (if (:connection db)
+                                                  result
+                                                  (throw (java.sql.SQLException. "An I/O error occurred" "08006")))))]
+           (let [e (is (thrown? Exception
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (not (false? (:workspace/cleanup? (ex-data e)))))))
+         (is (role-exists? spec ws-user)))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))
+       (is (not (role-exists? spec ws-user)))))))
+
 (deftest destroy-ends-the-workspace-users-sessions-test
   (do-with-warehouse!
    (fn [spec database]
