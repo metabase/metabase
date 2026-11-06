@@ -58,18 +58,13 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
-       (let [run!  (fn []
-                     ;; the executors log their own failures at ERROR; this one happens before any executor runs
-                     (transforms.i/execute! (try (resolve-target transform)
-                                                 (catch Throwable t
-                                                   (log/errorf "Could not resolve the target of transform %s: %s"
-                                                               (pr-str (:id transform)) (ex-message t))
-                                                   (throw t)))
-                                            opts))
-             db-id (transforms-base.i/target-db-id transform)]
-         (if db-id
-           (transforms.query-impl/call-with-transform-target-rollback db-id (:target transform) run!)
-           (run!)))
+       ;; the executors log their own failures at ERROR; this one happens before any executor runs
+       (transforms.i/execute! (try (resolve-target transform)
+                                   (catch Throwable t
+                                     (log/errorf "Could not resolve the target of transform %s: %s"
+                                                 (pr-str (:id transform)) (ex-message t))
+                                     (throw t)))
+                              opts)
        (catch Throwable t
          ;; so a caller awaiting the start isn't left hanging on a pre-start failure;
          ;; a no-op when the run had already started and the promise was delivered
