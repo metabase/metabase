@@ -146,19 +146,10 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-pks-vec :model/Table :db_id database-id :active true))
 
-(mu/defn table-for-categories :- [:maybe :map]
-  "The Table with `table-id`, with the user values, for field categorization."
+(mu/defn table-for-filter-values :- [:maybe :map]
+  "The Table with `table-id`, with the user values, for the AI filter values."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :id :db_id :name :display_name :description] :id table-id))
-
-(mu/defn fields-for-categories :- [:sequential :map]
-  "The active, visible Fields of the Table with `table-id`, with the user values, in table order."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Field :id :name :display_name :description :base_type :semantic_type]
-             :table_id table-id
-             :active true
-             :visibility_type [:not-in ["sensitive" "retired"]]
-             {:order-by [[:position :asc] [:id :asc]]}))
 
 (defn root-collection-id-by-name
   "The id of the top-level, not archived Collection named `collection-name`, or nil. Prototype: reads the table
@@ -183,7 +174,7 @@
   (when-let [field (t2/select-one [:model/Field :id :table_id :name :display_name :description :base_type
                                    :semantic_type :fingerprint]
                                   :id field-id)]
-    (assoc field :table (table-for-categories (:table_id field)))))
+    (assoc field :table (table-for-filter-values (:table_id field)))))
 
 (mu/defn field-values-for-filter :- [:maybe [:sequential :any]]
   "The full list of values of the Field with `field-id`, or nil when sync did not list them."

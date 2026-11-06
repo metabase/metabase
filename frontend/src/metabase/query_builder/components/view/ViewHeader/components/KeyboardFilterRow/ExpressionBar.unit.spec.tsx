@@ -105,7 +105,6 @@ describe("ExpressionBar", () => {
     const setup = ({
       query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     }: { query?: Lib.Query } = {}) => {
-      fetchMock.get("path:/api/prototype/field-categories", []);
       fetchMock.get("path:/api/prototype/filter-usage", []);
       fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       renderWithProviders(
@@ -219,7 +218,6 @@ describe("ExpressionBar", () => {
 
   describe("typing a space", () => {
     const setup = () => {
-      fetchMock.get("path:/api/prototype/field-categories", []);
       fetchMock.get("path:/api/prototype/filter-usage", []);
       fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -350,7 +348,6 @@ describe("ExpressionBar", () => {
     };
 
     const setup = () => {
-      fetchMock.get("path:/api/prototype/field-categories", []);
       fetchMock.get("path:/api/prototype/filter-usage", []);
       fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const onChange = jest.fn<void, [Lib.Query]>();
@@ -525,7 +522,6 @@ describe("ExpressionBar", () => {
     };
 
     const setup = () => {
-      fetchMock.get("path:/api/prototype/field-categories", []);
       fetchMock.get("path:/api/prototype/filter-usage", []);
       fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const onChange = jest.fn<void, [Lib.Query]>();
@@ -652,7 +648,6 @@ describe("ExpressionBar", () => {
     type SetupOpts = { query: Lib.Query; openKey?: number };
 
     const setup = ({ query, openKey }: SetupOpts) => {
-      fetchMock.get("path:/api/prototype/field-categories", []);
       fetchMock.get("path:/api/prototype/filter-usage", []);
       fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const onChange = jest.fn<void, [Lib.Query]>();
@@ -841,7 +836,6 @@ describe("ExpressionBar", () => {
 
   describe("selection from a connector", () => {
     const setup = () => {
-      fetchMock.get("path:/api/prototype/field-categories", []);
       fetchMock.get("path:/api/prototype/filter-usage", []);
       fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);

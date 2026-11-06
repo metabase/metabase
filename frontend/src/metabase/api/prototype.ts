@@ -11,12 +11,6 @@ export type PrototypeFilterUsage = {
   ratio: number;
 };
 
-// Prototype: the response of GET /api/prototype/field-categories.
-export type PrototypeFieldCategories = {
-  table_id: TableId;
-  categories: { name: string; field_ids: FieldId[] }[];
-};
-
 // Prototype: the request and the response of POST /api/prototype/filter-values.
 export type PrototypeFilterValuesRequest = {
   prompt: string;
@@ -119,15 +113,6 @@ export const prototypeApi = Api.injectEndpoints({
         url: "/api/prototype/filter-usage",
       }),
     }),
-    listPrototypeFieldCategories: builder.query<
-      PrototypeFieldCategories[],
-      void
-    >({
-      query: () => ({
-        method: "GET",
-        url: "/api/prototype/field-categories",
-      }),
-    }),
     getPrototypeRuntimeEstimate: builder.query<
       PrototypeRuntimeEstimate,
       PrototypeRuntimeEstimateRequest
@@ -151,7 +136,6 @@ export const {
   useSuggestPrototypeFilterValuesMutation,
   useSuggestPrototypeFiltersMutation,
   useListPrototypeFilterUsageQuery,
-  useListPrototypeFieldCategoriesQuery,
   useGetPrototypeSamplesQuery,
   useGetPrototypeRuntimeEstimateQuery,
 } = prototypeApi;
