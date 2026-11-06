@@ -470,6 +470,11 @@ export function DraftFilterPill({
         }
         return false;
       case "Tab":
+        // Shift+Tab edits the part before, like the fields of a
+        // form. From the column, it leaves the filter.
+        if (event.shiftKey) {
+          return moveToPart("previous");
+        }
         // Prototype: in a list of checkboxes, Tab completes the filter, also
         // with a checkbox highlighted. With typed text, it picks the value.
         if (
@@ -492,7 +497,13 @@ export function DraftFilterPill({
           }
           return true;
         }
-        return false;
+        // A highlighted option takes the Tab, the same as Enter.
+        if (hasSelectedOption) {
+          return false;
+        }
+        // With nothing to pick, Tab edits the next part. After the
+        // last part, it completes the filter.
+        return moveToPart("next") || submit();
       case "Enter":
         if (step === "value" && !hasSelectedOption) {
           submit();

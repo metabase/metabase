@@ -312,7 +312,7 @@ export function SuggestionInput({
     if (onKeyDown?.(event, hasSelectedOption, firstOptionValue)) {
       event.preventDefault();
       event.stopPropagation();
-    } else if (event.key === "Tab" && hasSelectedOption) {
+    } else if (event.key === "Tab" && !event.shiftKey && hasSelectedOption) {
       // Tab accepts the highlighted suggestion, like Enter.
       event.preventDefault();
       combobox.clickSelectedOption();
@@ -474,6 +474,9 @@ export function SuggestionInput({
                 mah={optionsMaxHeightWithLimit}
                 type="scroll"
                 scrollbars="y"
+                // The browser puts a scrollable box in the tab order. The
+                // input owns the keys of the list, so Tab must not go there.
+                viewportProps={{ tabIndex: -1 }}
               >
                 <div
                   className={S.optionsContent}
