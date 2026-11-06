@@ -26,17 +26,20 @@
   {:arglists '([old new])}
   (constantly :default))
 
+(defn- new-state
+  "A fresh settings cache state: an empty cache, an update-check clock that is due, and a restore lock."
+  []
+  {:cache             (doto (atom nil)
+                        (add-watch :call-on-change (fn [_key _ref old new]
+                                                     (call-on-change old new))))
+   :last-update-check (AtomicLong. 0)
+   :restore-lock      (ReentrantLock.)})
+
 ;; Each application DB has its own cache, with its own update-check clock and restore lock, so a test that binds
 ;; another app DB gets fresh state, and so does a bump from [[mdb/increment-app-db-unique-indentifier!]].
 ;; Keyed on the app DB's id, like every other per-app-DB cache, and never evicted.
 (def ^:private ^{:arglists '([])} per-app-db
-  (mdb/memoize-for-application-db
-   (fn []
-     {:cache             (doto (atom nil)
-                           (add-watch :call-on-change (fn [_key _ref old new]
-                                                        (call-on-change old new))))
-      :last-update-check (AtomicLong. 0)
-      :restore-lock      (ReentrantLock.)})))
+  (mdb/memoize-for-application-db new-state))
 
 (defn current-state
   "The settings cache state for the application DB this thread sees.
@@ -114,10 +117,11 @@
    (swap! (cache* state) assoc settings-last-updated-key (settings.db/setting-value settings-last-updated-key))))
 
 (defn cache-last-updated-at
-  "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null."
-  []
-  (let [current-cache (cache)]
-    (core/get current-cache settings-last-updated-key)))
+  "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null.
+  Reads the cache in `state`, by default the one for the application DB this thread sees."
+  ([] (cache-last-updated-at (current-state)))
+  ([state]
+   (core/get (cache state) settings-last-updated-key)))
 
 (defn- cache-out-of-date?
   "Check whether our Settings cache is out of date. We know the cache is out of date if either of the following
@@ -138,7 +142,7 @@
        ;; is the cache empty?
        (not current-cache)
        ;; if not, get the cached value of `settings-last-updated`, and if it exists...
-       (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
+       (when-let [last-known-update (cache-last-updated-at state)]
          ;; compare it to the value in the DB. This is done be seeing whether a row exists
          ;; WHERE value > <local-value>
          ;; compared here rather than in SQL: what is stored is ciphertext, so only the decrypted timestamps can be ordered
