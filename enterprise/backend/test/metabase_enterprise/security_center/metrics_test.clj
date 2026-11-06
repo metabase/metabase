@@ -6,7 +6,8 @@
    [metabase-enterprise.security-center.metrics :as metrics]
    [metabase.analytics.core :as analytics.core]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -139,3 +140,36 @@
           "sso-login"      "pass"    0.0
           "sso-login"      "fail"    0.0
           "sso-login"      "unknown" 0.0)))))
+
+(defn- fake-entry
+  "A registry entry whose run returns one item with `status`."
+  [id status & {:as overrides}]
+  (merge {:id                id
+          :severity          :medium
+          :title             (deferred-tru "Title")
+          :description       (deferred-tru "Description")
+          :remediation       (deferred-tru "Remediation")
+          :docs-page         "configuring-metabase/settings"
+          :requires-restart? false
+          :applicable?       (constantly true)
+          :run               (constantly [{:status status, :message "x"}])}
+         overrides))
+
+(deftest refresh-metrics!-sets-the-health-check-gauge-test
+  (testing "refresh-metrics! runs the checks and sets the gauge, and a check that does not apply reads 0"
+    (with-redefs [health-checks/checks {:https-redirect (fake-entry :https-redirect :pass)
+                                        :sso-login      (fake-entry :sso-login :fail)
+                                        :mfa-required   (fake-entry :mfa-required :pass
+                                                                    :applicable? (constantly false))}]
+      (mt/with-premium-features #{:admin-security-center}
+        (mt/with-prometheus-system! [_ system]
+          (metrics/refresh-metrics!)
+          (are [check-id status value] (= value (mt/metric-value system :metabase-security-center/health-checks
+                                                                 {:check_id check-id, :severity "medium", :status status}))
+            "https-redirect" "pass"    1.0
+            "https-redirect" "fail"    0.0
+            "sso-login"      "fail"    1.0
+            "sso-login"      "pass"    0.0
+            "mfa-required"   "pass"    0.0
+            "mfa-required"   "fail"    0.0
+            "mfa-required"   "unknown" 0.0))))))

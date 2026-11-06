@@ -2,12 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
+   [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.matching :as matching]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
+   [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -92,3 +94,26 @@
               (let [updated (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
                 (is (= :active (:match_status updated)))
                 (is (some? (:last_evaluated_at updated)))))))))))
+
+(deftest sync-and-evaluate!-refreshes-the-gauges-when-the-fetch-fails-test
+  (testing "a failed advisories fetch is logged, and the health-check gauge is still set"
+    (with-redefs [health-checks/checks {:https-redirect {:id                :https-redirect
+                                                         :severity          :medium
+                                                         :title             (deferred-tru "Title")
+                                                         :description       (deferred-tru "Description")
+                                                         :remediation       (deferred-tru "Remediation")
+                                                         :docs-page         "configuring-metabase/settings"
+                                                         :requires-restart? false
+                                                         :applicable?       (constantly true)
+                                                         :run               (constantly [{:status :pass, :message "x"}])}}]
+      (mt/with-premium-features #{:admin-security-center}
+        (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                    fetch/sync-advisories!                    #(throw (Exception. "HM unreachable"))
+                                    matching/evaluate-all-advisories!         (constantly nil)]
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.task.sync-advisories :warn]]
+              (#'sync-advisories/sync-and-evaluate!)
+              (is (=? [{:level :warn, :message #"Error fetching advisories from HM: HM unreachable"}]
+                      (filter #(re-find #"fetching" (:message %)) (messages)))))
+            (is (= 1.0 (mt/metric-value system :metabase-security-center/health-checks
+                                        {:check_id "https-redirect", :severity "medium", :status "pass"})))))))))

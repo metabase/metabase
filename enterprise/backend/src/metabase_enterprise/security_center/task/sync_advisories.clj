@@ -96,8 +96,7 @@
                      (cron/cron-schedule cron-str)
                      (cron/with-misfire-handling-instruction-do-nothing))))]
       (task/schedule-task! job trigger)
-      ;; Populate metrics from existing appdb state so freshness and vulnerability
-      ;; gauges survive restarts without waiting for the next scheduled sync.
+      ;; Set the gauges now, so they have values after a restart without waiting for the next scheduled sync.
       (metrics/refresh-metrics!)
       ;; on first run of the feature, we sync immediately to seed advisories
       (when-not (settings/security-center-last-synced-at)

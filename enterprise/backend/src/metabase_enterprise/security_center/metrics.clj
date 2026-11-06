@@ -47,23 +47,6 @@
                  (update acc (label-of severity (some? acknowledged_at)) (fnil inc 0)))
                {})))
 
-(defn refresh-metrics!
-  "Recompute and set Security Center Prometheus gauges from the appdb."
-  []
-  (try
-    (when-let [epoch (last-sync-epoch-seconds)]
-      (analytics/set-gauge! :metabase-security-center/last-sync-timestamp-seconds epoch))
-    (catch Exception e
-      (log/warnf "Failed to set :metabase-security-center/last-sync-timestamp-seconds metric: %s" (ex-message e))))
-  (try
-    (let [counts (vulnerable-counts)]
-      (doseq [label vulnerable-advisory-labels]
-        (analytics/set-gauge! :metabase-security-center/vulnerable-advisories
-                              label
-                              (get counts label 0))))
-    (catch Exception e
-      (log/warnf "Failed to set :metabase-security-center/vulnerable-advisories metric: %s" (ex-message e)))))
-
 ;;; Health checks
 
 (defn- health-check-label
@@ -90,5 +73,29 @@
         (analytics/set-gauge! :metabase-security-center/health-checks
                               (health-check-label check status)
                               (if (= status (status-of-id (:id check))) 1 0))))
+    (catch Exception e
+      (log/warnf "Failed to set :metabase-security-center/health-checks metric: %s" (ex-message e)))))
+
+;;; Refresh
+
+(defn refresh-metrics!
+  "Recompute and set every Security Center Prometheus gauge: the advisory gauges from the app DB, the health-check
+  gauge from a run of every applicable check. A failure in one gauge is logged and leaves the others set."
+  []
+  (try
+    (when-let [epoch (last-sync-epoch-seconds)]
+      (analytics/set-gauge! :metabase-security-center/last-sync-timestamp-seconds epoch))
+    (catch Exception e
+      (log/warnf "Failed to set :metabase-security-center/last-sync-timestamp-seconds metric: %s" (ex-message e))))
+  (try
+    (let [counts (vulnerable-counts)]
+      (doseq [label vulnerable-advisory-labels]
+        (analytics/set-gauge! :metabase-security-center/vulnerable-advisories
+                              label
+                              (get counts label 0))))
+    (catch Exception e
+      (log/warnf "Failed to set :metabase-security-center/vulnerable-advisories metric: %s" (ex-message e))))
+  (try
+    (set-health-check-gauges! (health-checks/run-checks))
     (catch Exception e
       (log/warnf "Failed to set :metabase-security-center/health-checks metric: %s" (ex-message e)))))
