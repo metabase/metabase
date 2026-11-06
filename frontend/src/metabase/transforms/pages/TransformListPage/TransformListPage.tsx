@@ -1,5 +1,6 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -8,10 +9,7 @@ import {
   useListCollectionsTreeQuery,
   useListTransformsQuery,
 } from "metabase/api";
-import {
-  CollectionRowModal,
-  type CollectionRowModalState,
-} from "metabase/common/collections/components/CollectionRowModal";
+import { CollectionRowModal } from "metabase/common/collections/components/CollectionRowModal";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
@@ -49,11 +47,18 @@ import { getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
+import { DeleteTransformsFolderModal } from "./DeleteTransformsFolderModal";
 import S from "./TransformListPage.module.css";
-import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
+import {
+  type TransformsFolderModalState,
+  type TreeNode,
+  getCollectionNodeId,
+  isCollectionNode,
+} from "./types";
 import {
   buildTreeData,
   getDefaultExpandedIds,
+  getTransformsInFolder,
   useGetNodeSyncColor,
   useGetTransformWarnings,
 } from "./utils";
@@ -61,18 +66,6 @@ import {
 const getNodeId = (node: TreeNode) => node.id;
 const getSubRows = (node: TreeNode) => node.children;
 const isFilterable = (node: TreeNode) => node.nodeType === "transform";
-
-const countTransforms = (node: TreeNode): number => {
-  if (!node.children) {
-    return 0;
-  }
-  return node.children.reduce((count, child) => {
-    if (child.nodeType === "transform") {
-      return count + 1;
-    }
-    return count + countTransforms(child);
-  }, 0);
-};
 
 const isRowDisabled = (row: Row<TreeNode>) => {
   return row.original.can_read === false;
@@ -129,7 +122,14 @@ export const TransformListPage = () => {
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [collectionModal, setCollectionModal] =
-    useState<CollectionRowModalState>();
+    useState<TransformsFolderModalState>();
+  // A delete that ends after the user cancelled and opened another modal must not close that one.
+  const currentModalRef = useLatest(collectionModal);
+  const closeModal = (modal: TransformsFolderModalState) => {
+    if (currentModalRef.current === modal) {
+      setCollectionModal(undefined);
+    }
+  };
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
   const isMeterLocked = useSetting("transforms-meter-locked");
 
@@ -280,7 +280,7 @@ export const TransformListPage = () => {
           isCollectionNode(row.original) ? (
             <CollectionRowMenu
               collection={row.original.collection}
-              transformCount={countTransforms(row.original)}
+              transforms={getTransformsInFolder(row.original)}
               onOpenModal={setCollectionModal}
             />
           ) : null,
@@ -368,10 +368,18 @@ export const TransformListPage = () => {
           )}
         </Card>
       </Stack>
-      <CollectionRowModal
-        modal={collectionModal}
-        onClose={() => setCollectionModal(undefined)}
-      />
+      {collectionModal?.type === "delete" ? (
+        <DeleteTransformsFolderModal
+          collection={collectionModal.collection}
+          transforms={collectionModal.transforms}
+          onClose={() => closeModal(collectionModal)}
+        />
+      ) : (
+        <CollectionRowModal
+          modal={collectionModal}
+          onClose={() => setCollectionModal(undefined)}
+        />
+      )}
       <Outlet />
     </PageContainer>
   );

@@ -1981,14 +1981,16 @@ LIMIT
       ]);
     });
 
-    // needs new FE
-    it.skip("should edit collection details and archive a collection with transforms", () => {
+    it("should edit collection details and delete a collection with transforms", () => {
+      cy.intercept("DELETE", "/api/transform/collection/*").as(
+        "deleteTransformsFolder",
+      );
       H.createTransformCollection({ name: "Original Name" });
       H.createTransformCollection({ name: "Target Parent" });
-      H.createTransformCollection({ name: "Archive Me" }).then((collection) => {
+      H.createTransformCollection({ name: "Delete Me" }).then((collection) => {
         createMbqlTransform({
           name: "Transform In Collection",
-          targetTable: "archived_transform_table",
+          targetTable: "deleted_transform_table",
           collectionId: collection.body.id,
         });
       });
@@ -2027,37 +2029,55 @@ LIMIT
         cy.findByText("Renamed Collection").should("be.visible");
       });
 
-      cy.log("archive a collection with transforms");
+      cy.log("expand the collection to see the transform in it");
       getTransformsList().within(() => {
-        cy.findByText("Archive Me").should("be.visible");
-        cy.findByText("Archive Me").click();
+        cy.findByText("Delete Me").should("be.visible");
+        cy.findByText("Delete Me").click();
         cy.findByText("Transform In Collection").should("be.visible");
       });
 
-      cy.log("archive the collection via menu");
+      cy.log("delete the collection via menu, keeping the output tables");
       getTransformsList()
-        .findByText("Archive Me")
+        .findByText("Delete Me")
         .closest('[role="row"]')
         .findByRole("button", { name: "Collection options" })
         .click();
 
-      H.popover().findByText("Archive").click();
-
-      H.modal().within(() => {
-        cy.findByText('Archive "Archive Me"?').should("be.visible");
-        cy.findByText("This will also archive 1 transform inside it.").should(
-          "be.visible",
-        );
-        cy.button("Archive").click();
+      H.popover().within(() => {
+        cy.findByText("Delete").should("be.visible");
+        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Delete").click();
       });
 
-      H.undoToast()
-        .findByText('"Archive Me" has been archived')
-        .should("be.visible");
+      H.modal().within(() => {
+        cy.findByText('Delete "Delete Me"?').should("be.visible");
+        cy.findByText(
+          "This will delete the folder, its subfolders and the 1 transform inside it.",
+        ).should("be.visible");
+        cy.findByLabelText("Delete the transforms only").should("be.checked");
+        cy.findByText("These transforms will be deleted:").should("be.visible");
+        cy.findByText("Transform In Collection").should("be.visible");
+        cy.findByText("This can’t be undone.").should("be.visible");
+        cy.button("Delete transforms only").click();
+      });
 
-      cy.log("verify collection and its children are no longer visible");
+      cy.wait("@deleteTransformsFolder")
+        .its("request.url")
+        .should("not.contain", "delete-tables");
+
+      H.undoToast()
+        .findByText('"Delete Me" has been deleted')
+        .should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_folder_deleted",
+        event_detail: "transforms_only",
+        result: "success",
+      });
+
+      cy.log("verify collection and its transform are gone");
       getTransformsList().within(() => {
-        cy.findByText("Archive Me").should("not.exist");
+        cy.findByText("Target Parent").should("be.visible");
+        cy.findByText("Delete Me").should("not.exist");
         cy.findByText("Transform In Collection").should("not.exist");
       });
     });

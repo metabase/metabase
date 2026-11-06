@@ -17,12 +17,14 @@ import {
   createMockTransformTarget,
 } from "metabase-types/api/mocks";
 
+import type { TreeNode } from "./types";
 import {
   buildTreeData,
   getDescendantCollectionIds,
   getFolderSyncColor,
   getIncrementalWarning,
   getSyncColorForEntities,
+  getTransformsInFolder,
 } from "./utils";
 
 const dirtyEntity = (
@@ -398,5 +400,96 @@ describe("getIncrementalWarning", () => {
     expect(
       getIncrementalWarning(transform, getMetadataProvider),
     ).toBeUndefined();
+  });
+});
+
+describe("getTransformsInFolder", () => {
+  it("returns the transforms of the folder and its subfolders, in tree order", () => {
+    const transform = (
+      id: number,
+      name: string,
+      can_write: boolean,
+    ): TreeNode => ({
+      id: `transform-${id}`,
+      name,
+      nodeType: "transform",
+      icon: "transform",
+      transformId: id,
+      can_write,
+      target_table_id: id * 10,
+      target: {
+        type: "table",
+        name: `table_${id}`,
+        schema: "public",
+        database: 1,
+      },
+    });
+    const folder: TreeNode = {
+      id: "collection-1",
+      name: "Folder",
+      nodeType: "folder",
+      icon: "folder",
+      children: [
+        transform(1, "First", true),
+        {
+          id: "collection-2",
+          name: "Subfolder",
+          nodeType: "folder",
+          icon: "folder",
+          children: [transform(2, "Nested", false)],
+        },
+        transform(3, "Last", true),
+      ],
+    };
+
+    expect(getTransformsInFolder(folder)).toEqual([
+      {
+        id: 1,
+        name: "First",
+        can_write: true,
+        target_table_id: 10,
+        target: {
+          type: "table",
+          name: "table_1",
+          schema: "public",
+          database: 1,
+        },
+      },
+      {
+        id: 2,
+        name: "Nested",
+        can_write: false,
+        target_table_id: 20,
+        target: {
+          type: "table",
+          name: "table_2",
+          schema: "public",
+          database: 1,
+        },
+      },
+      {
+        id: 3,
+        name: "Last",
+        can_write: true,
+        target_table_id: 30,
+        target: {
+          type: "table",
+          name: "table_3",
+          schema: "public",
+          database: 1,
+        },
+      },
+    ]);
+  });
+
+  it("returns an empty list for a folder without children", () => {
+    const folder: TreeNode = {
+      id: "collection-1",
+      name: "Folder",
+      nodeType: "folder",
+      icon: "folder",
+    };
+
+    expect(getTransformsInFolder(folder)).toEqual([]);
   });
 });
