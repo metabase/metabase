@@ -5,7 +5,6 @@ import {
   skipToken,
   useGetCardQuery,
   useGetCollectionQuery,
-  useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -16,7 +15,7 @@ import {
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, IconName } from "metabase-types/api";
 
@@ -25,8 +24,8 @@ import { NodeListTitleText } from "../NodeList";
 import type {
   DataReferencePaneProps,
   DataReferenceQuestionItem,
-  UniqueFieldId,
 } from "../types";
+import { useTableColumns } from "../use-table-columns";
 
 import S from "./QuestionPane.module.css";
 
@@ -53,12 +52,11 @@ export const QuestionPane = ({
     id,
   });
   const {
-    data: table,
+    table,
+    queryAndColumns,
     isLoading: isLoadingTable,
     error: tableError,
-  } = useGetTableQueryMetadataQuery({
-    id: getQuestionVirtualTableId(id),
-  });
+  } = useTableColumns(getQuestionVirtualTableId(id));
   const {
     data: collection,
     isLoading: isLoadingCollection,
@@ -74,6 +72,15 @@ export const QuestionPane = ({
   }
 
   const lastEditInfo = card["last-edit-info"];
+
+  const handleColumnClick = (
+    query: Lib.Query,
+    stageIndex: number,
+    column: Lib.ColumnMetadata,
+  ) => {
+    const { name } = Lib.displayInfo(query, stageIndex, column);
+    onItemClick({ type: "field", tableId: table.id, columnName: name });
+  };
 
   return (
     <SidebarContent
@@ -126,22 +133,12 @@ export const QuestionPane = ({
             </Box>
           </Flex>
         )}
-        {table.fields && (
+        {queryAndColumns && (
           <FieldList
-            table={table}
-            fields={table.fields}
-            onFieldClick={(field) => {
-              onItemClick({
-                type: "field",
-                id:
-                  typeof field.id === "number"
-                    ? field.id
-                    : // `getUniqueFieldId` returns the same synthetic string key
-                      // the field list renders with, which is what a non-numeric
-                      // field id means here.
-                      (getUniqueFieldId(field) as UniqueFieldId),
-              });
-            }}
+            query={queryAndColumns.query}
+            stageIndex={queryAndColumns.stageIndex}
+            columns={queryAndColumns.columns}
+            onColumnClick={handleColumnClick}
           />
         )}
       </Box>
