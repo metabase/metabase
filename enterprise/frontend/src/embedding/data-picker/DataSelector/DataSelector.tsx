@@ -628,7 +628,8 @@ export class UnconnectedDataSelector extends Component<
         // query source is a table, or a card that can't be picked here
         await this.switchToStep(SCHEMA_STEP);
       } else {
-        // A join with tables and the source's type left out: the allowed buckets
+        // A join that can pick neither tables nor the source's type: falls back
+        // to the first step, the data types
         await this.switchToStep(DATA_BUCKET_STEP);
       }
     } else {
@@ -674,7 +675,8 @@ export class UnconnectedDataSelector extends Component<
   }
 
   // With Raw Data the only data type, open on the databases: opening on the
-  // data types would show them for a frame before `skipSteps` moves on
+  // data types would show a lone "Raw Data" option for a frame before
+  // `skipSteps` moves on to the databases
   getFreshPickStep(): DataSelectorStep {
     return this.props.canSelectTable && !this.hasDataBucketChoice()
       ? DATABASE_STEP
