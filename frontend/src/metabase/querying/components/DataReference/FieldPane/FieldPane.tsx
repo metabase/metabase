@@ -16,8 +16,8 @@ import type {
   DataReferenceCardFieldItem,
   DataReferencePaneProps,
   DataReferenceTableFieldItem,
-} from "./types";
-import { getCardColumnListInfo, getTableColumnListInfo } from "./utils";
+} from "../types";
+import { getCardColumnListInfo, getTableColumnListInfo } from "../utils";
 
 type TableFieldPaneProps = DataReferencePaneProps<DataReferenceTableFieldItem>;
 type CardFieldPaneProps = DataReferencePaneProps<DataReferenceCardFieldItem>;

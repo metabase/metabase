@@ -25,8 +25,9 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import type { DataReferenceFieldItem } from "../types";
+
 import { FieldPane } from "./FieldPane";
-import type { DataReferenceFieldItem } from "./types";
 
 const CARD_ID = 1;
 const STAGE_INDEX = -1;

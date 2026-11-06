@@ -15,8 +15,8 @@ import {
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-} from "./NodeList";
-import S from "./NodeList.module.css";
+} from "../NodeList";
+import S from "../NodeList.module.css";
 
 interface FieldListProps {
   query: Lib.Query;
