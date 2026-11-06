@@ -46,3 +46,10 @@ export function setupDocumentErrorEndpoint(
 ) {
   fetchMock.get(`path:/api/document/${id}`, { status });
 }
+
+export function setupPublicDocumentErrorEndpoint(
+  uuid: string,
+  { status }: { status: number },
+) {
+  fetchMock.get(`path:/api/public/document/${uuid}`, { status });
+}

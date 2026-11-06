@@ -7,10 +7,11 @@ import {
   setupLastDownloadFormatEndpoints,
   setupPublicDocumentCardQueryEndpoint,
   setupPublicDocumentEndpoints,
+  setupPublicDocumentErrorEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { DocumentContent } from "metabase-types/api";
@@ -86,7 +87,9 @@ const setup = ({ content, hideEmbedBranding = false }: SetupOpts) => {
     CARD.id,
     createMockDataset(),
   );
-  // The document has a comment, so the comment UI would show if the public view rendered it
+  // Gives the absence checks something to hide. The public route never requests comments; the
+  // comment UI only shows if it rendered `DocumentHeader`, or `DocumentBlockShell` with a current
+  // document set, as the authenticated editor does
   setupCommentEndpoints(
     [
       createMockComment({
@@ -209,4 +212,25 @@ describe("PublicDocument", () => {
       screen.queryByRole("link", { name: "Powered by Metabase" }),
     ).not.toBeInTheDocument();
   });
+
+  it.each([404, 400])(
+    "shows the error page when the public document request fails with %s",
+    async (status) => {
+      setupPublicDocumentErrorEndpoint(PUBLIC_UUID, { status });
+
+      const { store } = renderWithProviders(
+        <Route path="/public/document/:uuid" element={<PublicDocument />} />,
+        {
+          mode: "public",
+          withRouter: true,
+          initialRoute: `/public/document/${PUBLIC_UUID}`,
+        },
+      );
+
+      await waitFor(() =>
+        expect(store.getState().app.errorPage).toMatchObject({ status }),
+      );
+      expect(screen.queryByTestId("document-content")).not.toBeInTheDocument();
+    },
+  );
 });
