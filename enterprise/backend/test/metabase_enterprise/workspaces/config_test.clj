@@ -82,10 +82,11 @@
             (is (every? int? (map stored [:ssl-root-cert-id :ssl-client-cert-id :ssl-key-id :ssl-key-password-id]))))
           (is (= {:ssl-root-cert-options "uploaded" :ssl-root-cert-value root-cert}
                  (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value])))
-          (testing "the client cert and key ship neither their parent Secret ids nor their values (MBC10-87)"
-            (is (= {} (select-keys details [:ssl-client-cert-id :ssl-client-cert-value
-                                            :ssl-key-id :ssl-key-value
-                                            :ssl-key-password-id :ssl-key-password-value])))))))))
+          (testing "the client cert and key ship neither their parent Secret ids, options nor values (MBC10-87)"
+            (is (= {} (select-keys details [:ssl-client-cert-id :ssl-client-cert-options :ssl-client-cert-value
+                                            :ssl-key-id :ssl-key-options :ssl-key-value
+                                            :ssl-key-password-id :ssl-key-password-options
+                                            :ssl-key-password-value])))))))))
 
 (defn- with-cert-workspace
   "Run `f` with the id of a provisioned workspace over a Postgres database named \"Cert DW\" with `details`."
@@ -147,6 +148,11 @@
         {:host "h" :port 5432 :tunnel-enabled false :tunnel-known-hosts-id Integer/MAX_VALUE}
         (fn [ws-id]
           (is (= {} (select-keys (details-of ws-id) kh-keys))))))
+    (testing "tunnel off: a leftover -options key doesn't ship"
+      (with-cert-workspace
+        {:host "h" :port 5432 :tunnel-enabled false :tunnel-known-hosts-options "uploaded"}
+        (fn [ws-id]
+          (is (= {} (select-keys (details-of ws-id) kh-keys))))))
     (testing "tunnel on with a known-hosts id that doesn't resolve: a 409, since dropping it would skip host-key checks"
       (with-cert-workspace
         (assoc tunnel :tunnel-known-hosts-id Integer/MAX_VALUE)
@@ -159,6 +165,24 @@
                       (is (= "The SSH known hosts of database \"Cert DW\" can't be read on this instance"
                              (ex-message e)))
                       (ex-data e))))))))))
+
+(deftest build-workspace-config-refuses-ssl-client-auth-test
+  (testing "a database that authenticates with an SSL client certificate is a 409: the child gets no client cert, so
+            it would fail only when it connects"
+    (with-cert-workspace
+      {:host "h" :port 5432 :ssl true :ssl-mode "verify-full" :ssl-use-client-auth true
+       :ssl-client-cert-options "uploaded" :ssl-client-cert-value "client-cert"
+       :ssl-key-options "uploaded" :ssl-key-value "client-key"}
+      (fn [ws-id]
+        (is (=? {:status-code 409}
+                (try
+                  (config/build-workspace-config ws-id)
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (is (= (str "Database \"Cert DW\" uses SSL client-certificate authentication, which workspace "
+                                "sidecars don't support")
+                           (ex-message e)))
+                    (ex-data e)))))))))
 
 (deftest build-workspace-config-unreadable-ssl-root-cert-test
   (testing "a root cert the parent can't read is a 409 naming the database, not an opaque 500"

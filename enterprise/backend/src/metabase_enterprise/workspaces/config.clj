@@ -75,37 +75,54 @@
             :database_id (:id db)}
            cause))
 
-(defn- inline-secret
-  "Add the value of `secret`'s Secret to `details` when the connection uses it. A Secret the parent can't read (e.g. a
-   missing local file) is a 409 naming the database rather than an opaque 500."
+(defn- inlined-secret-entries
+  "The keys `secret` adds to the config when the connection uses it: the value of its Secret, or a value the driver
+   keeps in `:details` as is (Postgres doesn't store the known hosts as a Secret). A Secret the parent can't read (e.g.
+   a missing local file) is a 409 naming the database rather than an opaque 500."
   [db details {:keys [label enabled-by id options value required?] secret-name :name}]
-  (if-not (and (get details enabled-by) (get details id))
-    details
+  (cond
+    (not (get details enabled-by))
+    nil
+
+    (get details id)
     (let [secret-value (try
                          (secrets/value-as-string (:engine db) details secret-name)
                          (catch Exception e
                            (throw (unreadable-secret db label e))))]
       (when (and required? (nil? secret-value))
         (throw (unreadable-secret db label nil)))
-      (cond-> details
-        secret-value (assoc options "uploaded"
-                            value   secret-value)))))
+      (when secret-value
+        {options "uploaded"
+         value   secret-value}))
+
+    :else
+    (select-keys details [options value])))
 
 (defn- inline-secrets
   "Replace the `:secret` connection properties' Secret ids with what the child can use. `:secret` properties keep only
    the id of their Secret row in `:details`, and the parent's ids don't resolve in the child's app DB: there they could
-   name an unrelated Secret the child's own import created. So every `-id` is dropped, and the values in
-   `inlined-secrets` ship instead, for the child's config-file import to store as Secrets of its own. The client
-   certificate and key are not inlined (MBC10-87)."
+   name an unrelated Secret the child's own import created. So every `-id` and `-options` is dropped, and the values in
+   `inlined-secrets` ship instead, for the child's config-file import to store as Secrets of its own.
+
+   The client certificate and key are not inlined (MBC10-87), so a connection that authenticates with them is a 409:
+   the child would otherwise fail only when it connects."
   [db details]
-  (let [inlined (reduce (partial inline-secret db) details inlined-secrets)
-        ;; the `-id` naming follows `metabase.secrets.models.secret`, which stores a property's Secret id under it.
-        ;; The inlined ids are listed on their own: Postgres nests the SSH-tunnel properties so that
-        ;; `secret-conn-props-by-name` doesn't list `tunnel-known-hosts`.
-        id-keys (into (set (map :id inlined-secrets))
-                      (map #(keyword (str % "-id")))
-                      (keys (secrets/secret-conn-props-by-name (:engine db))))]
-    (apply dissoc inlined id-keys)))
+  (when (and (:ssl details) (:ssl-use-client-auth details))
+    (throw (ex-info (format "Database %s uses SSL client-certificate authentication, which workspace sidecars don't support"
+                            (pr-str (:name db)))
+                    {:status-code 409
+                     :database_id (:id db)})))
+  (let [;; the `-id`/`-options` naming follows `metabase.secrets.models.secret`. The inlined secrets are listed on
+        ;; their own: Postgres nests the SSH-tunnel properties so that `secret-conn-props-by-name` doesn't list
+        ;; `tunnel-known-hosts`.
+        secret-names (into (set (map :name inlined-secrets))
+                           (keys (secrets/secret-conn-props-by-name (:engine db))))
+        drop-keys    (mapcat (fn [secret-name]
+                               [(keyword (str secret-name "-id")) (keyword (str secret-name "-options"))])
+                             secret-names)]
+    (into (apply dissoc details drop-keys)
+          (map #(inlined-secret-entries db details %))
+          inlined-secrets)))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
