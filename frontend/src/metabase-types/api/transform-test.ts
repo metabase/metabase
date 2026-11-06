@@ -62,7 +62,8 @@ export type TransformTestRunStatus =
 
 export type TransformTestRun = {
   id: TransformTestRunId;
-  transform_test_id: TransformTestId | null;
+  test_type: "transform";
+  test_id: TransformTestId | null;
   initiated_by: UserId | null;
   start_time: string;
   end_time: string | null;

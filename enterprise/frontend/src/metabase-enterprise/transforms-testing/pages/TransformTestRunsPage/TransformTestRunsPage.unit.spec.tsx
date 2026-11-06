@@ -63,7 +63,7 @@ function setup({
   setupGetTransformTestEndpoint(
     createMockTransformTest({ id: 2, transform_id: 1, name: "Refunds" }),
   );
-  setupListTransformTestRunsEndpoint(2, response);
+  setupListTransformTestRunsEndpoint(response);
   setupRunTransformTestEndpoint(2, {
     status: "passed",
     expectations: [],
@@ -81,10 +81,9 @@ function setup({
 }
 
 function getLastRunsRequestUrl() {
-  const call = fetchMock.callHistory.lastCall(
-    "path:/api/ee/transform-test/2/run",
-    { method: "GET" },
-  );
+  const call = fetchMock.callHistory.lastCall("path:/api/ee/data-test-run", {
+    method: "GET",
+  });
   return new URL(call?.url ?? "", "http://localhost");
 }
 
@@ -133,7 +132,10 @@ describe("TransformTestRunsPage", () => {
     });
 
     await screen.findByText("26 - 26");
-    expect(getLastRunsRequestUrl().searchParams.get("offset")).toBe("25");
+    const url = getLastRunsRequestUrl();
+    expect(url.searchParams.get("test_type")).toBe("transform");
+    expect(url.searchParams.get("test_id")).toBe("2");
+    expect(url.searchParams.get("offset")).toBe("25");
 
     await userEvent.click(screen.getByLabelText("Next page"));
 

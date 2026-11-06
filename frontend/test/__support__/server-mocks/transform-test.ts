@@ -16,10 +16,9 @@ export function setupGetTransformTestEndpoint(test: TransformTest) {
 }
 
 export function setupListTransformTestRunsEndpoint(
-  testId: TransformTestId,
   response: ListTransformTestRunsResponse,
 ) {
-  fetchMock.get(`path:/api/ee/transform-test/${testId}/run`, response);
+  fetchMock.get("path:/api/ee/data-test-run", response);
 }
 
 export function setupRunTransformTestEndpoint(
