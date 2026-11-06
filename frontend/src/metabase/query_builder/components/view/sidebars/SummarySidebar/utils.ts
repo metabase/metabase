@@ -313,6 +313,20 @@ export function getDimensionItems(
   }));
 }
 
+// a column from the field list keeps the breakout positions of the query it was listed for
+function findBreakoutableColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Lib.ColumnMetadata | null {
+  return Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    Lib.breakoutableColumns(query, stageIndex),
+  );
+}
+
 function hasBreakout(
   query: Lib.Query,
   stageIndex: number,
@@ -388,16 +402,17 @@ export function addField(
   field: SummaryField,
 ): Lib.Query {
   if (wellId === "columns") {
-    if (
-      field.kind !== "column" ||
-      hasBreakout(query, stageIndex, field.column)
-    ) {
+    const column =
+      field.kind === "column"
+        ? findBreakoutableColumn(query, stageIndex, field.column)
+        : null;
+    if (column == null || hasBreakout(query, stageIndex, column)) {
       return query;
     }
     return Lib.breakout(
       query,
       stageIndex,
-      Lib.withDefaultBucket(query, stageIndex, field.column),
+      Lib.withDefaultBucket(query, stageIndex, column),
     );
   }
   switch (field.kind) {

@@ -219,6 +219,9 @@ describe("SummarySidebar", () => {
       "Product → Category",
       "Created At: Month",
     ]);
+
+    await userEvent.click(getFieldButton("Orders", "Created At"));
+    expect(getLastQuery().dimensions).toEqual(["Created At: Month"]);
   });
 
   it("replaces the values on a metric click", async () => {

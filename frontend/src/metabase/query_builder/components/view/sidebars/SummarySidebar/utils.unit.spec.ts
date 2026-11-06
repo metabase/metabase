@@ -492,6 +492,17 @@ describe("replaceWellWithField", () => {
     expect(getValueLabels(next)).toHaveLength(2);
   });
 
+  it("keeps a column that's already grouped, dropping the other groupings", () => {
+    const next = replaceWellWithField(
+      query,
+      STAGE_INDEX,
+      "columns",
+      findField(sections, "Created At"),
+    );
+
+    expect(getDimensionLabels(next)).toEqual(["Created At: Month"]);
+  });
+
   it("swaps the values for the field", () => {
     const next = replaceWellWithField(query, STAGE_INDEX, "values", {
       kind: "count",
