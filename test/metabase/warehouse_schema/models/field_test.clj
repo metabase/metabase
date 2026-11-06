@@ -71,11 +71,11 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (not (mi/can-read? (t2/select-one :model/Field field-id)))))
+        (is (not (mi/can-read? (t2/select-one :model/Field :id field-id)))))
       ;; Grant view-data permission - field should still not be readable
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (boolean (mi/can-read? (t2/select-one :model/Field field-id)))))))))
+        (is (false? (boolean (mi/can-read? (t2/select-one :model/Field :id field-id)))))))))
 
 (deftest field-can-read?-delegates-to-parent-table-allowed-test
   (testing "Field can-read? delegates to parent table"
@@ -89,12 +89,12 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (not (mi/can-read? (t2/select-one :model/Field field-id)))))
+        (is (not (mi/can-read? (t2/select-one :model/Field :id field-id)))))
       ;; Grant view-data permission - now field should be readable
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Field field-id))))))))
+        (is (true? (mi/can-read? (t2/select-one :model/Field :id field-id))))))))
 
 (deftest field-can-query?-delegates-to-parent-table-test
   (testing "Field can-query? delegates to parent table"
@@ -110,7 +110,7 @@
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? (t2/select-one :model/Field field-id))))))))
+        (is (true? (mi/can-query? (t2/select-one :model/Field :id field-id))))))))
 
 ;;; ---------------------------------- effective_type invariant guard tests -----------------------------------
 ;;; GHY-3388: a Field with coercion_strategy=nil and effective_type ≠ base_type is internally
@@ -147,8 +147,8 @@
                                                 :name "broken_on_update"
                                                 :base_type :type/Number
                                                 :effective_type :type/Number}]
-      (t2/update! :model/Field field-id {:effective_type    :type/Text
-                                         :coercion_strategy nil})
+      (t2/update! :model/Field :id field-id {:effective_type    :type/Text
+                                             :coercion_strategy nil})
       (is (=? {:base_type      :type/Number
                :effective_type :type/Number}
               (t2/select-one :model/Field :id field-id))))))
@@ -162,8 +162,8 @@
                                                 :name "with_coercion"
                                                 :base_type :type/Text
                                                 :effective_type :type/Text}]
-      (t2/update! :model/Field field-id {:effective_type    :type/Number
-                                         :coercion_strategy :Coercion/String->Number})
+      (t2/update! :model/Field :id field-id {:effective_type    :type/Number
+                                             :coercion_strategy :Coercion/String->Number})
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Number
                :coercion_strategy :Coercion/String->Number}
@@ -180,7 +180,7 @@
                                                 :effective_type    :type/Number
                                                 :coercion_strategy :Coercion/String->Number}]
       ;; user clears the coercion but doesn't reset effective_type — guard catches this
-      (t2/update! :model/Field field-id {:coercion_strategy nil})
+      (t2/update! :model/Field :id field-id {:coercion_strategy nil})
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Text
                :coercion_strategy nil}
@@ -239,7 +239,7 @@
                                   :effective_type    :type/Number
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field id {:effective_type :type/Text})
+                  (t2/update! :model/Field :id id {:effective_type :type/Text})
                   id))]
              ["t2/update! clears coercion_strategy but leaves effective_type stale"
               (fn [table-id]
@@ -254,7 +254,7 @@
                                   :coercion_strategy :Coercion/String->Number
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field id {:coercion_strategy nil})
+                  (t2/update! :model/Field :id id {:coercion_strategy nil})
                   id))]
              ["t2/update! changes base_type but leaves effective_type stale"
               (fn [table-id]
@@ -268,7 +268,7 @@
                                   :effective_type    :type/Text
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field id {:base_type :type/Number})
+                  (t2/update! :model/Field :id id {:base_type :type/Number})
                   id))]
              ["t2/update! sets both effective_type AND coercion_strategy=nil to mismatched values"
               (fn [table-id]
@@ -282,8 +282,8 @@
                                   :effective_type    :type/Number
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field id {:effective_type    :type/Text
-                                               :coercion_strategy nil})
+                  (t2/update! :model/Field :id id {:effective_type    :type/Text
+                                                   :coercion_strategy nil})
                   id))]]]
       (testing label
         (mt/with-temp [:model/Database {db-id :id} {}

@@ -57,7 +57,7 @@
                          (:dimensions metric))]
     (is (some? dimension) (str "Missing metric dimension " display-name))
     (when dimension
-      (t2/update! :model/Card metric-id {:dimensions dimensions}))))
+      (t2/update! :model/Card :id metric-id {:dimensions dimensions}))))
 
 (defn- default-metric-dimension [metric]
   (let [provider (lib-metric/metadata-provider)]
@@ -202,7 +202,7 @@
                 dimensions (mapv #(cond-> %
                                     (:default %) (dissoc :sources))
                                  (:dimensions metric))]
-            (t2/update! :model/Card metric-id {:dimensions dimensions}))
+            (t2/update! :model/Card :id metric-id {:dimensions dimensions}))
           (testing "missing dimension sources are derived from the mapping"
             (let [metric    (t2/select-one :model/Card :id metric-id)
                   dimension (mt/as-admin (default-metric-dimension metric))]
@@ -219,7 +219,7 @@
                                     (:default %)
                                     (assoc :sources [{:type :field, :field-id (mt/id :orders :tax)}]))
                                  (:dimensions metric))]
-            (t2/update! :model/Card metric-id {:dimensions dimensions}))
+            (t2/update! :model/Card :id metric-id {:dimensions dimensions}))
           (testing "a curated default hidden from the current user is ignored"
             (mt/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:visibility_type :sensitive}
               (mt/with-test-user :rasta
@@ -255,7 +255,7 @@
                 dimensions (mapv #(cond-> %
                                     (:default %) (assoc :status :status/orphaned))
                                  (:dimensions metric))]
-            (t2/update! :model/Card metric-id {:dimensions dimensions}))
+            (t2/update! :model/Card :id metric-id {:dimensions dimensions}))
           (testing "an orphaned curated default falls back to the saved breakout"
             (let [result (run-query-for-dashcard dashboard-id metric-id dashcard-id)]
               (is (= "CREATED_AT" (-> result mt/cols first :name))))))))))
@@ -626,7 +626,7 @@
                                                                  :template-tags {}})}
                      :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                              :dashboard_id dashboard-id}]
-        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)]
           (mt/with-temporary-setting-values [synchronous-batch-updates true]
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
             (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))

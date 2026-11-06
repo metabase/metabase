@@ -87,7 +87,7 @@
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
             ;; Reload transform to get latest state
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   result (inspector/discover-lenses transform')]
               (is (= :ready (:status result)))
               (is (some? (:target result)))
@@ -111,7 +111,7 @@
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   result (inspector/discover-lenses transform')]
               (testing "sources contain table metadata"
                 (let [source (first (:sources result))]
@@ -143,7 +143,7 @@
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   lens (inspector/get-lens transform' "generic-summary" nil)]
               (is (= "generic-summary" (:id lens)))
               (is (= "Data Summary" (:display_name lens)))
@@ -171,7 +171,7 @@
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   lens (inspector/get-lens transform' "join-analysis" nil)]
               (is (= "join-analysis" (:id lens)))
               (is (= "Join Analysis" (:display_name lens)))
@@ -199,7 +199,7 @@
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)]
+            (let [transform' (t2/select-one :model/Transform :id tid)]
               ;; A simple query without joins shouldn't have join-analysis applicable
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Lens data not available"
                                     (inspector/get-lens transform' "join-analysis" nil))))))))))
@@ -221,7 +221,7 @@
           (mt/with-temp [:model/Transform {tid :id :as transform} transform-data]
             (transforms.execute/execute! transform {:run-method :manual})
             (transforms.tu/wait-for-table target-name 10000)
-            (let [transform' (t2/select-one :model/Transform tid)
+            (let [transform' (t2/select-one :model/Transform :id tid)
                   result (inspector/discover-lenses transform')]
               (testing "join-analysis is in available lenses"
                 (is (some #(= "join-analysis" (:id %)) (:available_lenses result))))

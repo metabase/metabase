@@ -192,9 +192,9 @@
                                                                            :model_id    card-id
                                                                            :object      {}
                                                                            :most_recent false}))]
-      (t2/update! (t2/table-name :model/Revision) (:id revision) {:most_recent true})
+      (t2/update! (t2/table-name :model/Revision) :id (:id revision) {:most_recent true})
       (is (= (:timestamp revision)
-             (t2/select-one-fn :timestamp :model/Revision (:id revision)))))))
+             (t2/select-one-fn :timestamp :model/Revision :id (:id revision)))))))
 
 (deftest sorting-test
   (testing "Test that revisions are sorted in reverse chronological order"
@@ -264,7 +264,7 @@
                                     {:entity :model/Dashboard
                                      :id     dash-id
                                      :user-id (mt/user->id :rasta)
-                                     :object (t2/select-one :model/Dashboard dash-id)}))]
+                                     :object (t2/select-one :model/Dashboard :id dash-id)}))]
           (testing "first revision should be recorded"
             (push-revision)
             (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
@@ -289,7 +289,7 @@
                                     {:entity  :model/Card
                                      :id      card-id
                                      :user-id (mt/user->id :rasta)
-                                     :object  (t2/select-one :model/Card card-id)}))]
+                                     :object  (t2/select-one :model/Card :id card-id)}))]
           (testing "first revision should be recorded"
             (push-revision)
             (is (= 1 (count (revision/revisions :model/Card card-id)))))
@@ -304,7 +304,7 @@
             ;; Excluding it from `serialize-instance` would also equalize the comparison, but then
             ;; `revert-to-revision! :model/Card` would fall back to `starting-card-schema-version` and
             ;; silently downgrade the card on every revert.
-            (let [card (t2/select-one :model/Card card-id)]
+            (let [card (t2/select-one :model/Card :id card-id)]
               (is (= (:card_schema card)
                      (:card_schema (revision/serialize-instance :model/Card card-id card))))
               (is (> (:card_schema card) queries/starting-card-schema-version)

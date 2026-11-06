@@ -76,14 +76,14 @@
   (testing "retargeting to a different table marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform transform-id
+       (t2/update! :model/Transform :id transform-id
                    {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
-       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
+       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "an unrelated edit (renaming the transform) leaves the indexes alone"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform transform-id {:name "renamed"})
-       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex index-id)))))))
+       (t2/update! :model/Transform :id transform-id {:name "renamed"})
+       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex :id index-id)))))))
 
 (mt/when-ee-evailable
  (deftest native-transform-requires-query-builder-and-native-test
@@ -101,8 +101,8 @@
                        :source {:type  :query
                                 :query (lib/query (mt/metadata-provider)
                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
-         (let [native (t2/select-one :model/Transform (:id native-transform))
-               mbql   (t2/select-one :model/Transform (:id mbql-transform))]
+         (let [native (t2/select-one :model/Transform :id (:id native-transform))
+               mbql   (t2/select-one :model/Transform :id (:id mbql-transform))]
            (mt/with-data-analyst-role! (mt/user->id :rasta)
              (mt/with-restored-data-perms!
                ;; Remove native access granted to All Users by default so the user's only path to native would be
@@ -135,21 +135,21 @@
           (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform" :source source}]
             (is (some #(= :event/create-transform (first %)) @events-published))
             (reset! events-published [])
-            (t2/update! :model/Transform transform-id {:name "Updated Name"})
+            (t2/update! :model/Transform :id transform-id {:name "Updated Name"})
             (is (some #(= :event/update-transform (first %)) @events-published))
             (reset! events-published [])
-            (t2/delete! :model/Transform transform-id)
+            (t2/delete! :model/Transform :id transform-id)
             (is (some #(= :event/delete-transform (first %)) @events-published))))
         (reset! events-published [])
         (testing "events are suppressed during deserialization"
           (binding [mi/*deserializing?* true]
             (mt/with-temp [:model/Transform {transform-id :id} {:name "Deserialized Transform" :source source}]
-              (t2/update! :model/Transform transform-id {:name "Deserialized Update"})
-              (t2/delete! :model/Transform transform-id)))
+              (t2/update! :model/Transform :id transform-id {:name "Deserialized Update"})
+              (t2/delete! :model/Transform :id transform-id)))
           (is (empty? @events-published)))))))
 
 (defn- stored-deps [transform-id]
-  (t2/select-one-fn :table_dependencies :model/Transform transform-id))
+  (t2/select-one-fn :table_dependencies :model/Transform :id transform-id))
 
 (deftest table-dependencies-cache-test
   (testing "table_dependencies is not computed on insert — it is filled lazily on the first read"
@@ -164,7 +164,7 @@
                     :source {:type  :query
                              :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
       ;; seed a cached value (as the lazy read path would)
-      (t2/update! :model/Transform id {:table_dependencies [{:table (mt/id :orders)}]})
+      (t2/update! :model/Transform :id id {:table_dependencies [{:table (mt/id :orders)}]})
       (is (= [{:table (mt/id :orders)}] (stored-deps id)))
       (t2/update! :model/Transform :id id
                   {:source {:type  :query
@@ -285,7 +285,7 @@
                                                            :is_active           true
                                                            :run_method          "manual"
                                                            :last_heartbeat      (t/offset-date-time)}]
-      (let [last-run (:last_run (t2/hydrate (t2/select-one :model/Transform transform-id) :last_run))]
+      (let [last-run (:last_run (t2/hydrate (t2/select-one :model/Transform :id transform-id) :last_run))]
         (is (=? {:id run-id, :transform_id transform-id} last-run))
         (is (not (contains? last-run :last_heartbeat)))))))
 
@@ -313,7 +313,7 @@
                                            :type         :card
                                            :card-id      card-id}})}}]
          (mt/with-non-admin-groups-no-collection-perms collection
-           (let [stored (t2/select-one :model/Transform (:id transform))
+           (let [stored (t2/select-one :model/Transform :id (:id transform))
                  body   (into {} stored)]
              (mt/with-data-analyst-role! (mt/user->id :rasta)
                (mt/with-restored-data-perms!
@@ -341,7 +341,7 @@
                     :source {:type  :query
                              :query (lib/query (mt/metadata-provider)
                                                (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
-      (let [stored (t2/select-one :model/Transform (:id transform))]
+      (let [stored (t2/select-one :model/Transform :id (:id transform))]
         (mt/with-data-analyst-role! (mt/user->id :rasta)
           (mt/with-restored-data-perms!
             (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)

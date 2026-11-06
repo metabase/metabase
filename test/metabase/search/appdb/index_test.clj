@@ -108,11 +108,11 @@
             legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id (str table-id))
                                 :legacy_input
                                 json/decode+kw)
-            db-id          (t2/select-one-fn :db_id :model/Table table-id)
+            db-id          (t2/select-one-fn :db_id :model/Table :id table-id)
             db-name-fn     (comp :database_name legacy-input)
             alternate-name (str (random-uuid))]
         (is (= "Indexed Database" (db-name-fn)))
-        (t2/update! :model/Database db-id {:name alternate-name})
+        (t2/update! :model/Database :id db-id {:name alternate-name})
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest partial-word-test
@@ -486,10 +486,10 @@
                        :collection_id coll-id})]
                     (fetch "indexed-entity" :name (:name miv)))))
           (testing "Changing values syncs the index"
-            (t2/update! :model/Card (:id model) (update model :dataset_query (fn [query]
-                                                                               (let [products-id (lib.metadata/field query (mt/id :products :id))]
-                                                                                 (-> query
-                                                                                     (lib/filter (lib/!= products-id (:model_pk miv))))))))
+            (t2/update! :model/Card :id (:id model) (update model :dataset_query (fn [query]
+                                                                                   (let [products-id (lib.metadata/field query (mt/id :products :id))]
+                                                                                     (-> query
+                                                                                         (lib/filter (lib/!= products-id (:model_pk miv))))))))
             (model-index/add-values! model-index)
             (let [miv2 (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
               (is (=? [(index-entity
