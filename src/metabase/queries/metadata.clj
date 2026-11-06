@@ -132,7 +132,9 @@
         snippets               (collect-recursive-snippets direct-snippet-ids)
         snippet-field-ids      (collect-snippet-field-ids snippets)
         ;; Combine all field IDs
-        all-field-ids          (set/union template-tag-field-ids snippet-field-ids)
+        all-field-ids          (into (set/union template-tag-field-ids snippet-field-ids)
+                                     (comp (mapcat :result_metadata) (keep :id) (filter pos-int?))
+                                     source-cards)
         query-database-ids     (into #{} (keep :database) queries)
         database-ids           (-> query-database-ids
                                    (into (keep :db_id) tables)
