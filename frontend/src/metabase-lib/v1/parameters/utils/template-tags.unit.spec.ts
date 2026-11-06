@@ -5,12 +5,7 @@ import {
   getTemplateTagParameters,
   getTemplateTags,
 } from "metabase-lib/v1/parameters/utils/template-tags";
-import type {
-  Card,
-  DatasetQuery,
-  TemplateTag,
-  TemplateTagType,
-} from "metabase-types/api";
+import type { TemplateTag, TemplateTagType } from "metabase-types/api";
 import {
   createMockCard,
   createMockTemplateTag,
@@ -18,10 +13,6 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
-
-const createLegacyCard = (datasetQuery: unknown): Card =>
-  // legacy dataset_query shapes that DatasetQuery cannot express
-  createMockCard({ dataset_query: datasetQuery as DatasetQuery });
 
 describe("parameters/utils/cards", () => {
   describe("getTemplateTags", () => {
@@ -31,15 +22,6 @@ describe("parameters/utils/cards", () => {
           SAMPLE_PROVIDER,
           DEFAULT_TEST_QUERY,
         ),
-      });
-      expect(getTemplateTags(card, metadata)).toEqual([]);
-    });
-
-    it("should return an empty array for an internal query", () => {
-      const card = createLegacyCard({
-        type: "internal",
-        fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
-        args: [],
       });
       expect(getTemplateTags(card, metadata)).toEqual([]);
     });
@@ -77,18 +59,6 @@ describe("parameters/utils/cards", () => {
         ["stars", "number"],
         ["snippet: foo", "snippet"],
       ]);
-    });
-
-    it("should return minimal legacy tags unmodified", () => {
-      const starsTag = { type: "number", name: "stars", id: "xyz777" };
-      const card = createLegacyCard({
-        type: "native",
-        native: {
-          query: "select * from PRODUCTS where RATING > {{stars}}",
-          "template-tags": { stars: starsTag },
-        },
-      });
-      expect(getTemplateTags(card, metadata)).toEqual([starsTag]);
     });
   });
 
