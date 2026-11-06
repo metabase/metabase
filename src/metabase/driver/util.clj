@@ -2,6 +2,7 @@
   "Utility functions for common operations on drivers."
   (:refer-clojure :exclude [mapv empty? not-empty some])
   (:require
+   [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -80,6 +81,40 @@
                                               provider env-var)
                                       {:provider provider :env-var env-var}))))]
     (-> path system/ensure-readable-path! slurp str/trim)))
+
+(defn- http-get-with-one-retry [url opts]
+  (try (http/get url opts)
+       (catch Exception _ (http/get url opts))))
+
+(defn- fetch-gcp-identity-token [audience]
+  (let [url (format "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=%s"
+                    (codec/url-encode audience))
+        {:keys [status body]} (http-get-with-one-retry url {:headers          {"Metadata-Flavor" "Google"}
+                                                            :socket-timeout   3000
+                                                            :conn-timeout     3000
+                                                            :throw-exceptions false})]
+    (if (= 200 status)
+      (or (not-empty body)
+          (throw (ex-info "GCP metadata server returned 200 with no body"
+                          {:provider "GCP" :status status})))
+      (throw (ex-info (format "GCP metadata server returned status %d" status)
+                      {:provider "GCP" :status status})))))
+
+(defn wif-ambient-token-http
+  "Trimmed token minted by the local cloud metadata server for WIF `provider` with the given
+  `audience`.
+
+  Throws for an unsupported provider, a blank audience, or a non-200 metadata-server response.
+  Retries once on exception (metadata endpoints occasionally blip); does not retry non-200 status codes."
+  [provider audience]
+  (case provider
+    "GCP" (do
+            (when (str/blank? audience)
+              (throw (ex-info "WIF GCP requires an audience" {:provider provider})))
+            (-> (fetch-gcp-identity-token audience) str/trim))
+    (throw (ex-info (format "Unsupported WIF provider for HTTP-based acquisition: %s"
+                            (pr-str provider))
+                    {:provider provider}))))
 
 (def ^:private connection-error-messages
   "Generic error messages that drivers should return in their implementation
