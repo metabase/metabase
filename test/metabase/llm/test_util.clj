@@ -26,6 +26,7 @@
                  :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
                  :region            "us-east-1"}
    "vllm"       {:base-url "http://vllm.internal:8000/v1"}
+   "litellm"    {:base-url "http://litellm.internal:4000"}
    "metabase"   {}})
 
 (defn connection
