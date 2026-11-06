@@ -5,7 +5,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/QueryColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { getColumnListInfo } from "metabase/querying/common/utils";
+import { getTableColumnListInfo } from "metabase/querying/common/utils";
 import * as Lib from "metabase-lib";
 
 import type { DataReferenceFieldItem, DataReferencePaneProps } from "./types";
@@ -27,7 +27,7 @@ export const FieldPane = ({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const columnListInfo = getColumnListInfo(metadataProvider, table.id);
+  const columnListInfo = getTableColumnListInfo(metadataProvider, table.id);
   const column = columnListInfo?.columns.at(columnIndex);
   if (columnListInfo == null || column == null) {
     return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
