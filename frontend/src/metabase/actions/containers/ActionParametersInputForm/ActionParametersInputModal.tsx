@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -30,16 +29,8 @@ function ActionParametersInputModal({
   onClose,
   ...formProps
 }: ActionParametersInputModalProps) {
-  const [isOpenOrClosing, setIsOpenOrClosing] = useState(opened);
-
-  if (opened && !isOpenOrClosing) {
-    setIsOpenOrClosing(true);
-  }
-
-  // Unlike `Modal`, `Modal.Root` still renders its portal while closed, and
-  // the action button keeps this mounted, so render nothing once it has
-  // finished closing
-  if (!isOpenOrClosing) {
+  // Unlike `Modal`, `Modal.Root` still renders its portal while closed
+  if (!opened) {
     return null;
   }
 
@@ -50,7 +41,6 @@ function ActionParametersInputModal({
       size="lg"
       density="relaxed"
       onClose={onClose}
-      onExitTransitionEnd={() => setIsOpenOrClosing(false)}
     >
       <Modal.Overlay />
       <Modal.Content>
