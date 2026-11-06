@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as rst]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -54,14 +55,14 @@
        (every? true? (map #(< (abs (- %1 %2)) 1e-9) expected actual))))
 
 (deftest full-import-progress-is-monotonic-and-checkpointed-test
-  (testing "a first import reports 0.02 before the conflict scan, one fraction per loaded entity inside [0.05 0.7], then the fixed checkpoints"
+  (testing "first import reports 0.02 before conflict scan, one fraction per read batch inside [0.05 0.7], then fixed checkpoints"
     (search.tu/with-index-disabled
       (let [src             (rs.test/versioned-source :trees {"v0" (tree "Some Question")} :current "v0")
             [result writes] (import-capturing-progress! (source.p/snapshot src))]
         (is (= :success (:status result)))
         (is (= writes (sort writes)) "never moves backward")
-        ;; two entities: the collection at the halfway point of the load range, the card on its top
-        (is (approx= [0.02 0.05 0.375 0.7 0.7 0.75 0.9 0.95] writes))))))
+        (is (approx= [0.02 0.05 0.375 0.5375 0.7 0.7 0.75 0.9 0.95] writes)
+            "load reads both entities to order them, halfway through load range, then each model's batch")))))
 
 (deftest per-entity-progress-writes-are-throttled-test
   (testing "with the real throttle and a frozen clock, only the forced checkpoints are written"
@@ -80,8 +81,8 @@
           (is (= :success (:status result)))
           (is (= {:kind "pulled" :count 1} (dissoc (:outcome result) :branch))
               "the incremental path ran: one changed entity pulled")
-          ;; no conflict scan; the single changed entity lands on the top of the load range
-          (is (= [0.05 0.7 0.7 0.75 0.9 0.95] writes)))))))
+          (is (approx= [0.05 0.375 0.7 0.7 0.75 0.9 0.95] writes)
+              "no conflict scan; changed entity is read to order load, then to load it"))))))
 
 ;;; ------------------------------------------------- Export phases --------------------------------------------------
 
@@ -100,14 +101,18 @@
     (mt/with-dynamic-fn-redefs [;; make each row its own chunk (matching the real {:model_type :rows} chunk shape) and a
                                 ;; trivial entity, so we exercise the loop deterministically without hitting serdes/the app DB
                                 impl/->sized-chunks (fn [rows] (map (fn [row] {:model_type (:model_type row) :rows [row]}) rows))
-                                impl/extract-chunk  (fn [{:keys [rows]}] (map (fn [row] [row {:e (:model_id row)}]) rows))]
+                                impl/extract-chunk  (fn [{:keys [rows]}]
+                                                      (map (fn [row] [row {:serdes/meta [{:model "Card"}]
+                                                                           :name        (str "card " (:model_id row))
+                                                                           :entity_id   (str (:model_id row))}])
+                                                           rows))]
       (let [staged (atom [])
             commit (->RecordingCommit staged)
             rows   [{:model_type "card" :model_id 1 :file_path "a"}
                     {:model_type "card" :model_id 2 :file_path "b"}
                     {:model_type "card" :model_id 3 :file_path "c"}]
             seen   (atom [])]
-        (#'impl/stage-writes commit {} rows (fn [n] (swap! seen conj n)))
+        (#'impl/stage-writes commit (ee.serialization/file-namer) rows (fn [n] (swap! seen conj n)))
         (is (= [1 2 3] @seen) "cumulative staged count reported once per chunk")
         (is (= ["a" "b" "c"] @staged) "all rows staged")))))
 

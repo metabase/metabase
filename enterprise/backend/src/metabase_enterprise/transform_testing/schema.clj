@@ -270,7 +270,7 @@
     [:session-id :string]]])
 
 (mr/def ::external-transform-test
-  "A TransformTest as serialization writes it, with portable references in place of ids."
+  "A TransformTest as serialization writes it, with references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys ::transform-test [:entity_id :name :description :inputs :expectations :transform_id :creator_id]]
