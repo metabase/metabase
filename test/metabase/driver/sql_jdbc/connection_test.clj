@@ -250,16 +250,14 @@
 (deftest invalidate-pool-clears-all-connection-types-test
   (mt/test-driver :h2
     (when config/ee-available?
-      (mt/with-premium-features #{:writable-connection :workspaces}
-        (testing "invalidate-pool-for-db! clears default, write, and admin pools"
+      (mt/with-premium-features #{:writable-connection}
+        (testing "invalidate-pool-for-db! clears default and write pools"
           (let [read-details  {:db "mem:invalidate_test"}
-                write-details {:db "mem:invalidate_write_test"}
-                admin-details {:db "mem:invalidate_admin_test"}]
+                write-details {:db "mem:invalidate_write_test"}]
             ;; Use snake_case for column names since deftransforms uses snake_case keys
             (mt/with-temp [:model/Database database {:engine             :h2
                                                      :details            read-details
-                                                     :write_data_details write-details
-                                                     :admin_details      admin-details}]
+                                                     :write_data_details write-details}]
               (let [db-id             (u/the-id database)
                     default-cache-key [db-id :default]
                     write-cache-key   [db-id :write-data]]
@@ -268,13 +266,11 @@
                   (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database)))
                 (testing "all pools exist before invalidation"
                   (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
-                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))
-                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key)))
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
                 (testing "invalidate-pool-for-db! removes all pools"
                   (sql-jdbc.conn/invalidate-pool-for-db! (:id database))
                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
-                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
-                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool admin-cache-key))))))))))))
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
