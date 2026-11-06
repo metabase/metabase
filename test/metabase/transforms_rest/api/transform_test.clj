@@ -2269,7 +2269,7 @@
 
 (mt/when-ee-evailable
  (deftest delete-transforms-folder-needs-write-permission-on-its-transforms-test
-   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting :audit-app}
      (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
                     :model/Collection {subfolder-id :id} {:name      "Subfolder"
                                                           :namespace :transforms
@@ -2283,7 +2283,13 @@
            (testing "an analyst without transforms permission on the database cannot delete the folder"
              (mt/user-http-request :lucky :delete 403 url)
              (is (t2/exists? :model/Collection :id subfolder-id))
-             (is (t2/exists? :model/Transform :id transform-id)))
+             (is (t2/exists? :model/Transform :id transform-id))
+             (testing "the audit log records the refused transform, as for the single delete"
+               (is (=? {:topic    :write-permission-failure
+                        :user_id  (mt/user->id :lucky)
+                        :model    "Transform"
+                        :model_id transform-id}
+                       (mt/latest-audit-log-entry :write-permission-failure transform-id)))))
            (with-transform-db-perms!
              (testing "with transforms permission the analyst can delete the folder"
                (mt/user-http-request :lucky :delete 204 url)
