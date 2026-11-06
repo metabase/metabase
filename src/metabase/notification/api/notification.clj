@@ -56,8 +56,9 @@
 
 (mr/def ::SendNotificationResponse
   "Response schema for the `send/` and `:id/send/` endpoints"
-  [:map {:closed true} [:status ::send-status]
-   [:skip_reason [:maybe string?]]])
+  [:map {:closed true}
+   [:status ::send-status]
+   [:skip_reason {:optional true} [:maybe string?]]])
 
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."
