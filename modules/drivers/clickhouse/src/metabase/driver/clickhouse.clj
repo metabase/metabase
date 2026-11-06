@@ -61,7 +61,8 @@
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated            false
                               :describe-is-nullable             true
-                              :workspace                        true
+                              ;; Off until this driver's isolation methods are proven: init still reuses an existing user.
+                              :workspace                        false
                               :expression-literals              true
                               :expressions/date                 true
                               :expressions/float                true
