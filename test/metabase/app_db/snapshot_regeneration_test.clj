@@ -80,8 +80,8 @@
 (defn- single-row-inserts
   "A multi-row `INSERT ... VALUES (...),(...)` split into one statement per row, as a vector.
   Any other statement, or one that cannot be taken apart with certainty, comes back alone and unchanged.
-  See [[value-tuples]] for `backslash-escapes?`."
-  [statement backslash-escapes?]
+  See [[value-tuples]] for `:backslash-escapes?`."
+  [statement & {:keys [backslash-escapes?]}]
   ;; Two dumps of the very same rows can frame them differently: H2's SCRIPT packs rows into multi-row inserts by size,
   ;; so a value one character longer pushes a row into the next statement. That is a difference in batching, not in
   ;; content, and comparing statement by statement would report it as drift.
@@ -94,10 +94,11 @@
 (defn- comparable-statements
   "The statements of a snapshot file for `flavor`, one row per insert and with the [[unstable-literals]] masked."
   [snapshot-text flavor]
-  (into []
-        (comp (mapcat #(single-row-inserts % (contains? snapshot/mysql-family flavor)))
-              (map unstable-values-masked))
-        (snapshot/statements snapshot-text)))
+  (let [backslash-escapes? (snapshot/backslash-escapes? flavor)]
+    (into []
+          (comp (mapcat #(single-row-inserts % :backslash-escapes? backslash-escapes?))
+                (map unstable-values-masked))
+          (snapshot/statements snapshot-text))))
 
 (defn- first-difference
   "The first statement two snapshots of the same dialect disagree on, as `{:index _, :checked-in _, :regenerated _}`.
@@ -143,7 +144,7 @@
                             (name flavor) flavor))))))))))
 
 (deftest single-row-inserts-test
-  (are [statement expected] (= expected (single-row-inserts statement false))
+  (are [statement expected] (= expected (single-row-inserts statement))
     ;; one statement per row, each with the full prefix
     "INSERT INTO t VALUES (1, 'a'), (2, 'b')"    ["INSERT INTO t VALUES (1, 'a')" "INSERT INTO t VALUES (2, 'b')"]
     ;; commas, parens and doubled quotes inside a value are not boundaries
@@ -154,9 +155,9 @@
     "CREATE TABLE t (id INT, name TEXT)"         ["CREATE TABLE t (id INT, name TEXT)"])
   (testing "a value ending in a backslash closes its string, unless the dialect escapes with backslashes"
     (is (= ["INSERT INTO t VALUES ('C:\\')" "INSERT INTO t VALUES ('x')"]
-           (single-row-inserts "INSERT INTO t VALUES ('C:\\'), ('x')" false)))
+           (single-row-inserts "INSERT INTO t VALUES ('C:\\'), ('x')")))
     (is (= ["INSERT INTO t VALUES ('it\\'s')" "INSERT INTO t VALUES ('x')"]
-           (single-row-inserts "INSERT INTO t VALUES ('it\\'s'), ('x')" true)))))
+           (single-row-inserts "INSERT INTO t VALUES ('it\\'s'), ('x')" :backslash-escapes? true)))))
 
 (deftest first-difference-test
   (are [checked-in regenerated expected] (= expected (first-difference checked-in regenerated))
