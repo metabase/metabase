@@ -167,22 +167,38 @@
    "4XX" {:description "Client error response"}
    "5XX" {:description "Server error response"}})
 
+(mr/def ::response-override
+  "The `:openapi/response` property of a response schema.
+  It describes the response on the wire, where that differs from the value the handler returns."
+  [:map {:closed true}
+   [:status      {:optional true} [:re #"^[1-5](\d\d|XX)$"]]
+   [:description {:optional true} :string]
+   [:content     {:optional true} [:map-of :string :metabase.api.macros/schema-form-or-instance]]])
+
+(mu/defn- response-override->responses :- :metabase.api.open-api/path-item.responses
+  "The OpenAPI responses map for one `::response-override`.
+  Without a `:description`, it takes the description of the first body schema that has one."
+  [{:keys [status description content]} :- ::response-override]
+  (let [bodies (update-vals content mjs-collect-definitions)]
+    {(or status "2XX")
+     (cond-> {:description (or description (some :description (vals bodies)) "Successful response")}
+       (seq bodies) (assoc :content (update-vals bodies (fn [body] {:schema (fix-json-schema body)}))))}))
+
 (mu/defn- schema->response-obj :- [:maybe :metabase.api.open-api/path-item.responses]
-  "Convert a Malli schema to an OpenAPI response schema.
+  "The OpenAPI success response for the `:response-schema` of a [[metabase.api.macros/defendpoint]].
+  It documents a JSON body matching the schema, unless one of two schema properties says otherwise.
+  Neither property changes what is validated.
 
-  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema.
-
-  If the schema has `:openapi/response-schema` in its properties (e.g., for streaming responses), that schema
-  is used for documentation instead of the actual schema. This allows streaming endpoints to document the
-  JSON content they return while validating that the return value is a StreamingResponse instance."
+  - `:openapi/response` documents the whole response, as a `::response-override` map.
+    Its `:status` is the status code, `\"2XX\"` by default.
+    Its `:content` maps each media type to the schema of its body; without it the response has no body.
+  - `:openapi/response-schema` documents a JSON body matching that schema instead.
+    A streaming response uses it to describe the JSON it streams."
   [schema :- :metabase.api.macros/schema-form-or-instance]
-  (let [resolved-schema (mr/resolve-schema schema)
-        ;; Check for :openapi/response-schema in the schema properties - used by server/streaming-response-schema
-        content-schema  (or (-> resolved-schema mc/properties :openapi/response-schema)
-                            schema)
-        jss-schema      (mjs-collect-definitions content-schema)]
-    {"2XX" (-> {:description (or (:description jss-schema) "Successful response")}
-               (assoc :content {"application/json" {:schema (fix-json-schema jss-schema)}}))}))
+  (let [properties (mc/properties (mr/resolve-schema schema))]
+    (response-override->responses
+     (or (:openapi/response properties)
+         {:content {"application/json" (or (:openapi/response-schema properties) schema)}}))))
 
 (comment
 
@@ -220,7 +236,8 @@
                :parameters params
                :responses  default-response-schema}
         body-schema     (assoc :requestBody {:content {ctype {:schema body-schema}}})
-        response-schema (update :responses merge (schema->response-obj response-schema))
+        ;; the endpoint's own success response replaces the default `2XX` stub, even when it names an exact status
+        response-schema (update :responses #(merge (dissoc % "2XX") (schema->response-obj response-schema)))
         deprecated?     (assoc :deprecated true)))
     (catch Throwable e
       (throw (ex-info (str (format "Error creating OpenAPI spec for endpoint %s %s: %s"
