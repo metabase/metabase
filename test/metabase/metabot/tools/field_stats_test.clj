@@ -209,6 +209,10 @@
         (is (= [visible]
                (#'metabot.tools.field-stats/usable-columns [hidden visible])))))))
 
+(def ^:private reference-prefix
+  "The start of the Reference line in a drill-in."
+  "Reference (copy as is if it starts with [\"field\"; else put it in a field clause): ")
+
 (defn- field-metadata-xml
   "Render the drill-in for `request` as the LLM sees it, or the error message when the drill-in fails."
   [request]
@@ -226,7 +230,7 @@
                                                                      (lib/aggregate (lib/count))))}]
       (mt/as-admin
         (let [xml (field-metadata-xml {:entity-type "metric", :entity-id metric-id, :field-id "NAME_2", :limit 5})]
-          (is (str/includes? xml "Reference (copy into a field clause): \"NAME_2\""))
+          (is (str/includes? xml (str reference-prefix "\"NAME_2\"")))
           (is (not (str/includes? xml "\"NAME_2\"]"))))))))
 
 (deftest field-metadata-requested-numeric-string-id-renders-portable-fk-test
@@ -234,9 +238,9 @@
     (mt/as-admin
       (let [xml (field-metadata-xml {:entity-type "table", :entity-id (mt/id :venues)
                                      :field-id (str (mt/id :venues :name)), :limit 5})]
-        (is (str/includes? xml (str "Reference (copy into a field clause): "
+        (is (str/includes? xml (str reference-prefix
                                     "[\"test-data (h2)\",\"PUBLIC\",\"VENUES\",\"NAME\"]")))
-        (is (not (str/includes? xml (str "Reference (copy into a field clause): \"" (mt/id :venues :name) "\""))))))))
+        (is (not (str/includes? xml (str reference-prefix "\"" (mt/id :venues :name) "\""))))))))
 
 (deftest metric-field-stats-multi-stage-over-model-test
   (testing "a drill-in on a multi-stage metric over a model accepts the base table's fields, not the model's columns"

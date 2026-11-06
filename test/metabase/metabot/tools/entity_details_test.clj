@@ -547,9 +547,9 @@
                                                                {:metric-id          metric-id
                                                                 :with-field-values? false})))
               row  (rendered-dimension-row (m/find-first #(= "Peer → Name" (:display_name %)) dims))]
-          (is (=? {"Field ID"                             "NAME_2"
-                   "Source table"                         "PUBLIC.VENUES"
-                   "Reference (copy into a field clause)" "\"NAME_2\""}
+          (is (=? {"Field ID"     "NAME_2"
+                   "Source table" "PUBLIC.VENUES"
+                   "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)" "\"NAME_2\""}
                   row)))))))
 
 (deftest get-metric-details-hides-unreadable-source-card-test

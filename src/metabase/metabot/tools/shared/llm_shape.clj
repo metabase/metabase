@@ -450,8 +450,8 @@
                               ;; or a renamed field copy.
                               (string? (:field_id d))    (json/encode (:field_id d)))))
         dims)
-   {:name "Field Name" :field_id "Field ID" :type "Type"
-    :source "Source table" :reference "Reference (copy into a field clause)"}
+   {:name "Field Name" :field_id "Field ID" :type "Type" :source "Source table"
+    :reference "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)"}
    {:value-fn (fn [k v]
                 (cond
                   (nil? v)         ""
@@ -470,7 +470,7 @@
   (te/markdown-table
    (map (fn [d] (assoc d :reference (some-> (:reference d) json/encode))) dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
-    :reference "Reference (copy verbatim into a field clause)"}
+    :reference "Reference (copy as is if it starts with [\"field\"; else put it in a field clause)"}
    {:value-fn (fn [k v]
                 (cond
                   (nil? v)         ""

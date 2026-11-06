@@ -335,7 +335,7 @@ Metabase couldn't sample this field from the database, so there are no statistic
 {% if any field_metadata_value_xml field_metadata_source field_metadata_reference %}
 <field-metadata field_id="{{field_metadata_field_id}}">
 {% if field_metadata_source %}    Source table: {{field_metadata_source}}
-{% endif %}{% if field_metadata_reference %}    Reference (copy into a field clause): {{field_metadata_reference|safe}}
+{% endif %}{% if field_metadata_reference %}    Reference (copy as is if it starts with ["field"; else put it in a field clause): {{field_metadata_reference|safe}}
 {% endif %}{% if field_metadata_value_xml %}    {{field_metadata_value_xml|safe}}
 {% endif %}</field-metadata>
 {% else %}

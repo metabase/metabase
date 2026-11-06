@@ -139,7 +139,10 @@
         (is (str/includes? xml "NAME"))
         ;; the pasteable form carries the join-alias; a bare `[db,schema,table,field]` here would
         ;; dead-end on :no-fk-path (BOT-1612)
-        (is (str/includes? xml "[\"field\",{\"join-alias\":\"Campaign\"},[\"Sample\",\"PUBLIC\",\"CAMPAIGNS\",\"NAME\"]]"))))))
+        (is (str/includes? xml "[\"field\",{\"join-alias\":\"Campaign\"},[\"Sample\",\"PUBLIC\",\"CAMPAIGNS\",\"NAME\"]]")))
+      (testing "the Reference header tells the LLM to copy a full field clause as is, not to wrap it"
+        (is (str/includes? xml (str "Reference (copy as is if it starts with [\"field\"; "
+                                    "else put it in a field clause)")))))))
 
 (deftest ^:parallel format-metric-dimensions-table-test
   (testing "dimensions carry their source table + a copy-paste portable FK, disambiguating
@@ -186,7 +189,7 @@
     (let [xml (llm-shape/field-metadata->xml
                {:field_id 1 :value_metadata {:field_values ["x"]}})]
       (is (not (str/includes? xml "Source table:")))
-      (is (not (str/includes? xml "Reference (copy")))))
+      (is (not (str/includes? xml "Reference (")))))
   (testing "XML structural chars in a portable-FK segment are escaped (the template uses |safe)"
     (let [xml (llm-shape/field-metadata->xml
                {:field_id 1
@@ -857,7 +860,8 @@
                                               :reference_name "Double price"
                                               :value_metadata nil})]
       (is (str/includes? xml "<field-metadata field_id=\"Double price\">"))
-      (is (str/includes? xml "Reference (copy into a field clause): \"Double price\""))
+      (is (str/includes? xml (str "Reference (copy as is if it starts with [\"field\"; "
+                                  "else put it in a field clause): \"Double price\"")))
       (is (not (str/includes? xml "No metadata available to display")))))
   (testing "a field that two FK routes reach, without value metadata, still shows its source table and no reference"
     (let [xml (llm-shape/field-metadata->xml {:field_id       7
