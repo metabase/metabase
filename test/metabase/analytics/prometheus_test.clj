@@ -266,6 +266,78 @@
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
 
+(deftest ^:synchronized background-refresh-collector-test
+  (let [in-flight (atom #{})
+        ran       (atom 0)
+        submitted (atom [])
+        collector (prometheus/background-refresh-collector ::test-refresh 17 #(swap! ran inc))]
+    (with-redefs [prometheus/refreshes-in-flight in-flight]
+      (is (= 17 (:min-interval-s collector)) "the scheduler throttles on this key")
+      (mt/with-dynamic-fn-redefs [prometheus/submit-background-refresh! #(swap! submitted conj %)]
+        ((:f collector))
+        ((:f collector))
+        (is (zero? @ran) "the scrape path never runs the measurement itself")
+        (is (= 1 (count @submitted)) "overlapping scrapes share one refresh")
+        ((first @submitted)))
+      (is (= 1 @ran))
+      (is (empty? @in-flight) "the claim is released, so a later scrape refreshes again")
+      (testing "a refresh that cannot be scheduled releases its claim rather than wedging the collector"
+        (doseq [thrown [(ex-info "no threads" {})
+                        ;; a thread pool at its limit fails with an Error, which is not an Exception
+                        (Error. "unable to create native thread")]]
+          (mt/with-dynamic-fn-redefs [prometheus/submit-background-refresh! (fn [_] (throw thrown))]
+            ((:f collector)))
+          (is (empty? @in-flight) (str "claim released after " (class thrown))))))))
+
+(deftest ^:synchronized remove-series!-test
+  (testing "one label combination stops being exported and its siblings carry on"
+    (mt/with-prometheus-system! [port system]
+      ;; Reading /metrics runs every registered pull collector, and the search ones publish this same
+      ;; gauge, so these two label values are ones nothing else writes.
+      (let [kept     "remove-series-test-kept"
+            dropped  "remove-series-test-dropped"
+            exported (fn []
+                       (filter #(and (str/starts-with? % "metabase_search_index_coverage_ratio")
+                                     (or (str/includes? % kept) (str/includes? % dropped)))
+                               (metric-lines port)))]
+        (prometheus/set! :metabase-search/index-coverage-ratio {:index kept} 0.9)
+        (prometheus/set! :metabase-search/index-coverage-ratio {:index dropped} 0.5)
+        (is (= 2 (count (exported))))
+        (prometheus/remove-series! :metabase-search/index-coverage-ratio {:index dropped})
+        (let [after (exported)]
+          (testing "the removed series is gone from the exposition, not merely zeroed"
+            (is (= 1 (count after)))
+            (is (str/includes? (first after) kept))))
+        (testing "and the surviving series keeps its value"
+          (is (approx= 0.9 (mt/metric-value system :metabase-search/index-coverage-ratio
+                                            {:index kept})))))))
+  (testing "a metric declared without labels is refused"
+    ;; Collector.remove recreates the no-labels child at 0, so such a series cannot stop being exported.
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"declared without labels"
+                            (prometheus/remove-series! :metabase-search/queue-size nil)))))
+  (testing "a label value that is not a string is removed, as the write path accepts it"
+    (mt/with-prometheus-system! [port _]
+      (let [exported #(filter (fn [l] (str/starts-with? l "metabase_search_engine_active")) (metric-lines port))]
+        (prometheus/set! :metabase-search/engine-active {:engine 7} 1)
+        (is (= 1 (count (exported))))
+        (prometheus/remove-series! :metabase-search/engine-active {:engine 7})
+        (is (empty? (exported))))))
+  (testing "labels that do not name the declared set are refused"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"do not match the metric's declared"
+                            (prometheus/remove-series! :metabase-search/index-coverage-ratio nil)))))
+  (testing "an unregistered metric is named, by both entry points"
+    (mt/with-prometheus-system! [_ _system]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"No such metric"
+                            (prometheus/remove-series! :metabase-search/not-a-metric {:index "x"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"No such metric"
+                            (prometheus/clear! :metabase-search/not-a-metric))))))
+
 (deftest pull-collector-test
   (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"
     (mt/with-prometheus-system! [_ system]

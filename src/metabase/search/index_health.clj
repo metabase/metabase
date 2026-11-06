@@ -5,6 +5,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.health-inspector.core :as health-inspector]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -92,18 +93,81 @@
   ;; Keying by check name makes namespace reloads replace descriptors instead of duplicating collectors.
   (atom {}))
 
-(defonce ^:private live-gauge-series
-  ;; Only clear series that previously held a real value; inactive indexes should not create NaN-only series.
-  (atom #{}))
+(def ^:private gauge-refresh-interval-s
+  "How often a scrape may start a refresh of every registered measure."
+  600)
 
-(defn- set-index-gauge!
-  [gauge-key index value]
-  (if (some? value)
-    (do
-      (analytics/set-gauge! gauge-key {:index (name index)} value)
-      (swap! live-gauge-series conj [gauge-key index]))
-    (when (contains? @live-gauge-series [gauge-key index])
-      (analytics/set-gauge! gauge-key {:index (name index)} ##NaN))))
+(def ^:private stale-gauge-age-ms
+  "How long a series survives without a refresh."
+  ;; The deadline has to clear the longest gap between two publishes, and that gap is not the interval. A
+  ;; scrape stamps its own throttle before calling a collector, and the collector declines while a refresh
+  ;; is still running, so the gap is really the refresh duration rounded up to a whole interval. Three
+  ;; intervals therefore tolerate a refresh of up to two of them, around twenty minutes. Anything slower
+  ;; than that expires its own series and republishes it, which the warning in the sweep reports.
+  (* 3 gauge-refresh-interval-s 1000))
+
+(defonce ^:private live-gauge-series
+  ;; [gauge-key labels] -> a u/start-timer from when this process last published a real value. Only series
+  ;; that held one are ever removed; an inactive index should never create one.
+  ;;
+  ;; Publishing and expiring both lock this atom, because they otherwise race: a sweep can read a timer,
+  ;; watch a refresh replace it, and then remove the series the refresh just exported. Neither side is hot
+  ;; -- the sweep runs once a minute, and a publish comes from a background refresh, the clustered job's
+  ;; health rows or a repair push -- so a lock is cheaper than getting a compare-and-set across the tracker
+  ;; and the registry right.
+  (atom {}))
+
+(defn publish-gauge!
+  "Publish `value` for a search gauge, or stop exporting that series when `value` is nil.
+  `labels` must name at least one label: an unlabelled collector has no series it can stop exporting."
+  [gauge-key labels value]
+  (locking live-gauge-series
+    (let [series [gauge-key labels]]
+      (if (some? value)
+        (do
+          (analytics/set-gauge! gauge-key labels value)
+          (swap! live-gauge-series assoc series (u/start-timer)))
+        ;; Removed rather than set to NaN, which keeps being scraped and poisons any avg or sum over it.
+        (when (contains? @live-gauge-series series)
+          (analytics/remove-series! gauge-key labels)
+          (swap! live-gauge-series dissoc series))))))
+
+(defn- expire-stale-gauges!
+  "Stop exporting series this process hasn't refreshed within [[stale-gauge-age-ms]]."
+  []
+  ;; Every process measures its own series, so one goes stale only when this node's refresh stopped
+  ;; happening -- and a reading nothing is renewing is worse than none.
+  (locking live-gauge-series
+    (doseq [[[gauge-key labels :as series] published] @live-gauge-series
+            :let  [age (u/since-ms published)]
+            :when (>= age stale-gauge-age-ms)]
+      ;; Per series, so that one failure cannot end the sweep for every series behind it in the map.
+      (try
+        (analytics/remove-series! gauge-key labels)
+        (swap! live-gauge-series dissoc series)
+        ;; The realistic cause is a refresh wedged in a database call: it holds its single-flight claim for
+        ;; the life of the process, so this node would otherwise go quiet about a series that vanished.
+        (log/warn "Stopped exporting a search gauge series this process had not refreshed"
+                  {:gauge    gauge-key
+                   :labels   labels
+                   :age-ms   age
+                   :limit-ms stale-gauge-age-ms})
+        (catch InterruptedException e
+          (throw e))
+        (catch Exception e
+          (log/error e "Could not stop exporting a stale search gauge series"
+                     {:gauge gauge-key, :labels labels}))))))
+
+(defmethod analytics.core/pull-collector ::expire-stale-gauges [_]
+  {:min-interval-s 60
+   :f              expire-stale-gauges!})
+
+(defn background-refresh-collector
+  "A [[metabase.analytics.core/background-refresh-collector]] on the search gauge cadence.
+  Every search gauge family must use this rather than the generic constructor, so that no series outlives
+  the deadline its staleness is judged against."
+  [id refresh!]
+  (analytics.core/background-refresh-collector id gauge-refresh-interval-s refresh!))
 
 (defn- run-measure!
   "Run one collector and update its gauge. Returns nil for N/A or a health-inspector result."
@@ -116,7 +180,7 @@
           (catch Exception e
             (log/error "Search index metric collector errored" {:check check-name :error (ex-message e)})
             {:health 0, :message (str "Metric collector errored: " (ex-message e))}))]
-    (set-index-gauge! gauge-key index value)
+    (publish-gauge! gauge-key {:index (name index)} value)
     (when health
       {:health health, :message message})))
 
@@ -130,12 +194,7 @@
                     :measure    measure
                     :collect    collect}]
     (health-inspector/register-check! (:check-name descriptor) #(run-measure! descriptor))
-    ;; A live upgrade may leave the defonce'd registry in its former vector representation.
-    (swap! index-measures (fn [measures]
-                            (let [keyed (if (map? measures)
-                                          measures
-                                          (into {} (map (juxt :check-name identity)) measures))]
-                              (assoc keyed (:check-name descriptor) descriptor))))
+    (swap! index-measures assoc (:check-name descriptor) descriptor)
     descriptor))
 
 (defn refresh-index-check!
@@ -150,11 +209,6 @@
     (catch Exception e
       (log/error "Search index health-row persist errored" {:check check-name :error (ex-message e)}))))
 
-(defonce ^:private gauge-refresh-running? (atom false))
-
-(defn- submit-gauge-refresh! [f]
-  (future-call f))
-
 (defn- refresh-index-gauge! [{:keys [check-name] :as descriptor}]
   (try
     (run-measure! descriptor)
@@ -163,29 +217,14 @@
     (catch Exception e
       (log/error "Search index gauge refresh errored" {:check check-name :error (ex-message e)}))))
 
-(defn- refresh-search-index-gauges!
-  []
-  (try
-    (run! refresh-index-gauge! (vals @index-measures))
-    (finally
-      (reset! gauge-refresh-running? false))))
+(defn- refresh-search-index-gauges! []
+  (run! refresh-index-gauge! (vals @index-measures)))
 
-(defn- request-search-index-gauge-refresh!
-  []
-  (when (compare-and-set! gauge-refresh-running? false true)
-    (try
-      (submit-gauge-refresh! refresh-search-index-gauges!)
-      (catch Exception e
-        (reset! gauge-refresh-running? false)
-        (log/errorf "Could not schedule search index gauge refresh: %s" (ex-message e)))))
-  nil)
+(def ^:private index-gauge-collector
+  (background-refresh-collector ::index-health-gauges refresh-search-index-gauges!))
 
-;; Prometheus scrapes every Metabase process, whereas the scheduled metric job may run on only one member of
-;; a Quartz cluster. A scrape starts a local, single-flight background refresh so every process updates its
-;; series without putting index scans on the synchronous scrape path.
 (defmethod analytics.core/pull-collector ::index-health-gauges [_]
-  {:min-interval-s 600
-   :f              request-search-index-gauge-refresh!})
+  index-gauge-collector)
 
 (defn refresh-search-index-metrics!
   "Refresh every registered measure's gauge and, when enabled, its deduplicated health row."

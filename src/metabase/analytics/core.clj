@@ -29,6 +29,7 @@
   hashed-metabase-token-or-uuid
   uuid->ai-service-hex-uuid]
  [metabase.analytics.prometheus
+  background-refresh-collector
   known-labels
   initial-value
   connection-pool-info
