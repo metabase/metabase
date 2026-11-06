@@ -118,6 +118,15 @@
                            [:= :database_id database-id]
                            [:in :id card-ids]]}))
 
+(mu/defn existing-card-ids :- [:set ::lib.schema.id/card]
+  "The ids among `card-ids` that still name a Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (into #{}
+        (map :id)
+        (t2/query {:select [:id]
+                   :from   [(t2/table-name :model/Card)]
+                   :where  [:in :id card-ids]})))
+
 (mu/defn delete-transforms-for-database! :- :int
   "Delete the Transforms reading from the Database with `database-id`, each through its own hooks, returning the number
   deleted."
