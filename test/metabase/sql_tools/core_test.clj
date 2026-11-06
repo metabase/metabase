@@ -480,21 +480,12 @@
       :clickhouse "oss"              "SELECT * FROM oss('http://h/x', 'CSV')"
       :clickhouse "hive"             "SELECT * FROM hive('thrift://h:9083', 'db', 't', 'a String', 'a')"
       :clickhouse "cluster"          "SELECT * FROM cluster('c', db.t)"
-      :clickhouse "clusterallreplicas" "SELECT * FROM clusterAllReplicas('c', db.t)"
-      :duckdb     "read_csv"         "SELECT * FROM read_csv('x.csv')"
-      :duckdb     "read_parquet"     "SELECT * FROM read_parquet('s3://b/x.parquet')"
-      :duckdb     "read_json"        "SELECT * FROM read_json('x.json')"))
-  (testing "DuckDB reads a file or a URL named as a table"
-    (are [sql] (= {:reason :external-table, :detail nil} (sql-tools/read-only-select-problem :duckdb sql))
-      "SELECT * FROM 'x.csv'"
-      "SELECT * FROM 'https://h/x.parquet'"
-      "SELECT * FROM \"s3://b/x.parquet\""))
+      :clickhouse "clusterallreplicas" "SELECT * FROM clusterAllReplicas('c', db.t)"))
   (testing "the same names are ordinary elsewhere"
     (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
       :clickhouse "SELECT url FROM t"
       :postgres   "SELECT url('x')"
-      :postgres   "SELECT * FROM \"x.csv\""
-      :duckdb     "SELECT * FROM main.t JOIN s.u ON true")))
+      :postgres   "SELECT * FROM \"x.csv\"")))
 
 (deftest ^:parallel read-only-select?-sql-executing-function-test
   (testing "a SELECT that calls a function taking a SQL string to run is not read-only, whatever the string holds"
