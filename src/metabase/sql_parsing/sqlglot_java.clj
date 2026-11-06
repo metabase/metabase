@@ -97,8 +97,8 @@
   (let [started    (promise)
         timeout-ms (sql-parsing.settings/sql-parsing-timeout-ms)
         fut        (.submit executor ^Callable (bound-fn* (fn []
-                                                           (deliver started true)
-                                                           (call-port f))))]
+                                                            (deliver started true)
+                                                            (call-port f))))]
     (try
       @started
       (let [result (deref fut timeout-ms ::timeout)]
