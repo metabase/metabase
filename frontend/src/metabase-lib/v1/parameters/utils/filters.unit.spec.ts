@@ -4,7 +4,7 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import Field from "metabase-lib/v1/metadata/Field";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { NormalizedField } from "metabase-types/api";
+import type { NormalizedRealTableField } from "metabase-types/api";
 import {
   createMockCard,
   createMockNormalizedField,
@@ -23,7 +23,7 @@ describe("parameters/utils/field-filters", () => {
 
     const CASES: [
       { type: string },
-      { name: string; field: Partial<NormalizedField> },
+      { name: string; field: Partial<NormalizedRealTableField> },
     ][] = [
       [
         { type: "date/single" },
@@ -108,7 +108,7 @@ describe("parameters/utils/field-filters", () => {
 });
 
 function createMockDimension(
-  field: Partial<NormalizedField>,
+  field: Partial<NormalizedRealTableField>,
 ): TemplateTagDimension {
   const card = createMockCard({
     dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {

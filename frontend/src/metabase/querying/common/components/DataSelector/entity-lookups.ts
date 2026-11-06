@@ -13,7 +13,13 @@ import {
   getShallowTables,
 } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
-import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  FieldId,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
+import { isRealTable, isRealTableField } from "metabase-types/guards";
 
 import type {
   DataSelectorDatabase,
@@ -33,7 +39,7 @@ export type EntityLookups = {
   ) => DataSelectorDatabase | undefined;
   schema: (id: SchemaId | null | undefined) => DataSelectorSchema | undefined;
   table: (id: TableId | null | undefined) => DataSelectorTable | undefined;
-  field: DataSelectorFieldLookup;
+  field: (fieldId: FieldId) => DataSelectorField | undefined;
   databaseSchemas: (databaseId: DatabaseId) => DataSelectorSchema[];
   databaseTables: (databaseId: DatabaseId) => DataSelectorTable[];
   schemaTables: (schemaId: SchemaId) => DataSelectorTable[];
@@ -41,8 +47,6 @@ export type EntityLookups = {
   tableFields: (tableId: TableId) => DataSelectorField[];
   fieldName: (field: DataSelectorField) => string;
 };
-
-type DataSelectorFieldLookup = ReturnType<typeof getShallowFieldById>;
 
 export const selectEntityLookups = createSelector(
   [
@@ -71,13 +75,20 @@ export const selectEntityLookups = createSelector(
   ): EntityLookups => ({
     database: (id) => (id != null ? databases[id] : undefined),
     schema: (id) => (id != null ? schemas[id] : undefined),
-    table: (id) => (id != null ? tables[id] : undefined),
-    field,
+    table: (id) => {
+      const table = id != null ? tables[id] : undefined;
+      return table != null && isRealTable(table) ? table : undefined;
+    },
+    field: (fieldId) => {
+      const result = field(fieldId);
+      return result != null && isRealTableField(result) ? result : undefined;
+    },
     databaseSchemas,
-    databaseTables,
-    schemaTables,
+    databaseTables: (databaseId) =>
+      databaseTables(databaseId).filter(isRealTable),
+    schemaTables: (schemaId) => schemaTables(schemaId).filter(isRealTable),
     tableSchema,
-    tableFields,
+    tableFields: (tableId) => tableFields(tableId).filter(isRealTableField),
     fieldName,
   }),
 );

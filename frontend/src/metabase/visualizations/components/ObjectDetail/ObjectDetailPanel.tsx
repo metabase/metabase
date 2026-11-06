@@ -306,7 +306,7 @@ export function ObjectDetailPanel({
   const displayId = getDisplayId({
     cols: data.cols,
     zoomedRow,
-    tableId: table?.id,
+    tableId: typeof table?.id === "number" ? table.id : undefined,
     settings,
   });
 

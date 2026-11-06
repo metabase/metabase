@@ -16,7 +16,7 @@ import {
   tableApi,
 } from "metabase/api";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import type { DatabaseId, Field, SchemaName, Table } from "metabase-types/api";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import { updateMetadata } from "./actions";
 import {
@@ -77,18 +77,6 @@ const toNormalizedSchemas = (
     database: { id: databaseId },
   }));
 
-const withoutVirtualTables = <
-  Metadata extends { tables?: Table[]; fields?: Field[] },
->(
-  metadata: Metadata,
-): Metadata => ({
-  ...metadata,
-  tables: metadata.tables?.filter((table) => typeof table.id === "number"),
-  fields: metadata.fields?.filter(
-    (field) => field.table_id == null || typeof field.table_id === "number",
-  ),
-});
-
 /**
  * Every endpoint whose payload flows into `getMetadata`.
  *
@@ -130,30 +118,20 @@ const HYDRATION_RULES: HydrationRule[] = [
 
   hydrates(cardApi.endpoints.listCards, [QuestionSchema]),
   hydrates(cardApi.endpoints.getCard, QuestionSchema),
-  hydrates(
-    cardApi.endpoints.getCardQueryMetadata,
-    QueryMetadataSchema,
-    withoutVirtualTables,
-  ),
+  hydrates(cardApi.endpoints.getCardQueryMetadata, QueryMetadataSchema),
   hydrates(cardApi.endpoints.createCard, QuestionSchema),
   hydrates(cardApi.endpoints.updateCard, QuestionSchema),
 
   hydrates(
     dashboardApi.endpoints.getDashboardQueryMetadata,
     QueryMetadataSchema,
-    withoutVirtualTables,
   ),
 
-  hydrates(
-    datasetApi.endpoints.getAdhocQueryMetadata,
-    QueryMetadataSchema,
-    withoutVirtualTables,
-  ),
+  hydrates(datasetApi.endpoints.getAdhocQueryMetadata, QueryMetadataSchema),
 
   hydrates(
     automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
     QueryMetadataSchema,
-    withoutVirtualTables,
   ),
   hydrates(
     automagicDashboardsApi.endpoints.getXrayDashboardForModel,

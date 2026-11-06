@@ -38,9 +38,16 @@ export interface NormalizedSchema extends Omit<Schema, "database" | "tables"> {
   tables?: TableId[];
 }
 
-export interface NormalizedTable extends Omit<
+interface NormalizedTableBase extends Omit<
   Table,
-  "db" | "fields" | "fks" | "segments" | "measures" | "metrics" | "schema"
+  | "id"
+  | "db"
+  | "fields"
+  | "fks"
+  | "segments"
+  | "measures"
+  | "metrics"
+  | "schema"
 > {
   db?: DatabaseId;
   fields?: FieldId[];
@@ -52,6 +59,16 @@ export interface NormalizedTable extends Omit<
   schema_name?: SchemaName;
   original_fields?: Field[];
 }
+
+export interface NormalizedRealTable extends NormalizedTableBase {
+  id: TableId;
+}
+
+export interface NormalizedVirtualTable extends NormalizedTableBase {
+  id: string;
+}
+
+export type NormalizedTable = NormalizedRealTable | NormalizedVirtualTable;
 
 export interface NormalizedForeignKey extends Omit<
   ForeignKey,
@@ -68,9 +85,9 @@ export interface NormalizedFieldDimension extends Omit<
   human_readable_field?: FieldId;
 }
 
-export interface NormalizedField extends Omit<
+interface NormalizedFieldBase extends Omit<
   Field,
-  "target" | "table" | "name_field" | "dimensions"
+  "table_id" | "target" | "table" | "name_field" | "dimensions"
 > {
   uniqueId: string;
   target?: FieldId;
@@ -78,6 +95,18 @@ export interface NormalizedField extends Omit<
   name_field?: FieldId;
   dimensions?: NormalizedFieldDimension[];
 }
+
+export interface NormalizedRealTableField extends NormalizedFieldBase {
+  table_id: TableId;
+}
+
+export interface NormalizedVirtualTableField extends NormalizedFieldBase {
+  table_id: string;
+}
+
+export type NormalizedField =
+  | NormalizedRealTableField
+  | NormalizedVirtualTableField;
 
 export interface NormalizedSegment extends Omit<Segment, "table"> {
   table?: TableId;

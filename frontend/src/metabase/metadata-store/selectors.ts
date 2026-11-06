@@ -267,7 +267,8 @@ export const getShallowFieldName = createSelector(
     (
       field: Pick<NormalizedField, "id" | "table_id" | "display_name">,
     ): string =>
-      metadata.field(field.id)?.displayName() ?? field.display_name,
+      metadata.field(field.id, field.table_id)?.displayName() ??
+      field.display_name,
 );
 
 // Takes the whole `State`, not `MetadataState`: it composes `getSettings`,
@@ -458,7 +459,10 @@ function hydrateDatabaseTables(
   }
 
   return Object.values(metadata.tables).filter(
-    (table) => table.schema && table.db_id === database.id,
+    (table) =>
+      typeof table.id === "number" &&
+      table.schema &&
+      table.db_id === database.id,
   );
 }
 
@@ -625,6 +629,7 @@ function hydrateMeasureTable(
     return undefined;
   }
   const {
+    id,
     db: _db,
     fields: _fields,
     fks: _fks,
@@ -636,7 +641,10 @@ function hydrateMeasureTable(
     original_fields: _original_fields,
     ...rest
   } = normalized;
-  return { ...rest, schema: schema_name ?? "" };
+  if (typeof id !== "number") {
+    return undefined;
+  }
+  return { ...rest, id, schema: schema_name ?? "" };
 }
 
 /**

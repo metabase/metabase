@@ -63,6 +63,10 @@ function ConnectedTableButton({
 }
 
 function ConnectedTableLink({ table }: { table: ConnectedTable }) {
+  if (typeof table.id !== "number") {
+    return <TableLabel className={S.label} table={table} />;
+  }
+
   return (
     <Link
       className={S.connectedTable}

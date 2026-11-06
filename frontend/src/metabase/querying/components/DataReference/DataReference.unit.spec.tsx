@@ -17,12 +17,13 @@ import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
-  createMockColumn,
+  createMockField,
   createMockFieldValues,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS,
   SAMPLE_DB_ID,
   createOrdersQuantityField,
   createOrdersTable,
@@ -57,8 +58,8 @@ const MODEL = createMockCard({
     query: "SELECT ID AS RENAMED_ID FROM PRODUCTS",
   }),
   result_metadata: [
-    createMockColumn({
-      id: undefined,
+    createMockField({
+      id: PRODUCTS.ID,
       name: "RENAMED_ID",
       display_name: "RENAMED_ID",
       base_type: "type/BigInteger",
@@ -89,6 +90,9 @@ function setup({
   setupSearchEndpoints([]);
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: ORDERS.QUANTITY, values: [] }),
+  );
+  setupFieldValuesEndpoint(
+    createMockFieldValues({ field_id: PRODUCTS.ID, values: [] }),
   );
   setupCollectionByIdEndpoint({ collections: [COLLECTION] });
   cards.forEach((card) => {

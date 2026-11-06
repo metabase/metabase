@@ -308,7 +308,11 @@ export const RemappingPicker = ({
               databases={[database]}
               isInitiallyOpen={isChoosingInitialFkTarget}
               selectedDatabaseId={database.id}
-              selectedFieldId={fkRemappingField?.id}
+              selectedFieldId={
+                typeof fkRemappingField?.id === "number"
+                  ? fkRemappingField.id
+                  : null
+              }
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
               tables={[fkTargetTable]}

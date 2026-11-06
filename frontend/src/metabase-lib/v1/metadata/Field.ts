@@ -295,7 +295,7 @@ class Field {
     return getSearchField<Field>(this, disablePKRemapping);
   }
 
-  clone(fieldMetadata?: Partial<NormalizedField>) {
+  clone(fieldMetadata?: Partial<Omit<NormalizedField, "table_id">>) {
     if (fieldMetadata instanceof Field) {
       throw new Error("`fieldMetadata` arg must be a plain object");
     }
