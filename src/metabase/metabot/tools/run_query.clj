@@ -127,7 +127,8 @@
    :recovery [(if (= :none source)
                 (:no-values hint-steps)
                 {:uses #{"construct_notebook_query" "run_query"}
-                 :text (str "To get its values, use `construct_notebook_query` to build a notebook query with "
+                 :text (str "To get its values, use `construct_notebook_query` (pass `show_chart: false`) to build a"
+                            " notebook query with "
                             (if (= :base-table source)
                               "the metric's base table as its source"
                               (format "the %s that the metric is built on as its `source-card` (portable entity ID %s)"
