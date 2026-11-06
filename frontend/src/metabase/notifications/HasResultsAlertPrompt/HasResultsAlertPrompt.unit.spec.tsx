@@ -11,6 +11,8 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Card } from "metabase-types/api";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -18,7 +20,10 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { HasResultsAlertPrompt } from "./HasResultsAlertPrompt";
 
 function setup(cardOpts: Partial<Card> = {}) {
-  const card = createMockCard(cardOpts);
+  const card = createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...cardOpts,
+  });
   setupNotificationChannelsEndpoints({ email: { configured: true } });
   setupWebhookChannelsEndpoint([]);
   setupUserRecipientsEndpoint({ users: [] });

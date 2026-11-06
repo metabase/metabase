@@ -214,9 +214,16 @@
       :visibility-type     (keyword v)
       v)))
 
+(defn- use-schema-name
+  "The FE store keeps a table's schema ID under `schema` and its name under `schema_name`; Lib expects the name."
+  [table]
+  (cond-> table
+    (contains? table :schema-name) (-> (assoc :schema (:schema-name table))
+                                       (dissoc :schema-name))))
+
 (defmethod parse-objects :table
   [object-type metadata]
-  (let [parse-table (parse-object-fn object-type)]
+  (let [parse-table (comp #(some-> % use-schema-name) (parse-object-fn object-type))]
     (obj->clj (comp (remove (fn [[k _v]]
                               (str/starts-with? k "card__")))
                     (map (fn [[k v]]

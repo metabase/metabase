@@ -4,21 +4,20 @@ import { getStore } from "__support__/entities-store";
 import { setupModelIndexEndpoints } from "__support__/server-mocks";
 import { Api } from "metabase/api";
 import Question from "metabase-lib/v1/Question";
-import type { Field, FieldReference, ModelIndex } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  FieldReference,
+  ModelIndex,
+} from "metabase-types/api";
 import {
-  createMockField as createBaseMockField,
   createMockCard,
+  createMockColumn,
   createMockModelIndex,
 } from "metabase-types/api/mocks";
 
-import type { FieldWithMaybeIndex } from "./actions";
 import { cleanIndexFlags, updateModelIndexes } from "./actions";
 
-const createMockField = (options?: Partial<FieldWithMaybeIndex>): Field => {
-  return createBaseMockField(options);
-};
-
-const createModelWithResultMetadata = (fields: Field[]) => {
+const createModelWithResultMetadata = (fields: DatasetColumn[]) => {
   return new Question(
     createMockCard({ result_metadata: fields, type: "model" }),
   );
@@ -38,9 +37,9 @@ describe("Entities > model-indexes > actions", () => {
   describe("cleanIndexFlags", () => {
     it("should remove should_index flag from fields", () => {
       const model = createModelWithResultMetadata([
-        createMockField({ should_index: true }),
-        createMockField({ should_index: false }),
-        createMockField(),
+        createMockColumn({ should_index: true }),
+        createMockColumn({ should_index: false }),
+        createMockColumn(),
       ]);
 
       const cleanedFields = cleanIndexFlags(model.getResultMetadata());
@@ -52,8 +51,8 @@ describe("Entities > model-indexes > actions", () => {
 
     it("should not mutate the original question", () => {
       const model = createModelWithResultMetadata([
-        createMockField({ should_index: true }),
-        createMockField({ should_index: true }),
+        createMockColumn({ should_index: true }),
+        createMockColumn({ should_index: true }),
       ]);
 
       cleanIndexFlags(model.getResultMetadata());
@@ -67,8 +66,8 @@ describe("Entities > model-indexes > actions", () => {
   describe("updateModelIndexes", () => {
     it("should not do anything if there are no fields with should_index flag", async () => {
       const model = createModelWithResultMetadata([
-        createMockField(),
-        createMockField(),
+        createMockColumn(),
+        createMockColumn(),
       ]);
 
       const { dispatch } = setup();
@@ -85,9 +84,9 @@ describe("Entities > model-indexes > actions", () => {
       const indexFieldRef: FieldReference = ["field", 2, null];
 
       const model = createModelWithResultMetadata([
-        createMockField({ field_ref: pkFieldRef, semantic_type: "type/PK" }),
-        createMockField({ should_index: true, field_ref: indexFieldRef }),
-        createMockField(),
+        createMockColumn({ field_ref: pkFieldRef, semantic_type: "type/PK" }),
+        createMockColumn({ should_index: true, field_ref: indexFieldRef }),
+        createMockColumn(),
       ]);
 
       setupModelIndexEndpoints(model.id(), []);
@@ -116,9 +115,9 @@ describe("Entities > model-indexes > actions", () => {
       const indexFieldRef: FieldReference = ["field", 2, null];
 
       const model = createModelWithResultMetadata([
-        createMockField({ field_ref: pkFieldRef, semantic_type: "type/PK" }),
-        createMockField({ should_index: false, field_ref: indexFieldRef }),
-        createMockField(),
+        createMockColumn({ field_ref: pkFieldRef, semantic_type: "type/PK" }),
+        createMockColumn({ should_index: false, field_ref: indexFieldRef }),
+        createMockColumn(),
       ]);
 
       const existingModelIndex = createMockModelIndex({
@@ -150,9 +149,9 @@ describe("Entities > model-indexes > actions", () => {
       const indexFieldRef: FieldReference = ["field", 2, null];
 
       const model = createModelWithResultMetadata([
-        createMockField({ field_ref: pkFieldRef, semantic_type: "type/PK" }),
-        createMockField({ should_index: true, field_ref: indexFieldRef }),
-        createMockField(),
+        createMockColumn({ field_ref: pkFieldRef, semantic_type: "type/PK" }),
+        createMockColumn({ should_index: true, field_ref: indexFieldRef }),
+        createMockColumn(),
       ]);
 
       const existingModelIndex = createMockModelIndex({
@@ -182,9 +181,9 @@ describe("Entities > model-indexes > actions", () => {
       const indexFieldRef: FieldReference = ["field", 2, null];
 
       const model = createModelWithResultMetadata([
-        createMockField({ field_ref: pkFieldRef, semantic_type: "type/PK" }),
-        createMockField({ should_index: false, field_ref: indexFieldRef }),
-        createMockField(),
+        createMockColumn({ field_ref: pkFieldRef, semantic_type: "type/PK" }),
+        createMockColumn({ should_index: false, field_ref: indexFieldRef }),
+        createMockColumn(),
       ]);
 
       setupModelIndexEndpoints(model.id(), []);

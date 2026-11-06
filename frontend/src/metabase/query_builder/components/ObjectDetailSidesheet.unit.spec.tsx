@@ -21,11 +21,12 @@ import {
 } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Field } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
-  SAMPLE_DB_ID,
   createOrdersTable,
   createProductsTable,
   createReviewsTable,
@@ -93,13 +94,11 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
     }),
     qb: createMockQueryBuilderState({
       card: createMockCard({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-          },
-        },
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+          }),
+        ),
       }),
       // Unjustified type cast. FIXME
       zoomedRowObjectId: testDataset.rows[0][ROW_ID_INDEX] as string,

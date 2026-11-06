@@ -106,10 +106,7 @@ export const AppBarLarge = ({
           miw={0}
         >
           {detailView ? (
-            <DetailViewNav
-              rowName={detailView.rowName}
-              table={detailView.table}
-            />
+            <DetailViewNav detailView={detailView} />
           ) : isQuestionLineageVisible ? (
             questionLineage
           ) : isCollectionPathVisible ? (

@@ -17,7 +17,10 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
+  QueryTransformSource,
   TableIndexEntry,
   Transform,
   UserListResult,
@@ -34,6 +37,11 @@ import {
 
 import { TransformIndexesPage } from "./TransformIndexesPage";
 
+const QUERY_SOURCE: QueryTransformSource = {
+  type: "query",
+  query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+};
+
 type SetupOpts = {
   transform?: Transform;
   indexes?: TableIndexEntry[];
@@ -43,7 +51,11 @@ type SetupOpts = {
 };
 
 function setup({
-  transform = createMockTransform({ id: 1, name: "Test Transform" }),
+  transform = createMockTransform({
+    id: 1,
+    name: "Test Transform",
+    source: QUERY_SOURCE,
+  }),
   indexes = [],
   users = [],
   remoteSyncReadOnly = false,

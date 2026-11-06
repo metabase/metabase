@@ -2,7 +2,10 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import _ from "underscore";
 
-import { createMockMetadataFromState } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -28,6 +31,11 @@ import {
   defaultContext,
 } from "metabase/metabot";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type {
   Card,
   Database,
@@ -36,8 +44,6 @@ import type {
 import {
   createMockCard,
   createMockCollection,
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -56,13 +62,9 @@ jest.unmock("@uiw/react-codemirror");
 const TEST_DB = createSampleDatabase();
 
 const TEST_NATIVE_CARD = createMockCard({
-  dataset_query: createMockNativeDatasetQuery({
-    type: "native",
-    database: TEST_DB.id,
-    native: {
-      query: "select * from orders",
-      "template-tags": undefined,
-    },
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from orders",
   }),
 });
 
@@ -75,10 +77,11 @@ const TEST_NATIVE_MODEL = createMockCard({
 const TEST_NOTEBOOK_MODEL = createMockCard({
   id: 3,
   type: "model",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: TEST_DB.id,
-    query: { "source-table": ORDERS_ID },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  ),
 });
 
 const MONGO_DB = createSampleDatabase({ engine: "mongo" });
@@ -86,10 +89,14 @@ const MONGO_DB = createSampleDatabase({ engine: "mongo" });
 const TEST_MONGO_MODEL = createMockCard({
   id: 4,
   type: "model",
-  dataset_query: createMockNativeDatasetQuery({
-    database: MONGO_DB.id,
-    native: { query: '[{"$limit":1}]', collection: "ORDERS" },
-  }),
+  query_type: "native",
+  dataset_query: Lib.createTestJsNativeQuery(
+    createMetadataProvider({
+      databaseId: MONGO_DB.id,
+      metadata: createMockMetadata({ databases: [MONGO_DB] }),
+    }),
+    { query: '[{"$limit":1}]' },
+  ),
 });
 
 const ROOT_COLLECTION = createMockCollection({ id: "root" });

@@ -17,7 +17,7 @@ import type {
   CardAutocompleteSuggestion,
   NativeQuerySnippet,
 } from "metabase-types/api";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 import {
   useCardTagCompletion,
@@ -564,11 +564,13 @@ describe("useReferencedCardCompletion", () => {
       id: 42,
       name: "Referenced Question",
       result_metadata: [
-        createMockField({
+        createMockColumn({
           name: "Foobar",
+          database_type: "varchar",
         }),
-        createMockField({
+        createMockColumn({
           name: "Bar",
+          database_type: "varchar",
         }),
       ],
     }),

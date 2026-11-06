@@ -20,6 +20,10 @@ import { setup } from "./setup";
 
 const DESCRIPTION = "abc";
 
+const PRODUCTS_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+  stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+});
+
 describe("QuestionInfoSidebar", () => {
   describe("description", () => {
     it.each([
@@ -165,6 +169,7 @@ describe("QuestionInfoSidebar", () => {
     it("should show source information", () => {
       const card = createMockCard({
         name: "Question",
+        dataset_query: PRODUCTS_QUERY,
       });
       setup({ card });
 
@@ -210,6 +215,7 @@ describe("QuestionInfoSidebar", () => {
     it("should show fields", async () => {
       const card = createMockCard({
         name: "Question",
+        dataset_query: PRODUCTS_QUERY,
       });
       await setup({ card });
 

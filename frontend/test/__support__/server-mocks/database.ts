@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
-import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   AutocompleteSuggestion,
@@ -12,6 +11,7 @@ import type {
   Engine,
   SchemaName,
 } from "metabase-types/api";
+import { createMockSavedQuestionsDatabase } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
@@ -144,7 +144,7 @@ export function setupDatabasesEndpoints(
   query: object = { saved: true },
 ) {
   const databasesWithSavedQuestions = hasSavedQuestions
-    ? [...databases, SAVED_QUESTIONS_DATABASE]
+    ? [...databases, createMockSavedQuestionsDatabase()]
     : databases;
   fetchMock.get({
     url: "path:/api/database",

@@ -34684,12 +34684,12 @@
             "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
           }
         }, {
-          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"",
+          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\"",
           "in" : "path",
           "name" : "comparison-entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "adhoc", "segment", "table" ],
+            "enum" : [ "adhoc", "question", "segment", "table" ],
             "type" : "string"
           }
         }, {
@@ -34850,12 +34850,12 @@
             "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
           }
         }, {
-          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"",
+          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\"",
           "in" : "path",
           "name" : "comparison-entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "adhoc", "segment", "table" ],
+            "enum" : [ "adhoc", "question", "segment", "table" ],
             "type" : "string"
           }
         }, {
@@ -34919,12 +34919,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"",
+          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\"",
           "in" : "path",
           "name" : "comparison-entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "adhoc", "segment", "table" ],
+            "enum" : [ "adhoc", "question", "segment", "table" ],
             "type" : "string"
           }
         }, {
@@ -35106,12 +35106,12 @@
             "type" : "string"
           }
         }, {
-          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"",
+          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\"",
           "in" : "path",
           "name" : "comparison-entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "adhoc", "segment", "table" ],
+            "enum" : [ "adhoc", "question", "segment", "table" ],
             "type" : "string"
           }
         }, {
