@@ -692,10 +692,11 @@
 
 (defn- dashcard-xml
   "One dashcard of a saved dashboard. A card that `card-shown?` refuses shows its slot only."
-  [card-shown? {:keys [id card row col size_x size_y visualization_settings]}]
+  [card-shown? {:keys [id card row col size_x size_y visualization_settings all_tabs]}]
   (let [readable (when (and card (card-shown? card)) card)]
     (str "<dashcard"
          (xml-attrs :dashcard_id id
+                    :all_tabs all_tabs
                     :card_id (:id readable)
                     :name (:name readable)
                     :display (some-> (or (:display readable)
@@ -707,12 +708,10 @@
 (defn- dashboard-lines
   "The lines of the saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards
   they connect to. The `saved-charts` are the charts this call saved, which [[card-shown-fn]] shows.
-  A dashcard with no tab shows on the first tab, as in the frontend and `read_resource`."
+  A dashcard with no tab is listed before the tabs, marked `all_tabs`, as in the frontend and `read_resource`."
   ;; Attribute names and the filter element match the dashboard reads in `read_resource`, so the model reads one shape.
   [{:keys [id name description tabs dashcards parameters]} saved-charts]
-  (let [tabs        (sort-by :position tabs)
-        first-tab   (:id (first tabs))
-        by-tab      (group-by #(or (:dashboard_tab_id %) first-tab) (sort-by (juxt :row :col) dashcards))
+  (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
         connections (fn [parameter-id]
                       (for [dc dashcards
                             :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
@@ -723,10 +722,13 @@
      (when description
        (str "    <description>" (llm-shape/escape-xml-content description) "</description>"))
      (if (seq tabs)
-       (for [{tab-id :id tab-name :name} tabs]
-         [(str "    <tab" (xml-attrs :tab_id tab-id :name tab-name) ">")
-          (card-lines "      " (get by-tab tab-id))
-          "    </tab>"])
+       ;; A dashcard from before the dashboard had tabs has no tab, and the frontend shows it on every tab
+       ;; (`getVisibleCards`), so it comes before the tabs, marked `all_tabs`, as in the items read.
+       [(card-lines "    " (map #(assoc % :all_tabs true) (get by-tab nil)))
+        (for [{tab-id :id tab-name :name} (sort-by :position tabs)]
+          [(str "    <tab" (xml-attrs :tab_id tab-id :name tab-name) ">")
+           (card-lines "      " (get by-tab tab-id))
+           "    </tab>"])]
        (card-lines "    " (get by-tab nil)))
      (for [{parameter-id :id :as parameter} parameters]
        (str "    " (llm-shape/dashboard-filter->xml

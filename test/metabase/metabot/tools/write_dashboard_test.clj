@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools.write-dashboard-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -199,21 +200,30 @@
                                      :ops  [{:op "add_tab", :id -1, :name "Revenue"}
                                             {:op "add_text", :id -2, :markdown "Notes", :tab -1}]}))))))))
 
-(deftest untabbed-card-on-tabbed-dashboard-test
-  (mt/with-temp [:model/Dashboard     {dash-id :id}     {:name "Tabbed"}
-                 :model/DashboardTab  {one-id :id}      {:dashboard_id dash-id, :name "One", :position 0}
-                 :model/DashboardTab  {two-id :id}      {:dashboard_id dash-id, :name "Two", :position 1}
-                 :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id, :row 0, :col 0, :size_x 12, :size_y 6
-                                                         :visualization_settings {:virtual_card {:display "text"}
-                                                                                  :text         "Notes"}}]
+(deftest legacy-dashcard-on-tabbed-dashboard-test
+  (mt/with-temp [:model/Dashboard     {dash-id :id}    {:name "Tabbed"}
+                 :model/DashboardTab  _                {:dashboard_id dash-id, :name "First", :position 0}
+                 :model/DashboardTab  {second-tab :id} {:dashboard_id dash-id, :name "Second", :position 1}
+                 :model/DashboardCard {legacy-id :id}  {:dashboard_id dash-id, :dashboard_tab_id nil, :card_id nil
+                                                        :row 0, :col 0, :size_x 24, :size_y 1
+                                                        :visualization_settings {:virtual_card {:display "heading"}
+                                                                                 :text         "Legacy"}}
+                 :model/DashboardCard {second-id :id}  {:dashboard_id dash-id, :dashboard_tab_id second-tab
+                                                        :card_id nil
+                                                        :row 1, :col 0, :size_x 12, :size_y 3
+                                                        :visualization_settings {:virtual_card {:display "text"}
+                                                                                 :text         "Notes"}}]
     (mt/with-current-user (mt/user->id :crowberto)
-      (testing "the result shows a card without a tab on the first tab, as the frontend does"
-        (is (re-find (re-pattern (str "<tab tab_id=\"" one-id "\" name=\"One\">\n"
-                                      "      <dashcard dashcard_id=\"" dashcard-id "\" display=\"text\"[^\n]*/>\n"
-                                      "    </tab>\n"
-                                      "    <tab tab_id=\"" two-id "\" name=\"Two\">\n"
-                                      "    </tab>"))
-                     (:output (call {:dashboard_id dash-id, :name "Renamed"}))))))))
+      (let [output (:output (call {:dashboard_id dash-id, :name "Renamed"}))]
+        (testing "a dashcard with no tab comes before the tabs, marked as shown on every tab"
+          (is (re-find (re-pattern (str "\n    <dashcard dashcard_id=\"" legacy-id "\" all_tabs=\"true\""))
+                       output))
+          (is (< (str/index-of output (str "dashcard_id=\"" legacy-id "\""))
+                 (str/index-of output "<tab "))))
+        (testing "a dashcard on a later tab stays under that tab"
+          (is (re-find (re-pattern (str "<tab tab_id=\"" second-tab "\" name=\"Second\">\n"
+                                        "      <dashcard dashcard_id=\"" second-id "\""))
+                       output)))))))
 
 (deftest retry-reuses-question-test
   (mt/with-model-cleanup [:model/Card]
