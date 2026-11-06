@@ -131,14 +131,19 @@
    ["shut down agents"            shutdown-agents]])
 
 ;; Every step runs even when an earlier one throws, so one failing stop cannot leave the migration locks held or the
-;; web server running.
+;; web server running. Each failure is logged as it happens, so it is not lost when a later step outlasts the time the
+;; process has to shut down.
 (defn- destroy!
   "General application shutdown function which should be called once at application shutdown."
   []
   (log/info "Metabase Shutting Down ...")
-  (let [failures (u/run-each! (shutdown-steps))]
-    (doseq [[step e] failures]
-      (log/errorf e "Shutdown step failed: %s" step))
+  (let [failures (u/run-each! (for [[step thunk] (shutdown-steps)]
+                                [step (fn []
+                                        (try
+                                          (thunk)
+                                          (catch Throwable e
+                                            (log/errorf e "Shutdown step failed: %s" step)
+                                            (throw e))))]))]
     (if (seq failures)
       (log/warnf "Metabase Shutdown COMPLETE, with %d failed steps" (count failures))
       (log/info "Metabase Shutdown COMPLETE"))))
