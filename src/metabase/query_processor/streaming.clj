@@ -323,7 +323,13 @@
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
 
+(defn response-schema
+  "Response schema for an endpoint that returns a [[streaming-response]] whose JSON body matches `content-schema`.
+  OpenAPI documents `content-schema`, but validation only checks that a stream comes back."
+  [content-schema]
+  (streaming-response/streaming-response-schema content-schema))
+
 (mr/def ::query-result-response
   "Response schema for an endpoint that returns a [[streaming-response]] of query results.
   OpenAPI documents the query result the stream carries."
-  (streaming-response/streaming-response-schema ::qp.schema/query-result))
+  (response-schema ::qp.schema/query-result))
