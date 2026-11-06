@@ -425,17 +425,17 @@
   ;; indexes, which Toucan never sees.
   (let [{:keys [gone cascading]}
         (reduce (fn [{:keys [gone cascading]} batch]
-                  (let [ids       (mapv :id batch)
+                  (let [ids    (mapv :id batch)
                         ;; A search error must not fail the database delete; those documents are left to the reindex.
-                        cascading (try
-                                    (search/add-cascading-documents cascading (mapv #(t2/instance :model/Card %) batch))
-                                    (catch Exception e
-                                      (log/errorf e "Skipping search cascade enumeration for database %s" id)
-                                      cascading))]
+                        merged (try
+                                 (search/add-cascading-documents cascading (mapv #(t2/instance :model/Card %) batch))
+                                 (catch Exception e
+                                   (log/errorf e "Skipping search cascade enumeration for database %s" id)
+                                   cascading))]
                     (warehouses.db/delete-cards! id ids)
                     ;; A card that moved to another database since the scan survives, and keeps its documents.
                     {:gone      (into gone (remove (warehouses.db/existing-card-ids ids)) ids)
-                     :cascading cascading}))
+                     :cascading merged}))
                 {:gone [], :cascading nil}
                 (eduction
                  (map t2.realize/realize)
@@ -445,6 +445,7 @@
     ;; older re-index that may already have read a soon-to-be-deleted card.
     (when (or (seq gone) (seq cascading))
       (search/after-commit! "database delete"
+                            ;; One call for the whole database; `update!` removes the documents 1,000 at a time.
                             (fn [] (search/delete! :model/Card gone))
                             (fn [] (search/reconcile-cascading-documents! cascading)))))
   (try

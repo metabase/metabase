@@ -276,11 +276,11 @@
   [where-clause]
   (some? (extract-model-and-id ::probe where-clause)))
 
-;; A single delete can fan out to arbitrarily many dependent documents, and this enumeration happens on the caller's
-;; thread inside its transaction, so past the ceiling the documents are left to the convergence backstop rather than
-;; held in heap.
+;; A single delete, or a batched one such as a Database's cards, can fan out to arbitrarily many dependent documents,
+;; and this enumeration happens on the caller's thread inside its transaction, so past the ceiling the documents are
+;; left to the convergence backstop rather than held in heap.
 (def max-enumerated-documents
-  "Ceiling on how many documents one statement may enumerate before it runs."
+  "Ceiling on how many documents one delete may enumerate before it runs, across every statement it issues."
   10000)
 
 (defn doc-ids
