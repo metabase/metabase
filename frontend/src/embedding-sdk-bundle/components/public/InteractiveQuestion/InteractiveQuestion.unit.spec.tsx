@@ -4,6 +4,7 @@ import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
 } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
@@ -49,6 +50,8 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
 import { utf8_to_b64url } from "metabase/utils/encoding";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -64,6 +67,14 @@ import {
   InteractiveQuestion,
   InteractiveQuestionInternal,
 } from "./InteractiveQuestion";
+
+const TEST_PROVIDER = createMetadataProvider({
+  databaseId: TEST_DB.id,
+  metadata: createMockMetadata({
+    databases: [TEST_DB],
+    tables: [TEST_TABLE],
+  }),
+});
 
 const TEST_CARD_ID = 1;
 const USER_ID = 999;
@@ -232,12 +243,11 @@ describe("InteractiveQuestion", () => {
     renderWithSDKProviders(
       <InteractiveQuestion
         card={{
-          query: {
-            type: "query",
-            database: TEST_DB.id,
-            query: { "source-table": TEST_TABLE.id },
-            parameters: [],
-          },
+          query: Lib.toLegacyQuery(
+            Lib.createTestQuery(TEST_PROVIDER, {
+              stages: [{ source: { type: "table", id: TEST_TABLE.id } }],
+            }),
+          ),
         }}
       />,
       {
@@ -412,11 +422,9 @@ describe('questionId: "new"', () => {
 describe("native query prop (Metabot SQL editor)", () => {
   const NATIVE_QUERY_PATH = `/question#${utf8_to_b64url(
     JSON.stringify({
-      dataset_query: {
-        database: TEST_DB.id,
-        type: "native",
-        native: { query: "" },
-      },
+      dataset_query: Lib.toLegacyQuery(
+        Lib.createTestNativeQuery(TEST_PROVIDER, { query: "" }),
+      ),
     }),
   )}`;
 
