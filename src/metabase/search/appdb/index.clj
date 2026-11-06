@@ -37,9 +37,12 @@
 (defonce ^:private next-sync-at (atom nil))
 
 ;; The active and pending index tables. Writers hold its slot lock, since they read the database between the read and
-;; the write.
+;; the write. Installing the first root also clears the sync timer, so a root a reload installs, which starts empty,
+;; syncs on its next read instead of waiting out a timer set for the state it replaced.
 (def ^:private indexes-component
-  (system/mutable-component-handle ::indexes (constantly {:active nil, :pending nil})))
+  (system/mutable-component-handle ::indexes (fn []
+                                               (reset! next-sync-at nil)
+                                               {:active nil, :pending nil})))
 
 (defn indexes-handle
   "The [[metabase.global-system.mutable-component/MutableComponentHandle]] for the tracked index tables."
