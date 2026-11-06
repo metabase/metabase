@@ -84,7 +84,9 @@
                               :transforms/testing               true
                               :transforms/index-ddl             false
                               :uuid-type                        false
-                              :workspace                        true}]
+                              ;; Off until the Redshift isolation methods get the role and teardown work the Postgres
+                              ;; ones have. The methods stay, and its tests call them directly.
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 (defmethod driver/qualified-name-components :redshift

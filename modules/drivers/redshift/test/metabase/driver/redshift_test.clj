@@ -863,6 +863,10 @@
 
 ;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
 
+(deftest workspace-feature-is-off-test
+  (testing "Redshift does not report the :workspace feature, so no workspace can be created on it"
+    (is (false? (driver/database-supports? :redshift :workspace nil)))))
+
 (defn- try-execute!
   "Run `sql` against `spec`, logging exceptions at warn level. For cleanup
    paths where the object may not exist *or* where a residual catalog row
