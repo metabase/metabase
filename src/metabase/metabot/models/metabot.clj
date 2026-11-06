@@ -3,7 +3,6 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -37,26 +36,6 @@
               (metabot.db/prompts-for-metabots (map :id metabots)))
    :id
    {:default []}))
-
-;;; ------------------------------------------------- Serialization -------------------------------------------------
-
-(defmethod serdes/deserialization-dependencies "Metabot"
-  [{:keys [collection_id prompts]}]
-  (cond-> (set (mapcat serdes/deserialization-dependencies prompts))
-    collection_id (conj [{:model "Collection" :id collection_id}])))
-
-(defmethod serdes/generate-path "Metabot" [_ metabot]
-  [(serdes/infer-self-path "Metabot" metabot)])
-
-(defmethod serdes/storage-path "Metabot" [metabot _ctx]
-  [{:label "metabots"} {:label (:name metabot) :key (:entity_id metabot)}])
-
-(defmethod serdes/make-spec "Metabot" [_model-name opts]
-  {:schema    ::metabot.schema/external-metabot
-   :copy      [:name :description :entity_id :use_verified_content]
-   :transform {:collection_id (serdes/fk :model/Collection)
-               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :entity_id)} opts))}
-   :defaults  {:use_verified_content false}})
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

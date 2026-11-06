@@ -6,7 +6,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.card-schema :as card-schema]
@@ -564,76 +563,6 @@
   "Return the `Database` associated with this `Table`."
   [table]
   (warehouse-schema.db/database (:db_id table)))
-
-;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/deserialization-dependencies "Table" [{:keys [collection_id transform_id]}]
-  (cond-> []
-    collection_id (conj [{:model "Collection" :id collection_id}])
-    transform_id  (conj [{:model "Transform" :id transform_id}])))
-
-(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
-  (let [fields   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
-                            [["Field" field-id] {"Table" id}]))
-        settings (when (warehouse-schema.db/table-user-settings-exist? id)
-                   {["TableUserSettings" id] {"Table" id}})
-        field-settings (into {} (for [field-id (warehouse-schema.db/field-ids-with-user-settings-for-table id)]
-                                  [["FieldUserSettings" field-id] {"Table" id}]))
-        dimensions (into {} (for [dimension-id (warehouse-schema.db/dimension-ids-for-table id)]
-                              [["Dimension" dimension-id] {"Table" id}]))
-        segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
-                            [["Segment" segment-id] {"Table" id}]))
-        measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
-                            [["Measure" measure-id] {"Table" id}]))]
-    (merge fields settings field-settings dimensions segments measures)))
-
-(defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (warehouse-schema.db/database-name (:db_id table))]
-    (filterv some? [{:model "Database" :id db-name}
-                    (when (:schema table)
-                      {:model "Schema" :id (:schema table)})
-                    {:model "Table" :id (:name table)}])))
-
-(defmethod serdes/ingested-path "Table" [_ {:keys [db_id schema name]}]
-  (serdes/table->path [db_id schema name]))
-
-(defmethod serdes/entity-id "Table" [_ {:keys [name]}]
-  name)
-
-(defmethod serdes/load-find-local "Table"
-  [path]
-  (let [db-name     (-> path first :id)
-        schema-name (when (= 3 (count path))
-                      (-> path second :id))
-        table-name  (-> path last :id)
-        db-id       (warehouse-schema.db/database-id-by-name db-name)]
-    (when db-id
-      (warehouse-schema.db/table-by-name db-id schema-name table-name))))
-
-(defmethod serdes/make-spec "Table" [_model-name _opts]
-  {:schema    ::warehouse-schema.schema/external-table
-   :copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-               :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :is_published]
-   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target]
-   :transform {:archived_at    (serdes/date)
-               :deactivated_at (serdes/date)
-               :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database)
-               :collection_id  (serdes/fk :model/Collection)
-               ;; older exports copied the local user id; re-importing those files on the same instance, e.g. a
-               ;; remote sync pull before the first new export, keeps the right owner, where nil would drop it
-               :owner_user_id  (update (serdes/fk :model/User) :import
-                                       (fn [import-user] #(if (int? %) % (import-user %))))
-               :transform_id   (serdes/fk :model/Transform)}
-   :defaults {:is_defective_duplicate  false
-              :is_published            false
-              :is_upload               false
-              :show_in_getting_started false}})
-
-(defmethod serdes/storage-path "Table" [table _ctx]
-  (conj (serdes/storage-path-prefixes (serdes/path table))
-        {:label (:name table) :key (:name table)}))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

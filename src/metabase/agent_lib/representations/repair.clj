@@ -40,8 +40,8 @@
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.walk :as lib.walk]
-   [metabase.models.serialization.resolve :as resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.serialization.protocol.mp :as serialization.protocol.mp]
+   [metabase.serialization.resolve :as serialization.resolve]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -2179,43 +2179,44 @@
        (map? (nth v 1))
        (let [fk (nth v 2)]
          (or (and (vector? fk) (>= (count fk) 4))
-             (and (pos-int? fk) resolve/*numeric-ids-allowed?*)))))
+             (and (pos-int? fk) repr.resolve/*numeric-ids-allowed?*)))))
 
 (defn- try-resolve-source-table-id
-  "Resolve the stage's `source-table` portable FK to a numeric id. Returns nil on any failure
+  "Resolve the stage's `source-table` reference to a numeric id. Returns nil on any failure
   (unknown DB, unknown table, nil source-table, wrong shape, etc.) - implicit-join repair is
   best-effort and should never mask an error that the downstream validate/resolve passes will
   surface with a better message."
-  [import-resolver source-table-fk]
+  [import-store source-table-fk]
   (try
     (cond
-      (and (pos-int? source-table-fk) resolve/*numeric-ids-allowed?*)
+      (and (pos-int? source-table-fk) repr.resolve/*numeric-ids-allowed?*)
       source-table-fk
 
-      (and import-resolver (vector? source-table-fk) (= 3 (count source-table-fk)))
-      (resolve/import-table-fk import-resolver source-table-fk))
+      (and import-store (vector? source-table-fk) (= 3 (count source-table-fk)))
+      (get (serialization.resolve/table-ids import-store #{source-table-fk} (repr.resolve/import-opts))
+           source-table-fk))
     (catch Exception _ nil)))
 
 (defn- try-resolve-source-card-id
   "Resolve the stage's `source-card` entity ID to a numeric Card ID, or nil on failure."
-  [import-resolver source-card-eid]
+  [import-store source-card-eid]
   (try
     (cond
-      (and (pos-int? source-card-eid) resolve/*numeric-ids-allowed?*)
+      (and (pos-int? source-card-eid) repr.resolve/*numeric-ids-allowed?*)
       source-card-eid
 
-      (and import-resolver (string? source-card-eid))
-      (resolve/import-fk import-resolver source-card-eid 'Card))
+      (and import-store (string? source-card-eid))
+      (get (serialization.resolve/entity-pks import-store :model/Card #{source-card-eid}) source-card-eid))
     (catch Exception _ nil)))
 
 (defn- try-resolve-field-id
-  "Resolve a field target — a portable field FK or a numeric field id — to a numeric field id.
-  Walks JSON-unfolded parent chains via the resolver's `import-field-fk`. Returns nil on failure."
-  [import-resolver field-fk]
+  "Resolve a field target — a Field reference or a numeric field id — to a numeric field id.
+  Walks JSON-unfolded parent chains via the store. Returns nil on failure."
+  [import-store field-fk]
   (try
     (if (pos-int? field-fk)
       field-fk
-      (resolve/import-field-fk import-resolver field-fk))
+      (get (serialization.resolve/field-ids import-store #{field-fk} (repr.resolve/import-opts)) field-fk))
     (catch Exception _ nil)))
 
 (defn- try-resolve-field-table-id
@@ -2227,10 +2228,10 @@
     (catch Exception _ nil)))
 
 (defn- try-resolve-field-target-table-id
-  "Resolve the target-table-id of a field target — a portable field FK or a numeric field id —
+  "Resolve the target-table-id of a field target — a Field reference or a numeric field id —
   by looking up the field and following its `:table-id`. Returns nil on failure."
-  [mp import-resolver field-fk]
-  (try-resolve-field-table-id mp (try-resolve-field-id import-resolver field-fk)))
+  [mp import-store field-fk]
+  (try-resolve-field-table-id mp (try-resolve-field-id import-store field-fk)))
 
 (defn- try-resolve-card-source-info
   "Return the fields, tables, and implicit-join candidates exposed by the card with `card-id`.
@@ -2267,12 +2268,12 @@
       (log/warnf e "Could not inspect source card %s for implicit-join repair; skipping the stage" card-id)
       nil)))
 
-(defn- export-source-field-portable
-  "Convert a numeric FK column id into its portable `[db schema table field …]` path, via the
-  MP-backed export resolver. Returns nil on failure."
-  [export-resolver source-field-id]
+(defn- export-source-field-ref
+  "Convert a numeric FK column id into its `[db schema table field …]` reference, via the
+  MP-backed export store. Returns nil on failure."
+  [export-store source-field-id]
   (try
-    (resolve/export-field-fk export-resolver source-field-id)
+    (get (serialization.resolve/field-refs export-store #{source-field-id}) source-field-id)
     (catch Exception _ nil)))
 
 (defn- display-source-table [mp source-table-id]
@@ -2363,12 +2364,12 @@
 
   When `stamp-name?` is true, also set `source-field-name` if the candidate has a name. A renamed FK column needs
   that name in the join condition."
-  [clause opts fk export-resolver candidates
+  [clause opts fk export-store candidates
    {:keys [source-label target-table-id ex-data-extra stamp-name? strict?]}]
   (case (count candidates)
     0 (throw (no-fk-path-error fk source-label target-table-id ex-data-extra))
     1 (let [{:keys [source-field-id source-field-name]} (first candidates)
-            src-fk (export-source-field-portable export-resolver source-field-id)]
+            src-fk (export-source-field-ref export-store source-field-id)]
         (cond
           src-fk   (assoc clause 1 (cond-> (assoc opts "source-field" src-fk)
                                      (and stamp-name? source-field-name)
@@ -2384,7 +2385,7 @@
   `source-info` describes a table or card (see [[stage-source-info]]). A card exposes only its returned columns,
   so a field on its base table may still be unavailable. Throw `:no-fk-path`, `:ambiguous-fk`,
   `:column-not-returned`, or `:unexportable-fk` when the reference cannot be resolved safely."
-  [clause mp import-resolver export-resolver source-info]
+  [clause mp import-store export-store source-info]
   (let [opts (nth clause 1)
         fk   (nth clause 2)]
     (cond
@@ -2404,7 +2405,7 @@
       clause
 
       :else
-      (let [field-id        (try-resolve-field-id import-resolver fk)
+      (let [field-id        (try-resolve-field-id import-store fk)
             target-table-id (try-resolve-field-table-id mp field-id)]
         (if (nil? target-table-id)
           ;; Couldn't resolve target table: skip (validate/resolve will surface the real error).
@@ -2415,7 +2416,7 @@
               (if (= target-table-id source-table-id)
                 ;; Field is on the source table itself: nothing to do.
                 clause
-                (fill-from-candidates clause opts fk export-resolver
+                (fill-from-candidates clause opts fk export-store
                                       (get (:fks-by-target source-info) target-table-id)
                                       {:source-label    (display-source-table mp source-table-id)
                                        :target-table-id target-table-id
@@ -2434,7 +2435,7 @@
                                                   (:card-id source-info) target-table-id))
 
                 :else
-                (fill-from-candidates clause opts fk export-resolver
+                (fill-from-candidates clause opts fk export-store
                                       (get (:fks-by-target info) target-table-id)
                                       {:source-label    (:card-name info)
                                        :target-table-id target-table-id
@@ -2451,14 +2452,14 @@
   Skip unresolved sources and card stages with explicit joins, whose fields lib can resolve through those joins.
   Card metadata is resolved only when a field needs implicit-join repair; candidates come from the card's returned
   FK columns, not every FK on its base table. See [[try-resolve-card-source-info]]."
-  [stage mp import-resolver]
+  [stage mp import-store]
   (if-let [source-table-fk (get stage "source-table")]
-    (when-let [table-id (try-resolve-source-table-id import-resolver source-table-fk)]
+    (when-let [table-id (try-resolve-source-table-id import-store source-table-fk)]
       {:kind          :table
        :table-id      table-id
-       :fks-by-target (group-by :target-table-id (resolve.mp/outbound-fks-from-table mp table-id))})
+       :fks-by-target (group-by :target-table-id (serialization.protocol.mp/outbound-fks-from-table mp table-id))})
     (when-let [card-id (when (empty? (get stage "joins"))
-                         (try-resolve-source-card-id import-resolver (get stage "source-card")))]
+                         (try-resolve-source-card-id import-store (get stage "source-card")))]
       {:kind    :card
        :card-id card-id
        :info    (delay (try-resolve-card-source-info mp card-id))})))
@@ -2469,14 +2470,14 @@
   Skips descent into the `\"joins\"` subtree by plucking it out before the postwalk and
   restoring it afterwards - field clauses inside explicit joins are expected to carry a
   `join-alias` already."
-  [stage mp import-resolver export-resolver]
-  (if-let [source-info (stage-source-info stage mp import-resolver)]
+  [stage mp import-store export-store]
+  (if-let [source-info (stage-source-info stage mp import-store)]
     (let [joins  (get stage "joins")
           stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))
           walked (walk/postwalk
                   (fn [node]
                     (if (field-clause? node)
-                      (maybe-fill-source-field node mp import-resolver export-resolver source-info)
+                      (maybe-fill-source-field node mp import-store export-store source-info)
                       node))
                   stage')]
       (cond-> walked
@@ -2493,10 +2494,10 @@
   [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")) (seq (get query "stages")))
     query
-    (let [import-resolver (resolve.mp/import-resolver mp content-store)
-          export-resolver (resolve.mp/export-resolver mp)]
+    (let [import-store (serialization.protocol.mp/import-store mp content-store)
+          export-store (serialization.protocol.mp/export-store mp)]
       (update-in query ["stages" 0] resolve-implicit-joins-in-stage
-                 mp import-resolver export-resolver))))
+                 mp import-store export-store))))
 
 ;;; ============================================================
 ;;; Pass 3.5 -- auto-wire `source-field-join-alias` for implicit joins through an explicitly
@@ -2533,11 +2534,11 @@
   `[{:alias <string>, :source-table-id <int>} …]`. Skips joins without a usable alias or whose
   `source-table` portable FK can't be resolved - they don't participate in repair, but the
   resolver will surface the structural error itself."
-  [import-resolver joins]
+  [import-store joins]
   (vec (for [j     joins
              :let  [a   (get j "alias")
                     stf (get-in j ["stages" 0 "source-table"])
-                    tid (try-resolve-source-table-id import-resolver stf)]
+                    tid (try-resolve-source-table-id import-store stf)]
              :when (and (string? a) (seq a) tid)]
          {:alias a :source-table-id tid})))
 
@@ -2553,7 +2554,7 @@
   below)."
   [mp joined-tables target-table-id]
   (vec (for [{:keys [alias source-table-id]} joined-tables
-             :let [outbound  (resolve.mp/outbound-fks-from-table mp source-table-id)
+             :let [outbound  (serialization.protocol.mp/outbound-fks-from-table mp source-table-id)
                    matching  (filter #(= target-table-id (:target-table-id %)) outbound)]
              :when (= 1 (count matching))]
          {:alias            alias
@@ -2572,7 +2573,7 @@
 
   Throws `:ambiguous-fk-via-join` (an `:agent-error?`) when the target is reachable from
   multiple distinct join aliases. Returns the (possibly-augmented) clause otherwise."
-  [clause mp import-resolver export-resolver source-table-id outbound-from-source-by-target joined-tables]
+  [clause mp import-store export-store source-table-id outbound-from-source-by-target joined-tables]
   (let [opts (nth clause 1)
         fk   (nth clause 2)]
     (if (or (contains? opts "source-field")
@@ -2580,7 +2581,7 @@
             (contains? opts "source-field-join-alias")
             (contains? opts "join-alias"))
       clause
-      (let [target-table-id (try-resolve-field-target-table-id mp import-resolver fk)]
+      (let [target-table-id (try-resolve-field-target-table-id mp import-store fk)]
         (cond
           (nil? target-table-id)              clause
           (= target-table-id source-table-id) clause
@@ -2594,7 +2595,7 @@
               ;; own `:no-fk-path` error with its current wording.
               0 clause
               1 (let [{:keys [alias source-field-id]} (first cands)
-                      src-fk (export-source-field-portable export-resolver source-field-id)]
+                      src-fk (export-source-field-ref export-store source-field-id)]
                   (if src-fk
                     (assoc clause 1 (assoc opts
                                            "source-field"            src-fk
@@ -2616,15 +2617,15 @@
                                  :aliases      aliases}))))))))))
 
 (defn- resolve-source-field-join-alias-in-stage
-  [stage mp import-resolver export-resolver]
+  [stage mp import-store export-store]
   (let [source-table-fk (get stage "source-table")
-        source-table-id (try-resolve-source-table-id import-resolver source-table-fk)
+        source-table-id (try-resolve-source-table-id import-store source-table-fk)
         joins           (get stage "joins")]
     (if-not (and source-table-id (vector? joins) (seq joins))
       stage
-      (let [outbound          (resolve.mp/outbound-fks-from-table mp source-table-id)
+      (let [outbound          (serialization.protocol.mp/outbound-fks-from-table mp source-table-id)
             outbound-by-target (group-by :target-table-id outbound)
-            joined-tables     (explicit-join-source-tables import-resolver joins)
+            joined-tables     (explicit-join-source-tables import-store joins)
             ;; As in Pass 4, do not descend into `joins:` subtree - clauses inside an explicit
             ;; join carry `join-alias` and have their own resolution context.
             stage'            (dissoc stage "joins")
@@ -2632,7 +2633,7 @@
                                (fn [node]
                                  (if (field-clause? node)
                                    (maybe-fill-source-field-join-alias
-                                    node mp import-resolver export-resolver
+                                    node mp import-store export-store
                                     source-table-id outbound-by-target joined-tables)
                                    node))
                                stage')]
@@ -2650,10 +2651,10 @@
   [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")) (seq (get query "stages")))
     query
-    (let [import-resolver (resolve.mp/import-resolver mp content-store)
-          export-resolver (resolve.mp/export-resolver mp)]
+    (let [import-store (serialization.protocol.mp/import-store mp content-store)
+          export-store (serialization.protocol.mp/export-store mp)]
       (update-in query ["stages" 0] resolve-source-field-join-alias-in-stage
-                 mp import-resolver export-resolver))))
+                 mp import-store export-store))))
 
 ;;; ============================================================
 ;;; Passes 4.5 and 5 -- infer base-type / effective-type on cross-stage field references
@@ -3000,9 +3001,9 @@
 (defn- other-table-path-refs
   "The `path-refs` into plain-table `join` whose field belongs to another table, or nil if there are none.
   A ref is skipped when its field or the join's table can't be resolved."
-  [mp import-resolver join path-refs]
-  (when-let [table-id (try-resolve-source-table-id import-resolver (get-in join ["stages" 0 "source-table"]))]
-    (not-empty (filterv #(when-let [field-table-id (try-resolve-field-target-table-id mp import-resolver (nth % 2))]
+  [mp import-store join path-refs]
+  (when-let [table-id (try-resolve-source-table-id import-store (get-in join ["stages" 0 "source-table"]))]
+    (not-empty (filterv #(when-let [field-table-id (try-resolve-field-target-table-id mp import-store (nth % 2))]
                            (not= field-table-id table-id))
                         path-refs))))
 
@@ -3019,11 +3020,11 @@
   "Returns `{:named [...], :path [...]}`: the distinct `named-refs` naming no column in `cols`, and the distinct
   `path-refs` whose field matches no column of `cols` by id, or by name among the columns without an id.
   A path ref whose field can't be resolved is skipped."
-  [mp cols named-refs path-refs import-resolver]
+  [mp cols named-refs path-refs import-store]
   (let [returned-ids  (set (keep :id cols))
         id-less-names (set (keep #(when-not (:id %) (:name %)) cols))
         bad-named?    #(nil? (match-cross-stage-column cols (nth % 2)))
-        bad-path?     #(when-let [field (some->> (try-resolve-field-id @import-resolver (nth % 2))
+        bad-path?     #(when-let [field (some->> (try-resolve-field-id @import-store (nth % 2))
                                                  (lib.metadata.protocols/field mp))]
                          ;; like lib, fall back to the field's name only for a column without an id, e.g. one
                          ;; returned through a native card
@@ -3045,7 +3046,7 @@
 (defn- repair-join-alias-refs-in-stage
   "Type `stage`'s join-alias string refs. Returns `{:stage <typed stage>, :problems [...]}`, one
   problem per join that has refs naming columns it doesn't return."
-  [query mp content-store import-resolver idx stage]
+  [query mp content-store import-store idx stage]
   (let [{:keys [named path]} (join-alias-refs stage)
         joins                (get stage "joins")
         checks               (vec (for [join  (when (and (or (seq named) (seq path)) (sequential? joins)) joins)
@@ -3056,7 +3057,7 @@
                                                             ;; a plain table join returns all its table's columns, so it
                                                             ;; is resolved only for a ref to another table's column
                                                             plain?
-                                                            (other-table-path-refs mp @import-resolver join))]
+                                                            (other-table-path-refs mp @import-store join))]
                                         :when (or named-refs path-refs)
                                         :let  [cols (when (vector? (get join "stages"))
                                                       (resolved-columns mp (get query "database") (get join "stages") content-store
@@ -3079,7 +3080,7 @@
                       node))))
      :problems (vec (for [{:keys [alias cols named-refs path-refs plain? field-refs]} checks
                           :let  [{bad-named :named, bad-path :path}
-                                 (bad-join-alias-refs mp cols named-refs path-refs import-resolver)
+                                 (bad-join-alias-refs mp cols named-refs path-refs import-store)
                                  bad (into bad-named bad-path)]
                           :when (seq bad)]
                       ;; a plain table join's path refs are all to other tables, see `path-refs` above
@@ -3136,12 +3137,13 @@
   [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")))
     query
-    (let [import-resolver (delay (resolve.mp/import-resolver mp content-store))
-          results         (into [] (map-indexed (fn [idx stage]
-                                                  (if (map? stage)
-                                                    (repair-join-alias-refs-in-stage query mp content-store import-resolver idx stage)
-                                                    {:stage stage})))
-                                (get query "stages"))]
+    (let [import-store (delay (serialization.protocol.mp/import-store mp content-store))
+          results      (into [] (map-indexed (fn [idx stage]
+                                               (if (map? stage)
+                                                 (repair-join-alias-refs-in-stage query mp content-store import-store
+                                                                                  idx stage)
+                                                 {:stage stage})))
+                             (get query "stages"))]
       (when-let [problems (seq (mapcat :problems results))]
         (throw (unresolved-join-alias-fields-error (vec problems))))
       (assoc query "stages" (mapv :stage results)))))
@@ -3441,9 +3443,9 @@
 
   Carried over from the sexp pipeline's
   `validate/operators.clj/validate-operator-specific!` `field` branch. A no-op on surfaces
-  that accept numeric field ids (see [[metabase.models.serialization.resolve/*numeric-ids-allowed?*]])."
+  that accept numeric field ids (see [[repr.resolve/*numeric-ids-allowed?*]])."
   [form]
-  (when-not resolve/*numeric-ids-allowed?*
+  (when-not repr.resolve/*numeric-ids-allowed?*
     (match/match-one form
       ["field" #'map? #'integer?]
       (throw (ex-info
@@ -3677,9 +3679,9 @@
 
   The optional `content-store` is threaded into mini-resolve passes that touch saved cards;
   agent callers pass a permission-aware store so source-card/metric metadata is not read via
-  the default app-DB resolver."
+  the default app-DB content store."
   ([mp parsed]
-   (repair mp parsed resolve.mp/unchecked-app-db-content-store))
+   (repair mp parsed serialization.protocol.mp/unchecked-app-db-content-store))
   ([mp parsed content-store]
    (-> parsed
        normalize-shape*

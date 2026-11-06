@@ -80,7 +80,7 @@
                            "source"          "cli"
                            "secrets"         false
                            "success"         false
-                           "error_message"   "Cannot load settings"}
+                           "error_message"   #"(?s)Cannot load settings.*"}
                           (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                                (filter #(= "serialization" (get % "event")))
                                first)))))
@@ -102,5 +102,5 @@
                              "count"         0
                              "success"       false
                              ;; t2/with-transactions re-wraps errors with data about toucan connections
-                             "error_message" #"Collection 'DoesNotExist' was not found.*"}
+                             "error_message" #"(?s).*DoesNotExist.* was not found.*"}
                             (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))

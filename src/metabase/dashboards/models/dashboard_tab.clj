@@ -5,7 +5,6 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -50,17 +49,6 @@
   (let [dashboard (or (:dashboard dashtab)
                       (dashboards.db/dashboard (:dashboard_id dashtab)))]
     (mi/perms-objects-set dashboard read-or-write)))
-
-;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes/generate-path "DashboardTab" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (dashboards.db/dashboard (:dashboard_id dashcard)))
-   (serdes/infer-self-path "DashboardTab" dashcard)])
-
-(defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
-  {:schema    ::dashboards.schema/external-dashboard-tab
-   :copy      [:entity_id :name :position]
-   :skip      []
-   :transform {:dashboard_id (serdes/parent-ref)}})
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 

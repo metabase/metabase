@@ -6,7 +6,6 @@
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -68,18 +67,6 @@
 (defn- b64->bundle ^bytes [^String s]
   (some-> s codecs/b64->bytes))
 
-(defmethod serdes/make-spec "CustomVizPlugin"
-  [_model-name _opts]
-  {:schema    ::custom-viz-plugin.schema/external-custom-viz-plugin
-   :copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
-   :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
-               :status :error_message
-               ;; dev-only plugins are never served from another instance
-               :dev_bundle_url]
-   :defaults  {:enabled true}
-   :transform {:bundle     {:export bundle->b64
-                            :import b64->bundle}}})
-
 (defmethod serialization/spec :model/CustomVizPlugin [_]
   {:schema    ::custom-viz-plugin.schema/external-custom-viz-plugin
    :identity  [:identifier]
@@ -113,31 +100,6 @@
     (catch Exception e
       {:status        :error
        :error_message (ex-message e)})))
-
-(defmethod serdes/load-insert! "CustomVizPlugin"
-  [_model-name ingested]
-  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns ingested))))
-
-(defmethod serdes/load-update! "CustomVizPlugin"
-  [_model-name ingested {:keys [id]}]
-  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
-  (cache/purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
-
-(defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
-  identifier)
-
-(defmethod serdes/generate-path "CustomVizPlugin" [_ entity]
-  [{:model "CustomVizPlugin"
-    :id    (:identifier entity)
-    :label (:identifier entity)}])
-
-(defmethod serdes/load-find-local "CustomVizPlugin" [path]
-  (let [{:keys [id]} (last path)]
-    (custom-viz-plugin.db/plugin-by-identifier id)))
-
-(defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
-  [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
 
 (defmethod serialization/storage-paths :model/CustomVizPlugin [_ entities _ctx]
   (mapv (fn [entity]

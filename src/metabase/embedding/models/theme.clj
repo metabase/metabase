@@ -3,7 +3,6 @@
   (:require
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -21,19 +20,6 @@
 
 (t2/deftransforms :model/EmbeddingTheme
   {:settings mi/transform-json-no-keywordization})
-
-;;;; serialization
-
-(defmethod serdes/make-spec "EmbeddingTheme"
-  [_model-name _opts]
-  {:schema    ::embedding.schema/external-embedding-theme
-   :copy      [:entity_id :name :settings]
-   ;; is_default means the theme is a default theme for this instance.
-   :skip      [:is_default]})
-
-(defmethod serdes/storage-path "EmbeddingTheme"
-  [entity _ctx]
-  [{:label "embedding_themes"} {:label (:name entity) :key (:entity_id entity)}])
 
 ;;;; serialization
 

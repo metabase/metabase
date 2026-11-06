@@ -10,7 +10,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
@@ -666,83 +665,6 @@
   [dashcard-or-dashcard-id]
   (when-let [action-id (actions.db/dashcard-action-id (u/the-id dashcard-or-dashcard-id))]
     (select-action :id action-id :archived false)))
-
-;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serdes/generate-path "QueryAction" [_ _] nil)
-(defmethod serdes/make-spec "QueryAction" [_model-name _opts]
-  {:schema    ::actions.schema/external-query-action
-   :copy      []
-   :skip      [;; this is a temporary column to power v57 => v56 rollbacks, and we can remove it in v58.
-               :legacy_query]
-   :transform {:action_id     (serdes/parent-ref)
-               :database_id   (serdes/fk :model/Database)
-               :dataset_query {:export serdes/export-mbql :import serdes/import-mbql}}})
-
-(defmethod serdes/generate-path "ImplicitAction" [_ _] nil)
-(defmethod serdes/make-spec "ImplicitAction" [_model-name _opts]
-  {:schema    ::actions.schema/external-implicit-action
-   :copy      [:kind]
-   :transform {:action_id (serdes/parent-ref)
-               :table_id  (serdes/fk :model/Table)}})
-
-(defmethod serdes/make-spec "Action" [_model-name opts]
-  {:schema    ::actions.schema/external-action
-   :copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
-   :skip      [;; always re-derived from public_uuid on import
-               :public_uuid_prefix]
-   :transform {:type                   (serdes/kw)
-               :creator_id             (serdes/fk :model/User)
-               :made_public_by_id      (serdes/fk :model/User)
-               :collection_id          (serdes/fk :model/Collection)
-               :model_id               (serdes/fk :model/Card)
-               :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by :name} opts))
-               :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by :name} opts))
-               :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-               :parameter_mappings     {:export serdes/export-parameter-mappings
-                                        :import serdes/import-parameter-mappings}
-               :visualization_settings {:export serdes/export-visualization-settings
-                                        :import serdes/import-visualization-settings}}
-   :defaults  {:archived false, :archived_directly false}})
-
-(defmethod serdes/storage-path "Action" [{:keys [model_id collection_id] :as action} ctx]
-  (if (and (nil? model_id)
-           (or (nil? collection_id)
-               (= collection/data-actions-ns
-                  (some-> (actions.db/collection-namespace-with-entity-id collection_id) keyword))))
-    (serdes/storage-default-collection-path action ctx (serdes/collection-namespace-folder collection/data-actions-ns))
-    (serdes/storage-default-collection-path action ctx)))
-
-(defmethod serdes/load-one! "Action" [ingested maybe-local]
-  (when-not (= "http" (some-> (:type ingested) name))
-    (serdes/default-load-one! ingested maybe-local)))
-
-(defmethod serdes/deserialization-dependencies "Action" [action]
-  (set
-   (concat
-    (when-let [collection-id (:collection_id action)]
-      [[{:model "Collection" :id collection-id}]])
-    (when-let [model-id (:model_id action)]
-      [[{:model "Card" :id model-id}]])
-    (when (= (:type action) "query")
-      (serdes/mbql-deps false (:dataset_query (first (:query action))))))))
-
-(defmethod serdes/serialization-dependencies "Action" [_model-name {:keys [id collection_id model_id type]}]
-  ;; Serialization runs on the raw entity, whose query lives in the `query_action` child table (`:type` is a keyword
-  ;; here, not a string), so the query is fetched rather than read from a nested `:query` key.
-  (set
-   (concat
-    (when collection_id [[{:model "Collection" :id collection_id}]])
-    (when model_id [[{:model "Card" :id model_id}]])
-    (when (= type :query)
-      (when-let [{:keys [database_id dataset_query]} (actions.db/query-action id)]
-        (concat
-         (when database_id [[{:model "Database" :id database_id}]])
-         (serdes/mbql-deps true dataset_query)))))))
-
-(defmethod serdes/descendants "Action" [_model-name id _opts]
-  (when-let [model-id (actions.db/action-model-id id)]
-    {["Card" model-id] {"Action" id}}))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
