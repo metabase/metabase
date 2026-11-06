@@ -6,7 +6,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.sql-tools.test-util :as sql-tools.tu]))
+   [metabase.sql-tools.core :as sql-tools]))
 
 (defn- replace-names
   "Helper that mirrors sql-tools/replace-names API but calls SQLGlot directly."
@@ -21,7 +21,7 @@
         replacements' (-> replacements
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
-    (sql-parsing/replace-names (sql-tools.tu/sqlglot-parser) dialect sql-string replacements')))
+    (sql-parsing/replace-names (sql-tools/sqlglot-parser) dialect sql-string replacements')))
 
 (deftest ^:parallel basic-table-rename-test
   (testing "Basic table rename"

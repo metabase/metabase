@@ -249,7 +249,7 @@
   (interface/transpile-sql-impl (sql-tools.settings/current-parser-backend)
                                 sql from-dialect to-dialect))
 
-(defn- sqlglot-parser
+(defn sqlglot-parser
   "The sqlglot parser for the current backend. Statement checks always parse with sqlglot, so with Macaw selected
   they use GraalPy."
   []
