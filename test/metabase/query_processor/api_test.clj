@@ -1216,7 +1216,7 @@
          #(testing "Before delete"
             (doseq [card-id [card-id-1 card-id-2]]
               (is (=?
-                   {:fields    empty?
+                   {:fields    seq
                     :tables    empty?
                     :cards     [{:id card-id}]
                     :databases [{:id (mt/id) :engine string?}]}
@@ -1231,7 +1231,7 @@
                  (query-metadata 200 card-id-1)))
             ;; card-id-2 still exists, so querying it as a source still works
             (is (=?
-                 {:fields    empty?
+                 {:fields    seq
                   :tables    empty?
                   :cards     [{:id card-id-2}]
                   :databases [{:id (mt/id) :engine string?}]}

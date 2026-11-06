@@ -4702,7 +4702,7 @@
                   :databases [{:id (mt/id) :engine string?}]}
                  (query-metadata 200 card-id-1)))
             (is (=?
-                 {:fields empty?
+                 {:fields seq
                   :tables empty?
                   :cards [{:id card-id-1}]
                   :databases [{:id (mt/id) :engine string?}]}

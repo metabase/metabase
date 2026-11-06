@@ -5194,7 +5194,7 @@
          #(testing "Before delete"
             (is (=?
                  {:cards      [{:id card-id-1}]
-                  :fields     empty?
+                  :fields     seq
                   :dashboards empty?
                   :tables     empty?
                   :databases  [{:id (mt/id) :engine string?}]}
@@ -5280,7 +5280,7 @@
         expected        [{:name "Some dashboard"}
                          {:tables     [{}]
                           :databases  [{}]
-                          :fields     []
+                          :fields     seq
                           :cards      [{:name "Card attached to dashcard"}]
                           :dashboards []}]]
     (mt/with-temp [:model/Dashboard     dash      {:name "Some dashboard"}
