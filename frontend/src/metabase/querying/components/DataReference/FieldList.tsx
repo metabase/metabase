@@ -22,11 +22,7 @@ interface FieldListProps {
   query: Lib.Query;
   stageIndex: number;
   columns: Lib.ColumnMetadata[];
-  onColumnClick: (
-    query: Lib.Query,
-    stageIndex: number,
-    column: Lib.ColumnMetadata,
-  ) => void;
+  onColumnClick: (columnIndex: number) => void;
 }
 
 export const FieldList = ({
@@ -48,13 +44,11 @@ export const FieldList = ({
             )}
           </NodeListTitleText>
         </NodeListTitle>
-        {columns.map((column) => {
+        {columns.map((column, columnIndex) => {
           const { name } = Lib.displayInfo(query, stageIndex, column);
           return (
-            <HoverParent className={S.NodeListItem} as="li" key={name}>
-              <NodeListItemLink
-                onClick={() => onColumnClick(query, stageIndex, column)}
-              >
+            <HoverParent className={S.NodeListItem} as="li" key={columnIndex}>
+              <NodeListItemLink onClick={() => onColumnClick(columnIndex)}>
                 <QueryColumnInfoIcon
                   className={S.nodeListInfoIcon}
                   query={query}

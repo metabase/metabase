@@ -12,7 +12,7 @@ export const FieldPane = ({
   onBack,
   onClose,
   tableId,
-  columnName,
+  columnIndex,
 }: DataReferencePaneProps<DataReferenceFieldItem>) => {
   const { table, queryAndColumns, isLoading, error } = useTableColumns(tableId);
 
@@ -21,20 +21,15 @@ export const FieldPane = ({
   }
 
   const { query, stageIndex, columns } = queryAndColumns;
-  const column = columns.find(
-    (column) => Lib.displayInfo(query, stageIndex, column).name === columnName,
-  );
+  const column = columns.at(columnIndex);
   if (!column) {
     return <LoadingAndErrorWrapper error={t`Failed to load field metadata`} />;
   }
 
+  const { name } = Lib.displayInfo(query, stageIndex, column);
+
   return (
-    <SidebarContent
-      title={columnName}
-      icon="field"
-      onBack={onBack}
-      onClose={onClose}
-    >
+    <SidebarContent title={name} icon="field" onBack={onBack} onClose={onClose}>
       <SidebarContent.Pane>
         <QueryColumnInfo
           query={query}

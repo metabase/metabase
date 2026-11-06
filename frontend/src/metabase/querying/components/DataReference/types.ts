@@ -66,5 +66,5 @@ export type DataReferenceQuestionItem = {
 export type DataReferenceFieldItem = {
   type: "field";
   tableId: TableId;
-  columnName: string;
+  columnIndex: number;
 };

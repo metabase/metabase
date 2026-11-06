@@ -16,10 +16,7 @@ const setup = () => {
   );
   const query = Lib.queryFromTableOrCardMetadata(SAMPLE_PROVIDER, table);
   const columns = Lib.returnedColumns(query, STAGE_INDEX);
-  const onColumnClick = jest.fn<
-    void,
-    [Lib.Query, number, Lib.ColumnMetadata]
-  >();
+  const onColumnClick = jest.fn<void, [number]>();
 
   renderWithProviders(
     <FieldList
@@ -30,7 +27,7 @@ const setup = () => {
     />,
   );
 
-  return { query, onColumnClick };
+  return { query, columns, onColumnClick };
 };
 
 describe("FieldList", () => {
@@ -39,13 +36,13 @@ describe("FieldList", () => {
     expect(screen.getAllByLabelText("More info")).toHaveLength(8);
   });
 
-  it("should pass clicked column", async () => {
-    const { query, onColumnClick } = setup();
+  it("should pass clicked column index", async () => {
+    const { query, columns, onColumnClick } = setup();
     await userEvent.click(screen.getByText("ID"));
     expect(onColumnClick).toHaveBeenCalledTimes(1);
-    const [clickedQuery, stageIndex, column] = onColumnClick.mock.calls[0];
-    expect(clickedQuery).toBe(query);
-    expect(stageIndex).toBe(STAGE_INDEX);
-    expect(Lib.displayInfo(query, stageIndex, column).name).toBe("ID");
+    const [columnIndex] = onColumnClick.mock.calls[0];
+    expect(Lib.displayInfo(query, STAGE_INDEX, columns[columnIndex]).name).toBe(
+      "ID",
+    );
   });
 });

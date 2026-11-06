@@ -8,7 +8,6 @@ import {
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import * as Lib from "metabase-lib";
 import { isConcreteTableId } from "metabase-types/api";
 
 import { ConnectedTableList } from "./ConnectedTableList";
@@ -47,13 +46,8 @@ export function TablePane({
     );
   }
 
-  const handleColumnClick = (
-    query: Lib.Query,
-    stageIndex: number,
-    column: Lib.ColumnMetadata,
-  ) => {
-    const { name } = Lib.displayInfo(query, stageIndex, column);
-    onItemClick({ type: "field", tableId: table.id, columnName: name });
+  const handleColumnClick = (columnIndex: number) => {
+    onItemClick({ type: "field", tableId: table.id, columnIndex });
   };
 
   const connectedTables = foreignKeys

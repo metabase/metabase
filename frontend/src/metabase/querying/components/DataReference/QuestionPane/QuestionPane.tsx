@@ -15,7 +15,6 @@ import {
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, IconName } from "metabase-types/api";
 
@@ -73,13 +72,8 @@ export const QuestionPane = ({
 
   const lastEditInfo = card["last-edit-info"];
 
-  const handleColumnClick = (
-    query: Lib.Query,
-    stageIndex: number,
-    column: Lib.ColumnMetadata,
-  ) => {
-    const { name } = Lib.displayInfo(query, stageIndex, column);
-    onItemClick({ type: "field", tableId: table.id, columnName: name });
+  const handleColumnClick = (columnIndex: number) => {
+    onItemClick({ type: "field", tableId: table.id, columnIndex });
   };
 
   return (
