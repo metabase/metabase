@@ -44,18 +44,18 @@ describe("SecurityCenterNavItem", () => {
   it("leads to health checks with a badge when only a health check fails", async () => {
     await setup({ checks: [createMockHealthCheck({ status: "fail" })] });
 
+    expect(await screen.findByTestId("issue-dot")).toBeInTheDocument();
     expect(getNavLink()).toHaveAttribute(
       "href",
       "/admin/security-center/health-checks",
     );
-    expect(screen.getByTestId("issue-dot")).toBeInTheDocument();
   });
 
   it("leads to the security center with a badge when an advisory affects the instance", async () => {
     await setup({ advisories: [createAdvisory({ match_status: "active" })] });
 
+    expect(await screen.findByTestId("issue-dot")).toBeInTheDocument();
     expect(getNavLink()).toHaveAttribute("href", "/admin/security-center");
-    expect(screen.getByTestId("issue-dot")).toBeInTheDocument();
   });
 
   it("prefers advisories when an advisory affects the instance and a health check fails", async () => {
@@ -64,7 +64,7 @@ describe("SecurityCenterNavItem", () => {
       checks: [createMockHealthCheck({ status: "fail" })],
     });
 
+    expect(await screen.findByTestId("issue-dot")).toBeInTheDocument();
     expect(getNavLink()).toHaveAttribute("href", "/admin/security-center");
-    expect(screen.getByTestId("issue-dot")).toBeInTheDocument();
   });
 });
