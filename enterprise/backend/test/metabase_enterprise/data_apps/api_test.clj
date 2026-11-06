@@ -393,19 +393,20 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-temp [:model/DataApp app demo-app]
         (let [url           (data-apps.tu/app-url app "bundle")
-              policy-header "X-Metabase-Data-App-Content-Security-Policy"]
-          (testing "authorized bundle responses include the source and its CSP"
-            (let [response (mt/user-http-request-full-response :crowberto :get 200 url)]
+              policy-header "X-Metabase-Data-App-Content-Security-Policy"
+              options       {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+          (testing "authorized data app requests receive the bundle source and its CSP"
+            (let [response (mt/user-http-request-full-response :crowberto :get 200 url options)]
               (is (str/includes? (:body response) "DEMOBUNDLE"))
               (is (= (security/embedded-data-app-content-security-policy ["https://api.example.com"])
                      (get-in response [:headers policy-header])))))
           (testing "changing allowed hosts updates CSP header"
             (t2/update! :model/DataApp :id (:id app) {:allowed_hosts ["https://other.example.com"]})
-            (let [response (mt/user-http-request-full-response :crowberto :get 200 url)]
+            (let [response (mt/user-http-request-full-response :crowberto :get 200 url options)]
               (is (= (security/embedded-data-app-content-security-policy ["https://other.example.com"])
                      (get-in response [:headers policy-header])))))
           (testing "authorization failures and missing apps do not return a CSP header"
             (doseq [[user path status] [[:rasta url 403]
                                         [:crowberto "ee/apps/missing/bundle" 404]]]
-              (is (nil? (get-in (mt/user-http-request-full-response user :get status path)
+              (is (nil? (get-in (mt/user-http-request-full-response user :get status path options)
                                 [:headers policy-header]))))))))))

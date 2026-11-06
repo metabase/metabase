@@ -8,12 +8,6 @@ describe("scenarios > embedding > data app embed wizard", () => {
     H.updateSetting("show-modular-embed-terms", false);
     H.updateSetting("show-static-embed-terms", false);
 
-    // add another data app to check that the wizard keeps the same app selected
-    cy.request("POST", "/api/ee/apps", {
-      name: "a-different-app",
-      display_name: "A different app",
-    });
-
     H.createEmbeddedDataApp().as("app");
   });
 
