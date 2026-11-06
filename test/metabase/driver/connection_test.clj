@@ -78,6 +78,8 @@
     (is (= "the default connection" (driver.conn/connection-telemetry-info)))
     (driver.conn/with-write-connection
       (is (= "the write-data connection" (driver.conn/connection-telemetry-info))))
+    (driver.conn/with-admin-connection
+      (is (= "the admin connection" (driver.conn/connection-telemetry-info))))
     (driver.conn/with-transform-connection
       (is (= "the transform connection" (driver.conn/connection-telemetry-info))))))
 
@@ -103,14 +105,6 @@
                            :id            1
                            :details       details
                            :admin-details admin-details}]
-             (driver.conn/with-admin-connection
-               (is (=? admin-details
-                       (driver.conn/effective-details database))))))
-         (testing "with snake_case key (Toucan2 instance style)"
-           (let [database (t2/instance :model/Database
-                                       {:id            1
-                                        :details       details
-                                        :admin_details admin-details})]
              (driver.conn/with-admin-connection
                (is (=? admin-details
                        (driver.conn/effective-details database)))))))))))
