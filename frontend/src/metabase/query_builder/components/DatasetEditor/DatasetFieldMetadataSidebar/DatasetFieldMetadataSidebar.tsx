@@ -93,7 +93,7 @@ const getVisibilityTypeOptions = () =>
     }),
   );
 
-const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
+const VIEW_AS_FIELDS = ["view_as", "image_size", "link_text", "link_url"];
 
 const HIDDEN_COLUMN_FORMATTING_OPTIONS = new Set([
   "column_title",

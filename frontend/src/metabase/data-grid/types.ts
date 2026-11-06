@@ -111,6 +111,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Whether text should wrap in this column */
   wrap?: boolean;
 
+  /** Minimum height in pixels of rows with a non-empty value in this column */
+  minRowHeight?: number;
+
   /** Initial sort direction for this column */
   sortDirection?: "asc" | "desc";
 
