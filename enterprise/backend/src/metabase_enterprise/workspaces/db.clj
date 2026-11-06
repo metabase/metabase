@@ -88,6 +88,14 @@
   [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/TableRemapping :database_id database-id))
 
+(mu/defn delete-table-remappings-into!
+  "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
+  namespace. Returns the number of rows deleted."
+  [database-id :- ::lib.schema.id/database
+   to-db       :- :string
+   to-schema   :- :string]
+  (t2/delete! :model/TableRemapping :database_id database-id :to_db to-db :to_schema to-schema))
+
 (mu/defn delete-all-table-remappings!
   "Delete every TableRemapping."
   []
