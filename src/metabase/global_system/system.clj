@@ -299,8 +299,10 @@
                        handles)]
     (when (seq failures)
       (let [cause (second (first failures))]
-        ;; so a log of the one exception shows every failure's stack trace
-        (doseq [[_ e] (rest failures)]
+        ;; so a log of the one exception shows every failure's stack trace; the cause itself is skipped, since two stops
+        ;; can throw the same exception and an exception cannot suppress itself
+        (doseq [[_ e] (rest failures)
+                :when (not (identical? e cause))]
           (.addSuppressed ^Throwable cause e))
         (throw (ex-info "Some components failed to stop"
                         {:failures failures}

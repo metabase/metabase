@@ -531,6 +531,41 @@
         (finally
           (cleanup! handles))))))
 
+(deftest ^:synchronized stops-sharing-an-exception-test
+  (testing "two stops that throw the same exception are both reported, and the exception is not suppressed by itself"
+    (let [shared  (ex-info "shared failure" {})
+          a       (system/mutable-component-handle ::shares-a (constantly nil))
+          b       (system/mutable-component-handle ::shares-b (constantly nil))
+          handles [a b]]
+      (try
+        (doseq [handle handles]
+          (system/ensure-started! handle (constantly :running) (fn [_] (throw shared))))
+        (is (= {:failures [::shares-b ::shares-a], :cause "shared failure", :suppressed []}
+               (try (#'system/stop-all! (filter (set handles) (halt-order)))
+                    {}
+                    (catch clojure.lang.ExceptionInfo e
+                      {:failures   (mapv first (:failures (ex-data e)))
+                       :cause      (ex-message (ex-cause e))
+                       :suppressed (vec (.getSuppressed (ex-cause e)))}))))
+        (finally
+          (cleanup! handles))))))
+
+(deftest ^:synchronized root-published-after-registration-test
+  (testing "a started component's root becomes visible only once the component is registered"
+    (let [handle     (system/mutable-component-handle ::published-after-registration (constantly nil))
+          k          ::published-after-registration
+          registered (atom ::never-published)
+          roots      @#'system/roots]
+      (add-watch roots ::published (fn [_ _ old new]
+                                     (when (and (nil? (get old k)) (some? (get new k)))
+                                       (reset! registered (contains? @@#'system/started-components k)))))
+      (try
+        (system/ensure-started! handle (constantly :running) (constantly nil))
+        (is (true? @registered))
+        (finally
+          (remove-watch roots ::published)
+          (cleanup! [handle]))))))
+
 (deftest ^:synchronized halted-system-refuses-starts-test
   (testing "once a halt begins no component starts, until the system is reopened"
     (let [handle (system/mutable-component-handle ::after-halt (constantly nil))]
