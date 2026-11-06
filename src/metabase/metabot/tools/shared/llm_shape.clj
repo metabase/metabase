@@ -315,10 +315,12 @@
 (defn collection->xml
   "Format collection for LLM consumption.
    Matches Python Collection.llm_representation exactly."
-  [{:keys [name description authority_level]}]
+  [{:keys [id name description authority_level path]}]
   (render-llm-template
    :collection
-   {:collection_name            (or name "Our analytics")
+   {:collection_id              (some-> id str)
+    :collection_name            (or name "Our analytics")
+    :collection_path            path
     :collection_description     description
     :collection_authority_level authority_level}))
 
@@ -738,8 +740,9 @@
   100)
 
 (defn- dashboard-filters->xml
-  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
-  [[max-dashboard-filters]] of them and says how many were left out."
+  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none.
+  Each filter shows its default value and the ids of the dashcards it filters, when it has them.
+  Lists at most [[max-dashboard-filters]] of them and says how many were left out."
   [parameters]
   (when (seq parameters)
     (let [total (count parameters)]
@@ -747,17 +750,33 @@
            (str/join (for [param (take max-dashboard-filters parameters)]
                        (str "    <filter id=\"" (escape-xml (:id param))
                             "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
-                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\""
+                            (when-some [default (:default param)]
+                              (str " default=\""
+                                   (escape-xml (if (string? default) default (json/encode default)))
+                                   "\""))
+                            (when-let [dashcard-ids (seq (:connected_dashcards param))]
+                              (str " connected_dashcards=\"" (str/join ", " dashcard-ids) "\""))
+                            "/>\n")))
            (when (> total max-dashboard-filters)
              (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
                   (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))
            "  </filters>\n"))))
 
+(defn- dashboard-history->xml
+  "The lines saying who created the dashboard and who last edited it, and when, or nil when neither is known."
+  [{:keys [creator created_at last_edited_by last_edited_at]}]
+  (not-empty
+   (str (when creator
+          (str "  <created by=\"" (escape-xml (:name creator)) "\" at=\"" created_at "\"/>\n"))
+        (when last_edited_by
+          (str "  <last_edited by=\"" (escape-xml (:name last_edited_by)) "\" at=\"" last_edited_at "\"/>\n")))))
+
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
-   Matches Python Dashboard.llm_representation exactly, except we additionally surface the
-   dashboard's filters."
-  [{:keys [id name description verified collection parameters dashcards]}]
+   Matches Python Dashboard.llm_representation exactly, except we additionally surface who created and last edited
+   the dashboard, its filters, and the tab the user has open."
+  [{:keys [id name description verified collection parameters dashcards open_tab] :as dashboard}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -783,8 +802,12 @@
       :dashboard_verified (boolean verified)
       :dashboard_name name
       :dashboard_description description
+      :dashboard_history_xml (dashboard-history->xml dashboard)
       :dashboard_collection_xml (when collection (collection->xml collection))
       :dashboard_filters_xml (dashboard-filters->xml parameters)
+      :dashboard_open_tab_xml (when open_tab
+                                (str "  <open_tab id=\"" (:id open_tab) "\" name=\"" (escape-xml (:name open_tab))
+                                     "\"/>\n"))
       :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
@@ -1040,7 +1063,7 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id :can_write
+  [:type :id :dashcard_id :tab_id :row :col :size_x :size_y :name :uri :database_id :collection_id :table_id :can_write
    :schema :display_name :authority_level :is_personal :path :location
    :engine :sql_unavailable :timestamp])
 

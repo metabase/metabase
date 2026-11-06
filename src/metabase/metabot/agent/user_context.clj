@@ -5,8 +5,10 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
@@ -251,11 +253,22 @@
                                                              :with-field-values? false}))
                     llm-shape/metric->xml))
 
+(defn- with-open-tab
+  "The dashboard `details` with `:open_tab`, the tab with `tab-id`, when that tab is on the dashboard."
+  [details tab-id]
+  ;; A stale tab id from the frontend is left out, so it can't send a chart to another dashboard's tab.
+  (if-let [tab (when tab-id
+                 (m/find-first #(= tab-id (:id %)) (metabot.db/dashboard-tabs (:id details))))]
+    (assoc details :open_tab tab)
+    details))
+
 (defmethod format-entity "dashboard"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a dashboard:"
-                    #(entity-details/get-dashboard-details {:dashboard-id (:id entity)})
+                    #(update (entity-details/get-dashboard-details {:dashboard-id (:id entity)})
+                             :structured-output
+                             (fn [details] (some-> details (with-open-tab (:tab_id entity)))))
                     llm-shape/dashboard->xml))
 
 ;;; Viewing Context Formatting
