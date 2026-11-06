@@ -15,7 +15,7 @@ import {
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { getTableQueryAndColumns } from "metabase/querying/common/utils";
+import { getCardQueryAndColumns } from "metabase/querying/common/utils";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -73,12 +73,15 @@ export const QuestionPane = ({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const tableId = getQuestionVirtualTableId(card.id);
-  const queryAndColumns = getTableQueryAndColumns(metadataProvider, tableId);
+  const queryAndColumns = getCardQueryAndColumns(metadataProvider, card.id);
   const lastEditInfo = card["last-edit-info"];
 
   const handleColumnClick = (columnIndex: number) => {
-    onItemClick({ type: "field", tableId, columnIndex });
+    onItemClick({
+      type: "field",
+      tableId: getQuestionVirtualTableId(card.id),
+      columnIndex,
+    });
   };
 
   return (
