@@ -149,6 +149,34 @@
                     (mt/user-http-request :crowberto :put 200 (str "ee/transform-test/" test-id)
                                           {:name "Renamed"})))))))))
 
+(deftest no-expectations-test
+  (mt/test-driver :h2
+    (with-transforms-enabled
+      (mt/with-temp [:model/Transform     {transform-id :id} (transform)
+                     :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                              :inputs       inputs
+                                                              :expectations expectations}
+                     :model/TransformTest {empty-id :id}     {:transform_id transform-id
+                                                              :inputs       inputs
+                                                              :expectations []}]
+        (let [refused (fn [response]
+                        (is (= "transform-test.no-expectations" (:error-code response))))]
+          (testing "create refuses a test with no expectations"
+            (refused (mt/user-http-request :crowberto :post 400 "ee/transform-test"
+                                           {:transform_id transform-id :name "t" :inputs inputs :expectations []})))
+          (testing "update refuses to remove every expectation"
+            (refused (mt/user-http-request :crowberto :put 400 (str "ee/transform-test/" test-id)
+                                           {:expectations []})))
+          (testing "an unsaved run refuses a test with no expectations"
+            (refused (mt/user-http-request :crowberto :post 400 "ee/transform-test/run"
+                                           {:transform (assoc (transform) :name "t")
+                                            :test      {:name "t" :inputs inputs :expectations []}})))
+          (testing "a saved test with no expectations can still be read"
+            (is (=? {:id empty-id :expectations []}
+                    (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" empty-id)))))
+          (testing "a saved test with no expectations is refused when it runs"
+            (refused (mt/user-http-request :crowberto :post 400 (format "ee/transform-test/%d/run" empty-id)))))))))
+
 (deftest validation-test
   (with-transforms-enabled
     (mt/with-temp [:model/Transform     {transform-id :id} {}

@@ -2,7 +2,11 @@
   "Guard A: every table the transform reads must have a declared input. Pure — no warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.transform-testing.validator :as validator]))
+   [metabase-enterprise.transform-testing.errors :as errors]
+   [metabase-enterprise.transform-testing.validator :as validator]
+   [metabase.driver :as driver])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defn- sql-input [schema name]
   {:table {:schema schema :name name} :format :sql :sql "SELECT 1"})
@@ -82,3 +86,32 @@
   (testing "same schema, different name is not a match"
     (is (= [{:schema "PUBLIC" :name "ORDERS"}]
            (#'validator/missing-inputs [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "PUBLIC" :name "ORDERS"}} "PUBLIC")))))
+
+(defn- refusal
+  "The `:error-type` that [[validator/validate]] throws for `args` on H2, or nil when it accepts them."
+  [args]
+  (driver/the-initialized-driver :h2)
+  (try
+    (validator/validate :h2 args)
+    nil
+    (catch ExceptionInfo e
+      (:error-type (ex-data e)))))
+
+(def ^:private complete-test
+  "A test whose inputs cover what its query reads and whose query reads only temp tables."
+  {:inputs              [(sql-input "PUBLIC" "PEOPLE")]
+   :referenced-tables   #{{:schema "PUBLIC" :name "PEOPLE"}}
+   :rewritten-transform "SELECT ID FROM MB_T1"
+   :replacements        {{:schema "PUBLIC" :table "PEOPLE"} {:db nil :schema nil :table "MB_T1"}
+                         {:table "PEOPLE"}                  {:db nil :schema nil :table "MB_T1"}}
+   :default-schema      "PUBLIC"})
+
+(deftest no-expectations-test
+  (testing "a test that checks nothing is refused"
+    (is (= ::errors/no-expectations
+           (refusal (assoc complete-test :expectations [])))))
+  (testing "the same test with one expectation is accepted"
+    (is (nil? (refusal (assoc complete-test :expectations [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}])))))
+  (testing "missing inputs are reported before missing expectations"
+    (is (= ::errors/missing-inputs
+           (refusal (assoc complete-test :inputs [] :expectations []))))))

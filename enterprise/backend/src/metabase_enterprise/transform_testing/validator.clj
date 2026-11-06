@@ -168,8 +168,8 @@
         (throw e)))))
 
 (mu/defn validate :- :nil
-  "Refuse the test unless it is complete against the transform it tests and every query it will run reads only the
-  run's temp tables. Returns nil when there is nothing to refuse, and otherwise throws a typed refusal from
+  "Refuse the test unless it is complete against the transform it tests, every query it will run reads only the run's
+  temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a typed refusal from
   [[metabase-enterprise.transform-testing.errors]].
 
   `referenced-tables` are the tables the transform's source reads, parsed before any replacement; `rewritten-transform`
@@ -211,4 +211,9 @@
     (doseq [{:keys [name sql]} expectations
             :when              sql]
       (check-expectation-sql driver name sql replacements temp-tables)))
+  (when (empty? expectations)
+    (throw (transform-testing.errors/ex
+            ::transform-testing.errors/no-expectations
+            (tru "The test has no expectations, so it checks nothing. Add at least one.")
+            {})))
   nil)

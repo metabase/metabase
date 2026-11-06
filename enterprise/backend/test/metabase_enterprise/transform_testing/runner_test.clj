@@ -146,7 +146,9 @@
                         :inputs       [{:table  {:schema schema :name table}
                                         :format :sql
                                         :sql    "SELECT * FROM transform_test_input_that_does_not_exist"}]
-                        :expectations []}]
+                        :expectations [{:type :empty
+                                        :name "never reached"
+                                        :sql  (str "SELECT * FROM " schema ".people_summary")}]}]
           (is (thrown? ExceptionInfo
                        (transform-testing.runner/run-saved-test! transform transform-test)))
           (let [run (t2/select-one :model/TransformTestRun :transform_test_id transform-test-id)]
