@@ -35,6 +35,11 @@ export function FilterHeaderButton({
       id: "query-builder-visualization-open-filter",
       perform: onAddFilter,
     },
+    // Prototype: Shift+F only hides the bar, and keeps the filters.
+    {
+      id: "query-builder-visualization-close-filter",
+      perform: onCollapse,
+    },
   ]);
 
   return (

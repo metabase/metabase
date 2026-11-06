@@ -15,6 +15,14 @@ export const questionShortcuts = {
     shortcut: ["f"],
     shortcutGroup: "question" as const,
   },
+  // Prototype: hides the filter bar and keeps the filters, like "Hide filters".
+  "query-builder-visualization-close-filter": {
+    get name() {
+      return t`Close filter bar`;
+    },
+    shortcut: ["Shift+f"],
+    shortcutGroup: "question" as const,
+  },
   "query-builder-toggle-summarize-sidebar": {
     get name() {
       return t`Open summarize sidebar`;
