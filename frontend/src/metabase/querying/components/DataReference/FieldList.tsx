@@ -1,18 +1,12 @@
-import { useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 
 import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
-import { useMetadataProvider } from "metabase/metadata-store";
-import { getQueryAndColumns } from "metabase/querying/common/utils";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { DelayGroup } from "metabase/ui";
-import {
-  getIconForField,
-  getUniqueFieldId,
-} from "metabase-lib/v1/metadata/utils/fields";
-import type { Field, IconName, Table } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import {
   NodeListContainer,
@@ -24,21 +18,23 @@ import {
 } from "./NodeList";
 import S from "./NodeList.module.css";
 
-const STAGE_INDEX = -1;
-
 interface FieldListProps {
-  table: Pick<Table, "id" | "db_id">;
-  fields: Field[];
-  onFieldClick: (field: Field) => void;
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
+  onColumnClick: (
+    query: Lib.Query,
+    stageIndex: number,
+    column: Lib.ColumnMetadata,
+  ) => void;
 }
 
-export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
-  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
-  const queryAndColumns = useMemo(
-    () => getQueryAndColumns(metadataProvider, table, fields),
-    [metadataProvider, table, fields],
-  );
-
+export const FieldList = ({
+  query,
+  stageIndex,
+  columns,
+  onColumnClick,
+}: FieldListProps) => {
   return (
     <DelayGroup>
       <NodeListContainer>
@@ -46,38 +42,30 @@ export const FieldList = ({ table, fields, onFieldClick }: FieldListProps) => {
           <NodeListIcon name="table2" size="12" />
           <NodeListTitleText>
             {ngettext(
-              msgid`${fields.length} column`,
-              `${fields.length} columns`,
-              fields.length,
+              msgid`${columns.length} column`,
+              `${columns.length} columns`,
+              columns.length,
             )}
           </NodeListTitleText>
         </NodeListTitle>
-        {fields.map((field) => {
-          const queryAndColumn = queryAndColumns.get(field);
+        {columns.map((column) => {
+          const { name } = Lib.displayInfo(query, stageIndex, column);
           return (
-            queryAndColumn && (
-              <HoverParent
-                className={S.NodeListItem}
-                as="li"
-                key={getUniqueFieldId(field)}
+            <HoverParent className={S.NodeListItem} as="li" key={name}>
+              <NodeListItemLink
+                onClick={() => onColumnClick(query, stageIndex, column)}
               >
-                <NodeListItemLink onClick={() => onFieldClick(field)}>
-                  <QueryColumnInfoIcon
-                    className={S.nodeListInfoIcon}
-                    query={queryAndColumn.query}
-                    stageIndex={STAGE_INDEX}
-                    column={queryAndColumn.column}
-                    position="left"
-                    // `getIconForField` takes an untyped field and returns a
-                    // literal from its own icon map, so it is always an
-                    // `IconName`; it cannot say so without importing from
-                    // `metabase`, which `metabase-lib` may not do.
-                    icon={getIconForField(field) as IconName}
-                  />
-                  <NodeListItemName>{field.name}</NodeListItemName>
-                </NodeListItemLink>
-              </HoverParent>
-            )
+                <QueryColumnInfoIcon
+                  className={S.nodeListInfoIcon}
+                  query={query}
+                  stageIndex={stageIndex}
+                  column={column}
+                  position="left"
+                  icon={getColumnIcon(column)}
+                />
+                <NodeListItemName>{name}</NodeListItemName>
+              </NodeListItemLink>
+            </HoverParent>
           );
         })}
       </NodeListContainer>

@@ -1,9 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import {
-  useGetTableQueryMetadataQuery,
-  useListTableForeignKeysQuery,
-} from "metabase/api";
+import { useListTableForeignKeysQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Description,
@@ -11,7 +8,7 @@ import {
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import * as Lib from "metabase-lib";
 import { isConcreteTableId } from "metabase-types/api";
 
 import { ConnectedTableList } from "./ConnectedTableList";
@@ -25,11 +22,8 @@ import {
   NodeListTitle,
   NodeListTitleText,
 } from "./NodeList";
-import type {
-  DataReferencePaneProps,
-  DataReferenceTableItem,
-  UniqueFieldId,
-} from "./types";
+import type { DataReferencePaneProps, DataReferenceTableItem } from "./types";
+import { useTableColumns } from "./use-table-columns";
 
 export function TablePane({
   id,
@@ -37,11 +31,7 @@ export function TablePane({
   onBack,
   onClose,
 }: DataReferencePaneProps<DataReferenceTableItem>) {
-  const {
-    data: table,
-    isLoading,
-    error,
-  } = useGetTableQueryMetadataQuery({ id });
+  const { table, queryAndColumns, isLoading, error } = useTableColumns(id);
   const {
     data: foreignKeys,
     isLoading: isLoadingForeignKeys,
@@ -56,6 +46,15 @@ export function TablePane({
       />
     );
   }
+
+  const handleColumnClick = (
+    query: Lib.Query,
+    stageIndex: number,
+    column: Lib.ColumnMetadata,
+  ) => {
+    const { name } = Lib.displayInfo(query, stageIndex, column);
+    onItemClick({ type: "field", tableId: table.id, columnName: name });
+  };
 
   const connectedTables = foreignKeys
     .map((foreignKey) => foreignKey.origin?.table)
@@ -77,23 +76,13 @@ export function TablePane({
           )}
         </div>
         <div className={CS.my2}>
-          {table.fields?.length ? (
+          {queryAndColumns?.columns.length ? (
             <>
               <FieldList
-                table={table}
-                fields={table.fields}
-                onFieldClick={(field) => {
-                  onItemClick({
-                    type: "field",
-                    id:
-                      typeof field.id === "number"
-                        ? field.id
-                        : // `getUniqueFieldId` returns the same synthetic string
-                          // key the field list renders with, which is what a
-                          // non-numeric field id means here.
-                          (getUniqueFieldId(field) as UniqueFieldId),
-                  });
-                }}
+                query={queryAndColumns.query}
+                stageIndex={queryAndColumns.stageIndex}
+                columns={queryAndColumns.columns}
+                onColumnClick={handleColumnClick}
               />
               <ConnectedTableList
                 tables={connectedTables}
