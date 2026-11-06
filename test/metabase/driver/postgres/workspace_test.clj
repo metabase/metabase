@@ -3,6 +3,7 @@
   a superuser."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -60,6 +61,16 @@
     (merge workspace (driver.conn/with-workspace-provisioning-connection
                        (driver/workspace-isolation-details :postgres database workspace)))))
 
+(defn- provisioning [f]
+  (driver.conn/with-workspace-provisioning-connection (f)))
+
+(defn- new-workspace!
+  "A workspace with its isolation details, and no role left over from an earlier run under its user name."
+  [spec database id]
+  (let [workspace (workspace-with-details database id)]
+    (drop-role-if-exists! spec (-> workspace :database_details :user))
+    workspace))
+
 (defn- role-exists? [spec role]
   (boolean (seq (jdbc/query spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" role]))))
 
@@ -103,3 +114,85 @@
                                  (driver/init-workspace-isolation! :postgres database workspace))))
          (is (not (role-exists? spec "mb__isolation_b1_2002")))
          (is (nil? (schema-owner spec (:schema workspace)))))))))
+
+(defn- user-spec [workspace]
+  (sql-jdbc.conn/connection-details->spec :postgres (merge (superuser-details) (:database_details workspace))))
+
+(defn- as-workspace-user
+  "Runs `sql` as the workspace user; returns the rows, the update count, or the error message."
+  [workspace sql]
+  (try
+    (if (str/starts-with? sql "SELECT")
+      (jdbc/query (user-spec workspace) [sql])
+      (jdbc/execute! (user-spec workspace) [sql]))
+    (catch java.sql.SQLException e
+      (ex-message e))))
+
+(deftest init-refuses-an-existing-user-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2101)
+           user      (-> workspace :database_details :user)]
+       (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+       (testing "a second init of the same workspace throws a 409 that tells the caller not to clean up"
+         (let [e (is (thrown? clojure.lang.ExceptionInfo
+                              (provisioning #(driver/init-workspace-isolation!
+                                              :postgres database
+                                              (assoc-in workspace [:database_details :password] "AnotherParents0Password")))))]
+           (is (= {:status-code 409, :workspace/cleanup? false, :user user} (ex-data e)))))
+       (testing "the existing user is unchanged: it still logs in with its own password"
+         (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
+
+(deftest concurrent-init-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (testing "two inits of one workspace: one creates the user, the other gets the 409 that forbids cleanup"
+       (dotimes [_ 5]
+         (let [workspace (new-workspace! spec database 2102)
+               latch     (java.util.concurrent.CountDownLatch. 1)
+               inits     (vec (for [_ (range 2)]
+                                (future
+                                  (.await latch)
+                                  (try
+                                    (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+                                    :created
+                                    (catch clojure.lang.ExceptionInfo e
+                                      (ex-data e))))))
+               _         (.countDown latch)
+               results   (mapv #(deref % 60000 :timed-out) inits)]
+           (is (= #{:created {:status-code 409, :workspace/cleanup? false, :user (-> workspace :database_details :user)}}
+                  (set results)))
+           (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))))
+
+(deftest init-keeps-the-password-out-of-statements-test
+  (do-with-warehouse!
+   provisioner
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2103)
+           password  (-> workspace :database_details :password)
+           messages  (fn [^Throwable t]
+                       (->> t
+                            (iterate #(or (ex-cause %) (when (instance? java.sql.SQLException %)
+                                                         (.getNextException ^java.sql.SQLException %))))
+                            (take-while some?)
+                            (map ex-message)))]
+       (exec! spec [(format "ALTER ROLE %s NOCREATEROLE" (:user provisioner))])
+       (testing "the statements sent to the server never carry the password, which the server logs when one fails"
+         ;; the batch wrapper's message quotes the statement as sent
+         (mt/with-dynamic-fn-redefs [driver.u/batch-exception identity]
+           (let [e (is (thrown? java.sql.SQLException
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (some #(str/includes? % "CREATE USER") (messages e)))
+             (is (not-any? #(str/includes? % "PASSWORD") (messages e)))
+             (is (not-any? #(str/includes? % password) (messages e))))))
+       (exec! spec [(format "ALTER ROLE %s CREATEROLE" (:user provisioner))])
+       (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
+       (testing "the password is stored as a SCRAM verifier and logs in"
+         (is (str/starts-with? (:rolpassword (first (jdbc/query spec ["SELECT rolpassword FROM pg_authid WHERE rolname = ?"
+                                                                      (-> workspace :database_details :user)])))
+                               "SCRAM-SHA-256$"))
+         (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
