@@ -88,10 +88,6 @@
   (testing "the status follows the items"
     (is (= :fail (:status (health-checks/run-check (fake-check :run (constantly [{:status :pass} {:status :fail}]))))))
     (is (= :unknown (:status (health-checks/run-check (fake-check :run (constantly [{:status :unknown}])))))))
-  (testing "the texts follow the user's locale"
-    (mt/with-user-locale "es"
-      (is (= "Requests are redirected to HTTPS"
-             (:title (health-checks/run-check (fake-check)))))))
   (testing "a check that throws comes back as unknown with the error's message, and is logged"
     (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.health-checks :error]]
       (let [response (health-checks/run-check (fake-check :run #(throw (ex-info "the setting is unreadable" {}))))]
@@ -115,6 +111,16 @@
 (defn- run-check-by-id
   [id]
   (health-checks/run-check (health-checks/check-by-id id)))
+
+(deftest run-check-locale-test
+  (testing "the texts follow the user's locale"
+    (mt/with-mock-i18n-bundles! {"es" {:messages {"Requests are redirected to HTTPS" ["Las peticiones se redirigen a HTTPS"]}}}
+      (mt/with-user-locale "es"
+        (is (= "Las peticiones se redirigen a HTTPS"
+               (:title (health-checks/run-check (fake-check))))))
+      (mt/with-user-locale "en"
+        (is (= "Requests are redirected to HTTPS"
+               (:title (health-checks/run-check (fake-check)))))))))
 
 (deftest registered-checks-test
   (testing "every registered check applies or not, and answers within the schema"
