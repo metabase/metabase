@@ -2322,6 +2322,7 @@
               metabase.query-processor.middleware.add-remaps
               metabase.query-processor.middleware.catch-exceptions
               metabase.query-processor.middleware.constraints
+              metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
@@ -2382,7 +2383,8 @@
            tracing
            users
            util
-           util.config}
+           util.config
+           workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -3502,7 +3504,7 @@
 
   workspaces
   {:team "Graphy"
-   :api #{metabase.workspaces.core}
+   :api #{metabase.workspaces.core metabase.workspaces.table-remapping}
    :uses #{premium-features util}}
 
   xrays
@@ -4713,13 +4715,19 @@
   {:team "Graphy"
    :api #{metabase-enterprise.workspaces.api metabase-enterprise.workspaces.init}
    :uses #{api
+           app-db
            cache
            driver
+           lib.metadata
            lib.schema
+           permissions
            premium-features
+           query-processor
            settings
+           sql-tools
            util
-           workspaces}}}
+           workspaces}
+   :model-imports #{:model/Database}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

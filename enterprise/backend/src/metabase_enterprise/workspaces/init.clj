@@ -10,4 +10,6 @@
    app-db. See `metabase-enterprise.core.init` docstring for the broader
    pattern."
   (:require
-   [metabase-enterprise.workspaces.settings]))
+   [metabase-enterprise.workspaces.query-processor.middleware]
+   [metabase-enterprise.workspaces.settings]
+   [metabase-enterprise.workspaces.table-remapping]))
