@@ -69,11 +69,16 @@
       (u/sh {:dir u/project-root-directory}
             "bun" "run" "generate-license-disclaimer"))))
 
-(defn- build-uberjar! [edition]
+(defn- build-uberjar!
+  "Build the uberjar. If `basis` is passed, the sources were already compiled in the background (see
+  [[start-background-compile!]]), so only package them."
+  [edition basis]
   {:pre [(#{:oss :ee} edition)]}
   (u/delete-file-if-exists! uberjar/uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
-    (uberjar/uberjar {:edition edition})
+    (if basis
+      (uberjar/package! basis)
+      (uberjar/uberjar {:edition edition}))
     (u/assert-file-exists uberjar/uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
@@ -92,8 +97,8 @@
                        (build-drivers/build-drivers! edition))
    :python       (fn [{:keys [edition]}]
                    (build.python/build-python-deps! edition))
-   :uberjar      (fn [{:keys [edition]}]
-                   (build-uberjar! edition))))
+   :uberjar      (fn [{:keys [edition basis]}]
+                   (build-uberjar! edition basis))))
 
 (defn- github-actions? []
   (= (System/getenv "GITHUB_ACTIONS") "true"))
@@ -111,6 +116,55 @@
           (finally
             (locking println (println "::endgroup::")))))))
 
+(defn- start-background-compile!
+  "Start AOT-compiling `edition` on another thread, so it runs while the frontend builds. Its output is held back so
+  it doesn't interleave with the output of the steps running meanwhile; [[await-background-compile!]] prints it.
+
+  This process's output goes to an in-memory buffer. The compiler runs in a child JVM, so its output goes to files
+  under `target/`; those survive if the job is killed before the output is printed."
+  [edition]
+  (let [buffer (java.io.StringWriter.)
+        logs   {:out-file (str u/project-root-directory "/target/compile.out.log")
+                :err-file (str u/project-root-directory "/target/compile.err.log")}]
+    (io/make-parents (:out-file logs))
+    {:buffer buffer
+     :logs   logs
+     :result (future
+               (binding [*out* buffer]
+                 (let [basis (uberjar/compile! edition logs)]
+                   {:basis basis, :finished-at (System/nanoTime)})))}))
+
+(defn- print-background-compile-output! [{:keys [buffer logs]}]
+  (locking println
+    (print (str buffer))
+    (flush))
+  (doseq [file  [(:out-file logs) (:err-file logs)]
+          :when (.exists (io/file file))
+          line  (str/split-lines (slurp file))]
+    (u/safe-println line)))
+
+(defn- await-background-compile!
+  "Wait for the compile started by [[start-background-compile!]], print its output as one block, and return the basis
+  to package. If the compile failed, print its output outside of a log group, so the error is visible, and rethrow."
+  [{:keys [result] :as compile}]
+  (let [waiting-since (System/nanoTime)
+        outcome       (try
+                        {:value @result}
+                        (catch java.util.concurrent.ExecutionException e
+                          {:error (or (.getCause e) e)}))
+        ms            (fn [nanos] (long (/ nanos 1e6)))]
+    (if-let [error (:error outcome)]
+      (do (print-background-compile-output! compile)
+          (throw error))
+      (let [{:keys [basis finished-at]} (:value outcome)
+            waited-ms                   (ms (- (System/nanoTime) waiting-since))]
+        (do-with-log-group (if (pos? waited-ms)
+                             (format "compile (ran in the background; uberjar waited %d ms for it)" waited-ms)
+                             (format "compile (ran in the background; finished %d ms before uberjar needed it)"
+                                     (ms (- waiting-since finished-at))))
+                           #(print-background-compile-output! compile))
+        basis))))
+
 (defn build!
   "Programmatic entrypoint."
   ([]
@@ -119,9 +173,14 @@
   ([{:keys [version edition steps]
      :or   {edition (edition-from-env-var)
             steps   (keys all-steps)}}]
-   (let [version (or version
-                     (version-properties/current-snapshot-version edition))
-         timer         (u/start-timer)]
+   (let [version  (or version
+                      (version-properties/current-snapshot-version edition))
+         timer    (u/start-timer)
+         ;; AOT compilation doesn't need the frontend, so it starts with the frontend step and `:uberjar` waits for it.
+         ;; Not any earlier: `:translations` rewrites `resources/locales.clj`, which the compile reads while it looks for
+         ;; namespaces, and a half-written file fails the build.
+         background-compile (when (every? (set (map u/parse-as-keyword steps)) [:frontend :uberjar])
+                              (delay (start-background-compile! edition)))]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"
@@ -133,8 +192,13 @@
                                       (throw (ex-info (format "Invalid step: %s" step-name)
                                                       {:step        step-name
                                                        :valid-steps (keys all-steps)})))]]
-         (do-with-log-group (name step-name)
-                            #(step-fn {:version version, :edition edition}))
+         (let [step  (u/parse-as-keyword step-name)
+               basis (case step
+                       :frontend (do (some-> background-compile force) nil)
+                       :uberjar  (some-> background-compile force await-background-compile!)
+                       nil)]
+           (do-with-log-group (name step-name)
+                              #(step-fn {:version version, :edition edition, :basis basis})))
          (u/announce "Did %s in %d ms." step-name (u/since-ms timer)))
        (u/announce "All build steps finished.")))))
 
