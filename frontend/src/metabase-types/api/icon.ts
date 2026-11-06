@@ -244,6 +244,7 @@ export type IconName =
   | "search_check"
   | "section"
   | "segment"
+  | "segment_group"
   | "shield"
   | "shield_outline"
   | "shield_stroke"

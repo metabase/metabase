@@ -13,7 +13,7 @@ import {
 } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
-import { FilterPills } from "../FilterPills";
+import { ClausePills, type QueryClause } from "../../ClausePills";
 
 import S from "./SegmentItem.module.css";
 
@@ -22,15 +22,15 @@ type SegmentItemProps = {
   href: string;
   /** The table's questions start from this segment */
   isDefault?: boolean;
-  /** Its filter clauses, one pill each; else the server's description */
-  filterNames?: string[];
+  /** Its definition's clauses, one pill each; else the server's description */
+  clauses?: QueryClause[];
 };
 
 export function SegmentItem({
   segment,
   href,
   isDefault,
-  filterNames,
+  clauses,
 }: SegmentItemProps) {
   return (
     <Card
@@ -54,8 +54,8 @@ export function SegmentItem({
           {isDefault && <DefaultSegmentBadge />}
         </Flex>
 
-        {filterNames != null && filterNames.length > 0 ? (
-          <FilterPills names={filterNames} />
+        {clauses != null && clauses.length > 0 ? (
+          <ClausePills clauses={clauses} />
         ) : (
           segment.definition_description && (
             <Text lh="lg" data-testid="list-item-description">

@@ -17,17 +17,14 @@ import {
 import * as Urls from "metabase/urls";
 import type { Segment, Table } from "metabase-types/api";
 
+import { getQueryClauses } from "../ClausePills";
 import {
   ListSearchBar,
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
 import { ListEmptyItem, ListSection } from "../ListSection";
-import {
-  getFilterNames,
-  useTableQuery,
-  useTableSegmentsModel,
-} from "../table-segments";
+import { useTableQuery, useTableSegmentsModel } from "../table-segments";
 
 import {
   CohortProposalItem,
@@ -84,10 +81,10 @@ export function SegmentList({ table }: SegmentListProps) {
   const isSearching = query.trim() !== "";
   const tableSegments = table.segments ?? [];
   const { fromDefinition } = useTableQuery(table);
-  // Each clause of a segment's filter, for its card's pills
-  const getSegmentFilterNames = (segment: Segment) => {
+  // Each clause of a segment's definition, for its card's pills
+  const getSegmentClauses = (segment: Segment) => {
     try {
-      return getFilterNames(fromDefinition(segment.definition));
+      return getQueryClauses(fromDefinition(segment.definition));
     } catch {
       // A definition the query library can't read keeps its server description
       return undefined;
@@ -252,7 +249,7 @@ export function SegmentList({ table }: SegmentListProps) {
                 key={segment.id}
                 segment={segment}
                 href={getSegmentHref(segment.id)}
-                filterNames={getSegmentFilterNames(segment)}
+                clauses={getSegmentClauses(segment)}
                 isDefault={
                   defaultSegment.type === "custom" &&
                   defaultSegment.segmentId === segment.id

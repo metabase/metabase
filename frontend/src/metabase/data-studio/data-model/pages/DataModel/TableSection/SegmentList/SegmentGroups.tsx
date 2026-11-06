@@ -183,7 +183,7 @@ export function SegmentGroupItem({
     >
       <Stack gap="xs">
         <Flex align="center" gap="sm">
-          <Icon name="pie" c="core-brand" />
+          <Icon name="segment_group" c="core-brand" />
           <Text fw="bold">{group.name}</Text>
         </Flex>
         {memberLabels.length > 0 ? (
@@ -229,7 +229,7 @@ export function SegmentGroupProposalItem({
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Stack gap="xxs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon name="pie" c="text-secondary" />
+            <Icon name="segment_group" c="text-secondary" />
             <Text fw="bold">{proposal.name}</Text>
           </Flex>
           <Text lh="lg">{memberLabels.join(" · ")}</Text>

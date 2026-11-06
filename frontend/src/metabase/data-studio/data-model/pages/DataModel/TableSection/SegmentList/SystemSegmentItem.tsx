@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { Card, Flex, Icon, Stack, Text, rem } from "metabase/ui";
 
+import { ClausePills } from "../ClausePills";
 import type { ResolvedSystemSegment } from "../table-segments";
 
-import { FilterPills } from "./FilterPills";
 import { DefaultSegmentBadge } from "./SegmentItem";
 import S from "./SegmentItem/SegmentItem.module.css";
 
@@ -49,7 +49,12 @@ export function SystemSegmentItem({
           )}
         </Flex>
         {hasFilters ? (
-          <FilterPills names={segment.filterNames} />
+          <ClausePills
+            clauses={segment.filterNames.map((name) => ({
+              kind: "filter",
+              name,
+            }))}
+          />
         ) : (
           <Text lh="lg" c="text-secondary">
             {t`No matching column found. Open it to set it up.`}

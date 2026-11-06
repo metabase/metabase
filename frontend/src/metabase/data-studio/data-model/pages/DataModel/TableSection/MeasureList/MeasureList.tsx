@@ -8,14 +8,16 @@ import { useMeasureGroups } from "metabase/metadata/measure-groups";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { ConcreteTableId, Measure, Table } from "metabase-types/api";
 
+import { getQueryClauses } from "../ClausePills";
 import {
   ListSearchBar,
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
 import { ListEmptyItem, ListSection } from "../ListSection";
+import { useTableQuery } from "../table-segments";
 
 import { MeasureGroupModal } from "./MeasureGroupModal";
 import {
@@ -36,6 +38,16 @@ type MeasureListProps = {
  */
 export function MeasureList({ table }: MeasureListProps) {
   const measures = table.measures ?? [];
+  const { fromDefinition } = useTableQuery(table);
+  // Each aggregation and filter of a measure's definition, for its card's pills
+  const getMeasureClauses = (measure: Measure) => {
+    try {
+      return getQueryClauses(fromDefinition(measure.definition));
+    } catch {
+      // A definition the query library can't read keeps its server description
+      return undefined;
+    }
+  };
   const [query, setQuery] = useState("");
   // `null` is a new group; `undefined` means the editor is closed
   const [editingGroupId, setEditingGroupId] = useState<string | null>();
@@ -159,6 +171,7 @@ export function MeasureList({ table }: MeasureListProps) {
                 key={measure.id}
                 measure={measure}
                 href={getMeasureHref(measure.id)}
+                clauses={getMeasureClauses(measure)}
               />
             ))
           ) : (

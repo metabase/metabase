@@ -232,6 +232,7 @@ import search_component from "./search.svg?component";
 import search_check_component from "./search_check.svg?component";
 import section_component from "./section.svg?component";
 import segment_component from "./segment.svg?component";
+import segment_group_component from "./segment_group.svg?component";
 import send_component from "./send.svg?component";
 import settings_component from "./settings.svg?component";
 import share_component from "./share.svg?component";
@@ -549,6 +550,7 @@ export const Icons: Record<IconName, React.FC> = {
   search_check: search_check_component,
   section: section_component,
   segment: segment_component,
+  segment_group: segment_group_component,
   send: send_component,
   shield: shield_component,
   shield_outline: shield_outline_component,
