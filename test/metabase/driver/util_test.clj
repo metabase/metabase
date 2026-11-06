@@ -1186,3 +1186,19 @@
       (is (= 400 (:status-code (ex-data (is (thrown? clojure.lang.ExceptionInfo
                                                      (driver.u/workspace-scratch-namespace-name
                                                       "mb__isolation_ab2c3d4e" schema-id "sales" 63))))))))))
+
+(deftest ^:parallel scrub-exceptions-types-test
+  (let [secret "s3cretPassw0rd"]
+    (testing "an Error or an interrupt is returned as it is"
+      (doseq [t [(AssertionError. (str "assert " secret)) (InterruptedException. "interrupted")]]
+        (is (identical? t (driver.u/scrub-exceptions t [secret])))))
+    (testing "any other exception becomes a scrubbed Exception with the original stack trace"
+      (let [t        (IllegalStateException. (str "bad " secret))
+            scrubbed (driver.u/scrub-exceptions t [secret])]
+        (is (= Exception (class scrubbed)))
+        (is (= "bad ****" (ex-message scrubbed)))
+        (is (= (seq (.getStackTrace t)) (seq (.getStackTrace ^Throwable scrubbed))))))
+    (testing "an ex-info keeps its stack trace"
+      (let [t (ex-info (str "info " secret) {})]
+        (is (= (seq (.getStackTrace ^Throwable t))
+               (seq (.getStackTrace ^Throwable (driver.u/scrub-exceptions t [secret])))))))))

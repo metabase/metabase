@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.provisioning-connection :as ws.provisioning-connection]
    [metabase-enterprise.workspaces.status :as ws.status]
    [metabase-enterprise.workspaces.workspace :as ws.workspace]
    [metabase.test :as mt]
@@ -162,7 +163,7 @@
   [db-id locked then-fn]
   (future
     (t2/with-transaction [_conn]
-      (ws.db/provisioning-connection-for-update db-id)
+      (ws.db/lock-provisioning-connection! db-id)
       (deliver locked true)
       (Thread/sleep 1000)
       (then-fn))
@@ -218,3 +219,62 @@
                      (ex-data e)))))
          @creator
          (is (t2/exists? :model/Database :id db-id)))))))
+
+(deftest delete-provisioning-connection-waits-for-a-workspace-being-created-test
+  (testing "deleting the provisioning connection while a workspace database is being created is a 409 naming it"
+    (do-with-racing-database!
+     (fn [db-id ws-id]
+       (ws.db/save-provisioning-connection! db-id {} nil)
+       (let [inserted (promise)
+             creator  (future
+                        (t2/with-transaction [_conn]
+                          (ws.workspace/insert-workspace-database! (new-workspace-database ws-id db-id))
+                          (deliver inserted true)
+                          (Thread/sleep 2000)))]
+         @inserted
+         (is (=? {:status-code 409, :error-code "workspaces_exist", :workspaces [{:id ws-id}]}
+                 (try
+                   (ws.provisioning-connection/delete! db-id)
+                   :deleted
+                   (catch Exception e
+                     (ex-data e)))))
+         @creator
+         (is (some? (ws.db/provisioning-connection db-id))))))))
+
+(deftest connection-identity-of-a-database-with-workspaces-test
+  (testing "while a Database has a provisioning connection, its host, port, database, user and tunnel cannot change"
+    (do-with-racing-database!
+     (fn [db-id ws-id]
+       (t2/update! :model/Database :id db-id {:details {:host "warehouse.example", :port 5432, :dbname "dwh", :user "reader", :password "a"}})
+       (ws.db/save-provisioning-connection! db-id {:user "provisioner"} nil)
+       (ws.workspace/insert-workspace-database! (new-workspace-database ws-id db-id))
+       (doseq [[k v] {:host "elsewhere.example", :port 5433, :dbname "other", :user "someone", :tunnel-enabled true}]
+         (testing (name k)
+           (is (=? {:status-code 409, :error-code "workspaces_exist", :workspaces [{:id ws-id}]}
+                   (try
+                     (t2/update! :model/Database :id db-id {:details (assoc (t2/select-one-fn :details :model/Database :id db-id) k v)})
+                     :updated
+                     (catch Exception e
+                       (ex-data e)))))
+           (is (= "warehouse.example" (:host (t2/select-one-fn :details :model/Database :id db-id))))))
+       (testing "a new password is fine"
+         (t2/update! :model/Database :id db-id {:details (assoc (t2/select-one-fn :details :model/Database :id db-id) :password "b")})
+         (is (= "b" (:password (t2/select-one-fn :details :model/Database :id db-id)))))
+       (testing "without a provisioning connection the host can change again"
+         (t2/delete! :model/WorkspaceDatabase :database_id db-id)
+         (ws.db/delete-provisioning-connection! db-id)
+         (t2/update! :model/Database :id db-id {:details (assoc (t2/select-one-fn :details :model/Database :id db-id) :host "elsewhere.example")})
+         (is (= "elsewhere.example" (:host (t2/select-one-fn :details :model/Database :id db-id)))))))))
+
+(deftest unreadable-provisioning-row-does-not-block-deletes-test
+  (testing "the row lock that DELETE provisioning-connection and Database delete take reads the table, not the model, so
+            a login stored under another key cannot make them fail"
+    (do-with-racing-database!
+     (fn [db-id _ws-id]
+       (t2/insert! :workspace_provisioning_connection {:database_id db-id, :details "plaintext where ciphertext belongs"})
+       ;; only the lock and the model read run under the key: this test app DB's settings are not encrypted, and any
+       ;; setting read (a translated message, say) would fail under it
+       (encryption-test/with-secret-key "workspace-test-secret-key"
+         (is (thrown? Exception (ws.db/provisioning-connection db-id)) "the model cannot read it")
+         (is (= db-id (t2/with-transaction [_conn]
+                        (ws.db/lock-provisioning-connection! db-id)))))))))

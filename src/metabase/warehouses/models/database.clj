@@ -487,9 +487,20 @@
           (when (driver.impl/registered? engine)
             (driver.u/validate-connection-parameters! engine details)))))))
 
+(defenterprise check-connection-identity-change!
+  "Throws a 409 when an update of the Database with `database-id` from `old-details` to `new-details` would move it to
+  another server, database or login while workspaces depend on that connection. OSS has no workspaces."
+  metabase-enterprise.workspaces.provisioning-connection
+  [_database-id _old-details _new-details]
+  nil)
+
 (t2/define-before-update :model/Database
   [database]
   (assert-router-database-id-not-mutated! database)
+  (when (contains? (t2/changes database) :details)
+    (check-connection-identity-change! (:id database)
+                                       (:details (t2/original database))
+                                       (:details (t2/changes database))))
   (let [changes  (t2/changes database)
         original (t2/original database)]
     ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new

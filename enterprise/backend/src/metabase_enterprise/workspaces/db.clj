@@ -74,12 +74,14 @@
   (t2/insert-returning-pk! :model/Workspace {:name workspace-name, :creator_id creator-id}))
 
 (mu/defn workspaces-page
-  "Up to `limit` Workspaces, or all of them when `limit` is nil, after skipping `offset`, in id order."
+  "Up to `limit` Workspaces after skipping `offset`, in id order; all of them when `limit` is nil, when `offset` must
+  be 0."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select :model/Workspace (cond-> {:order-by [[:id :asc]]
-                                       :offset   offset}
-                                limit (assoc :limit limit))))
+  (assert (or limit (zero? offset)) "offset without limit")
+  ;; MySQL has no OFFSET without LIMIT
+  (t2/select :model/Workspace (cond-> {:order-by [[:id :asc]]}
+                                limit (assoc :limit limit, :offset offset))))
 
 (mu/defn workspace
   "The Workspace with `id`, or nil."
@@ -240,11 +242,14 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/WorkspaceProvisioningConnection :database_id [:auto/param database-id]))
 
-(mu/defn provisioning-connection-for-update
-  "The WorkspaceProvisioningConnection of the Database with `database-id`, `:details` included, or nil, locking its row
-  until the current transaction ends."
+(mu/defn lock-provisioning-connection!
+  "Lock the WorkspaceProvisioningConnection row of the Database with `database-id` until the current transaction ends,
+  and return its `database_id`, or nil when there is none. Reads the table rather than the model, so the lock never
+  depends on decrypting `details`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/WorkspaceProvisioningConnection :database_id [:auto/param database-id] {:for :update}))
+  (t2/select-one-fn :database_id :workspace_provisioning_connection
+                    :database_id [:auto/param database-id]
+                    {:for :update}))
 
 (mu/defn save-provisioning-connection!
   "Insert or replace the WorkspaceProvisioningConnection of the Database with `database-id`."

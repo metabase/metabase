@@ -24,7 +24,7 @@
            [:status           [:enum :provisioning :provisioned :deprovisioning :failed]]
            [:lock_token       :string]]]
   (t2/with-transaction [_conn]
-    (when-not (ws.db/provisioning-connection-for-update (:database_id row))
+    (when-not (ws.db/lock-provisioning-connection! (:database_id row))
       (throw (ex-info (tru "This database has no workspace provisioning connection.")
                       {:status-code 409, :error-code "provisioning_connection_missing", :database-id (:database_id row)})))
     (ws.db/insert-workspace-database! row)))

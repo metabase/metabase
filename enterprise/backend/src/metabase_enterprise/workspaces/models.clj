@@ -32,8 +32,6 @@
 
 (methodical/defmethod t2/table-name :model/WorkspaceProvisioningConnection [_model] :workspace_provisioning_connection)
 
-(methodical/defmethod t2/primary-keys :model/WorkspaceProvisioningConnection [_model] [:database_id])
-
 (doto :model/WorkspaceProvisioningConnection
   (derive :metabase/model)
   (derive :hook/updated-at-timestamped?))

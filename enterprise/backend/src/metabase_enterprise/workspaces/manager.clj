@@ -8,6 +8,7 @@
   When that teardown fails too, the failed databases' rows stay `:failed` for a later delete."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.provisioning-connection :as ws.provisioning-connection]
    [metabase-enterprise.workspaces.status :as ws.status]
    [metabase-enterprise.workspaces.workspace :as ws.workspace]
    [metabase.driver :as driver]
@@ -76,13 +77,17 @@
 
 (defn- checked-database
   "The Database of `request-database`, with what provisioning it needs. Throws a 404 for an unknown Database and a 400
-  for one whose engine does not support workspaces, or a schema that cannot be a main schema."
+  for one that is not an ordinary warehouse (see [[ws.provisioning-connection/warehouse-or-throw]]), uses an SSH
+  tunnel, or whose engine does not support workspaces, or for a schema that cannot be a main schema."
   [{:keys [database_id schemas]}]
-  (let [database (or (ws.db/database database_id)
-                     (throw (ex-info (tru "Database {0} not found." (str database_id))
-                                     {:status-code 404, :database-id database_id})))
+  (let [database (ws.provisioning-connection/warehouse-or-throw database_id)
         engine   (keyword (:engine database))
         lib-db   (driver.u/lib-database database_id)]
+    ;; the sidecar connects to the warehouse as the workspace user with the parent's connection fields, which a tunnel
+    ;; on the parent's network does not carry over
+    (when (get-in database [:details :tunnel-enabled])
+      (throw (ex-info (tru "SSH tunnels are not supported for workspaces.")
+                      {:status-code 400, :error-code "workspaces_unsupported", :database-id database_id})))
     (when-not (driver.u/supports? engine :workspace lib-db)
       (throw (ex-info (tru "Workspaces are not supported on {0} databases." (name engine))
                       {:status-code 400, :error-code "workspaces_unsupported", :database-id database_id})))
