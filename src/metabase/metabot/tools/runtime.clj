@@ -23,6 +23,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
+   [malli.util :as mut]
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]
    [metabase.metabot.tools.core :as tools]
@@ -150,28 +151,58 @@
     (sequential? v) "an array"
     :else           "an unsupported value"))
 
+(defn- argument-path
+  "The path `in` into a tool's arguments, written the way the model would name it, such as `ops[1].card_id`."
+  [in]
+  (reduce (fn [text k]
+            (if (int? k)
+              (str text "[" k "]")
+              (str text (when (seq text) ".") (name k))))
+          ""
+          in))
+
 (defn- argument-error-text
-  [arguments field messages]
-  (let [texts (->> (tree-seq coll? seq messages) (filter string?) distinct vec)]
+  "The sentence for the argument at the path `in`, given the distinct `texts` of its errors."
+  [arguments in texts]
+  (let [argument (str "`" (argument-path in) "`")]
     (condp = texts
-      ["disallowed key"]       (str "`" (name field) "` is not a supported argument.")
-      ["missing required key"] (str "`" (name field) "` is required.")
-      (str "`" (name field) "` " (str/join "; " texts)
-           (when (every? string? messages)
-             (str "; received " (json-type-name (get arguments field))))
-           "."))))
+      ["disallowed key"]       (str argument " is not a supported argument.")
+      ["missing required key"] (str argument " is required.")
+      (str argument " " (str/join "; " texts) "; received " (json-type-name (get-in arguments in)) "."))))
+
+(defn- reported-path
+  "The argument path to report the Malli `error` under: the path of the outermost `:or` the error is inside, or else
+  the error's own path."
+  [schema {:keys [in path]}]
+  ;; An `:or` that fails reports the errors of every alternative, which contradict each other below it, so they all
+  ;; go under the `:or`'s own path.
+  (or (some (fn [n]
+              (let [prefix (subvec (vec path) 0 n)]
+                (when (#{:or :orn} (some-> (mut/get-in schema prefix) mc/type))
+                  (mut/path->in schema prefix))))
+            (range (inc (count path))))
+      in))
+
+(defn- error-texts-by-path
+  "Pairs of an argument path and the distinct texts of its errors, from the Malli `explanation`, sorted by path."
+  [{:keys [schema errors]}]
+  (let [texts (reduce (fn [acc error]
+                        (update acc (reported-path schema error) (fnil conj [])
+                                (or (me/error-message error) "is not valid")))
+                      {}
+                      errors)]
+    (sort-by (comp argument-path key) (update-vals texts (comp vec distinct)))))
 
 (defn- invalid-arguments-message
-  "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
+  "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match.
+  Each problem names the argument it is about by its full path, such as `ops[1].card_id`."
   [schema arguments]
-  (when-let [error (mr/explain schema arguments)]
-    (let [humanized (me/humanize error)]
-      (str "Invalid tool arguments: "
-           (if (map? humanized)
-             (str/join " " (for [[field messages] (sort-by (comp name key) humanized)]
-                             (argument-error-text arguments field messages)))
-             (str "expected an object of named arguments; received "
-                  (json-type-name arguments) "."))))))
+  (when-let [explanation (mr/explain schema arguments)]
+    (str "Invalid tool arguments: "
+         (if (map? arguments)
+           (str/join " " (for [[in texts] (error-texts-by-path explanation)]
+                           (argument-error-text arguments in texts)))
+           (str "expected an object of named arguments; received " (json-type-name arguments) ".")))))
 
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------
 
