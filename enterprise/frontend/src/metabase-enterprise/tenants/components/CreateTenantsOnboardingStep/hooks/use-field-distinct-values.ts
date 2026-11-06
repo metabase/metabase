@@ -31,9 +31,10 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
   const tableId = field?.table_id;
   const databaseId = field?.table?.db_id;
 
-  const { data: table } = useGetTableQueryMetadataQuery(
-    tableId != null ? { id: tableId } : skipToken,
-  );
+  const { data: table, isLoading: isTableLoading } =
+    useGetTableQueryMetadataQuery(
+      tableId != null ? { id: tableId } : skipToken,
+    );
   const metadataProvider = useMetadataProvider(databaseId ?? null);
 
   const query = useMemo(() => {
@@ -74,6 +75,6 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
 
   return {
     values,
-    isLoading: isFieldLoading || isAdHocQueryLoading,
+    isLoading: isFieldLoading || isTableLoading || isAdHocQueryLoading,
   };
 }
