@@ -896,7 +896,8 @@
    potemkin.namespaces/import-macro                                                             macros.potemkin.namespaces/import-macro}}
 
  :config-in-comment
- {:linters {:unresolved-symbol {:level :off}}}
+ {:linters {:unresolved-symbol {:level :off}
+            :metabase/modules  {:level :off}}}
 
  ;;
  ;; TEST CONFIG
