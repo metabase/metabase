@@ -43,9 +43,9 @@
 
 (defn current-state
   "The settings cache state for the application DB this thread sees.
-  Pass it to the functions here that take one, so that a series of reads and writes uses one cache even if the app DB
-  this thread sees changes midway.
-  It holds the cache only: the database those functions read and write is still the one this thread sees."
+  Pass it to the functions here that take one, so that a series of reads and writes uses one cache.
+  The state carries no database identity: those functions read and write the app DB this thread sees, so the caller
+  must keep the same app DB for the whole series."
   []
   (per-app-db))
 
