@@ -24,7 +24,7 @@ This page is the reference for data apps. To set up your tools and build your fi
 - An AI coding agent, like Claude Code or Codex.
 - The [Metabase CLI](../installation-and-operation/metabase-cli.md) (`mb`), version 0.5.10 or later. To update the CLI, run `mb upgrade`.
 - Node.js 22.12 or later on your computer.
-- A Git repository that your Metabases connect to with [Remote sync](../data-modeling/semantic-layer/remote-sync.md), and permission to push to it. Apps get into Metabase only when Metabase pulls them from the repository, and the repository also keeps each app's source code.
+- A Git repository that your Metabases connect to with [Remote sync](../data-modeling/semantic-layer/remote-sync.md), and permission to push to it. Metabase gets apps from the repository, which also keeps each app's source code.
 - A Metabase where your agent builds each app. See [Choose where to build apps](#choose-where-to-build-apps).
 - A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics on a Metabase in Read-write mode while it builds an app. See [Publish tables to your semantic layer](#publish-tables-to-your-semantic-layer).
 - If your apps write data, a PostgreSQL or MySQL database with [data actions turned on](../data-modeling/data-actions.md#turn-on-data-actions-for-a-database). Only these databases support actions. An app that only shows data can read from any database that Metabase connects to.
@@ -120,7 +120,7 @@ Delete the key when you no longer need the preview.
 
 ## Ship the app to your development Metabase
 
-Your data apps always reach Metabase through your Git repository. When the app is ready, tell your agent:
+Your data apps reach Metabase through your Git repository. When the app is ready, tell your agent:
 
 ```text
 Ship the app to my development Metabase.
@@ -194,6 +194,10 @@ allowed_hosts:
 Then [ship the change](#ship-the-app-to-your-development-metabase), and [move it to production](#move-the-app-to-production). Your agent can also change the list for you.
 
 The app can then get data from the site with `fetch`. The app can also show the site's images, embed the site's pages, and submit forms to the site. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself.
+
+The site must also let other sites read its responses. `allowed_hosts` lets the app send a request, but the browser blocks the response unless the site sends [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS). Some APIs send these headers only when you ask: the Wikipedia API, for example, needs `origin=*` in the URL.
+
+The sandbox also blocks `DOMParser`, so an app can't parse HTML the usual way. If you can, get JSON from the site's API instead. If the site only has HTML, your agent has to parse the HTML as text.
 
 ## Have fun
 
