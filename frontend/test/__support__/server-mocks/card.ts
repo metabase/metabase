@@ -113,6 +113,10 @@ export function setupUnauthorizedCardEndpoints(card: Card) {
     status: 403,
     body: PERMISSION_ERROR,
   });
+  fetchMock.get(`path:/api/card/${card.id}/query_metadata`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);
   fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
