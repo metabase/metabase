@@ -45,14 +45,12 @@ export async function packPlugin(dir: string = process.cwd()) {
     throw new Error('package.json is missing a "version" field.');
   }
 
-  const assetNames: string[] = manifest.icon ? [manifest.icon] : [];
+  const icon: string | undefined = manifest.icon || undefined;
 
-  for (const assetName of assetNames) {
-    if (!assetName.toLowerCase().endsWith(".svg")) {
-      throw new Error(
-        `Icon "${assetName}" declared in metabase-plugin.json must be an SVG file.`,
-      );
-    }
+  if (icon && !icon.toLowerCase().endsWith(".svg")) {
+    throw new Error(
+      `Icon "${icon}" declared in metabase-plugin.json must be an SVG file.`,
+    );
   }
 
   const tar = tarPack();
@@ -78,16 +76,16 @@ export async function packPlugin(dir: string = process.cwd()) {
   );
   addEntry("dist/index.js", readFileSync(bundlePath));
 
-  for (const assetName of assetNames) {
-    const assetPath = resolve(projectRoot, "dist/assets", assetName);
+  if (icon) {
+    const iconPath = resolve(projectRoot, "dist/assets", icon);
 
-    if (!existsSync(assetPath)) {
+    if (!existsSync(iconPath)) {
       throw new Error(
-        `Asset "${assetName}" declared in metabase-plugin.json but missing from dist/assets/.`,
+        `Icon "${icon}" declared in metabase-plugin.json but missing from dist/assets/.`,
       );
     }
 
-    addEntry(`dist/assets/${assetName}`, readFileSync(assetPath));
+    addEntry(`dist/assets/${icon}`, readFileSync(iconPath));
   }
 
   tar.finalize();
