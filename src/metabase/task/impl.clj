@@ -123,20 +123,25 @@
     ;; in that state then the result is a no-op."
     (.resetTriggerFromErrorState scheduler tk)))
 
+(defonce ^:private init-lock (Object.))
+
 (defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
   (classloader/the-classloader)
-  (when-not (scheduler)
-    (set-jdbc-backend-properties!)
-    (let [new-scheduler (qs/initialize)]
-      (when (mc/compare-and-set! scheduler-component nil new-scheduler)
+  ;; One init at a time: Quartz hands every caller the same default scheduler, so two racing inits would attach our
+  ;; job factory and trigger listener to it twice.
+  (locking init-lock
+    (when-not (scheduler)
+      (set-jdbc-backend-properties!)
+      (let [new-scheduler (qs/initialize)]
+        ;; Readied before it is published, so nothing that finds it, such as [[start-scheduler!]], can run it without
+        ;; our job factory.
         (qs/standby new-scheduler)
         (job-factory/add-to-scheduler new-scheduler)
+        (mc/reset! scheduler-component new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
-        ;; Register Prometheus listeners
-
         (delete-jobs-with-no-class!)
         (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
