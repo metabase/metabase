@@ -13,7 +13,7 @@ summary: Data apps are custom apps that an AI coding agent builds on your semant
 
 Data apps are custom apps that you build on your Metabase data. Like a dashboard, a data app shows charts and tables from your [semantic layer](../data-modeling/semantic-layer/library.md). But an app isn't limited to cards and filters on a grid: an app can have its own layout, its own pages, and forms that add, edit, or delete rows in your database. You can build apps like portals, review queues, and forms, without having to stand up a separate app and backend.
 
-A data app runs with the permissions of the person who opens it, so people see only the data that they're allowed to see. An app can write data only through the actions in its own collection. See [what a data app can read and write](#what-a-data-app-can-read-and-write).
+A data app runs with the permissions of the person who opens it, so people see only the Metabase data that they're allowed to see. See [what a data app can read and write](#what-a-data-app-can-read-and-write).
 
 This page is the reference for data apps. To set up your tools and build your first app step by step, check out [Getting started with data apps](./getting-started.md).
 
@@ -44,7 +44,7 @@ To see how this works with only one Metabase, check out the [single Metabase wor
 
 ## Publish tables to your semantic layer
 
-Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your [semantic layer](../data-modeling/semantic-layer/library.md). The semantic layer is the place to store your set of curated tables and metrics. Building on your semantic layer means that your app shows the same vetted numbers as the rest of your Metabase, so publish only trusted tables that are ready for analysis.
+Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your [semantic layer](../data-modeling/semantic-layer/library.md), so publish only trusted tables that are ready for analysis.
 
 If your app needs a table that isn't published, your agent stops and tells you what's missing. How you publish depends on how your Metabase syncs with your Git repository:
 
@@ -54,7 +54,7 @@ If your app needs a table that isn't published, your agent stops and tells you w
 
 ## What a data app can read and write
 
-A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads. If row and column security applies to a person on any table in a database, that person can't run the app's actions on that database.
+A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads from Metabase. If row and column security applies to a person on any table in a database, that person can't run the app's actions on that database.
 
 An app can read:
 
@@ -77,6 +77,8 @@ Your agent follows these rules for you, but the rules limit what you can ask for
 - **Ask for columns from related tables.** "Show each order with its product's category" works if the Orders table has a foreign key to the Products table. Without a foreign key, the question can't get that column, because questions can't have explicit joins.
 - **Ask for calculated values.** Like: "show each order's discount as a percentage", because the agent can calculate the value in the app's code.
 - **Keep writes to one row.** "Let people edit a product" works. "Mark all of a customer's orders as refunded" doesn't, because an action changes only one row at a time.
+- **Save settings with an action.** An app runs in a sandbox that blocks browser storage and cookies, so an app that remembers settings between visits must save them to a table with an action.
+- **Ask for modals and links, not pop-ups.** The sandbox also blocks pop-up windows and browser dialogs, like `alert`.
 
 The app's collection changes only when Metabase pulls it from your repository. You can't move the app's collection, move it to the trash, or make it official.
 
@@ -95,7 +97,7 @@ Until that pull, the app is only files in your clone. The agent reads from your 
 
 To build, preview, and ship the app, the agent runs commands on your computer, like `mb`, `npm run build`, `npm run dev`, and `git`. Your agent might ask for your permission before it runs these commands.
 
-The first time that a Metabase pulls an app, the app is [live](./manage.md#make-an-app-live-or-a-draft) on that Metabase: admins can open it at `/apps/<slug>`. To let other people open it, [add their groups](./manage.md#choose-who-can-open-an-app) to the app. To take an app offline, [make it a draft](./manage.md#make-an-app-live-or-a-draft).
+To let other people open the app, [add their groups](./manage.md#choose-who-can-open-an-app). To take an app offline, [make it a draft](./manage.md#make-an-app-live-or-a-draft).
 
 ![The Permissions tab of the Store Explorer app, with two groups that can open the app, and an Add groups button](./images/data-app-permissions.png)
 
@@ -167,12 +169,10 @@ Create a new branch from main on my development Metabase and in this clone. Then
 
 Then [move the app to production](#move-the-app-to-production).
 
-To set up the branch yourself:
+To set up the branch yourself before you start your agent:
 
 1. On your development Metabase, [switch to the branch](../data-modeling/semantic-layer/remote-sync.md#switching-branches) that your production Metabase pulls from, and [pull the changes](../data-modeling/semantic-layer/remote-sync.md#pulling-changes-from-git). Then [create a branch](../data-modeling/semantic-layer/remote-sync.md#creating-a-branch) for the change.
 2. In your local clone of your Git repository, pull the latest changes, and switch to the new branch.
-3. Start your agent in the clone, and ask for the change. The agent updates the code, generates the app's collection, and builds the app again. When the change is ready, ask the agent to [ship it to your development Metabase](#ship-the-app-to-your-development-metabase).
-4. [Move the change to production](#move-the-app-to-production).
 
 Your repository keeps each version of the app, with the bundle and the source code that it was built from. To go back to an earlier version, revert the change in your repository, merge the revert, and pull the changes into your Metabases. If two people change the same app on different branches, the app's bundle and collection conflict when you merge the second branch. Merge the source code, and ask your agent to generate the collection and build the app again.
 
@@ -193,11 +193,17 @@ allowed_hosts:
 
 Then [ship the change](#ship-the-app-to-your-development-metabase), and [move it to production](#move-the-app-to-production). Your agent can also change the list for you.
 
-The app can then get data from the site with `fetch`. The app can also show the site's images, embed the site's pages, and submit forms to the site. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself.
+The app can then get data from the site with `fetch`, but not with `XMLHttpRequest` or `WebSocket`, which the sandbox blocks. The app can also show the site's images. On your Metabase, but not in the preview, the app can embed the site's pages and submit forms to the site.
+
+An origin can't have a path. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself. A site's images on another host need their own entry.
 
 The site must also let other sites read its responses. `allowed_hosts` lets the app send a request, but the browser blocks the response unless the site sends [CORS headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS). Some APIs send these headers only when you ask: the Wikipedia API, for example, needs `origin=*` in the URL.
 
-The sandbox also blocks `DOMParser`, so an app can't parse HTML the usual way. If you can, get JSON from the site's API instead. If the site only has HTML, your agent has to parse the HTML as text.
+The sandbox also blocks `DOMParser`, so an app can't parse HTML the usual way. If you can, get JSON from the site's API instead. If the site only has HTML, your agent has to parse the HTML as text. Metabase charts show only Metabase questions, so your agent also has to draw any charts of data from other sites.
+
+Allow only sites that you trust, because the app can send a site any data that the person who opens the app can see. Metabase permissions don't apply to data from other sites.
+
+The request goes from the browser of the person who opens the app, not from Metabase. So that person's browser must be able to reach the site, and the app has no safe place for an API key: a key in the app's code goes into the app's bundle, and the bundle goes to your repository and to each person who opens the app.
 
 ## Have fun
 
