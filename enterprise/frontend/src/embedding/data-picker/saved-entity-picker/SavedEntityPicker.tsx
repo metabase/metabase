@@ -17,7 +17,7 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { Box, Icon } from "metabase/ui";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 import { mergeLazily } from "metabase/utils/merge-lazily";
 import type {
   Collection,
@@ -160,14 +160,14 @@ function InnerSavedEntityPicker({
   return (
     <Box className={SavedEntityPickerS.SavedEntityPickerRoot}>
       <Box className={SavedEntityPickerS.CollectionsContainer}>
-        <a
+        <UnstyledButton
           className={SavedEntityPickerS.BackButton}
           onClick={onBack}
           data-testid="saved-entity-back-navigation"
         >
-          <Icon name="chevronleft" className={CS.mr1} />
+          <Icon name="chevronleft" className={CS.mr1} aria-hidden />
           {CARD_INFO[type].title}
-        </a>
+        </UnstyledButton>
         <Box m="0.5rem 0" data-testid="saved-entity-collection-tree">
           <Tree
             data={collectionTree}

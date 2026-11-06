@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
@@ -70,14 +71,14 @@ async function setup() {
 
   mockCollectionItemsEndpoint();
 
+  const onBack = jest.fn();
   renderWithProviders(
-    <SavedEntityPicker
-      type="question"
-      onSelect={jest.fn()}
-      onBack={jest.fn()}
-    />,
+    <SavedEntityPicker type="question" onSelect={jest.fn()} onBack={onBack} />,
   );
+  await screen.findByTestId("saved-entity-back-navigation");
   await waitForLoaderToBeRemoved();
+
+  return { onBack };
 }
 
 describe("SavedEntityPicker", () => {
@@ -99,5 +100,42 @@ describe("SavedEntityPicker", () => {
     expect(
       screen.getAllByTestId("option-text").map((node) => node.textContent),
     ).toEqual(["a", "A", "B"]);
+  });
+
+  it("names the Saved Questions back link by its label only", async () => {
+    await setup();
+
+    expect(
+      screen.getByRole("button", { name: "Saved Questions" }),
+    ).toBeInTheDocument();
+  });
+
+  it("focuses the Saved Questions back link when pressing Tab", async () => {
+    await setup();
+
+    // focus the "‹ Saved Questions" back link
+    await userEvent.tab();
+
+    expect(screen.getByTestId("saved-entity-back-navigation")).toHaveFocus();
+  });
+
+  it("goes back when pressing Enter on the Saved Questions back link", async () => {
+    const { onBack } = await setup();
+
+    // focus the "‹ Saved Questions" back link
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("goes back when pressing Space on the Saved Questions back link", async () => {
+    const { onBack } = await setup();
+
+    // focus the "‹ Saved Questions" back link
+    await userEvent.tab();
+    await userEvent.keyboard(" ");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
