@@ -19,10 +19,10 @@
   {;; 400 — authoring
    ::unknown-column             400  ; An expectation names a column the output does not have.
    ::ambiguous-column           400  ; An expectation names a column that matches several, case aside.
-   ::missing-inputs             400  ; The transform reads a table with no declared input.
-   ::unused-inputs              400  ; An input is declared for a table the transform never reads.
+   ::missing-inputs             400  ; The query under test reads a table with no declared input.
+   ::unused-inputs              400  ; An input is declared for a table the query under test never reads.
    ::duplicate-input-table      400  ; Two inputs stand in for the same table.
-   ::unparseable-source         400  ; The transform's SQL could not be parsed to find what it reads.
+   ::unparseable-source         400  ; The SQL of the query under test could not be parsed to find what it reads.
    ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
    ::no-expectations            400  ; The test checks nothing.
 
@@ -30,7 +30,7 @@
    ::unsupported-transform      422  ; Not a query transform (Python, say).
    ::unsupported-driver         422  ; The database does not support testing.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
-   ::transform-failed           422  ; The transform under test would not run.
+   ::transform-failed           422  ; The query under test would not run.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
 
@@ -63,8 +63,8 @@
      `(ex-info ~msg (assoc ~data :error-type (checked ~error-type)) ~cause))))
 
 (mu/defn code :- :string
-  "The public wire spelling of `error-type` under `prefix`, the endpoint family that refused: `<prefix>.<name>`. The
-  vocabulary a client switches on."
+  "The public wire spelling of `error-type` under `prefix`, the endpoint family that refused: `<prefix>.<name>`. A client
+  switches on it."
   [prefix     :- :string
    error-type :- :keyword]
   ;; From the keyword's name, so the two cannot drift; the keyword's namespace is a source location, not vocabulary.

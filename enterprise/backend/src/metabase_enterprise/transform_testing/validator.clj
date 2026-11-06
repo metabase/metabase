@@ -48,7 +48,7 @@
 (mu/defn table-label :- :string
   "A human/agent-facing name for a table ref: `schema.name`, or just `name` when the schema is
   unknown. For error messages — never surface the raw `{:schema :name}` map."
-  [{:keys [schema name]} :- ::transform-testing.schema/table]
+  [{:keys [schema name]} :- ::transform-testing.compile/output-table]
   (if schema (str schema \. name) name))
 
 (mu/defn- missing-inputs :- [:sequential ::transform-testing.schema/table]
@@ -168,12 +168,12 @@
         (throw e)))))
 
 (mu/defn validate :- :nil
-  "Refuse the test unless it is complete against the transform it tests, every query it will run reads only the run's
-  temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a typed refusal from
-  [[metabase-enterprise.transform-testing.errors]].
+  "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
+  temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a
+  typed refusal from [[metabase-enterprise.transform-testing.errors]].
 
-  `referenced-tables` are the tables the transform's source reads, parsed before any replacement; `rewritten-transform`
-  is that source after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
+  `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-transform`
+  is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
   the temp tables everything may read; `default-schema` is the schema an unqualified reference resolves to in the
   database under test."
   [driver :- :keyword

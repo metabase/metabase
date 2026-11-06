@@ -3,7 +3,7 @@
   subject and the test; the runner owns the connection lifecycle, hands ordinary arguments to each concern (no
   marshaled plan object), and owns the HTTP decisions.
 
-    subject      — the subject's database and its query compiled to SQL, one method per subject type
+    subject      — app-db: the subject's database and its query compiled to SQL, one method per subject type
     compile      — pure: referenced tables (once), then rewrites to temp tables
     validator    — pure: may this test run? every read faked, every rewritten query on temp tables
     executor     — the one place warehouse I/O lives: create/drop temp tables, run read-backs
@@ -11,14 +11,15 @@
 
   Flow — compile the subject once, then thread that one result so the guard and the rewrite agree:
 
-    subject-plan              : the database, the subject's SQL, the names of its output
+    subject-plan (app-db)     : the database, the subject's SQL, the names of its output
       → referenced tables (pure): the tables the SQL reads
       → name + rewrite (pure)   : a temp table per input, and the source reading them
       → validate (pure)         : reject a test that is incomplete, or whose queries would still
                                   read a real table
       → run (executor)          : one connection — create the temp tables, check, drop on exit
 
-  Everything before the connection is pure; a bad test is rejected before any temp table exists."
+  Only the app database is read before the connection, and no warehouse I/O happens; a bad test is rejected before any
+  temp table exists."
   (:require
    [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]

@@ -28,6 +28,14 @@
    [:query  :string]
    [:params [:maybe [:sequential ::lib.schema.common/field-value]]]])
 
+;; The name may be blank, as a transform's target name may be: the validator then refuses the test for what it lacks,
+;; rather than a schema error about the target.
+(mr/def ::output-table
+  "A table the subject writes, by schema and name. The name may be blank."
+  [:map {:closed true}
+   [:schema {:optional true} [:maybe :string]]
+   [:name   :string]])
+
 (mr/def ::table-key
   "A way a query can refer to a table, as a `sql-tools/replace-names` key."
   [:map {:closed true}
@@ -82,7 +90,7 @@
 (mu/defn table-replacements :- ::table-replacements
   "The replacements mapping each input's table to its temp table in `input->table`, and each of `output-tables` to
   `output-table`."
-  [output-tables  :- [:sequential ::transform-testing.schema/table]
+  [output-tables  :- [:sequential ::output-table]
    input->table   :- [:map-of ::transform-testing.schema/input ::lib.schema.common/non-blank-string]
    output-table   :- ::lib.schema.common/non-blank-string
    default-schema :- [:maybe :string]]

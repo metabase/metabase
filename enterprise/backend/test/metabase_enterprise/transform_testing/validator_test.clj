@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transform-testing.validator-test
-  "Guard A: every table the transform reads must have a declared input. Pure — no warehouse."
+  "The checks of [[validator/validate]]: declared and unused inputs, leftover references after the rewrite, table labels
+  and the required expectation. Pure — no warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transform-testing.errors :as errors]

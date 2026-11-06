@@ -4,7 +4,6 @@
    [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
    [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
-   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -30,7 +29,7 @@
   [:map {:closed true}
    [:database      ::lib.schema.metadata/database]
    [:compiled      ::transform-testing.compile/compiled-query]
-   [:output-tables [:sequential ::transform-testing.schema/table]]
+   [:output-tables [:sequential ::transform-testing.compile/output-table]]
    [:output-label  :string]])
 
 (defmulti subject-plan
@@ -48,6 +47,6 @@
     (when-not (driver.u/supports? driver :transforms/testing database)
       (throw (transform-testing.errors/ex
               ::transform-testing.errors/unsupported-driver
-              (tru "Tests cannot run on the {0} database." (name driver))
+              (tru "This database ({0}) does not support tests." (name driver))
               {:driver driver})))
     database))
