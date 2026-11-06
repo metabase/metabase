@@ -645,7 +645,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     cy.get<CardId>("@gaugeId").then((id) => H.visitQuestion(id));
     H.queryBuilderMain().within(() => {
       cy.findByTestId("gauge-arc-0").should("exist");
-      cy.findAllByLabelText("Goal warning").first().click();
+      cy.findByLabelText("Goal warning").click();
     });
     H.vizSettingsSidebar()
       .should(
