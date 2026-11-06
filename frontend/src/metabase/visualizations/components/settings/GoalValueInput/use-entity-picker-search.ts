@@ -4,30 +4,25 @@ import type { SearchRequest } from "metabase-types/api";
 
 const SEARCH_PARAMS: Partial<SearchRequest> = { limit: 5 };
 
-const MEASURE_AND_METRIC_MODELS: MiniPickerPickableItem["model"][] = [
-  "measure",
+const MEASURE_MODELS: MiniPickerPickableItem["model"][] = ["measure"];
+
+const QUESTION_FALLBACK_MODELS: MiniPickerPickableItem["model"][] = [
+  "card",
   "metric",
 ];
 
-// Questions are left to "Browse all", unless there's nothing else to offer
-const QUESTION_FALLBACK_MODELS: MiniPickerPickableItem["model"][] = ["card"];
-
 export function useEntityPickerSearch(enabled: boolean) {
-  const { data: measuresAndMetricsProbe } = useSearchQuery(
+  const { data: measuresProbe } = useSearchQuery(
     enabled
-      ? {
-          models: ["measure", "metric"],
-          limit: 0,
-          context: "entity-picker",
-        }
+      ? { models: ["measure"], limit: 0, context: "entity-picker" }
       : skipToken,
   );
-  const shouldFallBackToQuestions = measuresAndMetricsProbe?.total === 0;
+  const shouldFallBackToQuestions = measuresProbe?.total === 0;
 
   return {
     models: shouldFallBackToQuestions
       ? QUESTION_FALLBACK_MODELS
-      : MEASURE_AND_METRIC_MODELS,
+      : MEASURE_MODELS,
     searchParams: SEARCH_PARAMS,
   };
 }

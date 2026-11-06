@@ -29,7 +29,6 @@ export type ReferencedEntityKind = CardType | "measure";
 
 export type GoalRefErrorReason =
   | "query-failed"
-  | "source-not-found"
   | "too-many-rows"
   | "column-not-found"
   | "not-a-number";

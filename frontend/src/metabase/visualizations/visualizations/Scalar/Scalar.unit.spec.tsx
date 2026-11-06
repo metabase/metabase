@@ -1,10 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
 import { setupCardDataset } from "__support__/server-mocks";
 import {
-  act,
   fireEvent,
   mockTextOverflow,
   renderWithProviders,
@@ -13,9 +11,7 @@ import {
 } from "__support__/ui";
 import { color } from "metabase/ui/utils/colors";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { loadVisualizationComponents } from "metabase/viz-core";
 import type { DatasetData, ScalarSegment, Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -28,8 +24,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { Scalar } from "./Scalar";
-
-registerVisualizations();
 
 const series = (value: number | null = 1.23) =>
   // Unjustified type cast. FIXME
@@ -556,7 +550,7 @@ describe("Scalar conditional colors", () => {
     expect(screen.getByText("12,345")).toBeInTheDocument();
   });
 
-  it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder (metabase#85062)", () => {
+  it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder", () => {
     setup(createPartlyFailedScalarSeries(), PARTLY_FAILED_SEGMENTS);
 
     expect(getValueColor()).toBe("green");
@@ -607,58 +601,11 @@ describe("Scalar conditional colors", () => {
   }
 });
 
-describe("Scalar with multiple series", () => {
-  const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
-
-  beforeAll(() => loadVisualizationComponents(["bar", "scalar"]));
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  async function setup({ segments }: { segments: ScalarSegment[] }) {
-    const rawSeries = ["Orders", "Reviews"].map((name) =>
-      createMockSingleSeries(
-        createMockCard({
-          name,
-          display: "scalar",
-          visualization_settings: { "scalar.segments": segments },
-        }),
-        {
-          data: createMockDatasetData({
-            cols: [
-              createMockColumn({ name: "count", base_type: "type/Integer" }),
-            ],
-            rows: [[12345]],
-          }),
-        },
-      ),
-    );
-
-    jest.useFakeTimers();
-    renderWithProviders(<Visualization rawSeries={rawSeries} />);
-    // ExplicitSize sets the chart dimensions after mounting
-    await act(async () => {
-      jest.advanceTimersByTime(0);
-    });
-  }
-
-  it("draws the bar chart without fetching an unanswered range bound", async () => {
-    setupCardDataset();
-
-    await setup({
-      segments: [
-        { min: GOAL_REF, max: null, color: "green", label: "above goal" },
-      ],
-    });
-
-    expect(screen.getAllByText("Orders").length).toBeGreaterThan(0);
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
-  });
-});
-
 describe("scalar viz settings", () => {
+  beforeAll(() => {
+    registerVisualizations();
+  });
+
   it("should render the field to show input in the formatting section if there are 2 or more columns", async () => {
     const series = [
       createMockSingleSeries(

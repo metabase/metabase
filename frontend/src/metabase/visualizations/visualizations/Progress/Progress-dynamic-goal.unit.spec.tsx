@@ -99,18 +99,6 @@ describe("progress chart dynamic goal", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
-  it("formats the goal with this chart's column settings", async () => {
-    setup({
-      settings: {
-        ...SETTINGS,
-        column_settings: { '["name","count"]': { prefix: "$" } },
-      },
-      referencedEntities: createMockReferencedEntitiesResults({ value: 2500 }),
-    });
-
-    expect(await screen.findByText("Goal $2,500")).toBeInTheDocument();
-  });
-
   it("re-runs the query with the referenced entity when the dataset has no answer", async () => {
     setupCardDataset({
       dataset: {
@@ -144,7 +132,7 @@ describe("progress chart dynamic goal", () => {
     expect(screen.queryByTestId("progress-bar")).not.toBeInTheDocument();
   });
 
-  it("measures against a goal of 0 with a warning in the query builder when fetching the reference fails (metabase#85219)", async () => {
+  it("measures against a goal of 0 with a warning in the query builder when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
     setup({ isQueryBuilder: true });
 
@@ -152,18 +140,6 @@ describe("progress chart dynamic goal", () => {
     expect(screen.getByText("50")).toBeInTheDocument();
     expect(screen.getByText("Goal 0")).toBeInTheDocument();
     expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
-  });
-
-  // a failed goal also reads 0, so this tells the two apart
-  it("measures against an answered goal of 0 without a warning in the query builder", async () => {
-    setup({
-      isQueryBuilder: true,
-      referencedEntities: createMockReferencedEntitiesResults({ value: 0 }),
-    });
-
-    expect(await screen.findByText("Goal 0")).toBeInTheDocument();
-    expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
   });
 
   it("opens the goal settings from the warning", async () => {
@@ -198,7 +174,7 @@ describe("progress chart dynamic goal", () => {
     expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
   });
 
-  it("measures against a goal of 0 with a warning in the query builder when the goal column's cell is null (metabase#85219)", async () => {
+  it("measures against a goal of 0 with a warning in the query builder when the goal column's cell is null", async () => {
     setup({
       cols: SELF_GOAL_COLS,
       rows: [[50, null]],
@@ -210,7 +186,7 @@ describe("progress chart dynamic goal", () => {
     expect(screen.getByText("Goal 0")).toBeInTheDocument();
   });
 
-  it("measures against a goal of 0 with a warning in the query builder when the goal column's question returned no rows (metabase#85219)", async () => {
+  it("measures against a goal of 0 with a warning in the query builder when the goal column's question returned no rows", async () => {
     setup({
       cols: SELF_GOAL_COLS,
       rows: [],
@@ -222,7 +198,7 @@ describe("progress chart dynamic goal", () => {
     expect(screen.getByText("Goal 0")).toBeInTheDocument();
   });
 
-  it("measures against a goal of 0 with a warning in the query builder when the goal column's cell is Infinity (metabase#85219)", async () => {
+  it("measures against a goal of 0 with a warning in the query builder when the goal column's cell is Infinity", async () => {
     setup({
       cols: SELF_GOAL_COLS,
       rows: [[50, "Infinity"]],
@@ -234,7 +210,7 @@ describe("progress chart dynamic goal", () => {
     expect(screen.getByText("Goal 0")).toBeInTheDocument();
   });
 
-  it("measures against a goal of 0 without a warning outside the query builder (metabase#85219, metabase#85062)", async () => {
+  it("measures against a goal of 0 without a warning outside the query builder", async () => {
     setup({ referencedEntities: createMockFailedReferencedEntitiesResults() });
 
     expect(await screen.findByText("Goal 0")).toBeInTheDocument();

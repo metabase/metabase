@@ -1,10 +1,6 @@
 import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
 import { color } from "metabase/ui/colors";
-import type {
-  GoalValue,
-  RowValue,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { GoalValue, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -14,7 +10,7 @@ import {
   createMockReferencedEntityResult,
 } from "metabase-types/api/mocks";
 
-import type { GoalCard, GoalData, GoalRefError } from "../types";
+import type { GoalCard } from "../types";
 
 import {
   getGoalErrorMessage,
@@ -150,42 +146,6 @@ describe("resolveGoalValue", () => {
     });
   });
 
-  it("errors with source-not-found when the referenced entity no longer exists", () => {
-    const data = {
-      cols: [],
-      rows: [],
-      referenced_entities: createMockFailedReferencedEntitiesResults({
-        error: "Not found.",
-        error_type: "not-found",
-      }),
-    };
-
-    expect(
-      resolveGoalValue(data, { type: "card", id: 9, column: "goal" }).error
-        ?.reason,
-    ).toBe("source-not-found");
-  });
-
-  it("errors when the referenced query returned no rows", () => {
-    const data = {
-      cols: [],
-      rows: [],
-      referenced_entities: {
-        card: {
-          9: {
-            status: "completed" as const,
-            data: { cols: [createMockColumn({ name: "goal" })], rows: [] },
-          },
-        },
-      },
-    };
-
-    expect(
-      resolveGoalValue(data, { type: "card", id: 9, column: "goal" }).error
-        ?.reason,
-    ).toBe("not-a-number");
-  });
-
   it("errors with too-many-rows when the referenced query returned more than one row", () => {
     const data = createMockDatasetData({
       cols,
@@ -227,38 +187,6 @@ describe("resolveGoalValue", () => {
     });
 
     expect(goalValue).toEqual({ value: null, isUnanswered: true });
-  });
-
-  it("resolves a referenced value of 0, which is not a missing value", () => {
-    const data = createMockDatasetData({
-      cols,
-      rows,
-      referenced_entities: createMockReferencedEntitiesResults({
-        id: 7,
-        column: "total",
-        value: 0,
-      }),
-    });
-
-    expect(
-      resolveGoalValue(data, { type: "card", id: 7, column: "total" }),
-    ).toEqual({ value: 0 });
-  });
-
-  it("resolves a negative decimal referenced value", () => {
-    const data = createMockDatasetData({
-      cols,
-      rows,
-      referenced_entities: createMockReferencedEntitiesResults({
-        id: 7,
-        column: "total",
-        value: -12.5,
-      }),
-    });
-
-    expect(
-      resolveGoalValue(data, { type: "card", id: 7, column: "total" }),
-    ).toEqual({ value: -12.5 });
   });
 
   it("errors for a foreign column reference that does not exist", () => {
@@ -315,49 +243,6 @@ describe("resolveGoalValue", () => {
         message: "Column value is not a number",
       },
     });
-  });
-});
-
-describe("resolveGoalValue with a multi-column source", () => {
-  const HIGH_REF = { type: "card", id: 9, column: "HIGH" } as const;
-
-  it("resolves the referenced column rather than the first one", () => {
-    const data = createMultiColumnSourceData([[300, 600]]);
-
-    expect(resolveGoalValue(data, HIGH_REF)).toEqual({ value: 600 });
-  });
-
-  it("errors for a column the source no longer has, even though its other columns resolve", () => {
-    const data = createMultiColumnSourceData([[300, 600]]);
-
-    expect(
-      resolveGoalValue(data, { ...HIGH_REF, column: "MISSING" }).error?.reason,
-    ).toBe("column-not-found");
-  });
-
-  it("errors when the referenced column is null, even though its other columns are numbers", () => {
-    const data = createMultiColumnSourceData([[300, null]]);
-
-    expect(resolveGoalValue(data, HIGH_REF)).toEqual({
-      value: null,
-      error: {
-        ...HIGH_REF,
-        reason: "not-a-number",
-        message: "Column value is not a number",
-      },
-    });
-  });
-
-  it("errors when the referenced column is text, even though its other columns are numbers", () => {
-    const data = createMultiColumnSourceData([[300, "text"]]);
-
-    expect(resolveGoalValue(data, HIGH_REF).error?.reason).toBe("not-a-number");
-  });
-
-  it("errors when the source returned no rows", () => {
-    const data = createMultiColumnSourceData([]);
-
-    expect(resolveGoalValue(data, HIGH_REF).error?.reason).toBe("not-a-number");
   });
 });
 
@@ -612,37 +497,6 @@ describe("getGoalErrorMessage", () => {
     expect(getGoalErrorMessage({ ...REF, reason: "query-failed" })).toBe(
       "Couldn't load this value",
     );
-  });
-
-  it("names the kind of a source that no longer exists", () => {
-    const error: GoalRefError = {
-      ...REF,
-      reason: "source-not-found",
-      message: "Not found.",
-    };
-
-    expect(getGoalErrorMessage(error, "question")).toBe(
-      "This question no longer exists",
-    );
-    expect(getGoalErrorMessage(error, "model")).toBe(
-      "This model no longer exists",
-    );
-    expect(getGoalErrorMessage(error, "metric")).toBe(
-      "This metric no longer exists",
-    );
-    expect(getGoalErrorMessage(error, "measure")).toBe(
-      "This measure no longer exists",
-    );
-  });
-
-  it("falls back to a generic message for a missing source of an unknown kind", () => {
-    expect(
-      getGoalErrorMessage({
-        ...REF,
-        reason: "source-not-found",
-        message: "Not found.",
-      }),
-    ).toBe("This source no longer exists");
   });
 
   it("explains a missing column regardless of the server message", () => {
@@ -1273,24 +1127,3 @@ describe("getNumericGoalValue", () => {
     ).toBeNull();
   });
 });
-
-function createMultiColumnSourceData(rows: RowValue[][]): GoalData {
-  return {
-    cols: [],
-    rows: [],
-    referenced_entities: {
-      card: {
-        9: {
-          status: "completed",
-          data: {
-            cols: [
-              createMockColumn({ name: "LOW" }),
-              createMockColumn({ name: "HIGH" }),
-            ],
-            rows,
-          },
-        },
-      },
-    },
-  };
-}

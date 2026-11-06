@@ -200,7 +200,6 @@ export const GoalValueInput = ({
       trackDynamicGoalUnset(display, currentSource);
     }
     commitValue(null);
-    setTimeout(() => numberInputRef.current?.focus(), 0);
   };
 
   const selectSelfColumn = (columnName: string) => {
@@ -208,10 +207,10 @@ export const GoalValueInput = ({
   };
 
   const selectEntityColumn = (columnName: string) => {
-    if (entity != null && entityInfo.kind != null) {
+    if (entity != null) {
       setDynamicValue(
         { type: entity.type, id: entity.id, column: columnName },
-        entityInfo.kind,
+        entityInfo.kind ?? entity.type,
       );
     }
   };
@@ -324,6 +323,7 @@ export const GoalValueInput = ({
   const handlePillKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Backspace" || event.key === "Delete") {
       removeDynamicValue();
+      setTimeout(() => numberInputRef.current?.focus(), 0);
     }
   };
 

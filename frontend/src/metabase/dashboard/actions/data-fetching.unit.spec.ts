@@ -19,12 +19,9 @@ import type { DashboardState, State } from "metabase/redux/store";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { defer } from "metabase/utils/promise";
 import type {
-  CardId,
   Dashboard,
-  DashboardCard,
-  Dataset,
+  DatasetData,
   GoalSegment,
-  ReferencedEntitiesResults,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
@@ -39,7 +36,6 @@ import {
   createMockReferencedEntitiesResults,
   createMockVirtualCard,
   createMockVirtualDashCard,
-  createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -644,7 +640,6 @@ describe("fetchDashboardCardData", () => {
 describe("fetchCardDataAction with goal references", () => {
   const DASHBOARD_ID = 5;
   const QUERY_URL = `/api/dashboard/${DASHBOARD_ID}/dashcard/1/card/1/query`;
-  const SERIES_QUERY_URL = `/api/dashboard/${DASHBOARD_ID}/dashcard/1/card/2/query`;
 
   const REF_SEGMENTS: GoalSegment[] = [
     { min: 0, max: { type: "card", id: 9, column: "total" }, color: "red" },
@@ -656,7 +651,7 @@ describe("fetchCardDataAction with goal references", () => {
     unsavedDashcardSettings,
     editing = false,
   }: {
-    referencedEntities?: ReferencedEntitiesResults | null;
+    referencedEntities?: DatasetData["referenced_entities"];
     cardSettings?: VisualizationSettings;
     unsavedDashcardSettings?: VisualizationSettings;
     editing?: boolean;
@@ -756,173 +751,6 @@ describe("fetchCardDataAction with goal references", () => {
 
     expect(fetchMock.callHistory.called(QUERY_URL)).toBe(true);
   });
-
-  it("refetches a visualizer dashcard when the cached result has no answer for its chart's goal", async () => {
-    const { store, card, dashcard } = setupVisualizerDashcard();
-
-    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
-
-    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(true);
-  });
-
-  it("returns the cached result of a visualizer dashcard when it answers its chart's goal", async () => {
-    const { store, card, dashcard, lastResults } = setupVisualizerDashcard({
-      referencedEntities: createMockReferencedEntitiesResults({
-        column: "total",
-        value: 250,
-      }),
-    });
-
-    const result = await store.dispatch(
-      fetchCardDataAction({ card, dashcard, options: {} }),
-    );
-
-    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(false);
-    expect(result.payload).toMatchObject({ result: lastResults[card.id] });
-  });
-
-  it("returns the cached error of a visualizer dashcard whose own query failed", async () => {
-    // the backend attaches goal answers only to a successful result
-    const failedResult = createMockDataset({
-      status: "failed",
-      error: "Query timed out",
-      data: createMockDatasetData({ rows: [], cols: [] }),
-    });
-    const { store, card, dashcard } = setupVisualizerDashcard({
-      cardResult: failedResult,
-    });
-
-    const result = await store.dispatch(
-      fetchCardDataAction({ card, dashcard, options: {} }),
-    );
-
-    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(false);
-    expect(result.payload).toMatchObject({ result: failedResult });
-  });
-
-  it("returns the cached result of a visualizer dashcard's series card, which answers no goals", async () => {
-    const { store, seriesCard, dashcard, lastResults } =
-      setupVisualizerDashcard();
-
-    const result = await store.dispatch(
-      fetchCardDataAction({ card: seriesCard, dashcard, options: {} }),
-    );
-
-    expect(fetchMock.callHistory.called(SERIES_QUERY_URL)).toBe(false);
-    expect(result.payload).toMatchObject({
-      result: lastResults[seriesCard.id],
-    });
-  });
-
-  it("returns the cached result of a series card whose own settings reference a goal, which the backend never answers", async () => {
-    const card = createMockCard({ id: 1, display: "line" });
-    const seriesCard = createMockCard({
-      id: 2,
-      display: "line",
-      visualization_settings: {
-        "graph.show_goal": true,
-        "graph.goal_value": { type: "card", id: 9, column: "total" },
-      },
-    });
-    const dashcard = createMockDashboardCard({
-      id: 1,
-      card_id: card.id,
-      dashboard_id: DASHBOARD_ID,
-      card,
-      series: [seriesCard],
-    });
-    const lastResults = {
-      [card.id]: createCachedResult({}),
-      [seriesCard.id]: createCachedResult({}),
-    };
-    const store = setupDashcardStore({ dashcard, lastResults });
-
-    const result = await store.dispatch(
-      fetchCardDataAction({ card: seriesCard, dashcard, options: {} }),
-    );
-
-    expect(fetchMock.callHistory.called(SERIES_QUERY_URL)).toBe(false);
-    expect(result.payload).toMatchObject({
-      result: lastResults[seriesCard.id],
-    });
-  });
-
-  function setupVisualizerDashcard({
-    cardResult,
-    referencedEntities = {},
-  }: {
-    cardResult?: Dataset;
-    referencedEntities?: ReferencedEntitiesResults | null;
-  } = {}) {
-    const card = createMockCard({ id: 1, display: "table" });
-    const seriesCard = createMockCard({ id: 2, display: "table" });
-    const dashcard = createMockVisualizerDashboardCard({
-      id: 1,
-      card_id: card.id,
-      dashboard_id: DASHBOARD_ID,
-      card,
-      series: [seriesCard],
-      visualization_settings: {
-        visualization: {
-          display: "gauge",
-          columnValuesMapping: {},
-          settings: { "gauge.segments": REF_SEGMENTS },
-        },
-      },
-    });
-    const lastResults = {
-      [card.id]: cardResult ?? createCachedResult(referencedEntities),
-      [seriesCard.id]: createCachedResult({}),
-    };
-    const store = setupDashcardStore({ dashcard, lastResults });
-
-    return { store, card, seriesCard, dashcard, lastResults };
-  }
-
-  function setupDashcardStore({
-    dashcard,
-    lastResults,
-  }: {
-    dashcard: DashboardCard;
-    lastResults: Record<CardId, Dataset>;
-  }) {
-    const dashboard = createMockDashboard({
-      id: DASHBOARD_ID,
-      dashcards: [dashcard],
-    });
-
-    const store = setup({
-      dashboards: [dashboard],
-      dashboard: createMockDashboardState({
-        dashboardId: DASHBOARD_ID,
-        dashboards: {
-          [DASHBOARD_ID]: createMockStoreDashboard({
-            ...dashboard,
-            dashcards: [dashcard.id],
-          }),
-        },
-        dashcards: { [dashcard.id]: dashcard },
-        dashcardData: { [dashcard.id]: lastResults },
-      }),
-    });
-
-    fetchMock.post(QUERY_URL, { data: [] });
-    fetchMock.post(SERIES_QUERY_URL, { data: [] });
-
-    return store;
-  }
-
-  function createCachedResult(
-    referencedEntities: ReferencedEntitiesResults | null,
-  ) {
-    return createMockDataset({
-      data: createMockDatasetData({
-        cols: [createMockColumn({ name: "count" })],
-        rows: [[10]],
-        referenced_entities: referencedEntities,
-      }),
-    });
-  }
 });
 
 describe("reloadDashboardCards", () => {

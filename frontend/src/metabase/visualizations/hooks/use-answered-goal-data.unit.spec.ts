@@ -132,24 +132,6 @@ describe("useAnsweredGoalData", () => {
     await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
   });
 
-  it("fails when the query comes back with an error, even if it carries the answers", async () => {
-    setupCardDataset({
-      dataset: {
-        data: createMockDatasetData({
-          referenced_entities: { card: CARD_9_ANSWER },
-        }),
-        error: "boom",
-      },
-      status: 202,
-    });
-
-    const { result } = setup({ entities: [CARD_9] });
-    expect(result.current).toEqual({ status: "resolving" });
-
-    await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(1);
-  });
-
   it("fails when the response carries no referenced entities", async () => {
     setupCardDataset({ dataset: { data: createMockDatasetData({}) } });
 

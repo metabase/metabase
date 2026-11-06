@@ -119,7 +119,6 @@
     (when (map? chart)
       chart)))
 
-;; keep in sync with `getSavedGoalCard` in data-fetching.ts, which refetches a dashcard for these goals
 (defn goal-scope
   "The chart `card` draws on `dashcard` (nil for a card on its own): its `:display`, the `:viz-settings` maps holding
   its goals, and the `:effective-settings` their toggles are read from. Nil when `card` is a series card of the
