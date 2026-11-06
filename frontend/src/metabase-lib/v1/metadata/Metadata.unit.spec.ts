@@ -58,7 +58,7 @@ describe("Metadata", () => {
       expect(metadata.field(null)).toBeNull();
     });
 
-    describe("when given a fieldId and no tableId", () => {
+    describe("when given fieldId", () => {
       it("should return null when there is no matching field", () => {
         const metadata = createMockMetadata({});
         expect(metadata.field(1)).toBeNull();
@@ -70,20 +70,6 @@ describe("Metadata", () => {
         });
 
         expect(metadata.field(1)).toBeDefined();
-      });
-    });
-
-    describe("when given a fieldId and a concrete tableId", () => {
-      it("should ignore the tableId arg because these fields are stored using the field's id", () => {
-        const metadata = createMockMetadata({
-          fields: [createMockField({ id: 1, table_id: 1 })],
-        });
-
-        const field = metadata.field(1);
-        expect(field).toBeDefined();
-        expect(metadata.field(1, 1)).toBe(field);
-        // to prove the point that the `tableId` is ignored in this scenario
-        expect(metadata.field(1, 2)).toBe(field);
       });
     });
   });
