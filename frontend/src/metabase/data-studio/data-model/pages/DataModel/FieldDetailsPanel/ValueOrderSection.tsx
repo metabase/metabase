@@ -92,8 +92,9 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
       {isOrdinal && order.values.length > 0 && (
         <OrderedValueList
           values={order.values}
-          // A guess is read-only until confirmed; with no guess, edit away
-          isEditable={!readOnly && !order.isInferred}
+          // Editable even while it's a guess: a drag or a bucket change saves
+          // the order, which confirms the rest of the guess with it
+          isEditable={!readOnly}
           onChange={saveOrder}
         />
       )}
@@ -180,7 +181,7 @@ function OrderSummary({
   ).length;
   const summary = t`${order.values.length} values, ${openCount} open`;
   if (order.isInferred) {
-    // Confirming saves the guess, which makes the list below editable
+    // Confirming saves the guess as is; editing the list below saves it too
     return (
       <InferredValue
         value={summary}

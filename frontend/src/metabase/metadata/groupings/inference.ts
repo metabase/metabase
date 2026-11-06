@@ -1,6 +1,5 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { isMilestoneField } from "metabase/metadata/lifecycle";
 import type { SegmentGroup } from "metabase/metadata/segment-groups";
 import type { PeriodGranularity } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
@@ -115,28 +114,57 @@ export function getBuiltInGroupings(field: Field): Grouping[] {
 
 const nameOf = (field: Field) => field.name.toLowerCase();
 
-const START_RE = /^(created_(at|on|date)|start(ed)?_at|opened_at)$/;
 const DATE_SUFFIX_RE = /_(at|on|date|time)$/;
 const SCORE_RE = /(score|rate|ratio|pct|percent|share)$/;
 const AGE_RE = /(^|_)age$/;
 
-const isStartField = (field: Field) =>
-  field.semantic_type === "type/CreationTimestamp" ||
-  START_RE.test(nameOf(field));
+/** A date column's last word without its suffix: "deal_closed_at" → "closed" */
+const getDateWord = (field: Field) =>
+  nameOf(field).replace(DATE_SUFFIX_RE, "").split("_").at(-1) ?? "";
 
-const isEndingMilestone = (field: Field) =>
-  isMilestoneField(field) &&
-  field.semantic_type !== "type/CancelationTimestamp" &&
-  field.semantic_type !== "type/DeletionTimestamp";
+// Words that mark when a record starts
+const START_WORDS = ["created", "started", "start", "opened", "began", "begin"];
+
+// Words that mark when it ends, most telling first, with the verb that names
+// the time to them: "closed_at" gives "Time to close"
+const END_VERBS: [word: string, verb: string][] = [
+  ["closed", "close"],
+  ["completed", "complete"],
+  ["resolved", "resolve"],
+  ["solved", "solve"],
+  ["finished", "finish"],
+  ["ended", "end"],
+  ["end", "end"],
+];
+
+const isStartField = (field: Field) =>
+  isDate(field) &&
+  (field.semantic_type === "type/CreationTimestamp" ||
+    START_WORDS.includes(getDateWord(field)));
+
+/** The end timestamp paired with a start one, and the verb for its cut */
+function findEndField(
+  start: Field,
+  fields: Field[],
+): { field: Field; verb: string } | undefined {
+  for (const [word, verb] of END_VERBS) {
+    const field = fields.find(
+      (other) =>
+        !isSameField(other, start) &&
+        isDate(other) &&
+        getDateWord(other) === word,
+    );
+    if (field) {
+      return { field, verb };
+    }
+  }
+  return undefined;
+}
 
 const isScoreLike = (field: Field) =>
   isPercentage(field) || isScore(field) || SCORE_RE.test(nameOf(field));
 
 const isAgeLike = (field: Field) => AGE_RE.test(nameOf(field));
-
-/** "closed_at" → "closed" */
-const getMilestoneWord = (field: Field) =>
-  nameOf(field).replace(DATE_SUFFIX_RE, "").replace(/_/g, " ");
 
 /**
  * Groupings sync proposes for a column, each with why. Names are stable, so
@@ -156,25 +184,20 @@ export function inferGroupings(
       kind: "time",
       definition: { type: "elapsed", to: "now", unit: "day" },
     });
-    if (isStartField(field)) {
-      fields
-        .filter(
-          (other) => !isSameField(other, field) && isEndingMilestone(other),
-        )
-        .forEach((milestone) => {
-          const word = getMilestoneWord(milestone);
-          groupings.push({
-            name: t`Time until ${word}`,
-            source: "sync",
-            signal: t`${field.display_name} starts a record and ${milestone.display_name} marks a milestone`,
-            kind: "time",
-            definition: {
-              type: "elapsed",
-              to: getRawTableFieldId(milestone),
-              unit: "day",
-            },
-          });
-        });
+    // Only a start/end pair gets one, like created and closed
+    const end = isStartField(field) ? findEndField(field, fields) : undefined;
+    if (end) {
+      groupings.push({
+        name: t`Time to ${end.verb}`,
+        source: "sync",
+        signal: t`${field.display_name} and ${end.field.display_name} mark when a record starts and ends`,
+        kind: "time",
+        definition: {
+          type: "elapsed",
+          to: getRawTableFieldId(end.field),
+          unit: "day",
+        },
+      });
     }
   }
 

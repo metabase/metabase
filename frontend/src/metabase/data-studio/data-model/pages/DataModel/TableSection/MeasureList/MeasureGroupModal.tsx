@@ -6,10 +6,8 @@ import {
   createMeasureGroupId,
 } from "metabase/metadata/measure-groups";
 import {
-  ActionIcon,
   Button,
   Group,
-  Icon,
   Modal,
   Select,
   Stack,
@@ -17,6 +15,8 @@ import {
   TextInput,
 } from "metabase/ui";
 import type { Measure, MeasureId } from "metabase-types/api";
+
+import { GroupMemberList } from "../GroupMemberList";
 
 type MeasureGroupModalProps = {
   /** The group to edit; none makes a new one */
@@ -50,13 +50,8 @@ export function MeasureGroupModal({
     ({ id }) => !measureIds.includes(id),
   );
   const canSave = name.trim() !== "" && measureIds.length > 0;
-
-  const moveMeasure = (index: number, offset: number) => {
-    const next = [...measureIds];
-    const [measureId] = next.splice(index, 1);
-    next.splice(index + offset, 0, measureId);
-    setMeasureIds(next);
-  };
+  const getMeasureName = (measureId: MeasureId) =>
+    measures.find(({ id }) => id === measureId)?.name ?? "";
 
   return (
     <Modal
@@ -76,41 +71,6 @@ export function MeasureGroupModal({
 
         <Stack gap="sm">
           <Text fw="bold">{t`Measures`}</Text>
-          {measureIds.length === 0 && (
-            <Text c="text-secondary">{t`Add at least one measure.`}</Text>
-          )}
-          {measureIds.map((measureId, index) => (
-            <Group key={measureId} gap="sm" wrap="nowrap">
-              <Text c="text-secondary" w="1.5rem" ta="right" flex="0 0 auto">
-                {index + 1}
-              </Text>
-              <Text flex={1} truncate>
-                {measures.find(({ id }) => id === measureId)?.name}
-              </Text>
-              <ActionIcon
-                aria-label={t`Move up`}
-                disabled={index === 0}
-                onClick={() => moveMeasure(index, -1)}
-              >
-                <Icon name="chevronup" />
-              </ActionIcon>
-              <ActionIcon
-                aria-label={t`Move down`}
-                disabled={index === measureIds.length - 1}
-                onClick={() => moveMeasure(index, 1)}
-              >
-                <Icon name="chevrondown" />
-              </ActionIcon>
-              <ActionIcon
-                aria-label={t`Remove`}
-                onClick={() =>
-                  setMeasureIds(measureIds.filter((id) => id !== measureId))
-                }
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            </Group>
-          ))}
           <Select
             aria-label={t`Add a measure`}
             placeholder={
@@ -132,6 +92,22 @@ export function MeasureGroupModal({
               }
             }}
           />
+          {measureIds.length === 0 ? (
+            <Text c="text-secondary">{t`Add at least one measure.`}</Text>
+          ) : (
+            <GroupMemberList<MeasureId>
+              items={measureIds}
+              getId={(measureId) => measureId}
+              getName={getMeasureName}
+              renderContent={(measureId) => (
+                <Text truncate>{getMeasureName(measureId)}</Text>
+              )}
+              onReorder={setMeasureIds}
+              onRemove={(measureId) =>
+                setMeasureIds(measureIds.filter((id) => id !== measureId))
+              }
+            />
+          )}
         </Stack>
 
         <Group justify="space-between">

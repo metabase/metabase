@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import {
   DetailsRow,
   DetailsTable,
@@ -62,11 +63,13 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
     useGroupings();
   const [editor, setEditor] = useState<EditorState | null>(null);
 
-  // Keys and free text don't group; categories and flags can, once an admin adds one
+  // Keys and free text don't group; categories and flags can, once an admin
+  // adds one, and a foreign key can group by a column of the table it points to
   const canHaveGroupings =
     resolved.builtIns.length > 0 ||
     resolved.groupings.length > 0 ||
-    ((isCategory(field) || isBoolean(field)) && !isPK(field) && !isFK(field));
+    ((isCategory(field) || isBoolean(field)) && !isPK(field) && !isFK(field)) ||
+    (isFK(field) && field.target != null);
   if (!canHaveGroupings) {
     return null;
   }
@@ -76,9 +79,9 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
   );
 
   return (
-    <SidebarSection title={t`Groupings`}>
+    <SidebarSection title={t`Field value groupings`}>
       <Text size="sm" c="text-secondary">
-        {t`Ways to group this column's values in Group by. People see each one by its name.`}
+        {t`In the query builders, users can select these in the Group By section.`}
       </Text>
       <DetailsTable>
         <DetailsRow
@@ -239,25 +242,36 @@ function GroupingRowValue({
     grouping.kind === "partition" && grouping.definition.type === "process";
   // Only process partitions read the status order
   const order = useValueOrder(isProcess ? field : undefined);
+  // Only related groupings read the table the foreign key points to
+  const relatedTableId =
+    grouping.kind === "related" ? field.target?.table_id : undefined;
+  const { data: relatedTable, isLoading: isLoadingRelated } =
+    useGetTableQueryMetadataQuery(
+      relatedTableId != null ? { id: relatedTableId } : skipToken,
+    );
   const summary = getGroupingSummary(grouping, {
     fields: context.fields,
     segmentGroups: context.segmentGroups,
     valueOrder: order.values,
+    relatedTable,
   });
+  const missingLabel =
+    grouping.kind === "related"
+      ? t`Column not found`
+      : t`Segment group not found`;
 
   return (
-    <Group justify="space-between" gap="sm" wrap="nowrap">
+    <Group justify="space-between" gap="sm" wrap="nowrap" py="xs">
       <Group gap="xs" wrap="nowrap" miw={0}>
-        {order.isLoading ? (
+        {order.isLoading || isLoadingRelated ? (
           <Loader size="xs" />
         ) : summary == null ? (
-          <Text c="text-disabled">{t`Segment group not found`}</Text>
+          <Text c="text-disabled">{missingLabel}</Text>
         ) : summary === "" ? (
           <Text c="text-disabled">{t`No cached values`}</Text>
         ) : (
-          <Text truncate title={summary}>
-            {summary}
-          </Text>
+          // Wraps rather than truncates, so long orders stay readable
+          <Text>{summary}</Text>
         )}
         {grouping.isInferred && grouping.signal != null && (
           <InferredIcon description={t`Inferred: ${grouping.signal}`} />

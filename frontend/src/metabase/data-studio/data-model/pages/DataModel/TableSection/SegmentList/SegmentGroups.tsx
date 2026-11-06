@@ -160,6 +160,10 @@ export function SegmentGroupItem({
     getSegmentGroupSourceLabel(group.source, sourceField),
     group.kind === "overlapping" ? t`Members can overlap` : null,
   ].filter(Boolean);
+  const segments = table.segments ?? [];
+  const hasMembers = group.members.some(({ segmentId }) =>
+    segments.some(({ id }) => id === segmentId),
+  );
 
   return (
     <Card
@@ -180,9 +184,11 @@ export function SegmentGroupItem({
           <Icon name="pie" c="core-brand" />
           <Text fw="bold">{group.name}</Text>
         </Flex>
-        <Text lh="lg">
-          {getMemberLabels(group, table.segments ?? []).join(" · ")}
-        </Text>
+        {hasMembers ? (
+          <Text lh="lg">{getMemberLabels(group, segments).join(" · ")}</Text>
+        ) : (
+          <Text lh="lg" c="text-disabled">{t`No segments yet`}</Text>
+        )}
         {notes.length > 0 && (
           <Text size="sm" c="text-secondary">
             {notes.join(" · ")}

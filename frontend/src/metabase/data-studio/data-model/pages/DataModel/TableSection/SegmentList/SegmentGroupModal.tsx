@@ -9,10 +9,8 @@ import {
   getSegmentGroupKindLabel,
 } from "metabase/metadata/segment-groups";
 import {
-  ActionIcon,
   Button,
   Group,
-  Icon,
   Modal,
   Radio,
   Select,
@@ -22,6 +20,8 @@ import {
   TextInput,
 } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
+
+import { GroupMemberList } from "../GroupMemberList";
 
 type SegmentGroupModalProps = {
   /** The group to edit; none makes a new one */
@@ -58,14 +58,8 @@ export function SegmentGroupModal({
   const availableSegments = segments.filter(
     ({ id }) => !members.some(({ segmentId }) => segmentId === id),
   );
-  const canSave = name.trim() !== "" && members.length >= 2;
-
-  const moveMember = (index: number, offset: number) => {
-    const next = [...members];
-    const [member] = next.splice(index, 1);
-    next.splice(index + offset, 0, member);
-    setMembers(next);
-  };
+  // A group can start empty and gain segments as they're made
+  const canSave = name.trim() !== "";
 
   const handleSave = () =>
     onSave({
@@ -99,59 +93,38 @@ export function SegmentGroupModal({
           data-autofocus
         />
 
+        <Radio.Group
+          label={t`Kind`}
+          value={kind}
+          onChange={(value) =>
+            setKind(value === "overlapping" ? value : "partition")
+          }
+        >
+          <Stack gap="sm" mt="sm">
+            <Radio
+              value="partition"
+              label={getSegmentGroupKindLabel("partition")}
+              description={t`Each row belongs to only one segment so they can be compared side by side.`}
+            />
+            <Radio
+              value="overlapping"
+              label={getSegmentGroupKindLabel("overlapping")}
+              description={t`A row can be in several segments. These are offered only as filters, not as group bys.`}
+            />
+          </Stack>
+        </Radio.Group>
+
+        {kind === "partition" && (
+          <Switch
+            label={t`Group the rest as Other`}
+            description={t`Rows that don't belong to any segment show up last, within "Other".`}
+            checked={other}
+            onChange={(event) => setOther(event.currentTarget.checked)}
+          />
+        )}
+
         <Stack gap="sm">
-          <Text fw="bold">{t`Members`}</Text>
-          {members.length === 0 && (
-            <Text c="text-secondary">{t`Add at least two segments.`}</Text>
-          )}
-          {members.map((member, index) => (
-            <Group key={member.segmentId} gap="sm" wrap="nowrap">
-              <Text c="text-secondary" w="1.5rem" ta="right" flex="0 0 auto">
-                {index + 1}
-              </Text>
-              <TextInput
-                aria-label={t`Label for ${getSegmentName(segments, member)}`}
-                value={member.label}
-                placeholder={getSegmentName(segments, member)}
-                flex={1}
-                onChange={(event) =>
-                  setMembers(
-                    members.map((known) =>
-                      known.segmentId === member.segmentId
-                        ? { ...known, label: event.target.value }
-                        : known,
-                    ),
-                  )
-                }
-              />
-              <ActionIcon
-                aria-label={t`Move up`}
-                disabled={index === 0}
-                onClick={() => moveMember(index, -1)}
-              >
-                <Icon name="chevronup" />
-              </ActionIcon>
-              <ActionIcon
-                aria-label={t`Move down`}
-                disabled={index === members.length - 1}
-                onClick={() => moveMember(index, 1)}
-              >
-                <Icon name="chevrondown" />
-              </ActionIcon>
-              <ActionIcon
-                aria-label={t`Remove`}
-                onClick={() =>
-                  setMembers(
-                    members.filter(
-                      ({ segmentId }) => segmentId !== member.segmentId,
-                    ),
-                  )
-                }
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            </Group>
-          ))}
+          <Text fw="bold">{t`Member segments`}</Text>
           <Select
             aria-label={t`Add a segment`}
             placeholder={
@@ -176,37 +149,38 @@ export function SegmentGroupModal({
               }
             }}
           />
+          {members.length > 0 && (
+            <GroupMemberList<SegmentGroupMember>
+              items={members}
+              getId={({ segmentId }) => segmentId}
+              getName={(member) => getSegmentName(segments, member)}
+              renderContent={(member) => (
+                <TextInput
+                  aria-label={t`Label for ${getSegmentName(segments, member)}`}
+                  value={member.label}
+                  placeholder={getSegmentName(segments, member)}
+                  onChange={(event) =>
+                    setMembers(
+                      members.map((known) =>
+                        known.segmentId === member.segmentId
+                          ? { ...known, label: event.target.value }
+                          : known,
+                      ),
+                    )
+                  }
+                />
+              )}
+              onReorder={setMembers}
+              onRemove={(member) =>
+                setMembers(
+                  members.filter(
+                    ({ segmentId }) => segmentId !== member.segmentId,
+                  ),
+                )
+              }
+            />
+          )}
         </Stack>
-
-        <Radio.Group
-          label={t`Kind`}
-          value={kind}
-          onChange={(value) =>
-            setKind(value === "overlapping" ? value : "partition")
-          }
-        >
-          <Stack gap="sm" mt="sm">
-            <Radio
-              value="partition"
-              label={getSegmentGroupKindLabel("partition")}
-              description={t`Each row is in at most one member, so they can be compared side by side.`}
-            />
-            <Radio
-              value="overlapping"
-              label={getSegmentGroupKindLabel("overlapping")}
-              description={t`A row can be in several members. Offered as filters, not as a Group by.`}
-            />
-          </Stack>
-        </Radio.Group>
-
-        {kind === "partition" && (
-          <Switch
-            label={t`Group the rest as Other`}
-            description={t`Rows in no member show up last, as Other.`}
-            checked={other}
-            onChange={(event) => setOther(event.currentTarget.checked)}
-          />
-        )}
 
         <Group justify="space-between">
           {group ? (

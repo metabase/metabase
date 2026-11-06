@@ -23,6 +23,7 @@ import {
   type Grouping,
   type PartitionDefinition,
   type PartitionValueGroup,
+  type RelatedDefinition,
   TIME_EXTRACTS,
   TIME_UNITS,
   type TimeDefinition,
@@ -143,6 +144,17 @@ function parsePartitionDefinition(value: unknown): PartitionDefinition | null {
   return null;
 }
 
+function parseRelatedDefinition(value: unknown): RelatedDefinition | null {
+  if (!isObject(value) || typeof value.targetFieldId !== "number") {
+    return null;
+  }
+  return {
+    targetFieldId: value.targetFieldId,
+    groupingName:
+      typeof value.groupingName === "string" ? value.groupingName : null,
+  };
+}
+
 function parseGrouping(value: unknown): SavedGrouping[] {
   if (!isObject(value) || typeof value.name !== "string") {
     return [];
@@ -169,6 +181,12 @@ function parseGrouping(value: unknown): SavedGrouping[] {
     const definition = parsePartitionDefinition(value.definition);
     return definition
       ? [{ ...base, source: "admin", kind: "partition", definition }]
+      : [];
+  }
+  if (value.kind === "related") {
+    const definition = parseRelatedDefinition(value.definition);
+    return definition
+      ? [{ ...base, source: "admin", kind: "related", definition }]
       : [];
   }
   return [];
