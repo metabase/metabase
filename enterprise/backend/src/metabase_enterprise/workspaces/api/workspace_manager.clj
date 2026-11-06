@@ -131,7 +131,7 @@
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/config"
-  :- [:map {:closed true}
+  :- [:map
       [:status  [:= 200]]
       [:headers [:map-of :string :string]]
       [:body    :string]]
