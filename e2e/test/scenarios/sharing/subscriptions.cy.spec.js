@@ -100,6 +100,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       },
     });
 
+    cy.findByRole("button", { name: "Confirm unsubscribe" }).click();
     cy.findByLabelText("error message").should("exist");
   });
 
@@ -343,7 +344,8 @@ describe("scenarios > dashboard > subscriptions", () => {
             pathname: "/api/pulse/unsubscribe/undo",
           }).as("resubscribe");
 
-          cy.findByText("Unsubscribe").click();
+          cy.findByRole("link", { name: "Unsubscribe" }).click();
+          cy.findByRole("button", { name: "Confirm unsubscribe" }).click();
           cy.wait("@unsubscribe");
 
           cy.contains(
@@ -364,7 +366,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.sidebar().findByText(nonUserEmail).should("exist");
 
         H.openEmailPage(dashboardName).then(() => {
-          cy.findByText("Unsubscribe").click();
+          cy.findByRole("link", { name: "Unsubscribe" }).click();
+          cy.findByRole("button", { name: "Confirm unsubscribe" }).click();
           cy.wait("@unsubscribe");
           cy.contains(
             `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,

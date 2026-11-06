@@ -34,9 +34,8 @@ type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 
 export const UnsubscribePage = (): JSX.Element => {
   const [searchParams] = useSearchParams();
-  const [subscriptionChange, setSubscriptionChange] = useState<Subscription>(
-    SUBSCRIPTION.UNSUBSCRIBE,
-  );
+  const [subscriptionChange, setSubscriptionChange] =
+    useState<Subscription | null>(null);
 
   const hash = searchParams.get("hash") ?? undefined;
   const email = searchParams.get("email") ?? undefined;
@@ -68,6 +67,28 @@ export const UnsubscribePage = (): JSX.Element => {
     return (
       <UnsubscribeRoot>
         <LoadingAndErrorWrapper loading={isLoading} />
+      </UnsubscribeRoot>
+    );
+  }
+
+  if (subscriptionChange === null) {
+    return (
+      <UnsubscribeRoot>
+        <Stack align="center">
+          <Text fw={700} c="text-secondary" ta="center">
+            {jt`Are you sure you want to unsubscribe ${(
+              <ExternalLink key="link" href={`mailto:${email}`}>
+                {email}
+              </ExternalLink>
+            )}?`}
+          </Text>
+          <Button
+            variant="filled"
+            onClick={() => setSubscriptionChange(SUBSCRIPTION.UNSUBSCRIBE)}
+          >
+            {t`Confirm unsubscribe`}
+          </Button>
+        </Stack>
       </UnsubscribeRoot>
     );
   }
@@ -194,6 +215,10 @@ function useUnsubscribeRequest({
       throw new Error(ERRORS.MISSING_REQUIRED_PARAMETERS);
     }
 
+    if (subscriptionChange === null) {
+      return;
+    }
+
     const isUnsubscribe = subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE;
 
     const triggers = notificationHandlerId
@@ -295,7 +320,7 @@ interface UseUnsubscribeProps {
   email: string | undefined;
   pulseId: string | undefined;
   notificationHandlerId: string | undefined;
-  subscriptionChange: Subscription;
+  subscriptionChange: Subscription | null;
 }
 
 interface UseUnsubscribeResult {
