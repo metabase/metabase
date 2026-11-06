@@ -98,7 +98,7 @@ describe("QuestionPane", () => {
     expect(onItemClick).toHaveBeenCalledWith({
       type: "field",
       tableId: getQuestionVirtualTableId(CARD_ID),
-      columnName: "count",
+      columnIndex: 0,
     });
   });
 });
