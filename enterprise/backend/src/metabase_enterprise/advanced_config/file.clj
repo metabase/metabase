@@ -307,8 +307,7 @@
   []
   (let [parsed (config-from-disk)
         result (initialize! parsed {:expand-templates? true})]
-    ;; Only the boot path locks. Runtime config uploads (POST /api/ee/advanced-config)
-    ;; call `initialize!` directly, bypassing this wrapper, so they never lock.
+    ;; Only the boot path locks. A direct `initialize!` call bypasses this wrapper, so it never locks.
     (when (get-in parsed [:config :workspace])
       (ws/mark-locked-by-config!))
     result))
