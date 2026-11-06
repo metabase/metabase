@@ -24,13 +24,13 @@
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
-   [metabase.util :as u]
    [metabase.util.quoting :as quoting]
    [toucan2.core :as t2]))
 
@@ -510,10 +510,11 @@
 
 (defn- dashcard-xml
   "One dashcard of a saved dashboard. A card the user can't read shows its slot only."
-  [{:keys [id card row col size_x size_y visualization_settings]}]
+  [{:keys [id card row col size_x size_y visualization_settings all_tabs]}]
   (let [readable (when (and card (mi/can-read? card)) card)]
     (str "<dashcard"
-         (xml-attrs :id id
+         (xml-attrs :dashcard_id id
+                    :all_tabs all_tabs
                     :card_id (:id readable)
                     :name (:name readable)
                     :display (some-> (or (:display readable)
@@ -525,29 +526,24 @@
 (defn- dashboard-lines
   "The lines of the saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards
   they connect to."
+  ;; Attribute names and the filter element match the dashboard reads in `read_resource`, so the model reads one shape.
   [{:keys [id name description tabs dashcards parameters]}]
-  (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
-        connections (fn [parameter-id]
-                      (not-empty (for [dc dashcards
-                                       :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
-                                   (:id dc))))
-        card-lines  (fn [indent dcs] (for [dc dcs] (str indent (dashcard-xml dc))))]
+  (let [by-tab     (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
+        card-lines (fn [indent dcs] (for [dc dcs] (str indent (dashcard-xml dc))))]
     [(str "  <dashboard" (xml-attrs :id id :name name) ">")
      (when description
        (str "    <description>" (llm-shape/escape-xml-content description) "</description>"))
      (if (seq tabs)
-       (for [{tab-id :id tab-name :name} (sort-by :position tabs)]
-         [(str "    <tab" (xml-attrs :id tab-id :name tab-name) ">")
-          (card-lines "      " (get by-tab tab-id))
-          "    </tab>"])
+       ;; A dashcard from before the dashboard had tabs has no tab, and the frontend shows it on every tab
+       ;; (`getVisibleCards`), so it comes before the tabs, marked `all_tabs`, as in the items read.
+       [(card-lines "    " (map #(assoc % :all_tabs true) (get by-tab nil)))
+        (for [{tab-id :id tab-name :name} (sort-by :position tabs)]
+          [(str "    <tab" (xml-attrs :tab_id tab-id :name tab-name) ">")
+           (card-lines "      " (get by-tab tab-id))
+           "    </tab>"])]
        (card-lines "    " (get by-tab nil)))
-     (for [{parameter-id :id :as parameter} parameters]
-       (str "    <filter"
-            (xml-attrs :id parameter-id
-                       :name (:name parameter)
-                       :type (some-> (:type parameter) u/qualified-name)
-                       :connected_dashcards (some->> (connections parameter-id) ids-text))
-            "/>"))
+     (for [parameter (entity-details/with-filter-connections parameters dashcards)]
+       (str "    " (llm-shape/dashboard-filter->xml parameter)))
      "  </dashboard>"]))
 
 (defn- action

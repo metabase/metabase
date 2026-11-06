@@ -739,25 +739,28 @@
   "Cap on a dashboard filter's name."
   100)
 
+(defn dashboard-filter->xml
+  "The `<filter>` element for the dashboard filter `parameter`.
+  It shows the filter's default and the dashcards it filters (`:connected_dashcards`), when it has them."
+  [{:keys [id name type default connected_dashcards]}]
+  (str "<filter id=\"" (escape-xml id)
+       "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
+       "\" type=\"" (escape-xml (u/qualified-name type)) "\""
+       (when (some? default)
+         (str " default=\"" (escape-xml (if (string? default) default (json/encode default))) "\""))
+       (when (seq connected_dashcards)
+         (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
+       "/>"))
+
 (defn- dashboard-filters->xml
   "The `<filters>` block for a dashboard's `parameters`, or nil when it has none.
-  Each filter shows its default value and the ids of the dashcards it filters, when it has them.
   Lists at most [[max-dashboard-filters]] of them and says how many were left out."
   [parameters]
   (when (seq parameters)
     (let [total (count parameters)]
       (str "  <filters>\n"
            (str/join (for [param (take max-dashboard-filters parameters)]
-                       (str "    <filter id=\"" (escape-xml (:id param))
-                            "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
-                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\""
-                            (when-some [default (:default param)]
-                              (str " default=\""
-                                   (escape-xml (if (string? default) default (json/encode default)))
-                                   "\""))
-                            (when-let [dashcard-ids (seq (:connected_dashcards param))]
-                              (str " connected_dashcards=\"" (str/join ", " dashcard-ids) "\""))
-                            "/>\n")))
+                       (str "    " (dashboard-filter->xml param) "\n")))
            (when (> total max-dashboard-filters)
              (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
                   (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))
