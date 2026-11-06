@@ -218,7 +218,7 @@
    :bundle       bundle
    :bundle_hash  (cv.tu/bundle-hash bundle)})
 
-(defn- load-as-new-and-over-existing
+(defn- load-as-new-and-over-existing!
   "The rows stored by loading `ingested` as a new plugin, and over an active plugin of its identifier."
   [{:keys [identifier] :as ingested}]
   [(mt/with-model-cleanup [:model/CustomVizPlugin]
@@ -303,7 +303,7 @@
 (deftest load-keeps-a-plugin-with-a-bitmap-icon-active-test
   (testing "a plugin exported with a bitmap icon, from before icons had to be SVG files, keeps working once imported"
     (is (=? (repeat 2 {:status :active :error_message nil})
-            (load-as-new-and-over-existing
+            (load-as-new-and-over-existing!
              (ingested-plugin "bitmap-viz" (cv.tu/valid-bundle-bytes "bitmap-viz" {:icon "icon.png"})))))))
 
 (deftest load-rejects-bundle-identifier-mismatch-test
@@ -311,5 +311,5 @@
     (is (=? (repeat 2 {:identifier    "calendar-heatmap-viz"
                        :status        :error
                        :error_message #(str/includes? % "does not match")})
-            (load-as-new-and-over-existing
+            (load-as-new-and-over-existing!
              (ingested-plugin "calendar-heatmap-viz" (cv.tu/valid-bundle-bytes "thumbs-viz")))))))
