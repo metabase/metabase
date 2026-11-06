@@ -9,13 +9,14 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createLibraryWithTable } from "e2e/support/test-library-data";
 import { uuid } from "metabase/utils/uuid";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("scenarios > embedding > full app", () => {
@@ -518,6 +519,94 @@ describe("scenarios > embedding > full app", () => {
         });
       });
     });
+
+    describe("metric", () => {
+      it("should select a metric, and switch to the full data picker at 100 tables, models, and metrics", () => {
+        const metricDetails = {
+          ...ordersCardDetails,
+          name: "Orders count",
+          type: "metric",
+          query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+        };
+        H.createQuestion(metricDetails);
+
+        cy.log("show the simple data picker below 100 data sources");
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByRole("link", { name: "Orders" }).should("be.visible");
+          cy.findByText("Raw Data").should("not.exist");
+        });
+
+        cy.log("select a metric as the starting data source");
+        selectDataSource(metricDetails.name);
+
+        // A metric becomes the aggregation on the table it is built from
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+        H.getNotebookStep("summarize")
+          .findByText(metricDetails.name)
+          .should("be.visible");
+
+        cy.log("switch to the full data picker at 100 data sources");
+        // Tables and models alone stay under 100, so only the metrics can
+        // push the count over
+        Cypress._.times(100, (index) => {
+          H.createQuestion({
+            ...ordersCardDetails,
+            name: `Orders count ${index}`,
+            type: "metric",
+            query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+          });
+        });
+
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("be.visible");
+        });
+      });
+    });
+
+    describe("semantic-layer", () => {
+      it("should count the metrics in the Library toward the full data picker switch", () => {
+        const metricDetails = {
+          ...ordersCardDetails,
+          type: "metric",
+          query: { ...ordersCardDetails.query, aggregation: [["count"]] },
+        };
+        cy.signInAsAdmin();
+        Cypress._.times(50, (index) => {
+          H.createQuestion({ ...metricDetails, name: `Orders count ${index}` });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByRole("link", { name: "Orders" }).should("be.visible");
+          cy.findByText("Raw Data").should("not.exist");
+        });
+
+        // The other half of the 100 metrics goes into the Library, so only
+        // the Library's metrics can push the count over
+        cy.signInAsAdmin();
+        H.createLibrary().then(({ metricsCollectionId }) => {
+          Cypress._.times(50, (index) => {
+            H.createQuestion({
+              ...metricDetails,
+              name: `Library orders count ${index}`,
+            }).then(({ body: metric }) => {
+              cy.request("PUT", `/api/card/${metric.id}`, {
+                collection_id: metricsCollectionId,
+              });
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("be.visible");
+        });
+      });
+    });
   });
 
   describe("notebook multi-stage data picker", () => {
@@ -680,12 +769,15 @@ describe("scenarios > embedding > full app", () => {
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
-    it('should respect "entity_types" search parameter and never offer questions or metrics (EMB-228)', () => {
+    it('should show tables, models, and metrics without "entity_types", and only tables with `entity_types=table` (EMB-228)', () => {
       H.createQuestion({
         ...ordersCountCardDetails,
         type: "metric",
         collection_id: null,
       });
+      cy.signInAsAdmin();
+      createLibraryWithTable();
+      cy.signInAsNormalUser();
       cy.intercept({
         method: "GET",
         pathname: "/api/database",
@@ -701,7 +793,8 @@ describe("scenarios > embedding > full app", () => {
         cy.findByText("Models").should("be.visible");
         cy.findByText("Raw Data").should("be.visible");
         cy.findByText("Saved Questions").should("not.exist");
-        cy.findByText("Metrics").should("not.exist");
+        cy.findByText("Metrics").should("be.visible");
+        cy.findByText("Library").should("be.visible");
       });
 
       cy.log("test providing `entity_types` as an empty string");
@@ -1056,6 +1149,168 @@ describe("scenarios > embedding > full app", () => {
         verifyTableSelected({
           tableName: "Products",
           databaseName: "Sample Database",
+        });
+      });
+    });
+
+    describe("metric", () => {
+      beforeEach(() => {
+        H.createQuestion({
+          ...ordersCountCardDetails,
+          type: "metric",
+          collection_id: null,
+        });
+        cy.intercept({
+          method: "GET",
+          pathname: "/api/database",
+          query: {
+            saved: "true",
+          },
+        }).as("getDatabases");
+      });
+
+      it("should select a metric as the starting data source", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        cy.wait("@getDatabases");
+        selectCard({
+          cardName: ordersCountCardDetails.name,
+          cardType: "metric",
+          collectionNames: [],
+        });
+
+        // A metric becomes the aggregation on the table it is built from,
+        // rather than the source card a model or a question would become.
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+        H.getNotebookStep("summarize")
+          .findByText(ordersCountCardDetails.name)
+          .should("be.visible");
+      });
+
+      it("should not be able to join a metric", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        cy.wait("@getDatabases");
+        selectTable({ tableName: "Orders" });
+
+        H.getNotebookStep("data").button("Join data").click();
+        goBackToBucketStep();
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Metrics").should("not.exist");
+        });
+      });
+    });
+
+    describe("semantic-layer", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        createLibraryWithTable();
+        cy.signInAsNormalUser();
+      });
+
+      it("should select a table published in the Library", () => {
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").click();
+          cy.findByText("Orders").click();
+        });
+        cy.wait("@getTableMetadata");
+
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+      });
+
+      it("should join a table published in the Library", () => {
+        cy.signInAsAdmin();
+        H.publishTables({ table_ids: [PRODUCTS_ID] });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        selectTable({ tableName: "Orders" });
+
+        H.getNotebookStep("data").button("Join data").click();
+        goBackToBucketStep();
+        H.popover().within(() => {
+          cy.findByText("Library").click();
+          cy.findByText("Products").click();
+        });
+
+        H.getNotebookStep("join")
+          .findByLabelText("Right table")
+          .findByText("Products")
+          .should("be.visible");
+      });
+
+      it("should select a table published in a Library subfolder", () => {
+        cy.signInAsAdmin();
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          // A collection created in a Library folder takes that folder's type
+          H.createCollection({
+            name: "Finance",
+            parent_id: dataCollection.id,
+          }).then(({ body: subfolder }) => {
+            H.publishTables({
+              table_ids: [PRODUCTS_ID],
+              collection_id: subfolder.id,
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Library").click();
+          cy.findByText("Finance").click();
+          cy.findByText("Products").click();
+        });
+        cy.wait("@getTableMetadata");
+
+        H.getNotebookStep("data").findByText("Products").should("be.visible");
+      });
+
+      it("should not offer a Library whose only content is archived", () => {
+        cy.signInAsAdmin();
+        H.unpublishTables({ table_ids: [ORDERS_ID] });
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const metricsCollection = body.effective_children.find(
+            (collection) => collection.type === "library-metrics",
+          );
+          H.createQuestion({ ...ordersCountCardDetails, type: "metric" }).then(
+            ({ body: metric }) => {
+              cy.request("PUT", `/api/card/${metric.id}`, {
+                collection_id: metricsCollection.id,
+              });
+              cy.request("PUT", `/api/card/${metric.id}`, { archived: true });
+            },
+          );
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("not.exist");
+        });
+      });
+
+      it("should not offer a Library whose only content the user can't read", () => {
+        cy.signInAsAdmin();
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          cy.updateCollectionGraph({
+            [ALL_USERS_GROUP]: { [dataCollection.id]: "none" },
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Raw Data").should("be.visible");
+          cy.findByText("Library").should("not.exist");
         });
       });
     });

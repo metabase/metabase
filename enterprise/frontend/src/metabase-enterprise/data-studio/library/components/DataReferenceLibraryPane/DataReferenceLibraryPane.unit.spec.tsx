@@ -37,7 +37,7 @@ const setup = (opts: SetupOpts = {}) => {
   const onBack = jest.fn();
   const onClose = jest.fn();
 
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupSearchEndpoints(tables);
 
   renderWithProviders(

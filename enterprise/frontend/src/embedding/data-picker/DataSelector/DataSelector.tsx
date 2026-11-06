@@ -19,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import { canUserCreateQueries } from "metabase/current-user";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getShallowQuestions } from "metabase/metadata-store";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   type DataSelectorDatabase,
   type DataSelectorSchema,
@@ -41,6 +42,7 @@ import type {
   CardType,
   CollectionId,
   DatabaseId,
+  LibraryCollection,
   ListDatabasesRequest,
   SchemaId,
   SearchModel,
@@ -58,24 +60,63 @@ import {
   type TriggerComponentProps,
 } from "../TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "../constants";
+import { LibraryPicker } from "../library-picker/LibraryPicker";
 import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
 import type { DataPickerDataType, SavedEntityType } from "../types";
 import { getDataTypes } from "../utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
 const DATA_BUCKET_STEP = "BUCKET";
-// chooses a database or a model
+// chooses a database
 const DATABASE_STEP = "DATABASE";
 // chooses a schema (given that a database has already been selected)
 const SCHEMA_STEP = "SCHEMA";
 // chooses a table (database has already been selected)
 const TABLE_STEP = "TABLE";
+// chooses a table or a metric published in the Library
+const LIBRARY_STEP = "LIBRARY";
+// chooses a model
+const MODEL_STEP = "MODEL";
+// chooses a saved question
+const SAVED_QUESTION_STEP = "SAVED_QUESTION";
+// chooses a metric
+const METRIC_STEP = "METRIC";
 
 type DataSelectorStep =
   | typeof DATA_BUCKET_STEP
   | typeof DATABASE_STEP
   | typeof SCHEMA_STEP
-  | typeof TABLE_STEP;
+  | typeof TABLE_STEP
+  | typeof LIBRARY_STEP
+  | typeof MODEL_STEP
+  | typeof SAVED_QUESTION_STEP
+  | typeof METRIC_STEP;
+
+// Each step's parent; back climbs it to the closest step with a choice
+const PARENT_STEP = {
+  [DATA_BUCKET_STEP]: null,
+  [DATABASE_STEP]: DATA_BUCKET_STEP,
+  [SCHEMA_STEP]: DATABASE_STEP,
+  [TABLE_STEP]: SCHEMA_STEP,
+  [LIBRARY_STEP]: DATA_BUCKET_STEP,
+  [MODEL_STEP]: DATA_BUCKET_STEP,
+  [SAVED_QUESTION_STEP]: DATA_BUCKET_STEP,
+  [METRIC_STEP]: DATA_BUCKET_STEP,
+} as const satisfies Record<DataSelectorStep, DataSelectorStep | null>;
+
+const SAVED_ENTITY_TYPE_BY_STEP: Partial<
+  Record<DataSelectorStep, SavedEntityType>
+> = {
+  [MODEL_STEP]: "model",
+  [SAVED_QUESTION_STEP]: "question",
+  [METRIC_STEP]: "metric",
+};
+
+const STEP_BY_CARD_TYPE = {
+  model: MODEL_STEP,
+  question: SAVED_QUESTION_STEP,
+  metric: METRIC_STEP,
+} as const satisfies Record<CardType, DataSelectorStep>;
 
 // The trimmed search response withAvailableModels hands to connect; only its
 // `available_models` field is read, but it carries the rest of the payload.
@@ -106,8 +147,9 @@ interface DataSelectorOwnProps {
   canSelectModel: boolean;
   canSelectTable: boolean;
   canSelectQuestion: boolean;
+  canSelectMetric: boolean;
+  canSelectSemanticLayer: boolean;
 
-  selectedDataBucketId?: DataPickerDataType | null;
   selectedDatabaseId?: DatabaseId | null;
   selectedSchemaId?: SchemaId | null;
   selectedTableId?: TableId | null;
@@ -145,6 +187,10 @@ interface SchemaFetchersProps {
   fetchSchemaTables: (schemaId: SchemaId) => Promise<unknown>;
 }
 
+interface LibraryInjectedProps {
+  libraryCollection?: LibraryCollection;
+}
+
 interface AvailableModelsInjectedProps {
   loading: boolean;
   loaded: boolean;
@@ -155,7 +201,8 @@ type DataSelectorProps = DataSelectorOwnProps &
   DataSelectorStateProps &
   DataSelectorDispatchProps &
   SchemaFetchersProps &
-  AvailableModelsInjectedProps;
+  AvailableModelsInjectedProps &
+  LibraryInjectedProps;
 
 interface ComputedDataSelectorState {
   databases: DataSelectorDatabase[];
@@ -171,9 +218,6 @@ interface DataSelectorState extends ComputedDataSelectorState {
   isLoading: boolean;
   isError: boolean;
   isPopoverOpen: boolean;
-  isSavedEntityPickerShown: boolean;
-  savedEntityType: CardType | null | undefined;
-  selectedDataBucketId: DataPickerDataType | null | undefined;
   selectedDatabaseId: DatabaseId | null | undefined;
   selectedSchemaId: SchemaId | null | undefined;
   selectedTableId: TableId | null | undefined;
@@ -185,11 +229,23 @@ type SelectedIdsState = Pick<
 >;
 
 export function DataSourceSelector(props: DataSourceSelectorProps) {
+  // Reads the Library through `PLUGIN_LIBRARY`, like the core app's pickers.
+  // `libraryCollection` stays `undefined` without the `library` token feature (no
+  // request is made), when no Library exists (`GET /api/ee/library` returns
+  // `{ data: null }`), or when the user can't read it. `allLoading` makes the
+  // picker wait for it.
+  const { data: libraryCollection, isLoading: isLibraryLoading } =
+    PLUGIN_LIBRARY.useGetLibraryCollection({
+      skip: !props.canSelectSemanticLayer,
+    });
+
   return (
     <DataSelector
       steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
       triggerContentComponent={TableTrigger}
       {...props}
+      libraryCollection={libraryCollection}
+      allLoading={isLibraryLoading}
     />
   );
 }
@@ -202,12 +258,9 @@ export class UnconnectedDataSelector extends Component<
     super(props);
 
     const state = {
-      selectedDataBucketId: props.selectedDataBucketId,
       selectedDatabaseId: props.selectedDatabaseId,
       selectedSchemaId: props.selectedSchemaId,
       selectedTableId: props.selectedTableId,
-      isSavedEntityPickerShown: false,
-      savedEntityType: null,
       isPopoverOpen: Boolean(props.isInitiallyOpen && !props.readOnly),
     };
     const computedState = this._getComputedState(props, state);
@@ -382,11 +435,17 @@ export class UnconnectedDataSelector extends Component<
     if (sourceId) {
       await fetchFields(sourceId);
       if (this.isSavedEntitySelected()) {
-        await fetchQuestion(sourceId);
+        try {
+          await fetchQuestion(sourceId);
+        } catch {
+          // Without the card's type, open on Saved Questions.
+          await this.switchToStep(SAVED_QUESTION_STEP);
+          return;
+        }
 
-        this.showSavedEntityPicker({
-          entityType: this.props.selectedCardType,
-        });
+        if (!this.isSearchLoading() && !this.state.activeStep) {
+          await this.hydrateActiveStep();
+        }
       }
     }
   }
@@ -446,18 +505,6 @@ export class UnconnectedDataSelector extends Component<
     return this.props.loading;
   };
 
-  getCardType(): SavedEntityType {
-    const { selectedDataBucketId, savedEntityType } = this.state;
-    if (
-      selectedDataBucketId === DATA_BUCKET.MODELS ||
-      savedEntityType === "model"
-    ) {
-      return "model";
-    } else {
-      return "question";
-    }
-  }
-
   hasModels = (): boolean => {
     const { availableModels, canSelectModel, loaded } = this.props;
     return loaded && canSelectModel && availableModels.includes("dataset");
@@ -468,6 +515,30 @@ export class UnconnectedDataSelector extends Component<
     return this.hasModels() && this.props.hasNestedQueriesEnabled;
   };
 
+  hasMetrics = (): boolean => {
+    const { availableModels, canSelectMetric, loaded } = this.props;
+    return (
+      loaded &&
+      canSelectMetric &&
+      !this.isJoinStep() &&
+      availableModels.includes("metric")
+    );
+  };
+
+  hasUsableMetrics = (): boolean => {
+    // As metrics are actually saved questions, nested queries must be enabled
+    return this.hasMetrics() && this.props.hasNestedQueriesEnabled;
+  };
+
+  hasUsableSavedEntities = (): boolean => {
+    return (
+      this.hasUsableModels() ||
+      this.hasSavedQuestions() ||
+      this.hasUsableMetrics() ||
+      this.hasLibrary()
+    );
+  };
+
   hasSavedQuestions = (): boolean => {
     const { canSelectQuestion } = this.props;
     return (
@@ -475,6 +546,33 @@ export class UnconnectedDataSelector extends Component<
       canSelectQuestion
     );
   };
+
+  hasLibrary = (): boolean => {
+    const { canSelectSemanticLayer, libraryCollection } = this.props;
+    const libraryContents = libraryCollection?.below ?? [];
+    return (
+      canSelectSemanticLayer &&
+      (libraryContents.includes("table") ||
+        (this.canSelectSemanticLayerMetrics() &&
+          libraryContents.includes("metric")))
+    );
+  };
+
+  // Library metrics follow the Metrics bucket's rules
+  canSelectSemanticLayerMetrics = (): boolean =>
+    !this.isJoinStep() && this.props.hasNestedQueriesEnabled;
+
+  // With a single bucket, `skipSteps` opens it straight away, so there's no
+  // bucket step to go back to
+  hasDataBucketChoice = (): boolean =>
+    getDataTypes({
+      hasModels: this.hasModels(),
+      hasTables: this.props.canSelectTable,
+      hasSavedQuestions: this.hasSavedQuestions(),
+      hasMetrics: this.hasMetrics(),
+      hasLibrary: this.hasLibrary(),
+      hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
+    }).length > 1;
 
   isJoinStep(): boolean {
     return !this.props.canChangeDatabase;
@@ -494,12 +592,12 @@ export class UnconnectedDataSelector extends Component<
   };
 
   async hydrateActiveStep(): Promise<void> {
-    if (
-      this.isSavedEntitySelected() ||
-      this.state.selectedDataBucketId === DATA_BUCKET.MODELS ||
-      this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
-    ) {
-      await this.switchToStep(DATABASE_STEP);
+    if (this.isSavedEntitySelected()) {
+      // The card's type arrives with `fetchQuestion`, which hydrates again
+      const { selectedCardType } = this.props;
+      if (selectedCardType) {
+        await this.switchToStep(STEP_BY_CARD_TYPE[selectedCardType]);
+      }
     } else if (
       // Schema id is explicitly set when going through the New > Question/Model flow,
       // whereas we have to obtain it from the state when opening a saved question.
@@ -510,26 +608,14 @@ export class UnconnectedDataSelector extends Component<
     } else if (this.isJoinStep()) {
       const querySourceType = this.props.querySourceType;
       if (querySourceType === "model") {
-        await this.switchToStep(
-          DATABASE_STEP,
-          {
-            selectedDataBucketId: DATA_BUCKET.MODELS,
-          },
-          false,
-        );
+        await this.switchToStep(MODEL_STEP, {}, false);
       } else if (querySourceType === "question") {
-        await this.switchToStep(
-          DATABASE_STEP,
-          {
-            selectedDataBucketId: DATA_BUCKET.SAVED_QUESTIONS,
-          },
-          false,
-        );
+        await this.switchToStep(SAVED_QUESTION_STEP, {}, false);
       } else {
         // query source is a table
         await this.switchToStep(SCHEMA_STEP);
       }
-    } else if (!this.hasUsableModels() && !this.hasSavedQuestions()) {
+    } else if (!this.hasUsableSavedEntities()) {
       await this.switchToStep(DATABASE_STEP);
     } else {
       await this.switchToStep(DATA_BUCKET_STEP);
@@ -562,6 +648,8 @@ export class UnconnectedDataSelector extends Component<
         hasModels: this.hasModels(),
         hasTables: this.props.canSelectTable,
         hasSavedQuestions: this.hasSavedQuestions(),
+        hasMetrics: this.hasMetrics(),
+        hasLibrary: this.hasLibrary(),
         hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
       });
       if (dataTypes.length === 1) {
@@ -583,34 +671,43 @@ export class UnconnectedDataSelector extends Component<
       return null;
     }
 
-    let index = steps.indexOf(activeStep);
-    if (index === -1) {
-      console.error(`Step ${activeStep} not found in ${steps}.`);
-      return null;
-    }
-
-    // move to previous step
-    index -= 1;
-
-    // possibly skip another step backwards
-    if (steps[index] === SCHEMA_STEP && this.state.schemas.length === 1) {
-      index -= 1;
-    }
-
-    // data bucket step doesn't make a lot of sense when there're no models or saved questions
-    if (
-      steps[index] === DATA_BUCKET_STEP &&
-      !this.hasUsableModels() &&
-      !this.hasSavedQuestions()
+    // Back goes to the closest parent with something to pick: climb past parents
+    // that aren't in `steps` or have nothing to choose (`hasStepChoice`). None, no back link.
+    let step: DataSelectorStep | null = PARENT_STEP[activeStep];
+    while (
+      step !== null &&
+      !(steps.includes(step) && this.hasStepChoice(step))
     ) {
-      return null;
+      step = PARENT_STEP[step];
     }
+    // Except a saved entity with no bucket step to return to (reopened on a card
+    // with only tables allowed): it goes back to the databases.
+    if (
+      step === null &&
+      SAVED_ENTITY_TYPE_BY_STEP[activeStep] &&
+      steps.includes(DATABASE_STEP)
+    ) {
+      return DATABASE_STEP;
+    }
+    return step;
+  }
 
-    // can't go back to a previous step
-    if (index < 0) {
-      return null;
+  hasStepChoice(step: DataSelectorStep): boolean {
+    switch (step) {
+      case DATA_BUCKET_STEP:
+        // data bucket step doesn't make a lot of sense when there're no models, saved questions, metrics, or Library
+        return this.hasUsableSavedEntities();
+      case DATABASE_STEP:
+        return true;
+      case SCHEMA_STEP:
+        return this.state.schemas.length > 1;
+      case TABLE_STEP:
+      case LIBRARY_STEP:
+      case MODEL_STEP:
+      case SAVED_QUESTION_STEP:
+      case METRIC_STEP:
+        return true;
     }
-    return steps[index];
   }
 
   togglePopoverOpen = (): void => {
@@ -645,7 +742,6 @@ export class UnconnectedDataSelector extends Component<
   getClearedStateForStep(step: DataSelectorStep): Partial<DataSelectorState> {
     if (step === DATA_BUCKET_STEP) {
       return {
-        selectedDataBucketId: null,
         selectedDatabaseId: null,
         selectedSchemaId: null,
         selectedTableId: null,
@@ -670,9 +766,8 @@ export class UnconnectedDataSelector extends Component<
   }
 
   async loadStepData(stepName: DataSelectorStep): Promise<void> {
-    const loadersForSteps: Record<
-      DataSelectorStep,
-      () => Promise<unknown> | undefined
+    const loadersForSteps: Partial<
+      Record<DataSelectorStep, () => Promise<unknown> | undefined>
     > = {
       // NOTE: make sure to return the action's resulting promise
       [DATA_BUCKET_STEP]: () => {
@@ -687,11 +782,26 @@ export class UnconnectedDataSelector extends Component<
         }
       },
       [TABLE_STEP]: () => {
-        if (this.state.selectedSchemaId != null) {
-          return this.props.fetchSchemaTables(this.state.selectedSchemaId);
-        } else if (this.state.selectedSchema?.id != null) {
-          return this.props.fetchSchemaTables(this.state.selectedSchema.id);
+        const {
+          selectedDatabaseId,
+          selectedSchemaId: chosenSchemaId,
+          selectedSchema: loadedSchema,
+        } = this.state;
+        // A chosen schema that may not be loaded yet, or the reopened table's
+        // schema
+        const listedSchemaId = chosenSchemaId ?? loadedSchema?.id;
+        // No schema, so no tables to list
+        if (listedSchemaId == null) {
+          return;
         }
+        // The header and back need the schema list; a reopened table, or a
+        // schema the caller set, opens here without the schema step loading it
+        return Promise.all([
+          selectedDatabaseId != null
+            ? this.props.fetchSchemas(selectedDatabaseId)
+            : undefined,
+          this.props.fetchSchemaTables(listedSchemaId),
+        ]);
       },
     };
 
@@ -750,38 +860,29 @@ export class UnconnectedDataSelector extends Component<
     }
   };
 
-  showSavedEntityPicker = ({ entityType }: { entityType?: CardType }): void =>
-    this.setState({
-      isSavedEntityPickerShown: true,
-      savedEntityType: entityType,
-    });
-
   onChangeDataBucket = async (
     selectedDataBucketId: DataPickerDataType,
   ): Promise<void> => {
     if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
-      await this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
+      await this.switchToStep(DATABASE_STEP);
       return;
     }
-    await this.switchToStep(
-      DATABASE_STEP,
-      {
-        selectedDataBucketId,
-      },
-      false,
-    );
-    const database = this.props.databases.find((db) => db.is_saved_questions);
-    if (database) {
-      this.onChangeDatabase(database);
+
+    if (selectedDataBucketId === DATA_BUCKET.LIBRARY) {
+      await this.switchToStep(LIBRARY_STEP, {}, false);
+      return;
+    }
+
+    if (selectedDataBucketId === DATA_BUCKET.MODELS) {
+      await this.switchToStep(MODEL_STEP, {}, false);
+    } else if (selectedDataBucketId === DATA_BUCKET.METRICS) {
+      await this.switchToStep(METRIC_STEP, {}, false);
+    } else {
+      await this.switchToStep(SAVED_QUESTION_STEP, {}, false);
     }
   };
 
   onChangeDatabase = async (database: DataSelectorDatabase): Promise<void> => {
-    if (database.is_saved_questions) {
-      this.showSavedEntityPicker({ entityType: "question" });
-      return;
-    }
-
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
@@ -844,20 +945,6 @@ export class UnconnectedDataSelector extends Component<
     });
   }
 
-  handleSavedEntityPickerClose = (): void => {
-    const { selectedDataBucketId } = this.state;
-    if (selectedDataBucketId === DATA_BUCKET.MODELS || this.hasUsableModels()) {
-      this.previousStep();
-    }
-    if (
-      selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS ||
-      this.hasSavedQuestions()
-    ) {
-      this.previousStep();
-    }
-    this.setState({ isSavedEntityPickerShown: false, savedEntityType: null });
-  };
-
   renderActiveStep(): ReactNode {
     const { hasNestedQueriesEnabled } = this.props;
     const hasNextStep = this.getNextStep() != null;
@@ -890,6 +977,8 @@ export class UnconnectedDataSelector extends Component<
                 hasModels: this.hasModels(),
                 hasTables: this.props.canSelectTable,
                 hasSavedQuestions: this.hasSavedQuestions(),
+                hasMetrics: this.hasMetrics(),
+                hasLibrary: this.hasLibrary(),
                 hasNestedQueriesEnabled,
               })}
               {...props}
@@ -910,7 +999,7 @@ export class UnconnectedDataSelector extends Component<
   isSavedEntitySelected = (): boolean =>
     isVirtualCardId(this.props.selectedTableId);
 
-  handleSavedEntitySelect = async (tableOrCardId: string): Promise<void> => {
+  handleSavedEntitySelect = async (tableOrCardId: TableId): Promise<void> => {
     await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
       const table = this.props.entityLookups.table(tableOrCardId);
@@ -940,35 +1029,45 @@ export class UnconnectedDataSelector extends Component<
   };
 
   renderContent = (): ReactNode => {
-    const { isSavedEntityPickerShown, selectedDataBucketId, selectedTable } =
-      this.state;
-    const { canChangeDatabase, selectedDatabaseId, selectedCollectionId } =
-      this.props;
+    const { activeStep, selectedTable } = this.state;
+    const {
+      canChangeDatabase,
+      libraryCollection,
+      selectedDatabaseId,
+      selectedCollectionId,
+    } = this.props;
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
-
-    const savedEntityBucketIds: (DataPickerDataType | null | undefined)[] = [
-      DATA_BUCKET.MODELS,
-      DATA_BUCKET.SAVED_QUESTIONS,
-    ];
-    const isPickerOpen =
-      isSavedEntityPickerShown ||
-      savedEntityBucketIds.includes(selectedDataBucketId);
 
     if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
     }
 
     if (this.hasDataAccess()) {
-      if (isPickerOpen) {
+      if (activeStep === LIBRARY_STEP && libraryCollection) {
+        return (
+          <LibraryPicker
+            libraryCollection={libraryCollection}
+            canSelectMetric={this.canSelectSemanticLayerMetrics()}
+            databaseId={currentDatabaseId}
+            tableId={selectedTable?.id}
+            onSelect={this.handleSavedEntitySelect}
+            onBack={this.hasDataBucketChoice() ? this.previousStep : undefined}
+          />
+        );
+      }
+
+      const savedEntityType =
+        activeStep && SAVED_ENTITY_TYPE_BY_STEP[activeStep];
+      if (savedEntityType) {
         return (
           <SavedEntityPicker
             collectionId={selectedCollectionId}
-            type={this.getCardType()}
+            type={savedEntityType}
             tableId={selectedTable?.id}
             databaseId={currentDatabaseId}
             onSelect={this.handleSavedEntitySelect}
-            onBack={this.handleSavedEntityPickerClose}
+            onBack={this.previousStep}
           />
         );
       }
@@ -1024,13 +1123,15 @@ export class UnconnectedDataSelector extends Component<
 
 type ConnectOwnProps = DataSelectorOwnProps &
   SchemaFetchersProps &
-  AvailableModelsInjectedProps & {
+  AvailableModelsInjectedProps &
+  LibraryInjectedProps & {
     availableModelsResult?: AvailableModelsResult;
   };
 
 type WithoutSchemaFetchers = Omit<ConnectOwnProps, keyof SchemaFetchersProps>;
 
-type PublicDataSelectorProps = DataSelectorOwnProps & { allLoading?: boolean };
+type PublicDataSelectorProps = DataSelectorOwnProps &
+  LibraryInjectedProps & { allLoading?: boolean };
 
 // Exposes `fetchSchemas` / `fetchSchemaTables` as props backed by RTK's lazy
 // query triggers. The triggers' subscriptions are tied to this wrapper's
@@ -1066,9 +1167,9 @@ function withSchemaFetchers(
   };
 }
 
-// If there is at least one model, we want to display a slightly different
-// data picker view (see DATA_BUCKET step). Pre-fetches available models via
-// search and exposes them as `availableModelsResult`/`loading`/`loaded` props.
+// If there is at least one model or metric, we want to display a slightly
+// different data picker view (see DATA_BUCKET step). Pre-fetches available
+// models via search and exposes them as `availableModelsResult`/`loading`/`loaded` props.
 function withAvailableModels(
   WrappedComponent: ComponentType<WithoutSchemaFetchers>,
 ): ComponentType<PublicDataSelectorProps> {
@@ -1078,7 +1179,7 @@ function withAvailableModels(
     const { data: response, isLoading } = useSearchQuery({
       calculate_available_models: true,
       limit: 0,
-      models: ["dataset"],
+      models: ["dataset", "metric"],
       context: "data-picker",
     });
     let availableModelsResult: AvailableModelsResult | undefined;

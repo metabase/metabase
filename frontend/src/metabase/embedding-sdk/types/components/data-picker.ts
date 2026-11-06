@@ -18,6 +18,8 @@ export interface DataSourceSelectorProps {
   canSelectModel: boolean;
   canSelectTable: boolean;
   canSelectQuestion: boolean;
+  canSelectMetric: boolean;
+  canSelectSemanticLayer: boolean;
   triggerElement: JSX.Element;
   setSourceTableFn: (tableId: TableId) => void;
   /**
