@@ -249,12 +249,17 @@
   (interface/transpile-sql-impl (sql-tools.settings/current-parser-backend)
                                 sql from-dialect to-dialect))
 
-(defn sqlglot-parser
-  "The sqlglot parser for the current backend. Statement checks always parse with sqlglot, so with Macaw selected
-  they use GraalPy."
+(defn sqlglot-backend
+  "The current backend when it is a sqlglot backend, else `:sqlglot`. Statement checks always parse with sqlglot, so
+  with Macaw selected they use GraalPy."
   []
   (let [backend (sql-tools.settings/current-parser-backend)]
-    (sqlglot/parser (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot))))
+    (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot)))
+
+(defn sqlglot-parser
+  "The sqlglot parser for [[sqlglot-backend]]."
+  []
+  (sqlglot/parser (sqlglot-backend)))
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
