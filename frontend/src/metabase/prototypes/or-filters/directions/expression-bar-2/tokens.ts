@@ -1,0 +1,394 @@
+import { t } from "ttag";
+
+import * as Lib from "metabase-lib";
+
+import { toFilterClause } from "../../harness/clauses";
+import { clearFilters } from "../../harness/examples";
+
+/**
+ * Direction B: the stage's filters as one flat token stream, the way a search
+ * bar (Datadog, GitHub) spells a boolean expression. Filter tokens are atomic;
+ * `and`, `or` and parentheses are typed or clicked in between them.
+ */
+export type BoolOperator = "and" | "or";
+
+export type Token =
+  | { type: "filter"; clause: Lib.FilterClause }
+  | { type: "op"; op: BoolOperator }
+  | { type: "paren"; side: "open" | "close" };
+
+/** Negates the operand after it. Only the bars that opt in with `withNot` produce it. */
+export type NotToken = { type: "not" };
+
+/** A token of a bar that has `not`; the helpers below take either kind of stream. */
+export type ExpressionToken = Token | NotToken;
+
+export const OPEN_PAREN: Token = { type: "paren", side: "open" };
+export const CLOSE_PAREN: Token = { type: "paren", side: "close" };
+export const NOT_TOKEN: NotToken = { type: "not" };
+
+export function opToken(op: BoolOperator): Token {
+  return { type: "op", op };
+}
+
+export function filterToken(clause: Lib.FilterClause): Token {
+  return { type: "filter", clause };
+}
+
+/** Does the token end an operand, so a new operand after it needs an operator? */
+export function endsOperand(token: ExpressionToken | undefined): boolean {
+  return (
+    token != null &&
+    (token.type === "filter" ||
+      (token.type === "paren" && token.side === "close"))
+  );
+}
+
+/** Does the token start an operand, so an operand before it needs an operator? */
+export function startsOperand(token: ExpressionToken | undefined): boolean {
+  return (
+    token != null &&
+    (token.type === "filter" ||
+      token.type === "not" ||
+      (token.type === "paren" && token.side === "open"))
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Query -> tokens
+// ---------------------------------------------------------------------------
+
+/**
+ * The stage's top-level filters (implicitly AND-ed) as one token stream.
+ * Every nested group is parenthesised, even where precedence would not need
+ * it, so what the user typed comes back looking the same. Nested
+ * same-operator clauses are flattened.
+ */
+export type ReadOptions = {
+  /**
+   * `true` reads a `not` clause as a `not` token before its operand. Off by
+   * default for the bars that have no `not` token: they show it as one pill.
+   */
+  withNot?: boolean;
+};
+
+export function readTokens(query: Lib.Query, stageIndex: number): Token[];
+export function readTokens(
+  query: Lib.Query,
+  stageIndex: number,
+  options: ReadOptions,
+): ExpressionToken[];
+export function readTokens(
+  query: Lib.Query,
+  stageIndex: number,
+  options: ReadOptions = {},
+): ExpressionToken[] {
+  const filters = Lib.filters(query, stageIndex);
+  // A lone filter is the root of the expression; several share an implicit AND root.
+  const depth = filters.length > 1 ? 1 : 0;
+  return joinWithOp(
+    filters.map((filter) =>
+      readClause(query, stageIndex, filter, depth, options),
+    ),
+    "and",
+  );
+}
+
+function readClause(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.FilterClause,
+  depth: number,
+  options: ReadOptions,
+): ExpressionToken[] {
+  const parts = Lib.expressionParts(query, stageIndex, clause);
+  if (options.withNot && parts.operator === "not" && parts.args.length === 1) {
+    const arg = toFilterClause(
+      query,
+      stageIndex,
+      Lib.expressionClause(parts.args[0]),
+    );
+    // A depth above zero parenthesises a nested and/or, so `not` covers all of it.
+    return [
+      NOT_TOKEN,
+      ...readClause(query, stageIndex, arg, depth + 1, options),
+    ];
+  }
+  if (parts.operator !== "and" && parts.operator !== "or") {
+    return [filterToken(clause)];
+  }
+  const op = parts.operator;
+  const tokens = joinWithOp(
+    parts.args.map((arg) =>
+      readClause(
+        query,
+        stageIndex,
+        toFilterClause(query, stageIndex, Lib.expressionClause(arg)),
+        depth + 1,
+        options,
+      ),
+    ),
+    op,
+  );
+  return depth > 0 ? [OPEN_PAREN, ...tokens, CLOSE_PAREN] : tokens;
+}
+
+function joinWithOp(
+  groups: ExpressionToken[][],
+  op: BoolOperator,
+): ExpressionToken[] {
+  return groups.flatMap((group, index) =>
+    index === 0 ? group : [opToken(op), ...group],
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tokens -> tree -> query
+// ---------------------------------------------------------------------------
+
+type Tree =
+  | { type: "leaf"; clause: Lib.FilterClause }
+  | { type: "node"; op: BoolOperator; args: Tree[] }
+  | { type: "not"; arg: Tree };
+
+export type ParseResult =
+  | { ok: true; tree: Tree | undefined }
+  | { ok: false; error: string; position: number };
+
+export type ParseOptions = {
+  /**
+   * `false` for a segment after a summary: its clauses can only be AND-ed,
+   * because an OR with the rows before the summary is not one query.
+   */
+  allowOr?: boolean;
+};
+
+const orAfterSummaryError = () =>
+  t`Filters on the summary can only be combined with "and"`;
+
+/**
+ * Recursive descent over the token stream. `and` binds tighter than `or`,
+ * as in every query language the bar imitates.
+ */
+export function parseTokens(
+  tokens: readonly ExpressionToken[],
+  { allowOr = true }: ParseOptions = {},
+): ParseResult {
+  if (tokens.length === 0) {
+    return { ok: true, tree: undefined };
+  }
+  let position = 0;
+
+  const peek = () => tokens[position];
+  const peekIsOp = (op: BoolOperator) => {
+    const token = peek();
+    return token?.type === "op" && token.op === op;
+  };
+  const peekIsParen = (side: "open" | "close") => {
+    const token = peek();
+    return token?.type === "paren" && token.side === side;
+  };
+  const fail = (error: string): never => {
+    throw new ParseError(error, position);
+  };
+
+  const parseOr = (): Tree => {
+    const args = [parseAnd()];
+    while (peekIsOp("or")) {
+      if (!allowOr) {
+        return fail(orAfterSummaryError());
+      }
+      position++;
+      args.push(parseAnd());
+    }
+    return args.length === 1 ? args[0] : { type: "node", op: "or", args };
+  };
+
+  const parseAnd = (): Tree => {
+    const args = [parseOperand()];
+    while (peekIsOp("and")) {
+      position++;
+      args.push(parseOperand());
+    }
+    return args.length === 1 ? args[0] : { type: "node", op: "and", args };
+  };
+
+  const parseOperand = (): Tree => {
+    const token = peek();
+    if (token == null) {
+      return fail(t`Expected a filter at the end`);
+    }
+    if (token.type === "filter") {
+      position++;
+      return { type: "leaf", clause: token.clause };
+    }
+    if (token.type === "not") {
+      position++;
+      return { type: "not", arg: parseOperand() };
+    }
+    if (token.type === "paren" && token.side === "open") {
+      position++;
+      if (peekIsParen("close")) {
+        return fail(t`Empty parentheses`);
+      }
+      const inner = parseOr();
+      if (!peekIsParen("close")) {
+        return fail(t`Missing closing parenthesis`);
+      }
+      position++;
+      return inner;
+    }
+    if (token.type === "paren") {
+      return fail(t`Unexpected closing parenthesis`);
+    }
+    if (token.op === "or" && !allowOr) {
+      return fail(orAfterSummaryError());
+    }
+    return fail(t`Expected a filter before "${token.op}"`);
+  };
+
+  try {
+    const tree = parseOr();
+    if (position < tokens.length) {
+      const token = tokens[position];
+      return {
+        ok: false,
+        position,
+        error:
+          token.type === "paren"
+            ? t`Unexpected closing parenthesis`
+            : t`Two filters need an "and" or "or" between them`,
+      };
+    }
+    return { ok: true, tree };
+  } catch (error) {
+    if (error instanceof ParseError) {
+      return { ok: false, error: error.message, position: error.position };
+    }
+    throw error;
+  }
+}
+
+class ParseError extends Error {
+  position: number;
+  constructor(message: string, position: number) {
+    super(message);
+    this.position = position;
+  }
+}
+
+/**
+ * Writes the expression back to the stage. A top-level AND becomes separate
+ * stage filters (today's model); anything else is one filter clause.
+ */
+export function writeTokens(
+  query: Lib.Query,
+  stageIndex: number,
+  tokens: readonly ExpressionToken[],
+  options?: ParseOptions,
+): Lib.Query {
+  const result = parseTokens(tokens, options);
+  if (!result.ok) {
+    return query;
+  }
+  const cleared = clearFilters(query, stageIndex);
+  if (result.tree == null) {
+    return cleared;
+  }
+  const topLevel =
+    result.tree.type === "node" && result.tree.op === "and"
+      ? result.tree.args
+      : [result.tree];
+  return topLevel.reduce(
+    (nextQuery, tree) => Lib.filter(nextQuery, stageIndex, toClause(tree)),
+    cleared,
+  );
+}
+
+function toClause(tree: Tree): Lib.FilterClause | Lib.ExpressionClause {
+  switch (tree.type) {
+    case "leaf":
+      return tree.clause;
+    case "not":
+      return Lib.expressionClause("not", [toClause(tree.arg)]);
+    case "node":
+      return Lib.expressionClause(tree.op, tree.args.map(toClause));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Editing helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Inserts `token` at `caret`, adding an implicit `and` when two operands
+ * would otherwise touch (typing a filter right after another one).
+ */
+export function insertToken<T extends ExpressionToken>(
+  tokens: readonly T[],
+  caret: number,
+  token: T,
+): { tokens: (T | Token)[]; caret: number } {
+  const before = tokens.slice(0, caret);
+  const after = tokens.slice(caret);
+  const inserted: (T | Token)[] = [];
+  if (startsOperand(token) && endsOperand(before.at(-1))) {
+    inserted.push(opToken("and"));
+  }
+  inserted.push(token);
+  if (endsOperand(token) && startsOperand(after[0])) {
+    inserted.push(opToken("and"));
+  }
+  const nextTokens = [...before, ...inserted, ...after];
+  // The caret lands right after the inserted token, before any trailing `and`.
+  const caretAfterToken = before.length + inserted.indexOf(token) + 1;
+  return { tokens: nextTokens, caret: caretAfterToken };
+}
+
+export function removeTokenAt<T extends ExpressionToken>(
+  tokens: readonly T[],
+  index: number,
+): T[] {
+  return tokens.filter((_, i) => i !== index);
+}
+
+export function replaceTokenAt<T extends ExpressionToken>(
+  tokens: readonly T[],
+  index: number,
+  token: T,
+): T[] {
+  return tokens.map((existing, i) => (i === index ? token : existing));
+}
+
+export function toggleOperator(op: BoolOperator): BoolOperator {
+  return op === "and" ? "or" : "and";
+}
+
+/** Parses typed text into an operator or paren token, when it is one. */
+export function parseTypedToken(text: string): Token | undefined;
+export function parseTypedToken(
+  text: string,
+  options: ReadOptions,
+): ExpressionToken | undefined;
+export function parseTypedToken(
+  text: string,
+  { withNot = false }: ReadOptions = {},
+): ExpressionToken | undefined {
+  const word = text.trim().toLowerCase();
+  if (word === "(") {
+    return OPEN_PAREN;
+  }
+  if (word === ")") {
+    return CLOSE_PAREN;
+  }
+  if (word === "and" || word === "&&" || word === "&") {
+    return opToken("and");
+  }
+  if (word === "or" || word === "||" || word === "|") {
+    return opToken("or");
+  }
+  if (withNot && (word === "not" || word === "!")) {
+    return NOT_TOKEN;
+  }
+  return undefined;
+}
