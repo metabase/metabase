@@ -1,24 +1,11 @@
-import { updateIn } from "icepick";
-
-import { CARD_CREATED, CARD_UPDATED } from "metabase/redux/cards";
-import {
-  convertSavedQuestionToVirtualTable,
-  getCollectionVirtualSchemaId,
-  getCollectionVirtualSchemaName,
-  getQuestionVirtualTableId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
-
 type TableState = Record<string, any>;
 type ReducerAction = { type: string; payload?: any; error?: unknown };
 
 /**
  * Reducer for the `state.entities.tables` slice.
  *
- * `getMetadata` reads this slice, so it is kept in sync when:
- *
- * - questions are created/updated/archived (the saved-question virtual table
- *   `card__<id>` representation needs to track them), and
- * - a field is updated elsewhere (so `original_fields` doesn't go stale).
+ * `getMetadata` reads this slice, so it is kept in sync when a field is
+ * updated elsewhere (so `original_fields` doesn't go stale).
  *
  * It runs after the generic slice reducer in `./reducer` has merged any
  * `payload.entities.tables` from `metabase/entities/*` actions.
@@ -27,61 +14,6 @@ export function tablesReducer(
   state: TableState = {},
   { type, payload, error }: ReducerAction,
 ): TableState {
-  if (type === CARD_CREATED && !error) {
-    const card = payload.question;
-    const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
-
-    if (state[virtualQuestionTable.id]) {
-      return state;
-    }
-
-    return {
-      ...state,
-      [virtualQuestionTable.id]: virtualQuestionTable,
-    };
-  }
-
-  if (type === CARD_UPDATED && !error) {
-    const card = payload.question;
-    const virtualTableId = getQuestionVirtualTableId(card.id);
-
-    if (card.archived && state[virtualTableId]) {
-      const nextState = { ...state };
-      delete nextState[virtualTableId];
-      return nextState;
-    }
-
-    if (state[virtualTableId]) {
-      const virtualTable = state[virtualTableId];
-      const virtualSchemaId = getCollectionVirtualSchemaId(card.collection);
-      const virtualSchemaName = getCollectionVirtualSchemaName(card.collection);
-
-      if (
-        virtualTable.display_name !== card.name ||
-        virtualTable.moderated_status !== card.moderated_status ||
-        virtualTable.description !== card.description ||
-        virtualTable.schema !== virtualSchemaId ||
-        virtualTable.schema_name !== virtualSchemaName
-      ) {
-        state = updateIn(state, [virtualTableId], (table) => ({
-          ...table,
-          display_name: card.name,
-          moderated_status: card.moderated_status,
-          description: card.description,
-          schema: virtualSchemaId,
-          schema_name: virtualSchemaName,
-        }));
-      }
-
-      return state;
-    }
-
-    return {
-      ...state,
-      [virtualTableId]: convertSavedQuestionToVirtualTable(card),
-    };
-  }
-
   // Keep `original_fields` in sync when a field reaches the mirror, which the
   // hydration listener does for every endpoint carrying one. Without this,
   // edits land in state.entities.fields but hydrateTableFields keeps reading

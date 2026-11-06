@@ -138,7 +138,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
           card,
         ).databaseId();
         const tableId = fk.origin.table_id;
-        if (!tableId || !databaseId) {
+        if (typeof tableId !== "number" || !databaseId) {
           return;
         }
         const metadataProvider = selectMetadataProvider(getState(), databaseId);

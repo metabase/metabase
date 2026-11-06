@@ -12,7 +12,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
-import type { RowValue } from "./dataset";
+import type { DatasetColumn, RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
@@ -41,6 +41,8 @@ import type {
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
+export type CardQueryType = "query" | "native";
+
 export type CardCreationType =
   | "simple_question"
   | "custom_question"
@@ -66,6 +68,7 @@ export interface Card<
   name: string;
   description: string | null;
   type: CardType;
+  query_type?: CardQueryType;
   public_uuid: string | null;
 
   /* Indicates whether static embedding for this card has been published */
@@ -92,7 +95,7 @@ export interface Card<
   parameter_usage_count?: number | null;
   parameter_mappings?: CardParameterMapping[] | null;
 
-  result_metadata: Field[] | null;
+  result_metadata: DatasetColumn[] | null;
   param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
@@ -667,7 +670,7 @@ export interface CreateCardRequest {
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
   source_card_id?: CardId;
@@ -695,7 +698,7 @@ export interface UpdateCardRequest {
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;
   delete_old_dashcards?: boolean;

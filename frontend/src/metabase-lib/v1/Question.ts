@@ -5,14 +5,14 @@ import _ from "underscore";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
-import NativeQuery, {
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import {
   NATIVE_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/NativeQuery";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardCreationType,
@@ -24,9 +24,9 @@ import type {
   DashCardId,
   DashboardId,
   DatabaseId,
+  DatasetColumn,
   DatasetData,
   DatasetQuery,
-  Field,
   LastEditInfo,
   ParameterId,
   Parameter as ParameterObject,
@@ -361,20 +361,6 @@ class Question {
     );
   }
 
-  supportsImplicitActions(): boolean {
-    const query = this.query();
-
-    // we want to check the metadata for the underlying table, not the model
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    const table = this.metadata().table(sourceTableId);
-
-    const hasSinglePk =
-      table?.fields?.filter((field) => field.isPK())?.length === 1;
-    const { isNative } = Lib.queryDisplayInfo(this.query());
-
-    return !isNative && !Lib.hasClauses(query, -1) && hasSinglePk;
-  }
-
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
@@ -393,13 +379,12 @@ class Question {
     }
 
     const metadata = this.metadataProvider();
-    const tableId = getQuestionVirtualTableId(this.id());
-    const table = Lib.tableOrCardMetadata(metadata, tableId);
-    if (!table) {
+    const card = Lib.cardMetadata(metadata, this.id());
+    if (!card) {
       return this;
     }
 
-    const query = Lib.queryFromTableOrCardMetadata(metadata, table);
+    const query = Lib.queryFromTableOrCardMetadata(metadata, card);
     return this.setQuery(query);
   }
 
@@ -545,7 +530,7 @@ class Question {
     });
   }
 
-  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<DatasetColumn>>) {
     const metadata = this.getResultMetadata();
     const newMetadata = metadata.map((column) => {
       const columnDiff = metadataDiff[column.name];

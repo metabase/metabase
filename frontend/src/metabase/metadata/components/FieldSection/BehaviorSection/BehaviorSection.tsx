@@ -6,7 +6,6 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import {
   canFieldUnfoldJson,
-  getRawTableFieldId,
   isFieldJsonUnfolded,
 } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -37,7 +36,7 @@ const BehaviorSectionBase = ({
   disabled,
   onTrackMetadataChange,
 }: BehaviorSectionBaseProps) => {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const { data: database } = useGetDatabaseQuery({
     id: databaseId,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
