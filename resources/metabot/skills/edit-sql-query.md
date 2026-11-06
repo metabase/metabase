@@ -14,7 +14,7 @@ Edit an existing SQL query by applying targeted string replacements. This update
 - `title` — a short, human-friendly title for the query, shown above its results when the query is handed back as a link rather than proposed in the editor.
 - `show_chart` — optional, and offered only when you can read the results with `run_query`. Pass `false` when you build the query only to read its values: the user is then shown nothing, so give them the values in your answer.
 
-**Optional:** `show_sql` — set it to `true` only when the user's latest message asks to see the SQL or the query. Do not set it for a change to the results or the chart.
+**Optional:** `show_sql` — set it to `true` only when the user's latest message asks to see the SQL or the query. Do not set it for a change to the results or the chart. To show the SQL with no change, call `edit_sql_query` with `edits: []` and `show_sql: true`.
 
 **Safety:**
 - An edit fails if `old_string` matches multiple locations (unless `replace_all=true`) — either add surrounding context to make the match unique, or set `replace_all=true`.
