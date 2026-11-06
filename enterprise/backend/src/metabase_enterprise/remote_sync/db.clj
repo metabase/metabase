@@ -72,13 +72,6 @@
    conditions :- Conditions]
   (apply t2/select model-key (mapcat identity conditions)))
 
-(mu/defn entity-id-where :- [:maybe :string]
-  "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
-  [model-key :- :keyword
-   column    :- [:enum :name :term]
-   value     :- :string]
-  (t2/select-one-fn :entity_id model-key column value))
-
 (mu/defn count-where
   "The number of instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
   operator-vector value, or nil for every instance)."
@@ -445,11 +438,6 @@
   "The IDs of the remote-synced Collections."
   []
   (t2/select-pks-vec :model/Collection :is_remote_synced true))
-
-(mu/defn remote-synced-root-collections
-  "The `:namespace` and `:type` of the remote-synced top-level Collections."
-  []
-  (t2/select [:model/Collection :id :namespace :type] :is_remote_synced true :location "/"))
 
 (mu/defn unarchived-remote-synced-root-collection-ids
   "The IDs of the unarchived remote-synced root Collections."

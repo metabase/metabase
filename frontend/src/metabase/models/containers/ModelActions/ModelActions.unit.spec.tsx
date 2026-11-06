@@ -254,12 +254,8 @@ async function setup({
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
         <Route path="actions" element={<ModelActions />}>
-          {modalRoute("new", ActionCreatorModal, {
-            modalProps: { transitionProps: { duration: 0 } },
-          })}
-          {modalRoute(":actionId", ActionCreatorModal, {
-            modalProps: { transitionProps: { duration: 0 } },
-          })}
+          {modalRoute("new", ActionCreatorModal)}
+          {modalRoute(":actionId", ActionCreatorModal)}
         </Route>
       </Route>
       <Route path="/question/:slug" element={null} />

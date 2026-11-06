@@ -242,6 +242,25 @@ mage_tests:
   - "mise.toml"
   - "bin/merge-kondo-ratchets"
 
+# What decides the app DB a migration run produces, plus the checked-in snapshot and the code that loads it.
+# app-db.yml compares snapshot-plus-replay against a full replay on every app DB when one of these changes.
+# Custom migrations and the Liquibase setup are listed because changing them leaves every changeset checksum as it
+# was, so Liquibase alone would not notice the snapshot no longer matches.
+app_db_snapshot:
+  - ".github/workflows/app-db.yml"
+  - "resources/migrations/**"
+  - "resources/liquibase*.yaml"
+  - "src/metabase/app_db/custom_migrations.clj"
+  - "src/metabase/app_db/custom_migrations/**"
+  - "src/metabase/app_db/liquibase.clj"
+  - "src/metabase/app_db/liquibase/**"
+  - "test_resources/app_db_snapshots/**"
+  - "test/metabase/app_db/snapshot_test_util.clj"
+  - "test/metabase/app_db/snapshot_test_util/**"
+  - "test/metabase/app_db/snapshot_test.clj"
+  - "test/metabase/app_db/schema_migrations_test/impl.clj"
+  - "test/metabase/app_db/test_util.clj"
+
 sources: &sources
   - *shared_sources
   - *frontend_sources

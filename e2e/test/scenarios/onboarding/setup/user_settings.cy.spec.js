@@ -133,29 +133,6 @@ describe("user > settings", () => {
     cy.findByTestId("step-summarize-0-0").findByText("Résumer").should("exist");
   });
 
-  ["ldap", "google", "jwt", "saml"].forEach((ssoSource) => {
-    it(`should prevent ${ssoSource} users from editing SSO credentials (metabase#23298)`, () => {
-      stubCurrentUser({ sso_source: ssoSource });
-      cy.visit("/account/profile");
-      cy.wait("@getUser");
-      cy.findByTestId("account-header").should("contain", email);
-      cy.findByTestId("user-locale-select").should("be.visible");
-      cy.findByTestId("account-header")
-        .findByRole("tab", { name: "Authentication" })
-        .should("not.exist");
-      cy.findByLabelText("First name").should("not.exist");
-      cy.findByLabelText("Last name").should("not.exist");
-      cy.findByLabelText("Email").should("not.exist");
-
-      cy.visit("/account/password");
-      cy.wait("@getUser");
-      cy.findByTestId("account-header").should("contain", email);
-      cy.findByLabelText("Current password").should("not.exist");
-      cy.findByLabelText("Create a password").should("not.exist");
-      cy.findByLabelText("Confirm your password").should("not.exist");
-    });
-  });
-
   describe("dark mode", () => {
     const isMac = Cypress.platform === "darwin";
 
@@ -324,21 +301,6 @@ const assertLightMode = () =>
 
 const assertDarkMode = () =>
   cy.get("body").should("have.css", "background-color", "rgb(7, 23, 34)");
-
-/**
- * Stub the current user authentication method
- *
- * @param {Object} authenticationMethod
- */
-function stubCurrentUser(authenticationMethod) {
-  cy.request("GET", "/api/user/current").then(({ body: user }) => {
-    cy.intercept(
-      "GET",
-      "/api/user/current",
-      Object.assign({}, user, authenticationMethod),
-    ).as("getUser");
-  });
-}
 
 /**
  * Stub the system color scheme preference

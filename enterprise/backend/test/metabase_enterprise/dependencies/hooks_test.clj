@@ -11,7 +11,6 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.core :as lib]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -365,7 +364,6 @@
                                             :row 4 :col 0 :size_x 4 :size_y 4})
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (deps.test/do-with-immediate-hook-writes
-             #(serdes/with-cache
-                (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
+             #(serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false)))
           (is (= 1 (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
           (is (seq @submitted)))))))

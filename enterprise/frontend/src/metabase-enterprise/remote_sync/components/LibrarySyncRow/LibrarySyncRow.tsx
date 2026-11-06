@@ -31,7 +31,7 @@ export const LibrarySyncRow = ({ isReadOnly }: LibrarySyncRowProps) => {
           <Switch
             checked={isChecked}
             onChange={(e) => handleToggle(e.currentTarget.checked)}
-            disabled={isReadOnly}
+            disabled={isReadOnly || isChecked}
             aria-label={t`Sync Library`}
           />
           <Text>{t`Sync`}</Text>

@@ -218,6 +218,73 @@ describe("data_grid", () => {
     });
   });
 
+  describe("pivot with more than 3 columns (metabase#84401)", () => {
+    it("should ignore columns other than the row, pivot and cell columns", () => {
+      const data = createMockDatasetData({
+        cols: [D1, D2, D3, M],
+        rows: [
+          ["a", "x", "extra-1", 1],
+          ["a", "y", "extra-2", 2],
+          ["b", "x", "extra-3", 3],
+        ],
+      });
+      const pivotedData = pivot(data, 0, 1, 3);
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
+        "Dimension 1",
+        "x",
+        "y",
+      ]);
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([
+        ["a", 1, 2],
+        ["b", 3, null],
+      ]);
+    });
+
+    it("should show the last value when a row and pivot value pair repeats", () => {
+      const data = createMockDatasetData({
+        cols: [D1, D2, D3, M],
+        rows: [
+          ["a", "x", "extra-1", 1],
+          ["a", "x", "extra-2", 2],
+        ],
+      });
+      const pivotedData = pivot(data, 0, 1, 3);
+      expect(pivotedData.rows.map((row) => [...row])).toEqual([["a", 2]]);
+    });
+  });
+
+  describe("pivot warnings", () => {
+    it("should not warn when each row and pivot value pair appears once", () => {
+      const showWarning = jest.fn<void, [string]>();
+      const data = makeData([
+        ["a", "x", 1],
+        ["a", "y", 2],
+        ["b", "x", 3],
+        ["b", "y", 4],
+      ]);
+      pivot(data, 0, 1, 2, undefined, showWarning);
+      expect(showWarning).not.toHaveBeenCalled();
+    });
+
+    it("should warn once when row and pivot value pairs appear more than once", () => {
+      const showWarning = jest.fn<void, [string]>();
+      const data = createMockDatasetData({
+        cols: [D1, D2, D3, M],
+        rows: [
+          ["a", "x", "extra-1", 1],
+          ["b", "x", "extra-1", 2],
+          ["a", "x", "extra-2", 3],
+          ["b", "x", "extra-2", 4],
+        ],
+      });
+      pivot(data, 0, 1, 3, undefined, showWarning);
+      expect(showWarning).toHaveBeenCalledTimes(1);
+      expect(showWarning).toHaveBeenCalledWith(
+        'Some combinations of "Dimension 1" and "Dimension 2" appear in more than one row. Each of those cells shows only the value from the last of these rows.',
+      );
+    });
+  });
+
   describe("multiLevelPivot", () => {
     const getValues = (items: HeaderItem[]) => _.pluck(items, "value");
     const getPathsAndValues = (items: HeaderItem[]) =>

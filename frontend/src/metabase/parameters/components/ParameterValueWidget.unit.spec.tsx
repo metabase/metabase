@@ -175,6 +175,12 @@ describe("ParameterValueWidget", () => {
     expect(onValueChange).toHaveBeenCalledWith([10, 20]);
   });
 
+  it("should show a zero value of a number variable (metabase#27257)", () => {
+    setupStateful({ parameter: NUMBER_PARAMETER, value: [0] });
+
+    expect(screen.getByRole("textbox")).toHaveValue("0");
+  });
+
   it("should apply aria-expanded=true on the trigger button element (#70543)", async () => {
     setup();
 
