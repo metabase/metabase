@@ -674,7 +674,7 @@
 (defmethod upgrade-card-schema-to 22
   [card _schema-version]
   (update card :result_metadata (fn [cols]
-                                  (mapv #(dissoc % :ident :model/inner_ident) cols))))
+                                  (some->> cols (mapv #(dissoc % :ident :model/inner_ident))))))
 
 ;; Schema upgrade: 22 to 23 ==========================================================================================
 ;; #66199 shows a customer upgrading to 57 breaking certain cards
