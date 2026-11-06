@@ -76,18 +76,21 @@
     "master_pos_wait" "source_pos_wait" "wait_for_executed_gtid_set" "wait_until_sql_thread_after_gtids"
     ;; running a program, Java code or a request outside the database
     "executable" "reflect" "java_method" "http_request" "system$send_email" "sys_exec" "sys_eval"
+    ;; reading a file on the database server
+    "load_file"
     ;; Postgres server administration: the write-ahead log, backups, replication slots, recovery, the log file
     "pg_switch_wal" "pg_switch_xlog" "pg_create_restore_point" "pg_backup_start" "pg_backup_stop" "pg_start_backup"
     "pg_stop_backup" "pg_promote" "pg_rotate_logfile" "pg_create_physical_replication_slot"
-    "pg_create_logical_replication_slot" "pg_drop_replication_slot" "pg_wal_replay_pause" "pg_wal_replay_resume"})
+    "pg_create_logical_replication_slot" "pg_drop_replication_slot" "pg_wal_replay_pause" "pg_wal_replay_resume"
+    "pg_export_snapshot"})
 
 ;; Table functions that read from another server, a URL, object storage or the server's files. Their names are common
-;; words elsewhere (`url`, `file`, `mysql`), so each set applies only in its own dialect. ClickHouse's `cluster` and
-;; `clusterAllReplicas` are left out: they read the same tables from the cluster's own servers.
+;; words elsewhere (`url`, `file`, `mysql`), so each set applies only in its own dialect.
 (def ^:private dialect-session-effect-functions
   {"clickhouse" #{"url" "urlcluster" "s3" "s3cluster" "gcs" "remote" "remotesecure" "mysql" "postgresql" "mongodb"
                   "redis" "sqlite" "file" "filecluster" "hdfs" "hdfscluster" "azureblobstorage"
-                  "azureblobstoragecluster" "jdbc" "odbc" "deltalake" "iceberg" "hudi"}
+                  "azureblobstoragecluster" "jdbc" "odbc" "deltalake" "iceberg" "hudi" "cosn" "oss" "hive" "cluster"
+                  "clusterallreplicas"}
    "duckdb"     #{"read_csv" "read_csv_auto" "read_parquet" "parquet_scan" "read_json" "read_json_auto"
                   "read_json_objects" "read_ndjson" "read_ndjson_auto" "read_ndjson_objects" "read_text" "read_blob"
                   "read_xlsx" "sniff_csv" "glob" "iceberg_scan" "delta_scan"}})
