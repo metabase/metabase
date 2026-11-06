@@ -169,9 +169,7 @@ describe("DataStep", () => {
     const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
     const query = Lib.queryFromTableOrCardMetadata(
       metadataProvider,
-      checkNotNull(
-        Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
-      ),
+      checkNotNull(Lib.cardMetadata(metadataProvider, card.id)),
     );
     const step = createMockNotebookStep({ query });
     await setup({ step });

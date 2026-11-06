@@ -26,7 +26,6 @@ import {
   createMockDataset,
   createMockDatasetData,
   createMockNativeQuery,
-  createMockTable,
   createMockTableColumnOrderSetting,
   createMockTemplateTag,
   createMockVisualizationSettings,
@@ -63,7 +62,6 @@ function getBaseState({
   return createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
-      tables: [createMockTable({ id: "card__1" })],
     }),
     qb: createMockQueryBuilderState({
       ...state,

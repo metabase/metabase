@@ -245,12 +245,5 @@ describe("ObjectDetail utils", () => {
         "/table/5-invoices/detail/1",
       );
     });
-
-    it("should return undefined for virtual tables", () => {
-      const virtualTable = createMockTable({ id: "card__17" });
-      expect(getRowUrl(question, [idCol, qtyCol], virtualTable, 1)).toBe(
-        undefined,
-      );
-    });
   });
 });

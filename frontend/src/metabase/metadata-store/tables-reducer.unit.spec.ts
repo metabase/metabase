@@ -84,12 +84,9 @@ describe("tablesReducer", () => {
     });
 
     it("leaves state untouched when multiple original_fields entries share the updated id", () => {
-      // Virtual card tables can map several columns to the same source field —
-      // normalization collapses those entries, so we can't tell which one the
-      // update belongs to.
       const state = {
-        card__1: {
-          id: "card__1",
+        1: {
+          id: 1,
           original_fields: [
             { id: 10, display_name: "First Product ID" },
             { id: 10, display_name: "Second Product ID" },
@@ -100,7 +97,7 @@ describe("tablesReducer", () => {
       const nextState = tablesReducer(
         state,
         getEntitiesUpdateAction({
-          "card__1:10": { id: 10, table_id: "card__1", display_name: "Both" },
+          10: { id: 10, table_id: 1, display_name: "Both" },
         }),
       );
 

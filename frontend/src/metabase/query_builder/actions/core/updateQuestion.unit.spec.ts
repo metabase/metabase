@@ -10,7 +10,6 @@ import type { QueryBuilderMode } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   ConcreteFieldReference,
@@ -29,7 +28,6 @@ import {
   createMockSavedQuestionsDatabase,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
-  createMockTable,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -101,16 +99,6 @@ function getDefaultOriginalQuestion(card: TestCard) {
   });
 }
 
-function getModelVirtualTable(card: Card) {
-  return createMockTable({
-    id: getQuestionVirtualTableId(card.id),
-    db_id: SAVED_QUESTIONS_DB.id,
-    name: card.name,
-    display_name: card.name,
-    fields: card.result_metadata ?? [],
-  });
-}
-
 async function setup({
   card,
   originalCard = getDefaultOriginalQuestion(card),
@@ -121,9 +109,6 @@ async function setup({
   shouldStartAdHocQuestion,
 }: SetupOpts) {
   const isSavedCard = "id" in card;
-  // Unjustified type cast. FIXME
-  const isModel = (card as Card).type === "model";
-
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
   const cards = originalCard ? [originalCard] : [];
@@ -134,7 +119,6 @@ async function setup({
   const entitiesState = createMockEntitiesState({
     databases: [createSampleDatabase(), SAVED_QUESTIONS_DB],
     // Unjustified type cast. FIXME
-    tables: isModel ? [getModelVirtualTable(card as Card)] : [],
     questions: cards,
   });
 

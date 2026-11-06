@@ -21,11 +21,7 @@ import {
 import { MODAL_TYPES } from "metabase/querying/constants";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockNativeCard,
-  createMockTable,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockNativeCard } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import * as modelActions from "../../../../../actions/models";
@@ -84,7 +80,6 @@ function setup({
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
-      tables: [createMockTable({ id: `card__${card.id}` })],
       questions: [card],
     }),
     qb: createMockQueryBuilderState({

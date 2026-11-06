@@ -10,13 +10,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { Route } from "metabase/router";
-import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockSettings,
-  createMockTable,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -33,21 +28,7 @@ const setup = async ({
   card = createMockCard(),
   sourceCard,
 }: SetupOpts = {}) => {
-  const sampleDatabase = createSampleDatabase();
-
-  // A card used as a source appears as a virtual table on its own database.
-  const database = sourceCard
-    ? {
-        ...sampleDatabase,
-        tables: [
-          ...(sampleDatabase.tables ?? []),
-          createMockTable({
-            ...convertSavedQuestionToVirtualTable(sourceCard),
-            db_id: SAMPLE_DB_ID,
-          }),
-        ],
-      }
-    : sampleDatabase;
+  const database = createSampleDatabase();
 
   const state = createMockState({
     qb: createMockQueryBuilderState({ card }),
