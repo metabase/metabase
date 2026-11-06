@@ -13,11 +13,15 @@ import {
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { RelativeDatePicker } from "metabase/querying/common/components/DatePicker/RelativeDatePicker";
 import { SpecificDatePicker } from "metabase/querying/common/components/DatePicker/SpecificDatePicker";
+import { getOperatorDefaultValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import {
   DATE_PICKER_DIRECTIONS,
   DATE_PICKER_OPERATORS,
 } from "metabase/querying/common/constants";
-import type { DatePickerValue } from "metabase/querying/common/types";
+import type {
+  DatePickerValue,
+  SpecificDatePickerOperator,
+} from "metabase/querying/common/types";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
   canListFieldValues,
@@ -761,6 +765,7 @@ export function DraftFilterPill({
               stageIndex={stageIndex}
               column={column.column}
               type={operator.datePickerType}
+              specificOperator={operator.specificDateOperator}
               value={parseDatePickerValue(values[0])}
               label={
                 values[0] != null ? formatDraftValue(operator, values[0]) : null
@@ -1397,6 +1402,7 @@ interface DatePickerValueInputProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   type: "specific" | "relative" | "exclude";
+  specificOperator: SpecificDatePickerOperator | undefined;
   value: DatePickerValue | undefined;
   /** The value as the pill shows it, or null for a new filter. */
   label: string | null;
@@ -1418,6 +1424,7 @@ function DatePickerValueInput({
   stageIndex,
   column,
   type,
+  specificOperator,
   value,
   label,
   onChange,
@@ -1470,7 +1477,18 @@ function DatePickerValueInput({
         {type === "specific" && (
           <SpecificDatePicker
             {...pickerProps}
-            value={value?.type === "specific" ? value : undefined}
+            availableOperators={
+              specificOperator != null
+                ? [specificOperator]
+                : pickerProps.availableOperators
+            }
+            value={
+              value?.type === "specific"
+                ? value
+                : specificOperator != null
+                  ? getOperatorDefaultValue(specificOperator)
+                  : undefined
+            }
             onChange={onChange}
           />
         )}

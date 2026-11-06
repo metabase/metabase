@@ -56,7 +56,12 @@ export function useDatePickerKeyboard() {
     if (root == null) {
       return;
     }
-    getFirstFocusTarget(root)?.focus();
+    // The text is selected, so a typed date replaces the default date.
+    const target = getFirstFocusTarget(root);
+    target?.focus();
+    if (target instanceof HTMLInputElement) {
+      target.select();
+    }
     const focusIfLost = () => {
       const activeElement = document.activeElement;
       if (activeElement == null || activeElement === document.body) {

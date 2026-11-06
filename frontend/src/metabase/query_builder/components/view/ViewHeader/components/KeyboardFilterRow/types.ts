@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { SpecificDatePickerOperator } from "metabase/querying/common/types";
 import type * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
@@ -78,6 +79,11 @@ export type DraftOperator = {
   group?: number;
   /** For `date-picker` operators: the picker to show. */
   datePickerType?: "specific" | "relative" | "exclude";
+  /**
+   * For `specific` date pickers: the only operator of the picker, like "<" for
+   * "Before…". Without it, the picker has all its operators.
+   */
+  specificDateOperator?: SpecificDatePickerOperator;
   /** The values to pick from, when the column has a fixed set of them. */
   options?: { value: string; label: string }[];
   getFilterClause: (values: string[]) => Lib.ExpressionClause | undefined;

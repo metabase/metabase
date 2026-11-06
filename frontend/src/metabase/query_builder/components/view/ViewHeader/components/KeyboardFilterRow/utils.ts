@@ -171,29 +171,75 @@ function getDateOperators(column: Lib.ColumnMetadata): DraftOperator[] {
       };
     }),
   );
-  const pickerOperators = TYPE_OPTIONS.map(
-    ({ type, label }): DraftOperator => ({
+  const getPickerOperator = (
+    operator: Pick<
+      DraftOperator,
+      "key" | "label" | "datePickerType" | "specificDateOperator"
+    >,
+  ): DraftOperator => ({
+    ...operator,
+    hasNoPillOperator: true,
+    group: SHORTCUT_OPTION_GROUPS.length,
+    valueKind: "date-picker",
+    isNumeric: false,
+    formatValue: (json) => {
+      const value = parseDatePickerValue(json);
+      return value != null ? formatDatePickerValue(value) : null;
+    },
+    getFilterClause: ([json]) => {
+      const value = parseDatePickerValue(json);
+      return value != null && isDateOperatorValue(operator, value)
+        ? getDateFilterClause(column, value)
+        : undefined;
+    },
+  });
+  // "Fixed date range…" has these operators too, but users look for them by
+  // name.
+  const specificOperators = [
+    getPickerOperator({
+      key: "before",
+      label: t`Before…`,
+      datePickerType: "specific",
+      specificDateOperator: "<",
+    }),
+    getPickerOperator({
+      key: "after",
+      label: t`After…`,
+      datePickerType: "specific",
+      specificDateOperator: ">",
+    }),
+  ];
+  const pickerOperators = TYPE_OPTIONS.map(({ type, label }) =>
+    getPickerOperator({
       key: type,
       label,
-      hasNoPillOperator: true,
-      group: SHORTCUT_OPTION_GROUPS.length,
-      valueKind: "date-picker",
       datePickerType:
         type === "specific" || type === "relative" ? type : "exclude",
-      isNumeric: false,
-      formatValue: (json) => {
-        const value = parseDatePickerValue(json);
-        return value != null ? formatDatePickerValue(value) : null;
-      },
-      getFilterClause: ([json]) => {
-        const value = parseDatePickerValue(json);
-        return value?.type === type
-          ? getDateFilterClause(column, value)
-          : undefined;
-      },
     }),
   );
-  return [...shortcutOperators, ...pickerOperators];
+  return [...shortcutOperators, ...specificOperators, ...pickerOperators];
+}
+
+/** True when the operator of a date picker can make the filter of `value`. */
+function isDateOperatorValue(
+  operator: Pick<DraftOperator, "key" | "specificDateOperator">,
+  value: DatePickerValue,
+) {
+  return operator.specificDateOperator != null
+    ? value.type === "specific" &&
+        value.operator === operator.specificDateOperator
+    : value.type === operator.key;
+}
+
+/** The operator of the pill for a date picker value. */
+function getDatePickerOperatorKey(value: DatePickerValue) {
+  if (value.type === "specific" && value.operator === "<") {
+    return "before";
+  }
+  if (value.type === "specific" && value.operator === ">") {
+    return "after";
+  }
+  return value.type;
 }
 
 const LOCAL_DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
@@ -484,7 +530,8 @@ export function findItemByTypedName<T>(
 /** The names that a space after them selects an operator by. */
 export function getOperatorNames(operator: DraftOperator): string[] {
   return [
-    operator.label,
+    // "after" and a space picks "After…".
+    operator.label.replace(/…$/, ""),
     ...(operator.isNumeric ? (getOperatorAliases(operator) ?? []) : []),
   ];
 }
@@ -525,7 +572,8 @@ export function getDraftFilterClause({
 
 export function isValidValue(operator: DraftOperator, value: string) {
   if (operator.valueKind === "date-picker") {
-    return parseDatePickerValue(value)?.type === operator.key;
+    const dateValue = parseDatePickerValue(value);
+    return dateValue != null && isDateOperatorValue(operator, dateValue);
   }
   if (operator.options != null) {
     return operator.options.some((option) => option.value === value);
@@ -551,9 +599,13 @@ export function getDraftStateFromFilter(
       dateValue.type === "relative" ? getDateShortcutKey(dateValue) : undefined;
     return shortcutKey != null
       ? getDraftState(query, stageIndex, dateColumn, shortcutKey, [])
-      : getDraftState(query, stageIndex, dateColumn, dateValue.type, [
-          stringifyDatePickerValue(dateValue),
-        ]);
+      : getDraftState(
+          query,
+          stageIndex,
+          dateColumn,
+          getDatePickerOperatorKey(dateValue),
+          [stringifyDatePickerValue(dateValue)],
+        );
   }
 
   const coordinateParts = Lib.coordinateFilterParts(query, stageIndex, filter);
