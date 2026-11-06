@@ -199,3 +199,18 @@
                   :current       (get (setting.cache/cache) "held-cache-test-key")})))
         (finally
           (setting.cache/update-cache! state "held-cache-test-key" nil))))))
+
+(deftest restore-uses-the-state-it-checked-test
+  (testing "a restore fills the cache whose clock and lock it checked, even if the state this thread sees changes"
+    (let [new-state (fn []
+                      {:cache             (atom nil)
+                       :last-update-check (java.util.concurrent.atomic.AtomicLong. 0)
+                       :restore-lock      (java.util.concurrent.locks.ReentrantLock.)})
+          checked   (new-state)
+          later     (new-state)
+          calls     (atom 0)]
+      (mt/with-dynamic-fn-redefs [setting.cache/current-state #(if (= 1 (swap! calls inc)) checked later)]
+        (setting.cache/restore-cache-if-needed! :force-check? true))
+      (is (= {:checked-filled? true, :later-filled? false}
+             {:checked-filled? (some? @(:cache checked))
+              :later-filled?   (some? @(:cache later))})))))
