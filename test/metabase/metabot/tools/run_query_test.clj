@@ -100,15 +100,18 @@
 
 (def ^:private notebook-query-step
   "Recover from a refusal by building a notebook query."
-  "To get values, build the question with `construct_notebook_query`, then run that query with `run_query`.")
+  (str "To get values, build the question with `construct_notebook_query` (pass `show_chart: false`), then run that"
+       " query with `run_query`."))
 
 (def ^:private sql-card-step
   "Build a notebook query from tables after a saved SQL question is refused."
-  "To get values, build the question from tables with `construct_notebook_query` instead.")
+  (str "To get values, build the question from tables with `construct_notebook_query` (pass `show_chart: false`)"
+       " instead."))
 
 (def ^:private sql-query-step
   "Recover from a refusal by writing SQL in the SQL-only profile."
-  "To get values, write the question as SQL with `create_sql_query`, then run that query with `run_query`.")
+  (str "To get values, write the question as SQL with `create_sql_query` (pass `show_chart: false`), then run that"
+       " query with `run_query`."))
 
 (def ^:private no-values-step
   "Tell the user that results are unavailable when no offered tool can fetch them."
@@ -116,14 +119,25 @@
 
 (def ^:private rewrite-step
   "Rewrite refused SQL as a single read-only SELECT in a profile that can write SQL."
-  "Use `create_sql_query` to rewrite it as one SELECT that changes and locks nothing, then run that query.")
+  (str "Use `create_sql_query` (pass `show_chart: false`) to rewrite it as one SELECT that changes and locks nothing,"
+       " then run that query."))
 
 (def ^:private write-select-step
   "Replace a saved question's SQL when Metabot wrote it and it is not a read-only SELECT."
-  "Write a read-only SELECT with `create_sql_query` and run that instead.")
+  "Write a read-only SELECT with `create_sql_query` (pass `show_chart: false`) and run that instead.")
 
 (def ^:private sql-refused
   (refusal ::run-query/sql-not-allowed "This query is SQL, and SQL can't run here." notebook-query-step))
+
+(deftest create-sql-query-to-read-test
+  (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+            scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+    (testing "where SQL can run, create_sql_query takes show_chart, so the step names it"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (is (= "`create_sql_query` (pass `show_chart: false`)" (run-query/create-sql-query-to-read)))))
+    (testing "where SQL can't run, the argument isn't declared, so the step leaves it out"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+        (is (= "`create_sql_query`" (run-query/create-sql-query-to-read)))))))
 
 (defn- venues-by-id
   []

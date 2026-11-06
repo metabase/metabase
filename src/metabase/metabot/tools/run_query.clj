@@ -45,18 +45,28 @@
 
 (def ^:private max-table-chars 10000)
 
+(defn create-sql-query-to-read
+  "Returns how a recovery step names `create_sql_query` for SQL written only to read its values: with
+   `show_chart: false` when SQL execution is allowed, since the tool takes the argument alongside run_query only then."
+  []
+  (cond-> "`create_sql_query`"
+    (scope/sql-execution-allowed?) (str " (pass `show_chart: false`)")))
+
+;; Every step here is offered alongside run_query, where construct_notebook_query takes `show_chart`, and
+;; [[recovery-hint]] picks `:sql-query` only when SQL execution is allowed.
 (def ^:private hint-steps
   "Map each refusal hint to a recovery step.
    [[recovery-hint]] picks the hint for most refusals."
   {:notebook-query {:uses #{"construct_notebook_query" "run_query"}
-                    :text (str "To get values, build the question with `construct_notebook_query`, then run that"
-                               " query with `run_query`.")}
+                    :text (str "To get values, build the question with `construct_notebook_query` (pass"
+                               " `show_chart: false`), then run that query with `run_query`.")}
    ;; A notebook query over the same SQL question would be refused again
    :sql-card       {:uses #{"construct_notebook_query"}
-                    :text "To get values, build the question from tables with `construct_notebook_query` instead."}
+                    :text (str "To get values, build the question from tables with `construct_notebook_query` (pass"
+                               " `show_chart: false`) instead.")}
    :sql-query      {:uses #{"create_sql_query" "run_query"}
-                    :text (str "To get values, write the question as SQL with `create_sql_query`, then run that"
-                               " query with `run_query`.")}
+                    :text (str "To get values, write the question as SQL with `create_sql_query` (pass"
+                               " `show_chart: false`), then run that query with `run_query`.")}
    :no-values      {:uses #{}
                     :text "Tell the user you can't read its results."}})
 
@@ -192,13 +202,14 @@
       {:message  (str "Only a single read-only SELECT statement can run, and query " query-id
                       " reads a saved question whose SQL is not one." (some->> problem (str " ")))
        :recovery (cond-> [{:uses #{"create_sql_query"}
-                           :text "Write a read-only SELECT with `create_sql_query` and run that instead."}]
+                           :text (str "Write a read-only SELECT with " (create-sql-query-to-read)
+                                      " and run that instead.")}]
                    notebook? (conj (:sql-card hint-steps)))}
       {:message  (str "Only a single read-only SELECT statement can run, and query " query-id " is not one."
                       (some->> problem (str " ")))
        :recovery (cond-> [{:uses #{"create_sql_query"}
-                           :text (str "Use `create_sql_query` to rewrite it as one SELECT that changes and locks"
-                                      " nothing, then run that query.")}]
+                           :text (str "Use " (create-sql-query-to-read) " to rewrite it as one SELECT that changes"
+                                      " and locks nothing, then run that query.")}]
                    notebook? (conj (:notebook-query hint-steps)))})))
 
 (tools/defrecoverable not-sql!
