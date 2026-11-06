@@ -38,9 +38,9 @@ import { resolveAllowedCustomVisualizations } from "../utils/validate-allowed-cu
 import { DashboardParametersBridge } from "./DashboardParametersBridge";
 import { MetabaseBrowser } from "./MetabaseBrowser";
 import { QuestionParametersBridge } from "./QuestionParametersBridge";
+import { SdkIframeApiKeyGuard } from "./SdkIframeApiKeyGuard";
 import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
 import {
-  SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
@@ -85,7 +85,7 @@ initMetaplow({
 });
 
 export const SdkIframeEmbedRoute = () => {
-  const { embedSettings } = useSdkIframeEmbedEventBus({
+  const { embedSettings, parentOrigin } = useSdkIframeEmbedEventBus({
     onSettingsChanged,
     store,
   });
@@ -116,11 +116,6 @@ export const SdkIframeEmbedRoute = () => {
     return <SdkIframeInvalidLicenseError />;
   }
 
-  // Using API keys in production is not allowed. SSO is required.
-  if (isProduction && embedSettings.apiKey) {
-    return <SdkIframeApiKeyInProductionError />;
-  }
-
   // Using the existing user's session in production is not allowed. SSO is required.
   if (isProduction && embedSettings.useExistingUserSession) {
     return <SdkIframeExistingUserSessionInProductionError />;
@@ -135,25 +130,30 @@ export const SdkIframeEmbedRoute = () => {
   } as MetabaseAuthConfig;
 
   return (
-    <ComponentProvider
-      authConfig={authConfig}
-      theme={adjustedTheme}
-      locale={locale}
-      reduxStore={store}
-      isLocalHost={embedSettings._isLocalhost}
+    <SdkIframeApiKeyGuard
+      apiKey={embedSettings.apiKey}
+      parentOrigin={parentOrigin}
     >
-      <Stack
-        h="100vh"
-        className={SdkIframeEmbedRouteS.Container}
-        style={{
-          backgroundColor: adjustedTheme?.colors?.background,
-        }}
+      <ComponentProvider
+        authConfig={authConfig}
+        theme={adjustedTheme}
+        locale={locale}
+        reduxStore={store}
+        isLocalHost={embedSettings._isLocalhost}
       >
-        <SdkIframeEmbedView settings={embedSettings} />
+        <Stack
+          h="100vh"
+          className={SdkIframeEmbedRouteS.Container}
+          style={{
+            backgroundColor: adjustedTheme?.colors?.background,
+          }}
+        >
+          <SdkIframeEmbedView settings={embedSettings} />
 
-        {isGuest && <EmbedBrandingFooter />}
-      </Stack>
-    </ComponentProvider>
+          {isGuest && <EmbedBrandingFooter />}
+        </Stack>
+      </ComponentProvider>
+    </SdkIframeApiKeyGuard>
   );
 };
 
