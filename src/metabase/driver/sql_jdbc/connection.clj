@@ -485,7 +485,14 @@
              #(cond-> %
                 (identical? (get % cache-key) pool-spec) (dissoc cache-key)))
       (destroy-pool! db-id pool-spec)
-      (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
+      (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))
+    ;; swapped pools live in their own cache; its removal listener destroys the pool. Removing the entry only if it
+    ;; still holds this pool leaves a newer pool that another thread put in the cache alone.
+    (doseq [[cache-key pool-spec] (.asMap ^Cache swapped-connection-pools)
+            :when (identical? (:datasource pool-spec) data-source)]
+      (log/warnf "Could not acquire a connection for database %d; closing its empty swapped connection pool"
+                 (first cache-key))
+      (.remove (.asMap ^Cache swapped-connection-pools) cache-key pool-spec))))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
