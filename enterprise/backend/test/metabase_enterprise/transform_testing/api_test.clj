@@ -89,6 +89,30 @@
           (finally
             (t2/delete! :model/TransformTest (:id created))))))))
 
+(deftest rows-cells-keep-request-values-test
+  (with-transforms-enabled
+    (mt/with-temp [:model/Transform {transform-id :id} (transform)]
+      (let [cells   {"ID" 1 "CODE" "0001" "FLAG" "true" "AMOUNT" "1.50" "RATE" 1.5 "ACTIVE" false "NOTE" nil}
+            columns (mapv (fn [column] {:name column :cast_type "VARCHAR"}) (keys cells))
+            created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
+                                          {:transform_id transform-id
+                                           :name         "Cell values"
+                                           :inputs       [(assoc (first inputs) :columns columns :rows [cells])]
+                                           :expectations [{:type    "equals"
+                                                           :name    "cells as written"
+                                                           :format  "rows"
+                                                           :columns columns
+                                                           :rows    [cells]}]})]
+        (try
+          (testing "strings that read as numbers or booleans stay strings, and other values keep their type"
+            (let [expected (update-keys cells keyword)]
+              (is (= [expected] (-> created :inputs first :rows)))
+              (is (= [expected] (-> created :expectations first :rows)))
+              (is (= [expected] (-> (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" (:id created)))
+                                    :inputs first :rows)))))
+          (finally
+            (t2/delete! :model/TransformTest :id (:id created))))))))
+
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (with-transforms-enabled
     (mt/with-temp [:model/Transform {transform-id :id} (transform)]
