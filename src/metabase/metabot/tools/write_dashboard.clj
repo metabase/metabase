@@ -26,6 +26,7 @@
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
@@ -712,10 +713,6 @@
   ;; Attribute names and the filter element match the dashboard reads in `read_resource`, so the model reads one shape.
   [{:keys [id name description tabs dashcards parameters]} saved-charts]
   (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
-        connections (fn [parameter-id]
-                      (for [dc dashcards
-                            :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
-                        (:id dc)))
         card-shown? (card-shown-fn dashcards saved-charts)
         card-lines  (fn [indent dcs] (for [dc dcs] (str indent (dashcard-xml card-shown? dc))))]
     [(str "  <dashboard" (xml-attrs :id id :name name) ">")
@@ -730,9 +727,8 @@
            (card-lines "      " (get by-tab tab-id))
            "    </tab>"])]
        (card-lines "    " (get by-tab nil)))
-     (for [{parameter-id :id :as parameter} parameters]
-       (str "    " (llm-shape/dashboard-filter->xml
-                    (assoc parameter :connected_dashcards (connections parameter-id)))))
+     (for [parameter (entity-details/with-filter-connections parameters dashcards)]
+       (str "    " (llm-shape/dashboard-filter->xml parameter)))
      "  </dashboard>"]))
 
 (defn- action
