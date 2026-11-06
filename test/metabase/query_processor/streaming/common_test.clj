@@ -124,6 +124,8 @@
       "-5"
       "+5"
       "-1,234.56"
+      "-1’234.56\u00a0€"
+      "-2 US dollars"
       "-$1,234.56"
       "-1,234.56\u00a0€"
       "-1,234.56\u00a0EUR"
@@ -139,6 +141,8 @@
       "+1 555 1234"))
   (testing "currency-like text with formula syntax still requires escaping"
     (are [v] (= (str "'" v) (streaming.common/escape-spreadsheet-formula v))
+      "-1’234.56+1"
+      "-2 US dollars+1"
       "-1,234.56\u00a0EUR+1"
       "-1,234.56\u00a0USD|cmd!A0"
       "-1,234.56 EUR(1)"

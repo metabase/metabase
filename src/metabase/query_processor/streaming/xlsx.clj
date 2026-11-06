@@ -85,7 +85,7 @@
 
 (defn- unformatted-number?
   "Use default formatting for decimal number types that have no other format settings defined
-  aside from prefix, suffix or scale."
+  aside from prefix, suffix, scale or currency label position."
   [format-settings]
   (and
    ;; This is a decimal or currency number (not a percentage or scientific notation)
@@ -96,6 +96,7 @@
    (not (seq (dissoc format-settings
                      ::mb.viz/number-style
                      ::mb.viz/number-separators
+                     ::mb.viz/currency-position
                      ::mb.viz/scale
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))

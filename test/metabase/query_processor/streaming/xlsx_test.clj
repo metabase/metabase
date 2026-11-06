@@ -55,6 +55,8 @@
     (testing "General number formatting"
       (testing "number-style (non-currency)"
         (is (= ["#,##0" "#,##0.##########"] (format-string {::mb.viz/number-style "decimal"})))
+        (is (= ["#,##0" "#,##0.##########"]
+               (format-string {::mb.viz/number-style "decimal", ::mb.viz/currency-position "after"})))
         (is (= "#,##0.00%"   (format-string {::mb.viz/number-style "percent"})))
         (is (= "#,##0.00E+0" (format-string {::mb.viz/number-style "scientific"})))))))
 
