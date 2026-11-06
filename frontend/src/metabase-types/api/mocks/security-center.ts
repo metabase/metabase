@@ -83,7 +83,6 @@ export const createMockHealthCheck = (
   docs: { page: "configuring-metabase/settings" },
   requires_restart: false,
   status: "pass",
-  running: false,
   checked_at: "2026-10-29T10:00:00Z",
   items: [createMockHealthCheckItem()],
   ...overrides,
