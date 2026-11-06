@@ -412,6 +412,9 @@
       (when-let [error (manifest/validation-error parsed)]
         (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
                         {:status-code 400})))
+      (when-let [error (manifest/icon-error (:icon parsed))]
+        (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
+                        {:status-code 400})))
       parsed)))
 
 (defn fetch-dev-asset
