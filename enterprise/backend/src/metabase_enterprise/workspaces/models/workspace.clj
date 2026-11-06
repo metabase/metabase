@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace-database]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
@@ -38,7 +39,7 @@
    (fn []
      (when-let [ids (seq (map :id workspaces))]
        (group-by :workspace_id
-                 (t2/select :model/WorkspaceDatabase :workspace_id [:in ids]))))
+                 (ws.db/workspace-databases-of-workspaces ids))))
    :id
    {:default []}))
 
@@ -48,22 +49,20 @@
    workspaces k
    (fn []
      (when-let [ids (seq (distinct (keep :creator_id workspaces)))]
-       (u/index-by :id
-                   (t2/select [:model/User :id :first_name :last_name :email :common_name]
-                              :id [:in ids]))))
+       (u/index-by :id (ws.db/creators ids))))
    :creator_id))
 
 (defn list-workspaces
   "Return every Workspace with its `:databases` (each with its `:database`) and
   `:creator` hydrated."
   []
-  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator [:databases :database]))
+  (t2/hydrate (ws.db/workspaces) :creator [:databases :database]))
 
 (defn get-workspace
   "Return the Workspace with the given id and its `:databases` (each with its
   `:database`) + `:creator` hydrated, or nil if none exists."
   [id]
-  (when-let [workspace (t2/select-one :model/Workspace :id id)]
+  (when-let [workspace (ws.db/workspace id)]
     (t2/hydrate workspace :creator [:databases :database])))
 
 (defn get-workspace-by-name
@@ -71,7 +70,7 @@
   or nil if none exists. Workspace names are not unique at the schema level, so this
   returns the lowest-id match."
   [workspace-name]
-  (when-let [workspace (t2/select-one :model/Workspace :name workspace-name {:order-by [[:id :asc]]})]
+  (when-let [workspace (ws.db/workspace-by-name workspace-name)]
     (t2/hydrate workspace :creator :databases)))
 
 (defn- with-workspace-database-defaults
@@ -88,12 +87,10 @@
   `:databases` and `:creator` hydrated."
   [{:keys [name creator_id databases]}]
   (t2/with-transaction [_conn]
-    (let [workspace-id (t2/insert-returning-pk! :model/Workspace
-                                                {:name       name
-                                                 :creator_id creator_id})]
+    (let [workspace-id (ws.db/insert-workspace! name creator_id)]
       (when (seq databases)
-        (t2/insert! :model/WorkspaceDatabase
-                    (map #(with-workspace-database-defaults % workspace-id) databases)))
+        (ws.db/insert-workspace-databases!
+         (mapv #(with-workspace-database-defaults % workspace-id) databases)))
       (get-workspace workspace-id))))
 
 (defn- reject-active-modification!
@@ -116,13 +113,11 @@
   — those point at live warehouse resources and must be unprovisioned explicitly
   first. Cascade-deletes `:unprovisioned` children via the FK."
   [id]
-  (when (t2/exists? :model/WorkspaceDatabase
-                    :workspace_id id
-                    :status [:not= :unprovisioned])
+  (when (ws.db/workspace-has-active-databases? id)
     (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; deprovision them first"
                     {:status-code 409
                      :workspace_id id})))
-  (t2/delete! :model/Workspace :id id))
+  (ws.db/delete-workspace! id))
 
 (defn update-workspace!
   "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided
@@ -133,18 +128,18 @@
   [id params]
   (t2/with-transaction [_conn]
     (when (contains? params :name)
-      (t2/update! :model/Workspace :id id {:name (:name params)}))
+      (ws.db/update-workspace-name! id (:name params)))
     (when (contains? params :databases)
       (let [databases         (:databases params)
-            existing          (t2/select :model/WorkspaceDatabase :workspace_id id)
+            existing          (ws.db/workspace-databases id)
             active            (remove #(= :unprovisioned (:status %)) existing)
             unprovisioned     (filter #(= :unprovisioned (:status %)) existing)
             incoming-by-db-id (into {} (map (juxt :database_id identity)) databases)
             preserved-db-ids  (set (map :database_id active))]
         (reject-active-modification! active incoming-by-db-id)
         (when-let [to-delete-ids (seq (map :id unprovisioned))]
-          (t2/delete! :model/WorkspaceDatabase :id [:in to-delete-ids]))
+          (ws.db/delete-workspace-databases! to-delete-ids))
         (when-let [to-insert (seq (remove #(contains? preserved-db-ids (:database_id %)) databases))]
-          (t2/insert! :model/WorkspaceDatabase
-                      (map #(with-workspace-database-defaults % id) to-insert)))))
+          (ws.db/insert-workspace-databases!
+           (mapv #(with-workspace-database-defaults % id) to-insert)))))
     (get-workspace id)))
