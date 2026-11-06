@@ -164,20 +164,21 @@
 (deftest shadow-backends-test
   (testing "a shadow backend answers with its primary parser and compares the other one in the background"
     (mt/with-prometheus-system! [_ system]
-      (doseq [backend [:sqlglot-shadow :sqlglot-java-shadow]]
-        (testing backend
-          (binding [settings/*parser-backend-override* backend]
-            (is (= [{:schema nil :table "b"} {:schema "s" :table "a"}]
-                   (sql-tools/referenced-tables-raw :postgres "SELECT * FROM s.a JOIN b ON a.id = b.id")))
-            (is (= :allowed (:verdict (sql-tools/validate-executable-stmt :postgres "SELECT 1" "read-only")))))))
-      (let [matches  #(mt/metric-value system :metabase-sql-parsing/shadow-comparisons
-                                       {:method % :dialect "postgres" :outcome "match"})
-            deadline (+ (System/currentTimeMillis) 30000)]
-        (while (and (not= [2.0 2.0] [(matches "referenced-tables") (matches "single-stmt-of-type")])
-                    (< (System/currentTimeMillis) deadline))
-          (Thread/sleep 50))
-        (is (= 2.0 (matches "referenced-tables")))
-        (is (= 2.0 (matches "single-stmt-of-type")))))))
+      (mt/with-temporary-setting-values [sql-tools-parser-shadow-sample-rate 1.0]
+        (doseq [backend [:sqlglot-shadow :sqlglot-java-shadow]]
+          (testing backend
+            (binding [settings/*parser-backend-override* backend]
+              (is (= [{:schema nil :table "b"} {:schema "s" :table "a"}]
+                     (sql-tools/referenced-tables-raw :postgres "SELECT * FROM s.a JOIN b ON a.id = b.id")))
+              (is (= :allowed (:verdict (sql-tools/validate-executable-stmt :postgres "SELECT 1" "read-only")))))))
+        (let [matches  #(mt/metric-value system :metabase-sql-parsing/shadow-comparisons
+                                         {:method % :dialect "postgres" :outcome "match"})
+              deadline (+ (System/currentTimeMillis) 30000)]
+          (while (and (not= [2.0 2.0] [(matches "referenced-tables") (matches "single-stmt-of-type")])
+                      (< (System/currentTimeMillis) deadline))
+            (Thread/sleep 50))
+          (is (= 2.0 (matches "referenced-tables")))
+          (is (= 2.0 (matches "single-stmt-of-type"))))))))
 
 (deftest java-map-inputs-and-persistent-results-test
   (let [java-parser (sqlglot-java/parser)]
