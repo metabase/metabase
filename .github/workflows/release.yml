@@ -580,6 +580,14 @@ jobs:
               console.error('Failed to publish release notes', '${{ inputs.version }}', err);
               process.exit(1);
             });
+      - name: Send release failure message
+        if: failure() || cancelled()
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Drafting release notes for
+          version: ${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
   publish-version-info:
     if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
@@ -669,6 +677,14 @@ jobs:
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
+      - name: Send release failure message
+        if: failure() || cancelled()
+        uses: ./.github/actions/notify-release-failure
+        with:
+          title: Sending the publish complete message for
+          version: ${{ inputs.version }}
+          slack-channel: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
 
   notify-failure:
     needs:
@@ -683,9 +699,7 @@ jobs:
       - get-extra-tags
       - trigger-cloud-issues
       - trigger-ee-extra-pr
-      - draft-release-notes
       - publish-version-info
-      - publish-complete-message
     if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
