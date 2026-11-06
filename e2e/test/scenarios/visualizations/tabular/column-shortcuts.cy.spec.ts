@@ -81,7 +81,7 @@ const URL_CASES = [
   },
 ];
 
-describe("extract shortcut", () => {
+describe("column header extraction", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -104,7 +104,7 @@ describe("extract shortcut", () => {
           example,
         });
         H.expectUnstructuredSnowplowEvent({
-          event: "column_extract_via_plus_modal",
+          event: "column_extract_via_column_header",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
         });
@@ -147,12 +147,13 @@ describe("extract shortcut", () => {
     URL_CASES.forEach(({ option, value, example, expressions }) => {
       extractColumnAndCheck({
         column: "Email",
+        extraction: "Extract domain, subdomain…",
         option,
         value,
         example,
       });
       H.expectUnstructuredSnowplowEvent({
-        event: "column_extract_via_plus_modal",
+        event: "column_extract_via_column_header",
         custom_expressions_used: expressions,
         database_id: SAMPLE_DB_ID,
       });
@@ -175,12 +176,13 @@ describe("extract shortcut", () => {
     EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
       extractColumnAndCheck({
         column: "Email",
+        extraction: "Extract domain, host…",
         option,
         value,
         example,
       });
       H.expectUnstructuredSnowplowEvent({
-        event: "column_extract_via_plus_modal",
+        event: "column_extract_via_column_header",
         custom_expressions_used: expressions,
         database_id: SAMPLE_DB_ID,
       });
@@ -248,12 +250,14 @@ describe("extract shortcut", () => {
 
 function extractColumnAndCheck({
   column,
+  extraction = "Extract day, month…",
   option,
   newColumn = option,
   value,
   example,
 }: {
   column: string;
+  extraction?: string;
   option: string;
   value?: string;
   example?: string;
@@ -261,10 +265,8 @@ function extractColumnAndCheck({
 }) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
-  cy.findByLabelText("Add column").click();
-
-  H.popover().findByText("Extract part of column").click();
-  H.popover().findAllByText(column).first().click();
+  H.tableHeaderClick(column);
+  H.popover().findByText(extraction).click();
 
   if (example) {
     H.popover().findByText(option).parent().should("contain", example);
@@ -291,24 +293,24 @@ function extractColumnAndCheck({
   }
 }
 
-describe("scenarios > visualizations > combine shortcut", () => {
+describe("scenarios > visualizations > column header combination", () => {
   function combineColumns({
     columns,
     example,
     newColumn,
     newValue,
   }: {
-    columns: string[];
+    columns: [string, ...string[]];
     example: string;
     newColumn: string;
     newValue?: string;
   }) {
     const requestAlias = _.uniqueId("dataset");
     cy.intercept("POST", "/api/dataset").as(requestAlias);
-    cy.findByLabelText("Add column").click();
+    H.tableHeaderClick(columns[0]);
 
     H.popover().findByText("Combine columns").click();
-    for (const [index, column] of columns.entries()) {
+    for (const [index, column] of columns.slice(1).entries()) {
       selectColumn(index, column);
     }
 
@@ -348,7 +350,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should combine columns via the plus modal and the column header and handle duplicate column names", () => {
+  it("should combine columns from the column header and handle duplicate column names", () => {
     H.createQuestion(
       {
         query: {
@@ -374,7 +376,7 @@ describe("scenarios > visualizations > combine shortcut", () => {
     });
 
     H.expectUnstructuredSnowplowEvent({
-      event: "column_combine_via_plus_modal",
+      event: "column_combine_via_column_header",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
     });

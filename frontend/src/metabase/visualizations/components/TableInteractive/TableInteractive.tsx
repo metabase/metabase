@@ -461,12 +461,15 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
-    if (
-      !question ||
-      !mode?.hasColumnShortcutActions ||
-      !onVisualizationClick ||
-      isPivoted
-    ) {
+    if (!question || isPivoted) {
+      return undefined;
+    }
+
+    if (mode?.onAddColumn) {
+      return mode.onAddColumn;
+    }
+
+    if (!mode?.hasColumnShortcutActions || !onVisualizationClick) {
       return undefined;
     }
 

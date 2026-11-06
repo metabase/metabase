@@ -9,6 +9,7 @@ import * as Lib from "metabase-lib";
 import type { UpdateQueryHookProps } from "../../../../hooks/types";
 
 import { SummaryFieldList } from "./SummaryFieldList";
+import { useSummaryFormulaBar } from "./SummaryFormulaBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import type { SummaryField, SummaryFieldSection, SummaryWellId } from "./types";
@@ -63,6 +64,12 @@ export function SummarySidebar({
     }
   };
 
+  const { bar, formulaInputs } = useSummaryFormulaBar({
+    query,
+    stageIndex,
+    onAdd: handleWellAdd,
+  });
+
   const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
     handleWellAdd(addField(query, stageIndex, wellId, field), wellId);
 
@@ -87,11 +94,13 @@ export function SummarySidebar({
 
   return (
     <Box className={S.sidebar} data-testid="summary-sidebar">
+      {bar}
       <Box className={S.wellsColumn}>
         <SummaryWells
           query={query}
           stageIndex={stageIndex}
           sections={sections}
+          formulaInputs={formulaInputs}
           onPick={handleAdd}
           onChange={onQueryChange}
         />
