@@ -1139,6 +1139,20 @@
                                                             :value  [10]
                                                             :id     "_VENUE_ID_"}])))))))))
 
+(deftest execute-public-dashcard-referenced-entities-test
+  (testing "GET /api/public/dashboard/:uuid/dashcard/:id/card/:id resolves the dynamic goal in the card's viz settings"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
+        (with-temp-public-dashboard-and-card [dash card dashcard]
+          (t2/update! :model/Card :id (u/the-id card)
+                      {:display                :scalar
+                       :visualization_settings {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
+                                                                   :max   nil
+                                                                   :color "red"}]}})
+          (is (= [[1000]]
+                 (-> (client/client :get 202 (dashcard-url dash card dashcard))
+                     (get-in [:data :referenced_entities :card goal-id :data :rows])))))))))
+
 (deftest execute-public-dashcard-with-default-parameters-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id with parameters with default values"
     (mt/with-temporary-setting-values [enable-public-sharing true]

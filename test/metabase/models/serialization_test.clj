@@ -499,6 +499,23 @@
     (is (= {:graph.goal_value 100 :progress.goal "self-col"}
            (export-goals {:graph.goal_value 100 :progress.goal "self-col"})))))
 
+(deftest ^:parallel viz-dynamic-goals-unknown-type-test
+  (let [unknown-goal-viz-settings (fn [id]
+                                    {:graph.goal_value {:id id :type "segment" :column "total"}
+                                     :gauge.segments   [{:min 0 :max {:id id :type "segment" :column "total"}}]})
+        no-goal-viz-settings      {:graph.goal_value nil
+                                   :gauge.segments   [{:min 0 :max nil}]}]
+    (testing "a goal whose type names no entity model exports as no goal rather than a raw id"
+      (is (= no-goal-viz-settings (export-goals (unknown-goal-viz-settings 1)))))
+    (testing "and imports as no goal rather than an id from another instance"
+      (is (= no-goal-viz-settings
+             (dissoc (serdes/import-visualization-settings (unknown-goal-viz-settings card-eid))
+                     :column_settings))))))
+
+(deftest ^:parallel export-viz-dynamic-goals-twice-test
+  (testing "exporting goals that already hold entity ids leaves them as they are, so a second export pass works"
+    (is (= exported-goal-viz-settings (export-goals exported-goal-viz-settings)))))
+
 (deftest ^:parallel import-viz-dynamic-goals-test
   (testing "entity ids resolve back to numeric ids"
     (binding [serdes/*import-fk* (fn [eid _model] (condp = eid card-eid 1, measure-eid 7))]
