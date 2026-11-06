@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
@@ -22,8 +23,10 @@ import {
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   DefaultSelectItem,
+  Icon,
   MultiSelect,
   Select,
+  SelectItem,
   Stack,
   Text,
   Tooltip,
@@ -48,6 +51,44 @@ import {
 import { type ScdDetails, useScdDetails } from "./use-scd-details";
 
 const OPTION_TOOLTIP_OFFSET = 16;
+
+function ShapeOptionItem({
+  label,
+  selected,
+  disabled,
+  example,
+}: {
+  label: string;
+  selected: boolean;
+  disabled?: boolean;
+  example: ReactNode;
+}) {
+  const [isExampleShown, { open: showExample, close: hideExample }] =
+    useDisclosure(false);
+  return (
+    <Tooltip
+      label={example}
+      opened={isExampleShown}
+      position="left"
+      offset={OPTION_TOOLTIP_OFFSET}
+      maw="none"
+    >
+      <SelectItem selected={selected} disabled={disabled} w="100%">
+        <Text c="inherit" lh="inherit" flex={1}>
+          {label}
+        </Text>
+        <Icon
+          name="info"
+          c="text-secondary"
+          flex="0 0 auto"
+          aria-label={t`Example`}
+          onMouseEnter={showExample}
+          onMouseLeave={hideExample}
+        />
+      </SelectItem>
+    </Tooltip>
+  );
+}
 
 function ShapeSelect<T extends string>({
   label,
@@ -84,16 +125,15 @@ function ShapeSelect<T extends string>({
       defaultDropdownOpened={isOpenOnMount}
       renderOption={({ option, checked }) => {
         const shapeOption = options.find(({ value }) => value === option.value);
-        return (
-          <Tooltip
-            label={shapeOption ? renderExample(shapeOption) : null}
-            position="left"
-            offset={OPTION_TOOLTIP_OFFSET}
-            maw="none"
-            disabled={shapeOption == null}
-          >
-            <DefaultSelectItem {...option} selected={checked} w="100%" />
-          </Tooltip>
+        return shapeOption ? (
+          <ShapeOptionItem
+            label={shapeOption.label}
+            selected={checked ?? false}
+            disabled={option.disabled}
+            example={renderExample(shapeOption)}
+          />
+        ) : (
+          <DefaultSelectItem {...option} selected={checked} />
         );
       }}
       onChange={(selected) => {
