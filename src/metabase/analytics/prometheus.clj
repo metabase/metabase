@@ -926,6 +926,8 @@
    (prometheus/gauge :metabase-security-center/health-checks
                      {:description "1 when the Security Center health check last had this status, else 0."
                       :labels [:check_id :severity :status]})
+   (prometheus/gauge :metabase-security-center/health-checks-last-run-timestamp-seconds
+                     {:description "Unix timestamp (seconds since epoch) of the last scheduled run of the Security Center health checks."})
    ;; metaplow analytics metrics
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."

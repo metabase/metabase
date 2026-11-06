@@ -92,3 +92,13 @@
                               (if (= status (status-of-id (:id check))) 1 0))))
     (catch Exception e
       (log/warnf "Failed to set :metabase-security-center/health-checks metric: %s" (ex-message e)))))
+
+(defn set-health-checks-last-run!
+  "Sets the last-run gauge of the health checks to `time`."
+  [^Temporal time]
+  (try
+    (analytics/set-gauge! :metabase-security-center/health-checks-last-run-timestamp-seconds
+                          (.getLong time ChronoField/INSTANT_SECONDS))
+    (catch Exception e
+      (log/warnf "Failed to set :metabase-security-center/health-checks-last-run-timestamp-seconds metric: %s"
+                 (ex-message e)))))
