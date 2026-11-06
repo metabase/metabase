@@ -294,7 +294,6 @@
    :docs             {:page "configuring-metabase/settings"}
    :requires_restart false
    :status           "pass"
-   :running          false
    :checked_at       string?
    :items            [{:status "pass", :message "Redirect to HTTPS is on"}]})
 
@@ -305,7 +304,6 @@
    :docs             {:page "configuring-metabase/settings", :anchor "mb_session_secret_key"}
    :requires_restart true
    :status           "unknown"
-   :running          false
    :checked_at       string?
    :items            [{:status "unknown", :message "Couldn't run this check. Check the server logs for the underlying error."}]})
 

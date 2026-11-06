@@ -77,7 +77,6 @@
                :docs             {:page "configuring-metabase/settings"}
                :requires_restart false
                :status           :pass
-               :running          false
                :checked_at       java.time.OffsetDateTime
                :items            [{:status :pass, :message "Redirect to HTTPS is on"}]}
               response))

@@ -137,6 +137,5 @@
    [:docs             ::health-check-docs]
    [:requires_restart :boolean]
    [:status           ::health-check-status]
-   [:running          :boolean]
    [:checked_at       ms/TemporalInstant]
    [:items            [:sequential {:min 1} ::health-check-item]]])

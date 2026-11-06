@@ -28,7 +28,6 @@
    :docs             {:page "databases/users-roles-privileges"}
    :requires_restart false
    :status           :fail
-   :running          false
    :checked_at       (t/offset-date-time 2026 10 29 10 0 0)
    :items            [{:status      :fail
                        :message     "The connection user can insert, update or delete"

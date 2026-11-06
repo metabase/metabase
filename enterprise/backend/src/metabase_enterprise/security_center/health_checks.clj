@@ -373,7 +373,6 @@
                          docs-anchor (assoc :anchor docs-anchor))
      :requires_restart requires-restart?
      :status           (status-of items)
-     :running          false
      :checked_at       (t/offset-date-time)
      :items            items}))
 
