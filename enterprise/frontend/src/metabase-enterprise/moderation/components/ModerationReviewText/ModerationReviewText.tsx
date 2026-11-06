@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";

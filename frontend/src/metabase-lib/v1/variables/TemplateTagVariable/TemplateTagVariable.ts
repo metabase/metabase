@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import Variable from "metabase-lib/v1/variables/Variable";
 import type { TemplateTag, VariableTarget } from "metabase-types/api";

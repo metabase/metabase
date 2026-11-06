@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import type { Dispatch } from "@reduxjs/toolkit";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";

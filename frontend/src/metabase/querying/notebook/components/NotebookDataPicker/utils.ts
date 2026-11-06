@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { isConcreteTableId } from "metabase-types/api";

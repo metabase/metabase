@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { userApi } from "metabase/api";
 import { createThunkAction } from "metabase/redux";
 import type { User } from "metabase-types/api";

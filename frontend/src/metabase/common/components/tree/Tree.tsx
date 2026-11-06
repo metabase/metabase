@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { BoxProps } from "metabase/ui";
 
 import { TreeNode as DefaultTreeNode } from "./TreeNode";

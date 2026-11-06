@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { isa as cljs_isa } from "cljs/metabase.types.core";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {

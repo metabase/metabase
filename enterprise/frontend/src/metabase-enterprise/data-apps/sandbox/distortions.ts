@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 
 import { makeSandboxFetch } from "./allowed-hosts";

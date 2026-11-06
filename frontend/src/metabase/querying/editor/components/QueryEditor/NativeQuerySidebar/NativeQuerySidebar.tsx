@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { type ComponentType, useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";

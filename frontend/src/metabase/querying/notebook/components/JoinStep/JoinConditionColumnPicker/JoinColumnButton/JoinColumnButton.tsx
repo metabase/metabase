@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMergedRef } from "@mantine/hooks";
 import cx from "classnames";
 import { type Ref, forwardRef, useMemo, useRef } from "react";
