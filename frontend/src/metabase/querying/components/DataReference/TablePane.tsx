@@ -56,6 +56,8 @@ export function TablePane({
   }
 
   const columnListInfo = getTableColumnListInfo(metadataProvider, table.id);
+  const hasColumns =
+    columnListInfo != null && columnListInfo.columns.length > 0;
 
   const handleColumnClick = (columnIndex: number) => {
     onItemClick({ type: "field", tableId: table.id, columnIndex });
@@ -81,7 +83,7 @@ export function TablePane({
           )}
         </div>
         <div className={CS.my2}>
-          {columnListInfo?.columns.length ? (
+          {hasColumns ? (
             <>
               <FieldList
                 query={columnListInfo.query}
