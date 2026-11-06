@@ -2852,8 +2852,8 @@
                                            "GRANT %s TO CURRENT_USER; "
                                            "CREATE SCHEMA %s AUTHORIZATION %s;")
                                       qgrantor qgrantor qschema qgrantor)])
-              (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (mt/db) workspace))
-                    _             (driver/init-workspace-isolation! :postgres (mt/db) workspace+det)
+              (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (driver.u/lib-database (mt/id)) workspace))
+                    _             (driver/init-workspace-isolation! :postgres (driver.u/lib-database (mt/id)) workspace+det)
                     iso-user      (-> workspace+det :database_details :user)
                     qiso          (sql.u/quote-name :postgres :field iso-user)]
                 (try
@@ -2867,7 +2867,7 @@
                                                "RESET ROLE;")
                                           qgrantor qschema qiso)])
                   (testing "destroy completes without error"
-                    (is (some? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
+                    (is (some? (driver/destroy-workspace-isolation! :postgres (driver.u/lib-database (mt/id)) workspace+det))))
                   (testing "the iso-user has been dropped"
                     (is (empty? (jdbc/query admin-spec
                                             ["SELECT 1 FROM pg_roles WHERE rolname = ?" iso-user]))))
@@ -2922,7 +2922,7 @@
                 (mt/with-temp [:model/Database login-db {:engine  :postgres
                                                          :details (assoc (:details (mt/db))
                                                                          :user login :password password)}]
-                  (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres login-db workspace))
+                  (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (driver.u/ensure-lib-database login-db) workspace))
                         iso-user      (-> workspace+det :database_details :user)
                         grants-to     (fn [role]
                                         (jdbc/query admin-spec
@@ -2934,11 +2934,11 @@
                                                           "FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) a "
                                                           "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?)")
                                                      role role]))]
-                    (driver/init-workspace-isolation! :postgres login-db workspace+det)
-                    (driver/grant-workspace-read-access! :postgres login-db workspace+det [schema])
+                    (driver/init-workspace-isolation! :postgres (driver.u/ensure-lib-database login-db) workspace+det)
+                    (driver/grant-workspace-read-access! :postgres (driver.u/ensure-lib-database login-db) workspace+det [schema])
                     (testing "the login, not the owner, is recorded as grantor"
                       (is (contains? (set (map :grantor (grants-to iso-user))) login)))
-                    (driver/destroy-workspace-isolation! :postgres login-db workspace+det)
+                    (driver/destroy-workspace-isolation! :postgres (driver.u/ensure-lib-database login-db) workspace+det)
                     (testing "teardown leaves no grants, no iso schema and no iso role"
                       (is (empty? (grants-to iso-user)))
                       (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_namespace WHERE nspname = ?"

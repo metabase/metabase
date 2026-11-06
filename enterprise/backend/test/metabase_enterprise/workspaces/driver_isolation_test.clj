@@ -334,7 +334,7 @@
                            (mt/normal-drivers-with-feature :workspace))
     (testing "workspace user gets read-only access to input schema, full access to output schema"
       (let [driver       driver/*driver*
-            database     (mt/db)
+            database     (driver.u/lib-database (mt/id))
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             ;; Per-run identifiers — the test runs against a shared warehouse DB
@@ -481,7 +481,7 @@
                         (remove #{:mysql}))
     (testing "two workspaces on the same database are mutually isolated"
       (let [driver       driver/*driver*
-            database     (mt/db)
+            database     (driver.u/lib-database (mt/id))
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             ;; Three independent random ids: one for the shared input namespace and
@@ -619,7 +619,7 @@
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
-            database     (mt/db)
+            database     (driver.u/lib-database (mt/id))
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             run-id       (random-suffix)
@@ -684,7 +684,7 @@
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
     (testing "grant-workspace-read-access! is additive across multiple calls"
       (let [driver       driver/*driver*
-            database     (mt/db)
+            database     (driver.u/lib-database (mt/id))
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             run-id       (random-suffix)
@@ -793,7 +793,7 @@
                            (mt/normal-drivers-with-feature :workspace))
     (testing "workspace user cannot read tables in a different database on the same account/server"
       (let [driver       driver/*driver*
-            database     (mt/db)
+            database     (driver.u/lib-database (mt/id))
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             run-id       (random-suffix)
@@ -891,7 +891,7 @@
                            (mt/normal-drivers-with-feature :workspace))
     (testing "init+grant did not place any grant on PUBLIC / anonymous principal"
       (let [driver       driver/*driver*
-            database     (mt/db)
+            database     (driver.u/lib-database (mt/id))
             details      (:details database)
             admin-spec   (sql-jdbc.conn/connection-details->spec driver details)
             run-id       (random-suffix)
@@ -985,7 +985,7 @@
                            (mt/normal-drivers-with-feature :workspace))
     (testing "failed init-workspace-isolation! never exposes the generated password (GHY-3660)"
       (let [driver     driver/*driver*
-            database   (mt/db)
+            database   (driver.u/lib-database (mt/id))
             details    (:details database)
             admin-spec (sql-jdbc.conn/connection-details->spec driver details)
             run-id     (random-suffix)
@@ -1035,11 +1035,11 @@
                                                          pw))]
                            (try
                              (driver/init-workspace-isolation!
-                              driver low-priv-db
-                              (with-isolation-details driver low-priv-db ws-b))
+                              driver (driver.u/ensure-lib-database low-priv-db)
+                              (with-isolation-details driver (driver.u/ensure-lib-database low-priv-db) ws-b))
                              nil
                              (catch Throwable t t)))]
-              (sql-jdbc.conn/invalidate-pool-for-db! low-priv-db)
+              (sql-jdbc.conn/invalidate-pool-for-db! (:id low-priv-db))
               (is (some? thrown)
                   "init-workspace-isolation! over a low-privilege connection should have thrown")
               (is (seq @generated)
@@ -1099,7 +1099,7 @@
                            (mt/normal-drivers-with-feature :workspace))
     (testing "re-running init for the same workspace id resets the user's password"
       (let [driver    driver/*driver*
-            database  (mt/db)
+            database  (driver.u/lib-database (mt/id))
             details   (:details database)
             run-id    (random-suffix)
             workspace {:id   (Long/parseLong run-id 16)
@@ -1141,7 +1141,7 @@
                        :database_details {:user "mb_no_such_user_x1"
                                           :role "mb_no_such_role_x1"}}
             thrown    (try
-                        (driver/grant-workspace-read-access! driver/*driver* (mt/db) workspace [schema])
+                        (driver/grant-workspace-read-access! driver/*driver* (driver.u/lib-database (mt/id)) workspace [schema])
                         nil
                         (catch Throwable t t))]
         (is (some? thrown)

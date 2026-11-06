@@ -1004,8 +1004,8 @@
         (execute! (str
                    (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
                    (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
-        (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
-              _              (driver/init-workspace-isolation! :redshift (mt/db) workspace+det)
+        (let [workspace+det  (merge workspace (driver/workspace-isolation-details :redshift (driver.u/lib-database (mt/id)) workspace))
+              _              (driver/init-workspace-isolation! :redshift (driver.u/lib-database (mt/id)) workspace+det)
               iso-user       (-> workspace+det :database_details :user)]
           (try
             ;; Seed the foreign-grantor default-priv: connect as the foreign role
@@ -1020,7 +1020,7 @@
                              [(format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT SELECT ON TABLES TO \"%s\""
                                       schema iso-user)]))
             (testing "destroy completes without error despite foreign-grantor default-priv row"
-              (is (some? (driver/destroy-workspace-isolation! :redshift (mt/db) workspace+det))))
+              (is (some? (driver/destroy-workspace-isolation! :redshift (driver.u/lib-database (mt/id)) workspace+det))))
             (testing "iso-user is gone from pg_user after destroy"
               (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user]))))
             (finally
@@ -1062,13 +1062,13 @@
                       :name (str "wsd-dest-empty-" suffix)}]
       (try
         (execute! (format "CREATE SCHEMA \"%s\"" schema))
-        (let [workspace (merge workspace (driver/workspace-isolation-details :redshift (mt/db) workspace))
-              _         (driver/init-workspace-isolation! :redshift (mt/db) workspace)
+        (let [workspace (merge workspace (driver/workspace-isolation-details :redshift (driver.u/lib-database (mt/id)) workspace))
+              _         (driver/init-workspace-isolation! :redshift (driver.u/lib-database (mt/id)) workspace)
               iso-user  (-> workspace :database_details :user)]
           (try
             (jdbc/execute! admin-spec [(format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" schema iso-user)])
             (testing "destroy completes despite a schema-level-only grant on an empty schema"
-              (is (some? (driver/destroy-workspace-isolation! :redshift (mt/db) workspace))))
+              (is (some? (driver/destroy-workspace-isolation! :redshift (driver.u/lib-database (mt/id)) workspace))))
             (testing "iso-user is gone from pg_user after destroy"
               (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user]))))
             (finally

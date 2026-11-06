@@ -106,7 +106,7 @@
         (when-not (= :provisioning (:status wsd))
           (throw (ex-info "WorkspaceDatabase must be :provisioning to provision"
                           {:id workspace-database-id :status (:status wsd)})))
-        (let [db         (ws.db/database (:database_id wsd))
+        (let [db         (some-> (ws.db/database (:database_id wsd)) driver.u/ensure-lib-database)
               driver     (driver.u/database->driver db)
               workspace  (wsd-iso-workspace workspace-database-id)
               ws-details (merge workspace (details provisioner driver db workspace))
@@ -143,7 +143,7 @@
         (when-not (= :deprovisioning (:status wsd))
           (throw (ex-info "WorkspaceDatabase must be :deprovisioning to deprovision"
                           {:id workspace-database-id :status (:status wsd)})))
-        (let [db        (ws.db/database (:database_id wsd))
+        (let [db        (some-> (ws.db/database (:database_id wsd)) driver.u/ensure-lib-database)
               driver    (driver.u/database->driver db)
               workspace (assoc (wsd-iso-workspace workspace-database-id)
                                :schema           (:output_namespace wsd)
@@ -241,7 +241,7 @@
   [wsd provisioner]
   (with-workspace-database-lock (:id wsd)
     (when-let [wsd (ws.db/workspace-database (:id wsd))]
-      (let [db         (ws.db/database (:database_id wsd))
+      (let [db         (some-> (ws.db/database (:database_id wsd)) driver.u/ensure-lib-database)
             driver     (driver.u/database->driver db)
             iso-ws     (wsd-iso-workspace (:id wsd))
             computed   (delay (details provisioner driver db iso-ws))
