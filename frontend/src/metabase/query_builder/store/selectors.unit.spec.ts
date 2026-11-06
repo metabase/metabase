@@ -1,5 +1,6 @@
 import { assoc } from "icepick";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -14,6 +15,10 @@ import type {
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   ConcreteFieldReference,
@@ -356,15 +361,31 @@ describe("getIsResultDirty", () => {
   });
 
   describe("models", () => {
-    function getDataset(query: StructuredQuery) {
+    function getDataset(query: Lib.Query) {
       return createMockCard({
-        id: 1,
+        id: MODEL_ID,
         type: "model",
-        dataset_query: { type: "query", database: 1, query },
+        dataset_query: Lib.toJsQuery(query),
       });
     }
 
-    const dataset = getDataset({ "source-table": 1 });
+    const MODEL_ID = 1;
+    const dataset = getDataset(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      }),
+    );
+    const modelProvider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [dataset],
+      }),
+    });
+    const adHocDatasetCard = getDataset(
+      Lib.createTestQuery(modelProvider, {
+        stages: [{ source: { type: "card", id: MODEL_ID } }],
+      }),
+    );
 
     it("should not be dirty if model is not changed", () => {
       const state = getBaseState({
@@ -379,13 +400,16 @@ describe("getIsResultDirty", () => {
       const state = getBaseState({
         card: dataset,
         originalCard: dataset,
-        lastRunCard: getDataset({ "source-table": 2 }),
+        lastRunCard: getDataset(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+          }),
+        ),
       });
       expect(getIsResultDirty(state)).toBe(true);
     });
 
     it("should not be dirty if model simple mode is active", () => {
-      const adHocDatasetCard = getDataset({ "source-table": "card__1" });
       const state = getBaseState({
         card: adHocDatasetCard,
         originalCard: dataset,
@@ -396,14 +420,18 @@ describe("getIsResultDirty", () => {
 
     it("should be dirty when building a new question on a model", () => {
       const card = createMockCard({
-        dataset_query: {
-          database: 1,
-          type: "query",
-          query: {
-            aggregation: [["count"]],
-            "source-table": "card__1",
-          },
-        },
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(modelProvider, {
+            stages: [
+              {
+                source: { type: "card", id: MODEL_ID },
+                aggregations: [
+                  { type: "operator", operator: "count", args: [] },
+                ],
+              },
+            ],
+          }),
+        ),
       });
       const state = getBaseState({
         card,
@@ -414,7 +442,6 @@ describe("getIsResultDirty", () => {
     });
 
     it("should not be dirty when the last run question is the composed model and the current question is equivalent to the original", () => {
-      const adHocDatasetCard = getDataset({ "source-table": "card__1" });
       const state = getBaseState({
         card: dataset,
         originalCard: dataset,
