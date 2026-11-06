@@ -62,6 +62,7 @@ function getBaseState({
   return createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
+      questions: state.card != null ? [state.card] : [],
     }),
     qb: createMockQueryBuilderState({
       ...state,
