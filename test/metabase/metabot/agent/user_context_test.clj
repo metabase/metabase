@@ -430,6 +430,20 @@
         (is (re-find #"(?i)orders" result))
         (is (re-find #"(?i)field" result))))))
 
+(deftest format-dashboard-open-tab-test
+  (mt/with-test-user :rasta
+    (mt/with-temp [:model/Dashboard    {dash-id :id}      {:name "Sales"}
+                   :model/DashboardTab {tab-id :id}       {:dashboard_id dash-id, :name "Revenue", :position 0}
+                   :model/Dashboard    {other-id :id}     {:name "Marketing"}
+                   :model/DashboardTab {other-tab-id :id} {:dashboard_id other-id, :name "Campaigns", :position 0}]
+      (let [viewing (fn [tab-id]
+                      (user-context/format-viewing-context
+                       {:user_is_viewing [{:type "dashboard", :id dash-id, :tab_id tab-id}]}))]
+        (testing "the dashboard in view names the tab the user has open"
+          (is (str/includes? (viewing tab-id) (str "<open_tab id=\"" tab-id "\" name=\"Revenue\"/>"))))
+        (testing "a tab of another dashboard is left out"
+          (is (not (str/includes? (viewing other-tab-id) "<open_tab"))))))))
+
 (deftest format-saved-question-query-id-test
   (let [notebook-query {:database (mt/id) :type :query :query {:source-table (mt/id :orders)}}]
     (testing "a saved notebook question shows the query ID of the query on screen"

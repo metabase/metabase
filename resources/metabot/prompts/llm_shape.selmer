@@ -20,7 +20,7 @@
 {{field_description}}{% endif %}</field>
 {% endif %}
 {% if is_collection %}
-<collection name="{{collection_name}}"{% if collection_authority_level %} authority_level="{{collection_authority_level}}"{% endif %}>{% if collection_description %}
+<collection{% if collection_id %} id="{{collection_id}}"{% endif %} name="{{collection_name}}"{% if collection_path %} path="{{collection_path}}"{% endif %}{% if collection_authority_level %} authority_level="{{collection_authority_level}}"{% endif %}>{% if collection_description %}
 <description>{{collection_description}}</description>{% endif %}</collection>
 {% endif %}
 {% if is_related_table %}
@@ -251,10 +251,14 @@ The following fields are returned by this question.
 {% if dashboard_description %}
   <description>{{dashboard_description}}</description>
 {% endif %}
+{% if dashboard_history_xml %}
+{{dashboard_history_xml|safe}}{% endif %}
 {% if dashboard_collection_xml %}
   The dashboard is stored in the following collection:
   {{dashboard_collection_xml|safe}}
 {% endif %}
+{% if dashboard_open_tab_xml %}
+{{dashboard_open_tab_xml|safe}}{% endif %}
 {% if dashboard_filters_xml %}
 {{dashboard_filters_xml|safe}}{% endif %}
 {% if dashboard_tabs_xml %}

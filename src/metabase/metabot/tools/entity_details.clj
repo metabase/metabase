@@ -1,19 +1,24 @@
 (ns metabase.metabot.tools.entity-details
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.revisions.core :as revisions]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -112,19 +117,75 @@
                                  {:glossary glossary}))}
     {:output "current user not found"}))
 
+(defn- person-name
+  "The name of `user`, a map with `:first_name`, `:last_name` and `:email`, or nil when it has none of them.
+  A user without a first or last name goes by their email, as `:common_name` does."
+  [{:keys [first_name last_name email]}]
+  (or (not-empty (str/trim (str first_name " " last_name))) (not-empty email)))
+
+(defn- dashboard-collection
+  "The collection with `collection-id`, nil for the root collection, with the path to it the current user can see."
+  [collection-id]
+  (if-not collection-id
+    (let [root-name (:name (collection/root-collection-with-ui-details nil))]
+      {:id nil, :name root-name, :path root-name})
+    (when-let [collection (metabot.db/collection-with-ancestors collection-id)]
+      ;; As the Agent API's `collection-path` does, a personal subtree starts at the personal collection rather than the
+      ;; root, and a personal collection shows the name the current user sees it by.
+      (let [ancestors (cond->> (:effective_ancestors collection)
+                        (collection/is-personal-collection-or-descendant-of-one? collection)
+                        (remove #(= "root" (:id %))))
+            chain     (collection/personal-collections-with-ui-details
+                       (conj (vec ancestors) (dissoc collection :effective_ancestors)))]
+        {:id   collection-id
+         :name (:name (last chain))
+         :path (str/join " / " (map :name chain))}))))
+
+(defn- visible-dashcards
+  "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,
+  and charts whose question they can read.
+  When the session may only reach curated content, charts also need a curated question, as in the dashboard's items."
+  [dashboard-id]
+  (let [dashcards (metabot.db/dashcards dashboard-id)
+        card-ids  (into #{} (keep #(when-not (:action_id %) (:card_id %))) dashcards)
+        readable  (if (seq card-ids)
+                    (into #{} (comp (filter mi/can-read?) (map :id)) (metabot.db/cards-for-read-check card-ids))
+                    #{})
+        visible   (if (shared/curated-only?)
+                    (into #{} (map second) (curation/curated-ids (for [id readable] ["card" id])))
+                    readable)]
+    (filter #(or (:action_id %) (nil? (:card_id %)) (contains? visible (:card_id %))) dashcards)))
+
+(defn- with-filter-connections
+  "Each of `parameters` with the ids of the `dashcards` it filters, as `:connected_dashcards`."
+  [parameters dashcards]
+  (for [{parameter-id :id :as parameter} parameters]
+    (assoc parameter :connected_dashcards (for [{:keys [id parameter_mappings]} dashcards
+                                                :when (some #(= parameter-id (:parameter_id %)) parameter_mappings)]
+                                            id))))
+
 (defn get-dashboard-details
-  "Get information about the dashboard with ID `dashboard-id`."
+  "Get information about the dashboard with ID `dashboard-id`: its details, who created and last edited it, its
+  collection, and its filters with the dashcards each one filters."
   [{:keys [dashboard-id]}]
   (when-not (int? dashboard-id)
     (throw (ex-info "Invalid dashboard_id format"
                     {:agent-error? true :status-code 400})))
   (if-let [dashboard (metabot.db/dashboard-summary dashboard-id)]
     (do (api/read-check dashboard)
-        {:structured-output
-         (-> dashboard
-             (dissoc :collection_id)
-             (assoc :type :dashboard
-                    :verified (verified-review? dashboard-id "dashboard")))})
+        (let [last-edit (get-in (revisions/fetch-last-edited-info {:dashboard-ids [dashboard-id]})
+                                [:dashboard dashboard-id])]
+          {:structured-output
+           (-> dashboard
+               (dissoc :collection_id :creator_id)
+               (assoc :type           :dashboard
+                      :verified       (verified-review? dashboard-id "dashboard")
+                      :created_by     (person-name (metabot.db/user-summary (:creator_id dashboard)))
+                      :last_edited_by (person-name last-edit)
+                      :last_edited_at (:timestamp last-edit)
+                      :collection     (dashboard-collection (:collection_id dashboard)))
+               (cond-> (seq (:parameters dashboard))
+                 (update :parameters with-filter-connections (visible-dashcards dashboard-id))))}))
     {:output "dashboard not found"}))
 
 (defn- get-field-values

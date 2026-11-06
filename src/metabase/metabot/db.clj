@@ -836,6 +836,12 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
 
+(mu/defn cards-for-read-check
+  "The ID, Collection ID, and Document ID of the unarchived Cards with `card-ids`, which is what `mi/can-read?` needs
+  to check a Card without another query."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select [:model/Card :id :collection_id :document_id] :id [:in card-ids] :archived false))
+
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
@@ -905,6 +911,13 @@
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select-one :model/Collection :id collection-id))
 
+(mu/defn collection-with-ancestors
+  "The Collection with `collection-id`, hydrated with the ancestors the current user can read, root first, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (some-> (t2/select-one [:model/Collection :id :name :location :namespace :personal_owner_id :type]
+                         :id [:auto/param collection-id])
+          (t2/hydrate :effective_ancestors)))
+
 (mu/defn collection-name
   "The name of the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
@@ -958,9 +971,11 @@
   (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-summary
-  "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
+  "The ID, description, name, Collection ID, parameters, creator ID and creation time of the Dashboard with
+  `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters :creator_id :created_at]
+                 :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
@@ -983,10 +998,11 @@
   (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn dashcards
-  "The ID, Card, action, tab, and settings of the DashboardCards of the Dashboard with `dashboard-id`, in grid
-  order."
+  "The ID, Card, action, tab, position, size, filter mappings, and settings of the DashboardCards of the Dashboard
+  with `dashboard-id`, in grid order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :visualization_settings]
+  (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :row :col :size_x :size_y
+              :parameter_mappings :visualization_settings]
              :dashboard_id dashboard-id
              {:order-by [[:row :asc] [:col :asc]]}))
 

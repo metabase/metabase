@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api-scope.core :as api-scope]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -621,12 +622,73 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   result))
           (is (str/includes? (:output result) dashboard-name))))
+      (testing "a dashboard in the root collection gives the root as its path"
+        (is (str/includes? (:output (read-uris {:uris [(str "metabase://dashboard/" dashboard-id)]}))
+                           "name=\"Our analytics\" path=\"Our analytics\"")))
       (testing "fetches dashboard items through the cards alias"
         (is (=? {:resources [{:content {:structured-output {:list-type :dashboard-items}}}]}
                 (read-uris {:uris [(str "metabase://dashboard/" dashboard-id "/cards")]}))))
       (testing "returns error for unknown dashboard"
         (is (=? {:resources [{:error string?}]}
                 (read-uris {:uris ["metabase://dashboard/99999"]})))))))
+
+(defn- date-mapping
+  "A mapping that connects the dashboard filter \"date\" to the card with `card-id`."
+  [card-id]
+  {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})
+
+(deftest read-dashboard-details-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection    {parent-id :id} {:name "Sales"}
+                   :model/Collection    {coll-id :id}   {:name "EMEA", :location (str "/" parent-id "/")}
+                   :model/Collection    {secret-id :id} {:name "Secret"}
+                   :model/Card          {card-id :id}   {:name "Revenue", :collection_id coll-id}
+                   :model/Card          {hidden-id :id} {:name "Payroll", :collection_id secret-id}
+                   :model/Dashboard     {dash-id :id}   {:name          "EMEA overview"
+                                                         :collection_id coll-id
+                                                         :creator_id    (mt/user->id :crowberto)
+                                                         :parameters    [{:id      "date"
+                                                                          :name    "Date"
+                                                                          :slug    "date"
+                                                                          :type    :date/all-options
+                                                                          :default "past30days"}]}
+                   :model/DashboardCard {dc-id :id}     {:dashboard_id       dash-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [(date-mapping card-id)]}
+                   :model/DashboardCard _               {:dashboard_id       dash-id
+                                                         :card_id            hidden-id
+                                                         :parameter_mappings [(date-mapping hidden-id)]}
+                   :model/Revision      _               {:model    "Dashboard"
+                                                         :model_id dash-id
+                                                         :user_id  (mt/user->id :rasta)
+                                                         :object   {}}]
+      ;; Rasta can read the dashboard's collection, but neither its parent nor the hidden card's
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id)]})]
+          (testing "says who created and last edited the dashboard, and when"
+            (is (re-find #"<created by=\"Crowberto Corv\" at=\"\d{4}-\d\d-\d\d" output))
+            (is (re-find #"<last_edited by=\"Rasta Toucan\" at=\"\d{4}-\d\d-\d\d" output)))
+          (testing "gives the collection with the path the user can see"
+            (is (str/includes? output (str "<collection id=\"" coll-id "\" name=\"EMEA\" path=\"EMEA\">"))))
+          (testing "gives each filter's default and the dashcards it filters that the user can see"
+            (is (str/includes? output (str "<filter id=\"date\" name=\"Date\" type=\"date/all-options\""
+                                           " default=\"past30days\" connected_dashcards=\"" dc-id "\"/>")))))))))
+
+(deftest read-dashboard-in-personal-collection-test
+  (mt/with-temp [:model/User      {sso-id :id}  {:first_name nil, :last_name nil, :email "sso@example.com"}
+                 :model/Dashboard {dash-id :id} {:name          "Mine"
+                                                 :collection_id (:id (collection/user->personal-collection
+                                                                      (mt/user->id :rasta)))
+                                                 :creator_id    sso-id}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id)]})]
+        (testing "a personal collection's path starts at the collection, under the name the user sees"
+          (is (re-find (re-pattern (str "<collection id=\"\\d+\" name=\"Rasta Toucan&#39;s Personal Collection\""
+                                        " path=\"Rasta Toucan&#39;s Personal Collection\">"))
+                       output)))
+        (testing "a creator without a first or last name goes by their email"
+          (is (str/includes? output "<created by=\"sso@example.com\"")))))))
 
 (deftest read-document-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -1440,12 +1502,14 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:name "Dash card"}
-                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id}]
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id
+                                                     :row 2 :col 4 :size_x 6 :size_y 3}]
       (testing "metabase://dashboard/{id}/items returns each dashcard with its dashcard_id"
         (let [{:keys [output]} (read-uris {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
           (is (str/includes? output "Dash card"))
           (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
-          (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
+          (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))
+          (is (str/includes? output "row=\"2\" col=\"4\" size_x=\"6\" size_y=\"3\"")))))))
 
 (deftest read-dashboard-items-groups-by-tab-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -1474,10 +1538,12 @@
           (is (< (idx "Tab One") (idx "Tab Two") (idx "Empty Tab"))))
         (testing "dashcards come grouped by tab, not interleaved by raw row/col"
           (is (< (idx "Legacy Heading") (idx "First Tab Heading") (idx "Second Tab Heading"))))
-        (testing "items carry the tab_id that add mutations accept; nil-tab dashcards get the first tab's"
-          ;; tab1: its <tab> element + the legacy (nil-tab) heading + the first-tab heading
-          (is (= 3 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
-          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))))))
+        (testing "items carry the tab_id that add mutations accept"
+          ;; each tab: its <tab> element + its heading
+          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
+          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))
+        (testing "a dashcard with no tab shows on every tab, so it carries all_tabs instead"
+          (is (re-find #"<item [^>]*all_tabs=\"true\"[^>]*>Legacy Heading" output)))))))
 
 (deftest read-dashboard-items-includes-virtual-dashcards-test
   (mt/with-current-user (mt/user->id :crowberto)
