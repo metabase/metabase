@@ -1,6 +1,7 @@
 import { dayjs } from "metabase/dayjs";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { hasPrimarySource } from "metabase/querying/common/utils";
 import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import {
   type ComputedVisualizationSettings,
@@ -226,7 +227,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
   const { isNative } = Lib.queryDisplayInfo(query);
   const hasDataSource = isNative
     ? Lib.databaseID(query) != null
-    : Lib.sourceTableOrCardId(query) != null;
+    : hasPrimarySource(query);
   if (!hasDataSource) {
     return {};
   }

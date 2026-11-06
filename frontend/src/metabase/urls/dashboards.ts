@@ -57,12 +57,19 @@ export function publicDashboard(uuid: string) {
   return `${siteUrl}/public/dashboard/${uuid}`;
 }
 
+function getComparisonEntity(query: Lib.Query) {
+  const cardId = Lib.primarySourceCardId(query);
+  return cardId != null
+    ? `question/${cardId}`
+    : `table/${Lib.primarySourceTableId(query)}`;
+}
+
 export function comparisonDashboard(
   question: Question,
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const tableId = Lib.sourceTableOrCardId(question.query());
+  const comparisonEntity = getComparisonEntity(question.query());
   const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
   const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
   const cellQuery = filter
@@ -71,10 +78,10 @@ export function comparisonDashboard(
 
   const query = question.datasetQuery();
   if (questionId != null && !isTransientCardId(questionId)) {
-    return `auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
+    return `auto/dashboard/question/${questionId}${cellQuery}/compare/${comparisonEntity}`;
   } else {
     const adHocQuery = utf8_to_b64url(JSON.stringify(query));
-    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
+    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/${comparisonEntity}`;
   }
 }
 

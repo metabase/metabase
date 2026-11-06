@@ -22,7 +22,7 @@ import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { type Card, isConcreteTableId } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 type ModelActionsParams = {
   slug: string;
@@ -75,10 +75,7 @@ function ModelActions({
       return null;
     }
 
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    return sourceTableId != null && isConcreteTableId(sourceTableId)
-      ? sourceTableId
-      : null;
+    return Lib.primarySourceTableId(query);
   }, [model]);
 
   useMount(() => {

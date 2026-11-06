@@ -66,3 +66,7 @@ export const getPrimarySourceMetadata = (
   }
   return null;
 };
+
+export const hasPrimarySource = (query: Lib.Query): boolean =>
+  Lib.primarySourceTableId(query) != null ||
+  Lib.primarySourceCardId(query) != null;

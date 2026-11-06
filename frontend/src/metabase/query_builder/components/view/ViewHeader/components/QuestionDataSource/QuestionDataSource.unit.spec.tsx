@@ -415,7 +415,7 @@ describe("QuestionDataSource", () => {
           const table = checkNotNull(
             question
               .metadata()
-              .table(Lib.sourceTableOrCardId(question.query())),
+              .table(Lib.primarySourceTableId(question.query())),
           );
           await waitFor(() => {
             const node = screen.getByText(new RegExp(table.displayName()));
@@ -431,7 +431,7 @@ describe("QuestionDataSource", () => {
           const table = checkNotNull(
             question
               .metadata()
-              .table(Lib.sourceTableOrCardId(question.query())),
+              .table(Lib.primarySourceTableId(question.query())),
           );
           const node = await screen.findByText(new RegExp(table.displayName()));
           expect(
@@ -449,7 +449,7 @@ describe("QuestionDataSource", () => {
           const table = checkNotNull(
             question
               .metadata()
-              .table(Lib.sourceTableOrCardId(question.query())),
+              .table(Lib.primarySourceTableId(question.query())),
           );
           const node = await screen.findByText(new RegExp(table.displayName()));
           expect(
@@ -476,7 +476,7 @@ describe("QuestionDataSource", () => {
           const table = checkNotNull(
             question
               .metadata()
-              .table(Lib.sourceTableOrCardId(question.query())),
+              .table(Lib.primarySourceTableId(question.query())),
           );
           const node = await screen.findByText(checkNotNull(table.schema_name));
           expect(node).toBeInTheDocument();

@@ -1664,18 +1664,6 @@
         #_{:clj-kondo/ignore [:discouraged-var]}
         (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
-(defn ^:export source-table-or-card-id
-  "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
-  with \"card__\") of `a-query`. If `a-query` has none of these, nil is returned.
-
-  > **Code health:** Legacy. This is exposing too much about cards and sources. Its callers will likely have to be
-  updated to handle Metrics v2."
-  ;; TODO: Figure out what the callers of this function really need it for, and consider an alternative design.
-  ;; [[with-different-table]] should be included in that refactor.
-  [a-query]
-  (or (lib.util/source-table-id a-query)
-      (some->> (lib.util/source-card-id a-query) (str "card__"))))
-
 ;; # Joins
 ;; Joins are a relatively complex component of a query. They specify a table (or model, in theory), 1 or more conditions
 ;; (which resemble filters), an optional subset of fields to include from the joined table, and one of a handful of join

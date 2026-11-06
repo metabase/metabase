@@ -114,9 +114,7 @@ describe("getQuestion", () => {
 
     const question = getQuestion(getBaseState({ card }));
 
-    expect(question && Lib.sourceTableOrCardId(question.query())).toBe(
-      "card__1",
-    );
+    expect(question && Lib.primarySourceCardId(question.query())).toBe(1);
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {

@@ -331,20 +331,6 @@
       (testing "metric refs come without options"
         (is (= [["metric" metric-id]] (map array-checker legacy-refs)))))))
 
-(deftest ^:parallel source-table-or-card-id-test
-  (testing "returns the table-id as a number"
-    (are [query] (= (meta/id :venues) (lib.js/source-table-or-card-id query))
-      (lib.tu/venues-query)
-      (lib/append-stage (lib.tu/venues-query))))
-  (testing "returns the card-id in the legacy string form"
-    (are [query] (= "card__1" (lib.js/source-table-or-card-id query))
-      (lib.tu/query-with-source-card)
-      (lib/append-stage (lib.tu/query-with-source-card))))
-  (testing "returns nil for questions starting from a native query"
-    (are [query] (nil? (lib.js/source-table-or-card-id query))
-      (lib.tu/native-query)
-      (lib/append-stage (lib.tu/native-query)))))
-
 (deftest ^:parallel expression-clause-normalization-test
   (are [x y] (do
                (is (mr/validate :metabase.lib.schema.expression/expression y))
