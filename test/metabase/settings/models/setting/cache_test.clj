@@ -59,7 +59,7 @@
 (defn reset-last-update-check!
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
-  (.set ^java.util.concurrent.atomic.AtomicLong (:last-update-check @@#'setting.cache/per-app-db) 0))
+  (.set ^java.util.concurrent.atomic.AtomicLong (:last-update-check (setting.cache/current-state)) 0))
 
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"
@@ -158,13 +158,13 @@
            (system/site-locale)))))
 
 (deftest per-app-db-cache-test
-  (testing "each bound app DB value gets its own settings cache, even one with the root's id, and the root's is kept"
+  (testing "settings caches are per app-DB id: another id gets its own, and a copy with the root's id shares it"
     (let [root-cache (#'setting.cache/cache*)
           own-cache? (fn [app-db]
                        (mdb/with-application-db app-db
                          (not (identical? root-cache (#'setting.cache/cache*)))))]
       (is (= {:other-id-has-own-cache? true
-              :same-id-has-own-cache?  true
+              :same-id-has-own-cache?  false
               :root-cache-kept?        true}
              {:other-id-has-own-cache? (own-cache? (assoc (mdb/app-db) :id Integer/MAX_VALUE))
               :same-id-has-own-cache?  (own-cache? (assoc (mdb/app-db) ::copy true))
@@ -192,7 +192,7 @@
   (testing "reads and writes through one cache state stay on its cache when the app DB this thread sees changes"
     (let [state (setting.cache/current-state)]
       (try
-        (mdb/with-application-db (assoc (mdb/app-db) ::other true)
+        (mdb/with-application-db (assoc (mdb/app-db) :id Integer/MAX_VALUE)
           (setting.cache/update-cache! state "held-cache-test-key" "held")
           (is (= {:through-state "held", :current nil}
                  {:through-state (get (setting.cache/cache state) "held-cache-test-key")

@@ -9,10 +9,7 @@
    another.
 
    A component can also be started on first use with [[ensure-started!]], which records how to stop it, and [[halt!]]
-   stops every started component, each before the components it uses, and otherwise last started first.
-
-   A derived component, made with [[derived-component-handle]], is read-only: its value is made from other components'
-   current values, so it follows their bindings without one of its own."
+   stops every started component, each before the components it uses, and otherwise last started first."
   (:require
    [clojure.pprint :as pprint]
    [metabase.global-system.mutable-component :as mc]
@@ -20,7 +17,6 @@
   (:import
    (clojure.lang IDeref)
    (java.io Writer)
-   (java.lang.ref WeakReference)
    (java.util.concurrent ConcurrentHashMap)
    (java.util.concurrent.locks ReentrantReadWriteLock)
    (java.util.function Function)))
@@ -374,83 +370,3 @@
   []
   (reset! halted false)
   nil)
-
-;;; -------------------------------------------- Derived components --------------------------------------------
-
-;; Entries hold their dependency values weakly, so a dependency value nothing else refers to, such as a finished test's
-;; temporary app DB, can be collected, and its entry is dropped the next time an entry is added.
-;; A nil value is stored as itself.
-(defn- weak
-  [v]
-  (if (nil? v) ::nil (WeakReference. v)))
-
-(defn- unweak
-  [r]
-  (if (= ::nil r) nil (.get ^WeakReference r)))
-
-(defn- collected?
-  "Whether any of the entry's dependency values has been collected."
-  [[refs]]
-  (some #(and (not= ::nil %) (nil? (unweak %))) refs))
-
-(defn- matches?
-  "Whether the stored reference `r` is to `d`.
-  A collected reference matches nothing, nil included."
-  [r d]
-  (if (= ::nil r)
-    (nil? d)
-    (let [v (unweak r)]
-      (and (some? v) (identical? v d)))))
-
-(defn- made-for?
-  "Whether `entry` was made for dependency values identical, one by one, to `deps`."
-  [[refs] deps]
-  (every? true? (map matches? refs deps)))
-
-(defn- derived-entry
-  "The `[dep-refs value]` entry in `entries` made for `deps`, or nil.
-  Returns the entry rather than the value, so a value of nil or false is still found."
-  [entries deps]
-  (some #(when (made-for? % deps) %) entries))
-
-(defn- add-entry
-  "`entries` with a new entry for `deps` put first, and without the entries whose dependency values were collected.
-  Every other entry is kept: its dependency values are still in use, so evicting it would only rebuild it, and a
-  caller midway through a series of reads would switch to the rebuilt value."
-  [entries make deps]
-  (into [[(mapv weak deps) (apply make deps)]]
-        (remove collected?)
-        entries))
-
-(deftype DerivedHandle [k dep-handles make entries]
-  IDeref
-  (deref [_]
-    (let [deps  (mapv deref dep-handles)
-          found (derived-entry @entries deps)]
-      (second
-       (or found
-           (derived-entry (swap! entries (fn [es]
-                                           (if (derived-entry es deps)
-                                             es
-                                             (add-entry es make deps))))
-                          deps))))))
-
-(defmethod print-method DerivedHandle
-  [^DerivedHandle handle ^Writer w]
-  (.write w (str "#<DerivedHandle " (pr-str (.-k handle)) ">")))
-
-(defmethod pprint/simple-dispatch DerivedHandle
-  [handle]
-  (print-method handle *out*))
-
-(defn derived-component-handle
-  "Make a read-only handle for a component made from the values of other components.
-   Dereferencing it reads each of `dep-handles` as this thread sees them, and returns the value `make` returned for
-   those values, calling `(make dep-value ...)` the first time this combination is seen.
-   Values are told apart by identity, so a binding of a dependency, or a write that replaces its value, gets a
-   fresh derived value, and the derived value follows bindings of its dependencies with no binding of its own.
-   A value is kept while its dependency values are in use, and dropped once they have been garbage-collected, so the
-   value `make` returns must not hold its dependency values, or they are never collected.
-   When threads race on new values, `make` can run more than once for them, and one result is kept."
-  [k dep-handles make]
-  (DerivedHandle. k (vec dep-handles) make (atom [])))
