@@ -76,6 +76,17 @@ describe("data app embedding setup", () => {
     );
   });
 
+  it("removes the preview container padding", async () => {
+    setupDataApps({
+      initialState: { resourceType: "data-app", resourceId: "sales" },
+    });
+
+    await screen.findByTitle("Data app preview");
+    const previewContainer = screen.getByTestId("iframe-embed-container");
+
+    expect(previewContainer).toHaveStyle({ padding: "0rem" });
+  });
+
   it("does not offer auth choices for data apps", async () => {
     setupDataApps({
       initialState: { resourceType: "data-app", resourceId: "sales" },

@@ -187,9 +187,11 @@ const SdkIframeEmbedPreviewInner = () => {
   return (
     <Card
       className={S.EmbedPreviewIframe}
+      data-testid="iframe-embed-container"
       id="iframe-embed-container"
       style={{ backgroundColor: theme?.colors?.background }}
       h="100%"
+      p={isDataApp ? 0 : undefined}
       pos="relative"
       // `key` forces a remount when chart colors change. The embed runtime
       // propagates other theme keys via CSS variables, but chart colors are
