@@ -480,7 +480,9 @@
       :postgres "pg_create_logical_replication_slot" "SELECT pg_create_logical_replication_slot('s', 'pgoutput')"
       :postgres "pg_promote"                        "SELECT pg_promote()"
       :mysql    "sys_exec"                          "SELECT sys_exec('id')"
-      :mysql    "sys_eval"                          "SELECT sys_eval('id')")))
+      :mysql    "sys_eval"                          "SELECT sys_eval('id')"
+      :postgres "pg_export_snapshot"                "SELECT pg_export_snapshot()"
+      :mysql    "load_file"                         "SELECT load_file('/etc/passwd')")))
 
 (deftest ^:parallel read-only-select?-outside-the-database-test
   (testing "a SELECT that reads another server, a URL or a file through a table function is not read-only"
@@ -497,6 +499,11 @@
       :clickhouse "azureblobstorage" "SELECT * FROM azureBlobStorage('c', 'x')"
       :clickhouse "jdbc"             "SELECT * FROM jdbc('ds', 't')"
       :clickhouse "odbc"             "SELECT * FROM odbc('ds', 't')"
+      :clickhouse "cosn"             "SELECT * FROM cosn('http://h/x', 'CSV')"
+      :clickhouse "oss"              "SELECT * FROM oss('http://h/x', 'CSV')"
+      :clickhouse "hive"             "SELECT * FROM hive('thrift://h:9083', 'db', 't', 'a String', 'a')"
+      :clickhouse "cluster"          "SELECT * FROM cluster('c', db.t)"
+      :clickhouse "clusterallreplicas" "SELECT * FROM clusterAllReplicas('c', db.t)"
       :duckdb     "read_csv"         "SELECT * FROM read_csv('x.csv')"
       :duckdb     "read_parquet"     "SELECT * FROM read_parquet('s3://b/x.parquet')"
       :duckdb     "read_json"        "SELECT * FROM read_json('x.json')"))
@@ -505,10 +512,9 @@
       "SELECT * FROM 'x.csv'"
       "SELECT * FROM 'https://h/x.parquet'"
       "SELECT * FROM \"s3://b/x.parquet\""))
-  (testing "the same names are ordinary elsewhere, and a ClickHouse cluster read stays on its own servers"
+  (testing "the same names are ordinary elsewhere"
     (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
       :clickhouse "SELECT url FROM t"
-      :clickhouse "SELECT * FROM cluster('c', db.t)"
       :postgres   "SELECT url('x')"
       :postgres   "SELECT * FROM \"x.csv\""
       :duckdb     "SELECT * FROM main.t JOIN s.u ON true")))
