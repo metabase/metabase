@@ -22,7 +22,6 @@ export function FieldMappingSelect({
   setFieldFn: (fieldId: FieldId) => void;
 }) {
   const dimension = tag.dimension;
-  const dimensionFieldId = dimension?.[1];
 
   return (
     <InputContainer>
@@ -40,9 +39,7 @@ export function FieldMappingSelect({
           databases={databases}
           selectedDatabaseId={database?.id || null}
           selectedTableId={field?.table_id ?? null}
-          selectedFieldId={
-            typeof dimensionFieldId === "number" ? dimensionFieldId : null
-          }
+          selectedFieldId={dimension?.[1] ?? null}
           setFieldFn={setFieldFn}
           fieldFilter={getFieldFilter(tag)}
           isInitiallyOpen={!tag.dimension}
