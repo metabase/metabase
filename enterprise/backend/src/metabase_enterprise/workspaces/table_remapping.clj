@@ -237,7 +237,7 @@
 (defn table-spec->sqlglot-key
   "Translate our `::table-spec` (`{:db :schema :table}` with our AST-position vocab,
    where `:db` ↔ `Table.catalog` and `:schema` ↔ `Table.db`) into the slot vocabulary
-   `metabase.sql-tools/replace-names` (SQLGlot) expects: `:schema` for SQLGlot's `db`
+   [[metabase.sql-tools.core/replace-names]] (SQLGlot) expects: `:schema` for SQLGlot's `db`
    position (the leftmost in `db.tbl`). The catalog position is left out of the key, so a
    key matches a reference in any catalog and the replacement leaves the catalog as written.
 
@@ -271,7 +271,7 @@
         remappings))
 
 (defn rewrite-sql
-  "Parse `sql` and rewrite every table reference whose `(catalog, schema, table)` matches a
+  "Parse `sql` and rewrite every table reference whose `(schema, table)`, in any catalog, matches a
    `from-spec` key in `remappings` to its `to-spec` counterpart. Returns the rewritten SQL.
 
    `remappings` is a `{from-spec to-spec}` map of `::table-spec`s. Caller is responsible for

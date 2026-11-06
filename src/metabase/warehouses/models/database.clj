@@ -169,8 +169,8 @@
   "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
    the delete (409) if any non-`:unprovisioned` `workspace_database` rows reference `db-id`,
    and explicitly removes any `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS
-   implementation is a no-op — fresh OSS installs have no workspace_database table, and
-   feature-off EE instances have nothing to reconcile."
+   implementation is a no-op: OSS has nothing to reconcile, and neither do feature-off EE
+   instances."
   metabase-enterprise.workspaces.models.workspace-database
   [_db-id]
   nil)
