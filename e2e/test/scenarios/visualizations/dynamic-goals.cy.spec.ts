@@ -256,7 +256,7 @@ describe("scenarios > visualizations > dynamic goals", () => {
     });
 
     cy.log(
-      "Gauge: questions are listed only for a search query, as measures and metrics exist (GDGT-3457)",
+      "Gauge: questions are listed only for a search query, as measures and metrics exist (UIT-157)",
     );
     switchChartType("Gauge");
     H.openVizSettingsSidebar();

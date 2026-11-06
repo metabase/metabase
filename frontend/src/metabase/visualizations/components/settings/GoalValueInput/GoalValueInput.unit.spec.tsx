@@ -1060,7 +1060,7 @@ describe("GoalValueInput", () => {
     expect(screen.queryByText(/Other question/)).not.toBeInTheDocument();
   });
 
-  it("lists only measures and metrics without a search query when the instance has any (GDGT-3457)", async () => {
+  it("lists only measures and metrics without a search query when the instance has any (UIT-157)", async () => {
     setupEntityPicker(GOAL_SOURCES);
     setup();
 
@@ -1071,7 +1071,7 @@ describe("GoalValueInput", () => {
     expect(screen.queryByText("Goal question")).not.toBeInTheDocument();
   });
 
-  it("searches questions, metrics, and measures with a search query when the instance has measures or metrics (GDGT-3457)", async () => {
+  it("searches questions, metrics, and measures with a search query when the instance has measures or metrics (UIT-157)", async () => {
     setupEntityPicker(GOAL_SOURCES);
     setup();
 
