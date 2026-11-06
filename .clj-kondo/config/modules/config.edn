@@ -1279,8 +1279,9 @@
            lib.be
            lib.metadata
            lib.schema
-           models
-           util}}
+           serialization
+           util}
+   :model-imports #{:model/Card}}
 
   lib.be
   {:team "Querying Platform"
@@ -1437,6 +1438,7 @@
            documents
            glossary
            lib
+           lib.agent-lib
            lib.be
            lib.metadata
            lib.schema
@@ -1807,8 +1809,6 @@
            metabase.models.resolution
            metabase.models.schema
            metabase.models.serialization
-           metabase.models.serialization.resolve
-           metabase.models.serialization.resolve.mp
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -1816,7 +1816,6 @@
            dependencies
            lib
            lib.legacy-mbql
-           lib.metadata
            lib.schema
            parameters.schema
            util
@@ -2658,10 +2657,11 @@
 
   serialization
   {:team "Data Apps"
-   :api  #{metabase.serialization.core}
+   :api  #{metabase.serialization.core metabase.serialization.protocol.mp metabase.serialization.resolve}
    :uses #{app-db
            lib
            lib.legacy-mbql
+           lib.metadata
            lib.schema
            models
            util
