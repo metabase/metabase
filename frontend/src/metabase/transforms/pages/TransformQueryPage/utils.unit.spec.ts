@@ -7,14 +7,11 @@ import type {
   TestTemplateTags,
 } from "metabase-types/api";
 import {
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockTemplateTag,
   createMockTransform,
   createMockTransformTarget,
 } from "metabase-types/api/mocks";
 import {
-  SAMPLE_DB_ID,
+  ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -35,7 +32,9 @@ function createNativeSource(
   return {
     type: "query",
     query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
-      query: "SELECT * FROM table",
+      query: `SELECT * FROM ${Object.keys(templateTags ?? {})
+        .map((name) => `{{${name}}}`)
+        .join(", ")}`,
       templateTags,
     }),
   };
@@ -97,23 +96,9 @@ describe("isMissingIncrementalTableTag", () => {
   });
 
   it("returns false when the edited native source still has a table variable", () => {
-    const source: QueryTransformSource = {
-      type: "query",
-      query: createMockNativeDatasetQuery({
-        database: SAMPLE_DB_ID,
-        native: createMockNativeQuery({
-          query: "SELECT * FROM {{my_table}}",
-          "template-tags": {
-            my_table: createMockTemplateTag({
-              id: "1",
-              name: "my_table",
-              type: "table",
-              "table-id": 42,
-            }),
-          },
-        }),
-      }),
-    };
+    const source = createNativeSource({
+      my_table: { type: "table", name: "my_table", "table-id": ORDERS_ID },
+    });
 
     const transform = createMockTransform({
       source_type: "native",
