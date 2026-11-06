@@ -4,8 +4,11 @@ import {
   skipToken,
   useGetAdhocQueryQuery,
   useGetFieldQuery,
+  useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import type { FieldId, LocalFieldReference } from "metabase-types/api";
+import { useMetadataProvider } from "metabase/metadata-store";
+import * as Lib from "metabase-lib";
+import { type FieldId, isConcreteTableId } from "metabase-types/api";
 
 /** How many distinct values to fetch from the field. */
 const DISTINCT_VALUES_LIMIT = 100;
@@ -28,26 +31,32 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
   const tableId = field?.table_id;
   const databaseId = field?.table?.db_id;
 
+  const { data: table } = useGetTableQueryMetadataQuery(
+    tableId != null ? { id: tableId } : skipToken,
+  );
+  const metadataProvider = useMetadataProvider(databaseId ?? null);
+
   const query = useMemo(() => {
-    if (fieldId == null || tableId == null || databaseId == null) {
+    if (fieldId == null || table == null || !isConcreteTableId(table.id)) {
       return null;
     }
 
-    const breakout = [
-      ["field", fieldId, null],
-    ] as const satisfies LocalFieldReference[];
+    const tableMetadata = Lib.tableMetadata(metadataProvider, table.id);
+    const column = Lib.fieldMetadata(metadataProvider, fieldId);
+    if (tableMetadata == null || column == null) {
+      return null;
+    }
 
+    const tableQuery = Lib.queryFromTableOrCardMetadata(
+      metadataProvider,
+      tableMetadata,
+    );
+    const breakoutQuery = Lib.breakout(tableQuery, -1, column);
     return {
-      database: databaseId,
-      type: "query" as const,
-      query: {
-        "source-table": tableId,
-        breakout,
-        limit: DISTINCT_VALUES_LIMIT,
-      },
+      ...Lib.toJsQuery(Lib.limit(breakoutQuery, -1, DISTINCT_VALUES_LIMIT)),
       ignore_error: true,
     };
-  }, [fieldId, tableId, databaseId]);
+  }, [fieldId, table, metadataProvider]);
 
   const { data: adhocQueryDataset, isLoading: isAdHocQueryLoading } =
     useGetAdhocQueryQuery(query ?? skipToken);

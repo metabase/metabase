@@ -13,7 +13,6 @@ import type {
   Card,
   DatabaseId,
   DatasetQuery,
-  NativeDatasetQuery,
   NativeQuerySnippet,
   ParameterValuesConfig,
   TemplateTag,
@@ -24,18 +23,11 @@ import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 import Metadata from "../metadata/Metadata";
 
+import { NATIVE_QUERY_TEMPLATE } from "./templates";
 import { getNativeQueryTable } from "./utils/native-query-table";
 
 type DimensionFilter = (dimension: TemplateTagDimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
-export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
-  database: null,
-  type: "native",
-  native: {
-    query: "",
-    "template-tags": {},
-  },
-};
 
 ///////////////////////////
 // QUERY TEXT TAG UTILS

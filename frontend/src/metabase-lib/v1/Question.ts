@@ -8,10 +8,11 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
-import NativeQuery, {
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import {
   NATIVE_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/NativeQuery";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardCreationType,

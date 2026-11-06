@@ -1,25 +1,20 @@
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardQueryMetadata,
   ColumnRangeFormattingSetting,
   ColumnSingleFormattingSetting,
   ModerationReview,
-  NativeDatasetQuery,
   PieRow,
   PublicCard,
   ScalarSegment,
   SeriesOrderSetting,
-  StructuredDatasetQuery,
   TableColumnOrderSetting,
   UnsavedCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { createMockEntityId } from "./entity-id";
-import {
-  createMockNativeDatasetQuery,
-  createMockStructuredDatasetQuery,
-} from "./query";
 import { createMockUser } from "./user";
 
 const MOCK_CARD_ENTITY_ID = createMockEntityId();
@@ -32,7 +27,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   description: "",
   display: "table",
   public_uuid: null,
-  dataset_query: createMockStructuredDatasetQuery(),
+  dataset_query: STRUCTURED_QUERY_TEMPLATE,
   visualization_settings: createMockVisualizationSettings(),
   result_metadata: [],
   type: "question",
@@ -70,25 +65,11 @@ export const createMockPublicCard = (
   ...opts,
 });
 
-export const createMockStructuredCard = (
-  opts?: Partial<Card<StructuredDatasetQuery>>,
-): Card<StructuredDatasetQuery> => ({
-  ...createMockCard(opts),
-  dataset_query: createMockStructuredDatasetQuery(opts?.dataset_query),
-});
-
-export const createMockNativeCard = (
-  opts?: Partial<Card<NativeDatasetQuery>>,
-): Card<NativeDatasetQuery> => ({
-  ...createMockCard({ query_type: "native", ...opts }),
-  dataset_query: createMockNativeDatasetQuery(opts?.dataset_query),
-});
-
 export const createMockUnsavedCard = (
   opts?: Partial<UnsavedCard>,
 ): UnsavedCard => ({
   display: "table",
-  dataset_query: createMockStructuredDatasetQuery(),
+  dataset_query: STRUCTURED_QUERY_TEMPLATE,
   visualization_settings: createMockVisualizationSettings(),
   ...opts,
 });

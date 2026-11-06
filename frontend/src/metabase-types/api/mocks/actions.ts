@@ -1,3 +1,4 @@
+import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/v1/queries/templates";
 import type {
   ActionFormSettings,
   CardId,
@@ -10,7 +11,6 @@ import type {
 
 import { createMockEntityId } from "./entity-id";
 import { createMockParameter } from "./parameters";
-import { createMockNativeDatasetQuery } from "./query";
 import { createMockUserInfo } from "./user";
 
 export const createMockActionParameter = ({
@@ -29,7 +29,7 @@ export const createMockActionParameter = ({
 };
 
 export const createMockQueryAction = ({
-  dataset_query = createMockNativeDatasetQuery(),
+  dataset_query = NATIVE_QUERY_TEMPLATE,
   creator = createMockUserInfo(),
   ...opts
 }: Partial<WritebackQueryAction> = {}): WritebackQueryAction => {

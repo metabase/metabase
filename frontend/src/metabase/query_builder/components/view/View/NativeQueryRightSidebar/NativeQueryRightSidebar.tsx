@@ -9,7 +9,7 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   CollectionId,
   EmbeddingParameterVisibility,
-  NativeDatasetQuery,
+  DatasetQuery,
   NativeQuerySnippet,
   RowValue,
   TemplateTag,
@@ -39,7 +39,7 @@ interface NativeQueryRightSidebarProps {
   isShowingTimelineSidebar: boolean;
   isShowingQuestionInfoSidebar: boolean;
   isShowingQuestionSettingsSidebar: boolean;
-  setDatasetQuery: (query: NativeDatasetQuery) => void;
+  setDatasetQuery: (query: DatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: (
