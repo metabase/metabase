@@ -27,16 +27,16 @@ type LegacyColumn = DatasetColumn | NormalizedField | Field;
 
 type QueryAndColumn = { query: Lib.Query; column: Lib.ColumnMetadata };
 
-export type TableQueryAndColumns = {
+export type ColumnListInfo = {
   query: Lib.Query;
   stageIndex: number;
   columns: Lib.ColumnMetadata[];
 };
 
-const getMetadataQueryAndColumns = (
+const getMetadataColumnListInfo = (
   metadataProvider: Lib.MetadataProvider,
   tableOrCardMetadata: Lib.TableMetadata | Lib.CardMetadata,
-): TableQueryAndColumns => {
+): ColumnListInfo => {
   const query = Lib.queryFromTableOrCardMetadata(
     metadataProvider,
     tableOrCardMetadata,
@@ -48,26 +48,26 @@ const getMetadataQueryAndColumns = (
   };
 };
 
-export const getTableQueryAndColumns = (
+export const getColumnListInfo = (
   metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
-): TableQueryAndColumns | undefined => {
+): ColumnListInfo | undefined => {
   const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, tableId);
   if (tableMetadata == null) {
     return undefined;
   }
-  return getMetadataQueryAndColumns(metadataProvider, tableMetadata);
+  return getMetadataColumnListInfo(metadataProvider, tableMetadata);
 };
 
-export const getCardQueryAndColumns = (
+export const getCardColumnListInfo = (
   metadataProvider: Lib.MetadataProvider,
   cardId: CardId,
-): TableQueryAndColumns | undefined => {
+): ColumnListInfo | undefined => {
   const cardMetadata = Lib.cardMetadata(metadataProvider, cardId);
   if (cardMetadata == null) {
     return undefined;
   }
-  return getMetadataQueryAndColumns(metadataProvider, cardMetadata);
+  return getMetadataColumnListInfo(metadataProvider, cardMetadata);
 };
 
 export const getQueryAndColumns = (
