@@ -91,7 +91,7 @@ function getOverlayRunButton() {
 }
 
 function expectResultNotDirty() {
-  expect(getOverlayRunButton()).toHaveAccessibleName("Refresh");
+  expect(getOverlayRunButton()).toHaveAttribute("aria-hidden", "true");
   expect(screen.queryByLabelText("Get Answer")).not.toBeInTheDocument();
   expect(screen.getByText(`Showing ${ROW_COUNT} rows`)).toBeInTheDocument();
 }

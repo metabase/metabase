@@ -1,12 +1,13 @@
 {
   "teams": [
     {
-      "name": "Querying Platform",
-      "label": ".Team/QueryingPlatform",
+      "name": "Querying",
+      "label": ".Team/Querying",
       "members": [
+        "bshepherdson",
+        "dpsutton",
         "metamben",
         "rileythomp",
-        "camsaul",
         "technomancy"
       ]
     },
@@ -26,11 +27,8 @@
       "label": ".Team/Graphy",
       "members": [
         "ranquild",
-        "ericnormand",
         "galdre",
-        "dpsutton",
         "escherize",
-        "bgrabow",
         "alxnddr",
         "tsplude"
       ]
@@ -42,15 +40,7 @@
         "WiNloSt",
         "npretto",
         "heypoom",
-        "sanex3339",
-        "lorem--ipsum"
-      ]
-    },
-    {
-      "name": "Admin Webapp",
-      "label": ".Team/AdminWebapp",
-      "members": [
-        "eliotmetabase"
+        "sanex3339"
       ]
     },
     {
@@ -84,20 +74,11 @@
       ]
     },
     {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
-        "eliotmetabase"
-      ]
-    },
-    {
       "name": "UX West",
       "label": ".Team/UXWest",
       "members": [
-        "eliotmetabase",
         "npfitz",
         "nvoxland",
-        "bshepherdson",
         "deniskaber",
         "andsalves",
         "kevinkelleher12",
@@ -133,7 +114,6 @@
         "iethree",
         "bpander",
         "gantoreno",
-        "losrebellos",
         "tmashara"
       ]
     },

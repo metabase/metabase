@@ -4,10 +4,7 @@ import {
   createMockDashboardSubscription,
 } from "metabase-types/api/mocks";
 
-import {
-  getEditableSubscriptionChannel,
-  getSubscriptionEditUnavailableReason,
-} from "./subscription-editing";
+import { getEditableSubscriptionChannel } from "./subscription-editing";
 
 const createChannelSpec = (opts: Partial<ChannelSpec>): ChannelSpec => ({
   type: "email",
@@ -40,50 +37,6 @@ const UNCONFIGURED_CHANNELS: ChannelApiResponse = {
   },
 };
 
-describe("getSubscriptionEditUnavailableReason", () => {
-  it.each([CONFIGURED_CHANNELS, UNCONFIGURED_CHANNELS])(
-    "allows editing an email or Slack channel the form input lists, set up or not",
-    (channelInfo) => {
-      expect(
-        getSubscriptionEditUnavailableReason(
-          { channel_type: "email" },
-          channelInfo,
-        ),
-      ).toBeNull();
-      expect(
-        getSubscriptionEditUnavailableReason(
-          { channel_type: "slack" },
-          channelInfo,
-        ),
-      ).toBeNull();
-    },
-  );
-
-  it("explains that a channel the form input leaves out can't be edited", () => {
-    expect(
-      getSubscriptionEditUnavailableReason(
-        { channel_type: "email" },
-        { channels: {} },
-      ),
-    ).toBe("You can't edit email subscriptions");
-    expect(
-      getSubscriptionEditUnavailableReason(
-        { channel_type: "slack" },
-        { channels: {} },
-      ),
-    ).toBe("You can't edit Slack subscriptions");
-  });
-
-  it("never allows editing a webhook, even when it is configured", () => {
-    expect(
-      getSubscriptionEditUnavailableReason(
-        { channel_type: "http" },
-        CONFIGURED_CHANNELS,
-      ),
-    ).toBe("Webhook subscriptions can't be edited on the dashboard");
-  });
-});
-
 describe("getEditableSubscriptionChannel", () => {
   it("returns the first channel when the dashboard can edit it", () => {
     const channel = createMockChannel({ channel_type: "slack" });
@@ -95,7 +48,38 @@ describe("getEditableSubscriptionChannel", () => {
     ).toBe(channel);
   });
 
-  it("returns null when the sidebar can't edit the first channel", () => {
+  it.each([CONFIGURED_CHANNELS, UNCONFIGURED_CHANNELS])(
+    "returns an email or Slack channel the form input lists, set up or not",
+    (channelInfo) => {
+      const email = createMockChannel({ channel_type: "email" });
+      const slack = createMockChannel({ channel_type: "slack" });
+      expect(
+        getEditableSubscriptionChannel(
+          createMockDashboardSubscription({ channels: [email] }),
+          channelInfo,
+        ),
+      ).toBe(email);
+      expect(
+        getEditableSubscriptionChannel(
+          createMockDashboardSubscription({ channels: [slack] }),
+          channelInfo,
+        ),
+      ).toBe(slack);
+    },
+  );
+
+  it("returns null for a channel the form input leaves out", () => {
+    expect(
+      getEditableSubscriptionChannel(
+        createMockDashboardSubscription({
+          channels: [createMockChannel({ channel_type: "email" })],
+        }),
+        { channels: {} },
+      ),
+    ).toBeNull();
+  });
+
+  it("returns null for a webhook, even when it is configured", () => {
     expect(
       getEditableSubscriptionChannel(
         createMockDashboardSubscription({

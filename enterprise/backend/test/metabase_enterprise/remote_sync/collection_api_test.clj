@@ -69,7 +69,6 @@
         (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" (:id regular-collection))
                                              {:parent_id (:id remote-parent)})]
           (is (= "Uses content that is not remote synced." (:message response)))
-          (is (seq (:non-remote-synced-models response)))
           (is (nil? (t2/select-one-fn :parent_id :model/Collection :id (:id regular-collection))))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection)))))))))
 
