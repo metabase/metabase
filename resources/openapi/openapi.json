@@ -30564,93 +30564,76 @@
         "type" : "object"
       },
       "metabase.public-sharing-rest.api.query-result" : {
-        "anyOf" : [ {
-          "additionalProperties" : false,
-          "properties" : {
-            "data" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "cols" : {
-                  "$ref" : "#/components/schemas/metabase.query-processor.schema..result-metadata.columns"
-                },
-                "insights" : {
-                  "anyOf" : [ {
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.query-processor.schema.insight"
-                    },
-                    "type" : "array"
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
-                "requested_timezone" : {
-                  "anyOf" : [ {
-                    "type" : "string"
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
-                "results_timezone" : {
-                  "anyOf" : [ {
-                    "type" : "string"
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
-                "rows" : {
+        "additionalProperties" : false,
+        "description" : "What [[transform-qp-result]] leaves of a completed query result for a public or embed endpoint: its rows and the\n  column metadata needed to show them.",
+        "properties" : {
+          "data" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "cols" : {
+                "$ref" : "#/components/schemas/metabase.query-processor.schema..result-metadata.columns"
+              },
+              "insights" : {
+                "anyOf" : [ {
                   "items" : {
-                    "items" : { },
-                    "type" : "array"
+                    "$ref" : "#/components/schemas/metabase.query-processor.schema.insight"
                   },
                   "type" : "array"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "requested_timezone" : {
+                "anyOf" : [ {
+                  "type" : "string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "results_timezone" : {
+                "anyOf" : [ {
+                  "type" : "string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "rows" : {
+                "items" : {
+                  "items" : { },
+                  "type" : "array"
                 },
-                "rows_truncated" : {
-                  "type" : "integer"
-                }
+                "type" : "array"
               },
-              "required" : [ "cols", "rows" ],
-              "type" : "object"
+              "rows_truncated" : {
+                "type" : "integer"
+              }
             },
-            "json_query" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "parameters" : {
-                  "anyOf" : [ {
-                    "items" : {
-                      "properties" : { },
-                      "type" : "object"
-                    },
-                    "type" : "array"
-                  }, {
-                    "type" : "null"
-                  } ]
-                }
-              },
-              "type" : "object"
-            },
-            "status" : {
-              "const" : "completed"
-            }
+            "required" : [ "cols", "rows" ],
+            "type" : "object"
           },
-          "required" : [ "status", "data" ],
-          "type" : "object"
-        }, {
-          "additionalProperties" : false,
-          "properties" : {
-            "error" : {
-              "type" : "string"
+          "json_query" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "parameters" : {
+                "anyOf" : [ {
+                  "items" : {
+                    "properties" : { },
+                    "type" : "object"
+                  },
+                  "type" : "array"
+                }, {
+                  "type" : "null"
+                } ]
+              }
             },
-            "error_type" : {
-              "type" : "string"
-            },
-            "status" : {
-              "const" : "failed"
-            }
+            "type" : "object"
           },
-          "required" : [ "status" ],
-          "type" : "object"
-        } ],
-        "description" : "What [[transform-qp-result]] leaves of a query result for a public or embed endpoint.\n  A completed query keeps its rows and the column metadata needed to show them.\n  A failed one keeps its status and the error [[error-response]] allows."
+          "status" : {
+            "const" : "completed"
+          }
+        },
+        "required" : [ "status", "data" ],
+        "type" : "object"
       },
       "metabase.pulse.schema.email-subject" : {
         "allOf" : [ {
