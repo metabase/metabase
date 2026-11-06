@@ -13,7 +13,7 @@ Remote sync stores your [Library](./library.md) and [transforms](../transforms/t
 
 Remote sync syncs:
 
-- The Library: published tables with their segments and measures, metrics, documents, [data apps](../../data-apps/build.md#what-syncs-with-a-data-app), SQL snippets, [data actions](../data-actions.md), and the glossary.
+- The Library: published tables with their segments and measures, metrics, [data apps](../../data-apps/build.md#what-syncs-with-a-data-app), SQL snippets, [data actions](../data-actions.md), and the glossary.
 - Transforms: their tags, tests, folders, and Python libraries.
 
 Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never leaves your Metabase.
@@ -47,7 +47,7 @@ Your repository can't change users, groups, or permissions, because those [don't
 
 ### Content is stored as YAML files
 
-Remote sync stores your content as [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) in your Git repository. Each published table, metric, dashboard, document, and transform becomes a YAML file that can be reviewed in pull requests and versioned like code.
+Remote sync stores your content as [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) in your Git repository. Each published table, metric, and transform becomes a YAML file that can be reviewed in pull requests and versioned like code.
 
 ### Remote sync excludes table metadata
 
@@ -304,7 +304,7 @@ Content in other Metabases that depended on this item may break, because the dep
 
 ### Library content must be self-contained
 
-Everything an item in the Library needs must be in the Library. This includes:
+Everything an item in the Library needs must be synced too. For example, Metabase won't let you move a metric to a synced Library if the metric is built on a saved question or model. The Library can't hold questions or models, so build the metric on a table instead.
 
 - Questions that reference other questions
 - Dashboards with questions
@@ -327,7 +327,6 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - SQL snippets
 - [Data actions](../data-actions.md)
 - The glossary
-- Timelines and events
 - Transforms, including tags, tests, folders, and Python libraries
 
 **What doesn't sync:**
@@ -452,7 +451,7 @@ Your setup keeps working. On the first startup after you upgrade, if your Metaba
 
 You can't turn custom collections off while any collection outside the Library is synced. Metabase refuses to start with `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=false` while a custom collection is synced. To turn custom collections off, first stop syncing those collections.
 
-If you can, move the content you want to version into the Library instead. Remote sync is built around the Library, and syncing other collections is a legacy path.
+If you can, publish the tables and move the metrics you want to version into the Library instead. The Library can't hold dashboards, questions, or documents, so to version those, keep syncing their collections. Remote sync is built around the Library, and syncing other collections is a legacy path.
 
 ### Items in synced collections must be self-contained
 
@@ -510,9 +509,9 @@ To disable Remote sync:
 
 ## Migrating existing content to Remote sync
 
-If you already have content in your Metabase, you can adopt Remote sync gradually. Content that lives outside the Library remains unaffected. You can keep working with it normally while you move content into the Library over time.
+If you already have content in your Metabase, you can adopt Remote sync gradually. Content that lives outside the Library remains unaffected. You can keep working with it normally while you publish tables and move metrics into the Library over time.
 
-Make sure you move any dependencies (like models referenced by questions) into the Library, since [Library content must be self-contained](#library-content-must-be-self-contained).
+Metrics that you move to the Library can't depend on saved questions or models, since [Library content must be self-contained](#library-content-must-be-self-contained).
 
 ### If you already have a repo with serialized Metabase data
 
@@ -522,10 +521,12 @@ If you want to switch fully to Remote sync, we recommend starting with a new rep
 
 1. Check out a new branch in your Metabase in Read-write mode.
 2. Import your data to your Metabase with the serialization command as you normally would.
-3. Move the content you want to sync into the Library.
+3. Publish the tables and move the metrics you want to sync into the Library.
 4. Push up your changes to the new repo.
 
 Remote sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../metadata/metadata-editing.md), you should stick with serialization.
+
+The Library also can't hold dashboards, questions, or documents. To version those, [sync their collections](#syncing-other-collections).
 
 ## Further reading
 

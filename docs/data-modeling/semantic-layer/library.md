@@ -121,19 +121,6 @@ To add an already existing metric to the Library, move the metric to the **Libra
 
 To create a new Library metric, go to **Data Studio > Semantic layer** and select **+ New > Metric**. See [creating metrics](./metrics.md#create-a-metric) for more on building metrics.
 
-## Existing Dashboards collections
-
-The Library doesn't have a section for dashboards. To highlight your most trusted dashboards, like your company's KPI dashboard, put them in an [official collection](../../exploration-and-organization/collections.md#official-collections).
-
-Libraries created on earlier versions of Metabase have a **Dashboards** collection. When you upgrade:
-
-- If the collection is empty, Metabase deletes it.
-- If the collection has any content, it stays in the Library.
-
-A **Dashboards** collection that stays appears in the **Library** section of the main app's navigation sidebar and in pickers, but not in Data Studio. Standard [collection permissions](../../permissions/collections.md) apply to it, and you can't rename or archive it.
-
-The collection can hold anything except tables. You can create subcollections in it, but you can't move regular collections into it.
-
 ## SQL snippets
 
 [SQL snippets](../../questions/native-editor/snippets.md) are reusable bits of code. All snippets in your Metabase are available to the library, including snippets created elsewhere in your Metabase. You can also create snippet folders in the Library.
