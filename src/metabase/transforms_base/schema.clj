@@ -78,6 +78,9 @@
   [:map {:closed true}
    [:type [:or :string :keyword]]
    [:database {:optional true} [:maybe :int]]
+   ;; the catalog-level qualifier a workspace remap writes to on drivers whose isolation namespace is a separate
+   ;; database (MySQL) or the leftmost of three parts (SQL Server, BigQuery); see `resolve-transform-target`
+   [:db {:optional true} [:maybe :string]]
    [:schema {:optional true} [:maybe :string]]
    [:name :string]
    [:indexes {:optional true} [:sequential ::indexes.schema/index-structured]]

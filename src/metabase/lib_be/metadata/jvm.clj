@@ -189,6 +189,7 @@
                 :database/is_attached_dwh
                 :database/details
                 :database/write_data_details
+                :database/admin_details
                 :database/timezone
                 :database/default_schema
                 :database/router_database_id
