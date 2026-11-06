@@ -2818,7 +2818,7 @@
                     (testing "fails and names the unmemberable owner"
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
-                           #"not a member of \d+ role"
+                           #"login \"ws_pre_adp_role\" is not a member of 1 role.*`GRANT \"ws_pre_adp_other_owner\" TO \"ws_pre_adp_role\";`"
                            (postgres/assert-can-alter-default-privileges! user-spec schema))))
                     (testing "passes once the current_user becomes a member of the owner role"
                       (jdbc/execute! admin-spec
@@ -2853,7 +2853,10 @@
                                            "CREATE SCHEMA %s AUTHORIZATION %s;")
                                       qgrantor qgrantor qschema qgrantor)])
               (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (mt/db) workspace))
-                    _             (driver/init-workspace-isolation! :postgres (mt/db) workspace+det)
+                    ;; the shared test cluster grants CREATE on public to PUBLIC on Postgres 14, which init
+                    ;; refuses; metabase.driver.postgres.workspace-test covers that check
+                    _             (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+                                    (driver/init-workspace-isolation! :postgres (mt/db) workspace+det))
                     iso-user      (-> workspace+det :database_details :user)
                     qiso          (sql.u/quote-name :postgres :field iso-user)]
                 (try
@@ -2915,6 +2918,10 @@
             workspace (merge {:id ws-id}
                              (driver/workspace-isolation-details :postgres (mt/db) {:id ws-id}))]
         (try
-          (is (= :ok (do (driver/init-workspace-isolation! :postgres database workspace) :ok)))
+          ;; the shared test cluster grants CREATE on public to PUBLIC on Postgres 14, which init refuses;
+          ;; metabase.driver.postgres.workspace-test covers that check
+          (is (= :ok (mt/with-dynamic-fn-redefs [postgres/check-no-public-create-anywhere! (constantly nil)]
+                       (driver/init-workspace-isolation! :postgres database workspace)
+                       :ok)))
           (finally
             (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))
