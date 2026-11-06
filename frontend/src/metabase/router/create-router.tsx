@@ -8,6 +8,7 @@ import {
 
 import { AppShell } from "./AppShell";
 import { withChunkFallback } from "./lazy-page";
+import { type ChunkErrorFallback, chunkErrorRecovery } from "./lazy-route";
 import { setRouter, setRouterExpected } from "./navigator";
 
 export type MemoryTestRouter = DataRouter;
@@ -36,6 +37,7 @@ export type MemoryTestRouterHolder = { current: MemoryTestRouter | null };
 function withAppShell(
   routes: RouteObject[],
   loadingFallback?: ReactNode,
+  chunkErrorFallback?: ChunkErrorFallback,
 ): RouteObject[] {
   // Every router this module builds gets an `AppShell`, and every `AppShell`
   // registers a `navigate`. That is what lets the navigator hold a navigation
@@ -45,7 +47,10 @@ function withAppShell(
     {
       element: <AppShell />,
       hydrateFallbackElement: loadingFallback,
-      children: withChunkFallback(routes, loadingFallback),
+      children: withChunkFallback(routes, {
+        fallback: loadingFallback,
+        recovery: chunkErrorFallback && chunkErrorRecovery(chunkErrorFallback),
+      }),
     },
   ];
 }
@@ -63,9 +68,13 @@ export function createAppRouter(
   routes: RouteObject[],
   basename?: string,
   loadingFallback?: ReactNode,
+  chunkErrorFallback?: ChunkErrorFallback,
 ): DataRouter {
   return register(
-    createBrowserRouter(withAppShell(routes, loadingFallback), { basename }),
+    createBrowserRouter(
+      withAppShell(routes, loadingFallback, chunkErrorFallback),
+      { basename },
+    ),
   );
 }
 
@@ -74,14 +83,18 @@ export function createMemoryAppRouter(
   initialRoute: string,
   basename?: string,
   loadingFallback?: ReactNode,
+  chunkErrorFallback?: ChunkErrorFallback,
 ): DataRouter {
   const entry = initialRoute.startsWith("/")
     ? initialRoute
     : `/${initialRoute}`;
   return register(
-    createMemoryRouter(withAppShell(routes, loadingFallback), {
-      basename,
-      initialEntries: [entry],
-    }),
+    createMemoryRouter(
+      withAppShell(routes, loadingFallback, chunkErrorFallback),
+      {
+        basename,
+        initialEntries: [entry],
+      },
+    ),
   );
 }
