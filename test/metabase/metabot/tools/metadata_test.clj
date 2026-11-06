@@ -298,7 +298,7 @@
                   (is (re-find #"(?s)<query>.*\"ORDERS\".*\"QUANTITY\".*</query>" output)))
                 (testing "the output includes the question's fields"
                   (is (str/includes? output "### Fields"))
-                  (is (str/includes? output "name=\"QUANTITY\"")))))
+                  (is (str/includes? output (str "<field id=\"" (mt/id :orders :quantity) "\" name=\"QUANTITY\""))))))
             (doseq [data-source ["metric" "model"]]
               (testing (str profile " get_field_values with data_source " data-source)
                 (is (=? {:structured-output {:field_id (mt/id :orders :quantity) :result-type :field-metadata}}
