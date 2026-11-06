@@ -56,6 +56,14 @@
       (is (thrown-with-msg? Exception #"metabase-plugin\.json"
                             (cache/validate-bundle! bytes))))))
 
+(deftest validate-bundle-rejects-entry-paths-an-export-cannot-unpack-test
+  (doseq [path ["dist//index.js" "dist/icons/../index.js"]]
+    (testing path
+      (let [bytes (cvp.tu/make-tgz-bytes [["metabase-plugin.json" (json/encode {:name "my-viz"})]
+                                          [path "console.log('hi')"]])]
+        (is (thrown-with-msg? Exception #"invalid path"
+                              (cache/validate-bundle! bytes)))))))
+
 (deftest validate-bundle-requires-index-js-test
   (testing "archive without dist/index.js is rejected"
     (let [bytes (cvp.tu/make-tgz-bytes

@@ -118,16 +118,21 @@
           (served-paths read-text))))
 
 (defn- export-bundle
-  "The bundle files exported beside the YAML. Skipped when absent or unreadable, so one broken plugin doesn't fail
-  the export."
-  [{:keys [identifier]} _k bundle]
+  "The bundle files exported beside the YAML, as [[with-bundle-files]] unpacked them."
+  [plugin _k bundle]
   (if bundle
-    (try
-      (served-files (cache/bundle->files bundle))
-      (catch Exception e
-        (log/warnf "Not exporting the bundle of custom viz plugin \"%s\": %s" identifier (ex-message e))
-        ::serdes/skip))
+    (served-files (or (::bundle-files plugin) (cache/bundle->files bundle)))
     ::serdes/skip))
+
+(defn- with-bundle-files
+  "`plugin` with its bundle unpacked for [[export-bundle]], or nil, with a warning, when it can't be. Exported
+  without its files, the plugin would get an empty bundle on the next import."
+  [{:keys [identifier bundle] :as plugin}]
+  (try
+    (assoc plugin ::bundle-files (cache/bundle->files bundle))
+    (catch Exception e
+      (log/warnf "Not exporting custom viz plugin \"%s\": its bundle can't be unpacked: %s" identifier (ex-message e))
+      nil)))
 
 (defn- import-bundle
   "The archive of the `files` read from beside a plugin's YAML. A file that isn't there is left out, and
@@ -169,15 +174,17 @@
 
 (defmethod serdes/extract-query "CustomVizPlugin"
   [model-name {:keys [filter-column filter-ids] :as opts}]
-  ;; skip what an import would refuse: dev-only plugins, case-colliding identifiers, and identifiers registration no
-  ;; longer accepts. Skipped plugins are named in the log and still served on this instance.
+  ;; skip what an import would refuse: dev-only plugins, case-colliding identifiers, identifiers registration no
+  ;; longer accepts, and bundles that can't be unpacked. Skipped plugins are named in the log and still served on
+  ;; this instance.
   (let [colliding (case-colliding-identifiers
                    (custom-viz-plugin.db/plugin-identifiers-with-bundles filter-column filter-ids))]
-    (eduction (remove (fn [{:keys [identifier]}]
-                        (or (contains? colliding (u/lower-case-en identifier))
-                            (when-let [error (manifest/directory-name-error identifier)]
-                              (log/warnf "Not exporting custom viz plugin: %s" error)
-                              true))))
+    (eduction (comp (remove (fn [{:keys [identifier]}]
+                              (or (contains? colliding (u/lower-case-en identifier))
+                                  (when-let [error (manifest/directory-name-error identifier)]
+                                    (log/warnf "Not exporting custom viz plugin: %s" error)
+                                    true))))
+                    (keep with-bundle-files))
               (custom-viz-plugin.db/reducible-plugins-with-bundles filter-column filter-ids
                                                                    (serdes/extract-order-columns model-name opts)))))
 

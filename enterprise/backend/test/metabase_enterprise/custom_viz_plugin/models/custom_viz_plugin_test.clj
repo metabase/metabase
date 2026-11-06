@@ -159,7 +159,7 @@
       (is (= #{:entity_id :identifier} (set (:copy spec))) "the entity_id travels in the YAML, as a data app's does")
       (is (contains? (set (:skip spec)) :enabled) "enabled is an admin's choice on each instance, as for data apps")
       (is (= :serdes/resources (get-in spec [:transform :bundle :as])))))
-  (testing "bundle transforms skip unreadable archives and pack resources deterministically"
+  (testing "bundle transforms skip a missing bundle and pack resources deterministically"
     (let [spec     (serdes/make-spec "CustomVizPlugin" {})
           export   (let [f (get-in spec [:transform :bundle :export-with-context])]
                      (fn [bundle] (f {:identifier "my-viz"} :bundle bundle)))
@@ -167,7 +167,6 @@
           files    (bundle-files {:name "my-viz"})
           texts    (as-text files)]
       (is (= ::serdes/skip (export nil)))
-      (is (= ::serdes/skip (export (.getBytes "not a tgz" "UTF-8"))) "a stored archive that can't be read is left out")
       (testing "a file that isn't there is left out of the archive"
         (is (= {"dist/index.js" (seq (get files "dist/index.js"))}
                (update-vals (cache/bundle->files (import (assoc texts "metabase-plugin.json" nil "dist/assets/icon.svg" nil)))

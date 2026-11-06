@@ -4,6 +4,7 @@
   `models.custom-viz-plugin-test`; these tests go through the file system."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
@@ -110,6 +111,9 @@
                                           :dev_bundle_url "http://localhost:4000/"})
       ;; an identifier that can't name a directory, from before upload refused it
       (insert-plugin! "bad/identifier" (cv.tu/valid-bundle-bytes "bad/identifier"))
+      ;; a bundle whose entry paths an export can't unpack, from before upload refused it
+      (insert-plugin! "unreadable" (cv.tu/make-tgz-bytes (update-keys (plugin-files "unreadable")
+                                                                      #(str/replace % "dist/" "dist//"))))
       ;; identifiers differing only in case; MySQL's case-insensitive unique index refuses the second
       (when-not (= :mysql (mdb/db-type))
         (doseq [identifier ["Thumbs" "thumbs"]]

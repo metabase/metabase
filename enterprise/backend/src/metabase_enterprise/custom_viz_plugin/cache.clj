@@ -117,6 +117,8 @@
     (try
       (try
         (u.compress/untgz bundle-bytes (.toFile scratch) untgz-opts)
+        ;; refuse entry paths `untgz` accepts but an export can't unpack, such as `dist//index.js`
+        (u.compress/untgz-files bundle-bytes untgz-opts)
         (catch Exception e
           (if (:status-code (ex-data e))
             ;; tar-bomb / oversize / entry-count failures carry their own clear message — re-raise.
