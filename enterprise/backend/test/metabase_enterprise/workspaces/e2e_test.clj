@@ -55,9 +55,10 @@
   (subs (str (random-uuid)) 0 8))
 
 (def workspaces-supported-drivers
-  "Drivers covered by the full e2e. Mirror the set of drivers that declare
-   `:workspace true` in their `database-supports?` map -- update both when
-   adding a workspace-supported driver.
+  "Drivers covered by the full e2e: every driver that implements the workspace
+   isolation methods, whether or not it reports the `:workspace` feature yet.
+   The test provisions through `workspaces.provisioning/*` directly, which does
+   not check the feature, so a driver keeps this coverage while it is off.
 
    JDBC drivers go through `jdbc/execute!`+`jdbc/query`; `:bigquery-cloud-sdk`
    goes through the BQ Java API via
