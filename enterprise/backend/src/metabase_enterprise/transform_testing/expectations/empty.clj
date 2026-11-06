@@ -45,8 +45,8 @@
   (temp-tables [_this _context]
     {})
 
-  (probes [_this {:keys [driver replacements]}]
-    {:violations {:query    (transform-testing.compile/replace-tables driver sql replacements)
+  (probes [_this {:keys [driver replacements output-token]}]
+    {:violations {:query    (transform-testing.compile/replace-tables driver sql replacements output-token)
                   :params   []
                   :max-rows expectations.report/row-cap}})
 

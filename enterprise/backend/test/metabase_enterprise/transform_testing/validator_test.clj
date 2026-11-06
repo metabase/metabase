@@ -2,6 +2,7 @@
   "Guard A: every table the transform reads must have a declared input. Pure — no warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.transform-testing.compile :as transform-testing.compile]
    [metabase-enterprise.transform-testing.errors :as errors]
    [metabase-enterprise.transform-testing.validator :as validator]
    [metabase.driver :as driver])
@@ -115,3 +116,14 @@
   (testing "missing inputs are reported before missing expectations"
     (is (= ::errors/missing-inputs
            (refusal (assoc complete-test :inputs [] :expectations []))))))
+
+(deftest output-token-test
+  (let [test-reading-output (-> complete-test
+                                (assoc :expectations [{:type :empty :name "none" :sql "SELECT * FROM {{output}}"}])
+                                (assoc-in [:replacements {:table transform-testing.compile/output-name}]
+                                          {:db nil :schema nil :table "MB_OUT"}))]
+    (testing "with the output token set, an expectation reading `{{output}}` reads only temp tables"
+      (is (nil? (refusal (assoc test-reading-output :output-token "{{output}}")))))
+    (testing "without the output token, the same expectation's SQL cannot be parsed"
+      (is (= ::errors/unparseable-source
+             (refusal test-reading-output))))))
