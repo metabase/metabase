@@ -357,7 +357,6 @@ describe("issue 17910", () => {
       cy.findAllByPlaceholderText("Add description")
         .type("A description")
         .blur();
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByTestId("saved-question-history-list")
         .findAllByTestId("revision-history-event")
         .should("have.length", 2);

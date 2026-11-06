@@ -211,26 +211,12 @@ describe("scenarios > question > saved", () => {
 
       cy.wait("@updateQuestion");
       cy.findByText("This is a question").should("be.visible");
-
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
 
       cy.findByTestId("question-revert-button").click();
-      // The revert mutation invalidates the revision list. On fetch
-      // (microtask resolution) clicking the History tab before that
-      // invalidation lands shows the pre-revert entries — the new
-      // "reverted to an earlier version" row is then never found within
-      // Cypress's default 4s. Wait for the revert request before
-      // re-entering History.
       cy.wait("@revertRevision");
-
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i);
-
-      cy.findByRole("tab", { name: "Overview" }).click();
       cy.findByPlaceholderText("Add description").should("have.value", "");
-
-      cy.findByRole("tab", { name: "History" }).click();
 
       // Simulate a backend failure on revert and confirm we surface
       // the error message as a toast (UXW-310).

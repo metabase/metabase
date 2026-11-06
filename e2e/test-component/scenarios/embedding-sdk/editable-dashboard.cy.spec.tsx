@@ -86,8 +86,6 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
     });
 
     cy.findByRole("heading", { name: "Info" }).should("not.exist");
-    cy.findByRole("tab", { name: "Overview" }).should("not.exist");
-    cy.findByRole("tab", { name: "History" }).should("not.exist");
   });
 
   it("should allow clicking dashcard filters in edit mode (VIZ-1249)", () => {

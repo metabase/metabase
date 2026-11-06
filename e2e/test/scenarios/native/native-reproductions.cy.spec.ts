@@ -442,12 +442,9 @@ describe("issue 38176", () => {
 
       cy.wait("@updateQuestion");
       cy.wait("@cardQuery");
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
       cy.findByTestId("question-revert-button").click();
       cy.wait("@cardQuery");
-
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i, {
         timeout: 10000,
       }).should("be.visible");
@@ -1179,7 +1176,6 @@ describe("issue 51717", () => {
       .and("contain", "Info");
 
     cy.log("Make sure info sidebar is interactive (on top of the stack)");
-    cy.get("@infoSidebar").findByRole("tab", { name: "History" }).click();
     cy.get("@infoSidebar").should("contain", "You created this");
   });
 });

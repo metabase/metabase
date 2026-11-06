@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { CollectionTypeFilterModel } from "metabase/collections/components/CollectionContent/constants";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import type { Collection } from "metabase-types/api";
 
@@ -9,9 +10,11 @@ import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
 export const CollectionInfoSidebarToggle = ({
   collection,
   onUpdateCollection,
+  onFilterByType,
 }: {
   collection: Collection;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
+  onFilterByType?: (model: CollectionTypeFilterModel) => void;
 }) => {
   const [showSidesheet, setShowSidesheet] = useState(false);
   return (
@@ -28,6 +31,7 @@ export const CollectionInfoSidebarToggle = ({
           onClose={() => setShowSidesheet(false)}
           collection={collection}
           onUpdateCollection={onUpdateCollection}
+          onFilterByType={onFilterByType}
         />
       )}
     </>

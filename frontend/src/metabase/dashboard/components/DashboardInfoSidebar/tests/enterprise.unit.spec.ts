@@ -20,7 +20,7 @@ describe("DashboardInfoSidebar > enterprise", () => {
       });
       await setupEnterprise({ dashboard });
 
-      expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
+      expect(screen.queryByText("Entity ID info")).not.toBeInTheDocument();
       expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
     });
   });

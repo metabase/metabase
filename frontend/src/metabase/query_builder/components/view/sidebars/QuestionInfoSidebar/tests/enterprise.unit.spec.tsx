@@ -39,50 +39,36 @@ describe("QuestionInfoSidebar > enterprise", () => {
       });
       await setupEnterprise({ card });
 
-      expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
+      expect(screen.queryByText("Entity ID info")).not.toBeInTheDocument();
       expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
     });
   });
 
-  describe("tabs", () => {
-    describe("for non-admins", () => {
-      it("should show tabs for Overview, History, and Relationships", async () => {
-        await setup();
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(3);
-        expect(tabs.map((tab) => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-          "Relationships",
-        ]);
-      });
+  describe("insights action", () => {
+    it("is absent for non-admins", async () => {
+      await setup();
+
+      expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Insights" }),
+      ).not.toBeInTheDocument();
     });
 
-    describe("for admins", () => {
-      it("should show tabs for Overview, History, Relationships, and Insights", async () => {
-        setup({
-          user: { is_superuser: true },
-          settings: createMockSettings({
-            "token-features": createMockTokenFeatures({
-              audit_app: false,
-            }),
+    it("opens the usage analytics upsell for admins", async () => {
+      await setup({
+        user: { is_superuser: true },
+        settings: createMockSettings({
+          "token-features": createMockTokenFeatures({
+            audit_app: false,
           }),
-        });
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(4);
-        expect(tabs.map((tab) => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-          "Relationships",
-          "Insights",
-        ]);
-
-        const insightsTab = screen.getByText("Insights");
-        await userEvent.click(insightsTab);
-        expect(
-          await screen.findByText(/See who.s doing what, when/),
-        ).toBeInTheDocument();
+        }),
       });
+
+      await userEvent.click(screen.getByRole("button", { name: "Insights" }));
+
+      expect(
+        await screen.findByText(/See who.s doing what, when/),
+      ).toBeInTheDocument();
     });
   });
 });

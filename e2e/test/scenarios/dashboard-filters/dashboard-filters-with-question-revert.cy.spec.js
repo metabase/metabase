@@ -98,7 +98,6 @@ describe("issue 35954", () => {
           cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
           cy.intercept("POST", "/api/card/*/query").as("cardQuery");
           H.questionInfoButton().click();
-          cy.findByRole("tab", { name: "History" }).click();
 
           cy.findByTestId("saved-question-history-list")
             .findAllByTestId("revision-history-event")
@@ -108,7 +107,6 @@ describe("issue 35954", () => {
           cy.wait("@revertQuestion");
           cy.wait("@cardQuery");
           // Mid-test assertions to root out the flakiness
-          cy.findByRole("tab", { name: "History" }).click();
           cy.findByTestId("saved-question-history-list").should(
             "contain",
             "You edited this",
@@ -171,7 +169,6 @@ describe("issue 35954", () => {
         H.visitQuestion(this.questionId);
 
         H.questionInfoButton().click();
-        cy.findByRole("tab", { name: "History" }).click();
         cy.findByTestId("saved-question-history-list")
           .findAllByTestId("revision-history-event")
           .filter(":contains(You edited this)")

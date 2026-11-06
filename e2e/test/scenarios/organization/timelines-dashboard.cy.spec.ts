@@ -599,7 +599,6 @@ describe("scenarios > organization > timelines > dashboard", () => {
     H.visitQuestion("@questionId");
     H.questionInfoButton().click();
     H.sidesheet().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
       cy.findAllByTestId("question-revert-button").first().click();
     });
     cy.wait("@revertRevision").its("response.statusCode").should("eq", 200);
@@ -641,7 +640,6 @@ describe("scenarios > organization > timelines > dashboard", () => {
     cy.intercept("POST", "/api/revision/revert").as("revertDashboard");
     H.visitDashboard("@dashboardId");
     H.openDashboardInfoSidebar().within(() => {
-      cy.findByRole("tab", { name: "History" }).click();
       cy.wait("@revisionHistory");
       cy.findAllByTestId("question-revert-button").first().click();
     });

@@ -8,6 +8,7 @@ import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type { Revision, Transform } from "metabase-types/api";
@@ -131,6 +132,6 @@ describe("TransformRevisionHistorySidebar", () => {
     const closeButton = screen.getByRole("button", { name: /close/i });
     await userEvent.click(closeButton);
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 });

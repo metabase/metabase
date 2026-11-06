@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { Link as MBLink } from "metabase/common/components/Link";
 import {
   DetailsRow,
   DetailsTable,
   SidebarSection,
-} from "metabase/monitor/components/DetailSidebar";
+} from "metabase/common/components/DetailSidebar";
+import { Link as MBLink } from "metabase/common/components/Link";
 import * as Urls from "metabase/urls";
 
 import { NotificationSummary } from "../NotificationSummary";
