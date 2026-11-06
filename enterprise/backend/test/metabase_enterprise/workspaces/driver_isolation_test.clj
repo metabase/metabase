@@ -29,6 +29,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -1001,7 +1002,7 @@
                         :name (str "wsd-pwleak-b-" run-id)}
             b-ns       (driver.u/workspace-isolation-namespace-name ws-b)
             generated  (atom [])
-            gen-orig   driver.u/random-workspace-password
+            gen-orig   (dynamic-redefs/original-fn #'driver.u/random-workspace-password)
             ;; Details are pure computation, so build the full ws map before the
             ;; `try` — the `finally` destroy always has real identifiers to work
             ;; with even if init never ran or only partially succeeded.
