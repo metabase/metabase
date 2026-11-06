@@ -237,13 +237,13 @@
 (defn table-spec->sqlglot-key
   "Translate our `::table-spec` (`{:db :schema :table}` with our AST-position vocab,
    where `:db` ↔ `Table.catalog` and `:schema` ↔ `Table.db`) into the slot vocabulary
-   `metabase.sql-tools/replace-names` (SQLGlot) expects: `:db` for the catalog position
-   (the leftmost in `catalog.db.tbl`) and `:schema` for SQLGlot's `db` position (the
-   leftmost in `db.tbl`).
+   `metabase.sql-tools/replace-names` (SQLGlot) expects: `:schema` for SQLGlot's `db`
+   position (the leftmost in `db.tbl`). The catalog position is left out of the key, so a
+   key matches a reference in any catalog and the replacement leaves the catalog as written.
 
    The translation:
      - Our `:schema` -> SQLGlot's `:schema` (same name, same slot — unchanged).
-     - Our `:db`     -> SQLGlot's `:db` *if* `:schema` is also populated
+     - Our `:db`     -> dropped *if* `:schema` is also populated
                         (i.e. 3-part SQL Server/BigQuery shape),
                         otherwise SQLGlot's `:schema` (the 2-part MySQL case
                         where our `:db` IS the leftmost qualifier in the SQL).
@@ -255,7 +255,7 @@
         db?    (contains? pruned :db)
         sch?   (contains? pruned :schema)]
     (cond-> {:table table}
-      (and db? sch?) (assoc :db db :schema schema)
+      (and db? sch?) (assoc :schema schema)
       (and db? (not sch?)) (assoc :schema db)
       (and (not db?) sch?) (assoc :schema schema))))
 
