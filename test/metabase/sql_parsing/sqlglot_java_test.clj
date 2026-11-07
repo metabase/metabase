@@ -194,13 +194,14 @@
                                             "postgres" sql {"tables" [[{"table" "t"} {"db" nil "schema" nil "table" "u"}]]})
                "transpile-sql"            #(sqlglot-java.transpile/transpile-sql sql "postgres" "mysql")}]
         (testing op-name
-          (let [expected (f)]
-            (try
-              (.interrupt (Thread/currentThread))
-              (is (not= expected (try (f) (catch Throwable _ ::thrown))))
-              (is (Thread/interrupted) "the interrupt flag is still set")
-              (finally
-                (Thread/interrupted)))
+          ;; Assert only after the flag is cleared: reporting an assertion can clear it (for example a JUnit
+          ;; reporter that writes to a file).
+          (let [expected    (f)
+                _           (.interrupt (Thread/currentThread))
+                interrupted (try (f) (catch Throwable _ ::thrown))
+                flag-kept?  (Thread/interrupted)]
+            (is (not= expected interrupted))
+            (is (true? flag-kept?) "the interrupt flag is still set")
             (is (= expected (f)))))))))
 
 (deftest rename-keeps-comments-test
