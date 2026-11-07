@@ -113,10 +113,12 @@
                             (grant!   [_ _ _ _ _] nil)
                             (destroy! [_ _ _ _]   (swap! destroyed inc)))]
             (with-redefs [provisioning/dispatching-provisioner refusing]
-              (is (thrown-with-msg? ExceptionInfo #"user exists"
-                                    (ws/create-workspace! {:name         "Refused"
-                                                           :creator_id   (mt/user->id :crowberto)
-                                                           :database_ids [db-id]}))))
+              (let [e (is (thrown-with-msg? ExceptionInfo #"user exists"
+                                            (ws/create-workspace! {:name         "Refused"
+                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                   :database_ids [db-id]})))]
+                (is (=? {:status-code 409 :cleanup_required false} (ex-data e))
+                    "the refused row is gone, so the teardown finds nothing and the 409 stands")))
             (is (zero? @destroyed)
                 "destroy would drop the user init refused, which may belong to another parent")
             (is (not (t2/exists? :model/Workspace :name "Refused")))
@@ -160,19 +162,20 @@
             (is (=? {:status :unprovisioned} (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
             (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
               (is (nil? (ws/delete-workspace! (:id ws)))))))
-        (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
+        (testing "provisioning failure whose cleanup also fails keeps the workspace and throws for retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
-                         (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
+                         (init!    [_ _ _ _]   (throw (ex-info "boom" {:status-code 409})))
                          (grant!   [_ _ _ _ _] nil)
                          (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
             (with-redefs [provisioning/dispatching-provisioner wedged]
-              (is (=? {:name      "Wedged"
-                       :databases [{:status :unprovisioned}]}
-                      (ws/create-workspace! {:name         "Wedged"
-                                             :creator_id   (mt/user->id :crowberto)
-                                             :database_ids [db-id]}))
-                  "the created workspace is returned even though provisioning failed and cleanup could not finish"))
+              (let [e (is (thrown? ExceptionInfo
+                                   (ws/create-workspace! {:name         "Wedged"
+                                                          :creator_id   (mt/user->id :crowberto)
+                                                          :database_ids [db-id]})))]
+                (is (=? {:status-code 500 :cleanup_required true :message #"boom.*warehouse down"}
+                        (ex-data e))
+                    "two failures are a 500, and the kept workspace still needs a delete")))
             (let [ws (t2/select-one :model/Workspace :name "Wedged")]
               (is (some? ws)
                   "the workspace must be kept while any database row remains")

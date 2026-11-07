@@ -216,13 +216,14 @@
   on one throwable). The message is the messages the databases returned, joined
   into one line. The ex-data is shaped so the API error middleware returns just
   that message — without it, an uncaught 500 dumps the full `Throwable->map`
-  cause chain into the response."
-  ^Throwable [throwables]
+  cause chain into the response. `data` is merged in, and must carry the
+  `:status-code`."
+  ^Throwable [throwables data]
   (let [message       (str/join "; " (map #(or (ex-message %) (str (class %))) throwables))
         ^Throwable ex (ex-info message
-                               {:status-code 500
-                                :message     message
-                                :errors      {:_error message}}
+                               (merge {:message message
+                                       :errors  {:_error message}}
+                                      data)
                                (first throwables))]
     (run! #(.addSuppressed ex ^Throwable %) (rest throwables))
     ex))
@@ -250,7 +251,7 @@
                                  (catch Throwable t t))))
                        (ws.db/workspace-databases workspace-id))]
     (when (seq failures)
-      (throw (combined-exception failures)))))
+      (throw (combined-exception failures {:status-code 500})))))
 
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
@@ -264,11 +265,14 @@
    of warehouse resources that may (partially) exist, so they must survive an
    instance crash mid-provision; a rollback would erase them while the warehouse
    objects live on. Cleanup after a provisioning failure is therefore explicit:
-   every database is torn down; when the cleanup removes everything, the Workspace
-   row is deleted and the provisioning error is rethrown; when the cleanup itself
-   fails, the workspace is kept — and returned like a successful create — with the
-   failed rows (`:unprovisioned`) so the leak stays visible and the teardown can
-   be retried via delete. Callers detect that case from the databases' statuses."
+   every database is torn down. When the cleanup removes everything, the Workspace
+   row is deleted and the provisioning error is rethrown with its own
+   `:status-code` (500 when it has none). When the cleanup itself fails, the
+   workspace is kept with the failed rows (`:unprovisioned`), so the leak stays
+   visible and the teardown can be retried via delete, and the error is a 500,
+   as it is when the cleanup succeeds but deleting the Workspace row fails.
+   Either way the error's `:cleanup_required` says whether the workspace was kept
+   and still needs that delete."
   [{:keys [name creator_id database_ids]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
@@ -282,22 +286,28 @@
     (try
       (provision-workspace-databases! ws)
       (catch Throwable t
-        (let [cleaned-up? (try
-                            (teardown-workspace-databases! (:id ws))
-                            true
-                            ;; Cleanup failed: the workspace and the failed rows are
-                            ;; kept — and returned — so the teardown can be retried
-                            ;; via delete. Both errors are deliberately swallowed,
-                            ;; not logged (raw warehouse errors are sensitive);
-                            ;; callers see the failure in the databases' statuses,
-                            ;; and a delete retry surfaces the teardown errors.
-                            (catch Throwable _ false))]
-          (when cleaned-up?
-            (try
-              (workspace/delete-workspace! (:id ws))
-              (catch Throwable delete-t
-                (.addSuppressed t delete-t)))
-            (throw (combined-exception [t]))))))
+        (let [cleanup-error (try
+                              (teardown-workspace-databases! (:id ws))
+                              nil
+                              ;; Cleanup failed: the workspace and the failed rows are
+                              ;; kept so the teardown can be retried via delete. The
+                              ;; errors are not logged (raw warehouse errors are
+                              ;; sensitive); the caller gets them in the response.
+                              (catch Throwable cleanup-t cleanup-t))
+              delete-error  (when-not cleanup-error
+                              (try
+                                (workspace/delete-workspace! (:id ws))
+                                nil
+                                (catch Throwable delete-t delete-t)))
+              ;; either way the Workspace row survives, and only a delete removes it
+              kept-error    (or cleanup-error delete-error)]
+          ;; a single failure keeps its status, like a driver's 409 for a role it refuses
+          (throw (combined-exception (cond-> [t] kept-error (conj kept-error))
+                                     {:status-code      (if kept-error
+                                                          500
+                                                          (or (:status-code (ex-data t)) 500))
+                                      :cleanup_required (some? kept-error)
+                                      :response/keys    #{:cleanup_required}})))))
     (workspace/get-workspace (:id ws))))
 
 (defn delete-workspace!
