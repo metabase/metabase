@@ -1,8 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
 import { screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import { createMockField } from "metabase-types/api/mocks";
 
@@ -17,22 +15,11 @@ function setup(opts: Partial<SetupOpts> = {}) {
 }
 
 describe("ValuesSourceModal", () => {
-  const metadata = createMockMetadata({
-    fields: [
-      createMockField({
-        id: 1,
-        base_type: "type/Text",
-        semantic_type: "type/Category",
-      }),
-      createMockField({
-        id: 2,
-        base_type: "type/Text",
-        semantic_type: "type/Category",
-      }),
-    ],
+  const field1 = createMockField({
+    id: 1,
+    base_type: "type/Text",
+    semantic_type: "type/Category",
   });
-
-  const field1 = checkNotNull(metadata.field(1));
 
   describe("list source", () => {
     it("should render a hint about using models when labels are used", async () => {

@@ -106,7 +106,9 @@ function DatasetQueryEditorInner({
 }: DatasetQueryEditorProps) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const NativeEditor =
-    getEngineNativeType(question.database()?.engine) === "sql"
+    getEngineNativeType(
+      Lib.databaseDisplayInfo(question.query())?.engine ?? undefined,
+    ) === "sql"
       ? DatasetSqlQueryEditor
       : DatasetNativeQueryEditor;
 

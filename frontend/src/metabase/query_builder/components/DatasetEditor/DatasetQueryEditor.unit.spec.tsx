@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import type { ReactElement } from "react";
 import _ from "underscore";
 
@@ -30,12 +31,12 @@ import {
   MetabotContext,
   defaultContext,
 } from "metabase/metabot";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Database,
@@ -120,6 +121,7 @@ const setup = async ({
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
+  fetchMock.get("path:/api/table", database.tables ?? []);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
   setupSearchEndpoints([]);
@@ -136,7 +138,7 @@ const setup = async ({
     }),
   });
   const metadata = createMockMetadataFromState(storeInitialState);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
   const onSetDatabaseId = jest.fn();
   const registerChatContextProvider = jest.fn(
     (_provider: ChatContextProviderFn): DeregisterChatContextProviderFn =>

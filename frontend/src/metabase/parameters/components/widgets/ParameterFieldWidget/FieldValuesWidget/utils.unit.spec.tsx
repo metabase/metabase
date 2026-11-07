@@ -1,5 +1,3 @@
-import { asNotNull } from "metabase/utils/types";
-import type { FieldId } from "metabase-types/api";
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import {
@@ -8,7 +6,7 @@ import {
   REMAPPED_TO_NUMBER_FIELD_ID,
   REMAPPED_TO_STRING_FIELD_ID,
   STRING_PK_FIELD_ID,
-  metadata,
+  getField,
 } from "./testMocks.spec";
 import {
   getValuesMode,
@@ -16,8 +14,6 @@ import {
   parseStringValue,
   searchField,
 } from "./utils";
-
-const getField = (id: FieldId) => asNotNull(metadata.field(id));
 
 describe("Components > FieldValuesWidget > utils", () => {
   describe("parseStringValue", () => {

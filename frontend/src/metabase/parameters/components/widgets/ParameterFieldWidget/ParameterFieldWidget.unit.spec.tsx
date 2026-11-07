@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupParameterSearchValuesEndpoint,
   setupParameterValuesEndpoints,
@@ -8,7 +7,6 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -32,7 +30,6 @@ const FIELD_ID = 100;
 
 type SetupOpts = {
   parameter?: UiParameter;
-  fields?: Field[];
   parameterValues?: ParameterValues;
   parameterSearchValues?: Record<string, ParameterValues>;
   fieldSettings?: Partial<FieldType>;
@@ -40,7 +37,6 @@ type SetupOpts = {
 
 function setup({
   parameter = createMockUiParameter(),
-  fields = [],
   parameterValues = createMockParameterValues(),
   parameterSearchValues = {},
   fieldSettings,
@@ -50,18 +46,13 @@ function setup({
     setupParameterSearchValuesEndpoint(query, values);
   });
 
+  const field = createMockField({
+    id: FIELD_ID,
+    table_id: REVIEWS_ID,
+    ...fieldSettings,
+  });
   const database = createSampleDatabase({
-    tables: [
-      createReviewsTable({
-        fields: [
-          createMockField({
-            id: FIELD_ID,
-            table_id: REVIEWS_ID,
-            ...fieldSettings,
-          }),
-        ],
-      }),
-    ],
+    tables: [createReviewsTable({ fields: [field] })],
   });
 
   const storeInitialState = createMockState({
@@ -70,15 +61,11 @@ function setup({
     }),
   });
 
-  const metadata = createMockMetadataFromState(storeInitialState);
-  const field = metadata.field(FIELD_ID);
-  const fieldsToUse = field ? [field] : fields;
-
   const setValue = jest.fn();
   renderWithProviders(
     <ParameterFieldWidget
       parameter={parameter}
-      fields={fieldsToUse}
+      fields={[field]}
       setValue={setValue}
     />,
     { storeInitialState },

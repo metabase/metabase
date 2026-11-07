@@ -143,7 +143,7 @@ describe("parameters/utils/cards", () => {
 
         expect(quantityUiParameter).toMatchObject({
           id: "tag-id",
-          fields: [SAMPLE_METADATA.field(ORDERS.QUANTITY)],
+          fields: [expect.objectContaining({ id: ORDERS.QUANTITY })],
           hasVariableTemplateTagTarget: false,
         });
       });
@@ -163,7 +163,7 @@ describe("parameters/utils/cards", () => {
 
         expect(quantityUiParameter).toMatchObject({
           id: "tag-id",
-          fields: [SAMPLE_METADATA.field(ORDERS.QUANTITY)],
+          fields: [expect.objectContaining({ id: ORDERS.QUANTITY })],
           hasVariableTemplateTagTarget: false,
         });
       });

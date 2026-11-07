@@ -2,7 +2,6 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -24,6 +23,7 @@ export const setup = ({
   enterprisePlugins = [],
   sampleDatabaseId,
 }: SetupOpts) => {
+  const database = createMockDatabase();
   const state = createMockState({
     settings: mockSettings({
       "show-metabase-links": showMetabaseLinks,
@@ -37,7 +37,8 @@ export const setup = ({
 
   renderWithProviders(
     <TagEditorHelp
-      database={new Database({ ...createMockDatabase(), tables: [] })}
+      databaseId={database.id}
+      databaseEngine={database.engine}
       sampleDatabaseId={sampleDatabaseId ?? undefined}
       setQuery={jest.fn()}
       switchToSettings={jest.fn()}

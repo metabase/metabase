@@ -10,7 +10,6 @@ import {
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Parameter, UnsavedCard } from "metabase-types/api";
@@ -616,7 +615,7 @@ describe("metabase/parameters/utils/dashboards", () => {
           slug: "slug-d",
           type: "number/=",
           default: [1, 2, 3],
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: expect.any(Number) })],
           hasVariableTemplateTagTarget: false,
         },
         {
@@ -632,7 +631,7 @@ describe("metabase/parameters/utils/dashboards", () => {
           name: "f",
           slug: "slug-f",
           type: "string/contains",
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: expect.any(Number) })],
           hasVariableTemplateTagTarget: false,
         },
         {
@@ -640,7 +639,10 @@ describe("metabase/parameters/utils/dashboards", () => {
           name: "g",
           slug: "slug-g",
           type: "string/starts-with",
-          fields: [expect.any(Field), expect.any(Field)],
+          fields: [
+            expect.objectContaining({ id: expect.any(Number) }),
+            expect.objectContaining({ id: expect.any(Number) }),
+          ],
           hasVariableTemplateTagTarget: false,
         },
         {
@@ -648,7 +650,7 @@ describe("metabase/parameters/utils/dashboards", () => {
           name: "h",
           slug: "slug-h",
           type: "string/=",
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: expect.any(Number) })],
           hasVariableTemplateTagTarget: true,
         },
       ]);

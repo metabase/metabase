@@ -1,8 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
 import { screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockCard,
@@ -14,25 +12,20 @@ import {
 import { setup } from "./setup";
 
 describe("ValuesSourceModal", () => {
-  const metadata = createMockMetadata({
-    fields: [
-      createMockField({
-        id: 1,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        semantic_type: "type/Category",
-      }),
-      createMockField({
-        id: 2,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        semantic_type: "type/Category",
-      }),
-    ],
-  });
-
-  const field1 = checkNotNull(metadata.field(1));
-  const field2 = checkNotNull(metadata.field(2));
+  const [field1, field2] = [
+    createMockField({
+      id: 1,
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: "type/Category",
+    }),
+    createMockField({
+      id: 2,
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: "type/Category",
+    }),
+  ];
 
   describe("fields source", () => {
     it("should show a message about missing field values", async () => {

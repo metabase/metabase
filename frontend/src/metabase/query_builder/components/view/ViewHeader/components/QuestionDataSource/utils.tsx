@@ -79,41 +79,36 @@ export function getDataSourceParts({
   }
 
   return isNative
-    ? getNativeDataSourceParts(question, opts)
+    ? getNativeDataSourceParts(query, opts)
     : getQueryDataSourceParts(query, opts);
 }
 
 function getNativeDataSourceParts(
-  question: Question,
-  { subHead, isObjectDetail }: DataSourcePartsOpts,
+  query: Lib.Query,
+  { subHead }: DataSourcePartsOpts,
 ): DataSourcePart[] {
-  const database = question.metadata().database(question.databaseId());
   const parts: DataSourcePart[] = [];
+  const databaseId = Lib.databaseID(query);
+  const databaseInfo = Lib.databaseDisplayInfo(query);
 
-  if (database) {
+  if (databaseId != null && databaseInfo != null) {
     parts.push({
       icon: !subHead ? "database" : undefined,
-      name: database.displayName(),
-      href: database.id >= 0 ? Urls.browseDatabase(database) : undefined,
+      name: databaseInfo.displayName,
+      href:
+        databaseId >= 0
+          ? Urls.browseDatabase({ id: databaseId, name: databaseInfo.name })
+          : undefined,
       model: "database",
     });
   }
 
-  const collection = Lib.nativeExtras(question.query())?.collection;
-  const table = database
-    ?.getTables()
-    .find((table) => table.name === collection);
-  if (table == null) {
+  const collection = Lib.nativeExtras(query)?.collection;
+  if (collection == null) {
     return filterParts(parts);
   }
 
-  const hasTableLink = subHead || isObjectDetail;
-  return [
-    {
-      name: table.displayName(),
-      href: hasTableLink ? Urls.question(table.newQuestion()) : "",
-    },
-  ];
+  return [{ name: collection }];
 }
 
 function getQueryDataSourceParts(

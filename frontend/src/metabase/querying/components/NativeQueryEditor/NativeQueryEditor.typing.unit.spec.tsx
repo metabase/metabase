@@ -13,9 +13,9 @@ import {
   waitFor,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -74,7 +74,7 @@ function TestEditor({
   metadata,
   withRunButton = false,
 }: {
-  metadata: Metadata;
+  metadata: JsMetadata;
   withRunButton?: boolean;
 }) {
   const [card, setCard] = useState(() =>

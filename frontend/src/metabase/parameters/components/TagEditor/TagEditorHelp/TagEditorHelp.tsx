@@ -8,7 +8,6 @@ import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Button, Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, TemplateTags } from "metabase-types/api";
 
 type QueryExample = {
@@ -179,21 +178,22 @@ const TagExample = ({ example, onTry }: TagExampleProps) => (
 );
 
 interface TagEditorHelpProps {
-  database?: Database | null;
+  databaseId: DatabaseId | null;
+  databaseEngine: string | null | undefined;
   sampleDatabaseId?: DatabaseId;
   setQuery: (query: Lib.Query) => void;
   switchToSettings: () => void;
 }
 
 export const TagEditorHelp = ({
-  database,
+  databaseId,
+  databaseEngine,
   sampleDatabaseId,
   setQuery,
   switchToSettings,
 }: TagEditorHelpProps) => {
-  const engine = database?.engine;
-  const examples = engine === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
-  const datasetId = engine === "mongo" ? database?.id : sampleDatabaseId;
+  const examples = databaseEngine === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
+  const datasetId = databaseEngine === "mongo" ? databaseId : sampleDatabaseId;
 
   const metadataProvider = useMetadataProvider(datasetId ?? null);
 

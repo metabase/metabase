@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
@@ -23,3 +24,25 @@
           (testing "CardMetadata not present in MetadataProvider"
             (let [query (assoc query :lib/metadata meta/metadata-provider)]
               (is (nil? (lib/database-id query))))))))))
+
+(deftest ^:parallel database-display-info-test
+  (let [mp    (lib.tu/merged-mock-metadata-provider
+               meta/metadata-provider
+               {:database {:native-permissions :write
+                           :is-sample          true
+                           :auto-run-queries   true
+                           :settings           {:database-enable-actions true}}})
+        query (lib/query mp (meta/table-metadata :venues))]
+    (is (=? {:name               "test-data"
+             :display-name       "test-data"
+             :engine             :h2
+             :features           #(contains? % :nested-queries)
+             :native-permissions :write
+             :is-sample          true
+             :actions-enabled?   true
+             :auto-run-queries   true}
+            (lib/display-info query (lib.metadata/database query))))
+    (testing "without settings"
+      (is (=? {:is-sample        false
+               :actions-enabled? false}
+              (lib/display-info (lib.tu/venues-query) (lib.metadata/database (lib.tu/venues-query))))))))
