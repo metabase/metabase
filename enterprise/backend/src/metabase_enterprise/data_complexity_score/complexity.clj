@@ -208,6 +208,15 @@
           rows)
     []))
 
+(def default-reads
+  "The universe reads [[enumerate-catalogs]] runs through the models unless the caller passes `:reads`.
+  Each function takes the audit Database's id.
+  The Card read returns rows of `:id`, `:name`, `:type` and `:collection_id`.
+  The Table read returns rows of `:id`, `:name`, `:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
+  `:data_layer` and `:data_authority`, with `:is_published` a boolean."
+  {:universe-cards-fn  data-complexity-score.db/universe-cards
+   :universe-tables-fn data-complexity-score.db/universe-tables})
+
 (defn- enumerate-catalogs
   "One-pass enumeration of all three scoring catalogs.
    Returns `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
@@ -217,8 +226,10 @@
    Metabot narrows its retrieval further — it only adds filters, never widens.
    `:curated-only?` mirrors Metabot search's `use_verified_content` filter (see [[curation/curated?]]).
    The caller owns the scope decision (Metabot row lookup); this namespace does not read settings,
-   premium-feature gates, or Metabot rows directly."
-  [{:keys [curated-only? collection-id]}]
+   premium-feature gates, or Metabot rows directly.
+
+   Functions in `reads` replace those in [[default-reads]]."
+  [{:keys [curated-only? collection-id]} reads]
   ;; An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3× per
   ;; scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]], each a
   ;; `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset once and
@@ -229,12 +240,13 @@
         verified-ids      (when curated-only? (verified-card-id-set))
         official-cids     (when curated-only? (official-collection-id-set))
         routed-db-ids     (routed-child-database-id-set)
+        read-fns          (merge default-reads reads)
         ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
         ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`.
-        universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
-        universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
+        universe-cards    ((:universe-cards-fn read-fns) audit/audit-db-id)
+        universe-tables   ((:universe-tables-fn read-fns) audit/audit-db-id)
         field-counts      (table-field-counts  (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
@@ -580,8 +592,10 @@
                               isn't a single named variant).
     `:metabot-scope`        — `{:curated-only? <bool> :collection-id <nil|Long>}` describing how
                               the internal Metabot filters its retrieval; see [[enumerate-catalogs]].
+    `:reads`                — replacements for the [[default-reads]] functions, for a caller that can't use the
+                              models (the CLI scoring an older appdb). Defaults to `{}`.
     `:emit-snowplow?`       — whether to publish per-score Snowplow events. Defaults true."
-  [& {:keys [embedder embedding-model-meta text-variant metabot-scope emit-snowplow?]
+  [& {:keys [embedder embedding-model-meta text-variant metabot-scope reads emit-snowplow?]
       :or {emit-snowplow? true}}]
   ;;; NOTE: we fully materialize vectors of the relevant entities.
   ;;; For very large instances that means holding large lists in memory, but each catalog is consumed
@@ -595,7 +609,7 @@
             ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
             ;; catalog label `"all"` on the enumerate stage reflects that one pass covers all
             ;; three. Per-catalog timing only applies to the pure scoring step.
-            (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope))
+            (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope reads))
             universe-score (time-phase! "score" "universe" #(score-catalog universe embedder))
             library-score  (time-phase! "score" "library"  #(score-catalog library  embedder))
             metabot-score  (time-phase! "score" "metabot"  #(score-catalog metabot  embedder))

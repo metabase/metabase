@@ -280,7 +280,7 @@
   (testing ":curated-only? true flows the caller's metabot-scope through to enumerate-catalogs"
     (let [captured-scope (atom nil)]
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                  (fn [scope]
+                                  (fn [scope _reads]
                                     (reset! captured-scope scope)
                                     {:library  []
                                      :universe [(entity :name "orders") (entity :name "widgets")]
@@ -295,7 +295,7 @@
   (testing ":collection-id alone also flows through to enumerate-catalogs (no curated flag required)"
     (let [captured-scope (atom nil)]
       (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                  (fn [scope]
+                                  (fn [scope _reads]
                                     (reset! captured-scope scope)
                                     {:library  []
                                      :universe [(entity :name "orders") (entity :name "widgets")]
@@ -312,7 +312,7 @@
     (doseq [scope [nil {} {:curated-only? false :collection-id nil}]]
       (let [captured-scope (atom ::not-called)]
         (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                    (fn [s]
+                                    (fn [s _reads]
                                       (reset! captured-scope s)
                                       {:library  []
                                        :universe [(entity :name "orders") (entity :name "widgets")]
@@ -350,7 +350,7 @@
                                                        :active     true
                                                        :created_at :%now
                                                        :updated_at :%now})
-            metabot-entities (:metabot (#'complexity/enumerate-catalogs nil))
+            metabot-entities (:metabot (#'complexity/enumerate-catalogs nil nil))
             ids              (into #{} (comp (filter #(= :table (:kind %))) (map :id)) metabot-entities)]
         (testing "visible non-routed table is included"
           (is (contains? ids visible)))
@@ -394,7 +394,7 @@
          :model/Table {plain-table :id}   {:db_id db-id :active true :name "curated_scope_plain_table"}
          :model/Table {hidden-auth :id}   {:db_id db-id :active true :name "curated_scope_hidden_authoritative"
                                            :visibility_type "hidden" :data_authority :authoritative}]
-        (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true :collection-id nil}))
+        (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true :collection-id nil} nil))
               in?     (comp boolean (into #{} (map (juxt :kind :id)) metabot) vector)]
           (is (= {:verified-card       true
                   :official-card       true
