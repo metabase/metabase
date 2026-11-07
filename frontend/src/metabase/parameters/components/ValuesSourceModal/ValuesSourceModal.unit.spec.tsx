@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
@@ -30,7 +29,6 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Card, CollectionItem, ParameterValues } from "metabase-types/api";
@@ -51,25 +49,20 @@ import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
   describe("string parameter", () => {
-    const metadata = createMockMetadata({
-      fields: [
-        createMockField({
-          id: 1,
-          base_type: "type/Text",
-          effective_type: "type/Text",
-          semantic_type: "type/Category",
-        }),
-        createMockField({
-          id: 2,
-          base_type: "type/Text",
-          effective_type: "type/Text",
-          semantic_type: "type/Category",
-        }),
-      ],
-    });
-
-    const field1 = checkNotNull(metadata.field(1));
-    const field2 = checkNotNull(metadata.field(2));
+    const [field1, field2] = [
+      createMockField({
+        id: 1,
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+      createMockField({
+        id: 2,
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+    ];
 
     describe("fields source", () => {
       it("should show a message about missing field values", async () => {
@@ -780,23 +773,18 @@ describe("ValuesSourceModal", () => {
   });
 
   describe("number parameter", () => {
-    const metadata = createMockMetadata({
-      fields: [
-        createMockField({
-          id: 1,
-          base_type: "type/Integer",
-          effective_type: "type/Integer",
-        }),
-        createMockField({
-          id: 2,
-          base_type: "type/Integer",
-          effective_type: "type/Integer",
-        }),
-      ],
-    });
-
-    const field1 = checkNotNull(metadata.field(1));
-    const field2 = checkNotNull(metadata.field(2));
+    const [field1, field2] = [
+      createMockField({
+        id: 1,
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+      }),
+      createMockField({
+        id: 2,
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+      }),
+    ];
 
     describe("fields source", () => {
       it("should show a message about missing field values", async () => {

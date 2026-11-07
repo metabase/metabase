@@ -1,44 +1,24 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
+  Card,
   CardId,
   CardType,
   DatabaseId,
   DatasetColumn,
   Field,
   FieldId,
+  NativeQuerySnippet,
+  NormalizedDatabase,
   NormalizedField,
+  NormalizedMeasure,
+  NormalizedMetric,
+  NormalizedSegment,
+  NormalizedTable,
+  Settings,
   TableId,
 } from "metabase-types/api";
 
-/**
- * We do not have full type-safety into the CLJS of metabase-lib, so
- * we mark objects that are instances of Metadata using this symbol
- * without having to import them here.
- */
-export declare const MetadataSymbol: unique symbol;
-
-/**
- * Structural shape consumed by {@link metadataProvider}. The CLJS-side provider
- * (`metabase.lib.js.metadata/metadata-provider`) only reads these top-level
- * keys and iterates each entry — it does not call any methods on the value.
- *
- * Branded so arbitrary objects do not accidentally satisfy it. Construct a
- * value either by using v1's `Metadata` class (which declares the brand) or
- * via the {@link metadataInput} helper.
- */
-export interface Metadata {
-  readonly [MetadataSymbol]?: void;
-  databases?: Record<string, unknown>;
-  tables?: Record<string, unknown>;
-  fields?: Record<string, unknown>;
-  metrics?: Record<string, unknown>;
-  measures?: Record<string, unknown>;
-  segments?: Record<string, unknown>;
-  questions?: Record<string, unknown>;
-  snippets?: Record<string, unknown>;
-  settings?: object;
-}
-
+import type { Joinable } from "./join";
 import type {
   AggregationClause,
   AggregationClauseDisplayInfo,
@@ -50,8 +30,7 @@ import type {
   BucketDisplayInfo,
   CardDisplayInfo,
   CardMetadata,
-  DatabaseDisplayInfo,
-  DatabaseMetadata,
+  CardPickerInfo,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
@@ -60,6 +39,9 @@ import type {
   ColumnGroup,
   ColumnGroupDisplayInfo,
   ColumnMetadata,
+  ColumnPickerInfo,
+  DatabaseDisplayInfo,
+  DatabaseMetadata,
   DependentItem,
   DrillThru,
   DrillThruDisplayInfo,
@@ -74,17 +56,42 @@ import type {
   MetricMetadata,
   OrderByClause,
   OrderByClauseDisplayInfo,
+  PickerInfo,
   Query,
   QueryDisplayInfo,
   SegmentDisplayInfo,
   SegmentMetadata,
   TableDisplayInfo,
   TableMetadata,
+  TablePickerInfo,
 } from "./types";
+
+export type JsMetadata = {
+  databases: Record<string, NormalizedDatabase>;
+  tables: Record<string, NormalizedTable>;
+  fields: Record<string, NormalizedField>;
+  segments: Record<string, NormalizedSegment>;
+  measures: Record<string, NormalizedMeasure>;
+  metrics: Record<string, NormalizedMetric>;
+  questions: Record<string, Card>;
+  snippets: Record<string, NativeQuerySnippet>;
+  settings?: Settings;
+};
+
+export const EMPTY_JS_METADATA: JsMetadata = {
+  databases: {},
+  tables: {},
+  fields: {},
+  segments: {},
+  measures: {},
+  metrics: {},
+  questions: {},
+  snippets: {},
+};
 
 export function metadataProvider(
   databaseId: DatabaseId | null,
-  metadata: Metadata,
+  metadata: JsMetadata,
 ): MetadataProvider {
   return ML.metadataProvider(databaseId, metadata);
 }
@@ -189,6 +196,25 @@ declare function DisplayInfoFn(
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
 export const displayInfo: typeof DisplayInfoFn = ML.display_info;
 
+declare function PickerInfoFn(
+  query: Query,
+  tableMetadata: TableMetadata,
+): TablePickerInfo | null;
+declare function PickerInfoFn(
+  query: Query,
+  cardMetadata: CardMetadata,
+): CardPickerInfo | null;
+declare function PickerInfoFn(
+  query: Query,
+  joinable: Joinable,
+): PickerInfo | null;
+declare function PickerInfoFn(
+  query: Query,
+  columnMetadata: ColumnMetadata,
+): ColumnPickerInfo | null;
+
+export const pickerInfo: typeof PickerInfoFn = ML.picker_info;
+
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   return ML.group_columns(columns);
 }
@@ -271,6 +297,11 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
    * It just only happens that the thing we're examining is (again) the query itself.
    */
   return ML.display_info(query, -1, query);
+}
+
+export function databaseDisplayInfo(query: Query): DatabaseDisplayInfo | null {
+  const database = databaseMetadata(query);
+  return database != null ? ML.display_info(query, -1, database) : null;
 }
 
 export function dependentMetadata(

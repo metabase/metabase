@@ -5,7 +5,6 @@ import { singularize } from "metabase/utils/formatting";
 import { formatValue } from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
 import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Table as ApiTable,
@@ -20,7 +19,7 @@ import type {
 import type { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
-  table?: Table | null;
+  table?: ApiTable | null;
   question?: Question;
   cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
@@ -39,7 +38,7 @@ export const getObjectName = ({
     return zoomedRow[entityNameColumn] as string;
   }
 
-  const tableObjectName = table && table.objectName();
+  const tableObjectName = table && singularize(table.display_name);
   if (tableObjectName) {
     return tableObjectName;
   }

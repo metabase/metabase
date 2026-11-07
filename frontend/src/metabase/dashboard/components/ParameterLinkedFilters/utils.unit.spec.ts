@@ -1,39 +1,37 @@
-import { checkNotNull } from "metabase/utils/types";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import type { FieldId } from "metabase-types/api";
 import {
   ORDERS,
-  PEOPLE,
   PRODUCTS,
   REVIEWS,
+  createOrdersIdField,
+  createOrdersProductIdField,
+  createPeopleIdField,
+  createProductsCategoryField,
+  createProductsVendorField,
+  createReviewsRatingField,
 } from "metabase-types/api/mocks/presets";
 
 import { getFilterFieldsRequest, getParametersInfo } from "./utils";
-
-function fieldById(fieldId: FieldId) {
-  return checkNotNull(SAMPLE_METADATA.field(fieldId));
-}
 
 describe("getFilterFieldsRequest", () => {
   it.each([
     {
       parameter: createMockUiParameter({
         name: "p1",
-        fields: [fieldById(PRODUCTS.CATEGORY)],
+        fields: [createProductsCategoryField()],
       }),
       otherParameters: [
         createMockUiParameter({
           name: "p2",
-          fields: [fieldById(PRODUCTS.VENDOR)],
+          fields: [createProductsVendorField()],
         }),
         createMockUiParameter({
           name: "p3",
-          fields: [fieldById(PRODUCTS.VENDOR)],
+          fields: [createProductsVendorField()],
         }),
         createMockUiParameter({
           name: "p4",
-          fields: [fieldById(ORDERS.ID)],
+          fields: [createOrdersIdField()],
         }),
       ],
       expectedRequest: {
@@ -44,7 +42,7 @@ describe("getFilterFieldsRequest", () => {
     {
       parameter: createMockUiParameter({
         name: "p1",
-        fields: [fieldById(PRODUCTS.CATEGORY)],
+        fields: [createProductsCategoryField()],
       }),
       otherParameters: [
         createMockUiParameter({
@@ -62,7 +60,7 @@ describe("getFilterFieldsRequest", () => {
       otherParameters: [
         createMockUiParameter({
           name: "p2",
-          fields: [fieldById(PRODUCTS.CATEGORY)],
+          fields: [createProductsCategoryField()],
         }),
       ],
       expectedRequest: undefined,
@@ -82,23 +80,23 @@ describe("getLinkedParametersInfo", () => {
     const parameters = [
       createMockUiParameter({
         id: "p1",
-        fields: [fieldById(PRODUCTS.VENDOR)],
+        fields: [createProductsVendorField()],
       }),
       createMockUiParameter({
         id: "p2",
-        fields: [fieldById(REVIEWS.RATING)],
+        fields: [createReviewsRatingField()],
       }),
       createMockUiParameter({
         id: "p3",
-        fields: [fieldById(ORDERS.ID), fieldById(PEOPLE.ID)],
+        fields: [createOrdersIdField(), createPeopleIdField()],
       }),
       createMockUiParameter({
         id: "p4",
-        fields: [fieldById(ORDERS.ID), fieldById(ORDERS.PRODUCT_ID)],
+        fields: [createOrdersIdField(), createOrdersProductIdField()],
       }),
       createMockUiParameter({
         id: "p5",
-        fields: [fieldById(PEOPLE.ID)],
+        fields: [createPeopleIdField()],
       }),
     ];
 

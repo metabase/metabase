@@ -1,8 +1,8 @@
 import slugg from "slugg";
 
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
   Card,
@@ -10,6 +10,7 @@ import type {
   DatabaseId,
   NativeQuerySnippet,
   ParameterValuesConfig,
+  Table,
   TemplateTag,
 } from "metabase-types/api";
 
@@ -34,20 +35,27 @@ export function requiresNativeCollection(query: Lib.Query): boolean {
 export function setNativeQueryDatabaseId(
   query: Lib.Query,
   databaseId: DatabaseId,
-  metadata: Metadata,
+  metadata: JsMetadata,
 ): Lib.Query {
   if (Lib.databaseID(query) === databaseId) {
     return query;
   }
-  const newQuery = Lib.withDifferentDatabase(
+  return Lib.withDifferentDatabase(
     query,
     databaseId,
     Lib.metadataProvider(databaseId, metadata),
   );
-  const [defaultTable] = metadata.database(databaseId)?.tables ?? [];
-  return requiresNativeCollection(newQuery) && defaultTable != null
-    ? Lib.withNativeExtras(newQuery, { collection: defaultTable.name })
-    : newQuery;
+}
+
+export function setNativeQueryDefaultCollection(
+  query: Lib.Query,
+  tables: Table[],
+): Lib.Query {
+  const [defaultTable] = tables;
+  if (!requiresNativeCollection(query) || defaultTable == null) {
+    return query;
+  }
+  return Lib.withNativeExtras(query, { collection: defaultTable.name });
 }
 
 export function setTemplateTag(query: Lib.Query, tag: TemplateTag): Lib.Query {

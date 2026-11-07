@@ -4,6 +4,7 @@ export {
   hasSnippetTemplateTags,
   requiresNativeCollection,
   setNativeQueryDatabaseId,
+  setNativeQueryDefaultCollection,
   setTemplateTag,
   setTemplateTagConfig,
   setTemplateTagIndex,

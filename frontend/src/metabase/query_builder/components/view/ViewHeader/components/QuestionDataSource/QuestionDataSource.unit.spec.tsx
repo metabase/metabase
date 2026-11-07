@@ -12,15 +12,16 @@ import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import {
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
+  Table,
   TableId,
   TestJoinSpec,
   TestQuerySpec,
@@ -209,7 +210,28 @@ const ORDER_DETAIL_QUERY = createQueryJson({
   ],
 });
 
-function getQuestion(card: Partial<Card>, metadata?: Metadata) {
+const TABLES = [
+  ORDERS_TABLE,
+  PRODUCTS_TABLE,
+  PEOPLE_TABLE,
+  MULTI_SCHEMA_TABLE1,
+  MULTI_SCHEMA_TABLE2,
+];
+
+function getSourceTable(question: Question) {
+  const tableId = Lib.primarySourceTableId(question.query());
+  return checkNotNull(TABLES.find((table) => table.id === tableId));
+}
+
+function getTableQuestion(table: Table) {
+  return Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: table.db_id,
+    DEPRECATED_RAW_MBQL_tableId: table.id,
+    metadata: getMetadata(),
+  });
+}
+
+function getQuestion(card: Partial<Card>, metadata?: JsMetadata) {
   return new Question(card, metadata);
 }
 
@@ -404,12 +426,17 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays database name", async () => {
           const question = checkNotNull(setup({ card }).question);
-          const database = checkNotNull(question.database());
-          const node = await screen.findByText(database.displayName());
+          const database = checkNotNull(
+            Lib.databaseDisplayInfo(question.query()),
+          );
+          const node = await screen.findByText(database.displayName);
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            Urls.browseDatabase(database),
+            Urls.browseDatabase({
+              id: checkNotNull(Lib.databaseID(question.query())),
+              name: database.name,
+            }),
           );
         });
 
@@ -430,13 +457,9 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays table name", async () => {
           const question = checkNotNull(setup({ card }).question);
-          const table = checkNotNull(
-            question
-              .metadata()
-              .table(Lib.primarySourceTableId(question.query())),
-          );
+          const table = getSourceTable(question);
           await waitFor(() => {
-            const node = screen.getByText(new RegExp(table.displayName()));
+            const node = screen.getByText(new RegExp(table.display_name));
             expect(node).toBeInTheDocument();
             expect(node.closest("a")).not.toBeInTheDocument();
           });
@@ -446,16 +469,12 @@ describe("QuestionDataSource", () => {
           const question = checkNotNull(
             setup({ card, subHead: true }).question,
           );
-          const table = checkNotNull(
-            question
-              .metadata()
-              .table(Lib.primarySourceTableId(question.query())),
-          );
-          const node = await screen.findByText(new RegExp(table.displayName()));
+          const table = getSourceTable(question);
+          const node = await screen.findByText(new RegExp(table.display_name));
           expect(
             areQuestionUrlsEquivalent(
               checkNotNull(node.closest("a")).href,
-              Urls.question(table.newQuestion()),
+              Urls.question(getTableQuestion(table)),
             ),
           ).toBe(true);
         });
@@ -464,16 +483,12 @@ describe("QuestionDataSource", () => {
           const question = checkNotNull(
             setup({ card, isObjectDetail: true }).question,
           );
-          const table = checkNotNull(
-            question
-              .metadata()
-              .table(Lib.primarySourceTableId(question.query())),
-          );
-          const node = await screen.findByText(new RegExp(table.displayName()));
+          const table = getSourceTable(question);
+          const node = await screen.findByText(new RegExp(table.display_name));
           expect(
             areQuestionUrlsEquivalent(
               checkNotNull(node.closest("a")).href,
-              Urls.question(table.newQuestion()),
+              Urls.question(getTableQuestion(table)),
             ),
           ).toBe(true);
         });
@@ -491,16 +506,15 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays schema name", async () => {
           const question = checkNotNull(setup({ card }).question);
-          const table = checkNotNull(
-            question
-              .metadata()
-              .table(Lib.primarySourceTableId(question.query())),
-          );
-          const node = await screen.findByText(checkNotNull(table.schema_name));
+          const table = getSourceTable(question);
+          const node = await screen.findByText(checkNotNull(table.schema));
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            Urls.browseSchema(table),
+            Urls.browseSchema({
+              db_id: table.db_id,
+              schema_name: table.schema,
+            }),
           );
         });
       });

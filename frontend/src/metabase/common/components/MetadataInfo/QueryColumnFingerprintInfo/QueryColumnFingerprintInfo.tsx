@@ -25,7 +25,7 @@ export function QueryColumnFingerprintInfo({
   showAllFieldValues,
 }: QueryColumnFingerprintInfoProps) {
   const { fingerprint } = Lib.displayInfo(query, stageIndex, column);
-  const fieldInfo = Lib.fieldValuesSearchInfo(query, column);
+  const fieldInfo = Lib.pickerInfo(query, column);
 
   if (Lib.isTemporal(column)) {
     return (
@@ -42,11 +42,11 @@ export function QueryColumnFingerprintInfo({
         fingerprintTypeInfo={fingerprint?.type?.["type/Number"]}
       />
     );
-  } else if (fieldInfo.fieldId != null) {
+  } else if (fieldInfo != null) {
     return (
       <GlobalFingerprint
         className={className}
-        fieldId={fieldInfo.fieldId}
+        fieldId={fieldInfo.id}
         showAllFieldValues={showAllFieldValues}
       />
     );

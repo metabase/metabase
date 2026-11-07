@@ -2,7 +2,11 @@ import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import {
+  skipToken,
+  useListDatabasesQuery,
+  useListTablesQuery,
+} from "metabase/api";
 import { hasActionsEnabled } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
@@ -76,7 +80,6 @@ export const DataSourceSelectors = ({
       database={database}
       databases={databases}
       query={query}
-      question={question}
       readOnly={readOnly}
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
@@ -91,7 +94,6 @@ interface PopulatedDataSourceSelectorsProps {
   databases: Database[];
   isNativeEditorOpen: boolean;
   query: Lib.Query;
-  question: Question;
   readOnly?: boolean;
   setDatabaseId: (databaseId: DatabaseId) => void;
   setTableId: (tableId: TableId) => void;
@@ -105,7 +107,6 @@ const PopulatedDataSourceSelectors = ({
   database,
   databases,
   query,
-  question,
   readOnly,
   setDatabaseId,
   setTableId,
@@ -113,6 +114,16 @@ const PopulatedDataSourceSelectors = ({
   databaseDisabledTooltip,
 }: PopulatedDataSourceSelectorsProps) => {
   const dataSourceSelectors: ReactNode[] = [];
+  const isCollectionRequired = requiresNativeCollection(query);
+  const databaseId = Lib.databaseID(query);
+  const collection = Lib.nativeExtras(query)?.collection;
+  const { data: tables } = useListTablesQuery(
+    isCollectionRequired && databaseId != null
+      ? { dbId: databaseId }
+      : skipToken,
+  );
+  const selectedTableId =
+    tables?.find((table) => table.name === collection)?.id ?? null;
 
   const areThereMultipleDatabases = checkIfThereAreMultipleDatabases(
     database,
@@ -137,13 +148,13 @@ const PopulatedDataSourceSelectors = ({
     );
   }
 
-  if (requiresNativeCollection(query)) {
+  if (isCollectionRequired) {
     dataSourceSelectors.push(
       <TableSelector
         database={database}
         key="table_selector"
         readOnly={readOnly}
-        selectedTableId={getCollectionTableId(query, question)}
+        selectedTableId={selectedTableId}
         setTableId={setTableId}
       />,
     );
@@ -151,19 +162,6 @@ const PopulatedDataSourceSelectors = ({
 
   return dataSourceSelectors;
 };
-
-function getCollectionTableId(
-  query: Lib.Query,
-  question: Question,
-): TableId | null {
-  const collection = Lib.nativeExtras(query)?.collection;
-  const table = question
-    .metadata()
-    .database(Lib.databaseID(query))
-    ?.getTables()
-    .find((table) => table.name === collection);
-  return typeof table?.id === "number" ? table.id : null;
-}
 
 const checkIfThereAreMultipleDatabases = (
   database: Database | null,

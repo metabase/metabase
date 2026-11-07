@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import {
   createMockParameter,
   createMockParameterValues,
@@ -13,7 +12,7 @@ import {
   FieldValuesWidget,
   type IFieldValuesWidgetProps,
 } from "./FieldValuesWidget";
-import { metadata, state } from "./testMocks.spec";
+import { getField, state } from "./testMocks.spec";
 
 const setup = (props: Partial<IFieldValuesWidgetProps> = {}) => {
   const onChange = jest.fn();
@@ -88,7 +87,7 @@ describe("FieldValuesWidget", () => {
       const { onChange } = setup({
         multi: true,
         placeholder: "Value",
-        fields: [checkNotNull(metadata.field(ORDERS.ID))],
+        fields: [getField(ORDERS.ID)],
         parameter: createMockParameter({
           type: "id",
           values_query_type: "none",

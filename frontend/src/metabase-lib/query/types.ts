@@ -1,6 +1,8 @@
 import type {
   CardId,
+  DatabaseFeature,
   DatabaseId,
+  DatabaseNativePermissions,
   DatasetColumn,
   DatetimeUnit,
   FieldId,
@@ -164,6 +166,12 @@ export type BucketDisplayInfo = {
 export type DatabaseDisplayInfo = {
   name: string;
   displayName: string;
+  engine: string | null;
+  features: DatabaseFeature[];
+  nativePermissions: DatabaseNativePermissions | null;
+  isSample: boolean;
+  isActionsEnabled: boolean;
+  autoRunQueries: boolean;
 };
 
 export type TableDisplayInfo = {
@@ -687,4 +695,25 @@ export type JsColumnTypeInfo = {
   base_type?: string;
   effective_type?: string | null;
   semantic_type?: string | null;
+};
+
+export type TablePickerInfo = {
+  databaseId: DatabaseId;
+  tableId: TableId;
+  cardId?: never;
+  isModel?: never;
+};
+
+export type CardPickerInfo = {
+  databaseId: DatabaseId;
+  tableId?: never;
+  cardId: CardId;
+  isModel: boolean;
+};
+
+export type PickerInfo = TablePickerInfo | CardPickerInfo;
+
+export type ColumnPickerInfo = {
+  id: FieldId;
+  tableId: TableId;
 };

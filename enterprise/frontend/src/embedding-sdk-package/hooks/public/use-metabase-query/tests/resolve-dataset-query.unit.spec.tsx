@@ -540,7 +540,7 @@ describe("resolveDatasetQuery", () => {
         Lib.metadataProvider(
           databaseId,
           // The fixture supplies the plain metadata shape instead of the Metadata class.
-          metadataWithoutDatabases as unknown as Lib.Metadata,
+          metadataWithoutDatabases as unknown as Lib.JsMetadata,
         ),
     );
 

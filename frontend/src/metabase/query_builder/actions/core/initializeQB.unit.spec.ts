@@ -12,11 +12,10 @@ import * as sharedQB from "metabase/redux/query-builder";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   DatabaseId,
@@ -744,13 +743,13 @@ describe("QB Actions > initializeQB", () => {
       });
     }
 
-    function getQueryText(card: Card, metadata: Metadata) {
+    function getQueryText(card: Card, metadata: JsMetadata) {
       return Lib.rawNativeQuery(new Question(card, metadata).query());
     }
 
     function isDirty(
       { card, originalCard }: { card: Card; originalCard: Card },
-      metadata: Metadata,
+      metadata: JsMetadata,
     ) {
       return new Question(card, metadata).isDirtyComparedTo(
         new Question(originalCard, metadata),
@@ -1014,9 +1013,13 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' and 'table' params", async () => {
       const { result, metadata } = await setupOrdersTable();
-      const expectedCard = checkNotNull(
-        metadata.table(ORDERS_ID)?.question().card(),
-      );
+      const expectedCard = Question.create({
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        metadata,
+      })
+        .setDefaultDisplay()
+        .card();
 
       expect(
         Lib.areLegacyQueriesEqual(
@@ -1081,9 +1084,13 @@ describe("QB Actions > initializeQB", () => {
 
     it("builds the table's default ad-hoc question from the slug", async () => {
       const { result, metadata } = await setupTableRoute(ORDERS_ID);
-      const expectedCard = checkNotNull(
-        metadata.table(ORDERS_ID)?.question().card(),
-      );
+      const expectedCard = Question.create({
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        metadata,
+      })
+        .setDefaultDisplay()
+        .card();
 
       expect(
         Lib.areLegacyQueriesEqual(

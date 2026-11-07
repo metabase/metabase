@@ -2,22 +2,24 @@ import { t } from "ttag";
 
 import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import { Text } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import { type FieldTypeInfo, isDate } from "metabase-lib/v1/types/utils/isa";
-import type { Field, FieldId, TemplateTag } from "metabase-types/api";
+import type {
+  DatabaseId,
+  Field,
+  FieldId,
+  TemplateTag,
+} from "metabase-types/api";
 
 import { ContainerLabel, InputContainer } from "./TagEditorParam";
 
 export function FieldMappingSelect({
   tag,
   field,
-  database,
-  databases,
+  databaseId,
   setFieldFn,
 }: {
   tag: TemplateTag;
-  database?: Database | null;
-  databases: Database[];
+  databaseId: DatabaseId | null;
   field: Field | undefined;
   setFieldFn: (fieldId: FieldId) => void;
 }) {
@@ -36,8 +38,7 @@ export function FieldMappingSelect({
 
       {(fieldId == null || field != null) && (
         <SchemaTableAndFieldDataSelector
-          databases={databases}
-          selectedDatabaseId={database?.id || null}
+          selectedDatabaseId={databaseId}
           selectedTableId={field?.table_id ?? null}
           selectedFieldId={fieldId ?? null}
           setFieldFn={setFieldFn}

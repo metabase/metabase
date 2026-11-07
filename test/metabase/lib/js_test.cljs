@@ -766,3 +766,16 @@
               (js->clj (lib.js/xray-cell-query query))))))
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
+
+(deftest ^:parallel picker-info-column-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "double total" (lib/* (meta/field-metadata :orders :total) 2)))
+        cols  (lib/visible-columns query)
+        total (m/find-first #(= "TOTAL" (:name %)) cols)
+        expr  (m/find-first #(= "double total" (:name %)) cols)]
+    (testing "column backed by Field returns its ID and table ID"
+      (is (= {:id      (meta/id :orders :total)
+              :tableId (meta/id :orders)}
+             (js->clj (lib.js/picker-info query total) :keywordize-keys true))))
+    (testing "expression column returns nil"
+      (is (nil? (lib.js/picker-info query expr))))))

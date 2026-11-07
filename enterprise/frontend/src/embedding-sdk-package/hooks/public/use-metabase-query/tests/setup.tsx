@@ -152,7 +152,7 @@ export const resetTestState = (): void => {
   );
 
   // One fixture drives the provider and both cache lookups.
-  const metadata = TEST_METADATA as unknown as Lib.Metadata;
+  const metadata = TEST_METADATA as unknown as Lib.JsMetadata;
 
   mockSelectMetadataProviderUnfiltered.mockImplementation(
     (_state, databaseId) => Lib.metadataProvider(databaseId, metadata),
