@@ -141,6 +141,16 @@
               (mt/user-http-request :rasta :post 422 endpoint (request-body))))
        (is (= 1 (count @calls)))))))
 
+(deftest summary-formula-no-columns-or-metrics-test
+  (testing "POST /api/metabot/summary-formula returns a 400 without calling the LLM when there's nothing to offer"
+    (doseq [metrics [[] nil]]
+      (testing (str "with metrics " (pr-str metrics))
+        (check-error 400 "Provide at least one column or metric." {:columns [] :metrics metrics})))))
+
+(deftest summary-formula-metrics-only-test
+  (testing "POST /api/metabot/summary-formula calls the LLM when there are metrics but no columns"
+    (is (str/includes? (sent-to-llm {:columns []}) "[Revenue]"))))
+
 ;;; --------------------------------------------------- Errors ---------------------------------------------------
 
 (deftest summary-formula-requires-authentication-test
@@ -309,3 +319,9 @@
       (mt/with-temporary-setting-values [site-locale "es"
                                          metabot-enabled? false]
         (check-error 403 "IA desactivada.")))))
+
+(deftest summary-formula-localized-invalid-input-test
+  (testing "POST /api/metabot/summary-formula localizes the message for having no columns or metrics"
+    (mt/with-mock-i18n-bundles! {"es" {:messages {"Provide at least one column or metric." "Sin columnas."}}}
+      (mt/with-temporary-setting-values [site-locale "es"]
+        (check-error 400 "Sin columnas." {:columns [] :metrics []})))))
