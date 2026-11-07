@@ -161,7 +161,7 @@
   "Creates an ingestable snapshot for remote sync operations.
 
   Takes a source snapshot and an options map containing:
-  - :root-dependencies - a sequence of serdes dependencies in the format [{:model MODEL_NAME :id ENTITY_ID}] that
+  - :root-dependencies - a sequence of `[model ref]` keys that
     filters the items returned to only ones with these dependencies
   - :path-filters - a sequence of regexes that filter allowed paths to read
   - :task-id - a RemoteSyncTask identifier used to update progress

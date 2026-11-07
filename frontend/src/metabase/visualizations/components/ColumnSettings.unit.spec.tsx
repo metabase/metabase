@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ColumnSettings as ApiColumnSettings } from "metabase-types/api";
@@ -32,6 +34,110 @@ describe("hasColumnSettingsWidgets", () => {
 });
 
 describe("ColumnSettings", () => {
+  it("shows currency position only when labels appear in every table cell", async () => {
+    const column = createMockField({
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+    });
+    const value: ApiColumnSettings = {
+      number_style: "currency",
+      currency_in_header: true,
+      currency_position: "after",
+    };
+    const onChange = jest.fn();
+    const { rerender } = renderWithProviders(
+      <ColumnSettings
+        column={column}
+        value={value}
+        onChange={onChange}
+        extraData={{ forAdminSettings: true }}
+      />,
+    );
+    expect(screen.queryByText("Currency label position")).not.toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole("radio", { name: "In every table cell" }),
+    );
+    expect(onChange).toHaveBeenCalledWith({
+      ...value,
+      currency_in_header: false,
+    });
+    rerender(
+      <ColumnSettings
+        column={column}
+        value={{ ...value, currency_in_header: false }}
+        onChange={onChange}
+        extraData={{ forAdminSettings: true }}
+      />,
+    );
+    expect(screen.getByText("Currency label position")).toBeVisible();
+    expect(screen.getByRole("radio", { name: "After amount" })).toBeChecked();
+  });
+
+  it("should allow a column to override the inherited currency position", async () => {
+    const onChange = jest.fn();
+    renderWithProviders(
+      <ColumnSettings
+        column={createMockField({
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        })}
+        inheritedSettings={{ currency_position: "after" }}
+        value={{ number_style: "currency" }}
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByRole("radio", { name: "After amount" })).toBeChecked();
+    await userEvent.click(screen.getByRole("radio", { name: "Before amount" }));
+    expect(onChange).toHaveBeenCalledWith({
+      number_style: "currency",
+      currency_position: "before",
+    });
+  });
+
+  it("should require names after the amount without changing the saved position", async () => {
+    const column = createMockField({
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+    });
+    const onChange = jest.fn();
+    const value: ApiColumnSettings = {
+      number_style: "currency",
+      currency_position: "before",
+      currency_style: "name",
+    };
+    const { rerender } = renderWithProviders(
+      <ColumnSettings column={column} value={value} onChange={onChange} />,
+    );
+
+    expect(screen.getByRole("radio", { name: "After amount" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "After amount" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Before amount" })).toBeDisabled();
+    expect(
+      screen.getByText("Currency names always appear after the amount."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Symbol/ }));
+    expect(onChange).toHaveBeenCalledWith({
+      ...value,
+      currency_style: "symbol",
+    });
+    rerender(
+      <ColumnSettings
+        column={column}
+        value={{ ...value, currency_style: "symbol" }}
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByRole("radio", { name: "Before amount" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Before amount" })).toBeEnabled();
+    expect(
+      screen.queryByText("Currency names always appear after the amount."),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders formatting widgets for a number Field", () => {
     renderWithProviders(
       <ColumnSettings
@@ -129,6 +235,23 @@ describe("ColumnSettings", () => {
     ["1,23", "123%", "€1,23", "1,23e+0"].forEach((name) =>
       expect(format.getByRole("radio", { name })).toBeInTheDocument(),
     );
+  });
+
+  it("shows the currency example with the label after the amount when the column puts it there", () => {
+    renderWithProviders(
+      <ColumnSettings
+        column={createMockField({
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        })}
+        value={{ number_style: "currency", currency_position: "after" }}
+      />,
+    );
+
+    const format = within(
+      screen.getByTestId("chart-settings-widget-number_style"),
+    );
+    expect(format.getByRole("radio", { name: "1.23\u00a0$" })).toBeChecked();
   });
 });
 

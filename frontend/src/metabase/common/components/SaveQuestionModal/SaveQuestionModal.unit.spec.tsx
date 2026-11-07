@@ -4,6 +4,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
   type CollectionEndpoints,
+  findRequests,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -30,10 +31,12 @@ import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionF
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   BaseEntityId,
   CollectionId,
+  CollectionItem,
   DashboardId,
 } from "metabase-types/api";
 import {
@@ -44,7 +47,6 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -69,8 +71,10 @@ const ROOT_TEST_COLLECTION = createMockCollection({
   id: "root",
 });
 
+const FOO_DASH_ID = 1;
+
 const FOO_DASH = createMockDashboard({
-  id: 1,
+  id: FOO_DASH_ID,
   collection_id: 1,
   name: "Foo Dashboard",
   tabs: [
@@ -94,9 +98,11 @@ const setup = async (
   {
     collectionEndpoints,
     createError,
+    personalCollectionItems = [],
   }: {
     collectionEndpoints?: CollectionEndpoints;
     createError?: unknown;
+    personalCollectionItems?: CollectionItem[];
   } = {},
 ) => {
   const onCreateMock = jest.fn<
@@ -125,7 +131,7 @@ const setup = async (
 
   setupCollectionItemsEndpoint({
     collection: BOBBY_TEST_COLLECTION,
-    collectionItems: [],
+    collectionItems: personalCollectionItems,
   });
   setupDashboardEndpoints(FOO_DASH);
   setupDashboardEndpoints(BAR_DASH);
@@ -217,14 +223,14 @@ function getQuestion({
       display: "table",
       visualization_settings: {},
       type: "question",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        },
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
+      }),
     },
     metadata,
   );
@@ -279,14 +285,9 @@ describe("SaveQuestionModal", () => {
       await setup(
         new Question(
           {
-            dataset_query: {
-              type: "native",
-              database: ORDERS_ID,
-              native: {
-                query: "select * from orders",
-              },
-              display: "table",
-            },
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "select * from orders",
+            }),
           },
           metadata,
         ),
@@ -525,14 +526,9 @@ describe("SaveQuestionModal", () => {
       await setup(
         new Question(
           {
-            dataset_query: {
-              type: "native",
-              database: ORDERS_ID,
-              native: {
-                query: "select * from orders",
-              },
-              display: "table",
-            },
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "select * from orders",
+            }),
           },
           metadata,
         ),
@@ -555,11 +551,9 @@ describe("SaveQuestionModal", () => {
       const { onCreateMock, onCloseMock } = await setup(
         new Question(
           {
-            dataset_query: {
-              type: "native",
-              database: SAMPLE_DB_ID,
-              native: { query: "SELECT 1" },
-            },
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "SELECT 1",
+            }),
             display: "table",
           },
           metadata,
@@ -640,6 +634,49 @@ describe("SaveQuestionModal", () => {
           await screen.findByLabelText(/Which tab should this go on/),
         ).toHaveValue("Foo Tab 1");
       });
+    });
+
+    it("should show a picked dashboard as the save location and record it as a recent selection", async () => {
+      mockGetBoundingClientRect();
+      await setup(getQuestion(), null, {
+        personalCollectionItems: [
+          createMockCollectionItem({
+            id: FOO_DASH_ID,
+            model: "dashboard",
+            name: FOO_DASH.name,
+            collection_id: BOBBY_TEST_COLLECTION.id,
+            can_write: true,
+          }),
+        ],
+      });
+
+      await userEvent.click(saveLocDropdown());
+      await userEvent.click(
+        await screen.findByRole("link", {
+          name: new RegExp(BOBBY_TEST_COLLECTION.name),
+        }),
+      );
+      await userEvent.click(await screen.findByText(FOO_DASH.name));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Select this dashboard" }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("dashboard-and-collection-picker-button"),
+        ).toHaveTextContent(FOO_DASH.name),
+      );
+      const recentSelections = await findRequests("POST");
+      expect(recentSelections).toEqual([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/activity/recents"),
+          body: {
+            context: "selection",
+            model: "dashboard",
+            model_id: FOO_DASH_ID,
+          },
+        }),
+      ]);
     });
 
     it("should now show tab input if selected dashboard has no tabs", async () => {
@@ -867,14 +904,14 @@ describe("SaveQuestionModal", () => {
   describe("Cache TTL field", () => {
     const question = Question.create({
       metadata,
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        },
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
+      }),
     });
 
     describe("OSS", () => {

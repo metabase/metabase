@@ -7,10 +7,12 @@
   (:require
    [clojure.string :as str]
    [metabase.interestingness.core :as interestingness]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.models.interface :as mi]
    [metabase.util.quoting :as quoting]
    [tech.v3.resource :as resource]))
 
@@ -61,10 +63,33 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
          (when (< shown (count ids))
            (str " and " (- (count ids) shown) " more")))))
 
+(def ^:private viewed-card-schema
+  "A saved question or model on the user's screen, by its ID and type."
+  [:map {:closed true}
+   [:id   pos-int?]
+   [:type [:enum "question" "model"]]])
+
+(defn- viewed-card
+  "The saved question or model that the user is viewing as the chart `chart-config-id`, or nil when the chart is of
+  neither, or the card is gone or the current user can't read it. The lookup matches an item with one chart config,
+  whose config ID is the item's ID."
+  [chart-config-id]
+  (when-let [card-id (some (fn [{:keys [id type]}]
+                             (when (and (#{"question" "model"} (some-> type name))
+                                        (pos-int? id)
+                                        (= chart-config-id (str id)))
+                               id))
+                           (:user_is_viewing (shared/current-context)))]
+    (let [card (metabot.db/card card-id)]
+      (when (and (#{:question :model} (:type card)) (mi/can-read? card))
+        {:id card-id :type (name (:type card))}))))
+
 (defn- read-values-steps
   "Return the steps that read the chart's values with `run_query` instead.
-  `sql-only-run-query?` says whether the profile's `run_query` runs SQL only and so takes no saved question's ID."
-  [sql-only-run-query?]
+  `sql-only-run-query?` says whether the profile's `run_query` runs SQL only and so takes no saved question's ID.
+  `query-id` is the ID of the chart's query in the conversation, or nil when there is none. `card` is the saved
+  question or model that the chart shows, as `{:id :type}`, or nil."
+  [sql-only-run-query? {:keys [query-id card]}]
   (if sql-only-run-query?
     [{:uses #{"run_query"}
       :text (str "To read the chart's values instead, call `run_query` with the ID of the unsaved SQL query that the"
@@ -72,9 +97,18 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
      {:uses #{"create_sql_query" "run_query"}
       :text (str "For a saved question, write SQL that reads it with `create_sql_query`, then run that query with"
                  " `run_query`.")}]
-    [{:uses #{"run_query"}
-      :text (str "To read the chart's values instead, call `run_query` with the ID of the query or question that the"
-                 " user is viewing.")}]))
+    (cond-> [{:uses #{"run_query"}
+              :text (str "To read the chart's values instead, call `run_query` with "
+                         (if query-id
+                           (str "query ID " (quoted-excerpt query-id))
+                           "the ID of the query or question that the user is viewing")
+                         ", and answer from its rows.")}]
+      ;; The query on screen can be refused where its saved version runs, as SQL is when SQL execution is off
+      (and query-id card)
+      (conj {:uses #{"run_query"}
+             :text (format (str "If `run_query` refuses that ID, call it with %s ID %d, which reads the saved version"
+                                " of the %s.")
+                           (:type card) (:id card) (:type card))}))))
 
 (tools/defrecoverable chart-config-not-found!
   "No chart config from the user's viewing context has the requested ID."
@@ -96,10 +130,14 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
 (tools/defrecoverable no-series-data!
   "No series of the chart config has a point with both an x and a y value."
-  {:payload [:map {:closed true} [:sql-only-run-query? :boolean]]}
-  [{:keys [sql-only-run-query?]}]
+  {:payload [:map {:closed true}
+             [:sql-only-run-query? :boolean]
+             [:query-id            [:maybe :string]]
+             [:card                [:maybe viewed-card-schema]]]
+   :quoted  {:query-id quoted-excerpt}}
+  [{:keys [sql-only-run-query?] :as payload}]
   {:message  "This chart has no series data to analyze."
-   :recovery (conj (read-values-steps sql-only-run-query?)
+   :recovery (conj (read-values-steps sql-only-run-query? payload)
                    {:uses #{}
                     :text "If you can't read the chart's values, tell the user that this chart can't be analyzed."})})
 
@@ -107,12 +145,15 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   "A series of the chart config has a y-value that is not a number."
   {:payload [:map {:closed true}
              [:series              :string]
-             [:sql-only-run-query? :boolean]]
-   :quoted  {:series quoted-excerpt}}
-  [{:keys [series sql-only-run-query?]}]
+             [:sql-only-run-query? :boolean]
+             [:query-id            [:maybe :string]]
+             [:card                [:maybe viewed-card-schema]]]
+   :quoted  {:series   quoted-excerpt
+             :query-id quoted-excerpt}}
+  [{:keys [series sql-only-run-query?] :as payload}]
   {:message  (str "Series " (quoted-excerpt series) " has non-numeric y-values. Chart analysis "
                   "requires a numeric y-axis metric.")
-   :recovery (conj (read-values-steps sql-only-run-query?)
+   :recovery (conj (read-values-steps sql-only-run-query? payload)
                    {:uses #{}
                     :text (str "If you can't read the chart's values, tell the user that this chart can't be analyzed"
                                " because its y-axis values aren't numbers.")})})
@@ -143,14 +184,15 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
 (defn- validate-chart-config!
   "Throw a recoverable error when `chart-config` is too malformed to analyze.
-  `sql-only-run-query?` picks the recovery steps, as in [[read-values-steps]]."
-  [{:keys [series] :as chart-config} sql-only-run-query?]
+  `sql-only-run-query?` and the map of `:query-id` and `:card` that `source-fn` returns pick the recovery steps, as in
+  [[read-values-steps]]. `source-fn` is called only for a chart that can't be analyzed."
+  [{:keys [series] :as chart-config} sql-only-run-query? source-fn]
   (when (empty? (interestingness/analyzable-series chart-config))
-    (no-series-data! {:sql-only-run-query? sql-only-run-query?}))
+    (no-series-data! (assoc (source-fn) :sql-only-run-query? sql-only-run-query?)))
   (doseq [[series-name {:keys [y_values]}] series]
     (when (non-numeric-y-value? y_values)
       ;; compute-chart-stats assumes each series has numeric y-values.
-      (non-numeric-series! {:series series-name :sql-only-run-query? sql-only-run-query?}))))
+      (non-numeric-series! (assoc (source-fn) :series series-name :sql-only-run-query? sql-only-run-query?)))))
 
 (defrecord AnalyzeChartTool [sql-only-run-query?]
   tools/Tool
@@ -167,7 +209,12 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
   (handle [_ {:keys [chart_config_id deep]} _ctx]
     (let [chart-config (resolve-chart-config-from-memory chart_config_id)]
-      (validate-chart-config! chart-config sql-only-run-query?)
+      ;; Seeding stores a viewed item's chart under the ID of its one chart config, with the ID of the item's query
+      (validate-chart-config! chart-config
+                              sql-only-run-query?
+                              (fn []
+                                {:query-id (get-in (shared/current-charts-state) [chart_config_id :query_id])
+                                 :card     (viewed-card chart_config_id)}))
       ;; Wrap TMD operations in resource context to ensure off-heap memory is released
       (resource/stack-resource-context
        (let [{:keys [timeline_events title display_type]} chart-config

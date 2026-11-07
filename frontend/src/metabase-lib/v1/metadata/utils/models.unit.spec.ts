@@ -2,6 +2,11 @@ import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
@@ -13,90 +18,89 @@ import {
 import type {
   Card,
   ModelCacheState,
-  NativeDatasetQuery,
-  StructuredDatasetQuery,
-  TableId,
   TemplateTagType,
-  TemplateTags,
+  TestSourceSpec,
+  TestTemplateTags,
 } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
-  createMockTemplateTag,
+  createMockCard,
   getMockModelCacheInfo,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
-  createNativeModelCard as _createNativeModelCard,
-  createSavedNativeCard as _createSavedNativeCard,
-  createSavedStructuredCard as _createSavedStructuredCard,
-  createStructuredModelCard as _createStructuredModelCard,
+  PRODUCTS,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+function createNativeQuery(tags: TestTemplateTags) {
+  const placeholders = Object.keys(tags).map((name) => `{{${name}}}`);
+  return Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: ["select * from orders", ...placeholders].join(" "),
+    templateTags: tags,
+  });
+}
+
+function createSourceQuery(source: TestSourceSpec) {
+  const provider =
+    source.type === "card"
+      ? createMetadataProvider({
+          metadata: createMockMetadata({
+            databases: [createSampleDatabase()],
+            questions: [createMockCard({ id: source.id })],
+          }),
+        })
+      : SAMPLE_PROVIDER;
+  return Lib.createTestJsQuery(provider, { stages: [{ source }] });
+}
 
 function createSavedNativeCard({
   tags = {},
   ...rest
-}: Partial<Card<NativeDatasetQuery>> & { tags?: TemplateTags } = {}) {
-  return _createSavedNativeCard({
+}: Partial<Card> & { tags?: TestTemplateTags } = {}) {
+  return createMockCard({
+    display: "table",
+    visualization_settings: {},
     ...rest,
-    dataset_query: {
-      type: "native",
-      database: SAMPLE_DB_ID,
-      native: {
-        query: "select * from orders",
-        "template-tags": tags,
-      },
-    },
+    dataset_query: createNativeQuery(tags),
   });
 }
 
 function createNativeModelCard({
   tags = {},
   ...rest
-}: Partial<Card<NativeDatasetQuery>> & { tags?: TemplateTags } = {}) {
-  return _createNativeModelCard({
+}: Partial<Card> & { tags?: TestTemplateTags } = {}) {
+  return createMockCard({
+    display: "table",
+    visualization_settings: {},
+    type: "model",
     ...rest,
-    dataset_query: {
-      type: "native",
-      database: SAMPLE_DB_ID,
-      native: {
-        query: "select * from orders",
-        "template-tags": tags,
-      },
-    },
+    dataset_query: createNativeQuery(tags),
   });
 }
 
 function createSavedStructuredCard({
-  sourceTable = ORDERS_ID,
+  source = { type: "table", id: ORDERS_ID },
   ...rest
-}: Partial<Card<StructuredDatasetQuery>> & { sourceTable?: TableId } = {}) {
-  return _createSavedStructuredCard({
+}: Partial<Card> & { source?: TestSourceSpec } = {}) {
+  return createMockCard({
+    display: "table",
+    visualization_settings: {},
     ...rest,
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": sourceTable,
-      },
-    },
+    dataset_query: createSourceQuery(source),
   });
 }
 
 function createStructuredModelCard({
-  sourceTable = ORDERS_ID,
+  source = { type: "table", id: ORDERS_ID },
   ...rest
-}: Partial<Card<StructuredDatasetQuery>> & { sourceTable?: TableId } = {}) {
-  return _createStructuredModelCard({
+}: Partial<Card> & { source?: TestSourceSpec } = {}) {
+  return createMockCard({
+    display: "table",
+    visualization_settings: {},
+    type: "model",
     ...rest,
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": sourceTable,
-      },
-    },
+    dataset_query: createSourceQuery(source),
   });
 }
 
@@ -166,7 +170,7 @@ describe("data model utils", () => {
       it("returns true when 'card' variables are used", () => {
         const card = createSavedNativeCard({
           tags: {
-            "#5": createMockTemplateTag({ type: "card" }),
+            "#5": { type: "card" },
           },
         });
         const { metadata } = setup({ cards: [card] });
@@ -180,7 +184,7 @@ describe("data model utils", () => {
         it(`returns false when '${tagType}' variables are used`, () => {
           const card = createSavedNativeCard({
             tags: {
-              foo: createMockTemplateTag({ type: tagType }),
+              foo: { type: tagType, dimension: PRODUCTS.CATEGORY },
             },
           });
           const { metadata } = setup({ cards: [card] });
@@ -194,8 +198,8 @@ describe("data model utils", () => {
       it("returns false if at least one unsupported variable type is used", () => {
         const card = createSavedNativeCard({
           tags: {
-            "#5": createMockTemplateTag({ type: "card" }),
-            foo: createMockTemplateTag({ type: "dimension" }),
+            "#5": { type: "card" },
+            foo: { type: "dimension", dimension: PRODUCTS.CATEGORY },
           },
         });
         const { metadata } = setup({ cards: [card] });
@@ -212,7 +216,7 @@ describe("data model utils", () => {
       const modelCard = createStructuredModelCard({ id: 1 });
       const composedModelCard = createSavedStructuredCard({
         id: 1,
-        sourceTable: "card__1",
+        source: { type: "card", id: 1 },
       });
       const { metadata } = setup({ cards: [modelCard] });
       const question = new Question(composedModelCard, metadata);
@@ -244,7 +248,7 @@ describe("data model utils", () => {
       const modelCard = createStructuredModelCard({ id: 2 });
       const composedModelCard = createSavedStructuredCard({
         id: 1,
-        sourceTable: "card__1",
+        source: { type: "card", id: 1 },
       });
       const { metadata } = setup({ cards: [modelCard] });
 
@@ -260,7 +264,7 @@ describe("data model utils", () => {
       const modelCard = createSavedStructuredCard({ id: 1 });
       const composedModelCard = createSavedStructuredCard({
         id: 1,
-        sourceTable: "card__1",
+        source: { type: "card", id: 1 },
       });
       const { metadata } = setup({ cards: [modelCard] });
 
@@ -276,7 +280,7 @@ describe("data model utils", () => {
       const modelCard = createStructuredModelCard({ id: 1 });
       const composedModelCard = createSavedStructuredCard({
         id: 1,
-        sourceTable: ORDERS_ID,
+        source: { type: "table", id: ORDERS_ID },
       });
       const { metadata } = setup({ cards: [modelCard] });
 

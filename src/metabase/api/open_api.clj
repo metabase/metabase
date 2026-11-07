@@ -122,6 +122,7 @@
    [:oneOf                {:optional true} [:sequential [:ref ::parameter.schema]]]
    [:anyOf                {:optional true} [:sequential [:ref ::parameter.schema]]]
    [:allOf                {:optional true} [:sequential [:ref ::parameter.schema]]]
+   [:not                  {:optional true} [:ref ::parameter.schema]]
    [:definitions          {:optional true} [:map-of :string [:ref ::parameter.schema]]]])
 
 (mr/def ::parameter
@@ -217,8 +218,6 @@
                                  :name        "X-API-Key"
                                  :description "API key for authentication"}}))))
 
-;; REPL example; api-routes is cross-module, resolved at runtime
-#_{:clj-kondo/ignore [:metabase/modules]}
 (comment
   (require '[metabase.api.macros])
 

@@ -196,11 +196,6 @@ export interface ListDatabaseSchemaTablesRequest {
   include_measures?: boolean;
 }
 
-export interface ListVirtualDatabaseTablesRequest {
-  id: DatabaseId;
-  schema: string;
-}
-
 export interface GetDatabaseMetadataRequest {
   id: DatabaseId;
   include_hidden?: boolean;

@@ -1,9 +1,7 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NormalizedTable } from "metabase-types/api";
@@ -65,21 +63,15 @@ function ConnectedTableButton({
 }
 
 function ConnectedTableLink({ table }: { table: ConnectedTable }) {
-  const buildQuestion = useQuestionFromOptsBuilder();
-  const url = useMemo(() => {
-    const question = buildQuestion({
-      dataset_query: {
-        database: table.db_id,
-        type: "query",
-        query: { "source-table": table.id },
-      },
-    }).setDefaultDisplay();
-
-    return Urls.question(question);
-  }, [buildQuestion, table.db_id, table.id]);
+  if (typeof table.id !== "number") {
+    return <TableLabel className={S.label} table={table} />;
+  }
 
   return (
-    <Link className={S.connectedTable} to={url}>
+    <Link
+      className={S.connectedTable}
+      to={Urls.table({ id: table.id, name: table.display_name })}
+    >
       <TableLabel className={S.label} table={table} />
     </Link>
   );

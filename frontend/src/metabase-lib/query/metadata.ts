@@ -50,6 +50,8 @@ import type {
   BucketDisplayInfo,
   CardDisplayInfo,
   CardMetadata,
+  DatabaseDisplayInfo,
+  DatabaseMetadata,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
@@ -97,6 +99,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   columnGroup: ColumnGroup,
 ): ColumnGroupDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  databaseMetadata: DatabaseMetadata,
+): DatabaseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
@@ -204,6 +211,26 @@ export function tableOrCardMetadata(
   tableID: TableId,
 ): CardMetadata | TableMetadata | null {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
+}
+
+export function databaseMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+): DatabaseMetadata | null {
+  return ML.database_metadata(queryOrMetadataProvider);
+}
+
+export function tableMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  tableId: TableId,
+): TableMetadata | null {
+  return ML.table_metadata(queryOrMetadataProvider, tableId);
+}
+
+export function cardMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  cardId: CardId,
+): CardMetadata | null {
+  return ML.card_metadata(queryOrMetadataProvider, cardId);
 }
 
 export function fieldMetadata(

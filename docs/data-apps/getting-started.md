@@ -19,6 +19,10 @@ The basic workflow:
 - You can preview the app on your machine.
 - When you're happy with it, your agent saves the app to a Git repository, and your Metabase gets the app from that repository. A Git repository stores your app's code, and keeps each version of it.
 
+![A flow diagram of the single Metabase workflow for a data app. An AI coding agent starts a local app preview, which reads and writes data through your production Metabase. The agent also pushes the app to a Git repository. Your production Metabase, in Read-only mode, pulls the app from the repository. You set permissions on your production Metabase, and people open the app.](./images/data-app-flow-one-metabase.png)
+
+This guide uses a single Metabase. To review each app before it reaches production, check out the [development to production workflow](./build.md#choose-where-to-build-apps).
+
 The app we build in this guide only shows data, so it works with any database that Metabase connects to. If your data warehouse is PostgreSQL or MySQL, you can also add a [form that changes data](#add-a-form-that-changes-data).
 
 ## What you need
@@ -73,7 +77,7 @@ If you can't add the skill to your agent, tell your agent to run `mb skills get 
 
 Your agent builds your app on the tables that are [published](../data-modeling/semantic-layer/published-tables.md) to your semantic layer. The [semantic layer](../data-modeling/semantic-layer/library.md) is your set of curated tables and metrics: the data that you've checked, and that people and AI should use. Building on it means your app shows the same vetted numbers as the rest of your Metabase. So publish trusted tables that are ready for analysis.
 
-If you haven't created your semantic layer yet, ask your agent to create it for you and add the tables it needs.
+Your agent can create your semantic layer and publish tables for you, but only if you ask. To see how publishing works in each Remote sync mode, check out [Publish tables to your semantic layer](./build.md#publish-tables-to-your-semantic-layer).
 
 You can also create your semantic layer and add tables manually:
 
@@ -82,13 +86,11 @@ You can also create your semantic layer and add tables manually:
 3. Look in the **Data** section. If the tables that your app needs are there, go to [step 5](#5-connect-your-metabase-to-a-git-repository).
 4. Otherwise, [publish the tables](../data-modeling/semantic-layer/published-tables.md#publish-a-table-from-the-semantic-layer) that your app needs.
 
-If your Metabase already syncs in Read-only mode, and the tables that your app needs aren't published, build your apps on a development Metabase in Read-write mode instead. See [Choose where to build apps](./build.md#choose-where-to-build-apps).
-
 ### 5. Connect your Metabase to a Git repository
 
 Skip this step if your Metabase already syncs with a Git repository.
 
-Your Metabase connects to a repository with a feature called [Remote Sync](../data-modeling/semantic-layer/remote-sync.md), which has two modes:
+Your Metabase connects to a repository with a feature called [Remote sync](../data-modeling/semantic-layer/remote-sync.md), which has two modes:
 
 - **Read-only**: Metabase only reads from the repository. You and your agent can't change the semantic layer in Metabase. Changes come only from the repository. Use this mode for a production Metabase that people rely on.
 - **Read-write**: Metabase can also write to the repository, and you and your agent can change the semantic layer in Metabase. Use this mode if you're only trying out data apps.
@@ -164,7 +166,7 @@ The agent:
 - Builds the app.
 - Commits the app to the branch that your production Metabase pulls from.
 - Pushes the branch to your repository.
-- Pulls the branch into your production Metabase with the CLI.
+- Pulls the branch into your production Metabase with the CLI. This pull is what creates or updates the app, its questions, and its actions on your Metabase.
 
 If your agent can't commit or push (for example, because your agent's permission settings block `git commit` or `git push`), run the commands yourself in your local clone. Use your app's slug. The agent adds `.env.local` to your `.gitignore` file to keep the preview's API key out of Git, so commit `.gitignore` too:
 
@@ -187,8 +189,9 @@ For others to view the app, you'll need to grant them permissions.
 1. In your Metabase, click the **grid** icon in the upper right, and select **Data studio**.
 2. Click **Data apps**, and click the app.
 3. On the **Permissions** tab, add the groups that can open the app.
+4. Check the **Data access** column. If it says **Missing N tables**, [give the group access to those tables](./manage.md#check-that-groups-can-see-the-apps-data).
 
-People in those groups can now open the app at `/apps/<slug>`. The app runs with each person's [data permissions](../permissions/data.md), so people see only the data that they're allowed to see. For more, see [Choose who can open an app](./manage.md#choose-who-can-open-an-app).
+People in those groups can now open the app at `/apps/<slug>`. The app runs with each person's [data permissions](../permissions/data.md), so people see only the Metabase data that they're allowed to see. For more, see [Choose who can open an app](./manage.md#choose-who-can-open-an-app).
 
 ## Edit the app
 

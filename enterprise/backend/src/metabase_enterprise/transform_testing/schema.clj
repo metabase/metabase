@@ -62,8 +62,8 @@
    [:database_type ::lib.schema.common/non-blank-string]])
 
 (mr/def ::row
-  "A row of inline test data, keyed by column name."
-  (ms/string-keyed-map [:maybe [:or :boolean number? :string]]))
+  "A row of inline test data, keyed by column name, with `:string` first so request decoding keeps every cell as sent."
+  (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
 
 (mr/def ::sql-data
   "Test data returned by a SQL query run against the transform's source database."
@@ -270,7 +270,7 @@
     [:session-id :string]]])
 
 (mr/def ::external-transform-test
-  "A TransformTest as serialization writes it, with portable references in place of ids."
+  "A TransformTest as serialization writes it, with references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys ::transform-test [:entity_id :name :description :inputs :expectations :transform_id :creator_id]]

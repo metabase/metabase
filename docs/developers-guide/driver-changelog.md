@@ -14,6 +14,11 @@ title: Driver interface changelog
 - `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
   whitespace as well as case.
 
+- The admin connection removed in 0.65.0 is back, for workspace provisioning:
+  `metabase.driver.connection/with-admin-connection`, `metabase.driver.connection/database-admin-details`, the
+  `:admin` connection type, `metabase.driver.common/admin-connection-option` and
+  `metabase.driver.util/fields-hidden-for-admin-connection`, and a Database's `:admin_details`.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
@@ -58,9 +63,9 @@ title: Driver interface changelog
     (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
   ```
 
-- `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
-  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
-  in the docstring of this method.
+- New driver features `:stage-ctes` and `:stage-ctes/nested`. These let drivers opt in to compiling multi-stage queries
+  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria in the
+  comment for these features in `metabase.driver/features`.
 
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.

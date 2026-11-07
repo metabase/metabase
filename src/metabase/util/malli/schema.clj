@@ -12,6 +12,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -53,7 +54,8 @@
                                [:set {:min 1} :keyword]]]
      (mu/with-api-error-message
       [:fn
-       {:error/message (format "value must be an instance of %s" (pr-str model-or-models))}
+       {:error/message (format "value must be an instance of %s" (pr-str model-or-models))
+        :json-schema   {:type "object"}}
        (if (keyword? model-or-models)
          #(t2/instance-of? model-or-models %)
          (fn [instance]
@@ -62,12 +64,25 @@
                  model-or-models)))]
       (deferred-tru "value must be an instance of {0}" (pr-str model-or-models))))))
 
+(def ^:private class-json-schemas
+  "How instances of these classes, and of their subclasses, look once encoded as JSON."
+  [[java.time.OffsetDateTime          {:type "string" :format "date-time"}]
+   [java.time.Instant                 {:type "string" :format "date-time"}]
+   [java.util.Date                    {:type "string" :format "date-time"}]
+   [java.time.temporal.Temporal       {:type "string"}]
+   [java.io.File                      {:type "string" :format "binary"}]
+   [java.io.InputStream               {:type "string" :format "binary"}]
+   [metabase.util.i18n.UserLocalizedString {:type "string"}]
+   [metabase.util.i18n.SiteLocalizedString {:type "string"}]])
+
 (def ^{:arglists '([^Class klass])} InstanceOfClass
   "Helper for creating schemas to check whether something is an instance of a given class."
   (memoize
    (fn [^Class klass]
      [:fn
-      {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+      (cond-> {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+        (some (fn [[c _]] (isa? klass c)) class-json-schemas)
+        (assoc :json-schema (some (fn [[c json-schema]] (when (isa? klass c) json-schema)) class-json-schemas)))
       (partial instance? klass)])))
 
 (def ^{:arglists '([maps-schema k])} maps-with-unique-key
@@ -159,7 +174,7 @@
 
 (def LocalizedString
   "Schema that is a localized string."
-  [:fn i18n/localized-string?])
+  [:fn {:json-schema {:type "string"}} i18n/localized-string?])
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
@@ -170,7 +185,7 @@
 (def FieldType
   "Schema for a valid Field base or effective (data) type (does it derive from `:type/*`)?"
   (mu/with-api-error-message
-   [:fn #(isa? % :type/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? % :type/*)]
    (deferred-tru "value must be a valid field type.")))
 
 (def FieldSemanticOrRelationType
@@ -178,13 +193,13 @@
   to store either the semantic type or relation type info. When this is changed in the future we can get rid of this
   schema. See #15486."
   (mu/with-api-error-message
-   [:fn (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))]
+   [:fn {:json-schema {:type "string"}} (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))]
    (deferred-tru "value must be a valid field semantic or relation type.")))
 
 (def CoercionStrategy
   "Schema for a valid Field coercion strategy (does it derive from `:Coercion/*`)?"
   (mu/with-api-error-message
-   [:fn #(isa? % :Coercion/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? % :Coercion/*)]
    (deferred-tru "value must be a valid coercion strategy.")))
 
 (def FieldTypeKeywordOrString
@@ -192,22 +207,23 @@
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely
    those values will be encoded as keywords at that point."
   (mu/with-api-error-message
-   [:fn #(isa? (keyword %) :type/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? (keyword %) :type/*)]
    (deferred-tru "value must be a valid field data type (keyword or string).")))
 
 (def FieldSemanticOrRelationTypeKeywordOrString
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
   (mu/with-api-error-message
-   [:fn (fn [k]
-          (let [k (keyword k)]
-            (or (isa? k :Semantic/*)
-                (isa? k :Relation/*))))]
+   [:fn {:json-schema {:type "string"}}
+    (fn [k]
+      (let [k (keyword k)]
+        (or (isa? k :Semantic/*)
+            (isa? k :Relation/*))))]
    (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
   (mu/with-api-error-message
-   [:fn #(isa? (keyword %) :Coercion/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? (keyword %) :Coercion/*)]
    (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
 
 (defn- open-map
@@ -321,7 +337,7 @@
    (mu/with-api-error-message
     [:multi {:dispatch map?}
      [true  [:map-of {:decode/normalize {:enter #(stringify-keys % recursive?)}} :string value-schema]]
-     [false (mu/with-api-error-message [:fn map?] (deferred-tru "Value must be a map."))]]
+     [false (mu/with-api-error-message (mu/never) (deferred-tru "Value must be a map."))]]
     (deferred-tru "Value must be a map."))))
 
 (def OpaqueJSONObject
@@ -364,15 +380,22 @@
 (def Url
   "Schema for a valid URL string."
   (mu/with-api-error-message
-   [:fn u/url?]
+   [:fn {:json-schema {:type "string"}} u/url?]
    (deferred-tru "value must be a valid URL.")))
 
 (def ValidPassword
-  "Schema for a valid password of sufficient complexity which is not found on a common password list."
+  "Schema for a valid password of sufficient complexity which is not found on a common password list.
+
+  API request decoding wraps the password in a [[u.secret/secret]], so validation errors and logs print it redacted.
+  Callers can extract the raw string with [[u.secret/expose]]."
   (mu/with-api-error-message
    [:and
-    :string
-    [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
+    {:decode/api  #(cond-> % (string? %) u.secret/secret)
+     :json-schema {:type "string"}}
+    [:fn {:error/message "valid password that is not too common"}
+     #(and (u.secret/secret? %)
+           (string? (u.secret/expose %))
+           (u.password/is-valid? (u.secret/expose %)))]]
    (deferred-tru "password is too common.")))
 
 (def TemporalInstant

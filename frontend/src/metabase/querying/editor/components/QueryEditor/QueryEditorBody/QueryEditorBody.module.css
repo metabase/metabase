@@ -2,6 +2,7 @@
   border-bottom: 1px solid var(--mb-color-border-neutral);
   display: flex;
   max-height: 100%;
+  position: relative; /* for RefreshButton */
 }
 
 .nativeQueryEditor {

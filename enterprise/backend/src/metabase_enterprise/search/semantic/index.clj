@@ -1417,8 +1417,6 @@
   ;; no user
   (query-index db index {:search-string "Copper knife"})
 
-  ;; REPL scratch; metabase.test is off-limits to this module's real code
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index db index {:search-string "Copper knife"}))))

@@ -4,15 +4,15 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { isPopoverClickAction } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
+  createMockCard,
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
-import {
-  createAdHocCard,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
   ColumnFormattingAction,
@@ -33,7 +33,9 @@ const column = createMockColumn({
 
 const setup = () => {
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
-  const card = createAdHocCard();
+  const card = createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  });
   const question = new Question(card, metadata);
 
   const [action] = ColumnFormattingAction({ question, clicked: { column } });

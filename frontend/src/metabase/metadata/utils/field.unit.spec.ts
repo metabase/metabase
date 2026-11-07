@@ -17,7 +17,6 @@ import {
   canFieldUnfoldJson,
   getFieldCurrency,
   getFieldDisplayName,
-  getRawTableFieldId,
   isFieldJsonUnfolded,
 } from "./field";
 
@@ -120,22 +119,6 @@ describe("canCoerceFieldType", () => {
         }),
       ),
     ).toBe(false);
-  });
-});
-
-describe("getRawTableFieldId", () => {
-  it("should return the field id when it's a number", () => {
-    const field = createMockField({ id: 123 });
-
-    expect(getRawTableFieldId(field)).toBe(123);
-  });
-
-  it("should throw an error when field id is not a number", () => {
-    const field = createMockField({ id: ["field", 1, null] });
-
-    expect(() => getRawTableFieldId(field)).toThrow(
-      "getRawFieldId supports only raw table fields",
-    );
   });
 });
 
