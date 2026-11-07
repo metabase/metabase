@@ -1247,7 +1247,7 @@
   ;; Without a kondo run every per-symbol count would read as zero, and fix! would drop those budgets.
   (when (some #(some discouragement-linters (:linters %)) (apply concat groups))
     (throw (ex-info (str "attributing :discouraged-var/:discouraged-namespace ignores needs a kondo run;"
-                         " pass `:attribute mage.kondo-ratchet/attribute-occurrences!`")
+                         " pass the options from `mage.kondo-ratchet/ratchet-options`")
                     {})))
   (vec (repeat (count groups) {:actual {}, :unattributed [], :unresolved []})))
 
