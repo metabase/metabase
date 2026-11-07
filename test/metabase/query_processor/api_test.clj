@@ -1197,6 +1197,41 @@
                                                      :widget-type  :id
                                                      :default      nil}}}})))))
 
+(deftest ^:parallel query-metadata-source-card-matches-its-query-test
+  (testing "A source Card brings the same metadata as its query, plus the Card itself"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+        (let [query-metadata (fn [query]
+                               (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                                     (dissoc query :lib/metadata)))
+              card-query     (lib/query mp (lib.metadata/card mp card-id))]
+          (is (= (assoc (query-metadata query) :cards [])
+                 (update (query-metadata card-query) :cards #(remove (comp #{card-id} :id) %))))
+          (is (=? {:cards [{:id card-id}]}
+                  (query-metadata card-query))))))))
+
+(defn- card-with-result-metadata [query]
+  {:dataset_query   query
+   :result_metadata (-> (mt/user-http-request :crowberto :post 202 "dataset" (dissoc query :lib/metadata))
+                        :data :results_metadata :columns)})
+
+(deftest ^:parallel query-metadata-source-card-implicit-join-fk-field-test
+  (testing "Columns a source Card joined implicitly bring the FK Field they were joined through, also when nested"
+    (let [mp           (mt/metadata-provider)
+          orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          category     (m/find-first #(and (= (:id %) (mt/id :products :category))
+                                           (= (:fk-field-id %) (mt/id :orders :product_id)))
+                                     (lib/visible-columns orders-query))]
+      (mt/with-temp [:model/Card {card-id :id} (card-with-result-metadata (lib/with-fields orders-query [category]))]
+        (mt/with-temp [:model/Card {nested-id :id} (card-with-result-metadata
+                                                    (lib/query mp (lib.metadata/card mp card-id)))]
+          (doseq [card-id [card-id nested-id]]
+            (is (=? {:fields [{:id (mt/id :orders :product_id)}]
+                     :tables [{:id (mt/id :products)}]}
+                    (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                          (dissoc (lib/query mp (lib.metadata/card mp card-id)) :lib/metadata))))))))))
+
 (deftest dataset-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
@@ -1216,8 +1251,8 @@
          #(testing "Before delete"
             (doseq [card-id [card-id-1 card-id-2]]
               (is (=?
-                   {:fields    seq
-                    :tables    empty?
+                   {:fields    empty?
+                    :tables    [{:id (mt/id :products)}]
                     :cards     [{:id card-id}]
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
@@ -1231,8 +1266,8 @@
                  (query-metadata 200 card-id-1)))
             ;; card-id-2 still exists, so querying it as a source still works
             (is (=?
-                 {:fields    seq
-                  :tables    empty?
+                 {:fields    empty?
+                  :tables    [{:id (mt/id :products)}]
                   :cards     [{:id card-id-2}]
                   :databases [{:id (mt/id) :engine string?}]}
                  (query-metadata 200 card-id-2)))))))))

@@ -5194,9 +5194,9 @@
          #(testing "Before delete"
             (is (=?
                  {:cards      [{:id card-id-1}]
-                  :fields     seq
+                  :fields     empty?
                   :dashboards empty?
-                  :tables     empty?
+                  :tables     [{:id (mt/id :products)}]
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
          ;; After delete, card-id-2 still exists on the dashboard but its source is gone.
@@ -5280,7 +5280,7 @@
         expected        [{:name "Some dashboard"}
                          {:tables     [{}]
                           :databases  [{}]
-                          :fields     seq
+                          :fields     []
                           :cards      [{:name "Card attached to dashcard"}]
                           :dashboards []}]]
     (mt/with-temp [:model/Dashboard     dash      {:name "Some dashboard"}

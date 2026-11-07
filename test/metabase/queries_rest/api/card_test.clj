@@ -4702,8 +4702,8 @@
                   :databases [{:id (mt/id) :engine string?}]}
                  (query-metadata 200 card-id-1)))
             (is (=?
-                 {:fields seq
-                  :tables empty?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
                   :cards [{:id card-id-1}]
                   :databases [{:id (mt/id) :engine string?}]}
                  (query-metadata 200 card-id-2))))

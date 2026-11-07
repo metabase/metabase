@@ -48,11 +48,11 @@
                    (map #(assoc % :native_permissions (get-native-perms-info %))))
           (queries.db/databases ids))))
 
-(defn- field-ids->table-ids
+(defn- field-id->table-id
   [field-ids]
   (if (seq field-ids)
-    (queries.db/field-table-ids field-ids)
-    #{}))
+    (queries.db/field-id->table-id field-ids)
+    {}))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
@@ -118,13 +118,18 @@
         source-card-ids        (into #{}
                                      (mapcat lib/all-source-card-ids)
                                      queries)
-        source-tables          (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
         source-cards           (get-cards source-card-ids)
-        fk-target-field-ids    (into #{} (keep :fk_target_field_id)
-                                     (concat (mapcat :fields source-tables)
-                                             (mapcat :result_metadata source-cards)))
-        fk-target-table-ids    (into #{} (remove source-table-ids)
-                                     (field-ids->table-ids fk-target-field-ids))
+        card-columns           (mapcat :result_metadata source-cards)
+        card-table-ids         (field-id->table-id (into #{}
+                                                         (comp (mapcat (juxt :id :fk_target_field_id))
+                                                               (filter pos-int?))
+                                                         card-columns))
+        source-table-ids       (into source-table-ids (keep (comp card-table-ids :id)) card-columns)
+        source-tables          (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
+        fk-target-table-ids    (into #{}
+                                     (remove source-table-ids)
+                                     (concat (keep (comp :table_id :target) (mapcat :fields source-tables))
+                                             (keep (comp card-table-ids :fk_target_field_id) card-columns)))
         fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids opts)
         tables                 (concat source-tables fk-target-tables)
         template-tag-field-ids (into #{} (mapcat lib/all-template-tag-field-ids) queries)
@@ -133,8 +138,8 @@
         snippet-field-ids      (collect-snippet-field-ids snippets)
         ;; Combine all field IDs
         all-field-ids          (into (set/union template-tag-field-ids snippet-field-ids)
-                                     (comp (mapcat :result_metadata) (keep :id) (filter pos-int?))
-                                     source-cards)
+                                     (comp (mapcat (juxt :fk_field_id :lib/original-fk-field-id)) (filter pos-int?))
+                                     card-columns)
         query-database-ids     (into #{} (keep :database) queries)
         database-ids           (-> query-database-ids
                                    (into (keep :db_id) tables)

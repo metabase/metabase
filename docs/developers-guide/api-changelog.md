@@ -11,8 +11,8 @@ title: API changelog
 
 - `GET /api/card/:id/query_metadata`, `GET /api/dashboard/:id/query_metadata`, `POST /api/dataset/query_metadata`
   and the x-ray `query_metadata` endpoints no longer return a `card__<id>` "virtual" table in `tables` for each source
-  card. They return the source cards themselves in a new `cards` list instead, with the cards' databases and the
-  tables their foreign keys point to.
+  card. They return the source cards themselves in a new `cards` list instead, and in `tables` the tables of the
+  cards' columns and the tables their foreign keys point to, as they do for a source table.
 
 - The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
   `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of

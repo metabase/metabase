@@ -43,6 +43,24 @@
                                  :field-id 67}}
            (lib.metadata/field metadata-provider 36)))))
 
+(deftest ^:parallel parse-card-result-metadata-with-external-remap-test
+  (let [metadata          #js {:questions #js {"1" #js {"id"              1
+                                                        "name"            "Model"
+                                                        "type"            "model"
+                                                        "result_metadata" #js [#js {"name"               "CATEGORY_ID"
+                                                                                    "base_type"          "type/Integer"
+                                                                                    "lib/external-remap" #js {"lib/type" "metadata.column.remapping/external"
+                                                                                                              "id"       72
+                                                                                                              "name"     "Category ID"
+                                                                                                              "field-id" 67}}]}}}
+        metadata-provider (lib.js.metadata/metadata-provider 1 metadata)]
+    (is (=? [{:name               "CATEGORY_ID"
+              :lib/external-remap {:lib/type :metadata.column.remapping/external
+                                   :id       72
+                                   :name     "Category ID"
+                                   :field-id 67}}]
+            (:result-metadata (lib.metadata/card metadata-provider 1))))))
+
 (def ^:private mock-field-metadata-with-internal-remap
   #js {"id"               33
        "name"             "ID"
