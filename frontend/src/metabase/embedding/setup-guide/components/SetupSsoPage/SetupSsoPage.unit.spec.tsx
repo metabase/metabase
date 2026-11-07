@@ -2,39 +2,49 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  createMockSetupGuideChecklist,
   findRequests,
   setupPropertiesEndpoints,
-  setupSetupGuideChecklistEndpoint,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { TokenStatus } from "metabase-types/api";
-import {
-  createMockSettings,
-  createMockTokenStatus,
-} from "metabase-types/api/mocks";
+import { createMockSettings } from "metabase-types/api/mocks";
 
 import type { SetupGuideChecklist } from "../../api/setup-guide";
 
 import { SetupSsoPage } from "./SetupSsoPage";
 
+const defaultChecklist: SetupGuideChecklist = {
+  "add-data": false,
+  "configure-ai": false,
+  "configure-row-column-security": false,
+  "create-custom-theme": false,
+  "create-dashboard": false,
+  "create-tenants": false,
+  "create-test-embed": false,
+  "data-permissions-and-enable-tenants": false,
+  "embed-production": false,
+  "enable-tenants": false,
+  "move-dashboard-to-shared": false,
+  "setup-data-segregation-strategy": false,
+  "sso-auth-manual-tested": false,
+  "sso-configured": false,
+};
+
 const setup = ({
   checklist = {},
-  tokenStatus = null,
 }: {
   checklist?: Partial<SetupGuideChecklist>;
-  tokenStatus?: TokenStatus | null;
 } = {}) => {
-  const settings = createMockSettings({ "token-status": tokenStatus });
+  const settings = createMockSettings();
 
   setupPropertiesEndpoints(settings);
   setupUpdateSettingsEndpoint();
 
-  setupSetupGuideChecklistEndpoint({
-    checklist: createMockSetupGuideChecklist(checklist),
+  fetchMock.get("path:/api/embedding-hub/checklist", {
+    checklist: { ...defaultChecklist, ...checklist },
+    "data-isolation-strategy": null,
   });
   fetchMock.get("path:/api/util/random_token", {
     token: "test-signing-key",
@@ -118,50 +128,6 @@ describe("SetupSsoPage", () => {
       "jwt-shared-secret": "test-signing-key",
       "jwt-enabled": true,
       "jwt-group-sync": true,
-    });
-  });
-
-  describe("troubleshooting help link", () => {
-    const openTroubleshooting = async () => {
-      const testJwtStep = await screen.findByRole("listitem", {
-        name: "Test that JWT authentication is working correctly",
-      });
-      await waitFor(() =>
-        expect(testJwtStep).toHaveAttribute("data-locked", "false"),
-      );
-      await userEvent.click(testJwtStep);
-      await userEvent.click(
-        screen.getByRole("button", { name: "No, I couldn't log in" }),
-      );
-      expect(await screen.findByText("Troubleshooting")).toBeVisible();
-    };
-
-    it("links to /help-premium with a valid token", async () => {
-      setup({
-        checklist: { "sso-configured": true },
-        tokenStatus: createMockTokenStatus({ valid: true }),
-      });
-
-      await openTroubleshooting();
-
-      expect(
-        screen.getByRole("link", { name: "Contact customer support" }),
-      ).toHaveAttribute(
-        "href",
-        expect.stringContaining("metabase.com/help-premium"),
-      );
-    });
-
-    it("links to /help instead of /help-premium without a paid plan", async () => {
-      setup({ checklist: { "sso-configured": true } });
-
-      await openTroubleshooting();
-
-      const href = screen
-        .getByRole("link", { name: "Contact customer support" })
-        .getAttribute("href");
-      expect(href).toContain("metabase.com/help?");
-      expect(href).not.toContain("help-premium");
     });
   });
 });

@@ -1703,5 +1703,43 @@ describe("scenarios - setup guide", () => {
         .closest('[data-testid="embedding-hub-checklist-card"]')
         .should("not.have.attr", "aria-disabled");
     });
+
+    it("shows /help-premium troubleshooting link for pro-cloud plan in sso setup", () => {
+      cy.log("enable JWT");
+      cy.request("PUT", "/api/setting", {
+        "jwt-enabled": true,
+        "jwt-identity-provider-uri": "https://jwt.example.com/auth",
+        "jwt-shared-secret": "0".repeat(64),
+      });
+
+      cy.visit("/embedding/get-started/sso");
+
+      cy.log("step 1 should be marked as done");
+      H.main()
+        .findByRole("listitem", {
+          name: "Set up JWT authentication",
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
+
+      cy.log("navigate to step 3");
+      H.main()
+        .findByRole("listitem", {
+          name: "Test that JWT authentication is working correctly",
+        })
+        .click();
+
+      cy.log("click troubleshooting button");
+      H.main().findByRole("button", { name: "No, I couldn't log in" }).click();
+
+      cy.log("troubleshooting view should be shown");
+      H.main().findByText("Troubleshooting").should("be.visible");
+
+      cy.log("help link should point to /help-premium");
+      H.main()
+        .findByRole("link", { name: "Contact customer support" })
+        .should("have.attr", "href")
+        .and("include", "metabase.com/help-premium");
+    });
   });
 });
