@@ -98,6 +98,15 @@
           (is (= expected (sql-parsing/add-into-clause (sql-tools/sqlglot-parser) dialect sql table-name))
               (pr-str sql)))))))
 
+;;; ------------------------------------------------ simple-query --------------------------------------------------
+
+(deftest ^:parallel simple-query-test
+  (testing "whether the query is a plain SELECT, and the reason when it is not"
+    (doseq [{:keys [name sql dialect expected]} (cases "simple_query")]
+      (testing name
+        (is (= expected (sql-parsing/simple-query? (sql-tools/sqlglot-parser) dialect sql))
+            (pr-str sql))))))
+
 ;;; ------------------------------------------------ field-references ----------------------------------------------
 
 (deftest ^:parallel field-references-test

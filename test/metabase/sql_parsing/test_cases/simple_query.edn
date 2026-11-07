@@ -1,0 +1,15 @@
+{:cases
+ [{:name     "a plain SELECT is simple"
+   :dialect  "postgres"
+   :sql      "SELECT id, name FROM users"
+   :expected {:is_simple true}}
+
+  {:name     "a LIMIT makes it not simple"
+   :dialect  "postgres"
+   :sql      "SELECT id FROM users LIMIT 10"
+   :expected {:is_simple false :reason "Contains a LIMIT"}}
+
+  {:name     "a CTE makes it not simple"
+   :dialect  "postgres"
+   :sql      "WITH t AS (SELECT 1) SELECT * FROM t"
+   :expected {:is_simple false :reason "Contains a CTE"}}]}
