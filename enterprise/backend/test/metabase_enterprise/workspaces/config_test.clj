@@ -149,7 +149,7 @@
 
 (deftest build-workspace-config-clickhouse-db-filters-stay-raw-test
   (when (workspaces.tu/driver-loadable? :clickhouse)
-    (testing "ClickHouse compares :db-filters-patterns entries to names exactly, so they are emitted unescaped"
+    (testing "ClickHouse reads :db-filters-patterns as a list of names, not regex, so they are emitted unescaped"
       (mt/with-temp [:model/Database {db-id :id} {:name "CH" :engine :clickhouse :details {:db "default"}}
                      :model/Workspace {ws-id :id} {:name       "ch-ws"
                                                    :creator_id (mt/user->id :crowberto)}
