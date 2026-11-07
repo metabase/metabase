@@ -137,6 +137,34 @@
                         :status        :provisioned}]
                       (:databases ws))))))))))
 
+(deftest create-workspace-empty-input-schemas-test
+  (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+    (testing "a database with schemas but no synced tables is rejected before anything is created"
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (is (=? {:status-code 400 :database_id db-id}
+                  (try
+                    (ws/create-workspace! {:name         "No Inputs"
+                                           :creator_id   (mt/user->id :crowberto)
+                                           :database_ids [db-id]})
+                    nil
+                    (catch ExceptionInfo e (ex-data e)))))
+          (is (not (t2/exists? :model/Workspace :name "No Inputs"))))))
+    (testing "a schemaless database (MySQL) is accepted with empty input_schemas"
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :mysql
+                                                  :details  {}
+                                                  :settings {:database-enable-workspaces true}}
+                     :model/Table _ {:db_id db-id :schema nil :active true}]
+        (mt/with-model-cleanup [:model/Workspace]
+          (is (=? [{:database_id   db-id
+                    :input_schemas []
+                    :status        :provisioned}]
+                  (:databases (ws/create-workspace! {:name         "MySQL"
+                                                     :creator_id   (mt/user->id :crowberto)
+                                                     :database_ids [db-id]})))))))))
+
 (defn- add-database!
   "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
    (blocking). Replaces the removed production add-database! for test setup."

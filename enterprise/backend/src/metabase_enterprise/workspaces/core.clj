@@ -38,6 +38,7 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
@@ -195,6 +196,22 @@
     (throw (ex-info "Workspaces are not enabled for this database"
                     {:status-code 400 :database_id (:id database)}))))
 
+(defn- assert-input-schemas
+  "Return `input-schemas`, refusing (400) an empty list for a driver that has schemas.
+   On such a driver an empty list leaves the workspace nothing to read. On the
+   `schema-filters` drivers (Postgres, Redshift, SQL Server) it is also unsafe: the
+   workspace config's inclusion filter is then blank, and a blank filter syncs every
+   schema, the workspace's own output schema included. Empty is legitimate only for
+   schemaless drivers (MySQL), where the connection's bound database scopes sync instead.
+   The `:schemas` check matches the drivers [[metabase-enterprise.workspaces.config]]
+   builds a schema filter for; keep the two in step."
+  [database input-schemas]
+  (when (and (empty? input-schemas)
+             (driver.u/supports? (:engine database) :schemas database))
+    (throw (ex-info "Database has no synced schemas to use as workspace inputs; sync it first"
+                    {:status-code 400 :database_id (:id database)})))
+  input-schemas)
+
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
 (defn get-workspace
@@ -256,7 +273,8 @@
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
    exist (404) and be eligible for workspaces (400, see
    [[workspace-database/database-eligible-for-workspaces?]]) — with all of their
-   known schemas as `input_schemas`, and provision each database (blocking).
+   known schemas as `input_schemas` (400 when a driver with schemas has none, see
+   [[assert-input-schemas]]), and provision each database (blocking).
    Returns the created workspace, hydrated.
 
    The workspace and its WorkspaceDatabase rows are committed BEFORE provisioning
@@ -274,7 +292,9 @@
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
                             {:database_id   db-id
-                             :input_schemas (workspace-database/database-input-schemas database)}))
+                             :input_schemas (assert-input-schemas
+                                             database
+                                             (workspace-database/database-input-schemas database))}))
                         database_ids)
         ws        (workspace/create-workspace! {:name       name
                                                 :creator_id creator_id
