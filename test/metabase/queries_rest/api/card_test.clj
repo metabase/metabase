@@ -4678,8 +4678,8 @@
                               {:id (mt/id :orders :user_id)}
                               {:id (mt/id :people :source)}
                               {:id (mt/id :people :name)}])
-            :tables (sort-by :id
-                             [{:id (str "card__" card-id-2)}])
+            :tables empty?
+            :cards [{:id card-id-2}]
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
@@ -4697,13 +4697,18 @@
         (api.test-util/before-and-after-deleted-card
          card-id-1
          #(testing "Before delete"
-            (doseq [[card-id table-id] [[card-id-1 (mt/id :products)]
-                                        [card-id-2 (str "card__" card-id-1)]]]
-              (is (=?
-                   {:fields empty?
-                    :tables [{:id table-id}]
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id)))))
+            (is (=?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
+                  :cards empty?
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-1)))
+            (is (=?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
+                  :cards [{:id card-id-1}]
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-2))))
          #(testing "After delete"
             ;; card-id-1 is deleted, so it should return 404
             (is (= "Not found."
@@ -4711,6 +4716,7 @@
             ;; card-id-2 still exists but its source is gone, so it should return empty metadata
             (is (=? {:fields empty?
                      :tables empty?
+                     :cards empty?
                      :databases [{:id (mt/id) :engine string?}]}
                     (query-metadata 200 card-id-2)))))))))
 
@@ -5728,7 +5734,10 @@
                                 {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                   "select 1 as A, 2 as B, 3 as C, 4 as D")})
           (let [cols (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" tgt))
-                          :tables first :fields (map :name))]
+                          :cards
+                          (m/find-first #(= (:id %) src))
+                          :result_metadata
+                          (map :name))]
             (is (some #{"D"} cols))))))))
 
 (deftest copy-card-preserves-non-default-display-test

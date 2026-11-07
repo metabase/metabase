@@ -128,7 +128,7 @@
   "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
   external` associated with a `Field` in the application database.
   See [[metabase.query-processor.middleware.add-remaps]] for what this means."
-  [:map {:closed true}
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
    ;; from `dimension.name`
@@ -141,7 +141,7 @@
   "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =
   internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
   database. See [[metabase.query-processor.middleware.add-remaps]] for what this means."
-  [:map {:closed true}
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
    [:lib/type              [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
    ;; from `dimension.name`

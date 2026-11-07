@@ -227,10 +227,10 @@
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
-(mu/defn field-table-ids
-  "The set of Table IDs of the Fields with `field-ids`."
+(mu/defn field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "Map of the ID of each Field with `field-ids` to its Table ID."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
+  (t2/select-pk->fn :table_id :model/Field :id [:in field-ids]))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."
