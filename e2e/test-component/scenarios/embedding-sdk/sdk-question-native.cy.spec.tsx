@@ -321,7 +321,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         id: "category",
         name: "Category",
         slug: "category",
-        type: "number/=",
+        type: "string/=",
         target: ["dimension", ["template-tag", "category"]],
         isMultiSelect: true,
       }),
@@ -332,7 +332,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         name: "category",
         "display-name": "Category",
         type: "dimension",
-        "widget-type": "number/=",
+        "widget-type": "string/=",
         "field-id": PRODUCTS.CATEGORY,
       },
     };
