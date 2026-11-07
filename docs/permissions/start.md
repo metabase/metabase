@@ -54,4 +54,4 @@ The permissions tooling available for different embedding setups.
 
 ## [Migrating from legacy permissions](./no-self-service-deprecation.md)
 
-How Metabase 50 split the old Data access setting into View data and Create queries, and what to do about the No self-service (Deprecated) setting.
+What changed in Metabase 50, and what to do about the No self-service (Deprecated) setting.

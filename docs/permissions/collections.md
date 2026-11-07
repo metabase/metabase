@@ -94,7 +94,7 @@ To move a collection to the Trash, people need Curate access to the collection _
 
 People in groups with Curate access to a collection can pin items in the collection. Pinning an item in a collection turns the item into a handsome card at the top of the collection.
 
-To pin an item, click the item's three-dot menu (**...**) and select **Pin this**. You can also drag an item to the top of the collection, or select several items and click **Pin all**.
+To pin an item, click the item's three-dot menu (**...**) and select **Pin this**.
 
 Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing), admins can designate [Official Collections][official-collections].
 
@@ -126,9 +126,7 @@ The Data Analysts group always has Curate access to Library collections, and you
 
 ### Data app collections
 
-Each [data app](../data-apps/start.md) has its own collection. You don't set permissions on a data app's collection directly: groups get View access to it when you [add them to the app](../data-apps/manage.md#choose-who-can-open-an-app). No group can get Curate access to a data app's collection.
-
-No one can edit a data app's collection, or the questions and actions in it, from Metabase, not even admins. Changes come from the app's Git repository when Metabase pulls them.
+Each [data app](../data-apps/start.md) has its own collection. You don't set permissions on a data app's collection directly: groups get View access to it when you [add them to the app](../data-apps/manage.md#choose-who-can-open-an-app). No group can get Curate access to it, and no one, not even an admin, can edit the collection or its items from Metabase: changes come from the app's Git repository.
 
 ### Data actions folders
 

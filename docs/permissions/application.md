@@ -41,7 +41,7 @@ People in groups with Monitoring access can view:
   - [Scheduled jobs](../monitor/scheduled-jobs.md)
   - [Application logs](../monitor/application-logs.md) (read-only)
   - [Model persistence log](../monitor/model-persistence-log.md)
-- The **Help** tab in Admin, which has links to get help and report an issue, and the [diagnostic info](../troubleshooting-guide/index.md#getting-diagnostic-info) for support requests.
+- The **Help** tab in Admin, including [diagnostic info](../troubleshooting-guide/index.md#getting-diagnostic-info) for support requests.
 
 The following Monitor pages aren't included in Monitoring access:
 

@@ -26,7 +26,7 @@ Everyone's in the All Users group. Which means that everyone can:
 
 When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using the **creator's** [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
 
-On Pro and Enterprise plans, people also need the [Subscriptions and alerts](./application.md#subscriptions-and-alerts) application permission to create or edit alerts and subscriptions. The All Users group has this permission by default.
+On Pro and Enterprise plans, people also need the [Subscriptions and alerts](./application.md#subscriptions-and-alerts) application permission to create or edit alerts and subscriptions.
 
 ### Groups with impersonation or row and column security
 

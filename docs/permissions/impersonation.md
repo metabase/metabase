@@ -167,9 +167,7 @@ Metabase will use whatever role you specify in the user attribute for each perso
 
 You can use impersonation to give people access to the SQL editor, while restricting their access to data based on a specific database role. And not just table-level access, but row-level access---or however you define access for that role in your database. Effectively, you can use impersonation to set up row and column security-like access to your data, while letting people use the SQL editor to query that data. The difference is that, _instead of setting up row and column security in Metabase, you need to set up that row-level security via the privileges granted to a role in your database._
 
-If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query. A few databases switch to a database _user_ instead of a role: Redshift runs `SET SESSION AUTHORIZATION`, SQL Server runs `EXECUTE AS USER`, and Starburst/Trino sets the session user. For those databases, the attribute value must be the name of a database user.
-
-Connection impersonation doesn't switch roles for people in the Metabase Admins group, as their more permissive privileges take precedence.
+If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query. Redshift, SQL Server, and Starburst/Trino switch to a database _user_ instead, so for those databases the attribute value must be a user name.
 
 ## Impersonated queries must be a single SELECT statement
 
@@ -182,8 +180,7 @@ Examples of queries Metabase will reject:
 - Multiple statements separated by semicolons, like `SET ROLE analyst; SELECT * FROM people;`
 - Statements that create or change tables, including temporary tables (`CREATE`, `ALTER`, `DROP`)
 - Role-switching statements like `SET ROLE` or `USE ROLE`
-- Queries that call functions that lock, wait, or change the session, like `pg_sleep` or `set_config`
-- Queries that call functions that run a SQL string or reach outside the database, like `dblink` or `OPENQUERY`
+- Queries that call functions that wait, change the session, run a SQL string, or reach outside the database, like `pg_sleep`, `set_config`, `dblink`, or `OPENQUERY`
 - Queries with SQL that the check can't see, like MySQL's `/*! ... */` comments, which MySQL runs as SQL
 
 ### Very large hand-written value lists are rejected
@@ -203,7 +200,7 @@ Blue group's more permissive access would override the impersonated access.
 
 ## Admins won't see the effects of impersonation
 
-Admins won't ever see the data restrictions of impersonation, because their privileges will override those of any other group they're a member of. Metabase does still [check their native queries](#impersonated-queries-must-be-a-single-select-statement) on impersonated databases.
+Admins won't ever see the data restrictions of impersonation, because their privileges will override those of any other group they're a member of.
 
 Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multiple groups, so any admin will have "Can view" - not "Impersonated" - access to the database.
 

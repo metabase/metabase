@@ -81,17 +81,15 @@ You can add user attributes manually, or via Single Sign-On (SSO) via [JWT](../p
 
 If an admin user lacks a value for the user attribute, they'll see the router database. You can also explicitly set the value for admins (or any user) to `__METABASE_ROUTER__`.
 
-If a non-admin user account lacks a valid value for the user attribute, they won't be able to view the question at all.
+If a non-admin user account lacks a value for the user attribute, they won't be able to view the question at all. If anyone's value, an admin's included, doesn't match the slug of a destination database, Metabase returns an error instead of falling back to the router database.
 
-If anyone's attribute value doesn't match the slug of a destination database, Metabase returns an error instead of falling back to the router database. That goes for admins, too.
+See our docs on [user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
 ## Permissions come from the router database
 
 You set [data permissions](./data.md) and [connection impersonation](./impersonation.md) on the router database only. Destination databases don't have permissions of their own: Metabase applies the router database's permissions to every query it routes.
 
-People can't query a destination database directly. Metabase only connects to a destination database by routing a query through its router database, so the user attribute check always applies.
-
-See our docs on [user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
+People can't query a destination database directly, so the user attribute check always applies.
 
 ## Testing database routing
 
@@ -143,6 +141,6 @@ curl 'http://localhost:3000/api/ee/database-routing/destination-database?check_c
 
 The `details` object will have a different set of keys depending on the database. You can add several destination databases in one request by adding more items to `destinations`.
 
-Metabase copies the engine and other database settings, like whether queries run automatically, from the router database, so each destination only needs a `name` and `details`. Metabase ignores any other keys, like `engine` or sync schedules.
+Metabase copies the engine and other database settings from the router database, so each destination only needs a `name` and `details`. Metabase ignores any other keys, like `engine` or sync schedules.
 
 With `check_connection_details=true`, Metabase tests each connection before it adds the destination databases. If a connection fails, Metabase adds none of them, and returns the errors for each failed destination by name. Leave the parameter off if you want to add a destination database that isn't reachable yet.

@@ -49,9 +49,9 @@ From there, you can selectively grant privileges to different groups.
 
 ## Default permissions for new groups and databases
 
-A new group gets the All Users group's most restrictive settings for each database: the lowest **Create queries** and **Download results** levels, and, on Pro and Enterprise plans, **Blocked** View data wherever the All Users group has Blocked, Impersonated, or Row and column security (and **Can view** everywhere else). **Manage table metadata** and **Manage database** start at **No**.
+A new group gets the All Users group's most restrictive settings for each database: the lowest **Create queries** and **Download results** levels, and, on Pro and Enterprise plans, **Blocked** View data wherever the All Users group has Blocked, Impersonated, or Row and column security (and **Can view** everywhere else). **Manage table metadata** and **Manage database** start at **No** for new groups and on new databases.
 
-On a new database, each group gets its most restrictive settings from your other databases. On Pro and Enterprise plans, a group with Blocked, Impersonated, or Row and column security on any database gets Blocked View data on the new one. No group can manage the new database's table metadata or settings until you give the group those permissions.
+On a new database, each group gets its most restrictive settings from your other databases. On Pro and Enterprise plans, a group with Blocked, Impersonated, or Row and column security on any database gets Blocked View data on the new one.
 
 [Tenant groups](../embedding/tenants.md#group-types), including the **All tenant users** group, always get the least access to a new database: View data is Blocked, and every other data permission is No. You also can't give tenant groups the Manage table metadata or Manage database permissions.
 
@@ -145,7 +145,9 @@ Create query levels include:
 
 People can use Metabase's query builder or its native/SQL editor.
 
-If a group has "Blocked" or "Row and column security" View data permissions for _any_ of the tables in the database, then this group will have native queries disabled for _all_ tables in that database. Row and column security also overrides the rule that people get the most permissive access across their groups: if it applies to someone for any table in a database, that person can't use the native editor on that database, even if another of their groups has **Query builder and native** permissions. That's because Metabase can't parse SQL queries, so it can't know for sure whether the SQL queries are using the tables with restricted access.
+If a group has "Blocked" or "Row and column security" View data permissions for _any_ of the tables in the database, then this group will have native queries disabled for _all_ tables in that database. That's because Metabase can't parse SQL queries, so it can't know for sure whether the SQL queries are using the tables with restricted access.
+
+With row and column security, a person's other groups can't give native access back. See [People with row and column security can't use the SQL editor](./row-and-column-security.md#people-with-row-and-column-security-cant-use-the-sql-editor-on-that-database).
 
 ### Query builder only create queries permission
 
@@ -174,7 +176,7 @@ You can set permissions on whether people in a group can download results (and h
 - 10 thousand rows
 - 1 million rows
 
-For native/SQL queries, a group's download permission is the lowest download level the group has for any table in the database. For example, if a group can download 1 million rows from some tables but only 10 thousand rows from others, people in that group can download up to 10 thousand rows from native queries on that database. If the group can't download results from even one table in the database, it can't download results from native queries on that database at all. This is because Metabase doesn't parse SQL queries, so it can't determine which tables are being queried.
+For native/SQL queries, a group's download permission is the lowest download level the group has for any table in the database. For example, if a group can download 1 million rows from some tables but only 10 thousand rows from others, people in that group can download up to 10 thousand rows from native queries on that database. This is because Metabase doesn't parse SQL queries, so it can't determine which tables are being queried.
 
 If a group's View data permission is **Blocked**, Metabase sets the group's Download results permission to **No**.
 
