@@ -50,6 +50,7 @@
 (doseq [[feature supported?] {:connection/multiple-databases    true
                               :database-routing                 true
                               :datetime-diff                    true
+                              :describe-fields                  true
                               :expression-literals              true
                               :identifiers-with-spaces          false
                               :metadata/key-constraints         false
@@ -489,29 +490,34 @@
                  catalog schema table-name (ex-message e))
       #{})))
 
+(defn- columns->fields
+  "Returns a set of column metadata for `table-name` from its `.getColumns` rows. Uses DESCRIBE when there are no rows,
+  duplicate column names, or struct columns."
+  [database driver schema table-name columns]
+  (let [duplicates? (and (seq columns)
+                         (not (apply distinct? (map :column_name columns))))]
+    (when (empty? columns)
+      (log/trace "Falling back to DESCRIBE due to #43980"))
+    (when duplicates?
+      (log/trace "Falling back to DESCRIBE due to duplicate column names (#58441)"
+                 (into {} (keep (fn [[col-name cols]]
+                                  (when (next cols)
+                                    [col-name (mapv :type_name cols)])))
+                       (group-by :column_name columns))))
+    (if (or (table-has-nested-fields? columns)
+              ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
+              ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
+            (empty? columns)
+            duplicates?)
+      (describe-table-fields-with-nested-fields database schema table-name)
+      (describe-table-fields-without-nested-fields driver schema table-name columns))))
+
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog dbname]
   (let [schema (or schema dbname)]
     (try
-      (let [columns (get-columns metadata catalog schema table-name)
-            duplicates? (and (seq columns)
-                             (not (apply distinct? (map :column_name columns))))]
-        (when (empty? columns)
-          (log/trace "Falling back to DESCRIBE due to #43980"))
-        (when duplicates?
-          (log/trace "Falling back to DESCRIBE due to duplicate column names (#58441)"
-                     (into {} (keep (fn [[col-name cols]]
-                                      (when (next cols)
-                                        [col-name (mapv :type_name cols)])))
-                           (group-by :column_name columns))))
-        (if (or (table-has-nested-fields? columns)
-                  ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
-                  ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
-                (empty? columns)
-                duplicates?)
-          (describe-table-fields-with-nested-fields database schema table-name)
-          (describe-table-fields-without-nested-fields driver schema table-name columns)))
+      (columns->fields database driver schema table-name (get-columns metadata catalog schema table-name))
       (catch Throwable e
         (log/errorf "Error retrieving fields for DB %s.%s: %s" schema table-name (ex-message e))
         (throw e)))))
@@ -544,6 +550,139 @@
                              (into-array String ["TABLE"
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
+
+(defn- sync-tables
+  "Returns the tables that table sync saved, as `{:name :schema}` maps."
+  [database schema-names table-names]
+  ;; Realize everything in a vector to close the connection.
+  (into []
+        (map #(select-keys % [:name :schema]))
+        (driver-api/reducible-sync-tables database
+                                          :schema-names (not-empty (remove nil? schema-names))
+                                          :table-names  (not-empty table-names))))
+
+(defn- reduce-columns-by-table
+  "Reads the columns of the tables in `schema` that match `table-pattern` with one `.getColumns` call, and calls
+  `(send-columns sync-state-acc table-name columns)` for each table. Holds the columns of one table at a time. If
+  reading fails, it logs a warning and stops. The table that it was reading is then not sent to `send-columns`.
+  `sync-state-acc` is the value that sync reduces the fields into. This function only passes it along."
+  [^DatabaseMetaData metadata catalog schema table-pattern send-columns init-sync-state]
+  (letfn [(log-error [e]
+            (log/warnf e "Cannot read the columns of schema %s with one `.getColumns` call, reading each table instead"
+                       schema))]
+    (if-let [rs (try
+                  (.getColumns metadata catalog (escape-metadata-pattern metadata schema) table-pattern nil)
+                  (catch Exception e
+                    (log-error e)))]
+      (with-open [^ResultSet rs rs]
+        (loop [sync-state-acc init-sync-state, table-name nil, columns []]
+          (let [row (try
+                      (when (.next rs)
+                        {:table_name  (.getString rs "TABLE_NAME")
+                         :column_name (.getString rs "COLUMN_NAME")
+                         :type_name   (.getString rs "TYPE_NAME")
+                         :remarks     (.getString rs "REMARKS")})
+                      (catch Exception e
+                        (log-error e)
+                        ::error))]
+            (cond
+              (= ::error row)
+              sync-state-acc
+
+              (and row (= table-name (:table_name row)))
+              (recur sync-state-acc table-name (conj columns row))
+
+              :else
+              (let [sync-state-acc (cond-> sync-state-acc
+                                     table-name (send-columns table-name columns))]
+                (if (or (nil? row) (reduced? sync-state-acc))
+                  sync-state-acc
+                  (recur sync-state-acc (:table_name row) [row])))))))
+      init-sync-state)))
+
+(defn- reduce-schema-fields
+  "Reduces the fields of the tables in `glue-schema` with `sync-fields-rf`, one table at a time. Reads the columns of
+  all tables with one `.getColumns` call. Tables that this call does not return (no columns, or the call failed) get
+  their fields with [[describe-table-fields]], the same as [[driver/describe-table]].
+
+  `glue-schema` is the actual schema name that the tables are in, it is always set.
+  `mb-schema` is the schema value that we set for the field. It is nil if the user has set `dbname` in the connection
+  details, otherwise it is the same as `glue-schema`."
+  [driver database ^DatabaseMetaData metadata catalog glue-schema mb-schema table-names sync-fields-rf init-sync-state]
+  (let [tables         (or (not-empty table-names)
+                           (into #{} (map :name) (sync-tables database [mb-schema] nil)))
+        table-pattern  (if (= 1 (count table-names))
+                         (escape-metadata-pattern metadata (first table-names))
+                         "%")
+        done           (volatile! #{})
+        send-table     (fn [sync-state-acc table-name get-fields]
+                         (vswap! done conj table-name)
+                         (reduce (fn [sync-state-acc field]
+                                   (let [sync-state-acc (sync-fields-rf sync-state-acc
+                                                                        (assoc field
+                                                                               :table-schema mb-schema
+                                                                               :table-name   table-name))]
+                                     ;; wrap again, because `reduce` unwraps it
+                                     (if (reduced? sync-state-acc) (reduced sync-state-acc) sync-state-acc)))
+                                 sync-state-acc
+                                 (try
+                                   (sort-by :database-position (get-fields))
+                                   (catch Exception e
+                                     (log/warnf e "Cannot get fields for table %s.%s, skipping field sync for it"
+                                                glue-schema table-name)
+                                     nil))))
+        sync-state-acc (reduce-columns-by-table
+                        metadata catalog glue-schema table-pattern
+                        (fn [sync-state-acc table-name columns]
+                          (cond
+                            (contains? @done table-name)
+                            (do (log/warnf "`.getColumns` returned table %s.%s out of order, skipping the rest of it"
+                                           glue-schema table-name)
+                                sync-state-acc)
+
+                            (contains? tables table-name)
+                            (send-table sync-state-acc table-name
+                                        #(columns->fields database driver glue-schema table-name columns))
+
+                            :else
+                            sync-state-acc))
+                        init-sync-state)]
+    (if (reduced? sync-state-acc)
+      sync-state-acc
+      (reduce (fn [sync-state-acc table-name]
+                (let [sync-state-acc (send-table sync-state-acc table-name
+                                                 #(describe-table-fields metadata database driver
+                                                                         {:schema glue-schema, :name table-name}
+                                                                         catalog nil))]
+                  ;; wrap again, so that the caller stops too
+                  (cond-> sync-state-acc (reduced? sync-state-acc) reduced)))
+              sync-state-acc
+              (sort (remove @done tables))))))
+
+(defmethod driver/describe-fields :athena
+  [driver database & {:keys [schema-names table-names]}]
+  (let [{:keys [catalog dbname]} (driver.conn/effective-details database)]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ sync-fields-rf init-sync-state]
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver
+         database
+         nil
+         (fn [^Connection conn]
+           (let [metadata (.getMetaData conn)
+                 catalog  (if (str/blank? catalog) (.getCatalog conn) catalog)]
+             ;; Tables have no schema when `dbname` is set, so we pass 2 schema values here.
+             ;; The first is the actual schema name, used for reading from Athena. The second
+             ;; is the schema value to set for the field. So it is nil when `dbname` is set.
+             (reduce (fn [sync-state-acc schema]
+                       (reduce-schema-fields driver database metadata catalog
+                                             schema                        ;; the actual schema name
+                                             (when (empty? dbname) schema) ;; the schema value to set for the field
+                                             (set table-names)
+                                             sync-fields-rf
+                                             sync-state-acc))
+                     init-sync-state
+                     (if (seq dbname) [dbname] (remove nil? schema-names))))))))))
 
 ;; one-off REPL script kept for reference
 #_{:clj-kondo/ignore [:discouraged-var]}
