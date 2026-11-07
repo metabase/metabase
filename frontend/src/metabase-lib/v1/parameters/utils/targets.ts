@@ -78,7 +78,9 @@ export function getParameterTargetField(
     }
 
     const tagName = targetRef[1];
-    const fieldId = Lib.templateTags(query)[tagName]?.["field-id"];
+    const fieldId = Lib.templateTags(query).find(
+      (tag) => tag.name === tagName,
+    )?.["field-id"];
     if (fieldId == null) {
       return null;
     }

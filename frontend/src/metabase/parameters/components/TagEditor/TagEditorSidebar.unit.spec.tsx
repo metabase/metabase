@@ -31,14 +31,14 @@ import { TagEditorSidebar } from "./TagEditorSidebar";
 
 interface SetupOpts {
   query: string;
-  templateTags?: Record<string, TemplateTag>;
+  templateTags?: TemplateTag[];
   /**
    * Simulates opening a saved question directly: the store has only these tables, and the database list response has no tables.
    */
   loadedTableIds?: TableId[];
 }
 
-const setup = ({ query, templateTags = {}, loadedTableIds }: SetupOpts) => {
+const setup = ({ query, templateTags = [], loadedTableIds }: SetupOpts) => {
   const database = createSampleDatabase();
   const card = createMockCard({
     dataset_query: Lib.toJsQuery(
@@ -117,13 +117,13 @@ describe("TagEditorSidebar", () => {
   it("shows the variable's settings when the query has a variable", () => {
     setup({
       query: "SELECT {{x}}",
-      templateTags: {
-        x: createMockTemplateTag({
+      templateTags: [
+        createMockTemplateTag({
           name: "x",
           "display-name": "X",
           type: "text",
         }),
-      },
+      ],
     });
 
     expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe("TagEditorSidebar", () => {
     });
 
     it("should not render the default value and required controls (metabase#52812)", async () => {
-      setup({ query: "SELECT {{x}}", templateTags: { x: FIELD_FILTER_TAG } });
+      setup({ query: "SELECT {{x}}", templateTags: [FIELD_FILTER_TAG] });
 
       expect(await screen.findByText("Field to map to")).toBeInTheDocument();
       expect(
@@ -157,13 +157,13 @@ describe("TagEditorSidebar", () => {
     it("should render the default value and required controls once a field is mapped", () => {
       setup({
         query: "SELECT {{x}}",
-        templateTags: {
-          x: {
+        templateTags: [
+          {
             ...FIELD_FILTER_TAG,
             "field-id": PEOPLE.SOURCE,
             "widget-type": "string/=",
           },
-        },
+        ],
       });
 
       expect(
@@ -174,7 +174,7 @@ describe("TagEditorSidebar", () => {
     it("should allow changing the variable type (metabase#51679)", async () => {
       const { setTemplateTag } = setup({
         query: "SELECT {{x}}",
-        templateTags: { x: FIELD_FILTER_TAG },
+        templateTags: [FIELD_FILTER_TAG],
       });
 
       await userEvent.click(screen.getByTestId("variable-type-select"));
@@ -197,7 +197,7 @@ describe("TagEditorSidebar", () => {
     });
     const { setTemplateTag } = setup({
       query: "SELECT {{x}}",
-      templateTags: { x: tag },
+      templateTags: [tag],
       loadedTableIds: [PRODUCTS_ID],
     });
 
@@ -219,15 +219,15 @@ describe("TagEditorSidebar", () => {
   it("should show only one popover at a time and close it on an outside click (metabase#52811)", async () => {
     setup({
       query: "SELECT {{x}}",
-      templateTags: {
-        x: createMockTemplateTag({
+      templateTags: [
+        createMockTemplateTag({
           name: "x",
           "display-name": "X",
           type: "dimension",
           "field-id": undefined,
           "widget-type": "none",
         }),
-      },
+      ],
     });
 
     const fieldPicker = await screen.findByRole("dialog");

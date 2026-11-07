@@ -43,7 +43,7 @@ function createNativeCard(templateTag: TemplateTag): Card {
         Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
           query: `SELECT * FROM PRODUCTS WHERE {{${templateTag.name}}}`,
         }),
-        { [templateTag.name]: templateTag },
+        [templateTag],
       ),
     ),
   });

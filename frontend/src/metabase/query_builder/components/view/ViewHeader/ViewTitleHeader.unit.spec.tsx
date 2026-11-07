@@ -144,12 +144,12 @@ function getNativeQuestionCardWithUnmappedTag(
       },
     },
   });
-  const tags = Lib.templateTags(query);
   return createAdHocNativeCard({
     dataset_query: Lib.toJsQuery(
-      Lib.withTemplateTags(query, {
-        my_filter: { ...tags.my_filter, type },
-      }),
+      Lib.withTemplateTags(
+        query,
+        Lib.templateTags(query).map((tag) => ({ ...tag, type })),
+      ),
     ),
   });
 }

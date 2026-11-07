@@ -155,27 +155,26 @@
 
 (defn- add-undefined-params
   "This simulates the FE setting some parameters to js/undefined."
-  [template-tags param-name]
-  (doto (gobject/get template-tags param-name)
-    (gobject/add "options" js/undefined)
-    (gobject/add "default" js/undefined))
+  [template-tags]
+  (doseq [tag template-tags]
+    (doto tag
+      (gobject/add "options" js/undefined)
+      (gobject/add "default" js/undefined)))
   template-tags)
 
 (deftest ^:parallel template-tags-test
   (testing "Snippets in template tags round trip correctly (#33546)"
-    (let [db meta/database
-          snippet-name "snippet: my snippet"
-          snippets {snippet-name
-                    {:type :snippet
-                     :name "snippet: my snippet"
-                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4"
+    (let [db       meta/database
+          snippets [{:type         :snippet
+                     :name         "snippet: my snippet"
+                     :id           "fd5e96f7-08f8-486b-9919-b2ab72857db4"
                      :display-name "Snippet: My Snippet"
                      :snippet-name "my snippet"
-                     :snippet-id 1}}
-          query (lib.js/with-template-tags
-                  (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
-                  (add-undefined-params (clj->js snippets) snippet-name))]
-      (is (= (vals snippets)
+                     :snippet-id   1}]
+          query    (lib.js/with-template-tags
+                     (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
+                     (add-undefined-params (clj->js snippets)))]
+      (is (= snippets
              (get-in query [:stages 0 :template-tags])))
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
@@ -205,10 +204,10 @@
              (mapv :name roundtripped-tags))))))
 
 (deftest ^:parallel template-tags-js->cljs-test
-  (testing "Should use map key as :name"
-    (is (= [{:name "tag", :display-name "Tag", :type :number}]
+  (testing "Should convert tag keys and types to keywords"
+    (is (= [{:name "tag", :display-name "Tag", :type :number, :widget-type :number/=}]
            (#'lib.js/template-tags-js->cljs
-            #js {"tag" #js {"display-name" "Tag", "type" "number"}})))))
+            #js [#js {"name" "tag", "display-name" "Tag", "type" "number", "widget-type" "number/="}])))))
 
 (deftest ^:parallel column-metadata?-test
   (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))

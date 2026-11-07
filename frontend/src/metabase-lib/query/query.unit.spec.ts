@@ -679,14 +679,14 @@ describe("createTestNativeQuery", () => {
       });
 
       expect(Lib.rawNativeQuery(query)).toBe(queryText);
-      expect(Lib.templateTags(query)).toEqual({
-        x: {
+      expect(Lib.templateTags(query)).toEqual([
+        {
           id: expect.any(String),
           type,
           name: "x",
           "display-name": "X",
         },
-      });
+      ]);
     },
   );
 
@@ -703,8 +703,8 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "dimension",
         name: "x",
@@ -712,7 +712,7 @@ describe("createTestNativeQuery", () => {
         "field-id": PRODUCTS.CATEGORY,
         "widget-type": "text",
       },
-    });
+    ]);
   });
 
   it("should create a native query with a temporal unit template tag", () => {
@@ -728,15 +728,15 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "temporal-unit",
         name: "x",
         "display-name": "X",
         "field-id": PRODUCTS.CREATED_AT,
       },
-    });
+    ]);
   });
 
   it("should create a native query with a snippet tag", () => {
@@ -752,8 +752,8 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      "snippet: foo": {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "snippet",
         name: "snippet: foo",
@@ -761,7 +761,7 @@ describe("createTestNativeQuery", () => {
         "snippet-name": "foo",
         "display-name": "Snippet: Foo",
       },
-    });
+    ]);
   });
 
   it("should create a native query with a card tag", () => {
@@ -776,15 +776,15 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      "#1-users": {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "card",
         name: "#1-users",
         "display-name": "#1 Users",
         "card-id": 1,
       },
-    });
+    ]);
   });
 
   it("should add default, required properties", () => {
@@ -802,8 +802,8 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "text",
         name: "x",
@@ -812,6 +812,6 @@ describe("createTestNativeQuery", () => {
         "widget-type": "string/contains",
         "display-name": "X",
       },
-    });
+    ]);
   });
 });

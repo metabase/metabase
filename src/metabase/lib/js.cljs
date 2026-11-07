@@ -2030,21 +2030,22 @@
   (cond-> obj
     (object? obj) (gobject/filter (fn [v _k _object] (not (undefined? v))))))
 
+(defn- template-tag-js->cljs
+  "Convert a JavaScript Object containing a template `tag` to a ClojureScript map."
+  [tag-object]
+  (-> tag-object
+      remove-undefined-properties
+      js->clj
+      ;; TODO (Cam 2026-07-09) why not just normalize template tags the same way we do everything else?
+      ;; Not changing this now in case there's some sort of good reason for doing it manually
+      (perf/update-keys keyword)
+      (update :type keyword)
+      (m/update-existing :widget-type #(some-> % keyword))))
+
 (defn- template-tags-js->cljs
-  "Convert a JavaScript Object containing template `tags` to a ClojureScript sequence."
-  [tags-object]
-  (perf/mapv (fn [tag-name]
-               (let [tag-object (gobject/get tags-object tag-name)]
-                 (-> tag-object
-                     remove-undefined-properties
-                     js->clj
-                     ;; TODO (Cam 2026-07-09) why not just normalize template tags the same way we do everything else?
-                     ;; Not changing this now in case there's some sort of good reason for doing it manually
-                     (perf/update-keys keyword)
-                     (assoc :name tag-name) ; prefer the tag name used as a map key in case it's unset in the tag itself or differs
-                     (update :type keyword)
-                     (m/update-existing :widget-type #(some-> % keyword)))))
-             (gobject/getKeys tags-object)))
+  "Convert a JavaScript Array of template `tags` to a ClojureScript vector."
+  [tags-array]
+  (mapv template-tag-js->cljs tags-array))
 
 (defn- template-tag-cljs->js [tag]
   (-> tag
@@ -2053,21 +2054,16 @@
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn- template-tags-cljs->js
-  "Convert a sequence of template `tags` to a JavaScript Object."
+  "Convert a sequence of template `tags` to a JavaScript Array."
   [tags]
-  (reduce
-   (fn [obj {tag-name :name, :as tag}]
-     (doto obj
-       (gobject/set (u/qualified-name tag-name) (template-tag-cljs->js tag))))
-   #js {}
-   tags))
+  (into-array (map template-tag-cljs->js tags)))
 
 (defn ^:export with-template-tags
-  "Updates the native first stage of `a-query`'s template tags to the provided `tags`.
+  "Updates the native first stage of `a-query`'s template tags to the provided array of `tags`.
 
   > **Code health:** Healthy"
-  [a-query tags-object]
-  (lib.core/with-template-tags a-query (template-tags-js->cljs tags-object)))
+  [a-query tags-array]
+  (lib.core/with-template-tags a-query (template-tags-js->cljs tags-array)))
 
 (defn ^:export raw-native-query
   "Returns the native query string for the native first stage of `a-query`.
@@ -2077,7 +2073,7 @@
   (lib.core/raw-native-query a-query))
 
 (defn ^:export template-tags
-  "Returns the template tags for the native first stage of `a-query`, as a JS object mapping tag names to tag info.
+  "Returns the template tags for the native first stage of `a-query`, as a JS array of tags.
 
   > **Code health:** Healthy"
   [a-query]

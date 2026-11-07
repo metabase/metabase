@@ -100,7 +100,9 @@ const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
         databaseId,
         sql: Lib.rawNativeQuery(query),
         templateTags:
-          Object.keys(templateTags).length > 0 ? templateTags : undefined,
+          templateTags.length > 0
+            ? Object.fromEntries(templateTags.map((tag) => [tag.name, tag]))
+            : undefined,
       };
     }
 

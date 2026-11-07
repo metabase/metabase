@@ -1,8 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { TemplateTags } from "metabase-types/api";
+import type { TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -45,7 +46,7 @@ const METADATA = createMockMetadata({
   ],
 });
 
-function createQuery(queryText: string, templateTags?: TemplateTags) {
+function createQuery(queryText: string, templateTags?: TemplateTag[]) {
   const query = Lib.createTestNativeQuery(
     createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata: METADATA }),
     { query: queryText },
@@ -54,7 +55,11 @@ function createQuery(queryText: string, templateTags?: TemplateTags) {
 }
 
 function getTagNames(query: Lib.Query) {
-  return Object.values(Lib.templateTags(query)).map((tag) => tag.name);
+  return Lib.templateTags(query).map((tag) => tag.name);
+}
+
+function getTag(query: Lib.Query, name: string) {
+  return checkNotNull(Lib.templateTags(query).find((tag) => tag.name === name));
 }
 
 describe("querying/native utils", () => {
@@ -73,14 +78,14 @@ describe("querying/native utils", () => {
 
   describe("hasSnippetTemplateTags", () => {
     it("should detect snippet tags", () => {
-      const query = createQuery("{{snippet: foo}}", {
-        "snippet: foo": createMockTemplateTag({
+      const query = createQuery("{{snippet: foo}}", [
+        createMockTemplateTag({
           name: "snippet: foo",
           type: "snippet",
           "snippet-id": SNIPPET_ID,
           "snippet-name": "foo",
         }),
-      });
+      ]);
       expect(hasSnippetTemplateTags(query)).toBe(true);
       expect(hasSnippetTemplateTags(createQuery("SELECT {{x}}"))).toBe(false);
     });
@@ -118,18 +123,18 @@ describe("querying/native utils", () => {
     it("should preserve tag order when type changes (metabase#11580)", () => {
       const query = createQuery("SELECT {{foo}} {{bar}}");
       const newQuery = setTemplateTag(query, {
-        ...Lib.templateTags(query)["foo"],
+        ...getTag(query, "foo"),
         type: "number",
       });
       expect(getTagNames(newQuery)).toEqual(["foo", "bar"]);
-      expect(Lib.templateTags(newQuery)["foo"].type).toBe("number");
+      expect(getTag(newQuery, "foo").type).toBe("number");
     });
   });
 
   describe("setTemplateTagIndex", () => {
     it("should move tag to new index", () => {
       const query = createQuery("SELECT {{a}} {{b}} {{c}}");
-      const tagId = Lib.templateTags(query)["c"].id;
+      const tagId = getTag(query, "c").id;
       expect(getTagNames(setTemplateTagIndex(query, tagId, 0))).toEqual([
         "c",
         "a",
@@ -144,15 +149,11 @@ describe("querying/native utils", () => {
         "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
       );
       const question = Question.create({ metadata: METADATA }).setQuery(query);
-      const newQuestion = setTemplateTagConfig(
-        question,
-        Lib.templateTags(query)["t1"],
-        {
-          values_query_type: "search",
-          values_source_type: "static-list",
-          values_source_config: { values: ["A"] },
-        },
-      );
+      const newQuestion = setTemplateTagConfig(question, getTag(query, "t1"), {
+        values_query_type: "search",
+        values_source_type: "static-list",
+        values_source_config: { values: ["A"] },
+      });
 
       const parameters = newQuestion.parameters();
       expect(parameters).toHaveLength(2);
@@ -166,14 +167,14 @@ describe("querying/native utils", () => {
 
   describe("updateSnippetNames", () => {
     it("should update query text with new snippet names", () => {
-      const query = createQuery("{{ snippet: foo }} {{snippet: foo}}", {
-        "snippet: foo": createMockTemplateTag({
+      const query = createQuery("{{ snippet: foo }} {{snippet: foo}}", [
+        createMockTemplateTag({
           name: "snippet: foo",
           type: "snippet",
           "snippet-id": SNIPPET_ID,
           "snippet-name": "foo",
         }),
-      });
+      ]);
       const newQuery = updateSnippetNames(query, [
         createMockNativeQuerySnippet({ id: SNIPPET_ID, name: "bar" }),
       ]);
@@ -192,10 +193,10 @@ describe("querying/native utils", () => {
       expect(Lib.rawNativeQuery(newQuery)).toBe(
         "{{#123-foo-new}} {{#1234-bar}}",
       );
-      expect(Lib.templateTags(newQuery)).toMatchObject({
-        "#123-foo-new": { "card-id": 123 },
-        "#1234-bar": { "card-id": 1234 },
-      });
+      expect(Lib.templateTags(newQuery)).toMatchObject([
+        { name: "#123-foo-new", "card-id": 123 },
+        { name: "#1234-bar", "card-id": 1234 },
+      ]);
     });
   });
 });

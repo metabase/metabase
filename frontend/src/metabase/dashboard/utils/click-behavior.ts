@@ -103,7 +103,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
 
 function getTargetsForNativeQuestion(question: Question): Target[] {
   const query = question.query();
-  const tags = Object.values(Lib.templateTags(query));
+  const tags = Lib.templateTags(query);
 
   return [
     ...tags

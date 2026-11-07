@@ -9,18 +9,18 @@ import { Box, Button, Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, TemplateTags } from "metabase-types/api";
+import type { DatabaseId, TemplateTag } from "metabase-types/api";
 
 type QueryExample = {
   query: string;
-  templateTags: TemplateTags;
+  templateTags: TemplateTag[];
 };
 
 const SQL_EXAMPLES: Record<string, QueryExample> = {
   variable: {
     query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}",
-    templateTags: {
-      category: {
+    templateTags: [
+      {
         id: uuid(),
         name: "category",
         "display-name": "Category",
@@ -28,71 +28,71 @@ const SQL_EXAMPLES: Record<string, QueryExample> = {
         required: true,
         default: "Widget",
       },
-    },
+    ],
   },
   dimension: {
     query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}",
-    templateTags: {
-      created_at: {
+    templateTags: [
+      {
         id: uuid(),
         name: "created_at",
         "display-name": "Created At",
         type: "dimension",
         required: false,
       },
-    },
+    ],
   },
   optional: {
     query: "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
-    templateTags: {
-      category: {
+    templateTags: [
+      {
         id: uuid(),
         name: "category",
         "display-name": "Category",
         type: "text",
         required: false,
       },
-    },
+    ],
   },
   multipleOptional: {
     query:
       "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
-    templateTags: {
-      id: {
+    templateTags: [
+      {
         id: uuid(),
         name: "id",
         "display-name": "ID",
         type: "number",
         required: false,
       },
-      category: {
+      {
         id: uuid(),
         name: "category",
         "display-name": "Category",
         type: "text",
         required: false,
       },
-    },
+    ],
   },
   optionalDimension: {
     query: "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
-    templateTags: {
-      category: {
+    templateTags: [
+      {
         id: uuid(),
         name: "category",
         "display-name": "Category",
         type: "dimension",
         required: false,
       },
-    },
+    ],
   },
 };
 
 const MONGO_EXAMPLES: Record<string, QueryExample> = {
   variable: {
     query: "[{ $match: { price: {{price}} } }]",
-    templateTags: {
-      category: {
+    templateTags: [
+      {
         id: uuid(),
         name: "price",
         "display-name": "Price",
@@ -100,62 +100,62 @@ const MONGO_EXAMPLES: Record<string, QueryExample> = {
         required: true,
         default: "2",
       },
-    },
+    ],
   },
   dimension: {
     query: "[{ $match: {{created_at}} }]",
-    templateTags: {
-      created_at: {
+    templateTags: [
+      {
         id: uuid(),
         name: "created_at",
         "display-name": "Created At",
         type: "dimension",
         required: false,
       },
-    },
+    ],
   },
   optional: {
     query: "[{ $match: { [[ _id: {{id}} ]] } }]",
-    templateTags: {
-      category: {
+    templateTags: [
+      {
         id: uuid(),
         name: "id",
         "display-name": "ID",
         type: "text",
         required: false,
       },
-    },
+    ],
   },
   multipleOptional: {
     query: "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
-    templateTags: {
-      id: {
+    templateTags: [
+      {
         id: uuid(),
         name: "id",
         "display-name": "ID",
         type: "number",
         required: false,
       },
-      category: {
+      {
         id: uuid(),
         name: "category",
         "display-name": "Category",
         type: "text",
         required: false,
       },
-    },
+    ],
   },
   optionalDimension: {
     query: "[{ $match: { $and: [ { _id: 1 } [[, {{category}} ]] ] } }]",
-    templateTags: {
-      category: {
+    templateTags: [
+      {
         id: uuid(),
         name: "category",
         "display-name": "Category",
         type: "dimension",
         required: false,
       },
-    },
+    ],
   },
 };
 

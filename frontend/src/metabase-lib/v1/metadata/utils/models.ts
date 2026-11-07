@@ -89,7 +89,7 @@ export function checkCanBeModel(question: Question) {
     return true;
   }
 
-  return Object.values(Lib.templateTags(question.query())).every(
+  return Lib.templateTags(question.query()).every(
     isSupportedTemplateTagForModel,
   );
 }

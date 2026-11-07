@@ -249,7 +249,7 @@ export function getParameterMappingOptions(
 
   const query = question.query();
   const stageIndex = Lib.stageCount(query) - 1;
-  const tags = Object.values(Lib.templateTags(query));
+  const tags = Lib.templateTags(query);
   const variableTagFilter = parameter
     ? variableTagFilterForParameter(parameter)
     : () => true;

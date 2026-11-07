@@ -76,7 +76,7 @@ export const getNewCardUrl = ({
     if (isNative) {
       return Urls.question(nextQuestion, {
         query: remapParameterValuesToTemplateTags(
-          Object.values(Lib.templateTags(nextQuestion.query())),
+          Lib.templateTags(nextQuestion.query()),
           parametersMappedToCard,
           parameterValues,
         ),

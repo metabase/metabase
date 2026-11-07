@@ -32,15 +32,15 @@ function createSnippetQuery(newSnippet: typeof OLD_SNIPPET) {
     createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata }),
     { query: "select * from products where {{snippet: old-filter}}" },
   );
-  return Lib.withTemplateTags(query, {
-    "snippet: old-filter": createMockTemplateTag({
+  return Lib.withTemplateTags(query, [
+    createMockTemplateTag({
       name: "snippet: old-filter",
       "display-name": "Snippet: Old Filter",
       type: "snippet",
       "snippet-id": SNIPPET_ID,
       "snippet-name": "old-filter",
     }),
-  });
+  ]);
 }
 
 const formattingTestCases = [
@@ -262,7 +262,7 @@ describe("utils", () => {
       expect(Lib.rawNativeQuery(query)).toBe(
         "select * from products where {{snippet: new-filter}}",
       );
-      expect(Object.keys(Lib.templateTags(query))).toEqual([
+      expect(Lib.templateTags(query).map((tag) => tag.name)).toEqual([
         "snippet: new-filter",
       ]);
     });
@@ -285,10 +285,11 @@ describe("utils", () => {
         newSnippet,
       );
 
-      expect(Object.keys(Lib.templateTags(query)).sort()).toEqual([
-        "category",
-        "snippet: old-filter",
-      ]);
+      expect(
+        Lib.templateTags(query)
+          .map((tag) => tag.name)
+          .sort(),
+      ).toEqual(["category", "snippet: old-filter"]);
     });
   });
 });

@@ -13,20 +13,16 @@ import type {
   TemplateTag,
 } from "metabase-types/api";
 
-function getTemplateTagList(query: Lib.Query): TemplateTag[] {
-  return Object.values(Lib.templateTags(query));
-}
-
 export function getVariableTemplateTags(query: Lib.Query): TemplateTag[] {
-  return getTemplateTagList(query).filter(Lib.isVariableTemplateTag);
+  return Lib.templateTags(query).filter(Lib.isVariableTemplateTag);
 }
 
 export function hasSnippetTemplateTags(query: Lib.Query): boolean {
-  return getTemplateTagList(query).some((tag) => tag.type === "snippet");
+  return Lib.templateTags(query).some((tag) => tag.type === "snippet");
 }
 
 export function getTemplateTagCardIds(query: Lib.Query): CardId[] {
-  return getTemplateTagList(query).flatMap((tag) =>
+  return Lib.templateTags(query).flatMap((tag) =>
     tag.type === "card" && tag["card-id"] != null ? [tag["card-id"]] : [],
   );
 }
@@ -55,10 +51,12 @@ export function setNativeQueryDatabaseId(
 }
 
 export function setTemplateTag(query: Lib.Query, tag: TemplateTag): Lib.Query {
-  return Lib.withTemplateTags(query, {
-    ...Lib.templateTags(query),
-    [tag.name]: tag,
-  });
+  return Lib.withTemplateTags(
+    query,
+    Lib.templateTags(query).map((oldTag) =>
+      oldTag.name === tag.name ? tag : oldTag,
+    ),
+  );
 }
 
 export function setTemplateTagConfig(
@@ -81,19 +79,14 @@ export function setTemplateTagIndex(
   tagId: TemplateTag["id"],
   newIndex: number,
 ): Lib.Query {
-  const tags = getTemplateTagList(query);
+  const tags = Lib.templateTags(query);
   const snippetTags = tags.filter((tag) => tag.type === "snippet");
   const otherTags = tags.filter((tag) => tag.type !== "snippet");
   const oldIndex = otherTags.findIndex((tag) => tag.id === tagId);
   const reorderedTags = [...otherTags];
   reorderedTags.splice(newIndex, 0, reorderedTags.splice(oldIndex, 1)[0]);
 
-  return Lib.withTemplateTags(
-    query,
-    Object.fromEntries(
-      [...snippetTags, ...reorderedTags].map((tag) => [tag.name, tag]),
-    ),
-  );
+  return Lib.withTemplateTags(query, [...snippetTags, ...reorderedTags]);
 }
 
 function getTagRegex(tagName: string): RegExp {
@@ -124,7 +117,7 @@ export function updateSnippetNames(
   );
   return replaceTagNames(
     query,
-    getTemplateTagList(query).flatMap((tag) => {
+    Lib.templateTags(query).flatMap((tag) => {
       const snippet =
         tag.type === "snippet" && tag["snippet-id"] != null
           ? snippetsById.get(tag["snippet-id"])
@@ -143,7 +136,7 @@ export function updateCardTemplateTagNames(
   const cardsById = new Map(cards.map((card) => [card.id, card]));
   return replaceTagNames(
     query,
-    getTemplateTagList(query).flatMap((tag) => {
+    Lib.templateTags(query).flatMap((tag) => {
       const card =
         tag.type === "card" && tag["card-id"] != null
           ? cardsById.get(tag["card-id"])
