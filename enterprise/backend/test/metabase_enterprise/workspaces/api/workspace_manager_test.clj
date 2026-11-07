@@ -110,6 +110,29 @@
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
 
+(deftest create-workspace-refuses-input-schema-matching-output-test
+  (testing "POST / refuses, with a 400 naming it, an input schema whose pattern also matches the output schema"
+    (doseq [schema ["*" "mb_iso*" "mb_iso_stub"]]
+      (testing (pr-str schema)
+        (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                    :details  {}
+                                                    :settings {:database-enable-workspaces true}}
+                       :model/Table _ {:db_id db-id :schema "public" :active true}
+                       :model/Table _ {:db_id db-id :schema schema :active true}]
+          (mt/with-model-cleanup [:model/Workspace]
+            (let [inits (atom 0)]
+              (with-redefs [provisioning/dispatching-provisioner
+                            (reify provisioning/Provisioner
+                              (details [_ _ _ _] {:schema "mb_iso_stub" :database_details {}})
+                              (init! [_ _ _ _] (swap! inits inc) nil)
+                              (grant! [_ _ _ _ _] nil)
+                              (destroy! [_ _ _ _] nil))]
+                (is (= (format "Input schema %s also matches the workspace output schema" (pr-str schema))
+                       (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                             {:name "Overlap" :database_ids [db-id]})))
+                (is (zero? @inits) "nothing is provisioned")
+                (is (not (t2/exists? :model/Workspace :name "Overlap")) "the workspace is not kept")))))))))
+
 (deftest rename-workspace-test
   (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]

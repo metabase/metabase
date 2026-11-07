@@ -38,6 +38,7 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sync :as driver.sync]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
@@ -195,6 +196,22 @@
     (throw (ex-info "Workspaces are not enabled for this database"
                     {:status-code 400 :database_id (:id database)}))))
 
+(defn- input-schema-matching-output
+  "The first of `input-schemas` that, read as a sync schema-filter pattern, also matches
+  `output-namespace`, or nil."
+  [input-schemas output-namespace]
+  (some #(when (re-matches (driver.sync/schema-pattern->re-pattern %) output-namespace) %)
+        input-schemas))
+
+(defn- assert-input-schemas-exclude-output
+  "The workspace config scopes the child instance's sync to `input_schemas`, read as
+  inclusion patterns. One that also matches the output namespace would have the child sync
+  the workspace's own output tables as input, so refuse it (400)."
+  [{:keys [database_id input_schemas] :as wsd}]
+  (when-let [pattern (input-schema-matching-output input_schemas (provisioning/output-namespace wsd))]
+    (throw (ex-info (format "Input schema %s also matches the workspace output schema" (pr-str pattern))
+                    {:status-code 400 :database_id database_id :input_schema pattern}))))
+
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
 (defn get-workspace
@@ -256,7 +273,9 @@
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
    exist (404) and be eligible for workspaces (400, see
    [[workspace-database/database-eligible-for-workspaces?]]) — with all of their
-   known schemas as `input_schemas`, and provision each database (blocking).
+   known schemas as `input_schemas` (400 when one also matches the database's output
+   namespace, see [[assert-input-schemas-exclude-output]]), and provision each database
+   (blocking).
    Returns the created workspace, hydrated.
 
    The workspace and its WorkspaceDatabase rows are committed BEFORE provisioning
@@ -279,6 +298,13 @@
         ws        (workspace/create-workspace! {:name       name
                                                 :creator_id creator_id
                                                 :databases  databases})]
+    ;; The output namespace is derived from the WorkspaceDatabase id, so the check runs once
+    ;; the rows exist. Nothing is provisioned yet, so refusing only has to delete the rows.
+    (try
+      (run! assert-input-schemas-exclude-output (:databases ws))
+      (catch Throwable t
+        (workspace/delete-workspace! (:id ws))
+        (throw t)))
     (try
       (provision-workspace-databases! ws)
       (catch Throwable t
