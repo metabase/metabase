@@ -28,7 +28,6 @@ Database routing is useful for:
 Database routing is **not supported** on:
 
 - ClickHouse
-- Oracle
 - Spark SQL
 - Vertica.
 
@@ -47,6 +46,13 @@ Database routing **can't be used** on databases with:
 - [Actions](../data-modeling/data-actions.md#databases-that-support-data-actions)
 - [CSV uploads](../databases/uploads.md)
 - [Model persistence](../data-modeling/models/model-persistence.md)
+- [Transforms](../data-modeling/transforms/transforms-overview.md). You can't turn on routing for a database that has transforms, and you can't create transforms on a router database.
+
+Some other features don't work with routed data:
+
+- [Automatic cache refresh](../configuring-metabase/caching.md#some-permissions-setups-are-incompatible-with-automatic-cache-refreshing) isn't available. Caching still works for the queries people run.
+- [Research](../ai/research.md) can't use metrics from a router database.
+- People whose queries are routed to a destination database won't see [individual records from models](../data-modeling/models/models.md#surface-individual-records-in-search-by-matching-against-this-column) in search results. Metabase indexes those values without routing, so it hides them to keep each person's data separate.
 
 With **guest embedding**, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
 
@@ -64,7 +70,7 @@ With the router database set up with its destination databases, an admin can the
 
 1. [Connect to a database](../databases/connecting.md) that has _the same schema as all of your customer's databases_. This database should be a mock/dev database, ideally with some fake data. The name used for this router database will be the name all users will see, regardless of which destination database they're routed to, so make sure the name makes sense for everyone. (You can change the display name at any time).
 2. Once connected to this initial database (the "Router database"), go to its Database routing section and toggle on **Enable database routing**.
-3. Enter the user attribute you want to use to determine which database a user should be routed to.
+3. In the **User attribute to match destination database slug** dropdown, choose the user attribute you want to use to determine which database a user should be routed to. The dropdown lists the attributes your people already have, so you'll need to [add the attribute](#user-attributes-and-database-routing) to at least one person first.
 4. In the **Destination databases** section, click **Add**, then fill out the connection details. For each destination database, you'll need to specify a **slug** - this slug is the value that Metabase will use to match against the user attribute you assigned to the router database. At run time, when a user views a question built on the router database, Metabase will check the person's user attribute. If the value matches this slug, the question will query this destination database instead.
 
 ## User attributes and database routing
@@ -76,6 +82,14 @@ You can add user attributes manually, or via Single Sign-On (SSO) via [JWT](../p
 If an admin user lacks a value for the user attribute, they'll see the router database. You can also explicitly set the value for admins (or any user) to `__METABASE_ROUTER__`.
 
 If a non-admin user account lacks a valid value for the user attribute, they won't be able to view the question at all.
+
+If anyone's attribute value doesn't match the slug of a destination database, Metabase returns an error instead of falling back to the router database. That goes for admins, too.
+
+## Permissions come from the router database
+
+You set [data permissions](./data.md) and [connection impersonation](./impersonation.md) on the router database only. Destination databases don't have permissions of their own: Metabase applies the router database's permissions to every query it routes.
+
+People can't query a destination database directly. Metabase only connects to a destination database by routing a query through its router database, so the user attribute check always applies.
 
 See our docs on [user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
@@ -90,81 +104,28 @@ To see if database routing is working:
 
 ## Adding destination databases with the API
 
-To add destination databases programmatically, you'll need an [API key](../people-and-groups/api-keys.md).
+To add destination databases programmatically, you'll need an [API key](../people-and-groups/api-keys.md) that belongs to the Admins group, because only admins can manage database routing.
 
-Because each database engine has its own settings, we recommend that you use the Network tab in your browser's developer tools while you manually add a destination database in the UI. This way you can see the request Metabase generates.
+Because each database engine has its own connection settings, we recommend that you use the Network tab in your browser's developer tools while you manually add a destination database in the UI. This way you can see the `details` object Metabase generates for your database.
 
-When you click **Add**, you'll see a `POST` request to `/mirror-database?check_connection_details=true`. Click on that request to get the request's headers and JSON payload.
+When you click **Add**, you'll see a `POST` request to `/api/ee/database-routing/destination-database?check_connection_details=true`. Click on that request to get the request's headers and JSON payload.
 
 ### Adding a new destination database: example with PostgreSQL via `curl`
 
 Here's a `curl` command to add a PostgreSQL database as a destination database. Here the database's `slug` is defined by `name` (in this case, `Green PostgreSQL`).
 
 ```sh
-curl 'http://localhost:3000/api/ee/database-routing/mirror-database?check_connection_details=true' \
+curl 'http://localhost:3000/api/ee/database-routing/destination-database?check_connection_details=true' \
   --request POST \
   --header 'Content-Type: application/json' \
   --header 'X-API-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
   --data '{
   "router_database_id": 2,
-  "mirrors": [
+  "destinations": [
     {
-     "details": {
-        "host": "red-postgres",
-        "port": 5432,
-        "dbname": "sample",
-        "user": "metabase",
-        "use-auth-provider": false,
-        "password": "metasample123",
-        "schema-filters-type": "all",
-        "ssl": false,
-        "tunnel-enabled": false,
-        "destination-database": true
-      },
       "name": "Green PostgreSQL",
-      "engine": "postgres"
-    }
-  ]
-}'
-```
-
-The `details` object will have a different set of keys depending on the database.
-
-If you grab the payload from the browser's Network tab, you may see additional, non-required settings:
-
-```sh
-curl 'http://localhost:3000/api/ee/database-routing/mirror-database?check_connection_details=true' \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --header 'X-API-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
-  --data '{
-  "router_database_id": 2,
-  "mirrors": [
-    {
-      "is_on_demand": false,
-      "is_full_sync": true,
-      "is_sample": false,
-      "cache_ttl": null,
-      "refingerprint": null,
-      "auto_run_queries": true,
-      "schedules": {
-        "metadata_sync": {
-          "schedule_minute": 14,
-          "schedule_day": null,
-          "schedule_frame": null,
-          "schedule_hour": null,
-          "schedule_type": "hourly"
-        },
-        "cache_field_values": {
-          "schedule_minute": 0,
-          "schedule_day": null,
-          "schedule_frame": null,
-          "schedule_hour": 18,
-          "schedule_type": "daily"
-        }
-      },
       "details": {
-        "host": "red-postgres",
+        "host": "green-postgres",
         "port": 5432,
         "dbname": "sample",
         "user": "metabase",
@@ -174,10 +135,14 @@ curl 'http://localhost:3000/api/ee/database-routing/mirror-database?check_connec
         "ssl": false,
         "tunnel-enabled": false,
         "destination-database": true
-      },
-      "name": "Red PostgreSQL",
-      "engine": "postgres"
+      }
     }
   ]
 }'
 ```
+
+Each item in `destinations` takes only a `name` and a `details` object. The `details` object will have a different set of keys depending on the database. You can add several destination databases in one request by adding more items to `destinations`.
+
+Metabase copies the engine and other database settings, like whether queries run automatically, from the router database. If you send other keys (like `engine` or sync schedules), Metabase ignores them.
+
+With `check_connection_details=true`, Metabase tests each connection before it adds the destination databases. If a connection fails, Metabase adds none of them, and returns the errors for each failed destination by name. Leave the parameter off if you want to add a destination database that isn't reachable yet.

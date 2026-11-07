@@ -29,7 +29,8 @@ Use row and column security when:
 Don't use row and column security when:
 
 - People need to write native SQL queries. Row and column security doesn't apply to the SQL editor.
-- You need column-level security on MongoDB or Druid, which only support row-level security.
+- You need column-level security on MongoDB, which only supports row-level security.
+- People need to run actions on the database. [People with row and column security can't run actions](./row-and-column-security.md#people-with-row-and-column-security-cant-run-actions) on a database where row and column security applies to them.
 
 ## Impersonation
 
