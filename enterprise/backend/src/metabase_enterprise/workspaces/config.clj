@@ -49,6 +49,63 @@
       :else
       {})))
 
+(def ^:private parent-login-keys
+  "Connection properties that pick or carry the parent's own warehouse login. The workspace user logs in with
+  the `:user`/`:password` in `:database_details`, so the config must carry none of these: each one either makes
+  the child connect as the parent's identity or leaks a parent credential.
+
+  - Auth provider (`metabase.driver.common/auth-provider-options`): with `:use-auth-provider` still set, the
+    child replaces the password with a token fetched for the parent's identity. `:oauth-token-headers` can carry
+    a client secret.
+  - `:auth-mode` selects the login on SQL Server and Snowflake. Without it, SQL Server falls back to SQL login
+    (`:user`/`:password`).
+  - SQL Server's Azure AD logins (`ad-*`): the service-principal client ID/secret, the certificate and key
+    secrets (every secret sub-key), and the managed-identity client ID."
+  [:use-auth-provider :auth-provider :azure-managed-identity-client-id :oauth-token-url :oauth-token-headers
+   :auth-mode
+   :ad-client-id :ad-client-secret :ad-managed-identity-client-id
+   :ad-client-certificate :ad-client-certificate-value :ad-client-certificate-path :ad-client-certificate-options
+   :ad-client-certificate-id :ad-client-certificate-source :ad-client-certificate-kind
+   :ad-client-certificate-creator-id :ad-client-certificate-created-at
+   :ad-client-certificate-password :ad-client-certificate-password-value :ad-client-certificate-password-path
+   :ad-client-certificate-password-options :ad-client-certificate-password-id
+   :ad-client-certificate-password-source :ad-client-certificate-password-kind
+   :ad-client-certificate-password-creator-id :ad-client-certificate-password-created-at
+   :ad-client-key :ad-client-key-value :ad-client-key-path :ad-client-key-options
+   :ad-client-key-id :ad-client-key-source :ad-client-key-kind
+   :ad-client-key-creator-id :ad-client-key-created-at
+   :ad-client-key-password :ad-client-key-password-value :ad-client-key-password-path
+   :ad-client-key-password-options :ad-client-key-password-id
+   :ad-client-key-password-source :ad-client-key-password-kind
+   :ad-client-key-password-creator-id :ad-client-key-password-created-at])
+
+(def ^:private tunnel-secret-keys-by-auth-option
+  "The tunnel credentials each `:tunnel-auth-option` uses."
+  {"password" #{:tunnel-pass}
+   "ssh-key"  #{:tunnel-private-key :tunnel-private-key-passphrase}})
+
+(defn- drop-unused-tunnel-secrets
+  "Remove the SSH-tunnel credentials the child has no use for, so leftovers don't ship to its config.yml. They are
+   plain `:password`/`:string` connection properties, so unlike `:secret` properties (stored in the Secret table,
+   only their `-id` in `:details`) they sit in `:details` verbatim.
+
+   - `:tunnel-enabled` falsey: all of them; the driver only opens the tunnel when it is set.
+   - `:tunnel-auth-option` set: those of the other option. The driver offers every credential present, so this
+     follows what the admin chose rather than what the driver would try. `:tunnel-auth-option` is a UI flag that
+     the driver never reads, so this trusts it to match the credentials the tunnel uses. Without the option
+     (details created through the API) both stay, since nothing says which one is in use."
+  [details]
+  (let [all-keys (reduce into #{} (vals tunnel-secret-keys-by-auth-option))]
+    (cond
+      (not (:tunnel-enabled details))
+      (apply dissoc details all-keys)
+
+      (contains? tunnel-secret-keys-by-auth-option (:tunnel-auth-option details))
+      (apply dissoc details (remove (tunnel-secret-keys-by-auth-option (:tunnel-auth-option details)) all-keys))
+
+      :else
+      details)))
+
 (def ^:private inlined-secrets
   "The `:secret` connection properties whose value the config carries, each with the detail that turns it on. Both are
    public: the root certificate verifies the warehouse, and the known hosts verify the SSH tunnel's host key. Without
@@ -131,10 +188,11 @@
    ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
-   :details (inline-secrets db (merge (:details db)
-                                      (:database_details wsd)
-                                      (schema-filter-entries db wsd)
-                                      {:let-user-control-scheduling false}))})
+   :details (inline-secrets db (drop-unused-tunnel-secrets
+                                (merge (apply dissoc (:details db) parent-login-keys)
+                                       (:database_details wsd)
+                                       (schema-filter-entries db wsd)
+                                       {:let-user-control-scheduling false})))})
 
 (defn- expand-output
   "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`
@@ -194,8 +252,9 @@
                            :databases {<db-name> {:input_schemas [<schema-name> ...]
                                                   :output        {:db ? :schema ?}}}}}
 
-  Each database entry merges the underlying `metabase_database.details` with the
-  WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
+  Each database entry merges the underlying `metabase_database.details`, minus the
+  parent's login properties (`parent-login-keys`), with the WorkspaceDatabase's
+  override credentials and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
