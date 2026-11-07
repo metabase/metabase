@@ -684,18 +684,19 @@
 (defn- isolated-drop-target
   "Resolve `target` to the physical warehouse table to drop.
 
-  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
-  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
-  drop must hit that copy — not the canonical table. Looks the copy up via the general
-  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
-  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
-  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
-  the hook returns nil and `target` is dropped unchanged."
+  On a workspace child the canonical target is backed by an isolation-namespace copy; the
+  workspace user can only DROP inside its isolation namespace, so the drop must hit that copy, not
+  the canonical table. The copy is computed with the same hook a run uses to pick where it writes,
+  rather than looked up in `table_remapping`: a transform whose runs all failed has no remapping row,
+  but may still have left a copy behind. The isolated namespace lives in `:schema` for schema-based
+  drivers and in `:db` for MySQL; collapse to the single `:schema` slot the driver drop path
+  qualifies on. Off-workspace the hook returns `target` unchanged and it is dropped as is."
   [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
-      (assoc target :schema (or schema db) :name name)
-      target)))
+  (let [rewritten (transforms-base.workspace-hooks/workspace-transform-target db-id target)]
+    (if (= rewritten target)
+      target
+      (let [{:keys [db schema name]} rewritten]
+        (assoc target :schema (or schema db) :name name)))))
 
 (mu/defn delete-target-table! :- [:maybe :int]
   "Drop a transform's output table and deactivate its app-db Table row.
