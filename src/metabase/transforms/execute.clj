@@ -14,8 +14,8 @@
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
   instance for `(:database target)`, the hook rewrites `:schema` and `:name` to the
   workspace copy, and the canonical target is stashed as `:workspace-canonical-target`.
-  Nothing is recorded here: the executor records the TableRemapping only once the run
-  has succeeded (see [[transforms-base.u/record-workspace-target-remapping!]]).
+  Nothing is recorded here: the run records the TableRemapping only once its write has
+  returned (see [[transforms-base.u/record-workspace-target-remapping!]]).
   Off-workspace and OSS: no-op pass-through.
 
   Lives at the dispatch wrapper so every transform type (`:query`, `:python`, and

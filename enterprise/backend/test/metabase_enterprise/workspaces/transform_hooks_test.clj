@@ -193,6 +193,19 @@
             (is (= [{:from_schema "public" :from_table_name "ws_post_success"}]
                    (t2/select [:model/TableRemapping :from_schema :from_table_name] :database_id (mt/id))))))))))
 
+(deftest record-failure-fails-the-run-test
+  (testing "a run whose remapping can't be recorded is marked failed, not succeeded without a remapping"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+        (with-pg-workspace-transform! "ws_record_fail_iso" "ws_record_fail"
+          (fn [transform]
+            (mt/with-dynamic-fn-redefs [transforms-base.u/record-workspace-target-remapping!
+                                        (fn [_] (throw (ex-info "record failed" {})))]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"record failed"
+                                    (transforms.execute/execute! transform {:run-method :manual}))))
+            (is (= :failed (t2/select-one-fn :status :model/TransformRun :transform_id (:id transform))))
+            (is (empty? (t2/select :model/TableRemapping :database_id (mt/id))))))))))
+
 (deftest refused-overlapping-run-keeps-remapping-test
   (testing "a run refused because the transform is already running leaves the running run's remapping in place"
     (mt/test-driver :postgres

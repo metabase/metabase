@@ -42,8 +42,9 @@
 (defenterprise record-workspace-target-remapping!
   "Enterprise impl: record the `TableRemapping` from the canonical transform `target` to its
    workspace copy via [[ws.table-remapping/add-transform-target-mapping!]] (idempotent, so a row
-   from an earlier successful run stays as it was). Executors call this only after the run has
-   succeeded, so a failed run leaves the canonical table's remapping state unchanged.
+   from an earlier successful run stays as it was). A run calls this only once its write has
+   returned, so a run that fails before writing leaves the canonical table's remapping state
+   unchanged.
 
    Subsequent reads of the canonical `(schema, name)` pair resolve to the workspace copy via
    the QP middleware (see `metabase-enterprise.workspaces.query-processor.middleware`).

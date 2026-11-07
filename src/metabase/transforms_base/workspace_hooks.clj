@@ -29,8 +29,9 @@
 
 (defenterprise record-workspace-target-remapping!
   "Record the `TableRemapping` from the canonical `target` on `db-id` to the workspace copy
-  [[workspace-transform-target]] resolves it to. Executors call this once a run has succeeded and
-  before the post-run sync, which reads it, so a failed run leaves no remapping behind.
+  [[workspace-transform-target]] resolves it to. A run calls this once its write has returned and
+  before it is marked succeeded, so a run that fails before writing leaves no remapping behind
+  and the post-run sync, which reads it, finds it.
 
   OSS / no-workspace fallback: no-op."
   metabase-enterprise.workspaces.transform-hooks

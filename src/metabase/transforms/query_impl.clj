@@ -73,7 +73,6 @@
                             (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
                           result))))]
                ;; Post-processing: sync, transform_id, events
-               (transforms-base.u/record-workspace-target-remapping! transform)
                (transforms-base.u/complete-execution! transform {})))))
        nil)
      (catch Throwable t
