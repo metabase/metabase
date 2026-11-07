@@ -89,7 +89,6 @@ export interface Field {
   parent_id?: FieldId | null;
   fk_target_field_id: FieldId | null;
   target?: Field;
-  values?: FieldValue[];
   remappings?: FieldValue[];
   settings?: FieldFormattingSettings;
 

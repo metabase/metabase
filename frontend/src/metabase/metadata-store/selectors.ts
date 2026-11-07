@@ -403,8 +403,7 @@ const NO_REMAPPINGS: FieldValue[] = [];
 /**
  * The label a field carries for `value`.
  *
- * It merges the values a values endpoint fetched with the remappings the
- * client accumulated as other widgets fetched values. The store holds both, so
+ * It reads the remappings the client accumulated as widgets fetched values, so
  * a field a caller holds cannot answer this on its own.
  */
 export function getRemappedFieldValue(
@@ -413,8 +412,6 @@ export function getRemappedFieldValue(
   value: unknown,
 ): string | undefined {
   const fieldId = typeof field.id === "number" ? field.id : null;
-  const storeField =
-    fieldId == null ? undefined : state.entities.fields[fieldId];
   const remappings =
     fieldId == null ? NO_REMAPPINGS : getFieldRemappings(state, fieldId);
 
@@ -424,12 +421,8 @@ export function getRemappedFieldValue(
       ? parseFloat(String(value))
       : value;
 
-  // a later entry wins, so the accumulated remappings override the field's
-  // own values
   const labels = new Map<unknown, string | undefined>(
-    // the store's copy carries the values a values endpoint fetched, which the
-    // field a caller holds does not
-    getRemappings({ ...field, values: storeField?.values, remappings }),
+    getRemappings({ remappings }),
   );
 
   return labels.get(key);
