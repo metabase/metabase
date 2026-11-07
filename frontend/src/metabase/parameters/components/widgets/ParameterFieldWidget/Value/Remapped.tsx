@@ -1,8 +1,7 @@
 import { Component, type ComponentType } from "react";
 
-import { fetchRemapping, getRemappedFieldValue } from "metabase/metadata-store";
+import { fetchRemapping } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { getRemappedField } from "metabase-lib/v1/metadata/utils/remapping";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
 
@@ -18,11 +17,6 @@ interface RemappedOwnProps {
   token?: unknown;
 }
 
-interface RemappedStateProps {
-  // the label the store already holds for this value, if any
-  remappedValue: string | undefined;
-}
-
 interface RemappedDispatchProps {
   // The connect-bound form of `fetchRemapping`; the thunk resolves to its payload.
   fetchRemapping: (args: {
@@ -36,17 +30,7 @@ interface RemappedDispatchProps {
   }) => Promise<{ payload?: Remapping } | undefined>;
 }
 
-type RemappedClassProps = RemappedOwnProps &
-  RemappedStateProps &
-  RemappedDispatchProps;
-
-const mapStateToProps = (
-  state: State,
-  { column, value }: RemappedOwnProps,
-): RemappedStateProps => ({
-  remappedValue:
-    column == null ? undefined : getRemappedFieldValue(state, column, value),
-});
+type RemappedClassProps = RemappedOwnProps & RemappedDispatchProps;
 
 const mapDispatchToProps = {
   fetchRemapping,
@@ -105,10 +89,6 @@ export default (ComposedComponent: ComponentType<any>) => {
     }
 
     getDisplayValue() {
-      if (this.props.remappedValue != null) {
-        return this.props.remappedValue;
-      }
-
       const [, remappedLabel] = this.state.remapping ?? [];
       if (remappedLabel != null) {
         return remappedLabel;
@@ -118,11 +98,7 @@ export default (ComposedComponent: ComponentType<any>) => {
     }
 
     render() {
-      const {
-        remappedValue: _remappedValue,
-        fetchRemapping,
-        ...props
-      } = this.props;
+      const { fetchRemapping, ...props } = this.props;
       const displayValue = this.getDisplayValue();
       const displayColumn =
         (displayValue != null &&
@@ -143,7 +119,7 @@ export default (ComposedComponent: ComponentType<any>) => {
   // connect's class-component prop matching can't see through the dynamic
   // passthrough props, so cast around it and keep the public surface permissive.
   return connect(
-    mapStateToProps,
+    null,
     mapDispatchToProps,
     // Unjustified type cast. FIXME
   )(RemappedComponent as ComponentType<any>) as unknown as ComponentType<any>;
