@@ -104,6 +104,64 @@
                 "the failed create must not leave a Workspace row behind")
             (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
                 "the failed create must not leave WorkspaceDatabase rows behind")))
+        (testing "init refusing a user that was already there: nothing is torn down, and no rows are left"
+          (let [destroyed (atom 0)
+                refusing  (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   (throw (ex-info "user exists" {:status-code        409
+                                                                                 :workspace/cleanup? false})))
+                            (grant!   [_ _ _ _ _] nil)
+                            (destroy! [_ _ _ _]   (swap! destroyed inc)))]
+            (with-redefs [provisioning/dispatching-provisioner refusing]
+              (let [e (is (thrown-with-msg? ExceptionInfo #"user exists"
+                                            (ws/create-workspace! {:name         "Refused"
+                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                   :database_ids [db-id]})))]
+                (is (=? {:status-code 409 :cleanup_required false} (ex-data e))
+                    "the refused row is gone, so the teardown finds nothing and the 409 stands")))
+            (is (zero? @destroyed)
+                "destroy would drop the user init refused, which may belong to another parent")
+            (is (not (t2/exists? :model/Workspace :name "Refused")))
+            (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id)))))
+        (testing "provision-workspace! deletes a refused row without a teardown, so a later delete has nothing to drop"
+          (let [destroyed (atom 0)
+                refusing  (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   (throw (ex-info "user exists" {:status-code        409
+                                                                                 :workspace/cleanup? false})))
+                            (grant!   [_ _ _ _ _] nil)
+                            (destroy! [_ _ _ _]   (swap! destroyed inc)))
+                ws        (ws/create-workspace! {:name "Refused later" :creator_id (mt/user->id :crowberto)})]
+            (t2/insert! :model/WorkspaceDatabase {:workspace_id     (:id ws)
+                                                  :database_id      db-id
+                                                  :input_schemas    ["public"]
+                                                  :database_details {}
+                                                  :output_namespace ""
+                                                  :status           :unprovisioned})
+            (is (= 1 (provisioning/provision-workspace! (:id ws) refusing)))
+            (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id (:id ws))))
+            (with-redefs [provisioning/dispatching-provisioner refusing]
+              (is (nil? (ws/delete-workspace! (:id ws)))))
+            (is (zero? @destroyed))))
+        (testing "a grant error with :workspace/cleanup? false still tears down what init made, and keeps the row"
+          (let [destroyed (atom 0)
+                failing   (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   nil)
+                            (grant!   [_ _ _ _ _] (throw (ex-info "grant failed" {:workspace/cleanup? false})))
+                            (destroy! [_ _ _ _]   (swap! destroyed inc)))
+                ws        (ws/create-workspace! {:name "Grant failed" :creator_id (mt/user->id :crowberto)})
+                wsd-id    (t2/insert-returning-pk! :model/WorkspaceDatabase {:workspace_id     (:id ws)
+                                                                             :database_id      db-id
+                                                                             :input_schemas    ["public"]
+                                                                             :database_details {}
+                                                                             :output_namespace ""
+                                                                             :status           :unprovisioned})]
+            (is (= 1 (provisioning/provision-workspace! (:id ws) failing)))
+            (is (= 1 @destroyed) "only init's error can say that nothing is left to tear down")
+            (is (=? {:status :unprovisioned} (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
+            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+              (is (nil? (ws/delete-workspace! (:id ws)))))))
         (testing "provisioning failure whose cleanup also fails keeps the workspace and throws for retry"
           (let [wedged (reify provisioning/Provisioner
                          (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
