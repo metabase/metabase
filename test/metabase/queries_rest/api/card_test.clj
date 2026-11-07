@@ -357,7 +357,7 @@
                          {:database (mt/id)
                           :type     :native
                           :native   {:query         "SELECT id FROM venues where {{venue_id}}"
-                                     :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                     :template-tags {"venue_id" {:field-id (mt/id :venues :id),
                                                                  :display-name "Venue ID",
                                                                  :id           "_VENUE_ID_",
                                                                  :name         "venue_id",
@@ -970,8 +970,7 @@
                                                                :parameters             "abc"})))))
 
 (defn- malformed-native-dataset-query
-  "Payload from #74615: legacy-envelope native query whose template-tag :dimension uses an
-  MBQL 5 field reference shape ([:field {opts} id] instead of legacy [:field id opts])."
+  "Legacy-envelope native query whose template-tag `:field-id` is not a Field ID (#74615)."
   []
   {:type     :native
    :database (mt/id)
@@ -981,9 +980,7 @@
                                     :display-name "DF"
                                     :type         :dimension
                                     :widget-type  :date/range
-                                    :dimension    [:field
-                                                   {:base-type :type/DateTime}
-                                                   (mt/id :orders :created_at)]}}}})
+                                    :field-id     "created_at"}}}})
 
 (deftest ^:parallel post-card-with-malformed-dataset-query-returns-400-test
   (testing "POST /api/card with structurally malformed :dataset_query returns 400 with the specific error, not 500 (#74615)"
@@ -3905,7 +3902,7 @@
                                                                          :name         "NAME"
                                                                          :display_name "Name"
                                                                          :type         :dimension
-                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :field-id     (mt/id :venues :name)
                                                                          :required     true}}}}
                                      :name       "native card with field filter"
                                      :parameters [{:id     "name_param_id"
@@ -3921,7 +3918,7 @@
                                                                        :name         "ID"
                                                                        :display_name "Id"
                                                                        :type         :dimension
-                                                                       :dimension    [:field (mt/id :people :id) nil]
+                                                                       :field-id     (mt/id :people :id)
                                                                        :required     true}}}}
                                      :name       "native card with named field filter"
                                      :parameters [{:id     "id"
@@ -4274,7 +4271,7 @@
                                                            :name         "ID"
                                                            :display_name "ID"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                           :field-id     (mt/id :venues :id)
                                                            :required     true}}}}
                          :name       "native card with ID field filter"
                          :parameters [{:id     param-key,
@@ -4492,7 +4489,7 @@
                                                                                              :name         "FILTER"
                                                                                              :display-name "Filter"
                                                                                              :type         :dimension
-                                                                                             :dimension    [:field (mt/id :venues :name) nil]
+                                                                                             :field-id     (mt/id :venues :name)
                                                                                              :widget-type  :string/=
                                                                                              :default      nil}}}}
                                :name                   "Bad Card"
@@ -4626,28 +4623,28 @@
                            :display-name "Id"
                            :id           "_id_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :id) nil]
+                           :field-id     (mt/id :people :id)
                            :widget-type  :id
                            :default      nil}
                 "name"    {:name         "name"
                            :display-name "Name"
                            :id           "_name_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :name) nil]
+                           :field-id     (mt/id :people :name)
                            :widget-type  :category
                            :default      nil}
                 "source"  {:name         "source"
                            :display-name "Source"
                            :id           "_soure_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :source) nil]
+                           :field-id     (mt/id :people :source)
                            :widget-type  :category
                            :default      nil}
                 "user_id" {:name         "user_id"
                            :display-name "User"
                            :id           "_user_id_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :orders :user_id) nil]
+                           :field-id     (mt/id :orders :user_id)
                            :widget-type  :id
                            :default      nil}}}
     :database (mt/id)}

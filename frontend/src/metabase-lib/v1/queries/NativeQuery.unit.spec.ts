@@ -283,7 +283,7 @@ describe("NativeQuery", () => {
             name: "foo",
             type: "dimension",
             "widget-type": "category",
-            dimension: ["field", 123, null],
+            "field-id": 123,
             "display-name": "bar",
           }),
         );
@@ -306,7 +306,7 @@ describe("NativeQuery", () => {
           createIncompleteTag({
             name: "foo",
             type: "temporal-unit",
-            dimension: ["field", 123, null],
+            "field-id": 123,
             "display-name": "bar",
           }),
         );
@@ -327,7 +327,7 @@ describe("NativeQuery", () => {
             filter: createMockTemplateTag({
               name: "filter",
               type: "dimension",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "field-id": PRODUCTS.CATEGORY,
               "widget-type": "string/=",
             }),
           },
@@ -337,7 +337,7 @@ describe("NativeQuery", () => {
 
         const otherDatabaseQuery = query.setDatabaseId(otherDatabaseId);
         expect(
-          otherDatabaseQuery.templateTagsMap().filter.dimension,
+          otherDatabaseQuery.templateTagsMap().filter["field-id"],
         ).toBeUndefined();
         expect(otherDatabaseQuery.canRun()).toBe(false);
       });
@@ -694,7 +694,7 @@ describe("NativeQuery", () => {
           createIncompleteTag({
             name: "category",
             type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
+            "field-id": PRODUCTS.CATEGORY,
           }),
         );
       const dimensions = q.dimensionOptions().dimensions;

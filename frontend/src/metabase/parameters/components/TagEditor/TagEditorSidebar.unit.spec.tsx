@@ -140,7 +140,7 @@ describe("TagEditorSidebar", () => {
       name: "x",
       "display-name": "X",
       type: "dimension",
-      dimension: undefined,
+      "field-id": undefined,
       "widget-type": "none",
     });
 
@@ -162,7 +162,7 @@ describe("TagEditorSidebar", () => {
         templateTags: {
           x: {
             ...FIELD_FILTER_TAG,
-            dimension: ["field", PEOPLE.SOURCE, null],
+            "field-id": PEOPLE.SOURCE,
             "widget-type": "string/=",
           },
         },
@@ -194,7 +194,7 @@ describe("TagEditorSidebar", () => {
       name: "x",
       "display-name": "X",
       type: "dimension",
-      dimension: ["field", PRODUCTS.CATEGORY, null],
+      "field-id": PRODUCTS.CATEGORY,
       "widget-type": "string/=",
     });
     const { setTemplateTag } = setup({
@@ -214,7 +214,7 @@ describe("TagEditorSidebar", () => {
 
     expect(setTemplateTag).toHaveBeenCalledWith({
       ...tag,
-      dimension: ["field", PEOPLE.ADDRESS, null],
+      "field-id": PEOPLE.ADDRESS,
     });
   });
 
@@ -226,7 +226,7 @@ describe("TagEditorSidebar", () => {
           name: "x",
           "display-name": "X",
           type: "dimension",
-          dimension: undefined,
+          "field-id": undefined,
           "widget-type": "none",
         }),
       },

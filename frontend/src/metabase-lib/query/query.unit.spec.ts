@@ -697,7 +697,7 @@ describe("createTestNativeQuery", () => {
       templateTags: {
         x: {
           type: "dimension",
-          dimension: PRODUCTS.CATEGORY,
+          "field-id": PRODUCTS.CATEGORY,
         },
       },
     });
@@ -709,7 +709,7 @@ describe("createTestNativeQuery", () => {
         type: "dimension",
         name: "x",
         "display-name": "X",
-        dimension: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        "field-id": PRODUCTS.CATEGORY,
         "widget-type": "text",
       },
     });
@@ -722,7 +722,7 @@ describe("createTestNativeQuery", () => {
       templateTags: {
         x: {
           type: "temporal-unit",
-          dimension: PRODUCTS.CREATED_AT,
+          "field-id": PRODUCTS.CREATED_AT,
         },
       },
     });
@@ -734,11 +734,7 @@ describe("createTestNativeQuery", () => {
         type: "temporal-unit",
         name: "x",
         "display-name": "X",
-        dimension: [
-          "field",
-          PRODUCTS.CREATED_AT,
-          { "base-type": "type/DateTime" },
-        ],
+        "field-id": PRODUCTS.CREATED_AT,
       },
     });
   });

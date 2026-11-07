@@ -2043,15 +2043,13 @@
                      (perf/update-keys keyword)
                      (assoc :name tag-name) ; prefer the tag name used as a map key in case it's unset in the tag itself or differs
                      (update :type keyword)
-                     (m/update-existing :widget-type #(some-> % keyword))
-                     (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))
+                     (m/update-existing :widget-type #(some-> % keyword)))))
              (gobject/getKeys tags-object)))
 
 (defn- template-tag-cljs->js [tag]
   (-> tag
       (update :type name)
       (m/update-existing :widget-type #(some-> % u/qualified-name))
-      (m/update-existing :dimension #(some-> % ref->legacy-ref))
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn- template-tags-cljs->js

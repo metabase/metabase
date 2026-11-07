@@ -1193,7 +1193,7 @@
                                               {"id" {:name         "id"
                                                      :display-name "Id"
                                                      :type         :dimension
-                                                     :dimension    [:field (mt/id :people :id) nil]
+                                                     :field-id     (mt/id :people :id)
                                                      :widget-type  :id
                                                      :default      nil}}}})))))
 

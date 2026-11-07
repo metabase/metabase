@@ -1573,7 +1573,7 @@
      [:snippet-id   ::lib.schema.id/snippet]
      ;; database to which this Snippet belongs. Doesn't always seen to be specified.
      [:database {:optional true} ::lib.schema.id/database]]]
-   [:ref ::lib.schema.template-tag/disallow-dimension]])
+   [:ref ::lib.schema.template-tag/disallow-field-id]])
 
 ;; Example:
 ;;
@@ -1592,7 +1592,7 @@
      [:card-id  ::lib.schema.id/card]
      [:default  {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
      [:required {:optional true} :boolean]]]
-   [:ref ::lib.schema.template-tag/disallow-dimension]])
+   [:ref ::lib.schema.template-tag/disallow-field-id]])
 
 (mr/def ::TemplateTag.SourceFilter
   "Schema for a single source-filter applied to a table template tag."
@@ -1621,7 +1621,7 @@
      [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]
      [:default               {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
      [:required              {:optional true} :boolean]]]
-   [:ref ::lib.schema.template-tag/disallow-dimension]])
+   [:ref ::lib.schema.template-tag/disallow-field-id]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1639,7 +1639,7 @@
 ;;     :name         "date"
 ;;     :display-name "Date"
 ;;     :type         :dimension,
-;;     :dimension    [:field 4 nil]
+;;     :field-id     4
 ;;     :widget-type  :date/all-options}
 (mr/def ::TemplateTag.FieldFilter.Options
   "Options appended to the filter clause a Field Filter template tag generates. Mirrors its MBQL 5 twin,
@@ -1658,7 +1658,7 @@
    ::TemplateTag.Value.Common
    [:map {:closed true}
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :dimension]]
-    [:dimension [:ref ::field]]
+    [:field-id  {:optional true} ::lib.schema.id/field]
     [:alias     {:optional true} :string]
     [:widget-type
      {:default :category}
@@ -1684,7 +1684,7 @@
    ::TemplateTag.Value.Common
    [:map {:closed true}
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :temporal-unit]]
-    [:dimension [:ref ::field]]
+    [:field-id  {:optional true} ::lib.schema.id/field]
     [:alias     {:optional true} :string]]])
 
 ;; Example:
@@ -1708,7 +1708,7 @@
   which types of parameters are allowed to be passed in for this template tag."}
        ::lib.schema.template-tag/raw-value.type]]
      [:widget-type {:optional true} [:maybe [:ref ::WidgetType]]]]]
-   [:ref ::lib.schema.template-tag/disallow-dimension]])
+   [:ref ::lib.schema.template-tag/disallow-field-id]])
 
 (mr/def ::TemplateTag
   "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
@@ -1743,7 +1743,8 @@
 
   Field filters and raw values usually have their value specified by `:parameters`."
   [:multi
-   {:dispatch (comp keyword (some-fn :type #(get % "type")))}
+   {:dispatch         (comp keyword (some-fn :type #(get % "type")))
+    :decode/normalize #(cond-> % (map? %) lib.schema.template-tag/normalize-dimension)}
    [:dimension     [:ref ::TemplateTag.FieldFilter]]
    [:snippet       [:ref ::TemplateTag.Snippet]]
    [:card          [:ref ::TemplateTag.SourceQuery]]
