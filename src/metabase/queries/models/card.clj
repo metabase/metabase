@@ -1520,7 +1520,7 @@
                                              :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
                                              :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                         :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                                        :result_metadata :collection_preview :verified-result-metadata?})]
+                                                        :result_metadata :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
       (maybe-unverify! card-before-update updated-fields actor)
       (queries.db/update-card! (:id card-before-update)
@@ -1701,7 +1701,7 @@
 
 (defmethod serialization/spec :model/Card [_]
   {:schema    ::queries.schema/external-card
-   :copy      [:archived :archived_directly :collection_position :collection_preview :description :display
+   :copy      [:archived :archived_directly :collection_position :description :display
                :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name :card_schema]
    :skip      [:metabase_version :cache_invalidated_at :view_count :last_used_at :initially_published_at
                :dataset_query_metrics_v2_migration_backup :cache_ttl :legacy_query :query_type :table_id
@@ -1734,10 +1734,9 @@
                                         :import (fn [store _ xs opts]
                                                   (serialization/import-in-bulk
                                                    store xs opts metrics/walk-import-dimension-mappings))}}
-   :defaults  {:archived           false
-               :archived_directly  false
-               :collection_preview true
-               :enable_embedding   false}})
+   :defaults  {:archived          false
+               :archived_directly false
+               :enable_embedding  false}})
 
 (defn- dimension-mappings-dependencies
   "The dependencies of a Card's `:dimension_mappings`: what their targets refer to, found with `mbql`."
