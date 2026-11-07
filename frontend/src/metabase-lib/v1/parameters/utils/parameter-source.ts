@@ -136,10 +136,7 @@ export const canListFieldValues = (fields: ParameterField[]) => {
   return hasFields && hasFieldValues;
 };
 
-export const canSearchParameterValues = (
-  parameter: Parameter,
-  disablePKRemapping = false,
-) => {
+export const canSearchParameterValues = (parameter: Parameter) => {
   const operator = deriveFieldOperatorFromParameter(parameter);
   if (operator && isFuzzyOperator(operator) && !canUseCustomSource(parameter)) {
     return false;
@@ -148,25 +145,18 @@ export const canSearchParameterValues = (
   const queryType = getQueryType(parameter);
   const sourceType = getSourceType(parameter);
   const fields = getFields(parameter);
-  const canSearchFields = canSearchFieldValues(fields, disablePKRemapping);
+  const canSearchFields = canSearchFieldValues(fields);
 
   return sourceType
     ? queryType === "search"
     : queryType !== "none" && canSearchFields;
 };
 
-export const canSearchFieldValues = (
-  fields: ParameterField[],
-  disablePKRemapping = false,
-) => {
+export const canSearchFieldValues = (fields: ParameterField[]) => {
   const hasFields = fields.length > 0;
-  const canSearch = fields.every((field) =>
-    getSearchField(field, disablePKRemapping),
-  );
+  const canSearch = fields.every((field) => getSearchField(field) != null);
   const hasFieldValues = fields.some(
-    (field) =>
-      field.has_field_values === "search" ||
-      (field.has_field_values === "list" && field.has_more_values === true),
+    (field) => field.has_field_values === "search",
   );
 
   return hasFields && canSearch && hasFieldValues;

@@ -3,8 +3,6 @@ import slugg from "slugg";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
@@ -43,7 +41,7 @@ export type QuestionCreatorOpts = {
   cardType?: CardType;
   collectionId?: CollectionId;
   dashboardId?: DashboardId;
-  metadata?: Metadata;
+  metadata?: Lib.JsMetadata;
   parameterValues?: ParameterValuesMap;
   name?: string;
   display?: CardDisplayType;
@@ -74,7 +72,7 @@ class Question {
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
    * need metadata for accessing databases, tables and metrics.
    */
-  _metadata: Metadata;
+  _metadata: Lib.JsMetadata;
 
   /**
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
@@ -95,11 +93,11 @@ class Question {
     // card boundary stays loosely typed. Internally it is treated as a `Card`,
     // guarding the saved-only fields (id, name, type, ...) where they are read.
     card: any,
-    metadata?: Metadata,
+    metadata?: Lib.JsMetadata,
     parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
-    this._metadata = metadata || new Metadata();
+    this._metadata = metadata ?? Lib.EMPTY_JS_METADATA;
     this._parameterValues = parameterValues || {};
   }
 
@@ -107,7 +105,7 @@ class Question {
     return new Question(this._card, this._metadata, this._parameterValues);
   }
 
-  metadata(): Metadata {
+  metadata(): Lib.JsMetadata {
     return this._metadata;
   }
 
@@ -309,19 +307,18 @@ class Question {
   }
 
   canWriteActions(): boolean {
-    const database = this.database();
+    const databaseInfo = Lib.databaseDisplayInfo(this.query());
 
     return (
       this.canWrite() &&
-      database != null &&
-      database.canWrite() &&
-      database.hasActionsEnabled()
+      databaseInfo != null &&
+      databaseInfo.nativePermissions === "write" &&
+      databaseInfo.isActionsEnabled
     );
   }
 
   canAutoRun(): boolean {
-    const db = this.database();
-    return (db && db.auto_run_queries) || false;
+    return Lib.databaseDisplayInfo(this.query())?.autoRunQueries ?? false;
   }
 
   /**
@@ -458,13 +455,6 @@ class Question {
 
   publicUUID(): string | null {
     return this._card && this._card.public_uuid;
-  }
-
-  database(): Database | null {
-    const metadata = this.metadata();
-    const databaseId = this.databaseId();
-    const database = metadata.database(databaseId);
-    return database;
   }
 
   databaseId(): DatabaseId | null {

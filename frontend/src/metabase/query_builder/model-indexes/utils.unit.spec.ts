@@ -1,5 +1,4 @@
 import Question from "metabase-lib/v1/Question";
-import Field from "metabase-lib/v1/metadata/Field";
 import type { DatasetColumn } from "metabase-types/api";
 import {
   createMockCard,
@@ -32,7 +31,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(true);
+      expect(canIndexField(field, model)).toBe(true);
     });
 
     it("should return false for boolean field in a model with single integer pk", () => {
@@ -50,7 +49,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
 
     it("should return false for string field in a model without any pk", () => {
@@ -64,7 +63,7 @@ describe("Entities > model-indexes > utils", () => {
         createMockColumn({ name: "bar", base_type: "type/Integer" }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
 
     it("should return false for string field in a model with multiple pks", () => {
@@ -87,7 +86,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
 
     it("should return false for string field in a model with multiple integer pks", () => {
@@ -110,7 +109,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
 
     it("should return false for a model with a string pk", () => {
@@ -128,7 +127,7 @@ describe("Entities > model-indexes > utils", () => {
         }),
       ]);
 
-      expect(canIndexField(new Field(field), model)).toBe(false);
+      expect(canIndexField(field, model)).toBe(false);
     });
   });
 });

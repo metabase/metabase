@@ -1,8 +1,10 @@
+import fetchMock from "fetch-mock";
+
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
-import { createMockField } from "metabase-types/api/mocks";
-import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { createMockField, createMockParameter } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { ParameterFieldWidgetValue } from "./ParameterFieldWidgetValue";
 
@@ -45,24 +47,31 @@ describe("when a field remaps its values", () => {
     name_field: nameField,
   });
 
-  it("renders the remapped label the store accumulated for the value", () => {
-    const state = createMockState({
-      entities: createMockEntitiesState({
-        databases: [createSampleDatabase()],
-      }),
-    });
-    state.entities.fields[PEOPLE_ID] = {
-      ...state.entities.fields[ORDERS.ID],
-      id: PEOPLE_ID,
-      uniqueId: String(PEOPLE_ID),
-      remappings: [[2, "Domenica Williamson"]],
-    };
+  it("should render remapped label for value", async () => {
+    fetchMock.post("path:/api/dataset/parameter/remapping", [
+      2,
+      "Domenica Williamson",
+    ]);
 
     renderWithProviders(
-      <ParameterFieldWidgetValue value={[2]} fields={[idField]} />,
-      { storeInitialState: state },
+      <ParameterFieldWidgetValue
+        value={[2]}
+        fields={[idField]}
+        parameter={createMockParameter({
+          id: "p1",
+          type: "id",
+          sectionId: "id",
+        })}
+      />,
+      {
+        storeInitialState: createMockState({
+          entities: createMockEntitiesState({
+            databases: [createSampleDatabase()],
+          }),
+        }),
+      },
     );
 
-    expect(screen.getByText("Domenica Williamson")).toBeInTheDocument();
+    expect(await screen.findByText("Domenica Williamson")).toBeInTheDocument();
   });
 });

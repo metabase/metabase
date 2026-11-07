@@ -216,9 +216,9 @@ const BASE_METADATA = {
 
 const BASE_PROVIDER = Lib.metadataProvider(
   1,
-  // `Lib.Metadata` is opaque, and a fixture in the API shape cannot build it otherwise.
+  // The fixture holds partial records, and its measure definition is a raw MBQL map that only Lib could build as `OpaqueDatasetQuery`.
   // A clone keeps the provider from caching parsed state into the shared fixture.
-  structuredClone(BASE_METADATA) as unknown as Lib.Metadata,
+  structuredClone(BASE_METADATA) as unknown as Lib.JsMetadata,
 );
 
 const cardMetadata = (

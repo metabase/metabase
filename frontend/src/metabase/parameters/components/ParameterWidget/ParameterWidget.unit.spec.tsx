@@ -3,12 +3,9 @@ import userEvent, {
 } from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
-import {
-  createMockNormalizedField,
-  createMockParameter,
-} from "metabase-types/api/mocks";
+import type { Field } from "metabase-types/api";
+import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 
 import { ParameterWidget } from "./ParameterWidget";
 
@@ -75,14 +72,12 @@ describe("ParameterWidget", () => {
   });
 
   it("should not be able to submit empty value when parameter has connected field (metabase#15462)", async () => {
-    const field = new Field(
-      createMockNormalizedField({
-        id: 1,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        semantic_type: "type/Category",
-      }),
-    );
+    const field = createMockField({
+      id: 1,
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: "type/Category",
+    });
     const { setValue } = setup({ connectedField: field });
 
     await userEvent.click(screen.getByText("Text contains"));

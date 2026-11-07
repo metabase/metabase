@@ -58,22 +58,6 @@ describe("queries/utils/field", () => {
       ]);
     });
 
-    it("appends remappings after field values", () => {
-      expect(
-        getRemappings({
-          values: [[1, "One"]],
-          remappings: [[2, "Two"]],
-        }),
-      ).toEqual([
-        [1, "One"],
-        [2, "Two"],
-      ]);
-    });
-
-    it("returns only remappings when field values are missing", () => {
-      expect(getRemappings({ remappings: [[1, "One"]] })).toEqual([[1, "One"]]);
-    });
-
     it("returns an empty list for a missing field", () => {
       expect(getRemappings()).toEqual([]);
     });

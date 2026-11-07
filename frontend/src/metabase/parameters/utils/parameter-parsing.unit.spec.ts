@@ -160,9 +160,8 @@ describe("parameters/utils/parameter-values", () => {
       ).toBe(null);
     });
 
-    it("should parse the parameter value as a float if all associated fields are numeric and not dates", () => {
-      field1.base_type = "type/Integer";
-      field4.base_type = "type/Integer";
+    it("should parse id parameter value as number", () => {
+      parameter1.type = "id";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
@@ -177,23 +176,18 @@ describe("parameters/utils/parameter-values", () => {
       ).toBe(null);
     });
 
-    it("should not parse numeric values that are dates as floats", () => {
-      // a unix timestamp is stored as a number and coerced to a date
-      field1.base_type = "type/BigInteger";
-      field1.effective_type = "type/DateTime";
-      field1.coercion_strategy = "Coercion/UNIXSeconds->DateTime";
-      field4.base_type = "type/Integer";
+    it("should parse string parameter value as string", () => {
+      parameter1.type = "string/contains";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
-          [parameter1.slug]: "123.456",
+          [parameter1.slug]: false,
         }),
-      ).toEqual(["123.456"]);
+      ).toEqual(["false"]);
     });
 
-    it("should convert boolean arguments to strings if all mapped fields are strings", () => {
-      field1.base_type = "type/Text";
-      field4.base_type = "type/TextLike";
+    it("should parse category parameter value as string", () => {
+      parameter1.type = "category";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
@@ -202,9 +196,8 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual(["true"]);
     });
 
-    it("should parse a value of 'true' or 'false' as a boolean if all associated fields are booleans", () => {
-      field1.base_type = "type/Boolean";
-      field4.base_type = "type/Boolean";
+    it("should parse boolean parameter value", () => {
+      parameter1.type = "boolean/=";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
@@ -231,15 +224,19 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual([]);
     });
 
-    it("should not normalize date parameters", () => {
-      parameter1.type = "date/foo";
-      parameter1.hasVariableTemplateTagTarget = false;
+    it("should normalize date parameter value", () => {
+      parameter1.type = "date/single";
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
-          [parameter1.slug]: "123",
+          [parameter1.slug]: "2024-01-15",
         }),
-      ).toEqual("123");
+      ).toEqual("2024-01-15");
+      expect(
+        getParameterValueFromQueryParams(parameter1, {
+          [parameter1.slug]: "foo",
+        }),
+      ).toBe(null);
     });
 
     it("should keep a relative date value of a month-year parameter (metabase#34129)", () => {
@@ -292,16 +289,6 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual(["foo", "bar"]);
     });
 
-    it("should be able to get the underlying field of a parameter tied to a dimension", () => {
-      field3.base_type = "type/Boolean";
-
-      expect(
-        getParameterValueFromQueryParams(parameter3, {
-          [parameter3.slug]: "true",
-        }),
-      ).toEqual([true]);
-    });
-
     it("should not try to parse parameters without fields", () => {
       expect(
         getParameterValueFromQueryParams(parameter4, {
@@ -326,7 +313,7 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should not try to parse default values", () => {
-      field2.base_type = "type/Integer";
+      parameter2.type = "number/=";
 
       expect(
         getParameterValueFromQueryParams(parameter2, {
@@ -507,9 +494,8 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should not filter out falsy non-nil values", () => {
-      field1.base_type = "type/Integer";
-      field4.base_type = "type/Integer";
-      field3.base_type = "type/Boolean";
+      parameter1.type = "number/=";
+      parameter3.type = "boolean/=";
 
       expect(
         getParameterValuesByIdFromQueryParams(parameters, {
@@ -546,9 +532,8 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should not filter out falsy non-nil, non-empty-string values", () => {
-      field1.base_type = "type/Integer";
-      field4.base_type = "type/Integer";
-      field3.base_type = "type/Boolean";
+      parameter1.type = "number/=";
+      parameter3.type = "boolean/=";
 
       expect(
         getParameterValuesByIdFromQueryParams(

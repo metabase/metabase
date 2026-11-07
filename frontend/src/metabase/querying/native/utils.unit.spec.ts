@@ -21,6 +21,7 @@ import {
   hasSnippetTemplateTags,
   requiresNativeCollection,
   setNativeQueryDatabaseId,
+  setNativeQueryDefaultCollection,
   setTemplateTag,
   setTemplateTagConfig,
   setTemplateTagIndex,
@@ -94,7 +95,7 @@ describe("querying/native utils", () => {
   });
 
   describe("setNativeQueryDatabaseId", () => {
-    it("should switch SQL query to Mongo database and pick default collection (metabase#53299)", () => {
+    it("should switch SQL query to Mongo database", () => {
       const query = setNativeQueryDatabaseId(
         createQuery("SELECT 1"),
         MONGO_DB_ID,
@@ -103,7 +104,6 @@ describe("querying/native utils", () => {
       expect(Lib.engine(query)).toBe("mongo");
       expect(requiresNativeCollection(query)).toBe(true);
       expect(Lib.rawNativeQuery(query)).toBe("SELECT 1");
-      expect(Lib.nativeExtras(query)?.collection).toBe("orders");
     });
 
     it("should keep query unchanged for same database", () => {
@@ -111,6 +111,39 @@ describe("querying/native utils", () => {
       expect(setNativeQueryDatabaseId(query, SAMPLE_DB_ID, METADATA)).toBe(
         query,
       );
+    });
+  });
+
+  describe("setNativeQueryDefaultCollection", () => {
+    const tables = [
+      createMockTable({ id: 100, db_id: MONGO_DB_ID, name: "orders" }),
+      createMockTable({ id: 101, db_id: MONGO_DB_ID, name: "people" }),
+    ];
+
+    it("should pick first table as collection for Mongo query (metabase#53299)", () => {
+      const query = setNativeQueryDatabaseId(
+        createQuery("SELECT 1"),
+        MONGO_DB_ID,
+        METADATA,
+      );
+      expect(
+        Lib.nativeExtras(setNativeQueryDefaultCollection(query, tables))
+          ?.collection,
+      ).toBe("orders");
+    });
+
+    it("should keep Mongo query unchanged without tables", () => {
+      const query = setNativeQueryDatabaseId(
+        createQuery("SELECT 1"),
+        MONGO_DB_ID,
+        METADATA,
+      );
+      expect(setNativeQueryDefaultCollection(query, [])).toBe(query);
+    });
+
+    it("should keep SQL query unchanged", () => {
+      const query = createQuery("SELECT 1");
+      expect(setNativeQueryDefaultCollection(query, tables)).toBe(query);
     });
   });
 

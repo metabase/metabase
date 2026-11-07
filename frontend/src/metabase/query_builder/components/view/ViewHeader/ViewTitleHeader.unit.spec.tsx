@@ -244,10 +244,7 @@ function buildSetup({
   });
 
   const metadata = createMockMetadataFromState(storeInitialState);
-  const question =
-    "id" in card
-      ? checkNotNull(metadata.question(card.id))
-      : new Question(card, metadata);
+  const question = new Question(card, metadata);
 
   const viewTitleHeaderProps: ComponentProps<typeof ViewTitleHeader> = {
     isNavBarOpen: false,
@@ -634,11 +631,8 @@ describe("ViewTitleHeader", () => {
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", async () => {
-    const { question, onOpenModal } = setupAdHoc();
-    const table = checkNotNull(
-      question.metadata().table(Lib.primarySourceTableId(question.query())),
-    );
-    const tableName = table.displayName();
+    const { onOpenModal } = setupAdHoc();
+    const tableName = ORDERS_TABLE.display_name;
 
     fireEvent.click(await screen.findByText(tableName));
 
@@ -750,7 +744,9 @@ describe("View Header | native question without write permissions on database (e
 
   it("does not display question database", () => {
     const { question } = setupNative({ database });
-    const databaseName = checkNotNull(question.database()).displayName();
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
     expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
   });
 
@@ -763,7 +759,9 @@ describe("View Header | native question without write permissions on database (e
 describe("View Header | Not saved native question", () => {
   it("does not display question database", () => {
     const { question } = setupNative();
-    const databaseName = checkNotNull(question.database()).displayName();
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
     expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
   });
 
@@ -835,7 +833,9 @@ describe("View Header | Not saved native question", () => {
 describe("View Header | Saved native question", () => {
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
-    const databaseName = checkNotNull(question.database()).displayName();
+    const databaseName = checkNotNull(
+      Lib.databaseDisplayInfo(question.query()),
+    ).displayName;
     expect(screen.getByText(databaseName)).toBeInTheDocument();
   });
 

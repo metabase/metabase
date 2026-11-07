@@ -49,7 +49,7 @@
 (mu/defn- parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
-  convert the parameters to integers or floating-point numbers."
+  convert the parameters to integers or floating-point numbers, and for Boolean fields to booleans."
   [query       :- ::lib.schema/query
    stage-path  :- ::lib.walk/path
    param-type  :- ::lib.schema.parameter/type
@@ -64,6 +64,13 @@
                              (expression-type query a-ref))]
            (isa? base-type :type/Number)))
     (recur query stage-path :number param-value a-ref)
+
+    (and (string? param-value)
+         (some? (parse-boolean param-value))
+         (isa? (or (field-type query stage-path a-ref)
+                   (expression-type query a-ref))
+               :type/Boolean))
+    (parse-boolean param-value)
 
     ;; no conversion needed if PARAM-TYPE isn't :number or PARAM-VALUE isn't a string
     (or (not= param-type :number)

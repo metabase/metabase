@@ -81,10 +81,6 @@ const ORDERS_QUANTITY_FIELD = createOrdersQuantityField({
       name: "Quantity",
     }),
   ],
-  remappings: [
-    [1, "1 remapped"],
-    [2, "2 remapped"],
-  ],
 });
 
 const ORDERS_TABLE = createOrdersTable({

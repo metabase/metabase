@@ -426,6 +426,10 @@
     (isa? effective-type :type/Number)
     (value->number value)
 
+    (isa? effective-type :type/Boolean)
+    (let [parsed (parse-boolean value)]
+      (if (some? parsed) parsed value))
+
     :else
     value))
 

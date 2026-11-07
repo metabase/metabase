@@ -1982,17 +1982,19 @@
   (lib.join/joined-thing a-query a-join))
 
 (defn ^:export picker-info
-  "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions.
+  "IDs of a table, card or column `metadata` for the FE to fetch or link the entity; `nil` for a column without a Field.
 
-  > **Code health:** Single-use, Legacy, Deprecated! This exists only to support some legacy UI in the join picker. No
-  new calls should be added, and the UI should be refactored to remove the need for this function."
+  > **Code health:** Healthy"
   [a-query metadata]
   (case (:lib/type metadata)
-    :metadata/table #js {:databaseId (:database a-query)
-                         :tableId (:id metadata)}
-    :metadata/card  #js {:databaseId (:database a-query)
-                         :cardId (:id metadata)
-                         :isModel (= (keyword (:type metadata)) :model)}
+    :metadata/table  #js {:databaseId (:database a-query)
+                          :tableId (:id metadata)}
+    :metadata/card   #js {:databaseId (:database a-query)
+                          :cardId (:id metadata)
+                          :isModel (= (keyword (:type metadata)) :model)}
+    :metadata/column (when (and (pos-int? (:id metadata)) (pos-int? (:table-id metadata)))
+                       #js {:id (:id metadata)
+                            :tableId (:table-id metadata)})
     (do
       (log/warn "Cannot provide picker-info for" (:lib/type metadata))
       nil)))

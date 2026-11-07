@@ -2,8 +2,12 @@ import { waitForElementToBeRemoved } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type { ColumnSettings, FieldValue, RowValue } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  Field,
+  FieldValue,
+  RowValue,
+} from "metabase-types/api";
 
 import { Value as ValueComponent } from "../../Value";
 

@@ -3,12 +3,19 @@ import userEvent from "@testing-library/user-event";
 import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import * as dashboardActions from "metabase/redux/dashboard";
-import { checkNotNull } from "metabase/utils/types";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId } from "metabase-types/api";
-import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS,
+  PRODUCTS,
+  createOrdersCreatedAtField,
+  createOrdersIdField,
+  createPeopleCreatedAtField,
+  createProductsCategoryField,
+  createProductsCreatedAtField,
+  createProductsVendorField,
+} from "metabase-types/api/mocks/presets";
 import type { ValuesSourceType } from "metabase-types/api/parameters";
 
 import { ParameterLinkedFilters } from "./ParameterLinkedFilters";
@@ -44,13 +51,13 @@ describe("ParameterLinkedFilters", () => {
       parameter: createMockUiParameter({
         id: "p1",
         name: "P1",
-        fields: [checkNotNull(SAMPLE_METADATA.field(PRODUCTS.CATEGORY))],
+        fields: [createProductsCategoryField()],
       }),
       otherParameters: [
         createMockUiParameter({
           id: "p2",
           name: "P2",
-          fields: [checkNotNull(SAMPLE_METADATA.field(PRODUCTS.VENDOR))],
+          fields: [createProductsVendorField()],
         }),
       ],
       filteringIdsByFilteredId: {
@@ -68,24 +75,18 @@ describe("ParameterLinkedFilters", () => {
       parameter: createMockUiParameter({
         id: "p1",
         name: "P1",
-        fields: [
-          checkNotNull(SAMPLE_METADATA.field(PRODUCTS.CREATED_AT)),
-          checkNotNull(SAMPLE_METADATA.field(ORDERS.CREATED_AT)),
-        ],
+        fields: [createProductsCreatedAtField(), createOrdersCreatedAtField()],
       }),
       otherParameters: [
         createMockUiParameter({
           id: "p2",
           name: "P2",
-          fields: [
-            checkNotNull(SAMPLE_METADATA.field(ORDERS.ID)),
-            checkNotNull(SAMPLE_METADATA.field(PEOPLE.CREATED_AT)),
-          ],
+          fields: [createOrdersIdField(), createPeopleCreatedAtField()],
         }),
         createMockUiParameter({
           id: "p3",
           name: "P3",
-          fields: [checkNotNull(SAMPLE_METADATA.field(PEOPLE.CREATED_AT))],
+          fields: [createPeopleCreatedAtField()],
         }),
       ],
       filteringIdsByFilteredId: {

@@ -266,6 +266,7 @@ export const tableApi = Api.injectEndpoints({
 
 export const {
   useListTablesQuery,
+  useLazyListTablesQuery,
   useGetTableQuery,
   useLazyGetTableQuery,
   useGetTableQueryMetadataQuery,

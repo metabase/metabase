@@ -1,5 +1,3 @@
-import { createMockMetadata } from "__support__/metadata";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import { createMockField } from "metabase-types/api/mocks";
 
@@ -16,26 +14,26 @@ const SEARCH_FIELD_ID = 3;
 const SEARCH_FIELD_2_ID = 4;
 const NO_VALUES_FIELD_ID = 5;
 
-const metadata = createMockMetadata({
-  fields: [
-    createMockField({ id: LIST_FIELD_ID, has_field_values: "list" }),
-    createMockField({ id: LIST_FIELD_2_ID, has_field_values: "list" }),
-    createMockField({ id: SEARCH_FIELD_ID, has_field_values: "search" }),
-    createMockField({ id: SEARCH_FIELD_2_ID, has_field_values: "search" }),
-    createMockField({ id: NO_VALUES_FIELD_ID, has_field_values: "none" }),
-  ],
+const listField = createMockField({
+  id: LIST_FIELD_ID,
+  has_field_values: "list",
 });
-
-// Unjustified type cast. FIXME
-const listField = metadata.field(LIST_FIELD_ID) as Field;
-// Unjustified type cast. FIXME
-const listField2 = metadata.field(LIST_FIELD_2_ID) as Field;
-// Unjustified type cast. FIXME
-const searchField = metadata.field(SEARCH_FIELD_ID) as Field;
-// Unjustified type cast. FIXME
-const searchField2 = metadata.field(SEARCH_FIELD_2_ID) as Field;
-// Unjustified type cast. FIXME
-const noValuesField = metadata.field(NO_VALUES_FIELD_ID) as Field;
+const listField2 = createMockField({
+  id: LIST_FIELD_2_ID,
+  has_field_values: "list",
+});
+const searchField = createMockField({
+  id: SEARCH_FIELD_ID,
+  has_field_values: "search",
+});
+const searchField2 = createMockField({
+  id: SEARCH_FIELD_2_ID,
+  has_field_values: "search",
+});
+const noValuesField = createMockField({
+  id: NO_VALUES_FIELD_ID,
+  has_field_values: "none",
+});
 
 describe("getQueryType", () => {
   describe.each(["string", "location"])("parameter type %s", (type) => {

@@ -1,40 +1,33 @@
-import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockField,
   createMockFieldDimension,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
-  PRODUCTS,
-  createSampleDatabase,
+  createOrdersTotalField,
+  createProductsCategoryField,
+  createProductsTitleField,
 } from "metabase-types/api/mocks/presets";
 
 import { formatParameterValue } from "./formatting";
 
 const REMAPPED_FIELD_ID = 100;
 
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
-  fields: [
-    createMockField({
-      id: REMAPPED_FIELD_ID,
-      base_type: "type/Integer",
-      remappings: [[123456789, "A"]],
-      dimensions: [
-        createMockFieldDimension({
-          type: "internal",
-        }),
-      ],
-    }),
-  ],
-});
-
-const numberField = checkNotNull(metadata.field(ORDERS.TOTAL));
-const textField = checkNotNull(metadata.field(PRODUCTS.TITLE));
-const categoryField = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
-const remappedField = checkNotNull(metadata.field(REMAPPED_FIELD_ID));
+const numberField = createOrdersTotalField();
+const textField = createProductsTitleField();
+const categoryField = createProductsCategoryField();
+const remappedField = {
+  ...createMockField({
+    id: REMAPPED_FIELD_ID,
+    base_type: "type/Integer",
+    dimensions: [
+      createMockFieldDimension({
+        type: "internal",
+      }),
+    ],
+  }),
+  remapping: new Map([[123456789, "A"]]),
+};
 
 describe("metabase/parameters/utils/formatting", () => {
   describe("formatParameterValue without settings", () => {

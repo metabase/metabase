@@ -3,11 +3,14 @@ import _ from "underscore";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type {
   ConcreteFieldReference,
+  FieldId,
   FieldReference,
   NativeParameterDimensionTarget,
+  NormalizedField,
   Parameter,
   ParameterTarget,
   ParameterTextTarget,
@@ -83,10 +86,7 @@ export function getParameterTargetField(
       return null;
     }
 
-    return question
-      .metadata()
-      .fieldsList()
-      .find((field) => field.id === fieldId);
+    return findField(question, fieldId);
   }
 
   // mbql queries
@@ -97,19 +97,53 @@ export function getParameterTargetField(
   return null;
 }
 
+function findField(
+  question: Question,
+  fieldId: FieldId,
+): ParameterField | undefined {
+  // FIXME!!! Metadata is for Lib only. Do NOT read it anywhere else. This lookup
+  // stays only until parameter fields are built from Lib (column display info
+  // plus fields fetched by id). Do not copy this pattern.
+  const fields = Object.values(question.metadata().fields);
+  const getField = (id: FieldId | undefined) =>
+    id != null ? fields.find((field) => field.id === id) : undefined;
+  const toParameterField = (
+    field: NormalizedField | undefined,
+  ): ParameterField | undefined =>
+    field != null
+      ? {
+          ...field,
+          target: undefined,
+          name_field: undefined,
+          dimensions: undefined,
+        }
+      : undefined;
+  const field = getField(fieldId);
+  return field != null
+    ? {
+        ...field,
+        target: toParameterField(getField(field.target)),
+        name_field: toParameterField(getField(field.name_field)),
+        dimensions: field.dimensions?.map((dimension) => ({
+          ...dimension,
+          human_readable_field: toParameterField(
+            getField(dimension.human_readable_field_id ?? undefined),
+          ),
+        })),
+      }
+    : undefined;
+}
+
 function getParameterTargetFieldFromFieldRef(
   question: Question,
   parameter: Parameter,
   fieldRef: ConcreteFieldReference,
 ) {
-  const metadata = question.metadata();
-
   const [_type, fieldIdOrName] = fieldRef;
-  const fields = metadata.fieldsList();
   if (typeof fieldIdOrName === "number") {
     // performance optimization:
     // we can match by id directly without finding this column via query
-    return fields.find((field) => field.id === fieldIdOrName);
+    return findField(question, fieldIdOrName);
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
@@ -136,9 +170,7 @@ function getParameterTargetFieldFromFieldRef(
         return null;
       }
 
-      // do not use `metadata.field(id)` because it only works for fields loaded
-      // with the original table, not coming from model metadata
-      return fields.find((field) => field.id === fieldValuesInfo.fieldId);
+      return findField(question, fieldValuesInfo.fieldId);
     }
   }
 

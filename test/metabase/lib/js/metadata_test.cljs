@@ -24,11 +24,11 @@
   #js {"id"               36
        "name"             "CATEGORY_ID"
        "has_field_values" "none"
-       "dimensions"       #js [{"id"                      72
-                                "field_id"                36
-                                "name"                    "Category ID [external remap]"
-                                "type"                    "external"
-                                "human_readable_field_id" 67}]})
+       "dimensions"       #js [#js {"id"                      72
+                                    "field_id"                36
+                                    "name"                    "Category ID [external remap]"
+                                    "type"                    "external"
+                                    "human_readable_field_id" 67}]})
 
 (deftest ^:parallel parse-field-with-external-remap-test
   (let [metadata          #js {:fields #js {"36" mock-field-metadata-with-external-remap}}
@@ -65,11 +65,11 @@
   #js {"id"               33
        "name"             "ID"
        "has_field_values" "none"
-       "dimensions"       #js [{"id"                      66
-                                "field_id"                33
-                                "name"                    "ID [internal remap]"
-                                "type"                    "internal"
-                                "human_readable_field_id" nil}]})
+       "dimensions"       #js [#js {"id"                      66
+                                    "field_id"                33
+                                    "name"                    "ID [internal remap]"
+                                    "type"                    "internal"
+                                    "human_readable_field_id" nil}]})
 
 (deftest ^:parallel parse-field-with-internal-remap-test
   (let [metadata          #js {:fields #js {"33" mock-field-metadata-with-internal-remap}}

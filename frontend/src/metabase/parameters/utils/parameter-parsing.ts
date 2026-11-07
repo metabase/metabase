@@ -6,19 +6,8 @@ import {
   normalizeTemporalUnitParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
-import type {
-  FieldFilterUiParameter,
-  ParameterField,
-} from "metabase-lib/v1/parameters/types";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
-import {
-  isBoolean,
-  isDate,
-  isNumeric,
-  isString,
-  isStringLike,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   Parameter,
   ParameterType,
@@ -70,19 +59,12 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   const coercedValue =
     Array.isArray(value) && !getIsMultiSelect(parameter) ? [value[0]] : value;
 
-  // TODO this casting should be removed as we tidy up Parameter types
-  const { fields } = parameter as FieldFilterUiParameter;
-  if (Array.isArray(fields) && fields.length > 0) {
-    return parseParameterValueForFields(type, coercedValue, fields);
-  }
-
-  // Note:
-  // - "string" parameters can be mapped to anything (string, number, boolean)
-  // - "category" and "id" parameters can be mapped to anything
-  // We cannot properly deserialize their values by checking the parameter type only
   switch (type) {
     case "number":
+    case "id":
       return parseParameterValueForNumber(type, coercedValue);
+    case "string":
+    case "category":
     case "location":
       return normalizeStringParameterValue(coercedValue);
     case "date":
@@ -120,27 +102,6 @@ function parseParameterValueForNumber(
   }
 
   return normalizeNumberParameterValue(type, value);
-}
-
-function parseParameterValueForFields(
-  type: ParameterType,
-  value: ParameterValueOrArray,
-  fields: ParameterField[],
-): ParameterValueOrArray {
-  // unix dates fields are numeric but query params shouldn't be parsed as numbers
-  if (fields.every((field) => isNumeric(field) && !isDate(field))) {
-    return normalizeNumberParameterValue(type, value);
-  }
-
-  if (fields.every(isBoolean)) {
-    return normalizeBooleanParameterValue(value);
-  }
-
-  if (fields.every((field) => isString(field) || isStringLike(field))) {
-    return normalizeStringParameterValue(value);
-  }
-
-  return value;
 }
 
 function normalizeParameterValueForWidget(
