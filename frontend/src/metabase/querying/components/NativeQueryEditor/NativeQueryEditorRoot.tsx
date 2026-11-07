@@ -15,6 +15,7 @@ import {
 import { useLatest, useMount } from "react-use";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { DataSelectorDatabase } from "metabase/querying/common/components/DataSelector";
 import {
@@ -25,7 +26,7 @@ import {
 import { SnippetFormModal } from "metabase/querying/components/NativeQueryEditor/SnippetFormModal";
 import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryEditor/use-notebook-screen-size";
 import type { SelectionRange } from "metabase/querying/editor/types";
-import { useSelector } from "metabase/redux";
+import { useSelector, useStore } from "metabase/redux";
 import type { QueryModalType } from "metabase/redux/store";
 import { Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -221,6 +222,7 @@ export const NativeQueryEditorRoot = forwardRef<
   // The editor reconfigures itself whenever the identity of its callbacks
   // changes, so they must not depend on the query, which changes on every
   // keystroke.
+  const store = useStore();
   const query = question.query();
   const questionRef = useLatest(question);
 
@@ -264,10 +266,17 @@ export const NativeQueryEditorRoot = forwardRef<
 
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
-      const updatedQuery = updateSnippet(question, oldSnippet, newSnippet);
-      setQuery(updatedQuery);
+      const metadataProvider = selectMetadataProvider(
+        store.getState(),
+        question.databaseId(),
+      );
+      const latestQuery = Lib.fromJsQuery(
+        metadataProvider,
+        question.datasetQuery(),
+      );
+      setQuery(updateSnippet(latestQuery, oldSnippet, newSnippet));
     },
-    [question, setQuery],
+    [store, question, setQuery],
   );
 
   const handleRightClickSelection = useCallback(() => {

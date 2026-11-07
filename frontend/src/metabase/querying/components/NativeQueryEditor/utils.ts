@@ -1,11 +1,8 @@
 import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
-import _ from "underscore";
 
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { updateSnippetNames } from "metabase/querying/native";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
 import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
@@ -126,20 +123,10 @@ function getLineCount(queryText: string): number {
 }
 
 export function updateSnippet(
-  question: Question,
+  query: Lib.Query,
   oldSnippet: NativeQuerySnippet,
   newSnippet: NativeQuerySnippet,
 ): Lib.Query {
-  const metadata = new Metadata(question.metadata());
-  metadata.snippets = {
-    ..._.omit(metadata.snippets, String(oldSnippet.id)),
-    [newSnippet.id]: newSnippet,
-  };
-
-  const query = Lib.fromJsQuery(
-    Lib.metadataProvider(question.databaseId(), metadata),
-    question.datasetQuery(),
-  );
   const renamedQuery =
     newSnippet.name !== oldSnippet.name
       ? updateSnippetNames(query, [newSnippet])
