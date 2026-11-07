@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupCollectionByIdEndpoint,
@@ -8,8 +9,10 @@ import {
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
+  type TestRouter,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -17,7 +20,11 @@ import type { SearchFilters } from "metabase/common/search/types";
 import { Route } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { checkNotNull } from "metabase/utils/types";
-import type { EnabledSearchModel, SearchResult } from "metabase-types/api";
+import type {
+  EnabledSearchModel,
+  SearchResult,
+  UserListResult,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -65,21 +72,38 @@ const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
 const TEST_DATABASE = createMockDatabase();
 const TEST_TABLE = createMockTable();
 const TEST_USER_LIST = [createMockUserListResult()];
+const BOBBY = createMockUserListResult({
+  id: 11,
+  first_name: "Bobby",
+  last_name: "Tables",
+  common_name: "Bobby Tables",
+  email: "bobby@metabase.test",
+});
+const ROBERT = createMockUserListResult({
+  id: 12,
+  first_name: "Robert",
+  last_name: "Tableton",
+  common_name: "Robert Tableton",
+  email: "robert@metabase.test",
+});
+const TWO_USERS = [BOBBY, ROBERT];
 const TEST_COLLECTION = createMockCollection();
 
 const setup = async ({
   searchText,
   searchFilters = {},
   searchItems = TEST_SEARCH_RESULTS,
+  users = TEST_USER_LIST,
 }: {
   searchText: string;
   searchFilters?: SearchFilters;
   searchItems?: SearchResult[];
+  users?: UserListResult[];
 }) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems);
   setupTableEndpoints(TEST_TABLE);
-  setupUserRecipientsEndpoint({ users: TEST_USER_LIST });
+  setupUserRecipientsEndpoint({ users });
   setupCollectionByIdEndpoint({
     collections: [TEST_COLLECTION],
   });
@@ -90,10 +114,15 @@ const setup = async ({
     q: searchText,
   };
 
-  const searchParams = new URLSearchParams(
-    // Unjustified type cast. FIXME
-    params as unknown as Record<string, string>,
-  ).toString();
+  const urlSearchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((item) => urlSearchParams.append(key, String(item)));
+    } else if (value != null) {
+      urlSearchParams.append(key, String(value));
+    }
+  });
+  const searchParams = urlSearchParams.toString();
 
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 
@@ -111,6 +140,44 @@ const setup = async ({
     router: checkNotNull(router),
   };
 };
+
+const getSearchRequestUrls = () =>
+  fetchMock.callHistory
+    .calls("path:/api/search")
+    .map((call) => new URL(call.url));
+
+const expectLastSearchRequestParam = (name: string, values: string[]) => {
+  const lastRequest = getSearchRequestUrls().at(-1);
+  expect(lastRequest?.searchParams.getAll(name)).toEqual(values);
+};
+
+const expectLocationParam = (
+  router: TestRouter,
+  name: string,
+  values: string[],
+) => {
+  expect(new URLSearchParams(router.location.search).getAll(name)).toEqual(
+    values,
+  );
+};
+
+const getFilter = (name: string) =>
+  within(screen.getByTestId(`${name}-search-filter`));
+
+const openUserFilter = async (name: string) => {
+  await userEvent.click(screen.getByTestId(`${name}-search-filter`));
+  return within(await screen.findByTestId("popover"));
+};
+
+const DATE_FILTER_CASES = [
+  ["past1days", "Yesterday"],
+  ["past1weeks", "Previous week"],
+  ["past7days", "Previous 7 days"],
+  ["past30days", "Previous 30 days"],
+  ["past1months", "Previous month"],
+  ["past3months", "Previous 3 months"],
+  ["past12months", "Previous 12 months"],
+];
 
 describe("SearchApp", () => {
   describe("rendering search results and pagination", () => {
@@ -165,6 +232,34 @@ describe("SearchApp", () => {
       expect(getPreviousPageButton()).toBeDisabled();
       expect(getNextPageButton()).toBeEnabled();
       expect(getPagination()).toHaveTextContent("1 - 4");
+    });
+  });
+
+  describe("accessing full page search with `Enter`", () => {
+    it("should only search and open full page search when a text query is entered (search-app request)", async () => {
+      await setup({ searchText: "orders" });
+
+      expect(screen.getByText('Results for "orders"')).toBeInTheDocument();
+
+      const searchRequests = fetchMock.callHistory.calls().filter((call) => {
+        return new URL(call.url).pathname === "/api/search";
+      });
+      expect(searchRequests).toHaveLength(1);
+      const params = new URL(searchRequests[0].url).searchParams;
+      expect(params.get("context")).toBe("search-app");
+      expect(params.get("q")).toBe("orders");
+    });
+  });
+
+  describe("empty state", () => {
+    it("should work for user without data permissions (metabase#16855) (empty state on the search page)", async () => {
+      await setup({ searchText: "product" });
+
+      const searchApp = within(screen.getByTestId("search-app"));
+      expect(searchApp.getByText("Didn't find anything")).toBeInTheDocument();
+      expect(
+        searchApp.getByText("There weren't any results for your search."),
+      ).toBeInTheDocument();
     });
   });
 
@@ -227,6 +322,162 @@ describe("SearchApp", () => {
           // Unjustified type cast. FIXME
           TYPE_FILTER_LABELS[model as EnabledSearchModel],
         );
+      },
+    );
+
+    it("should hydrate created_by filter and remove a user from it", async () => {
+      const { router } = await setup({
+        searchText: "reviews",
+        searchFilters: { created_by: [BOBBY.id, ROBERT.id] },
+        users: TWO_USERS,
+      });
+
+      expect(
+        await getFilter("created_by").findByText("2 users selected"),
+      ).toBeInTheDocument();
+      expect(
+        getFilter("created_by").getByLabelText("close icon"),
+      ).toBeVisible();
+      expectLastSearchRequestParam("created_by", ["11", "12"]);
+
+      const popover = await openUserFilter("created_by");
+      // remove Robert Tableton from the created_by filter
+      await userEvent.click(
+        within(popover.getByTestId("search-user-select-box")).getByLabelText(
+          "Remove Robert Tableton",
+        ),
+      );
+      await userEvent.click(popover.getByText("Apply"));
+
+      expectLocationParam(router, "created_by", ["11"]);
+      await waitFor(() => expectLastSearchRequestParam("created_by", ["11"]));
+      expect(
+        await getFilter("created_by").findByText("Bobby Tables"),
+      ).toBeInTheDocument();
+    });
+
+    it("should filter last_edited results by one or more users and hydrate the filter from the URL (select one user)", async () => {
+      const { router } = await setup({
+        searchText: "reviews",
+        users: TWO_USERS,
+      });
+      expectLastSearchRequestParam("last_edited_by", []);
+
+      const popover = await openUserFilter("last_edited_by");
+      await userEvent.click(await popover.findByText("Robert Tableton"));
+      await userEvent.click(popover.getByText("Apply"));
+
+      expectLocationParam(router, "last_edited_by", ["12"]);
+      await waitFor(() =>
+        expectLastSearchRequestParam("last_edited_by", ["12"]),
+      );
+      expect(
+        await getFilter("last_edited_by").findByText("Robert Tableton"),
+      ).toBeInTheDocument();
+    });
+
+    it("should filter last_edited results by one or more users and hydrate the filter from the URL (select two users)", async () => {
+      const { router } = await setup({
+        searchText: "reviews",
+        users: TWO_USERS,
+      });
+      expectLastSearchRequestParam("last_edited_by", []);
+
+      const popover = await openUserFilter("last_edited_by");
+      await userEvent.click(await popover.findByText("Robert Tableton"));
+      await userEvent.click(popover.getByText("Bobby Tables"));
+      await userEvent.click(popover.getByText("Apply"));
+
+      expectLocationParam(router, "last_edited_by", ["12", "11"]);
+      await waitFor(() =>
+        expectLastSearchRequestParam("last_edited_by", ["12", "11"]),
+      );
+      expect(
+        await getFilter("last_edited_by").findByText("2 users selected"),
+      ).toBeInTheDocument();
+    });
+
+    it("should filter last_edited results by one or more users and hydrate the filter from the URL (hydrate from the URL)", async () => {
+      await setup({
+        searchText: "reviews",
+        searchFilters: { last_edited_by: [ROBERT.id] },
+        users: TWO_USERS,
+      });
+
+      expect(
+        await getFilter("last_edited_by").findByText("Robert Tableton"),
+      ).toBeInTheDocument();
+      expect(
+        getFilter("last_edited_by").getByLabelText("close icon"),
+      ).toBeVisible();
+      expectLastSearchRequestParam("last_edited_by", ["12"]);
+    });
+
+    it("should allow to remove a user from the `last_edited_by` filter, and remove the filter when `X` is clicked (remove a user)", async () => {
+      const { router } = await setup({
+        searchText: "reviews",
+        searchFilters: { last_edited_by: [ROBERT.id, BOBBY.id] },
+        users: TWO_USERS,
+      });
+      expectLastSearchRequestParam("last_edited_by", ["12", "11"]);
+
+      const popover = await openUserFilter("last_edited_by");
+      // remove Robert Tableton from the last_edited_by filter
+      await userEvent.click(
+        within(popover.getByTestId("search-user-select-box")).getByLabelText(
+          "Remove Robert Tableton",
+        ),
+      );
+      await userEvent.click(popover.getByText("Apply"));
+
+      expectLocationParam(router, "last_edited_by", ["11"]);
+      await waitFor(() =>
+        expectLastSearchRequestParam("last_edited_by", ["11"]),
+      );
+    });
+
+    it("should allow to remove a user from the `last_edited_by` filter, and remove the filter when `X` is clicked (remove the filter with X)", async () => {
+      const { router } = await setup({
+        searchText: "reviews",
+        searchFilters: { last_edited_by: [ROBERT.id, BOBBY.id] },
+        users: TWO_USERS,
+      });
+
+      expect(
+        await getFilter("last_edited_by").findByText("2 users selected"),
+      ).toBeInTheDocument();
+      expectLastSearchRequestParam("last_edited_by", ["12", "11"]);
+      await userEvent.click(
+        getFilter("last_edited_by").getByLabelText("close icon"),
+      );
+
+      expectLocationParam(router, "last_edited_by", []);
+      await waitFor(() => expectLastSearchRequestParam("last_edited_by", []));
+      expect(
+        getFilter("last_edited_by").getByText("Last editor"),
+      ).toBeInTheDocument();
+    });
+
+    it.each(
+      ["created_at", "last_edited_at"].flatMap((name) =>
+        DATE_FILTER_CASES.map(([literal, label]) => [
+          `${name}=${literal}`,
+          name,
+          literal,
+          label,
+        ]),
+      ),
+    )(
+      "should hydrate created_at and last_edited_at from the URL (%s)",
+      async (_title, name, literal, label) => {
+        await setup({
+          searchText: name === "created_at" ? "orders" : "reviews",
+          searchFilters: { [name]: literal },
+        });
+
+        expect(getFilter(name).getByText(label)).toBeInTheDocument();
+        expect(getFilter(name).getByLabelText("close icon")).toBeVisible();
+        expectLastSearchRequestParam(name, [literal]);
       },
     );
   });

@@ -9,6 +9,7 @@ import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 export interface SearchSidebarSetupOptions {
@@ -16,6 +17,8 @@ export interface SearchSidebarSetupOptions {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   value?: URLSearchFilterQueryParams;
   onChange?: (filters: URLSearchFilterQueryParams) => void;
+  isAdmin?: boolean;
+  activeUsersCount?: number;
 }
 
 const TEST_DATABASE = createMockDatabase();
@@ -25,13 +28,19 @@ export const setup = ({
   enterprisePlugins,
   value = {},
   onChange = jest.fn(),
+  isAdmin = false,
+  activeUsersCount,
 }: SearchSidebarSetupOptions = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
 
-  const settings = mockSettings({ "token-features": tokenFeatures });
+  const settings = mockSettings({
+    "token-features": tokenFeatures,
+    "active-users-count": activeUsersCount,
+  });
 
   const state = createMockState({
     settings,
+    currentUser: createMockUser({ is_superuser: isAdmin }),
   });
 
   if (enterprisePlugins) {
