@@ -40,20 +40,33 @@ export const ButtonBar = ({
     }
   }, [canConfirm, onConfirm, path]);
 
+  const handleConfirmWithError = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await handleConfirm();
+    } catch (error: unknown) {
+      setError(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [handleConfirm]);
+
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.isComposing) {
+      if (e.isComposing || e.repeat) {
         return;
       }
-      if (canConfirm && e.key === "Enter") {
-        handleConfirm();
+      if (canConfirm && !loading && e.key === "Enter") {
+        e.preventDefault();
+        void handleConfirmWithError();
       }
     };
     document.addEventListener("keydown", handleKeyPress);
     return () => {
       document.removeEventListener("keydown", handleKeyPress);
     };
-  }, [handleConfirm, canConfirm]);
+  }, [handleConfirmWithError, canConfirm, loading]);
 
   const confirmText =
     typeof confirmButtonText === "function"
@@ -87,17 +100,7 @@ export const ButtonBar = ({
         <Button
           ml={1}
           variant="filled"
-          onClick={async () => {
-            try {
-              setError(null);
-              setLoading(true);
-              await handleConfirm();
-            } catch (e: any) {
-              console.error(e);
-              setError(getErrorMessage(e));
-            }
-            setLoading(false);
-          }}
+          onClick={handleConfirmWithError}
           disabled={!canConfirm || loading}
           data-testid="entity-picker-select-button"
         >
