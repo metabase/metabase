@@ -58,10 +58,10 @@ export function CustomPropertiesSection({
   const definitions = useDefinitionsReview(resolved, onChange);
 
   return (
-    <SidebarSection title={getCustomPropertiesTitle(resolved.entityTable)}>
-      <Text size="sm" c="text-secondary">
-        {t`Each row is one custom property value of a ${noun.singular}.`}
-      </Text>
+    <SidebarSection
+      title={getCustomPropertiesTitle(resolved.entityTable)}
+      description={t`Each row is one custom property value of a ${noun.singular}.`}
+    >
       <DetailsTable>
         <DetailsRow
           label={t`Belongs to`}

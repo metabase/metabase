@@ -71,10 +71,10 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
 
   return (
     <Stack gap="xxl">
-      <SidebarSection title={t`Process`}>
-        <Text size="sm" c="text-secondary">
-          {t`How each record moves through its statuses: which column holds the status, where changes are recorded, and which moves between statuses are expected.`}
-        </Text>
+      <SidebarSection
+        title={t`Process`}
+        description={t`How each record moves through its statuses: which column holds the status, where changes are recorded, and which moves between statuses are expected.`}
+      >
         <DetailsTable>
           <DetailsRow
             label={t`Status column`}
@@ -172,13 +172,15 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
         </DetailsTable>
       </SidebarSection>
       {transitions.length > 0 && (
-        <SidebarSection title={t`Transitions`}>
-          <Text size="sm" c="text-secondary">
-            {unexpectedSeen.length > 0
+        <SidebarSection
+          title={t`Transitions`}
+          description={
+            unexpectedSeen.length > 0
               ? // The spec's data note: the most common move nobody expects
                 t`${unexpectedSeen[0].count} records went from ${unexpectedSeen[0].from} to ${unexpectedSeen[0].to}, which isn't expected.`
-              : t`Moves between statuses, from the order and from the status history when there is one.`}
-          </Text>
+              : t`Moves between statuses, from the order and from the status history when there is one.`
+          }
+        >
           <DetailsTable>
             {transitions.map((row) => (
               <DetailsRow

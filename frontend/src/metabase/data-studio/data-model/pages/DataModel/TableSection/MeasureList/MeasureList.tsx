@@ -113,7 +113,7 @@ export function MeasureList({ table }: MeasureListProps) {
       {(!isSearching || measureGroups.length > 0) && (
         <ListSection
           title={t`Measure groups`}
-          description={t`Named sets of measures, listed together under a heading. They don't change what a measure computes.`}
+          description={t`Group similar or related measures together to help your users find them when they're querying.`}
           action={
             canWriteMeasures && (
               <Button

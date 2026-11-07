@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 export type SidebarSectionProps = {
   title: string;
   titleAside?: ReactNode;
+  /** Small supporting text, set closer to the title than the content is */
+  description?: ReactNode;
   children: ReactNode;
 };
 

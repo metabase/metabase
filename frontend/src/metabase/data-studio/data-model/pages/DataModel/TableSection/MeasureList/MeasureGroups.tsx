@@ -5,7 +5,6 @@ import {
   type MeasureGroupProposal,
   createMeasureGroupId,
   getMeasureGroupProposals,
-  getMeasureGroupSourceLabel,
   useMeasureGroups,
 } from "metabase/metadata/measure-groups";
 import { Button, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
@@ -71,7 +70,6 @@ export function MeasureGroupItem({
   onOpen?: () => void;
 }) {
   const memberNames = getMemberNames(group.measureIds, measures);
-  const sourceLabel = getMeasureGroupSourceLabel(group.source);
   return (
     <Card
       className={onOpen ? S.card : undefined}
@@ -95,11 +93,6 @@ export function MeasureGroupItem({
           <GroupMemberPills labels={memberNames} />
         ) : (
           <Text lh="lg" c="text-disabled">{t`No measures`}</Text>
-        )}
-        {sourceLabel && (
-          <Text size="sm" c="text-secondary">
-            {sourceLabel}
-          </Text>
         )}
       </Stack>
     </Card>

@@ -92,10 +92,22 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
   );
 
   return (
-    <SidebarSection title={t`Field value groupings`}>
-      <Text size="sm" c="text-secondary">
-        {t`In the query builders, users can select these in the Group By section.`}
-      </Text>
+    <SidebarSection
+      title={t`Field value groupings`}
+      titleAside={
+        !readOnly && (
+          <Button
+            size="compact-sm"
+            variant="subtle"
+            leftSection={<Icon name="add" />}
+            onClick={() => setEditor({ grouping: undefined })}
+          >
+            {t`Add grouping`}
+          </Button>
+        )
+      }
+      description={t`In the query builders, users can select these in the Group By section.`}
+    >
       <DetailsTable>
         <DetailsRow
           label={t`Default`}
@@ -144,16 +156,6 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
           />
         )}
       </DetailsTable>
-      {!readOnly && (
-        <Group>
-          <Button
-            leftSection={<Icon name="add" />}
-            onClick={() => setEditor({ grouping: undefined })}
-          >
-            {t`Add grouping`}
-          </Button>
-        </Group>
-      )}
       {editor != null && (
         <GroupingModal
           field={field}

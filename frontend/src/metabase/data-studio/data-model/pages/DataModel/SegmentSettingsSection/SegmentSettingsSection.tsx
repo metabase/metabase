@@ -63,12 +63,14 @@ export function SegmentSettingsSection({
       : setDatabaseSegmentSettings(databaseId, change);
 
   return (
-    <SidebarSection title={t`Segments and filters`}>
-      <Text size="sm" c="text-secondary">
-        {isSchema
+    <SidebarSection
+      title={t`Segments and filters`}
+      description={
+        isSchema
           ? t`Applies to every table in this schema.`
-          : t`Applies to every table in this database unless its schema overrides it.`}
-      </Text>
+          : t`Applies to every table in this database unless its schema overrides it.`
+      }
+    >
       <DetailsTable>
         <DetailsRow
           label={t`Generate segments`}
