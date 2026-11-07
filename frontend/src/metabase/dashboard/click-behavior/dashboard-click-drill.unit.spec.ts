@@ -274,7 +274,7 @@ describe("getDashboardDrillParameters", () => {
       },
     });
 
-    expect(pairs).toEqual([["current-param", "CA"]]);
+    expect(pairs).toEqual([["current-param", ["CA"]]]);
   });
 });
 
