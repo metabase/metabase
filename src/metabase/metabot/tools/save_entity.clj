@@ -32,7 +32,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private chart-id-schema
+(def chart-id-schema
   "A chart ID must fit `report_card.metabot_chart_id`, a `varchar(36)`."
   [:string {:min 1 :max 36}])
 
@@ -109,7 +109,7 @@
                :text (str "To offer another collection, read `metabase://collections?tree=true` with"
                           " `read_resource` and pick one with `can_write=true`.")}]})
 
-(defn- check-writable!
+(defn check-writable!
   "Convert a 403 from `check` into [[destination-not-writable!]].
   `check` must be a write or create permission check for `destination`."
   [destination check]
@@ -128,7 +128,7 @@
   [{:keys [message]}]
   {:message message :recovery []})
 
-(defn- do-with-save-rejections
+(defn do-with-save-rejections
   "Return `thunk`'s result, converting undeclared API 4xx failures into recoverable save errors."
   [thunk]
   (try
@@ -150,7 +150,7 @@
                :text (str "Use `construct_notebook_query` to make a chart without the invalid query content,"
                           " then retry with its chart ID.")}]})
 
-(defn- check-query-permissions!
+(defn check-query-permissions!
   "Require permission to run `dataset-query`.
   A permission refusal ends the turn; invalid query content can be corrected by the agent."
   [dataset-query]
@@ -177,7 +177,7 @@
   (or (first (:queries chart))
       (get (shared/current-queries-state) (:query_id chart))))
 
-(defn- resolve-chart
+(defn resolve-chart
   "Look up the generated chart from agent memory and return the pieces needed to
   build a card: a legacy `dataset_query` and a `display` keyword. Mirrors the
   lookup in `edit_chart` / `links/resolve-chart-link`."
@@ -199,13 +199,15 @@
                         (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))
 
-(defn- personal-collection-id []
+(defn personal-collection-id
+  "The current user's personal collection ID. Throws [[no-personal-collection!]] when the user has none."
+  []
   (or (:id (collection/user->personal-collection api/*current-user-id*))
       ;; API-key users have no personal collection; without this check the nil would
       ;; silently save into the root collection instead
       (no-personal-collection! {})))
 
-(defn- collection-name
+(defn collection-name
   "Current display name of a collection target, for the LLM-facing save summary.
   A `nil` id is the root (\"Our analytics\") collection."
   [collection-id]
@@ -301,7 +303,7 @@
        :destination-name (:name document)
        :link             (str "metabase://document/" document-id)})))
 
-(defn- publish-card-create!
+(defn publish-card-create!
   "Publish the `:event/card-create` event for a card that has already been committed.
   Log failures without throwing."
   [card]

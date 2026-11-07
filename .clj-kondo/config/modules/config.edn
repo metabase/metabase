@@ -1575,6 +1575,7 @@
               lib.schema
               metabot.llm
               metabot.slackbot
+              metabot.toolkit
               metrics
               models
               native-query-snippets
