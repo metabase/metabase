@@ -6,6 +6,10 @@ title: API changelog
 
 ## Metabase 0.66.0
 
+- Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
+  they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
+  Queries sent with `dimension` are still accepted and converted to `field-id`.
+
 - `GET /api/table/card__:id/query_metadata` and `GET /api/table/card__:id/fks` have been removed. Use
   `GET /api/card/:id` and `GET /api/card/:id/query_metadata` for a card's columns and dependent metadata.
 

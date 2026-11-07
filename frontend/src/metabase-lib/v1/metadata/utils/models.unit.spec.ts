@@ -184,7 +184,7 @@ describe("data model utils", () => {
         it(`returns false when '${tagType}' variables are used`, () => {
           const card = createSavedNativeCard({
             tags: {
-              foo: { type: tagType, dimension: PRODUCTS.CATEGORY },
+              foo: { type: tagType, "field-id": PRODUCTS.CATEGORY },
             },
           });
           const { metadata } = setup({ cards: [card] });
@@ -199,7 +199,7 @@ describe("data model utils", () => {
         const card = createSavedNativeCard({
           tags: {
             "#5": { type: "card" },
-            foo: { type: "dimension", dimension: PRODUCTS.CATEGORY },
+            foo: { type: "dimension", "field-id": PRODUCTS.CATEGORY },
           },
         });
         const { metadata } = setup({ cards: [card] });

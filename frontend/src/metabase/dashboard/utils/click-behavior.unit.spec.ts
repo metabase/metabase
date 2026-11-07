@@ -194,7 +194,7 @@ describe("metabase/dashboard/utils/click-behavior", () => {
                 templateTags: {
                   my_field_filter: {
                     default: null,
-                    dimension: PRODUCTS.CATEGORY,
+                    "field-id": PRODUCTS.CATEGORY,
                     "display-name": "My Field Filter",
                     id: "foo123",
                     name: "my_field_filter",
@@ -472,7 +472,7 @@ describe("metabase/dashboard/utils/click-behavior", () => {
                     my_field_filter: {
                       default: null,
                       // Unjustified type cast. FIXME
-                      dimension: field.id as FieldId,
+                      "field-id": field.id as FieldId,
                       "display-name": "My Field Filter",
                       id: "foo123",
                       name: "my_field_filter",

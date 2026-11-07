@@ -289,7 +289,7 @@ describe("parameters/utils/targets", () => {
         Lib.createTestNativeQuery(provider, {
           query: "select * from PRODUCTS where {{foo}}",
           templateTags: {
-            foo: { type: "dimension", dimension: PRODUCTS.CATEGORY },
+            foo: { type: "dimension", "field-id": PRODUCTS.CATEGORY },
           },
         }),
       );

@@ -353,28 +353,28 @@
                                                                              :display-name "Id"
                                                                              :id           "_id_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :id) nil]
+                                                                             :field-id     (mt/id :people :id)
                                                                              :widget-type  :id
                                                                              :default      nil}
                                                                   "name"    {:name         "name"
                                                                              :display-name "Name"
                                                                              :id           "_name_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :name) nil]
+                                                                             :field-id     (mt/id :people :name)
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "source"  {:name         "source"
                                                                              :display-name "Source"
                                                                              :id           "_source_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :source) nil]
+                                                                             :field-id     (mt/id :people :source)
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "user_id" {:name         "user_id"
                                                                              :display-name "User"
                                                                              :id           "_user_id_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :orders :user_id) nil]
+                                                                             :field-id     (mt/id :orders :user_id)
                                                                              :widget-type  :id
                                                                              :default      nil}}}
                                                       :database (mt/id)}}
@@ -440,7 +440,7 @@
                                                                               :display-name "name"
                                                                               :id           "_name_"
                                                                               :type         :dimension
-                                                                              :dimension    [:field (mt/id :people :name) nil]
+                                                                              :field-id     (mt/id :people :name)
                                                                               :widget-type  :string/contains}}}
                                                           :database (mt/id)}}
                :model/DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
@@ -498,7 +498,7 @@
                                                                               :display-name "name"
                                                                               :id           "_name_"
                                                                               :type         :dimension
-                                                                              :dimension    [:field (mt/id :people :name) nil]
+                                                                              :field-id     (mt/id :people :name)
                                                                               :widget-type  :string/contains}}}
                                                           :database (mt/id)}}
                :model/DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
@@ -3171,19 +3171,19 @@
                                                                           :display-name "Name"
                                                                           :id           "_CARD_ID_"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :categories :name) nil]
+                                                                          :field-id     (mt/id :categories :name)
                                                                           :widget-type  :string/=}
                                                               "notname"  {:name         "notname"
                                                                           :display-name "Not Name"
                                                                           :id           "_CARD_NOTNAME_"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :categories :name) nil]
+                                                                          :field-id     (mt/id :categories :name)
                                                                           :widget-type  :string/!=}
                                                               "contains" {:name         "contains"
                                                                           :display-name "Name Contains"
                                                                           :id           "_CARD_CONTAINS_"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :categories :name) nil]
+                                                                          :field-id     (mt/id :categories :name)
                                                                           :widget-type  :string/contains
                                                                           :options      {:case-sensitive false}}}}}}
       :model/DashboardCard dashcard {:card_id            (:id card)
@@ -4019,7 +4019,7 @@
                                                           :display-name "id"
                                                           :type         :dimension
                                                           :widget-type  :id
-                                                          :dimension    [:field (mt/id :people :id) nil]}})}}
+                                                          :field-id     (mt/id :people :id)}})}}
                  :model/Dashboard {dashboard-id :id}
                  {:parameters [{:name "id" :slug "id" :id "_id_" :type param-type}]}
                  :model/DashboardCard {dashcard-id :id}
@@ -4219,7 +4219,7 @@
                                                            :name         "cat"
                                                            :display-name "Cat"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :field-id     (mt/id :products :category)
                                                            :widget-type  :string/=
                                                            :default      ["Gizmo"]}}})]
         (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
@@ -5106,28 +5106,28 @@
                                                                              :display-name "Id"
                                                                              :id           "_id_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :id) nil]
+                                                                             :field-id     (mt/id :people :id)
                                                                              :widget-type  :id
                                                                              :default      nil}
                                                                   "name"    {:name         "name"
                                                                              :display-name "Name"
                                                                              :id           "_name_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :name) nil]
+                                                                             :field-id     (mt/id :people :name)
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "source"  {:name         "source"
                                                                              :display-name "Source"
                                                                              :id           "_source_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :source) nil]
+                                                                             :field-id     (mt/id :people :source)
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "user_id" {:name         "user_id"
                                                                              :display-name "User"
                                                                              :id           "_user_id_"
                                                                              :type         :dimension
-                                                                             :dimension    [:field (mt/id :orders :user_id) nil]
+                                                                             :field-id     (mt/id :orders :user_id)
                                                                              :widget-type  :id
                                                                              :default      nil}}}
                                                       :database (mt/id)}
@@ -6294,7 +6294,7 @@
     (let [mp       (mt/metadata-provider)
           cat-tag  (-> (lib/native-query mp "select count(*) from products where {{cat}}")
                        (lib/with-template-tags {"cat" {:id "_CAT_TAG_" :name "cat" :display-name "Cat" :type :dimension
-                                                       :dimension (lib/ref (lib.metadata/field mp (mt/id :products :category)))
+                                                       :field-id  (mt/id :products :category)
                                                        :widget-type :string/=}}))]
       (mt/with-temp [:model/Card card {:dataset_query cat-tag}
                      :model/Dashboard dashboard {:parameters [{:id "p" :type :string/= :name "p" :slug "p"}]}

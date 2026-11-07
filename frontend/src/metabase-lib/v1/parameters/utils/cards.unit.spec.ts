@@ -33,7 +33,7 @@ describe("parameters/utils/cards", () => {
         quantity: {
           id: "tag-id",
           type: "dimension",
-          dimension: ORDERS.QUANTITY,
+          "field-id": ORDERS.QUANTITY,
           "widget-type": "number/=",
         },
       },

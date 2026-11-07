@@ -155,7 +155,7 @@ describe("QueryBuilder > native question parameters", () => {
       name: "filter",
       "display-name": "Filter",
       type: "dimension",
-      dimension: ["field", PRODUCTS.CATEGORY, null],
+      "field-id": PRODUCTS.CATEGORY,
       "widget-type": "string/=",
     });
 
@@ -181,7 +181,7 @@ describe("QueryBuilder > native question parameters", () => {
             name: "filter",
             "display-name": "Filter",
             type: "dimension",
-            dimension: ["field", PRODUCTS.RATING, null],
+            "field-id": PRODUCTS.RATING,
             "widget-type": "number/between",
           }),
         ),

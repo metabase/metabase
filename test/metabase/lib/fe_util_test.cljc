@@ -1006,7 +1006,7 @@
                                                :name "foo"
                                                :widget-type :text
                                                :display-name "foo"
-                                               :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+                                               :field-id  1}})
                (lib/dependent-metadata nil :question))))))
 
 (deftest ^:parallel dependent-metadata-test-2
