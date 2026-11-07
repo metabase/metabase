@@ -85,6 +85,19 @@
         (is (= expected (sql-parsing/replace-names (sql-tools/sqlglot-parser) dialect sql replacements))
             (pr-str sql))))))
 
+;;; ------------------------------------------------ add-into-clause -----------------------------------------------
+
+(deftest ^:parallel add-into-clause-test
+  (testing "a SELECT rewritten as a SQL Server SELECT INTO, or the error when it is not a SELECT"
+    (doseq [{:keys [name sql dialect table-name expected error]} (cases "add_into_clause")]
+      (testing name
+        (if error
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                (re-pattern (str "^sqlglot call failed: " (java.util.regex.Pattern/quote error) "$"))
+                                (sql-parsing/add-into-clause (sql-tools/sqlglot-parser) dialect sql table-name)))
+          (is (= expected (sql-parsing/add-into-clause (sql-tools/sqlglot-parser) dialect sql table-name))
+              (pr-str sql)))))))
+
 ;;; ------------------------------------------------ field-references ----------------------------------------------
 
 (deftest ^:parallel field-references-test
