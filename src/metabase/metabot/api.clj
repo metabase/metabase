@@ -475,7 +475,8 @@
                                         [:name ms/NonBlankString]
                                         [:type {:optional true} [:maybe ms/NonBlankString]]]]]
             [:metrics     {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-            [:table_name  {:optional true} [:maybe ms/NonBlankString]]]]
+            [:table_name  {:optional true} [:maybe ms/NonBlankString]]
+            [:database_id ms/PositiveInt]]]
   (metabot.summary-formula/suggest-formula body))
 
 (def ^{:arglists '([request respond raise])} routes

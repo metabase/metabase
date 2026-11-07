@@ -20,7 +20,8 @@
                          {:name "Created At" :type "date"}
                          {:name "User → Name" :type "text"}]
            :metrics     ["Revenue"]
-           :table_name  "Orders"}
+           :table_name  "Orders"
+           :database_id (mt/id)}
           overrides)))
 
 (defn- do-with-llm
@@ -292,14 +293,33 @@
        (doseq [[description body] {"missing mode"         (dissoc (request-body) :mode)
                                    "missing prompt"       (dissoc (request-body) :prompt)
                                    "missing columns"      (dissoc (request-body) :columns)
+                                   "missing database_id"  (dissoc (request-body) :database_id)
                                    "blank prompt"         (request-body {:prompt "   "})
                                    "invalid mode"         (request-body {:mode "filter"})
                                    "blank column name"    (request-body {:columns [{:name " "}]})
-                                   "blank metric name"    (request-body {:metrics [" "]})}]
+                                   "blank metric name"    (request-body {:metrics [" "]})
+                                   "non-int database_id"  (request-body {:database_id "orders"})
+                                   "virtual database_id"  (request-body {:database_id -1337})}]
          (testing description
            (is (=? {:errors some?}
                    (mt/user-http-request :rasta :post 400 endpoint body)))))
        (is (empty? @calls))))))
+
+;;; -------------------------------------------------- Database --------------------------------------------------
+
+(deftest summary-formula-unknown-database-test
+  (testing "POST /api/metabot/summary-formula returns a 404 for a database that doesn't exist"
+    (check-error 404 "Not found." {:database_id Integer/MAX_VALUE})))
+
+(deftest summary-formula-unqueryable-database-test
+  (testing "POST /api/metabot/summary-formula returns a 403 when the user can't query the database"
+    (mt/with-no-data-perms-for-all-users!
+      (check-error 403 "You don't have permissions to do that."))))
+
+(deftest summary-formula-checks-ai-before-database-test
+  (testing "POST /api/metabot/summary-formula reports that AI is off before it looks at the database"
+    (mt/with-temporary-setting-values [metabot-enabled? false]
+      (check-error 403 "AI features are not enabled." {:database_id Integer/MAX_VALUE}))))
 
 ;;; ------------------------------------------------ Localization ------------------------------------------------
 
