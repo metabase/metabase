@@ -12,7 +12,7 @@ import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-typ
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
-  ParameterFieldInfo,
+  ParameterField,
   ParameterType,
   ParameterValue,
   ParameterValueOrArray,
@@ -117,7 +117,7 @@ function parseParameterValueForNumber(
 function parseParameterValueForFields(
   type: ParameterType,
   value: ParameterValueOrArray,
-  fields: ParameterFieldInfo[],
+  fields: ParameterField[],
 ): ParameterValueOrArray {
   const typeInfos = fields.map(getFieldTypeInfo);
 

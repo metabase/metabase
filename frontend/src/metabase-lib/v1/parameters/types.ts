@@ -1,6 +1,6 @@
 import type {
   Parameter,
-  ParameterFieldInfo,
+  ParameterField,
   ParameterTarget,
   ParameterValueOrArray,
 } from "metabase-types/api";
@@ -10,7 +10,7 @@ interface ValuePopulatedParameter extends ParameterWithTemplateTagTarget {
 }
 
 export interface FieldFilterUiParameter extends ValuePopulatedParameter {
-  fields: ParameterFieldInfo[];
+  fields: ParameterField[];
 }
 
 export type UiParameter = (FieldFilterUiParameter | ValuePopulatedParameter) & {

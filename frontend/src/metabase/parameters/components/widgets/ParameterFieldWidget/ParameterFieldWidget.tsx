@@ -19,7 +19,7 @@ import {
 import type {
   CardId,
   DashboardId,
-  ParameterFieldInfo,
+  ParameterField,
   RowValue,
 } from "metabase-types/api";
 
@@ -30,7 +30,7 @@ import FieldValuesWidget from "./FieldValuesWidget";
 import { normalizeValue } from "./normalizeValue";
 
 interface ParameterFieldWidgetProps {
-  fields: ParameterFieldInfo[];
+  fields: ParameterField[];
   isEditing?: boolean;
   parameter: UiParameter;
   parameters?: UiParameter[];

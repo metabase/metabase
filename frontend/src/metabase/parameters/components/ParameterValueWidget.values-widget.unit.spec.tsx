@@ -12,7 +12,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockParameter,
-  createMockParameterFieldInfo,
+  createMockParameterField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
 
@@ -189,7 +189,7 @@ function setup({ valuesCase }: SetupOpts) {
       ...parameterSource(valuesCase),
     }),
     fields: [
-      createMockParameterFieldInfo({
+      createMockParameterField({
         id: 1,
         base_type: "type/Text",
         effective_type: "type/Text",

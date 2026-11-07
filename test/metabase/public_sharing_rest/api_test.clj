@@ -51,19 +51,31 @@
   [field-id]
   (u/qualified-name (t2/select-one-fn :effective_type :model/Field :id field-id)))
 
-(defn- venues-category-id-param-field
-  "The `:param_fields` entry for `venues.category_id`: an FK whose target has a `:type/Name` Field, so its values have
-  human-readable labels."
+(defn- categories-id-target
+  "The `:target` a `:param_fields` entry for `venues.category_id` carries: the
+  Categories primary key in public columns, with the `:name_field` that labels its
+  values. A public parameter widget cannot remap an FK's values without it."
   []
-  {:id               (mt/id :venues :category_id)
-   :name             "CATEGORY_ID"
-   :display_name     "Category ID"
-   :base_type        "type/Integer"
-   :effective_type   (field-effective-type (mt/id :venues :category_id))
-   :semantic_type    "type/FK"
-   :settings         nil
-   :has_field_values "none"
-   :has_remapping    true})
+  {:id                 (mt/id :categories :id)
+   :table_id           (mt/id :categories)
+   :display_name       "ID"
+   :base_type          "type/BigInteger"
+   :effective_type     (field-effective-type (mt/id :categories :id))
+   :settings           nil
+   :name               "ID"
+   :semantic_type      "type/PK"
+   :has_field_values   "none"
+   :fk_target_field_id nil
+   :name_field         {:id                 (mt/id :categories :name)
+                        :table_id           (mt/id :categories)
+                        :display_name       "Name"
+                        :base_type          "type/Text"
+                        :effective_type     (field-effective-type (mt/id :categories :name))
+                        :settings           nil
+                        :name               "NAME"
+                        :semantic_type      "type/Name"
+                        :has_field_values   "list"
+                        :fk_target_field_id nil}})
 
 (defn- shared-obj []
   {:public_uuid       (str (random-uuid))
@@ -1615,19 +1627,32 @@
                                                                   :type         :dimension
                                                                   :field-id     (mt/id :venues :category_id)
                                                                   :widget-type  :id}})))]
-          (is (= {:_CATEGORY_ [(venues-category-id-param-field)]}
+          (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
+                                :table_id           (mt/id :venues)
+                                :display_name       "Category ID"
+                                :base_type          "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                :settings           nil
+                                :name               "CATEGORY_ID"
+                                :semantic_type      "type/FK"
+                                :has_field_values   "none"
+                                :fk_target_field_id (mt/id :categories :id)
+                                :target             (categories-id-target)
+                                :dimensions         []}]}
                  (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card)))))))))))
 
 (deftest dashboard-param-fields-anonymous-fk-target-test
-  (testing "GET /api/public/dashboard/:uuid :param_fields remap FK through its target without session"
+  (testing "GET /api/public/dashboard/:uuid :param_fields carry an FK's target without a session"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-sharing-enabled-and-temp-dashcard-referencing! :orders :user_id [dashboard]
-        (is (=? [{:id            (mt/id :orders :user_id)
-                  :has_remapping true}]
-                (-> (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard)))
-                    :param_fields
-                    vals
-                    first)))))))
+        (testing "the target labels the FK's values, so a public widget cannot remap them without it"
+          (is (=? {:id       (mt/id :people :id)
+                   :name_field {:id (mt/id :people :name)}}
+                  (-> (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard)))
+                      :param_fields
+                      vals
+                      ffirst
+                      :target))))))))
 
 (deftest dashboard-param-fields-public-columns-test
   (testing "GET /api/public/dashboard/:uuid :param_fields only carry the public Field columns"
@@ -1644,36 +1669,96 @@
                                                        :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
                                                                              :card_id      (u/the-id card)
                                                                              :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]}]
-          (is (= {:_CATEGORY_ID_ [(venues-category-id-param-field)]}
+          (is (= {:_CATEGORY_ID_ [{:id                 (mt/id :venues :category_id)
+                                   :table_id           (mt/id :venues)
+                                   :display_name       "Category ID"
+                                   :base_type          "type/Integer"
+                                   :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                   :settings           nil
+                                   :name               "CATEGORY_ID"
+                                   :semantic_type      "type/FK"
+                                   :has_field_values   "none"
+                                   :fk_target_field_id (mt/id :categories :id)
+                                   :target             (categories-id-target)
+                                   :dimensions         []}]}
                  (:param_fields (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard)))))))))))
 
-(deftest card-param-fields-has-remapping-test
-  (testing "GET /api/public/card/:uuid :param_fields remap PK through its name Field and Field with Dimension"
+(deftest card-param-fields-nested-fields-public-columns-test
+  (testing "GET /api/public/card/:uuid nested :param_fields Fields only carry the public Field columns too"
     (mt/with-temporary-setting-values [enable-public-sharing true]
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Dimension _    {:field_id                (mt/id :venues :price)
-                                              :name                    "Price"
-                                              :type                    :external
-                                              :human_readable_field_id (mt/id :categories :name)}
-                       :model/Card      card (assoc (shared-obj)
-                                                    :dataset_query
-                                                    (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{id}} AND {{price}}")
-                                                        (lib/with-template-tags
-                                                          {"id"    {:id           "_ID_"
-                                                                    :name         "id"
-                                                                    :display-name "ID"
-                                                                    :type         :dimension
-                                                                    :field-id     (mt/id :venues :id)
-                                                                    :widget-type  :id}
-                                                           "price" {:id           "_PRICE_"
-                                                                    :name         "price"
-                                                                    :display-name "Price"
-                                                                    :type         :dimension
-                                                                    :field-id     (mt/id :venues :price)
-                                                                    :widget-type  :id}})))]
-          (is (=? {:_ID_    [{:id (mt/id :venues :id), :has_remapping true}]
-                   :_PRICE_ [{:id (mt/id :venues :price), :has_remapping true}]}
-                  (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card)))))))))))
+      (let [mp              (mt/metadata-provider)
+            venues-id       {:id                 (mt/id :venues :id)
+                             :table_id           (mt/id :venues)
+                             :display_name       "ID"
+                             :base_type          "type/BigInteger"
+                             :effective_type     (field-effective-type (mt/id :venues :id))
+                             :settings           nil
+                             :name               "ID"
+                             :semantic_type      "type/PK"
+                             :has_field_values   "none"
+                             :fk_target_field_id nil}
+            venues-name     {:id                 (mt/id :venues :name)
+                             :table_id           (mt/id :venues)
+                             :display_name       "Name"
+                             :base_type          "type/Text"
+                             :effective_type     (field-effective-type (mt/id :venues :name))
+                             :settings           nil
+                             :name               "NAME"
+                             :semantic_type      "type/Name"
+                             :has_field_values   "list"
+                             :fk_target_field_id nil}
+            venues-category {:id                 (mt/id :venues :category_id)
+                             :table_id           (mt/id :venues)
+                             :display_name       "Category ID"
+                             :base_type          "type/Integer"
+                             :effective_type     (field-effective-type (mt/id :venues :category_id))
+                             :settings           nil
+                             :name               "CATEGORY_ID"
+                             :semantic_type      "type/FK"
+                             :has_field_values   "none"
+                             :fk_target_field_id (mt/id :categories :id)
+                             :target             (categories-id-target)}
+            categories-name {:id                 (mt/id :categories :name)
+                             :table_id           (mt/id :categories)
+                             :display_name       "Name"
+                             :base_type          "type/Text"
+                             :effective_type     (field-effective-type (mt/id :categories :name))
+                             :settings           nil
+                             :name               "NAME"
+                             :semantic_type      "type/Name"
+                             :has_field_values   "list"
+                             :fk_target_field_id nil}]
+        (mt/with-temp [:model/Dimension dimension {:field_id                (mt/id :venues :category_id)
+                                                   :name                    "Category"
+                                                   :type                    :external
+                                                   :human_readable_field_id (mt/id :categories :name)}
+                       :model/Card      card      (assoc (shared-obj)
+                                                         :dataset_query
+                                                         (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{id}} AND {{category}}")
+                                                             (lib/with-template-tags
+                                                               {"id"       {:id           "_ID_"
+                                                                            :name         "id"
+                                                                            :display-name "ID"
+                                                                            :type         :dimension
+                                                                            :field-id     (mt/id :venues :id)
+                                                                            :widget-type  :id}
+                                                                "category" {:id           "_CATEGORY_"
+                                                                            :name         "category"
+                                                                            :display-name "Category"
+                                                                            :type         :dimension
+                                                                            :field-id     (mt/id :venues :category_id)
+                                                                            :widget-type  :id}})))]
+          (testing ":name_field of a PK, the :dimensions :human_readable_field, and no FK :target without a session"
+            (is (= {:_ID_       [(assoc venues-id :name_field venues-name, :dimensions [])]
+                    :_CATEGORY_ [(assoc venues-category
+                                        :dimensions [{:id                      (:id dimension)
+                                                      :entity_id               (:entity_id dimension)
+                                                      :field_id                (mt/id :venues :category_id)
+                                                      :name                    "Category"
+                                                      :type                    "external"
+                                                      :human_readable_field_id (mt/id :categories :name)
+                                                      :human_readable_field    categories-name}])]}
+                   (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))))
 
 (deftest dashboard-param-fields-unmapped-template-tag-test
   (testing "GET /api/public/dashboard/:uuid :param_fields never carry entries for a native card's template tags that
@@ -1714,13 +1799,15 @@
                                        :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                              :target       [:dimension [:field "NAME" {:base-type :type/Text}]]}]}]
       (is (=? {:param_fields {(keyword "_CATEGORY_NAME_")
-                              [{:semantic_type    "type/Name"
-                                :name             "NAME"
-                                :has_field_values "list"
-                                :id               (mt/id :categories :name)
-                                :display_name     "Name"
-                                :base_type        "type/Text"
-                                :has_remapping    false}]}}
+                              [{:semantic_type "type/Name",
+                                :table_id (mt/id :categories)
+                                :name "NAME",
+                                :has_field_values "list",
+                                :fk_target_field_id nil,
+                                :dimensions (),
+                                :id (mt/id :categories :name)
+                                :display_name "Name",
+                                :base_type "type/Text"}]}}
               (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))))
       (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
               (client/client :get 200 (format "public/dashboard/%s/params/%s/values" (:public_uuid dash) "_CATEGORY_NAME_")))))))

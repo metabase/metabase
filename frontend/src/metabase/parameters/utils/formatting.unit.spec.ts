@@ -1,5 +1,5 @@
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import { createMockParameterFieldInfo } from "metabase-types/api/mocks";
+import { createMockParameterField } from "metabase-types/api/mocks";
 import {
   createOrdersTotalField,
   createProductsCategoryField,
@@ -8,11 +8,9 @@ import {
 
 import { formatParameterValue } from "./formatting";
 
-const numberField = createMockParameterFieldInfo(createOrdersTotalField());
-const textField = createMockParameterFieldInfo(createProductsTitleField());
-const categoryField = createMockParameterFieldInfo(
-  createProductsCategoryField(),
-);
+const numberField = createMockParameterField(createOrdersTotalField());
+const textField = createMockParameterField(createProductsTitleField());
+const categoryField = createMockParameterField(createProductsCategoryField());
 
 describe("metabase/parameters/utils/formatting", () => {
   describe("formatParameterValue without settings", () => {

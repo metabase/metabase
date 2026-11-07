@@ -177,7 +177,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       H.popover().within(() => {
-        cy.findByPlaceholderText("Search").type("1,3,");
+        cy.findByPlaceholderText("Search by Name or enter an ID").type("1,3,");
 
         cy.button("Add filter").click();
       });

@@ -1,12 +1,12 @@
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { ParameterFieldInfo } from "metabase-types/api";
+import type { ParameterField } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { getField } from "./testMocks.spec";
 import { getValuesMode, isSearchable, parseStringValue } from "./utils";
 
-function createParameter(fields: ParameterFieldInfo[]): UiParameter {
+function createParameter(fields: ParameterField[]): UiParameter {
   return { ...createMockParameter({ type: "string/=" }), fields };
 }
 

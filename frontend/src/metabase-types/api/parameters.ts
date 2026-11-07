@@ -1,6 +1,7 @@
 import type { CardId } from "./card";
 import type { RowValue, TemporalUnit } from "./dataset";
 import type {
+  FieldDimensionType,
   FieldFormattingSettings,
   FieldId,
   FieldValuesType,
@@ -44,16 +45,30 @@ export type ParameterType =
 
 export type ParameterId = string;
 
-export interface ParameterFieldInfo {
+export interface ParameterNameField {
   id: FieldId;
-  name: string;
   display_name: string;
   base_type: string;
-  effective_type: string | null;
+  effective_type?: string | null;
   semantic_type: string | null;
-  settings: FieldFormattingSettings | null;
+  settings?: FieldFormattingSettings | null;
+}
+
+export interface ParameterTargetField {
+  id: FieldId;
+  name_field?: ParameterNameField | null;
+}
+
+export interface ParameterFieldDimension {
+  type: FieldDimensionType;
+  human_readable_field?: ParameterNameField | null;
+}
+
+export interface ParameterField extends ParameterNameField {
   has_field_values: FieldValuesType;
-  has_remapping: boolean;
+  dimensions?: ParameterFieldDimension[];
+  name_field?: ParameterNameField | null;
+  target?: ParameterTargetField | null;
 }
 
 export type ActionParameterValue = string | number | boolean;

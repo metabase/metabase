@@ -114,18 +114,38 @@
                                                            [:archived          :boolean]
                                                            [:enable_embedding  :boolean]]]]]]])
 
-(mr/def ::param-field
-  "What a parameter widget reads off a Field it filters on, as `:param_fields` hydrates it onto a Card or Dashboard."
+(mr/def ::param-field.name-field
+  "A Field trimmed to the columns a parameter widget needs, as the `:name_field` hydration attaches it."
   [:map {:closed true}
-   [:id               ::lib.schema.id/field]
-   [:name             :string]
-   [:display_name     :string]
-   [:base_type        [:or :keyword :string]]
-   [:effective_type   [:maybe [:or :keyword :string]]]
-   [:semantic_type    [:maybe [:or :keyword :string]]]
-   [:settings         [:maybe :metabase.warehouse-schema.schema/field.settings]]
-   [:has_field_values [:maybe [:or :keyword :string]]]
-   [:has_remapping    :boolean]])
+   [:id                 ::lib.schema.id/field]
+   [:table_id           [:maybe ::lib.schema.id/table]]
+   [:display_name       [:maybe :string]]
+   [:base_type          [:maybe [:or :keyword :string]]]
+   [:effective_type     [:maybe [:or :keyword :string]]]
+   [:name               :string]
+   [:semantic_type      [:maybe [:or :keyword :string]]]
+   [:has_field_values   [:maybe [:or :keyword :string]]]
+   [:fk_target_field_id [:maybe ::lib.schema.id/field]]
+   [:settings           [:maybe :metabase.warehouse-schema.schema/field.settings]]])
+
+(mr/def ::param-field.target
+  "A `::param-field.name-field` further hydrated with its own `:name_field`, as the `:target` hydration attaches it."
+  [:merge
+   ::param-field.name-field
+   [:map {:closed true}
+    [:name_field {:optional true} [:maybe ::param-field.name-field]]]])
+
+(mr/def ::param-field
+  "A Field trimmed down to the columns a parameter widget needs, as `:param_fields` hydrates it onto a Card or
+  Dashboard."
+  [:merge
+   ::param-field.target
+   [:map {:closed true}
+    [:target     {:optional true} [:maybe ::param-field.target]]
+    [:dimensions {:optional true} [:sequential [:merge
+                                                :metabase.warehouse-schema.schema/dimension
+                                                [:map {:closed true}
+                                                 [:human_readable_field {:optional true} [:maybe ::param-field.name-field]]]]]]]])
 
 (mr/def ::card.dataset-query
   "The `:dataset_query` column of a Card, decoded."

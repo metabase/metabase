@@ -1,13 +1,13 @@
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Parameter,
-  ParameterFieldInfo,
+  ParameterField,
   ParameterValueOrArray,
   ParameterValuesMap,
 } from "metabase-types/api";
 import {
   createMockParameter,
-  createMockParameterFieldInfo,
+  createMockParameterField,
 } from "metabase-types/api/mocks";
 
 import {
@@ -22,10 +22,10 @@ const UNTYPED = "type/*";
 const UNDEFINED_QUERY_PARAMS = undefined as unknown as ParameterValuesMap;
 
 describe("parameters/utils/parameter-values", () => {
-  let field1: ParameterFieldInfo;
-  let field2: ParameterFieldInfo;
-  let field3: ParameterFieldInfo;
-  let field4: ParameterFieldInfo;
+  let field1: ParameterField;
+  let field2: ParameterField;
+  let field3: ParameterField;
+  let field4: ParameterField;
   let parameter1: FieldFilterUiParameter;
   let parameter2: FieldFilterUiParameter;
   let parameter3: FieldFilterUiParameter;
@@ -34,19 +34,19 @@ describe("parameters/utils/parameter-values", () => {
   let queryParams: ParameterValuesMap;
 
   beforeEach(() => {
-    field1 = createMockParameterFieldInfo({
+    field1 = createMockParameterField({
       id: 1,
       base_type: UNTYPED,
     });
-    field2 = createMockParameterFieldInfo({
+    field2 = createMockParameterField({
       id: 2,
       base_type: UNTYPED,
     });
-    field3 = createMockParameterFieldInfo({
+    field3 = createMockParameterField({
       id: 3,
       base_type: UNTYPED,
     });
-    field4 = createMockParameterFieldInfo({
+    field4 = createMockParameterField({
       id: 4,
       base_type: UNTYPED,
     });

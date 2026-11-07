@@ -9,14 +9,14 @@ import type {
   DashboardId,
   FieldValue,
   Parameter,
-  ParameterFieldInfo,
+  ParameterField,
   RowValue,
 } from "metabase-types/api";
 
 type FetchRemappingOptions = {
   parameter?: Parameter | null;
   value: RowValue;
-  field?: ParameterFieldInfo | null;
+  field?: ParameterField | null;
   cardId?: CardId | null;
   dashboardId?: DashboardId | null;
   uuid?: string | null;

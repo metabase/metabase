@@ -10,12 +10,6 @@ title: API changelog
   they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
   Queries sent with `dimension` are still accepted and converted to `field-id`.
 
-- The `param_fields` of cards and dashboards, in `GET /api/card/:id`, `GET /api/dashboard/:id` and their public and
-  embedding counterparts, no longer carry Fields. Each entry has only `id`, `name`, `display_name`, `base_type`,
-  `effective_type`, `semantic_type`, `settings`, `has_field_values` and a new `has_remapping`, which tells whether the
-  Field's values have human-readable labels. `table_id`, `fk_target_field_id`, `target`, `name_field` and `dimensions`
-  are gone.
-
 - `GET /api/table/card__:id/query_metadata` and `GET /api/table/card__:id/fks` have been removed. Use
   `GET /api/card/:id` and `GET /api/card/:id/query_metadata` for a card's columns and dependent metadata.
 

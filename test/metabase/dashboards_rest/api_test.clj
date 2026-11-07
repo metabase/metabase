@@ -406,9 +406,11 @@
                                            :parameter_mappings [{:parameter_id "__ID__"
                                                                  :card_id      orders-card-id
                                                                  :target       [:dimension (mt/$ids orders $user_id)]}]}]
-      (is (=? {"__ID__" [{:id            (mt/id :orders :user_id)
-                          :semantic_type :type/FK
-                          :has_remapping true}]}
+      (is (=? {"__ID__" [{:id                 (mt/id :orders :user_id)
+                          :semantic_type      :type/FK
+                          :fk_target_field_id (mt/id :people :id)
+                          :target             {:id (mt/id :people :id)
+                                               :name_field {:id (mt/id :people :name)}}}]}
               (:param_fields (mt/with-test-user :crowberto
                                (#'api.dashboard/get-dashboard dash-id))))))))
 
@@ -630,11 +632,13 @@
                      :collection_authority_level nil
                      :can_write                  false
                      :param_fields               {:foo [{:id               field-id
+                                                         :table_id         table-id
                                                          :display_name     display-name
                                                          :base_type        "type/Text"
                                                          :semantic_type    nil
                                                          :has_field_values "search"
-                                                         :has_remapping    false}]}
+                                                         :name_field       nil
+                                                         :dimensions       []}]}
                      :tabs                       []
                      :dashcards                  [{:size_x                     4
                                                    :size_y                     4
@@ -5255,13 +5259,17 @@
                                      :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                            :target       [:dimension (mt/$ids *categories.name)]}]}]
     (is (=? {:param_fields {(keyword "_CATEGORY_NAME_")
-                            [{:semantic_type    "type/Name"
-                              :name             "NAME"
-                              :has_field_values "list"
-                              :id               (mt/id :categories :name)
-                              :display_name     "Name"
-                              :base_type        "type/Text"
-                              :has_remapping    false}]}}
+                            [{:semantic_type "type/Name",
+                              :table_id (mt/id :categories)
+                              :name "NAME",
+                              :has_field_values "list",
+                              :fk_target_field_id nil,
+                              :dimensions (),
+                              :id (mt/id :categories :name)
+                              :target nil,
+                              :display_name "Name",
+                              :name_field nil,
+                              :base_type "type/Text"}]}}
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dash)))))
     (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))

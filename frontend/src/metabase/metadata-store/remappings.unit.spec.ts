@@ -5,20 +5,23 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   createMockParameter,
-  createMockParameterFieldInfo,
+  createMockParameterField,
 } from "metabase-types/api/mocks";
 import { PEOPLE, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { fetchRemapping } from "./remappings";
 
-const idField = createMockParameterFieldInfo({
+const idField = createMockParameterField({
   id: PEOPLE.ID,
-  name: "ID",
   display_name: "ID",
   base_type: "type/BigInteger",
   semantic_type: "type/PK",
   has_field_values: "none",
-  has_remapping: true,
+  name_field: createMockParameterField({
+    id: PEOPLE.NAME,
+    display_name: "Name",
+    semantic_type: "type/Name",
+  }),
 });
 
 const parameter = createMockParameter({

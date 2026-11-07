@@ -845,40 +845,71 @@
                            (infer-has-field-values column)
                            :none)})))
 
-(mr/def ::field-remapping-info
+(mr/def ::parameter-name-field
   [:map
-   [:id               [:maybe [:ref ::lib.schema.id/field]]]
-   [:name             :string]
-   [:display-name     :string]
-   [:base-type        [:maybe [:ref ::lib.schema.common/base-type]]]
-   [:effective-type   [:maybe [:ref ::lib.schema.common/base-type]]]
-   [:semantic-type    [:maybe [:ref ::lib.schema.common/semantic-or-relation-type]]]
-   [:settings         [:maybe :map]]
-   [:has-field-values [:ref ::field-search-info.has-field-values]]
-   [:has-remapping    :boolean]])
+   [:id             [:ref ::lib.schema.id/field]]
+   [:display-name   :string]
+   [:base-type      [:ref ::lib.schema.common/base-type]]
+   [:effective-type [:maybe [:ref ::lib.schema.common/base-type]]]
+   [:semantic-type  [:maybe [:ref ::lib.schema.common/semantic-or-relation-type]]]
+   [:settings       [:maybe :map]]])
 
-(mu/defn- has-remapping? :- :boolean
+(mr/def ::parameter-target-field
+  [:map
+   [:id         [:ref ::lib.schema.id/field]]
+   [:name-field [:maybe [:ref ::parameter-name-field]]]])
+
+(mr/def ::parameter-field-dimension
+  [:map
+   [:type                 [:enum :internal :external]]
+   [:human-readable-field [:maybe [:ref ::parameter-name-field]]]])
+
+(mr/def ::parameter-field-info
+  [:merge
+   [:ref ::parameter-name-field]
+   [:map
+    [:has-field-values [:ref ::field-search-info.has-field-values]]
+    [:dimensions       [:sequential [:ref ::parameter-field-dimension]]]
+    [:name-field       [:maybe [:ref ::parameter-name-field]]]
+    [:target           [:maybe [:ref ::parameter-target-field]]]]])
+
+(mu/defn- parameter-name-field :- ::parameter-name-field
+  [field :- ::lib.schema.metadata/column]
+  (select-keys field [:id :display-name :base-type :effective-type :semantic-type :settings]))
+
+(mu/defn- name-field :- [:maybe ::parameter-name-field]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   field                 :- ::lib.schema.metadata/column]
+  (some->> (:name-field field) u/the-id (lib.metadata/field metadata-providerable) parameter-name-field))
+
+(mu/defn- parameter-field-dimensions :- [:sequential ::parameter-field-dimension]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  (let [fk-target (some->> (:fk-target-field-id column) (lib.metadata/field metadata-providerable))]
-    (boolean (or (:lib/internal-remap column)
-                 (:lib/external-remap column)
-                 (:name-field (or fk-target column))))))
+  (cond
+    (:lib/internal-remap column)
+    [{:type :internal, :human-readable-field nil}]
 
-(mu/defn field-remapping-info :- ::field-remapping-info
-  "Info a parameter widget needs about the Field of `column`: its names, types, settings, whether it has FieldValues,
-  and whether its values have human-readable labels."
+    (:lib/external-remap column)
+    [{:type                 :external
+      :human-readable-field (some->> (get-in column [:lib/external-remap :field-id])
+                                     (lib.metadata/field metadata-providerable)
+                                     parameter-name-field)}]
+
+    :else
+    []))
+
+(mu/defn parameter-field-info :- [:maybe ::parameter-field-info]
+  "The Field of `column` as a parameter widget reads it: its names, types, settings and FieldValues, and the Fields its
+  values are remapped to through Dimensions, its `:type/Name` Field, or its FK target's. `nil` for a column without
+  a Field."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  (let [field-id (:id column)]
-    {:id               (when (int? field-id) field-id)
-     :name             (:name column)
-     :display-name     (:display-name column)
-     :base-type        (:base-type column)
-     :effective-type   (:effective-type column)
-     :semantic-type    (:semantic-type column)
-     :settings         (:settings column)
-     :has-field-values (if (int? field-id)
-                         (infer-has-field-values column)
-                         :none)
-     :has-remapping    (has-remapping? metadata-providerable column)}))
+  (when (int? (:id column))
+    (let [target (some->> (:fk-target-field-id column) (lib.metadata/field metadata-providerable))]
+      (merge (parameter-name-field column)
+             {:has-field-values (infer-has-field-values column)
+              :dimensions       (parameter-field-dimensions metadata-providerable column)
+              :name-field       (name-field metadata-providerable column)
+              :target           (when target
+                                  {:id         (:id target)
+                                   :name-field (name-field metadata-providerable target)})}))))

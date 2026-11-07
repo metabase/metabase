@@ -4,9 +4,9 @@ import type { FieldReference } from "metabase-types/api";
 import type {
   Clause,
   ColumnMetadata,
-  FieldRemappingInfo,
   FieldSearchInfo,
   MetricMetadata,
+  ParameterFieldInfo,
   Query,
   SegmentMetadata,
 } from "./types";
@@ -53,11 +53,11 @@ export function fieldSearchInfo(
   return ML.field_search_info(query, column);
 }
 
-export function fieldRemappingInfo(
+export function parameterFieldInfo(
   query: Query,
   column: ColumnMetadata,
-): FieldRemappingInfo {
-  return ML.field_remapping_info(query, column);
+): ParameterFieldInfo | null {
+  return ML.parameter_field_info(query, column);
 }
 
 export function legacyRef(

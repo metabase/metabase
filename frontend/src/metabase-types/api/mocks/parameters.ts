@@ -1,6 +1,6 @@
 import type {
   Parameter,
-  ParameterFieldInfo,
+  ParameterField,
   ParameterValues,
   SearchParameterValuesRequest,
 } from "metabase-types/api";
@@ -30,17 +30,15 @@ export const createMockSearchParameterValuesRequest = (
   ...opts,
 });
 
-export const createMockParameterFieldInfo = (
-  opts?: Partial<ParameterFieldInfo>,
-): ParameterFieldInfo => ({
+export const createMockParameterField = (
+  opts?: Partial<ParameterField>,
+): ParameterField => ({
   id: 1,
-  name: "FIELD",
   display_name: "Field",
   base_type: "type/Text",
   effective_type: null,
   semantic_type: null,
   settings: null,
   has_field_values: "list",
-  has_remapping: false,
   ...opts,
 });

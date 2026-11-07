@@ -7,7 +7,7 @@ import { stripId } from "metabase/utils/formatting";
 import * as Lib from "metabase-lib";
 import {
   getFieldTypeInfo,
-  hasRemappedFields,
+  getSearchField,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   canListParameterValues,
@@ -23,7 +23,7 @@ import type {
   DashboardId,
   FieldValue,
   Parameter,
-  ParameterFieldInfo,
+  ParameterField,
   RowValue,
 } from "metabase-types/api";
 
@@ -56,20 +56,25 @@ function getNonSearchableTokenFieldPlaceholder(parameter: Parameter) {
 
 function getSearchableTokenFieldPlaceholder(
   parameter: Parameter,
-  fields: ParameterFieldInfo[],
+  fields: ParameterField[],
 ) {
-  const names = new Set(fields.map((field) => stripId(field.display_name)));
+  const names = new Set(
+    fields.map((field) => stripId(getSearchField(field)?.display_name ?? "")),
+  );
 
-  if (
-    names.size !== 1 ||
-    getSourceType(parameter) != null ||
-    hasRemappedFields(fields)
-  ) {
+  if (names.size !== 1 || getSourceType(parameter) != null) {
     return t`Search`;
   }
 
   const [name] = names;
-  return t`Search by ${name}`;
+  const [firstField] = fields;
+  const canEnterId =
+    firstField != null &&
+    Lib.isID(getFieldTypeInfo(firstField)) &&
+    getSearchField(firstField)?.id !== firstField.id;
+  return canEnterId
+    ? t`Search by ${name}` + t` or enter an ID`
+    : t`Search by ${name}`;
 }
 
 export function hasList({
@@ -115,7 +120,7 @@ export function getTokenFieldPlaceholder({
   options,
   valuesMode,
 }: {
-  fields: ParameterFieldInfo[];
+  fields: ParameterField[];
   parameter: Parameter;
   placeholder?: string;
   options: FieldValue[];
@@ -141,7 +146,7 @@ export function getValuesMode(parameter: Parameter): ValuesMode {
   return "none";
 }
 
-export function isNumeric(parameter: Parameter, fields: ParameterFieldInfo[]) {
+export function isNumeric(parameter: Parameter, fields: ParameterField[]) {
   return (
     isNumberParameter(parameter) ||
     (fields.length > 0 &&

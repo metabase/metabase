@@ -111,7 +111,8 @@
                        :dataset_query])
          (update :dataset_query (fn [query]
                                   (cond-> query
-                                    (seq query) blank-dataset-query)))))))
+                                    (seq query) blank-dataset-query)))
+         params/remove-param-fields-non-public-columns))))
 
 (defn public-card
   "Return the public Card with the given `card-id`, removing all columns that should not be visible to the general
@@ -349,6 +350,7 @@
     (-> (api/check-404 (public-sharing-rest.db/public-dashboard dashboard-id options))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
         keep-param-fields-for-parameters
+        params/remove-param-fields-non-public-columns
         api.dashboard/add-query-average-durations
         (update :dashcards public-dashcards))))
 

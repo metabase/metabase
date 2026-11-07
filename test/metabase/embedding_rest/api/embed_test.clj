@@ -56,19 +56,31 @@
   [field-id]
   (u/qualified-name (t2/select-one-fn :effective_type :model/Field :id field-id)))
 
-(defn- venues-category-id-param-field
-  "The `:param_fields` entry for `venues.category_id`: an FK whose target has a `:type/Name` Field, so its values have
-  human-readable labels."
+(defn- categories-id-target
+  "The `:target` a `:param_fields` entry for `venues.category_id` carries: the
+  Categories primary key in public columns, with the `:name_field` that labels its
+  values. A public parameter widget cannot remap an FK's values without it."
   []
-  {:id               (mt/id :venues :category_id)
-   :name             "CATEGORY_ID"
-   :display_name     "Category ID"
-   :base_type        "type/Integer"
-   :effective_type   (field-effective-type (mt/id :venues :category_id))
-   :semantic_type    "type/FK"
-   :settings         nil
-   :has_field_values "none"
-   :has_remapping    true})
+  {:id                 (mt/id :categories :id)
+   :table_id           (mt/id :categories)
+   :display_name       "ID"
+   :base_type          "type/BigInteger"
+   :effective_type     (field-effective-type (mt/id :categories :id))
+   :settings           nil
+   :name               "ID"
+   :semantic_type      "type/PK"
+   :has_field_values   "none"
+   :fk_target_field_id nil
+   :name_field         {:id                 (mt/id :categories :name)
+                        :table_id           (mt/id :categories)
+                        :display_name       "Name"
+                        :base_type          "type/Text"
+                        :effective_type     (field-effective-type (mt/id :categories :name))
+                        :settings           nil
+                        :name               "NAME"
+                        :semantic_type      "type/Name"
+                        :has_field_values   "list"
+                        :fk_target_field_id nil}})
 
 (defn- the-id-or-entity-id
   "u/the-id doesn't work on entity-ids, so we should just pass them through."
@@ -709,7 +721,18 @@
                                                                     :type         :dimension
                                                                     :field-id     (mt/id :venues :category_id)
                                                                     :widget-type  :id}}))}]
-          (is (= {:_CATEGORY_ [(venues-category-id-param-field)]}
+          (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
+                                :table_id           (mt/id :venues)
+                                :display_name       "Category ID"
+                                :base_type          "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                :settings           nil
+                                :name               "CATEGORY_ID"
+                                :semantic_type      "type/FK"
+                                :has_field_values   "none"
+                                :fk_target_field_id (mt/id :categories :id)
+                                :target             (categories-id-target)
+                                :dimensions         []}]}
                  (:param_fields (client/client :get 200 (card-url card))))))))))
 
 (deftest dashboard-param-fields-public-columns-test
@@ -723,7 +746,18 @@
                                                                     :type :id}]}
                                      :dashcard {:parameter_mappings [{:parameter_id "_CATEGORY_ID_"
                                                                       :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]}}]
-        (is (= {:_CATEGORY_ID_ [(venues-category-id-param-field)]}
+        (is (= {:_CATEGORY_ID_ [{:id                 (mt/id :venues :category_id)
+                                 :table_id           (mt/id :venues)
+                                 :display_name       "Category ID"
+                                 :base_type          "type/Integer"
+                                 :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                 :settings           nil
+                                 :name               "CATEGORY_ID"
+                                 :semantic_type      "type/FK"
+                                 :has_field_values   "none"
+                                 :fk_target_field_id (mt/id :categories :id)
+                                 :target             (categories-id-target)
+                                 :dimensions         []}]}
                (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard))))))))))
 
 (deftest card-param-fields-only-for-enabled-params-test
@@ -758,7 +792,18 @@
                                                                     :type         :dimension
                                                                     :field-id     (mt/id :venues :price)
                                                                     :widget-type  :id}}))}]
-          (is (= {:_CATEGORY_ [(venues-category-id-param-field)]}
+          (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
+                                :table_id           (mt/id :venues)
+                                :display_name       "Category ID"
+                                :base_type          "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                :settings           nil
+                                :name               "CATEGORY_ID"
+                                :semantic_type      "type/FK"
+                                :has_field_values   "none"
+                                :fk_target_field_id (mt/id :categories :id)
+                                :target             (categories-id-target)
+                                :dimensions         []}]}
                  (:param_fields (client/client :get 200 (card-url card {:params {:id 1}}))))))))))
 
 (deftest dashboard-param-fields-only-for-enabled-params-test
@@ -778,7 +823,18 @@
                                                                       :target       [:dimension [:field (mt/id :venues :name) nil]]}
                                                                      {:parameter_id "_PRICE_"
                                                                       :target       [:dimension [:field (mt/id :venues :price) nil]]}]}}]
-        (is (= {:_CATEGORY_ID_ [(venues-category-id-param-field)]}
+        (is (= {:_CATEGORY_ID_ [{:id                 (mt/id :venues :category_id)
+                                 :table_id           (mt/id :venues)
+                                 :display_name       "Category ID"
+                                 :base_type          "type/Integer"
+                                 :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                 :settings           nil
+                                 :name               "CATEGORY_ID"
+                                 :semantic_type      "type/FK"
+                                 :has_field_values   "none"
+                                 :fk_target_field_id (mt/id :categories :id)
+                                 :target             (categories-id-target)
+                                 :dimensions         []}]}
                (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard) {:params {:id 1}})))))))))
 
 (deftest dashboard-param-fields-template-tag-entries-pruned-test
@@ -807,7 +863,18 @@
                    (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard) {:params {:category_id 2}})))))))
         (testing "enabled parameter: one entry, keyed by the parameter id"
           (with-temp-dashcard [dashcard {:card card, :dash (dash-with "enabled"), :dashcard mappings}]
-            (is (= {:_CATEGORY_ID_ [(venues-category-id-param-field)]}
+            (is (= {:_CATEGORY_ID_ [{:id                 (mt/id :venues :category_id)
+                                     :table_id           (mt/id :venues)
+                                     :display_name       "Category ID"
+                                     :base_type          "type/Integer"
+                                     :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                     :settings           nil
+                                     :name               "CATEGORY_ID"
+                                     :semantic_type      "type/FK"
+                                     :has_field_values   "none"
+                                     :fk_target_field_id (mt/id :categories :id)
+                                     :target             (categories-id-target)
+                                     :dimensions         []}]}
                    (:param_fields (client/client :get 200 (dashboard-url (:dashboard_id dashcard))))))))))))
 
 (deftest locked-params-removes-values-fields-and-mappings-test

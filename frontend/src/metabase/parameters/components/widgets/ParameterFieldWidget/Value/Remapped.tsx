@@ -2,13 +2,14 @@ import { Component, type ComponentType } from "react";
 
 import { fetchRemapping } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import type { ParameterFieldInfo } from "metabase-types/api";
+import { getRemappedField } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import type { ParameterField } from "metabase-types/api";
 
 type Remapping = [value: unknown, label: unknown];
 
 interface RemappedOwnProps {
   value?: unknown;
-  column?: ParameterFieldInfo;
+  column?: ParameterField;
   parameter?: { id?: unknown };
   cardId?: unknown;
   dashboardId?: unknown;
@@ -21,7 +22,7 @@ interface RemappedDispatchProps {
   fetchRemapping: (args: {
     parameter?: { id?: unknown };
     value?: unknown;
-    field?: ParameterFieldInfo;
+    field?: ParameterField;
     cardId?: unknown;
     dashboardId?: unknown;
     uuid?: unknown;
@@ -99,8 +100,19 @@ export default (ComposedComponent: ComponentType<any>) => {
     render() {
       const { fetchRemapping, ...props } = this.props;
       const displayValue = this.getDisplayValue();
+      const displayColumn =
+        (displayValue != null &&
+          props.column != null &&
+          getRemappedField(props.column)) ||
+        null;
 
-      return <ComposedComponent {...props} displayValue={displayValue} />;
+      return (
+        <ComposedComponent
+          {...props}
+          displayValue={displayValue}
+          displayColumn={displayColumn}
+        />
+      );
     }
   }
 

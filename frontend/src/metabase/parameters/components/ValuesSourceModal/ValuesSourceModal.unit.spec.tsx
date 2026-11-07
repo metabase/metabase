@@ -39,7 +39,7 @@ import {
   createMockCollectionItem,
   createMockColumn,
   createMockDatabase,
-  createMockParameterFieldInfo,
+  createMockParameterField,
   createMockParameterValues,
   createMockTokenFeatures,
   createMockUser,
@@ -50,13 +50,13 @@ import ValuesSourceModal from "./ValuesSourceModal";
 describe("ValuesSourceModal", () => {
   describe("string parameter", () => {
     const [field1, field2] = [
-      createMockParameterFieldInfo({
+      createMockParameterField({
         id: 1,
         base_type: "type/Text",
         effective_type: "type/Text",
         semantic_type: "type/Category",
       }),
-      createMockParameterFieldInfo({
+      createMockParameterField({
         id: 2,
         base_type: "type/Text",
         effective_type: "type/Text",
@@ -774,12 +774,12 @@ describe("ValuesSourceModal", () => {
 
   describe("number parameter", () => {
     const [field1, field2] = [
-      createMockParameterFieldInfo({
+      createMockParameterField({
         id: 1,
         base_type: "type/Integer",
         effective_type: "type/Integer",
       }),
-      createMockParameterFieldInfo({
+      createMockParameterField({
         id: 2,
         base_type: "type/Integer",
         effective_type: "type/Integer",

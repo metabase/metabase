@@ -5,7 +5,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
 import {
   createMockParameter,
-  createMockParameterFieldInfo,
+  createMockParameterField,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -27,15 +27,19 @@ describe("when fields is empty array", () => {
 
 describe("when a field remaps its values", () => {
   const PEOPLE_ID = 10;
+  const PEOPLE_NAME_ID = 11;
 
-  const idField = createMockParameterFieldInfo({
+  const idField = createMockParameterField({
     id: PEOPLE_ID,
-    name: "ID",
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
     has_field_values: "none",
-    has_remapping: true,
+    name_field: createMockParameterField({
+      id: PEOPLE_NAME_ID,
+      display_name: "Name",
+      semantic_type: "type/Name",
+    }),
   });
 
   it("should render remapped label for value", async () => {

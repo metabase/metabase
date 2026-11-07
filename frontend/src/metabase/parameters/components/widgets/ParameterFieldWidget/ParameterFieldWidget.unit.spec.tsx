@@ -8,12 +8,12 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  ParameterFieldInfo,
+  ParameterField,
   ParameterValue,
   ParameterValues,
 } from "metabase-types/api";
 import {
-  createMockParameterFieldInfo,
+  createMockParameterField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
 
@@ -25,7 +25,7 @@ type SetupOpts = {
   parameter?: UiParameter;
   parameterValues?: ParameterValues;
   parameterSearchValues?: Record<string, ParameterValues>;
-  fieldSettings?: Partial<ParameterFieldInfo>;
+  fieldSettings?: Partial<ParameterField>;
 };
 
 function setup({
@@ -39,7 +39,7 @@ function setup({
     setupParameterSearchValuesEndpoint(query, values);
   });
 
-  const field = createMockParameterFieldInfo({
+  const field = createMockParameterField({
     id: FIELD_ID,
     ...fieldSettings,
   });
@@ -321,7 +321,7 @@ describe("ParameterFieldWidget", () => {
       base_type: "type/BigInteger",
       effective_type: "type/BigInteger",
       has_field_values: "list",
-    } satisfies Partial<ParameterFieldInfo>;
+    } satisfies Partial<ParameterField>;
 
     it("should format numbers with default separators when no custom settings", async () => {
       setup({

@@ -6,7 +6,7 @@ import * as dashboardActions from "metabase/redux/dashboard";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId } from "metabase-types/api";
-import { createMockParameterFieldInfo } from "metabase-types/api/mocks";
+import { createMockParameterField } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PRODUCTS,
@@ -52,13 +52,13 @@ describe("ParameterLinkedFilters", () => {
       parameter: createMockUiParameter({
         id: "p1",
         name: "P1",
-        fields: [createMockParameterFieldInfo(createProductsCategoryField())],
+        fields: [createMockParameterField(createProductsCategoryField())],
       }),
       otherParameters: [
         createMockUiParameter({
           id: "p2",
           name: "P2",
-          fields: [createMockParameterFieldInfo(createProductsVendorField())],
+          fields: [createMockParameterField(createProductsVendorField())],
         }),
       ],
       filteringIdsByFilteredId: {
@@ -77,8 +77,8 @@ describe("ParameterLinkedFilters", () => {
         id: "p1",
         name: "P1",
         fields: [
-          createMockParameterFieldInfo(createProductsCreatedAtField()),
-          createMockParameterFieldInfo(createOrdersCreatedAtField()),
+          createMockParameterField(createProductsCreatedAtField()),
+          createMockParameterField(createOrdersCreatedAtField()),
         ],
       }),
       otherParameters: [
@@ -86,14 +86,14 @@ describe("ParameterLinkedFilters", () => {
           id: "p2",
           name: "P2",
           fields: [
-            createMockParameterFieldInfo(createOrdersIdField()),
-            createMockParameterFieldInfo(createPeopleCreatedAtField()),
+            createMockParameterField(createOrdersIdField()),
+            createMockParameterField(createPeopleCreatedAtField()),
           ],
         }),
         createMockUiParameter({
           id: "p3",
           name: "P3",
-          fields: [createMockParameterFieldInfo(createPeopleCreatedAtField())],
+          fields: [createMockParameterField(createPeopleCreatedAtField())],
         }),
       ],
       filteringIdsByFilteredId: {

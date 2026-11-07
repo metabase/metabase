@@ -2,7 +2,7 @@ import { isFuzzyOperator } from "metabase-lib/v1/operators/utils";
 import type { ParameterWithTemplateTagTarget } from "metabase-lib/v1/parameters/types";
 import type {
   Parameter,
-  ParameterFieldInfo,
+  ParameterField,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -11,8 +11,8 @@ import type {
 import { deriveFieldOperatorFromParameter } from "./operators";
 import {
   getFields,
-  hasRemappedFields,
-  isSearchableField,
+  getSearchField,
+  getSharedRemappedField,
 } from "./parameter-fields";
 import { getParameterType } from "./parameter-type";
 
@@ -49,9 +49,9 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
  */
 export const hasRemappedParameterValues = (
   parameter: Parameter | null | undefined,
-  fields: ParameterFieldInfo[],
+  fields: ParameterField[],
 ): boolean => {
-  if (hasRemappedFields(fields)) {
+  if (getSharedRemappedField(fields) != null) {
     return true;
   }
 
@@ -125,7 +125,7 @@ export const canListParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canListFields;
 };
 
-export const canListFieldValues = (fields: ParameterFieldInfo[]) => {
+export const canListFieldValues = (fields: ParameterField[]) => {
   const hasFields = fields.length > 0;
   const hasFieldValues = fields.every(
     (field) => field.has_field_values === "list",
@@ -150,9 +150,9 @@ export const canSearchParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canSearchFields;
 };
 
-export const canSearchFieldValues = (fields: ParameterFieldInfo[]) => {
+export const canSearchFieldValues = (fields: ParameterField[]) => {
   const hasFields = fields.length > 0;
-  const canSearch = fields.every(isSearchableField);
+  const canSearch = fields.every((field) => getSearchField(field) != null);
   const hasFieldValues = fields.some(
     (field) => field.has_field_values === "search",
   );

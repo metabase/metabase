@@ -10,7 +10,8 @@ import type {
   FieldReference,
   NativeParameterDimensionTarget,
   Parameter,
-  ParameterFieldInfo,
+  ParameterField,
+  ParameterNameField,
   ParameterTarget,
   ParameterTextTarget,
   ParameterVariableTarget,
@@ -101,27 +102,48 @@ export function getParameterTargetField(
 function findField(
   query: Lib.Query,
   fieldId: FieldId,
-): ParameterFieldInfo | undefined {
+): ParameterField | undefined {
   const column = Lib.fieldMetadata(query, fieldId);
-  if (column == null) {
-    return undefined;
-  }
+  const info = column != null ? Lib.parameterFieldInfo(query, column) : null;
+  return info != null ? toParameterField(info) : undefined;
+}
 
-  const info = Lib.fieldRemappingInfo(query, column);
-  if (info.id == null || info.baseType == null) {
-    return undefined;
-  }
-
+function toParameterNameField(
+  info: Lib.ParameterNameFieldInfo,
+): ParameterNameField {
   return {
     id: info.id,
-    name: info.name,
     display_name: info.displayName,
     base_type: info.baseType,
     effective_type: info.effectiveType,
     semantic_type: info.semanticType,
     settings: info.settings,
+  };
+}
+
+function toParameterField(info: Lib.ParameterFieldInfo): ParameterField {
+  return {
+    ...toParameterNameField(info),
     has_field_values: info.hasFieldValues,
-    has_remapping: info.hasRemapping,
+    dimensions: info.dimensions.map((dimension) => ({
+      type: dimension.type,
+      human_readable_field:
+        dimension.humanReadableField != null
+          ? toParameterNameField(dimension.humanReadableField)
+          : null,
+    })),
+    name_field:
+      info.nameField != null ? toParameterNameField(info.nameField) : null,
+    target:
+      info.target != null
+        ? {
+            id: info.target.id,
+            name_field:
+              info.target.nameField != null
+                ? toParameterNameField(info.target.nameField)
+                : null,
+          }
+        : null,
   };
 }
 

@@ -2611,24 +2611,34 @@
          :searchFieldId  search-field-id
          :hasFieldValues (name has-field-values)}))
 
-(defn ^:export field-remapping-info
-  "Info a parameter widget needs about the Field of `column`: its names, types, settings, whether it has FieldValues,
-  and whether its values have human-readable labels.
+(defn- parameter-name-field->js
+  [{:keys [id display-name base-type effective-type semantic-type settings]}]
+  #js {:id            id
+       :displayName   display-name
+       :baseType      (u/qualified-name base-type)
+       :effectiveType (some-> effective-type u/qualified-name)
+       :semanticType  (some-> semantic-type u/qualified-name)
+       :settings      (some-> settings clj->js)})
+
+(defn ^:export parameter-field-info
+  "The Field of `column` as a parameter widget reads it, in the shape of a `param_fields` Field with camelCased keys:
+  its names, types, settings and FieldValues, its Dimensions, its `:type/Name` Field, and its FK target. `nil` for a
+  column without a Field.
 
   > **Code health:** Single use. Only used to describe the field of a parameter target."
   [metadata-providerable column]
-  (let [{field-name :name
-         :keys [id display-name base-type effective-type semantic-type settings has-field-values has-remapping]}
-        (lib.field/field-remapping-info metadata-providerable column)]
-    #js {:id             id
-         :name           field-name
-         :displayName    display-name
-         :baseType       (some-> base-type u/qualified-name)
-         :effectiveType  (some-> effective-type u/qualified-name)
-         :semanticType   (some-> semantic-type u/qualified-name)
-         :settings       (some-> settings clj->js)
-         :hasFieldValues (name has-field-values)
-         :hasRemapping   has-remapping}))
+  (when-let [{:keys [has-field-values dimensions name-field target], :as info}
+             (lib.field/parameter-field-info metadata-providerable column)]
+    (doto (parameter-name-field->js info)
+      (gobject/set "hasFieldValues" (name has-field-values))
+      (gobject/set "dimensions" (to-array (for [{dimension-type :type, :keys [human-readable-field]} dimensions]
+                                            #js {:type               (name dimension-type)
+                                                 :humanReadableField (some-> human-readable-field
+                                                                             parameter-name-field->js)})))
+      (gobject/set "nameField" (some-> name-field parameter-name-field->js))
+      (gobject/set "target" (when target
+                              #js {:id        (:id target)
+                                   :nameField (some-> (:name-field target) parameter-name-field->js)})))))
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map
