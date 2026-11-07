@@ -181,7 +181,9 @@
   Returns `{:expression <source> :name <name>}`. Throws an HTTP error with a plain-text message when
   the request can't be served, including when nothing in the columns or metrics fits or the LLM call fails. The
   managed AI lock's error propagates as it is."
-  [{:keys [prompt] :as request}]
+  [{:keys [prompt columns metrics] :as request}]
+  (api/check-400 (or (seq columns) (seq metrics))
+                 (tru "Provide at least one column or metric."))
   (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
     (throw (unavailable-error reason)))
   (metabot.usage/check-metabase-managed-free-limit!)
