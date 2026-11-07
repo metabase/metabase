@@ -91,13 +91,6 @@
   [workspace-database-id]
   {:id workspace-database-id :name (str "wsd-" workspace-database-id)})
 
-(defn output-namespace
-  "The output namespace provisioning the WorkspaceDatabase `wsd` gives it, computed
-  without touching the warehouse."
-  [{wsd-id :id db-id :database_id}]
-  (let [db (ws.db/database db-id)]
-    (:schema (details dispatching-provisioner (driver.u/database->driver db) db (wsd-iso-workspace wsd-id)))))
-
 ;;; ---------------------------------------- Single-database operations -----------------------------------------------
 
 (defn provision-workspace-database!
