@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui";
 
 import { ChartSettingSelect } from "./ChartSettingSelect";
 
@@ -127,6 +127,29 @@ describe("ChartSettingSelect", () => {
       />,
     );
     expect(screen.getByTestId("chart-setting-select")).toBeDisabled();
+  });
+
+  it("should render the footer while the dropdown is open", async () => {
+    render(
+      <ChartSettingSelect
+        options={options}
+        value="value1"
+        onChange={jest.fn()}
+        footer={<a href="/admin/settings/maps">Custom map</a>}
+      />,
+    );
+    expect(screen.queryByText("Custom map")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("chart-setting-select"));
+    expect(screen.getByRole("link", { name: "Custom map" })).toHaveAttribute(
+      "href",
+      "/admin/settings/maps",
+    );
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByText("Custom map")).not.toBeInTheDocument();
+    });
   });
 
   it("should show placeholder text when value is cleared", () => {

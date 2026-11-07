@@ -4,13 +4,76 @@ import { useEffect, useId, useRef } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { Ellipsified } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  type MantineTheme,
+  useMantineTheme,
+} from "metabase/ui";
+import { adjustBrightness, alpha, lighten } from "metabase/ui/colors";
 import type { RowValue, VisualizationSettings } from "metabase-types/api";
 
-import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
+import S from "./PivotTable.module.css";
 import { RowToggleIcon } from "./RowToggleIcon";
 import { LEFT_HEADER_LEFT_SPACING, RESIZE_HANDLE_WIDTH } from "./constants";
 import type { BodyItem, HeaderItem, PivotTableClicked } from "./types";
+
+type CellColorProps = {
+  theme: MantineTheme;
+  isEmphasized?: boolean;
+  isTransparent?: boolean;
+};
+
+export const getCellBackgroundColor = ({
+  theme,
+  isEmphasized,
+  isTransparent,
+}: CellColorProps) => {
+  const backgroundColor = theme.other.table.cell.backgroundColor;
+  const isDarkMode = theme.other.colorScheme === "dark";
+
+  if (isTransparent) {
+    return "transparent";
+  }
+
+  if (isEmphasized) {
+    if (isDarkMode) {
+      return lighten(theme.fn.themeColor("background_page-primary"), 0.65);
+    }
+
+    if (backgroundColor) {
+      return adjustBrightness(backgroundColor, 0.15, 0.05);
+    }
+
+    return alpha(theme.fn.themeColor("border-neutral"), 0.25);
+  }
+
+  if (isDarkMode) {
+    return alpha(theme.fn.themeColor("background_page-primary"), 0.1);
+  }
+
+  return backgroundColor ?? "var(--mb-color-background_page-primary)";
+};
+
+const getCellHoverBackgroundColor = (props: CellColorProps) => {
+  const { cell: cellTheme } = props.theme.other.table;
+
+  if (!cellTheme.backgroundColor) {
+    return "var(--mb-color-border-neutral)";
+  }
+
+  const backgroundColor = getCellBackgroundColor(props);
+
+  return adjustBrightness(backgroundColor, 0.15, 0.1);
+};
+
+const getCellColor = (theme: MantineTheme) => {
+  if (theme.other.colorScheme === "dark") {
+    return "var(--mb-color-text-primary)";
+  }
+
+  return theme.other.table.cell.textColor;
+};
 
 interface CellProps {
   value: React.ReactNode;
@@ -61,13 +124,15 @@ function ResizableHandle({
   const currentPosition = initialWidth + (transform ? transform.x : 0);
 
   return (
-    <ResizeHandle
+    <Box
       ref={setNodeRef}
+      className={S.resizeHandle}
       data-testid="pivot-table-resize-handle"
-      style={{
-        left: `${currentPosition}px`,
-        cursor: "col-resize",
-      }}
+      pos="absolute"
+      top={0}
+      bottom={0}
+      w={RESIZE_HANDLE_WIDTH}
+      style={{ left: `${currentPosition}px` }}
       {...listeners}
       {...attributes}
     />
@@ -90,24 +155,29 @@ export function Cell({
   showTooltip = true,
 }: CellProps) {
   const cellId = useId();
+  const theme = useMantineTheme();
+  const colorProps = { theme, isEmphasized, isTransparent };
 
   return (
-    <PivotTableCell
+    <Box
+      className={cx(S.cell, S.borderRight, {
+        [S.bold]: isBold,
+        [S.clickable]: Boolean(onClick),
+        [S.borderedHeader]: isBorderedHeader,
+        [S.topBorder]: hasTopBorder,
+      })}
       data-allow-page-break-after
       data-testid="pivot-table-cell"
-      isBold={isBold}
-      isEmphasized={isEmphasized}
-      isBorderedHeader={isBorderedHeader}
-      hasTopBorder={hasTopBorder}
-      isTransparent={isTransparent}
-      style={{
-        ...style,
-        ...(backgroundColor
-          ? {
-              backgroundColor,
-            }
-          : {}),
-      }}
+      style={
+        // custom properties, which CSSProperties does not type
+        {
+          ...style,
+          ...(backgroundColor ? { backgroundColor } : {}),
+          "--pivot-cell-color": getCellColor(theme),
+          "--pivot-cell-bg": getCellBackgroundColor(colorProps),
+          "--pivot-cell-hover-bg": getCellHoverBackgroundColor(colorProps),
+        } as React.CSSProperties
+      }
       onClick={onClick}
     >
       <>
@@ -128,7 +198,7 @@ export function Cell({
           />
         )}
       </>
-    </PivotTableCell>
+    </Box>
   );
 }
 
