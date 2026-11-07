@@ -1,6 +1,6 @@
 ---
 title: ClickHouse
-description: Learn how to connect Metabase to your ClickHouse database, including connection settings, database selection, and SSL configuration.
+description: Learn how to connect Metabase to your ClickHouse database, including supported versions, the built-in driver, a read-only user, connection settings, database selection, and SSL configuration.
 ---
 
 # ClickHouse
@@ -8,6 +8,14 @@ description: Learn how to connect Metabase to your ClickHouse database, includin
 To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 You can edit these settings at any time. Just remember to save your changes.
+
+## Supported versions
+
+Metabase supports ClickHouse 23.3 and later, on ClickHouse Cloud and on self-managed ClickHouse. [Impersonation](../../permissions/impersonation.md) requires ClickHouse 24.4 or later.
+
+If you set a [report time zone](../../configuring-metabase/localization.md#set-default-instance-report-timezone) in Metabase, use ClickHouse 23.6 or later. Metabase sends the `session_timezone` setting with each query, and ClickHouse added that setting in 23.6.
+
+The ClickHouse driver is included with Metabase as of version 54.1, so you don't need to download or install a driver. Metabase maintains the driver in the [metabase/metabase](https://github.com/metabase/metabase) repository. The earlier partner driver in [ClickHouse/metabase-clickhouse-driver](https://github.com/ClickHouse/metabase-clickhouse-driver) is archived. If your `plugins` folder still contains `clickhouse.metabase-driver.jar`, you can delete it.
 
 ## Connection and Sync
 
@@ -37,7 +45,7 @@ The database port (e.g., `8123`).
 
 ### Username
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+The username Metabase uses to connect to your database. Create a dedicated database user for Metabase with read-only access to the schemas and tables you want to analyze. For write operations like uploads, actions, or transforms, use a separate [writable connection](../writable-connection.md). For instructions, see [Database users, roles, and privileges](../users-roles-privileges.md). You can set up multiple connections to the same database using different user accounts, each with different sets of privileges.
 
 ### Password
 
