@@ -51,6 +51,15 @@
                       ::models.notification/NotificationRecipient)
    {:with-id? true :update-input? true}))
 
+(mr/def ::send-status
+  [:enum :sent :skipped])
+
+(mr/def ::SendNotificationResponse
+  "Response schema for the `send/` and `:id/send/` endpoints"
+  [:map {:closed true}
+   [:status ::send-status]
+   [:skip_reason {:optional true} [:maybe string?]]])
+
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."
   [handlers]
@@ -277,11 +286,7 @@
    body :- ::NotificationApiUpdateInput]
   (update-notification! id body))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/send"
+(api.macros/defendpoint :post "/:id/send" :- ::SendNotificationResponse
   "Send a notification by id."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query
@@ -304,11 +309,7 @@
                                           %))
        (m/update-existing :subscriptions #(map (fn [x] (t2/instance :model/NotificationSubscription x)) %))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/send"
+(api.macros/defendpoint :post "/send" :- ::SendNotificationResponse
   "Send an unsaved notification."
   [_route _query body :- ::CreateNotificationParams request]
   (check-no-resource-templates! (:handlers body))

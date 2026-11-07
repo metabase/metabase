@@ -10,6 +10,7 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  SendNotificationResponse,
   UnsubscribeRequest,
   UnsubscribeResponse,
   UpdateNotificationRequest,
@@ -94,7 +95,7 @@ export const notificationApi = Api.injectEndpoints({
       },
     ),
     sendUnsavedNotification: builder.mutation<
-      void,
+      SendNotificationResponse,
       CreateNotificationRequest | UpdateNotificationRequest
     >({
       query: (body) => ({

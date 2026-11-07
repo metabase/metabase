@@ -273,7 +273,9 @@
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (throw-when-handlers-failed id @failures)
-              (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
+              (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type})
+              {:status (if skip-reason :skipped :sent)
+               :skip_reason (-> skip-reason notification.payload/skip-reason->message str)})))
         (catch Exception e
           (let [undelivered? (delivery-failure? e)]
             ;; a delivery failure is already logged per channel, and the caller or the notification worker logs it
@@ -288,8 +290,7 @@
           ;; observed here so a send that throws is counted too
           (analytics/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
           (when-let [total-time (since-trigger-ms notification-info)]
-            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))))
-      nil)))
+            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time)))))))
 
 (defn- cron->next-execution-times
   "Returns the next n fired times for a given cron schedule.
