@@ -176,17 +176,19 @@
 (defn suggest-formula
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
   `\"aggregation\"` for Values or `\"expression\"` for the custom columns Rows and Columns group by. `columns` are maps
-  of `:name` (the column's name in expression syntax, without brackets) and an optional `:type`.
+  of `:name` (the column's name in expression syntax, without brackets) and an optional `:type`. `database_id` is the
+  database of the query being summarized, which the current user must be able to query.
 
   Returns `{:expression <source> :name <name>}`. Throws an HTTP error with a plain-text message when
   the request can't be served, including when nothing in the columns or metrics fits or the LLM call fails. The
   managed AI lock's error propagates as it is."
-  [{:keys [prompt columns metrics] :as request}]
+  [{:keys [prompt columns metrics database_id] :as request}]
   (api/check-400 (or (seq columns) (seq metrics))
                  (tru "Provide at least one column or metric."))
   (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
     (throw (unavailable-error reason)))
   (metabot.usage/check-metabase-managed-free-limit!)
+  (api/query-check :model/Database database_id)
   (let [{:keys [expression name]} (try
                                     (call-llm (llm-messages request))
                                     (catch Exception e
