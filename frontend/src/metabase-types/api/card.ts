@@ -68,6 +68,7 @@ export interface Card<
   name: string;
   description: string | null;
   type: CardType;
+  query_type?: CardQueryType;
   public_uuid: string | null;
 
   /* Indicates whether static embedding for this card has been published */
@@ -130,7 +131,6 @@ export interface PublicCard {
 export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   display: VisualizationDisplay;
   dataset_query: Q;
-  query_type?: CardQueryType;
   parameters?: Parameter[];
   visualization_settings: VisualizationSettings;
 

@@ -99,7 +99,7 @@ export function getTreemapClickData({
     settings,
   };
 
-  if (rawSeries[0].card.query_type !== "native") {
+  if (!rawSeries[0].data.cols.some((col) => col.source === "native")) {
     clickData.dimensions = dimensions;
   }
 

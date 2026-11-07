@@ -68,7 +68,6 @@ function getCleanCard(
     "display",
     "name",
     "parameters",
-    "query_type",
     "type",
     "visualization_settings",
   ];

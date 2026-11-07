@@ -344,7 +344,8 @@ export const canBrush = (
   return (
     !!onChangeCardAndRun &&
     !hasCombinedCards &&
-    (series[0].card.query_type !== "native" || isSavedCard(series[0].card)) &&
+    (!series[0].data.cols.some((col) => col.source === "native") ||
+      isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );

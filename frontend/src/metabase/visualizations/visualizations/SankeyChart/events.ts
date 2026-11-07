@@ -71,7 +71,7 @@ export const createSankeyClickData = (
     });
   } else if (isSankeyEdgeEvent(event)) {
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);
-    if (rawSeries[0].card.query_type !== "native") {
+    if (!rawSeries[0].data.cols.some((col) => col.source === "native")) {
       clickData.dimensions = [
         {
           column: sankeyColumns.source.column,

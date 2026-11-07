@@ -179,7 +179,6 @@ function createAdHocNativeCard(opts?: Partial<UnsavedCard>): UnsavedCard {
     dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
       query: "select * from orders",
     }),
-    query_type: "native",
     ...opts,
   });
 }

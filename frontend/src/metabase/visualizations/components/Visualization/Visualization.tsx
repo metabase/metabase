@@ -237,9 +237,14 @@ const isLoading = (series: Series | null) => {
 
 const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
-  const firstCard = rawSeriesArray[0]?.card;
+  const firstSeries = rawSeriesArray[0];
+  const firstCols =
+    firstSeries != null && "data" in firstSeries
+      ? (firstSeries.data?.cols ?? [])
+      : [];
   const isNativeView =
-    props.queryBuilderMode === "view" && firstCard?.query_type === "native";
+    props.queryBuilderMode === "view" &&
+    firstCols.some((col) => col.source === "native");
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(

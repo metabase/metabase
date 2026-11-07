@@ -157,11 +157,11 @@ export const TABLE_DEFINITION = {
       inline: true,
       getHidden: ([{ data }]: Series) => data && data.cols.length < 3,
       getDefault: ([series]: Series) => {
-        const { card, data } = series;
+        const { data } = series;
         if (
           !data ||
           data.cols.length !== 3 ||
-          card.query_type === "native" ||
+          data.cols.some((col) => col.source === "native") ||
           data.cols.filter(isMetric).length !== 1 ||
           data.cols.filter(isDimension).length !== 2
         ) {
