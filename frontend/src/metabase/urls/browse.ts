@@ -2,7 +2,6 @@ import slugg from "slugg";
 
 import type DatabaseV1 from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Database } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
@@ -11,12 +10,7 @@ export function databaseSlug(
   database: Pick<DatabaseV1 | Database, "id"> &
     Partial<Pick<DatabaseV1 | Database, "name">>,
 ) {
-  const name =
-    database.id === SAVED_QUESTIONS_VIRTUAL_DB_ID
-      ? "Saved Questions"
-      : database.name;
-
-  return appendSlug(database.id, slugg(name ?? ""));
+  return appendSlug(database.id, slugg(database.name ?? ""));
 }
 
 export function browseDatabase(

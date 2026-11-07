@@ -2906,6 +2906,68 @@
         (migrate!)
         (is (empty? (t2/select clog :id [:in v59-ids])))))))
 
+(deftest workspace-input-normalization-migration-test
+  (testing "Migrations v60.2026-02-09T12:00:00 through v60.2026-02-09T12:00:14:
+            Drop/recreate workspace_input with normalized schema and create workspace_input_transform"
+    (impl/test-migrations ["v60.2026-02-09T12:00:00" "v60.2026-02-09T12:00:14"] [migrate!]
+      ;; Create workspace
+      (let [ws-id (first (t2/insert-returning-pks! :workspace
+                                                   {:name           "Test Workspace"
+                                                    :creator_id     1
+                                                    :api_key_id     1
+                                                    :execution_user 1
+                                                    :database_id    1
+                                                    :db_status      "ready"
+                                                    :base_status    "active"
+                                                    :graph_version  1
+                                                    :created_at     :%now
+                                                    :updated_at     :%now}))]
+        ;; Insert workspace_input rows with OLD schema (includes ref_id and transform_version).
+        (t2/insert-returning-pks! :workspace_input
+                                  {:workspace_id      ws-id
+                                   :db_id             1
+                                   :schema            "public"
+                                   :table             "orders"
+                                   :ref_id            (str (random-uuid))
+                                   :access_granted    true
+                                   :transform_version 1
+                                   :created_at        :%now
+                                   :updated_at        :%now})
+        (migrate!)
+        ;; 1. Old workspace_input data is dropped (table recreated with new schema)
+        (testing "workspace_input table is empty after drop/recreate"
+          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input]})))))
+        ;; 2. ref_id and transform_version columns no longer exist
+        (testing "ref_id column removed"
+          (is (thrown? Exception
+                       (mdb.query/query {:select [:ref_id] :from [:workspace_input] :limit 1}))))
+        (testing "transform_version column removed"
+          (is (thrown? Exception
+                       (mdb.query/query {:select [:transform_version] :from [:workspace_input] :limit 1}))))
+        ;; 3. workspace_input_transform table exists
+        (testing "workspace_input_transform table created"
+          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input_transform]})))))
+        ;; 4. New unique constraint on (workspace_id, db_id, schema, table)
+        (testing "can insert into new schema"
+          (t2/insert-returning-pks! :workspace_input
+                                    {:workspace_id   ws-id
+                                     :db_id          1
+                                     :schema         "public"
+                                     :table          "orders"
+                                     :access_granted false
+                                     :created_at     :%now
+                                     :updated_at     :%now}))
+        (testing "unique constraint prevents duplicate table entries"
+          (is (thrown? Exception
+                       (t2/insert-returning-pks! :workspace_input
+                                                 {:workspace_id   ws-id
+                                                  :db_id          1
+                                                  :schema         "public"
+                                                  :table          "orders"
+                                                  :access_granted false
+                                                  :created_at     :%now
+                                                  :updated_at     :%now}))))))))
+
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
             segment.dependency_analysis_version column (issue #74443). Every changeset that
@@ -4529,3 +4591,123 @@
         (is (t2/exists? :transform :id python-id))
         (t2/delete! :metabase_database :id db-id)
         (is (not (t2/exists? :transform :id transform-id)))))))
+
+(deftest recreate-table-remapping-test
+  (testing "gve1yq..m6tckg recreate table_remapping as 064's drop left it: unique source and target, cascading FK"
+    (impl/test-migrations ["gve1yq" "m6tckg"] [migrate!]
+      (let [db-id (t2/insert-returning-pk! :metabase_database {:name       "Remapped DB"
+                                                               :engine     "h2"
+                                                               :created_at :%now
+                                                               :updated_at :%now
+                                                               :details    "{}"})]
+        (migrate!)
+        (let [row   {:database_id     db-id
+                     :from_schema     "public"
+                     :from_table_name "orders"
+                     :to_schema       "mb__isolation_1"
+                     :to_table_name   "orders"}
+              rm-id (t2/insert-returning-pk! :table_remapping row)]
+          (is (=? {:from_db "" :to_db "" :created_at some?}
+                  (t2/select-one :table_remapping :id rm-id)))
+          (testing "a second remapping of the same source table is refused"
+            (is (thrown? Exception
+                         (t2/insert! :table_remapping (assoc row :to_table_name "orders_2")))))
+          (testing "a second source table mapped to the same target is refused"
+            (is (thrown? Exception
+                         (t2/insert! :table_remapping (assoc row :from_table_name "orders_2")))))
+          (testing "deleting the database deletes its remappings"
+            (t2/delete! :metabase_database :id db-id)
+            (is (not (t2/exists? :table_remapping :id rm-id)))))))))
+
+(deftest recreate-workspace-tables-test
+  (testing "ucb8em..xj2pfn recreate workspace and workspace_database as 064's drop left them"
+    (impl/test-migrations ["ucb8em" "xj2pfn"] [migrate!]
+      (let [user-id (t2/insert-returning-pk! :core_user {:email       (mt/random-email)
+                                                         :first_name  "Workspace"
+                                                         :last_name   "Creator"
+                                                         :password    (str (random-uuid))
+                                                         :date_joined :%now
+                                                         :entity_id   (u/generate-nano-id)})
+            db-id   (t2/insert-returning-pk! :metabase_database {:name       "Workspace DB"
+                                                                 :engine     "h2"
+                                                                 :created_at :%now
+                                                                 :updated_at :%now
+                                                                 :details    "{}"})]
+        (migrate!)
+        (let [ws-id  (t2/insert-returning-pk! :workspace {:name "ws" :creator_id user-id})
+              row    {:workspace_id     ws-id
+                      :database_id      db-id
+                      :database_details "{}"
+                      :output_namespace "ws_out"
+                      :input_schemas    "[\"public\"]"}
+              wsd-id (t2/insert-returning-pk! :workspace_database row)]
+          (is (=? {:creator_id user-id :created_at some? :updated_at some?}
+                  (t2/select-one :workspace :id ws-id)))
+          (is (=? {:status "unprovisioned" :created_at some? :updated_at some?}
+                  (t2/select-one :workspace_database :id wsd-id)))
+          (testing "a workspace configures a database at most once"
+            (is (thrown? Exception (t2/insert! :workspace_database row))))
+          (testing "a database with workspace rows cannot be deleted"
+            (is (thrown? Exception (t2/delete! :metabase_database :id db-id))))
+          (testing "deleting the creator keeps the workspace, without a creator"
+            (t2/delete! :core_user :id user-id)
+            (is (=? {:creator_id nil} (t2/select-one :workspace :id ws-id))))
+          (testing "deleting the workspace deletes its workspace_database rows"
+            (t2/delete! :workspace :id ws-id)
+            (is (not (t2/exists? :workspace_database :id wsd-id)))))))))
+
+(deftest readd-admin-details-migration-test
+  (testing "h8xlm4 re-adds metabase_database.admin_details, nullable, after 065 dropped it"
+    (impl/test-migrations ["h8xlm4"] [migrate!]
+      (let [db-id (t2/insert-returning-pk! :metabase_database {:name       "Admin details DB"
+                                                               :engine     "h2"
+                                                               :created_at :%now
+                                                               :updated_at :%now
+                                                               :details    "{}"})]
+        (is (not (contains? (t2/select-one :metabase_database :id db-id) :admin_details))
+            "065 dropped the column")
+        (migrate!)
+        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4"))))
+        (is (=? {:admin_details nil} (t2/select-one :metabase_database :id db-id))
+            "existing rows get a null admin_details")
+        (t2/update! :metabase_database :id db-id {:admin_details "{\"user\":\"admin\"}"})
+        (is (= "{\"user\":\"admin\"}" (:admin_details (t2/select-one :metabase_database :id db-id)))))))
+  (testing "h8xlm4 is MARK_RAN when admin_details is already there"
+    (impl/test-migrations ["h8xlm4"] [migrate!]
+      (t2/query "ALTER TABLE metabase_database ADD COLUMN admin_details TEXT")
+      (migrate!)
+      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4")))))))
+
+(deftest drop-report-card-collection-preview-test
+  (testing "j38192: report_card.collection_preview is dropped, and a rollback restores it with previews enabled"
+    (impl/test-migrations ["j38192"] [migrate!]
+      (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Collection"
+                                                         :last_name   "Preview"
+                                                         :email       "collection-preview@metabase.com"
+                                                         :password    "superstrong"
+                                                         :entity_id   (u/generate-nano-id)
+                                                         :date_joined :%now})
+            db-id   (t2/insert-returning-pk! :metabase_database {:name       "Preview DB"
+                                                                 :engine     "h2"
+                                                                 :details    "{}"
+                                                                 :created_at :%now
+                                                                 :updated_at :%now})
+            card-id (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                           :entity_id              (u/generate-nano-id)
+                                                           :display                "table"
+                                                           :dataset_query          "{}"
+                                                           :visualization_settings "{}"
+                                                           :creator_id             user-id
+                                                           :database_id            db-id
+                                                           :collection_preview     false
+                                                           :created_at             :%now
+                                                           :updated_at             :%now})
+            ;; Read whole rows: naming the column in the query would make the post-migration read a SQL error.
+            card    #(t2/select-one :report_card :id card-id)]
+        (migrate!)
+        (testing "the column is gone and the card is kept"
+          (is (not (contains? (card) :collection_preview)))
+          (is (= "Card" (:name (card)))))
+        (testing "rolling back restores the column with previews enabled"
+          (migrate! :down 64)
+          (is (true? (:collection_preview (card)))))))))

@@ -62,7 +62,7 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardId,

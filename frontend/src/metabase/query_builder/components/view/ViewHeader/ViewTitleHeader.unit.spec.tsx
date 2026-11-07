@@ -4,7 +4,10 @@ import type { ComponentProps } from "react";
 import _ from "underscore";
 
 import { renderWithRegisterActionsSpy } from "__support__/kbar";
-import { createMockMetadataFromState } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import {
   setupListDatabaseSchemasEndpoint,
   setupTableEndpoints,
@@ -17,32 +20,31 @@ import { Route } from "metabase/router";
 import MetabaseSettings from "metabase/utils/settings";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Database,
   DatabaseId,
-  NativeDatasetQuery,
-  StructuredDatasetQuery,
   UnsavedCard,
 } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
+  createMockCard,
   createMockDataset,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
-  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
   createOrdersTable,
   createProductsTable,
   createSampleDatabase,
-  createSavedNativeCard,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { ViewTitleHeader } from "./ViewTitleHeader";
@@ -56,21 +58,37 @@ const HIDDEN_ORDERS_TABLE = createOrdersTable({
   visibility_type: "hidden",
 });
 
-const FILTERED_GUI_QUESTION: Partial<UnsavedCard<StructuredDatasetQuery>> = {
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
+
+const FILTERED_GUI_QUESTION: Partial<UnsavedCard> = {
   display: "table",
   visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      filter: [
-        "and",
-        ["<", ["field", ORDERS.TOTAL, null], 50],
-        ["not-null", ["field", ORDERS.TAX, null]],
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          filters: [
+            {
+              type: "operator",
+              operator: "<",
+              args: [
+                { type: "column", name: "TOTAL" },
+                { type: "literal", value: 50 },
+              ],
+            },
+            {
+              type: "operator",
+              operator: "not-null",
+              args: [{ type: "column", name: "TAX" }],
+            },
+          ],
+        },
       ],
-    },
-  },
+    }),
+  ),
 };
 
 const SAVED_QUESTION = {
@@ -81,35 +99,58 @@ const SAVED_QUESTION = {
   can_write: true,
 };
 
-function getAdHocQuestionCard(
-  overrides?: Partial<UnsavedCard<StructuredDatasetQuery>>,
-): UnsavedCard<StructuredDatasetQuery> {
-  return createAdHocCard(overrides);
+function getAdHocQuestionCard(overrides?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    visualization_settings: {},
+    dataset_query: ORDERS_QUERY,
+    ...overrides,
+  });
 }
 
-function getNativeQuestionCard(): UnsavedCard<NativeDatasetQuery> {
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from orders",
+    }),
+    ...opts,
+  });
+}
+
+function getNativeQuestionCard(): UnsavedCard {
   return createAdHocNativeCard();
 }
 
 function getNativeQuestionCardWithUnmappedTag(
   type: "dimension" | "temporal-unit",
-): UnsavedCard<NativeDatasetQuery> {
-  return createAdHocNativeCard({
-    dataset_query: {
-      type: "native",
-      database: SAMPLE_DB_ID,
-      native: {
-        query: "select * from products where {{my_filter}}",
-        "template-tags": {
-          my_filter: {
-            id: "24d574c5-40e7-4e9d-9d0e-3fbc7b1f7bd0",
-            name: "my_filter",
-            "display-name": "My Filter",
-            type,
-          },
-        },
+): UnsavedCard {
+  const query = Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+    query: "select * from products where {{my_filter}}",
+    templateTags: {
+      my_filter: {
+        id: "24d574c5-40e7-4e9d-9d0e-3fbc7b1f7bd0",
+        name: "my_filter",
+        "display-name": "My Filter",
+        type: "text",
       },
     },
+  });
+  const tags = Lib.templateTags(query);
+  return createAdHocNativeCard({
+    dataset_query: Lib.toJsQuery(
+      Lib.withTemplateTags(query, {
+        my_filter: { ...tags.my_filter, type },
+      }),
+    ),
   });
 }
 
@@ -117,25 +158,25 @@ function getEmptyNativeQuestionCard({
   database,
 }: {
   database: DatabaseId | null;
-}): UnsavedCard<NativeDatasetQuery> {
+}): UnsavedCard {
   return createAdHocNativeCard({
     dataset_query: {
-      type: "native",
+      ...Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, { query: "" }),
       database,
-      native: { query: "" },
     },
   });
 }
 
-function getSavedGUIQuestionCard(
-  overrides?: Partial<Card<StructuredDatasetQuery>>,
-): Card<StructuredDatasetQuery> {
-  return createSavedStructuredCard({ ...SAVED_QUESTION, ...overrides });
+function getSavedGUIQuestionCard(overrides?: Partial<Card>): Card {
+  return createMockCard({
+    visualization_settings: {},
+    dataset_query: ORDERS_QUERY,
+    ...SAVED_QUESTION,
+    ...overrides,
+  });
 }
 
-function getSavedNativeQuestionCard(
-  overrides?: Partial<Card<NativeDatasetQuery>>,
-): Card<NativeDatasetQuery> {
+function getSavedNativeQuestionCard(overrides?: Partial<Card>): Card {
   return createSavedNativeCard({ ...SAVED_QUESTION, ...overrides });
 }
 
@@ -595,7 +636,7 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", async () => {
     const { question, onOpenModal } = setupAdHoc();
     const table = checkNotNull(
-      question.metadata().table(Lib.sourceTableOrCardId(question.query())),
+      question.metadata().table(Lib.primarySourceTableId(question.query())),
     );
     const tableName = table.displayName();
 
@@ -735,9 +776,10 @@ describe("View Header | Not saved native question", () => {
     const { onOpenModal } = setup({
       card: createAdHocNativeCard({
         dataset_query: {
-          type: "native",
+          ...Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "select foo",
+          }),
           database: null,
-          native: { query: "select foo" },
         },
       }),
       isDirty: true,
@@ -843,25 +885,29 @@ describe("View Header | Hidden tables", () => {
       hideOrdersTable: true,
       card: getSavedGUIQuestionCard({
         can_write: false,
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": PRODUCTS_ID,
-            joins: [
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [
               {
-                alias: "Orders",
-                fields: "all",
-                "source-table": ORDERS_ID,
-                condition: [
-                  "=",
-                  ["field", PRODUCTS.ID, null],
-                  ["field", ORDERS.PRODUCT_ID, null],
+                source: { type: "table", id: PRODUCTS_ID },
+                joins: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    strategy: "left-join",
+                    alias: "Orders",
+                    conditions: [
+                      {
+                        operator: "=",
+                        left: { type: "column", name: "ID" },
+                        right: { type: "column", name: "PRODUCT_ID" },
+                      },
+                    ],
+                  },
                 ],
               },
             ],
-          },
-        },
+          }),
+        ),
       }),
     });
     expect(await screen.findByText("View-only")).toBeInTheDocument();
@@ -870,28 +916,39 @@ describe("View Header | Hidden tables", () => {
 
 describe("View Header | Inaccessible Cards", () => {
   it("should show the View-only badge when the source question is inaccessible", async () => {
+    const sourceCard = createMockCard({ id: 123, dataset_query: ORDERS_QUERY });
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [sourceCard],
+      }),
+    });
     setup({
       card: getSavedGUIQuestionCard({
         can_write: false,
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": "card_123",
-            joins: [
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(provider, {
+            stages: [
               {
-                alias: "Orders",
-                fields: "all",
-                "source-table": ORDERS_ID,
-                condition: [
-                  "=",
-                  ["field", PRODUCTS.ID, null],
-                  ["field", ORDERS.PRODUCT_ID, null],
+                source: { type: "card", id: sourceCard.id },
+                joins: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    strategy: "left-join",
+                    alias: "Orders",
+                    conditions: [
+                      {
+                        operator: "=",
+                        left: { type: "column", name: "ID" },
+                        right: { type: "column", name: "PRODUCT_ID" },
+                      },
+                    ],
+                  },
                 ],
               },
             ],
-          },
-        },
+          }),
+        ),
       }),
     });
     expect(await screen.findByText("View-only")).toBeInTheDocument();

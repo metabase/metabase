@@ -81,7 +81,6 @@ creator_id: rasta@metabase.com
 display: table
 archived: false
 collection_id: %s
-collection_preview: true
 collection_position: null
 query_type: null
 database_id: test-data (h2)

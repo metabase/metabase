@@ -4,13 +4,11 @@ import {
   getDefaultFormSettings,
 } from "metabase/actions/utils";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Parameter, TemplateTagType } from "metabase-types/api";
-import {
-  SAMPLE_DB_ID,
-  createAdHocNativeCard,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createMockUnsavedCard } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
   setParameterTypesFromFieldSettings,
@@ -23,29 +21,25 @@ const metadata = createMockMetadata({
 
 const createQuestionWithTemplateTags = (tagType: TemplateTagType) =>
   new Question(
-    createAdHocNativeCard({
-      dataset_query: {
-        type: "native",
-        database: SAMPLE_DB_ID,
-        native: {
-          query:
-            "INSERT INTO products (name, price) VALUES ({{name}}, {{price}});",
-          "template-tags": {
-            name: {
-              id: "aaa",
-              name: "name",
-              "display-name": "Name",
-              type: tagType,
-            },
-            price: {
-              id: "bbb",
-              name: "price",
-              "display-name": "Price",
-              type: tagType,
-            },
+    createMockUnsavedCard({
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query:
+          "INSERT INTO products (name, price) VALUES ({{name}}, {{price}});",
+        templateTags: {
+          name: {
+            id: "aaa",
+            name: "name",
+            "display-name": "Name",
+            type: tagType,
+          },
+          price: {
+            id: "bbb",
+            name: "price",
+            "display-name": "Price",
+            type: tagType,
           },
         },
-      },
+      }),
     }),
     metadata,
   );

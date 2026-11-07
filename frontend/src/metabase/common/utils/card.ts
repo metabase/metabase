@@ -3,7 +3,6 @@ import querystring from "querystring";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { clone } from "metabase/utils/clone";
 import {
   b64hash_to_utf8,
   b64url_to_utf8,
@@ -22,8 +21,7 @@ import type {
   CardId,
   DashCardSeries,
   DashboardParameterMapping,
-  DatasetQuery,
-  LegacyDatasetQuery,
+  JsonQuery,
   Parameter,
   ParameterValuesMap,
   UnsavedCard,
@@ -215,23 +213,8 @@ function cardVisualizationIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   );
 }
 
-function isLegacyDatasetQuery(
-  datasetQuery: DatasetQuery,
-): datasetQuery is LegacyDatasetQuery {
-  return (
-    "type" in datasetQuery &&
-    (datasetQuery.type === "query" || datasetQuery.type === "native")
-  );
-}
-
-function datasetQueryForComparison(datasetQuery: DatasetQuery): DatasetQuery {
-  const res = clone(datasetQuery);
-
-  if (isLegacyDatasetQuery(res)) {
-    res.parameters ??= [];
-  }
-
-  return res;
+function datasetQueryForComparison(datasetQuery: JsonQuery): JsonQuery {
+  return { ...datasetQuery, parameters: datasetQuery.parameters ?? [] };
 }
 
 export function cardQueryIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
@@ -262,10 +245,8 @@ export function applyParameters(
     | DashboardParameterMapping[]
     | VirtualDashCardParameterMapping[] = [],
   { sparse = false }: { sparse?: boolean } = {},
-) {
-  // TODO(romeovs): This cast is a hack, this function only works with LegacyDatasetQuery
-  const datasetQuery = clone(card.dataset_query) as LegacyDatasetQuery;
-  datasetQuery.parameters = [];
+): JsonQuery {
+  const queryParameters: UiParameter[] = [];
   for (const parameter of parameters || []) {
     const value = parameterValues[parameter.id];
 
@@ -302,12 +283,12 @@ export function applyParameters(
       // mapped target, e.x. on a dashboard
       queryParameter.target = mapping.target;
       // Unjustified type cast. FIXME
-      datasetQuery.parameters.push(queryParameter as UiParameter);
+      queryParameters.push(queryParameter as UiParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
       queryParameter.target = parameter.target;
       // Unjustified type cast. FIXME
-      datasetQuery.parameters.push(queryParameter as UiParameter);
+      queryParameters.push(queryParameter as UiParameter);
     }
 
     if (sparse) {
@@ -316,7 +297,7 @@ export function applyParameters(
     }
   }
 
-  return datasetQuery;
+  return { ...card.dataset_query, parameters: queryParameters };
 }
 
 export function isTransientCardId(id: CardId | string | null | undefined) {

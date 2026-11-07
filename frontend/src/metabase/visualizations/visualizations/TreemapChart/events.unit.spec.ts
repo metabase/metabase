@@ -8,11 +8,10 @@ import {
   type TreemapTree,
   getTreemapRootNodeId,
 } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { RawSeries } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockNativeCard,
-} from "metabase-types/api/mocks/card";
+import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -423,7 +422,15 @@ describe("getTreemapClickData", () => {
   it("omits dimensions for a native card (no field refs to filter on)", () => {
     // Unjustified type cast. FIXME
     const nativeRawSeries = [
-      { card: createMockNativeCard(), data: rawSeries2[0].data },
+      {
+        card: createMockCard({
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "",
+          }),
+          query_type: "native",
+        }),
+        data: rawSeries2[0].data,
+      },
     ] as RawSeries;
 
     const clickData = getTreemapClickData({

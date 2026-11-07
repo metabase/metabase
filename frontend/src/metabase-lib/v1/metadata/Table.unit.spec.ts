@@ -14,7 +14,6 @@ import {
 const TABLE_ORIGIN_ID = 1;
 const TABLE_DESTINATION_ID = 2;
 const TABLE_EMPTY_ID = 3;
-const TABLE_VIRTUAL_ID = "card__1";
 const FIELD_ORIGIN_ID = 1;
 const FIELD_DESTINATION_ID = 2;
 
@@ -50,13 +49,9 @@ const TABLE_EMPTY = createMockTable({
   id: TABLE_EMPTY_ID,
 });
 
-const TABLE_VIRTUAL = createMockTable({
-  id: TABLE_VIRTUAL_ID,
-});
-
 const setup = () => {
   return createMockMetadata({
-    tables: [TABLE_ORIGIN, TABLE_DESTINATION, TABLE_EMPTY, TABLE_VIRTUAL],
+    tables: [TABLE_ORIGIN, TABLE_DESTINATION, TABLE_EMPTY],
   });
 };
 

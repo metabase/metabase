@@ -19,3 +19,8 @@
     (if (not= id lib.schema.id/saved-questions-virtual-database-id)
       id
       (some-> query lib.metadata.calculation/primary-source-card :database-id))))
+
+(defmethod lib.metadata.calculation/display-info-method :metadata/database
+  [_query _stage-number database]
+  {:name         (:name database)
+   :display-name (:name database)})

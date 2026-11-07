@@ -5,7 +5,6 @@ import type {
   Card,
   FieldType,
   InputSettingType,
-  NativeDatasetQuery,
   Parameter,
   ParameterType,
   TemplateTag,
@@ -93,7 +92,7 @@ export const setParameterTypesFromFieldSettings = (
 
 export function convertActionToQuestionCard(
   action: WritebackQueryAction,
-): Card<NativeDatasetQuery> {
+): Card {
   return {
     id: action.id,
     entity_id: action.entity_id,
@@ -107,6 +106,7 @@ export function convertActionToQuestionCard(
       // Unjustified type cast. FIXME
       action.visualization_settings as VisualizationSettings,
     type: "question",
+    query_type: "native",
     can_write: true,
     can_restore: false,
     can_delete: false,

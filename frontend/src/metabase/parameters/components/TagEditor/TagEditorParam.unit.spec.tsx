@@ -15,6 +15,8 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
@@ -31,8 +33,6 @@ import type {
 import {
   createMockCard,
   createMockFieldDimension,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
@@ -66,7 +66,9 @@ const setup = ({
   const state = createMockState({
     qb: createMockQueryBuilderState({
       card: createMockCard({
-        dataset_query: createMockNativeDatasetQuery(),
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestNativeQuery(SAMPLE_PROVIDER, { query: "SELECT 1" }),
+        ),
       }),
       originalCard,
     }),
@@ -293,12 +295,14 @@ describe("TagEditorParam", () => {
         values_source_config: { values: ["Foo", "Bar"] },
       };
       const originalCard = createMockCard({
-        dataset_query: createMockNativeDatasetQuery({
-          native: createMockNativeQuery({
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
             query: `SELECT {{${savedTag.name}}}`,
-            "template-tags": { [savedTag.name]: savedTag },
+            templateTags: {
+              [savedTag.name]: { name: savedTag.name, type: "text" },
+            },
           }),
-        }),
+        ),
         parameters: [
           { ...getTemplateTagParameter(savedTag), ...savedValuesSource },
         ],

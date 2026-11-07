@@ -13,26 +13,26 @@ import {
 } from "__support__/ui";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { Outlet } from "metabase/router";
-import type {
-  Card,
-  Database,
-  StructuredDatasetQuery,
-  WritebackQueryAction,
-} from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { Card, Database, WritebackQueryAction } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCardQueryMetadata,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
-import {
-  createSampleDatabase,
-  createStructuredModelCard,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 const TEST_DATABASE_WITH_ACTIONS = createSampleDatabase({
   settings: { "database-enable-actions": true },
 });
 
-const TEST_MODEL = createStructuredModelCard();
+const TEST_MODEL = createMockCard({
+  type: "model",
+  dataset_query: Lib.toLegacyQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
+});
 
 const TEST_ACTION = createMockQueryAction({ model_id: TEST_MODEL.id });
 
@@ -42,7 +42,7 @@ async function setup({
   database = TEST_DATABASE_WITH_ACTIONS,
   initialRoute = `/model/${TEST_MODEL.id}/detail/actions/${TEST_ACTION.id}`,
 }: {
-  model?: Card<StructuredDatasetQuery>;
+  model?: Card;
   actions?: WritebackQueryAction[];
   database?: Database;
   initialRoute?: string;
