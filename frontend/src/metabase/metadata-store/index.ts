@@ -48,6 +48,7 @@ export { fetchRemapping } from "./remappings";
 export {
   databaseFetched,
   fieldFetched,
+  paramFieldsFetched,
   tableFetched,
   tableForeignKeysFetched,
 } from "./actions";

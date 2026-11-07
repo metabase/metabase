@@ -8,6 +8,7 @@ import type {
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
 import {
+  paramFieldsFetched,
   selectQuestionFromCard,
   selectQuestionFromCardBuilder,
 } from "metabase/metadata-store";
@@ -88,6 +89,12 @@ export const loadQuestionSdk =
 
     if (parameterValues) {
       question = question.setParameterValues(parameterValues);
+    }
+
+    if ("param_fields" in card && card.param_fields) {
+      // This is needed to make some parameter widget populate the dropdown list
+      // otherwise they will use a normal text input
+      dispatch(paramFieldsFetched(card.param_fields));
     }
 
     return { question, originalQuestion, parameterValues };

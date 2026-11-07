@@ -36,7 +36,6 @@ import {
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
-  createMockParameterField,
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS,
@@ -264,21 +263,13 @@ function createDashboard({
     width: "full",
     parameters: [parameter],
     param_fields: {
-      [CATEGORY_DROPDOWN_FILTER.id]: [
-        createMockParameterField(createProductsCategoryField()),
-      ],
-      [DATE_FILTER_ID]: [
-        createMockParameterField(createProductsCreatedAtField()),
-      ],
-      [UNIT_OF_TIME_FILTER_ID]: [
-        createMockParameterField(createProductsCreatedAtField()),
-      ],
+      [CATEGORY_DROPDOWN_FILTER.id]: [createProductsCategoryField()],
+      [DATE_FILTER_ID]: [createProductsCreatedAtField()],
+      [UNIT_OF_TIME_FILTER_ID]: [createProductsCreatedAtField()],
       // the story types a value into this filter, so its field must not offer
       // a list to pick from
       [NUMBER_FILTER_ID]: [
-        createMockParameterField(
-          createProductsRatingField({ has_field_values: "none" }),
-        ),
+        createProductsRatingField({ has_field_values: "none" }),
       ],
     },
     dashcards: [

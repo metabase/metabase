@@ -34,7 +34,10 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
-import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
+import {
+  paramFieldsFetched,
+  selectQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
@@ -926,6 +929,10 @@ export const fetchDashboard = createAsyncThunk(
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
         result = copyVirtualCardsToCards(result);
+      }
+
+      if (result.param_fields) {
+        await dispatch(paramFieldsFetched(result.param_fields));
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};

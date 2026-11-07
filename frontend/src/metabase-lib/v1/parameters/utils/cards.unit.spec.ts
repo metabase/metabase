@@ -6,7 +6,6 @@ import {
   createMockCard,
   createMockField,
   createMockParameter,
-  createMockParameterField,
 } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
@@ -42,8 +41,8 @@ describe("parameters/utils/cards", () => {
 
     describe("saved cards", () => {
       it("should get parameter fields from param_fields, without duplicates", () => {
-        const firstField = createMockParameterField({ id: 1 });
-        const secondField = createMockParameterField({ id: 2 });
+        const firstField = createMockField({ id: 1 });
+        const secondField = createMockField({ id: 2 });
         const card = createMockCard({
           id: 1,
           parameters: [dateParameter, variableParameter],
@@ -71,7 +70,7 @@ describe("parameters/utils/cards", () => {
       it("should use a param_fields field the metadata store never loaded", () => {
         // the backend hydrates param_fields for this card, so a field is
         // there to be used whether or not another request put it in the store
-        const field = createMockParameterField({ id: 1 });
+        const field = createMockField({ id: 1 });
         const card = createMockCard({
           id: 1,
           parameters: [dateParameter],
@@ -177,7 +176,7 @@ describe("parameters/utils/cards", () => {
           id: undefined,
           parameters: [dateParameter],
           param_fields: {
-            [dateParameter.id]: [createMockParameterField({ id: 1 })],
+            [dateParameter.id]: [createMockField({ id: 1 })],
           },
         });
 
