@@ -75,7 +75,7 @@
 
 (defn referenced-tables
   "`[catalog schema table]` of every table `sql` reads, sorted."
-  [sql dialect]
+  [dialect sql]
   (->> (for [stmt  (statements sql dialect)
              table (table-references stmt)]
          (table-parts table))
@@ -139,7 +139,7 @@
 
 (defn referenced-fields
   "`[catalog schema table field]` of every field `sql` reads from a real table, sorted; `*` for a wildcard."
-  [sql dialect]
+  [dialect sql]
   (let [stmt        (ast/parse-one sql dialect)
         ;; `build_scope`: the last scope `traverse_scope` yields, none for a statement that holds no query (a
         ;; DELETE without a subquery), which Python fails on.

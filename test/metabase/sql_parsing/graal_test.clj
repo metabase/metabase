@@ -53,7 +53,7 @@
           (Files/deleteIfExists zip-file))))))
 
 (deftest timeout-surfaces-even-when-metric-inc-fails-test
-  ;; This test is about the GraalPy timeout and its metric. The Java backend has its own timeout (a fixed 30 s), which
+  ;; This test is about the GraalPy timeout and its metric. The Java backend has its own timeout, which
   ;; `metabase.sql-parsing.sqlglot-java-test/slow-call-times-out-test` tests. So this test always runs on the GraalPy
   ;; parser, whichever backend the setting selects.
   (testing (str "A fired GraalPy Python-call timeout still surfaces as TimeoutException from the API even if "

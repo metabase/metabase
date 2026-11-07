@@ -1,5 +1,5 @@
 (ns metabase.sql-parsing.settings
-  "Settings for SQL parsing."
+  "Env-var-only settings for SQL parsing."
   (:require
    [metabase.settings.core :refer [defsetting]]))
 
@@ -15,7 +15,8 @@
 
 (defsetting sql-parsing-shadow-sample-rate
   "Share of calls, from 0.0 to 1.0, that a shadow parser backend also runs on its second parser."
+  :type       :double
+  :default    1.0
   :visibility :internal
-  :export? false
-  :type :double
-  :default 1.0)
+  :export?    false
+  :setter     :none)

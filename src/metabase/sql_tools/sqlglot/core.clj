@@ -128,15 +128,15 @@
 ;; SQLGlot validation uses the same pipeline as Macaw:
 ;; field-references (dispatched on the same backend) → resolve-field (Macaw's logic)
 (defmethod sql-tools/validate-query-impl :sqlglot
-  [parser driver query]
-  (sql-tools.common/validate-query parser driver query))
+  [backend driver query]
+  (sql-tools.common/validate-query backend driver query))
 
 ;;;; returned-columns
 ;; SQLGlot returned-columns uses the same pipeline as Macaw:
 ;; field-references (dispatched on the same backend) → resolve-field (Macaw's logic)
 (defmethod sql-tools/returned-columns-impl :sqlglot
-  [parser driver query]
-  (sql-tools.common/returned-columns parser driver query))
+  [backend driver query]
+  (sql-tools.common/returned-columns backend driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :sqlglot
   [backend driver sql-str opts]

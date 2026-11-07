@@ -38,16 +38,19 @@
                        {:method method, :dialect "postgres", :outcome outcome})
       0))
 
+(defn- wait-until
+  "Wait until `(done?)` is true, for at most ten seconds."
+  [done?]
+  (let [deadline (+ (System/currentTimeMillis) 10000)]
+    (while (and (not (done?)) (< (System/currentTimeMillis) deadline))
+      (Thread/sleep 10))))
+
 (defn- wait-for-comparisons
   "Wait until `n` comparisons of `method` have finished, whatever their outcome."
   [system method n]
-  (let [deadline (+ (System/currentTimeMillis) 10000)]
-    (loop []
-      (let [done (reduce + (map #(comparisons system method %)
-                                ["match" "mismatch" "error-type-mismatch" "primary-only-error" "shadow-only-error"]))]
-        (when (and (< done n) (< (System/currentTimeMillis) deadline))
-          (Thread/sleep 10)
-          (recur))))))
+  (wait-until #(<= n (reduce + (map (fn [outcome] (comparisons system method outcome))
+                                    ["match" "mismatch" "error-type-mismatch" "primary-only-error"
+                                     "shadow-only-error"])))))
 
 (defn- call-every-method
   [parser]
@@ -126,10 +129,7 @@
     ;; lineage normalization destructures each column; a number cannot be
     (let [parser (shadow-parser (stub-parser (fn [_ _] [1])) (stub-parser (fn [_ _] [1])))]
       (is (= [1] (protocol/returned-columns-lineage parser "postgres" "sql" nil {})))
-      (let [deadline (+ (System/currentTimeMillis) 10000)]
-        (while (and (zero? (comparisons system "returned-columns-lineage" "comparison-failed"))
-                    (< (System/currentTimeMillis) deadline))
-          (Thread/sleep 10)))
+      (wait-until #(pos? (comparisons system "returned-columns-lineage" "comparison-failed")))
       (is (== 1 (comparisons system "returned-columns-lineage" "comparison-failed"))))))
 
 (deftest difference-logs-method-dialect-and-caller-thread-test
@@ -276,9 +276,7 @@
           (protocol/referenced-tables parser "postgres" "sql"))
         (is (== 5 (mt/metric-value system :metabase-sql-parsing/shadow-in-flight {:parser "sqlglot-java"})))
         (testing "both threads take a comparison, rather than one waiting behind the other"
-          (let [deadline (+ (System/currentTimeMillis) 10000)]
-            (while (and (< @started 2) (< (System/currentTimeMillis) deadline))
-              (Thread/sleep 10)))
+          (wait-until #(<= 2 @started))
           (Thread/sleep 50)
           (is (= 2 @started)))
         (finally

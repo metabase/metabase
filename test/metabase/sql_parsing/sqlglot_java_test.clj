@@ -136,21 +136,14 @@
                                              "SELECT u.a AS b, u.a FROM (SELECT a FROM x UNION SELECT a FROM y) u"))))
           backend))))
 
-(deftest group-by-all-names-no-column-test
-  (testing "GROUP BY ALL groups by every selected expression and uses no column named ALL, as on GraalPy (QUE-1050)"
-    (doseq [dialect ["duckdb" "databricks" "snowflake"]
-            :let    [sql "SELECT a, SUM(b) FROM t GROUP BY ALL"
-                     references #(sql-parsing/field-references (sql-parsing/parser %) dialect sql)]]
-      (is (= (references :sqlglot) (references :sqlglot-java)) dialect)
-      (is (= #{"a" "b"} (into #{} (map :column) (:used-fields (references :sqlglot-java)))) dialect))))
-
-(deftest order-by-all-names-no-column-test
-  (testing "ORDER BY ALL orders by every selected column and uses no column named ALL, as on GraalPy"
-    (doseq [dialect ["duckdb" "databricks"]
-            :let    [sql "SELECT a, b FROM t ORDER BY ALL"
-                     references #(sql-parsing/field-references (sql-parsing/parser %) dialect sql)]]
-      (is (= (references :sqlglot) (references :sqlglot-java)) dialect)
-      (is (= #{"a" "b"} (into #{} (map :column) (:used-fields (references :sqlglot-java)))) dialect))))
+(deftest group-by-and-order-by-all-name-no-column-test
+  (testing "GROUP BY ALL and ORDER BY ALL use every selected column and no column named ALL, as on GraalPy (QUE-1050)"
+    (doseq [[sql dialects] [["SELECT a, SUM(b) FROM t GROUP BY ALL" ["duckdb" "databricks" "snowflake"]]
+                            ["SELECT a, b FROM t ORDER BY ALL"      ["duckdb" "databricks"]]]
+            dialect        dialects
+            :let           [references #(sql-parsing/field-references (sql-parsing/parser %) dialect sql)]]
+      (is (= (references :sqlglot) (references :sqlglot-java)) [dialect sql])
+      (is (= #{"a" "b"} (into #{} (map :column) (:used-fields (references :sqlglot-java)))) [dialect sql]))))
 
 (deftest backend-dispatch-test
   (testing "every sql-tools multimethod has a :sqlglot method, and every sql-parsing backend dispatches to it"
@@ -158,11 +151,11 @@
     (doseq [[sym ^clojure.lang.MultiFn multimethod] (interface-multimethods)]
       (testing sym
         (is (some? (get-method multimethod :sqlglot)))))
-    (doseq [backend [:sqlglot :sqlglot-java :sqlglot-shadow :sqlglot-java-shadow]]
+    (doseq [backend sql-parsing/backends]
       (is (= :sqlglot (interface/parser-driver-dispatch backend nil)) backend))
     (is (= :macaw (interface/parser-driver-dispatch :macaw nil))))
   (testing "the shared :sqlglot methods ask for the parser the backend names"
-    (doseq [backend [:sqlglot :sqlglot-java :sqlglot-shadow :sqlglot-java-shadow]]
+    (doseq [backend sql-parsing/backends]
       (testing backend
         (let [seen (atom [])]
           (binding [settings/*parser-backend-override* backend]
@@ -274,6 +267,10 @@
         (is (= "SELECT id FROM archived_orders" (rename "SELECT id FROM t" {:tables [[{:table "t"} "archived_orders"]]})))
         (is (= "SELECT id FROM \"Archived\"" (rename "SELECT id FROM t" {:tables [[{:table "t"} "\"Archived\""]]})))))))
 
+(def ^:private too-deep-sql
+  "SQL nested past the stack."
+  (str "SELECT " (apply str (repeat 5000 "(")) "1" (apply str (repeat 5000 ")"))))
+
 (defn- error-type-of
   "The `:sql-parsing/python-error-type` that `thunk` fails with."
   [thunk]
@@ -292,19 +289,17 @@
     (testing "nil SQL is a TypeError"
       (is (= "TypeError" (error-type-of #(protocol/referenced-tables java-parser "postgres" nil)))))
     (testing "SQL nested past the stack is a RecursionError with GraalPy's message and a cause"
-      (let [sql   (str "SELECT " (apply str (repeat 5000 "(")) "1" (apply str (repeat 5000 ")")))
-            error (try (protocol/referenced-tables java-parser "postgres" sql) nil (catch Exception e e))]
+      (let [error (try (protocol/referenced-tables java-parser "postgres" too-deep-sql) nil (catch Exception e e))]
         (is (= "RecursionError" (:sql-parsing/python-error-type (ex-data error))))
         (is (= "RecursionError: maximum recursion depth exceeded" (ex-message (ex-cause error))))))))
 
 (deftest read-only-check-of-too-deep-sql-test
   (testing "SQL nested past the stack is unparseable to the read-only check, as on GraalPy, not an exception"
-    (let [sql (str "SELECT " (apply str (repeat 5000 "(")) "1" (apply str (repeat 5000 ")")))]
-      (is (=? {:is_single_stmt?    false
-               :allowed_stmt_type? false
-               :reason             "unparseable"
-               :error              "maximum recursion depth exceeded"}
-              (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" sql "read-only"))))))
+    (is (=? {:is_single_stmt?    false
+             :allowed_stmt_type? false
+             :reason             "unparseable"
+             :error              "maximum recursion depth exceeded"}
+            (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" too-deep-sql "read-only")))))
 
 (deftest port-logs-no-sql-test
   (testing "the port's warning that quotes SQL it falls back on does not reach the log, as sql_tools.py ensures"

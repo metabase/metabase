@@ -42,7 +42,7 @@
   so each table is still scanned once. CTEs, derived tables, table functions and `#`/`##` temp tables are left
   alone. A column that reached a wrapped table by a schema-qualified name loses the qualifier, since a derived table
   is only reachable by its alias."
-  [sql table-name dialect]
+  [dialect sql table-name]
   (let [stmt      (ast/parse-one sql dialect)
         _         (when-not (instance? Expressions$Select stmt)
                     (throw (ast/python-error "ValueError" "SQL must be a SELECT statement")))
@@ -67,7 +67,7 @@
 
 (defn add-insert-clause
   "`sql`, a query, as `INSERT INTO table-name <query>`. Any WITH clause of the query goes before INSERT INTO."
-  [sql table-name dialect]
+  [dialect sql table-name]
   (let [stmt (ast/parse-one sql dialect)]
     (when-not (instance? Expressions$Query stmt)
       (throw (ast/python-error "ValueError" "SQL must be a SELECT statement")))
@@ -97,13 +97,18 @@
            (str/includes? ident " ")
            (Character/isDigit (.charAt ident 0)))))
 
+(defn- fold-key
+  "The tuple of name parts `k`, with each name lower-cased."
+  [k]
+  (mapv #(if (string? %) (ast/lower %) %) k))
+
 (defn- fold-keys
   "A case-insensitive view of `mapping`, whose keys are tuples of name parts. Keys that differ only in case and map
   to different values have no single answer, so they are dropped: an exact match still finds them."
   [mapping]
   (let [{:keys [folded ambiguous]}
         (reduce (fn [{:keys [folded] :as acc} [k v]]
-                  (let [folded-key (mapv #(if (string? %) (ast/lower %) %) k)]
+                  (let [folded-key (fold-key k)]
                     (cond-> (assoc-in acc [:folded folded-key] v)
                       (and (contains? folded folded-key) (not= (get folded folded-key) v))
                       (update :ambiguous conj folded-key))))
@@ -112,7 +117,7 @@
     (apply dissoc folded ambiguous)))
 
 (defn- fold-lookup [folded k]
-  (get folded (mapv #(if (string? %) (ast/lower %) %) k)))
+  (get folded (fold-key k)))
 
 (defn- part-matches?
   "Whether one part of a replacement key names the same thing as the reference's. A quoted reference part is case
@@ -180,7 +185,7 @@
     (mapv (fn [k] [k (get values k)]) (distinct (map first entries)))))
 
 (defn- usable [replacement]
-  (when (and replacement (not= replacement ::ambiguous) (seq replacement))
+  (when (and (not= replacement ::ambiguous) (seq replacement))
     replacement))
 
 (defn- rewrite-statement [stmt {:keys [schemas folded-schemas table-map column-map]} dialect]
@@ -246,7 +251,7 @@
   with string keys, as `sql_tools.py` reads them. Replacement values become identifiers, and one that is not a
   single identifier is quoted whole (see [[set-identifier!]]). Callers still pass system-generated names: the GraalPy
   backend does not quote them."
-  [sql replacements dialect]
+  [dialect sql replacements]
   (let [{:strs [schemas tables columns]} replacements
         schemas  (or schemas {})
         context  {:schemas        schemas

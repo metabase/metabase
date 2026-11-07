@@ -42,15 +42,19 @@
           (some #(when (and % (table-matches? table-name (:names %))) %) scope-sources))
         sources))
 
+(defn- names-match?
+  "Whether `n` is the alias or the table name in the source names `names`, ignoring case."
+  [names n]
+  (boolean (some #(and % (= (ast/lower %) (ast/lower n)))
+                 [(:table_alias names) (:table names)])))
+
 (defn- source-might-have-column?
   "Whether `source` might hold the column: any source might when the column is unqualified; otherwise only the one
   its qualifier names, ignoring case."
   [source table-ref]
   (boolean (and source
                 (or (empty? table-ref)
-                    (let [{:keys [table_alias table]} (:names source)]
-                      (or (and table_alias (= (ast/lower table_alias) (ast/lower table-ref)))
-                          (and table (= (ast/lower table) (ast/lower table-ref)))))))))
+                    (names-match? (:names source) table-ref)))))
 
 (defn- recursive-cte-reference
   "A column read from the recursive CTE `source` by its own body: a single column whose source is the CTE itself."
@@ -85,10 +89,8 @@
         ;; SELECT o FROM (SELECT * FROM orders) AS o: an unqualified name may name a source rather than a column
         table-match    (when (and (not source-column) (empty? table-ref))
                          (some (fn [scope-sources]
-                                 (some (fn [{:keys [names] :as source}]
-                                         (when (and source
-                                                    (some #(and % (= (ast/lower %) (ast/lower column-name)))
-                                                          [(:table_alias names) (:table names)]))
+                                 (some (fn [source]
+                                         (when (and source (names-match? (:names source) column-name))
                                            source))
                                        scope-sources))
                                valid-sources))]
@@ -139,6 +141,11 @@
 (defn- cols [results]
   (keep :col results))
 
+(defn- with-alias
+  "`results` with the alias of the Alias node `expr` on each column."
+  [results expr]
+  (mapv #(cond-> % (:col %) (assoc-in [:col :alias] (ast/node-alias expr))) results))
+
 (defn- find-used-fields
   "The fields `expr` uses (in WHERE, JOIN ON, GROUP BY, ORDER BY, HAVING, or inside a SELECT expression)."
   [expr sources withs]
@@ -171,7 +178,7 @@
       (instance? Expressions$Alias expr)
       (let [results (recur-on (ast/this expr))]
         (if (instance? Expressions$Column (ast/this expr))
-          (mapv #(cond-> % (:col %) (assoc-in [:col :alias] (ast/node-alias expr))) results)
+          (with-alias results expr)
           results))
 
       (instance? Expressions$Binary expr)
@@ -230,8 +237,7 @@
   [expr sources withs]
   (cond
     (instance? Expressions$Alias expr)
-    (mapv #(cond-> % (:col %) (assoc-in [:col :alias] (ast/node-alias expr)))
-          (find-returned-fields (ast/this expr) sources withs))
+    (with-alias (find-returned-fields (ast/this expr) sources withs) expr)
 
     ;; SELECT * returns every field of the innermost scope's sources
     (instance? Expressions$Star expr)
@@ -321,21 +327,20 @@
   (let [with-clause (ast/arg select-expr "with_")
         recursive?  (some-> with-clause (ast/arg "recursive"))]
     (reduce (fn [[withs errors] cte]
-              (let [cte-name (ast/node-alias cte)
-                    body     (ast/this cte)]
-                (if (and recursive? (instance? Expressions$Union body))
-                  ;; The base case, the left of the UNION, gives the CTE's fields, so the recursive part can read
-                  ;; the CTE while the full body is processed.
-                  (let [base   (process-query (ast/this body) outside-sources withs)
-                        withs  (assoc withs cte-name (assoc base
-                                                            :names            {:table cte-name :table_alias cte-name}
-                                                            :is_recursive_cte true))
-                        result (process-query body outside-sources withs)]
-                    [(assoc withs cte-name (assoc result :names {:table cte-name} :is_recursive_cte true))
-                     (into errors (:errors result))])
-                  (let [result (process-query body outside-sources withs)]
-                    [(assoc withs cte-name (assoc result :names {:table cte-name}))
-                     (into errors (:errors result))]))))
+              (let [cte-name         (ast/node-alias cte)
+                    body             (ast/this cte)
+                    recursive-union? (and recursive? (instance? Expressions$Union body))
+                    ;; The base case, the left of the UNION, gives the CTE's fields, so the recursive part can read
+                    ;; the CTE while the full body is processed.
+                    withs            (cond-> withs
+                                       recursive-union?
+                                       (assoc cte-name (assoc (process-query (ast/this body) outside-sources withs)
+                                                              :names            {:table cte-name :table_alias cte-name}
+                                                              :is_recursive_cte true)))
+                    result           (process-query body outside-sources withs)]
+                [(assoc withs cte-name (cond-> (assoc result :names {:table cte-name})
+                                         recursive-union? (assoc :is_recursive_cte true)))
+                 (into errors (:errors result))]))
             [withs #{}]
             (some-> with-clause ast/expressions))))
 
@@ -395,7 +400,7 @@
 (defn field-references
   "`{:used_fields :returned_fields :errors}` for `sql`: the fields its clauses use, the fields it returns in order,
   and the qualifiers and columns that resolve to nothing."
-  [sql dialect]
+  [dialect sql]
   (try
     (let [{:keys [used_fields returned_fields errors]} (process-query (ast/parse-one sql dialect) [] {})]
       {:used_fields     (vec used_fields)

@@ -178,6 +178,11 @@
                             (re-find #"[./\\:]" (or (ast/node-name %) "")))
                       (ast/walk stmt)))))
 
+(defn- locking-hint?
+  "Whether `node` names one of the [[locking-table-hints]]."
+  [node]
+  (contains? locking-table-hints (u/upper-case-en (ast/node-name node))))
+
 (defn- writes-or-locks? [node]
   (cond
     (ast/instance-of-any? not-read-only-classes node)
@@ -199,22 +204,20 @@
          (= "nextval" (u/lower-case-en (ast/node-name node))))
 
     (instance? Expressions$WithTableHint node)
-    (boolean (some #(contains? locking-table-hints (u/upper-case-en (ast/node-name %)))
-                   (ast/expressions node)))
+    (boolean (some locking-hint? (ast/expressions node)))
 
     ;; SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
     ;; table-valued function named `t`.
     (and (instance? Expressions$Table node) (instance? Expressions$Anonymous (ast/this node)))
     (boolean (some #(and (instance? Expressions$Column %)
                          (empty? (ast/text % "table"))
-                         (contains? locking-table-hints (u/upper-case-en (ast/node-name %))))
+                         (locking-hint? %))
                    (ast/expressions (ast/this node))))
 
     ;; After an alias, `FROM t a (XLOCK)` parses as a column list on the alias, and SQL Server reads it as a hint.
     ;; Only a plain table's alias counts: a derived table's column list, `(SELECT ...) d(a)`, names real columns.
     (and (instance? Expressions$Table node) (instance? Expressions$TableAlias (ast/arg node "alias")))
-    (boolean (some #(contains? locking-table-hints (u/upper-case-en (ast/node-name %)))
-                   (ast/arg (ast/arg node "alias") "columns")))
+    (boolean (some locking-hint? (ast/arg (ast/arg node "alias") "columns")))
 
     :else
     false))
@@ -274,16 +277,16 @@
 (defn- statement-reason
   "`[reason detail]` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else nil."
   [stmt sql dialect]
-  (if-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
-                                       stmt)]
-    ["session-function" function]
-    (if (external-table? stmt dialect)
-      ["external-table" nil]
-      (if-let [executor (sql-executing-function stmt)]
-        ["sql-executing-function" executor]
-        (if (dynamic-function-call? stmt)
-          ["dynamic-function-call" nil]
-          (hidden-sql sql dialect (ast/instance-of-any? read-classes (unbracketed stmt))))))))
+  (or (when-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
+                                             stmt)]
+        ["session-function" function])
+      (when (external-table? stmt dialect)
+        ["external-table" nil])
+      (when-let [executor (sql-executing-function stmt)]
+        ["sql-executing-function" executor])
+      (when (dynamic-function-call? stmt)
+        ["dynamic-function-call" nil])
+      (hidden-sql sql dialect (ast/instance-of-any? read-classes (unbracketed stmt)))))
 
 (defn- not-read-only-reason
   "`[reason detail]` for why `stmts`, parsed from `sql`, are not one read-only SELECT, else nil."
@@ -302,7 +305,7 @@
   `\"read-only\"` also refuses a SELECT holding anything that writes or locks anywhere in its tree, and does not count
   a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
   share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds."
-  [sql stmt-type dialect]
+  [dialect sql stmt-type]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
         result          (volatile! {:is_single_stmt? false, :allowed_stmt_type? false})]
@@ -334,7 +337,7 @@
 
 (defn simple-query
   "Whether `sql` is a simple SELECT, with no LIMIT, OFFSET or CTE, and the `:reason` when it is not."
-  [sql dialect]
+  [dialect sql]
   (try
     (let [stmt (ast/parse-one sql dialect)]
       (cond

@@ -67,14 +67,14 @@
   `ErrorType: message` as the GraalPy transport's do, so [[metabase.sql-parsing.core/parse-error-message]] reads both
   the same way. SQL nested too deeply for the stack is a RecursionError, with GraalPy's message."
   [f]
-  (try
-    (f)
-    (catch StackOverflowError e
-      (let [error "RecursionError: maximum recursion depth exceeded"]
-        (throw (common/call-failed-ex error (ex-info error {} e)))))
-    (catch Exception e
-      (let [error (str (error-type e) ": " (ex-message e))]
-        (throw (common/call-failed-ex error (ex-info error {} e)))))))
+  (let [fail (fn [error cause]
+               (throw (common/call-failed-ex error (ex-info error {} cause))))]
+    (try
+      (f)
+      (catch StackOverflowError e
+        (fail "RecursionError: maximum recursion depth exceeded" e))
+      (catch Exception e
+        (fail (str (error-type e) ": " (ex-message e)) e)))))
 
 (def ^:private max-concurrent-calls
   "How many calls may run at the same time, as for the GraalPy context pool. Other calls wait."
@@ -104,7 +104,6 @@
       (let [result (deref fut timeout-ms ::timeout)]
         (if (= result ::timeout)
           (do
-            (future-cancel fut)
             ;; A misconfigured registry must not replace the timeout with its own error.
             (try (analytics/inc! :metabase-sql-parsing/sqlglot-java-timeouts)
                  (catch Throwable e
@@ -130,24 +129,24 @@
   []
   (reify protocol/SqlParser
     (referenced-tables [_ dialect sql]
-      (call #(references/referenced-tables sql dialect)))
+      (call #(references/referenced-tables dialect sql)))
     (referenced-fields [_ dialect sql]
-      (call #(references/referenced-fields sql dialect)))
+      (call #(references/referenced-fields dialect sql)))
     (returned-columns-lineage [_ dialect sql default-table-schema sqlglot-schema]
       (call #(qualify/returned-columns-lineage dialect sql default-table-schema (json-shaped sqlglot-schema))))
     (validate-query [_ dialect sql default-table-schema sqlglot-schema]
       (call #(qualify/validate-query dialect sql default-table-schema (json-shaped sqlglot-schema))))
     (simple-query [_ dialect sql]
-      (call #(statements/simple-query sql dialect)))
+      (call #(statements/simple-query dialect sql)))
     (add-into-clause [_ dialect sql table-name]
-      (call #(rewrite/add-into-clause sql table-name dialect)))
+      (call #(rewrite/add-into-clause dialect sql table-name)))
     (add-insert-clause [_ dialect sql table-name]
-      (call #(rewrite/add-insert-clause sql table-name dialect)))
+      (call #(rewrite/add-insert-clause dialect sql table-name)))
     (field-references [_ dialect sql]
-      (call #(field-references/field-references sql dialect)))
+      (call #(field-references/field-references dialect sql)))
     (replace-names [_ dialect sql replacements]
-      (call #(rewrite/replace-names sql (json-shaped replacements) dialect)))
+      (call #(rewrite/replace-names dialect sql (json-shaped replacements))))
     (single-stmt-of-type [_ dialect sql stmt-type]
-      (call #(statements/single-stmt-of-type sql stmt-type dialect)))
+      (call #(statements/single-stmt-of-type dialect sql stmt-type)))
     (transpile-sql [_ sql from-dialect to-dialect]
       (call #(transpile/transpile-sql sql from-dialect to-dialect)))))
