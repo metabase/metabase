@@ -185,41 +185,4 @@ describe("getSearchField", () => {
 
     expect(getSearchField(field)).toBe(field);
   });
-
-  describe("when PK remapping is disabled", () => {
-    it("searches a string PK through itself, not its remap target", () => {
-      const field = createFieldRemappedTo(
-        TEXT_FIELD_ID,
-        createTextField(TEXT_FIELD_ID),
-        {
-          base_type: "type/Text",
-          semantic_type: "type/PK",
-        },
-      );
-
-      expect(getSearchField(field, true)).toBe(field);
-    });
-
-    it("returns null for a number PK", () => {
-      const field = createFieldRemappedTo(
-        TEXT_FIELD_ID,
-        createTextField(TEXT_FIELD_ID),
-        {
-          base_type: "type/Integer",
-          semantic_type: "type/PK",
-        },
-      );
-
-      expect(getSearchField(field, true)).toBeNull();
-    });
-
-    it("still remaps a field that is not a PK", () => {
-      const displayField = createTextField(TEXT_FIELD_ID);
-      const field = createFieldRemappedTo(TEXT_FIELD_ID, displayField, {
-        base_type: "type/Integer",
-      });
-
-      expect(getSearchField(field, true)).toBe(displayField);
-    });
-  });
 });

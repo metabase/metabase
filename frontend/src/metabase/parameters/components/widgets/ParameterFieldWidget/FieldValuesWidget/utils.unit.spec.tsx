@@ -1,18 +1,16 @@
+import type {
+  ParameterField,
+  UiParameter,
+} from "metabase-lib/v1/parameters/types";
+import { createMockParameter } from "metabase-types/api/mocks";
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
-import {
-  PK_REMAPPED_TO_NUMBER_FIELD_ID,
-  REMAPPED_TO_NUMBER_FIELD_ID,
-  REMAPPED_TO_STRING_FIELD_ID,
-  STRING_PK_FIELD_ID,
-  getField,
-} from "./testMocks.spec";
-import {
-  getValuesMode,
-  isSearchable,
-  parseStringValue,
-  searchField,
-} from "./utils";
+import { getField } from "./testMocks.spec";
+import { getValuesMode, isSearchable, parseStringValue } from "./utils";
+
+function createParameter(fields: ParameterField[]): UiParameter {
+  return { ...createMockParameter({ type: "string/=" }), fields };
+}
 
 describe("Components > FieldValuesWidget > utils", () => {
   describe("parseStringValue", () => {
@@ -37,112 +35,51 @@ describe("Components > FieldValuesWidget > utils", () => {
     const searchField = getField(PEOPLE.EMAIL);
     const idField = getField(PRODUCTS.ID);
 
-    describe("when the `valuesMode` is already set to 'search'", () => {
-      it("should return return true unless fully disabled", () => {
-        expect(
-          isSearchable({ valuesMode: "search", disableSearch: true }),
-        ).toBe(false);
-        expect(isSearchable({ valuesMode: "search" })).toBe(true);
-      });
+    it("should be true when `valuesMode` is already 'search'", () => {
+      expect(
+        isSearchable({ parameter: createParameter([]), valuesMode: "search" }),
+      ).toBe(true);
     });
 
-    it("should be false when the list of fields includes one that is not searchable", () => {
-      const fields = [searchField, idField];
-      expect(isSearchable({ fields })).toBe(false);
+    it("should be false when one of fields is not searchable", () => {
+      const parameter = createParameter([searchField, idField]);
+      expect(isSearchable({ parameter })).toBe(false);
     });
 
     describe("when all fields are searchable", () => {
       it("should be false if there are no fields that require search", () => {
-        const fields = [listField];
-        expect(isSearchable({ fields })).toBe(false);
+        const parameter = createParameter([listField]);
+        expect(isSearchable({ parameter })).toBe(false);
       });
 
       it("should be true if there is at least one field that requires search", () => {
-        const fields = [searchField, listField];
-        expect(isSearchable({ fields })).toBe(true);
+        const parameter = createParameter([searchField, listField]);
+        expect(isSearchable({ parameter })).toBe(true);
       });
     });
   });
 
   describe("getValuesMode", () => {
-    describe("when passed no fields", () => {
-      it("should return 'none'", () => {
-        expect(getValuesMode({ fields: [] })).toBe("none");
-      });
+    it("should return 'none' without fields", () => {
+      expect(getValuesMode(createParameter([]))).toBe("none");
     });
 
-    describe("when passed fields that are searchable", () => {
-      it("should return 'search'", () => {
-        const fields = [getField(PEOPLE.EMAIL)];
-        expect(getValuesMode({ fields })).toBe("search");
-      });
+    it("should return 'search' for searchable fields", () => {
+      expect(getValuesMode(createParameter([getField(PEOPLE.EMAIL)]))).toBe(
+        "search",
+      );
     });
 
-    describe("when passed fields that are not searchable but listable", () => {
-      it("should return 'list'", () => {
-        const fields = [getField(PRODUCTS.CATEGORY)];
-        expect(getValuesMode({ fields })).toBe("list");
-      });
+    it("should return 'list' for listable fields", () => {
+      expect(
+        getValuesMode(createParameter([getField(PRODUCTS.CATEGORY)])),
+      ).toBe("list");
     });
 
-    describe("when passed fields that are not searchable and not listable", () => {
-      it("should return 'none'", () => {
-        const fields = [getField(ORDERS.SUBTOTAL)];
-        expect(getValuesMode({ fields })).toBe("none");
-      });
-    });
-  });
-
-  describe("searchField", () => {
-    describe("`disablePKRemappingForSearch` is true and field is a PK", () => {
-      const disablePKRemappingForSearch = true;
-
-      const stringPKField = getField(STRING_PK_FIELD_ID);
-      const numberPKField = getField(PRODUCTS.ID);
-
-      it("should return same field when the field is searchable (the field is a string AND a PK)", () => {
-        expect(searchField(stringPKField, disablePKRemappingForSearch)).toBe(
-          stringPKField,
-        );
-      });
-
-      it("should return null when field is not searchable (the field is NOT a string PK)", () => {
-        expect(
-          searchField(numberPKField, disablePKRemappingForSearch),
-        ).toBeNull();
-      });
-    });
-
-    describe("when the field is remapped to a searchable field", () => {
-      it("should return the remapped field", () => {
-        const remappedField = getField(REMAPPED_TO_STRING_FIELD_ID);
-
-        expect(searchField(remappedField)).toBe(getField(PRODUCTS.TITLE));
-      });
-    });
-
-    describe("when the field is remapped to a non-searchable field", () => {
-      it("should ignore it and return the original field, assuming it is searchable", () => {
-        const remappedField = getField(REMAPPED_TO_NUMBER_FIELD_ID);
-
-        expect(searchField(remappedField)).toBe(remappedField);
-      });
-
-      it("should return null when the original field is not searchable either", () => {
-        const remappedField = getField(PK_REMAPPED_TO_NUMBER_FIELD_ID);
-
-        expect(searchField(remappedField)).toBeNull();
-      });
-    });
-
-    it("should return the field if it is searchable", () => {
-      const searchableField = getField(PRODUCTS.TITLE);
-      expect(searchField(searchableField)).toBe(searchableField);
-    });
-
-    it("should return null if the field is not searchable", () => {
-      const nonSearchableField = getField(PRODUCTS.ID);
-      expect(searchField(nonSearchableField)).toBeNull();
+    it("should return 'none' for fields that are neither searchable nor listable", () => {
+      expect(getValuesMode(createParameter([getField(ORDERS.SUBTOTAL)]))).toBe(
+        "none",
+      );
     });
   });
 });

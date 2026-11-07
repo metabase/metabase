@@ -1,8 +1,4 @@
-import {
-  type FieldTypeInfo,
-  isPK,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
+import { type FieldTypeInfo, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   FieldDimensionType,
   FieldId,
@@ -100,12 +96,7 @@ export function getExternalRemappedField<T extends RemappableField<T>>(
  */
 export function getSearchField<T extends RemappableField<T>>(
   field: T,
-  disablePKRemapping = false,
 ): T | null {
-  if (disablePKRemapping && isPK(field)) {
-    return isSearchableField(field) ? field : null;
-  }
-
   const remappedField = getExternalRemappedField(field);
   if (remappedField && isSearchableField(remappedField)) {
     return remappedField;
