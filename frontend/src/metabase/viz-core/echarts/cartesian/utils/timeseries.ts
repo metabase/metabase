@@ -49,14 +49,14 @@ export function ensureResultsTimezone(
     return dayjs
       .utc(value)
       .utcOffset(offsetMinutes, true)
-      .format("YYYY-MM-DDTHH:mm:ssZ");
+      .format("YYYY-MM-DDTHH:mm:ss.SSSZ");
   }
 
   if (timezone) {
-    return dayjs.tz(value, timezone).format("YYYY-MM-DDTHH:mm:ssZ");
+    return dayjs.tz(value, timezone).format("YYYY-MM-DDTHH:mm:ss.SSSZ");
   }
 
-  return dayjs.utc(value).format("YYYY-MM-DDTHH:mm:ss[Z]");
+  return dayjs.utc(value).format("YYYY-MM-DDTHH:mm:ss.SSS[Z]");
 }
 
 export const msToDays = (ms: number) => ms / (24 * 60 * 60 * 1000);
