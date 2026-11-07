@@ -42,7 +42,7 @@
 
 (def ^:private read-only-mode-exceptions
   (update-keys {;; Migrations need to update their own state
-                :model/CloudMigration :all :model/Setting :all
+                :model/Setting :all
                 ;; Users need to login, make queries, and we need need to audit them.
                 :model/User :all :model/LoginHistory :all
                 ;; The timestamped model hook adds updated_at when login touches last_used_at.
