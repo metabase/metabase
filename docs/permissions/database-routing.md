@@ -141,8 +141,8 @@ curl 'http://localhost:3000/api/ee/database-routing/destination-database?check_c
 }'
 ```
 
-Each item in `destinations` takes only a `name` and a `details` object. The `details` object will have a different set of keys depending on the database. You can add several destination databases in one request by adding more items to `destinations`.
+The `details` object will have a different set of keys depending on the database. You can add several destination databases in one request by adding more items to `destinations`.
 
-Metabase copies the engine and other database settings, like whether queries run automatically, from the router database. If you send other keys (like `engine` or sync schedules), Metabase ignores them.
+Metabase copies the engine and other database settings, like whether queries run automatically, from the router database, so each destination only needs a `name` and `details`. Metabase ignores any other keys, like `engine` or sync schedules.
 
 With `check_connection_details=true`, Metabase tests each connection before it adds the destination databases. If a connection fails, Metabase adds none of them, and returns the errors for each failed destination by name. Leave the parameter off if you want to add a destination database that isn't reachable yet.

@@ -132,7 +132,7 @@ No one can edit a data app's collection, or the questions and actions in it, fro
 
 ### Data actions folders
 
-Only admins can create and edit [data actions](../data-modeling/data-actions.md), so you can set data actions folders to View or No access, but not Curate. Groups with View access can run the actions in the folder. See [Data action permissions](../data-modeling/data-actions.md#data-action-permissions).
+Data actions folders can only be set to View or No access, not Curate, because only admins can create and edit [data actions](../data-modeling/data-actions.md). Groups with View access can run the actions in the folder. See [Data action permissions](../data-modeling/data-actions.md#data-action-permissions).
 
 ### External collections
 

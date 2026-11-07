@@ -345,13 +345,11 @@ If row and column security applies to a person on any table, that person can't:
 - See other people when they pick recipients for an alert or subscription. They'll only see themselves.
 - Find individual records from [models with indexed values](../data-modeling/models/models.md#surface-individual-records-in-search-by-matching-against-this-column) in search results.
 
+If your Metabase can't confirm that your plan includes row and column security (for example, if your license token is no longer valid), people with row and column security get an error instead of unfiltered data.
+
 ### Only admins can change questions that row and column security uses
 
 If a row and column security policy uses a saved question, only admins can change that question's query, archive it, or delete it. The same goes for anything that the question uses, like other questions, snippets, segments, and measures, even if other people have [Curate access](./collections.md#curate-access) to the collection the item is in.
-
-### Queries fail if your plan doesn't include row and column security
-
-If your Metabase can't confirm that your plan includes row and column security (for example, if your license token is no longer valid), Metabase won't run queries for people with row and column security. Those people get an error instead of unfiltered data.
 
 ## Further reading
 

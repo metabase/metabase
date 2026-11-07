@@ -49,9 +49,9 @@ From there, you can selectively grant privileges to different groups.
 
 ## Default permissions for new groups and databases
 
-When you create a group, Metabase bases the new group's data permissions on the All Users group. For each database, the new group gets the All Users group's most restrictive **Create queries** and **Download results** settings. On Pro and Enterprise plans, the new group's **View data** permission is **Blocked** for any database where the All Users group has Blocked, Impersonated, or Row and column security permissions, and **Can view** everywhere else. New groups start with **No** for **Manage table metadata** and **Manage database**.
+A new group gets the All Users group's most restrictive settings for each database: the lowest **Create queries** and **Download results** levels, and, on Pro and Enterprise plans, **Blocked** View data wherever the All Users group has Blocked, Impersonated, or Row and column security (and **Can view** everywhere else). **Manage table metadata** and **Manage database** start at **No**.
 
-When you add a database, Metabase bases each group's permissions for the new database on that group's most restrictive settings for your other databases. On Pro and Enterprise plans, if a group has Blocked, Impersonated, or Row and column security permissions for any database, that group's View data permission for the new database is Blocked. No group can manage the new database's table metadata or settings until you give the group those permissions.
+On a new database, each group gets its most restrictive settings from your other databases. On Pro and Enterprise plans, a group with Blocked, Impersonated, or Row and column security on any database gets Blocked View data on the new one. No group can manage the new database's table metadata or settings until you give the group those permissions.
 
 [Tenant groups](../embedding/tenants.md#group-types), including the **All tenant users** group, always get the least access to a new database: View data is Blocked, and every other data permission is No. You also can't give tenant groups the Manage table metadata or Manage database permissions.
 
@@ -145,9 +145,7 @@ Create query levels include:
 
 People can use Metabase's query builder or its native/SQL editor.
 
-If a group has "Blocked" or "Row and column security" View data permissions for _any_ of the tables in the database, then this group will have native queries disabled for _all_ tables in that database. That's because Metabase can't parse SQL queries, so it can't know for sure whether the SQL queries are using the tables with restricted access.
-
-Row and column security is an exception to the rule that people get the most permissive access across their groups. If row and column security applies to someone for any table in a database, that person can't use the native editor on that database, even if another one of their groups has **Query builder and native** permissions. And Metabase won't let you give **Query builder and native** permissions to a group that has row and column security on that database.
+If a group has "Blocked" or "Row and column security" View data permissions for _any_ of the tables in the database, then this group will have native queries disabled for _all_ tables in that database. Row and column security also overrides the rule that people get the most permissive access across their groups: if it applies to someone for any table in a database, that person can't use the native editor on that database, even if another of their groups has **Query builder and native** permissions. That's because Metabase can't parse SQL queries, so it can't know for sure whether the SQL queries are using the tables with restricted access.
 
 ### Query builder only create queries permission
 

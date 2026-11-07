@@ -36,7 +36,7 @@ For email alerts and subscriptions, people in these groups will only see themsel
 
 ### Tenant users
 
-[Tenant users](../embedding/tenants.md) can't create Slack alerts or dashboard subscriptions either. In the list of recipients, tenant users only see people from their own tenant. Tenant users start without the Subscriptions and alerts permission; see [Subscription permissions for tenants](../embedding/tenants.md#subscription-permissions-for-tenants).
+[Tenant users](../embedding/tenants.md) can't create Slack alerts or dashboard subscriptions either. In the list of recipients, tenant users only see people from their own tenant.
 
 ### Administrators group notification permissions
 

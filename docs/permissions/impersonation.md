@@ -169,7 +169,7 @@ You can use impersonation to give people access to the SQL editor, while restric
 
 If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query. A few databases switch to a database _user_ instead of a role: Redshift runs `SET SESSION AUTHORIZATION`, SQL Server runs `EXECUTE AS USER`, and Starburst/Trino sets the session user. For those databases, the attribute value must be the name of a database user.
 
-Connection impersonation doesn't switch roles for people in the Metabase Admins group, as their more permissive privileges take precedence. But Metabase still checks their native queries (see below).
+Connection impersonation doesn't switch roles for people in the Metabase Admins group, as their more permissive privileges take precedence.
 
 ## Impersonated queries must be a single SELECT statement
 
@@ -182,8 +182,8 @@ Examples of queries Metabase will reject:
 - Multiple statements separated by semicolons, like `SET ROLE analyst; SELECT * FROM people;`
 - Statements that create or change tables, including temporary tables (`CREATE`, `ALTER`, `DROP`)
 - Role-switching statements like `SET ROLE` or `USE ROLE`
-- Queries that call functions that lock, wait, or change the session, like `pg_advisory_lock`, `pg_sleep`, or `set_config`
-- Queries that call functions that run a SQL string or reach outside the database, like `dblink`, `query_to_xml`, `OPENQUERY`, `load_file`, or ClickHouse's `url` and `s3` table functions
+- Queries that call functions that lock, wait, or change the session, like `pg_sleep` or `set_config`
+- Queries that call functions that run a SQL string or reach outside the database, like `dblink` or `OPENQUERY`
 - Queries with SQL that the check can't see, like MySQL's `/*! ... */` comments, which MySQL runs as SQL
 
 ### Very large hand-written value lists are rejected
