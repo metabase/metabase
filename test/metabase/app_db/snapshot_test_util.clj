@@ -136,12 +136,19 @@
   [^java.sql.Connection conn db-type]
   (boolean (some->> (flavor conn db-type) flavors (snapshot-resource snapshot-version) some?)))
 
+(defn- comments-only?
+  "Whether every line of `chunk` is blank or a `--` comment."
+  [chunk]
+  (every? #(or (str/blank? %) (str/starts-with? (str/triml %) "--")) (str/split-lines chunk)))
+
 (defn statements
-  "Split the contents of a snapshot `.sql` file into individual statements."
+  "Split the contents of a snapshot `.sql` file into individual statements.
+  Chunks holding only comments, such as the file's header, are left out."
   [sql]
+  ;; sent as a statement, a comment-only chunk is an empty query, which not every server accepts
   (into []
         (comp (map str/trim)
-              (remove str/blank?))
+              (remove comments-only?))
         (str/split sql
                    (re-pattern (str "(?m)^" (java.util.regex.Pattern/quote statement-separator) "$")))))
 
@@ -169,6 +176,11 @@
 (def ^:private mysql-family
   "Flavors reached through the MySQL driver, and the only ones [[session-guards]] relaxes anything for."
   #{:mysql :mariadb :mariadb-legacy-timestamp})
+
+(defn backslash-escapes?
+  "Whether string literals in `flavor`'s snapshot escape a quote with a backslash, as MySQL's do."
+  [flavor]
+  (contains? mysql-family flavor))
 
 (defn- session-guards
   "The statements to run before and after a snapshot load of `flavor`, as `[before after]`.
@@ -203,6 +215,12 @@
     (dump-util/split-views stmts)
     [stmts []]))
 
+(defn- restore-guards!
+  "Run the `after` statements of [[session-guards]] on `stmt`."
+  [^java.sql.Statement stmt after]
+  (doseq [sql after]
+    (.execute stmt sql)))
+
 (defn load-snapshot!
   "Load the checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]], and commit.
   Throws when no snapshot is checked in for that dialect, or when a statement fails, rolling back what it can."
@@ -232,16 +250,24 @@
           (when autocommit?
             (.setAutoCommit conn false))
           (try
+            ;; the guards are set inside the `try`, so that a failing one still restores those before it and a pooled
+            ;; connection never goes back with foreign key checks or strict mode off
             (try
-              ;; inside the `try`, so that a failing guard still restores the ones before it and a pooled connection
-              ;; never goes back with foreign key checks or strict mode off
               (doseq [sql before]
                 (.execute stmt sql))
               (execute! guarded)
-              (finally
-                (doseq [sql after]
-                  (.execute stmt sql))))
+              (catch Throwable e
+                ;; a restore that fails too must not hide the statement that failed first
+                (try
+                  (restore-guards! stmt after)
+                  (catch Throwable restore-error
+                    (.addSuppressed e restore-error)))
+                (throw e)))
+            (restore-guards! stmt after)
             (execute! views)
+            ;; Committed even when the caller had autocommit off. Postgres runs DDL inside the transaction, and
+            ;; anything that has already opened Liquibase against this connection has left autocommit off; Liquibase
+            ;; rolls back before taking its changelog lock, which would undo the entire load.
             (.commit conn)
             (catch Throwable e
               ;; without this, restoring autocommit below would commit however much of the load got through
@@ -250,11 +276,6 @@
             (finally
               (when autocommit?
                 (.setAutoCommit conn true)))))))
-    ;; Postgres runs DDL inside the transaction, and anything that has already opened Liquibase against this
-    ;; connection has left autocommit off. Liquibase rolls back before taking its changelog lock, which would undo
-    ;; the entire load, so make it durable here.
-    (when-not (.getAutoCommit conn)
-      (.commit conn))
     :done))
 
 (defn changesets
