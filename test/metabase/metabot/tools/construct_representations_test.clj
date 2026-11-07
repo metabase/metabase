@@ -31,18 +31,21 @@
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.metabot.tools.resources :as resources]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.slackbot-query :as slackbot-query]
+   [metabase.metabot.tools.test-util :as tools.tu]
    [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+   [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -260,7 +263,7 @@
                :source-table ["Sample" "PUBLIC" "ORDERS"]
                :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
 
-(deftest export-validation-failures-end-metabot-turn-test
+(deftest export-validation-failures-are-internal-errors-test
   (with-mp-and-stubs!
     (fn []
       (let [export-query (mt/original-fn #'repr.resolve/export-query)]
@@ -281,11 +284,7 @@
                                                :title "Order IDs" :description "IDs of orders."})]
             (is (nil? (:error (ex-data caught))))
             (is (= :unrecoverable (:class (tools.error/classify caught))))
-            (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                    :error {:class :unrecoverable :code :internal}}
-                   outcome))
-            (is (= "Something went wrong."
-                   (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+            (is (= test-util/internal-failure outcome))))))))
 
 (deftest metadata-lookup-failures-propagate-test
   (with-mp-and-stubs!
@@ -363,9 +362,9 @@
                     :error {:class :recoverable
                             :code :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query}}
                    outcome))
-            (is (nil? (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
+            (is (nil? (#'agent/terminal-error-message {} [{:type :tool-output :result outcome}] 0)))))))))
 
-(deftest metadata-lookup-failures-end-metabot-turn-test
+(deftest metadata-lookup-failures-are-internal-errors-test
   (with-mp-and-stubs!
     (fn []
       (doseq [[label failure] (metadata-lookup-failures)]
@@ -379,11 +378,7 @@
                                                 "construct_notebook_query"
                                                 {:query orders-id-query
                                                  :title "Order IDs" :description "IDs of orders."})]
-              (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-                      :error  {:class :unrecoverable :code :internal}}
-                     outcome))
-              (is (= "Something went wrong."
-                     (#'agent/terminal-error-message [{:type :tool-output :result outcome}]))))))))))
+              (is (= test-util/internal-failure outcome)))))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"
@@ -863,6 +858,21 @@
           (is (= :filter (:mode (ex-data e))))
           (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
 
+(deftest aggregation-without-aggregation-function-explained-test
+  (testing "an aggregation with no aggregation function in it is explained, with how to fix it"
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["+" {} 1 2]]}]})]
+          (is (= :query-not-runnable (:error (ex-data e))))
+          (is (str/ends-with? (ex-message e)
+                              (str ": Aggregations should contain at least one aggregation function. Wrap the "
+                                   "calculation in one, such as `sum` or `count`, or move a per-row calculation "
+                                   "to `expressions:`."))))))))
+
 (deftest editor-rejection-between-message-test
   (with-mp-and-stubs!
     (fn []
@@ -953,7 +963,10 @@
           (is (some? e))
           (is (true? (:agent-error? (ex-data e))))
           (is (= :expression-editor-rejection (:error (ex-data e))))
-          (is (= :filter (:mode (ex-data e)))))))))
+          (is (= :filter (:mode (ex-data e))))
+          (testing "no text column is involved, so there is no cast hint"
+            (is (not (str/includes? (ex-message e) "text column")))
+            (is (not (str/includes? (ex-message e) "[\"integer\"")))))))))
 
 (deftest query-not-runnable-explanation-gate-test
   (testing (str "The runnability backstop returns nil for a runnable resolved query and a\n"
@@ -1178,10 +1191,10 @@
 (defn- stub-content-store
   "Stands in for the app-DB store over a mock metadata provider, serving `row` by entity id and
   by numeric id. It answers from `row` rather than delegating to
-  [[metabase.models.serialization/lookup-by-id]], so code that bypassed the store could not
+  [[metabase.serialization.protocol.mp/unchecked-app-db-content-store]], so code that bypassed the store could not
   satisfy these tests by reaching the serdes resolver directly."
   [row]
-  (reify resolve.mp/ContentStore
+  (reify protocol.mp/ContentStore
     (card-by-entity-id    [_ eid] (when (= eid (:entity_id row)) row))
     (measure-by-entity-id [_ _] nil)
     (segment-by-entity-id [_ _] nil)
@@ -1375,7 +1388,7 @@
   "Run `body` with numeric ids accepted, the way
   `metabase.mcp.v2.common/execute-representations-query` binds it for the v2 dialect."
   [& body]
-  `(binding [serdes.resolve/*numeric-ids-allowed?* true]
+  `(binding [repr.resolve/*numeric-ids-allowed?* true]
      ~@body))
 
 (deftest numeric-ids-rejected-on-default-surface-test
@@ -1810,7 +1823,7 @@
 
 (def ^:private mock-db-id
   "Must not exist as a `metabase_database` row. `mp-metric` composes two mocks, and a
-  `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `resolve.mp/table-candidates`
+  `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `protocol.mp/table-candidates`
   treats it as app-DB-backed once the app DB is up and resolves portable FKs against the app DB
   rather than this provider. With db id 1 that found the real Sample Database's ORDERS, which has
   no CAMPAIGN_ID, and the failure surfaced only once another namespace had booted the app DB."
@@ -1971,7 +1984,7 @@
           repair (mt/original-fn #'repr.repair/repair)]
       (mt/with-dynamic-fn-redefs
         [repr.repair/repair (fn [& args]
-                              (reset! seen resolve.mp/*audit-refusals?*)
+                              (reset! seen shared.content-store/*audit-refusals?*)
                               (apply repair args))]
         (with-mp-and-stubs!
           (fn []
@@ -2446,6 +2459,12 @@
                     (ex-data e)))
             (is (str/includes? (ex-message e) question-eid)
                 "the message names the source card to build the stage on")))
+        (testing "sourcing the metric itself is rejected, also when the stage aggregates the metric"
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (construct/execute-representations-query
+                                (metric-query-data {"source-card" metric-eid} metric-eid))))]
+            (is (=? {:error :incompatible-metric} (ex-data e)))
+            (is (str/includes? (ex-message e) question-eid))))
         (testing "sourcing the card it was defined on is accepted"
           (let [result (construct/execute-representations-query
                         (metric-query-data {"source-card" question-eid} metric-eid))]
@@ -2757,6 +2776,67 @@
                           (get-in [:structured-output :query]))]
             (is (= [[18760]] (mt/rows (qp/process-query query))))))))))
 
+(deftest metric-as-source-card-test
+  (testing "a metric in `source-card:` on a stage that does not aggregate it"
+    (mt/with-temp [:model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name          "Big order count"
+                    :type          :metric
+                    :dataset_query (-> (table-query :orders)
+                                       (lib/filter (lib/> (field-col :orders :total) 100))
+                                       (lib/aggregate (lib/count)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [on-metric (fn [stage]
+                          (query-data {"lib/type" "mbql/query"
+                                       "stages"   [(merge {"lib/type"    "mbql.stage/mbql"
+                                                           "source-card" metric-eid}
+                                                          stage)]}))
+              rows      (fn [query-data]
+                          (-> (construct/execute-representations-query query-data)
+                              (get-in [:structured-output :query])
+                              qp/process-query
+                              mt/rows))]
+          (testing "reads the metric's result in the query processor, so a count is wrong"
+            ;; Not `card-query`: Lib builds a metric's query on the metric's own source.
+            (is (= [[1]] (mt/rows (qp/process-query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" metric-id)
+                                                                :aggregation  [[:count]]}})))))
+          (testing "is refused with an error that names the source to use"
+            (doseq [stage [{"aggregation" [["count" {}]]}
+                           {"aggregation" [["sum" {} ["field" {} "TOTAL"]]]
+                            "breakout"    [["field" {"temporal-unit" "month"} "CREATED_AT"]]}
+                           {"breakout" [["field" {"temporal-unit" "month"} "CREATED_AT"]]}]]
+              (testing (pr-str stage)
+                (is (=? {:class :recoverable
+                         :code  :metabase.metabot.tools.recoverable.pipeline/metric-as-source-card
+                         :text  (str "The metric \"Big order count\" (needs source-table: "
+                                     (json/encode (orders-source-table-fk)) ") is in `source-card:`. A metric is "
+                                     "an aggregation, not a source: a stage on a metric reads its result, not its "
+                                     "rows. Build the stage on the source shown for the metric, and put the metric "
+                                     "in the stage's `aggregation:`.\n"
+                                     "When you build the stage on the metric's source, reference the metric by its "
+                                     "`portable_entity_id`: "
+                                     "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}
+                        (test-util/tool-failure construct/construct-notebook-query-tool {:query (on-metric stage)}))))))
+          (testing "gives the MCP surface the numeric source"
+            (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                 (construct/execute-representations-query (on-metric {"aggregation" [["count" {}]]}))))]
+              (is (=? {:error          :metric-as-source-card
+                       :metric-ids     [metric-id]
+                       :usable-sources {metric-id {:source-table (mt/id :orders)}}}
+                      (ex-data e)))))
+          (testing "says to drop the metric when it has no usable source"
+            (is (= {:message        (str "The metric \"Big order count\" (has no usable source) is in "
+                                         "`source-card:`. A metric is an aggregation, not a source: a stage on a "
+                                         "metric reads its result, not its rows. Drop the metric, and express its "
+                                         "aggregation directly on a table or model.")
+                    :usable-sources {}}
+                   (#'construct/metric-source-card-explanation (mt/metadata-provider) {metric-id nil}))))
+          (testing "is accepted when the stage aggregates that metric, which the query processor expands"
+            (is (= [[5755]] (rows (on-metric {"aggregation" [["metric" {} metric-eid]]})))))
+          (testing "and the query the error asks for gives the same result"
+            (is (= [[5755]] (rows (metric-query-data {"source-table" (orders-source-table-fk)} metric-eid))))))))))
+
 (deftest metric-source-check-follows-a-source-card-that-changed-table-test
   (testing "After C1 moves from ORDERS to PRODUCTS, the check follows it as the query processor does"
     (mt/with-temp [:model/Card {c1-id :id}
@@ -2886,6 +2966,163 @@
               (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
               (is (= [[0 67] [1 3443]]
                      (take 2 (mt/rows (qp/process-query query))))))))))))
+
+(defn- rendered-dimension-reference
+  "The Reference cell that the metric dimensions table shows the LLM for `dim`, decoded from JSON."
+  [dim]
+  (let [row (last (str/split-lines (llm-shape/format-metric-dimensions-table [dim])))]
+    (some-> (re-find #"\|\s*([^|]*?)\s*\|\s*$" row) second not-empty json/decode)))
+
+(defn- group-by-sql
+  "The compiled SQL of `query` from its GROUP BY clause on."
+  [query]
+  (let [sql (:query (qp/compile query))]
+    (subs sql (str/index-of sql "GROUP BY"))))
+
+(deftest joined-copy-metric-dimension-breakout-executes-test
+  (testing "the Reference listed for a renamed joined copy groups by that copy"
+    (mt/with-temp [:model/Card {card-id :id, card-eid :entity_id}
+                   {:name "Venues with peer" :type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Venue count" :type :metric :dataset_query (card-count-query card-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [dims      (:queryable-dimensions (:structured-output (entity-details/get-metric-details
+                                                                    {:metric-id          metric-id
+                                                                     :with-field-values? false})))
+              run       (fn [reference]
+                          (try
+                            (-> (construct/execute-representations-query
+                                 (query-data
+                                  {"lib/type" "mbql/query"
+                                   "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                "source-card" card-eid
+                                                "breakout"    [["field" {} reference]]
+                                                "aggregation" [["metric" {} metric-eid]]}]}))
+                                (get-in [:structured-output :query]))
+                            (catch clojure.lang.ExceptionInfo e
+                              (ex-message e))))
+              reference (rendered-dimension-reference (m/find-first #(= "Peer → Name" (:display_name %)) dims))
+              result    (run reference)]
+          (testing "the Reference is the copy's output name"
+            (is (= "NAME_2" reference)))
+          (testing "the query builds and groups by the joined copy"
+            (is (map? result) (str "query failed: " result))
+            (when (map? result)
+              (is (str/includes? (group-by-sql result) "Peer__NAME"))
+              (is (seq (mt/rows (qp/process-query result))))))
+          (testing "the Reference of the first copy groups by the first copy, not the joined copy"
+            (let [first-copy (m/find-first #(= (mt/id :venues :name) (:field_id %)) dims)
+                  result     (run (rendered-dimension-reference first-copy))]
+              (is (map? result) (str "query failed: " result))
+              (when (map? result)
+                (is (str/includes? (group-by-sql result) "\"__mb_source\".\"NAME\""))
+                (is (not (str/includes? (group-by-sql result) "Peer__NAME")))
+                (is (seq (mt/rows (qp/process-query result))))))))))))
+
+(defn- rendered-dimension-source-table
+  "The Source table cell that the metric dimensions table shows the LLM for `dim`."
+  [dim]
+  (let [row (last (str/split-lines (llm-shape/format-metric-dimensions-table [dim])))]
+    (str/trim (nth (str/split row #"\|") 4))))
+
+(defn- reference->field-clause
+  "The field clause that the LLM builds from a rendered Reference: a full clause as it is, a path or a name wrapped."
+  [reference]
+  (if (and (vector? reference) (= "field" (first reference)))
+    reference
+    ["field" {} reference]))
+
+(deftest duplicate-fk-metric-dimension-rows-execute-test
+  (testing "a table reached through two FK columns of a card gives two distinct rows, each with a working Reference"
+    (mt/with-temp [:model/Card {card-id :id, card-eid :entity_id}
+                   {:name "Venues with peer" :type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Venue count" :type :metric :dataset_query (card-count-query card-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              dims    (->> (entity-details/get-metric-details {:metric-id          metric-id
+                                                               :with-field-values? false})
+                           :structured-output
+                           :queryable-dimensions
+                           (filter #(= [db-name "PUBLIC" "CATEGORIES" "NAME"] (:portable_fk %))))
+              run     (fn [dim]
+                        (try
+                          (-> (construct/execute-representations-query
+                               (query-data
+                                {"lib/type" "mbql/query"
+                                 "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                              "source-card" card-eid
+                                              "breakout"    [(reference->field-clause
+                                                              (rendered-dimension-reference dim))]
+                                              "aggregation" [["metric" {} metric-eid]]}]}))
+                              (get-in [:structured-output :query]))
+                          (catch clojure.lang.ExceptionInfo e
+                            (ex-message e))))]
+          (testing "both rows stay"
+            (is (= 2 (count dims))))
+          (testing "each row names the FK column it comes through"
+            (is (= #{"PUBLIC.CATEGORIES (via Category)" "PUBLIC.CATEGORIES (via Peer → Category)"}
+                   (into #{} (map rendered-dimension-source-table) dims))))
+          (testing "each Reference runs and joins through its own FK column"
+            (let [results (map run dims)]
+              (is (every? map? results) (str "query failed: " (pr-str (remove map? results))))
+              (when (every? map? results)
+                (is (= #{"\"__mb_source\".\"CATEGORY_ID\"" "\"__mb_source\".\"Peer__CATEGORY_ID\""}
+                       (into #{}
+                             (map #(second (re-find #"ON (\"__mb_source\"\.\"[^\"]+\") =" (:query (qp/compile %)))))
+                             results)))
+                (is (every? #(seq (mt/rows (qp/process-query %))) results))))))))))
+
+(deftest duplicate-fk-metric-dimension-drill-in-gives-no-route-test
+  (testing "the drill-in on a column that a card reaches through two visible FK columns names no route"
+    ;; Both routes share one field ID, so the drill-in cannot know which route the model means. A Reference of one
+    ;; route, copied for the other, groups by the wrong column with no error. The dimensions list has a Reference
+    ;; per route, see `duplicate-fk-metric-dimension-rows-execute-test`.
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:name "Venues with peer" :type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id}
+                   {:name "Venue count" :type :metric :dataset_query (card-count-query card-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [xml (llm-shape/field-metadata->xml
+                   (:structured-output (field-stats/field-values {:entity-type "metric"
+                                                                  :entity-id   metric-id
+                                                                  :field-id    (mt/id :categories :name)
+                                                                  :limit       5})))]
+          (testing "the drill-in gives no Reference"
+            (is (not (str/includes? xml "Reference"))))
+          (testing "the drill-in names the table, without an FK column"
+            (is (str/includes? xml "Source table: PUBLIC.CATEGORIES\n")))
+          (testing "the drill-in still gives the values of the field"
+            (is (str/includes? xml (str "<field-metadata field_id=\"" (mt/id :categories :name) "\">")))))))))
+
+(deftest multi-stage-metric-over-model-breakout-executes-test
+  (testing "every dimension listed for a multi-stage metric over a model works on the base table it must be used on"
+    (mt/with-temp [:model/Card {model-id :id}
+                   {:name "Orders model" :type :model
+                    :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Order count" :type :metric
+                    :dataset_query (-> (card-query model-id) lib/append-stage (lib/aggregate (lib/count)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              dims    (:queryable-dimensions (:structured-output (entity-details/get-metric-details
+                                                                  {:metric-id          metric-id
+                                                                   :with-field-values? false})))
+              run     (fn [dim]
+                        (try
+                          (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" [db-name "PUBLIC" "ORDERS"]
+                                          "breakout"     [(reference->field-clause
+                                                           (rendered-dimension-reference dim))]
+                                          "aggregation"  [["metric" {} metric-eid]]}]}))
+                          nil
+                          (catch clojure.lang.ExceptionInfo e
+                            [(:display_name dim) (ex-message e)])))]
+          (is (seq dims))
+          (is (empty? (keep run dims))))))))
 
 (deftest table-based-metric-breakout-on-a-related-table-column-test
   (testing "a table-based metric broken out by a column one foreign key away runs on the metric's table"
@@ -3320,6 +3557,23 @@
           (is (=? {:agent-error? true :error :query-not-runnable :status-code 400} (ex-data e)))
           (is (str/includes? (ex-message e) "could not be resolved")))))))
 
+(deftest nested-expression-unresolved-reference-explained-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [q {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "expressions"  {"Broken" ["+" {}
+                                                      ["length" {}
+                                                       ["replace" {}
+                                                        ["substring" {} ["field" {"join-alias" "Nope"} "NAME"] 1 10]
+                                                        "-" ""]]
+                                                      1]}}]}
+            e (editor-rejection q)]
+        (is (=? {:agent-error? true, :error :query-not-runnable} (ex-data e)))
+        (is (re-find #"Failing paths: [^;]+could not be resolved" (ex-message e)))))))
+
 (deftest path-ref-to-dropped-join-column-rejected-before-sql-test
   (testing "a path ref to a column the grouped join drops fails in repair, not in the database"
     (with-mp-and-stubs!
@@ -3347,11 +3601,25 @@
         hint    #"\. This usually means a field reference is missing its type"]
     (testing "identical problems are listed once"
       (is (= "stages[0].alias: missing `alias`" (explain (missing :alias) (missing :alias)))))
-    (testing "at most three problems are listed"
-      (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
+    (testing "one problem in several places is listed once, with a count of the others"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c))
+                            "stages[0].a (and 2 other places): should be an integer.")))
+    (testing "a problem in one other place, and one more problem, are counted in the singular"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b)) "stages[0].a (and 1 other place): "))
+      (is (str/ends-with? (apply explain (map missing [:a :b :c :d])) "; and 1 more problem")))
+    (testing "at most three problems are listed, and the rest are counted"
+      (is (str/ends-with? (apply explain (map missing [:a :b :c :d :e])) "; and 2 more problems")))
     (testing "problems with a known cause are listed before Malli's own messages"
       (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
-                            "stages[0].alias: missing `alias`; stages[0].a: should be an integer")))
+                            "stages[0].alias: missing `alias`; stages[0].a (and 2 other places): should be an integer")))
+    (testing "Malli's own messages are listed before a guessed cause, however often it repeats"
+      (let [untyped (fn [i] {:type :malli.core/missing-key, :in [:stages 0 :filters i 2 1 :base-type]})
+            no-join {:schema (mc/schema [:fn {:error/message "no join named \"first\""} any?])
+                     :value  1
+                     :in     [:stages]}]
+        (is (str/starts-with? (apply explain (conj (mapv untyped (range 4)) no-join))
+                              (str "stages: no join named \"first\"; "
+                                   "stages[0].filters[0][2][1].base-type (and 3 other places): a field reference by name is missing `base-type`")))))
     (testing "the usual causes are added only when no problem has a known cause"
       (is (re-find hint (explain (invalid :a))))
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
@@ -3573,3 +3841,525 @@
             (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
                    (:code classified)))
             (is (str/includes? (tools.error/recoverable-text classified #{}) expected))))))))
+
+;;; BOT-1482: a text column that holds numbers, used as a number
+
+(def ^:private text-model-entity-id
+  "A valid 21-char NanoID for the model card in [[mp-text-model]]."
+  "mOd123_456DefGhI789_K")
+
+(defn- mp-text-model
+  "A model over CHURNS whose `user_high` column is text that holds numbers, on a database with `features`.
+
+  The column's display name is \"Max No. of Users\", as in the BOT-1482 report. Like a real model
+  column, it keeps the id of its table field. \"Users Text\" stands for a model custom column: it has
+  no field id."
+  [features]
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample" :features features}
+    :tables   [{:id 30 :name "CHURNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 300 :name "ID"        :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "ACCOUNT"   :table-id 30 :base-type :type/Text}
+               {:id 302 :name "user_high" :table-id 30 :base-type :type/Text
+                :display-name "Max No. of Users"}]
+    :cards    [{:id              600
+                :name            "Enterprise Churns"
+                :database-id     1
+                :type            :model
+                :entity-id       text-model-entity-id
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 30}]}
+                :result-metadata [{:name "ID"         :display-name "ID"               :base-type :type/Integer
+                                   :id   300          :table-id     30}
+                                  {:name "ACCOUNT"    :display-name "Account"          :base-type :type/Text
+                                   :id   301          :table-id     30}
+                                  {:name "user_high"  :display-name "Max No. of Users" :base-type :type/Text
+                                   :id   302          :table-id     30}
+                                  {:name "Users Text" :display-name "Users Text"       :base-type :type/Text}]}]}))
+
+(def ^:private cast-features
+  #{:expressions/integer :expressions/float})
+
+(defn- with-text-model-mp-and-stubs! [features f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] (mp-text-model features))
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 600 :database_id 1 :entity_id text-model-entity-id})
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (f)))
+
+(defn- text-model-query
+  "A one-stage query on the text-column model, with `stage-keys` merged into the stage."
+  [stage-keys]
+  {"lib/type" "mbql/query"
+   "stages"   [(merge {"lib/type"    "mbql.stage/mbql"
+                       "source-card" text-model-entity-id}
+                      stage-keys)]})
+
+(defn- text-table-query
+  "A one-stage query on the CHURNS table of [[mp-text-model]], with `stage-keys` merged into the stage."
+  [stage-keys]
+  {"lib/type" "mbql/query"
+   "stages"   [(merge {"lib/type"     "mbql.stage/mbql"
+                       "source-table" ["Sample" "PUBLIC" "CHURNS"]}
+                      stage-keys)]})
+
+(def ^:private churns-user-high
+  "The portable FK of the CHURNS `user_high` text field."
+  ["Sample" "PUBLIC" "CHURNS" "user_high"])
+
+(defn- user-tier-case
+  "The BOT-1482 range bucketing of `users`, a ref to the text column or a cast of it."
+  [users]
+  ["case" {} [[["between" {} users 1 100] "1-100"]
+              [["between" {} users 101 500] "101-500"]]
+   "500+"])
+
+(defn- text-model-rejection! [features stage-keys]
+  (with-text-model-mp-and-stubs! features #(editor-rejection (text-model-query stage-keys))))
+
+(defn- text-model-builds! [features stage-keys]
+  (with-text-model-mp-and-stubs!
+    features
+    #(some? (construct/execute-representations-query (query-data (text-model-query stage-keys))))))
+
+(deftest editor-gate-numeric-comparison-on-text-column-hints-cast-test
+  (testing "BOT-1482: a rejected comparison of a text column with a number names the column and the cast"
+    (doseq [[label stage-keys] {"T1: between in a case, ref by display name"
+                                {"expressions" {"User Tier" (user-tier-case ["field" {} "Max No. of Users"])}}
+
+                                "T4: > in a filter"
+                                {"filters" [[">" {} ["field" {} "user_high"] 100]]}}]
+      (testing label
+        (let [e (text-model-rejection! cast-features stage-keys)]
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (str/includes? (ex-message e) "\"user_high\""))
+          (is (str/includes? (ex-message e) "[\"integer\", {}, <field>]"))
+          (is (str/includes? (ex-message e) "[\"float\", {}, <field>]")))))))
+
+(deftest editor-gate-sum-on-text-column-hints-cast-test
+  (testing "the sum of a text column is rejected, and the error names the column and the cast"
+    (let [e (text-model-rejection! cast-features {"aggregation" [["sum" {} ["field" {} "user_high"]]]})]
+      (is (= :expression-editor-rejection (:error (ex-data e))))
+      (is (str/includes? (ex-message e) "\"user_high\""))
+      (is (str/includes? (ex-message e) "[\"integer\", {}, <field>]")))))
+
+(deftest editor-gate-text-cast-hint-without-cast-features-test
+  (testing "without the cast features, the hint names no cast and points to Table Metadata"
+    (let [e (text-model-rejection! #{} {"filters" [[">" {} ["field" {} "user_high"] 100]]})]
+      (is (= :expression-editor-rejection (:error (ex-data e))))
+      (is (str/includes? (ex-message e) "\"user_high\""))
+      (is (str/includes? (ex-message e) "Table Metadata"))
+      (is (not (str/includes? (ex-message e) "[\"integer\"")))
+      (is (not (str/includes? (ex-message e) "[\"float\""))))))
+
+(deftest editor-gate-text-cast-hint-for-field-id-ref-test
+  (testing "a text field of a source table, referred to by its portable FK, is named in the cast hint"
+    (let [e (with-text-model-mp-and-stubs!
+              cast-features
+              #(editor-rejection (text-table-query {"filters" [[">" {} ["field" {} churns-user-high] 100]]})))]
+      (is (= :expression-editor-rejection (:error (ex-data e))))
+      (is (str/includes? (ex-message e) "\"user_high\""))
+      (is (str/includes? (ex-message e) "[\"integer\", {}, <field>]")))))
+
+(deftest editor-gate-text-cast-hint-names-each-column-once-test
+  (testing "two text columns in one rejected clause are both named, once each"
+    ;; `or`, because the repair pass splits a top-level `and` filter into one filter per condition.
+    (let [e   (text-model-rejection! cast-features
+                                     {"filters" [["or" {}
+                                                  [">" {} ["field" {} "user_high"] 100]
+                                                  ["<" {} ["field" {} "user_high"] 900]
+                                                  [">" {} ["field" {} "ACCOUNT"] 5]]]})
+          msg (ex-message e)]
+      (is (= :expression-editor-rejection (:error (ex-data e))))
+      (is (= 1 (count (re-seq #"\"user_high\"" msg))))
+      (is (= 1 (count (re-seq #"\"ACCOUNT\"" msg)))))))
+
+(deftest editor-gate-cast-text-column-builds-test
+  (testing "the same bucketing builds when the text column is cast first"
+    (doseq [cast-op ["integer" "float"]]
+      (testing cast-op
+        (is (text-model-builds!
+             cast-features
+             {"expressions" {"User Tier" (user-tier-case [cast-op {} ["field" {} "user_high"]])}}))))))
+
+(deftest editor-gate-equals-number-on-text-column-builds-test
+  (testing "`=` against a number on a text column is not rejected, so no hint is given"
+    (is (text-model-builds! cast-features {"filters" [["=" {} ["field" {} "user_high"] 100]]}))))
+
+(deftest editor-gate-max-on-text-column-builds-test
+  (testing "`max` of a text column is not rejected"
+    (is (text-model-builds! cast-features {"aggregation" [["max" {} ["field" {} "user_high"]]]}))))
+
+(deftest editor-gate-coerced-text-column-gets-no-cast-hint-test
+  (testing "ISO-8601 text coerced to a timestamp is not a text column, so a rejection carries no hint"
+    (with-coerced-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [[">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT_ISO"]] 100]]}]})]
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (not (str/includes? (ex-message e) "text column"))))))))
+
+;;; BOT-1482: automatic bins on a text column
+
+(defn- rejection-code-and-message
+  "Call `f` and return the `:error` code and the message of the exception that it throws.
+
+  Returns `[nil \"\"]` when `f` throws nothing."
+  [f]
+  (try
+    (f)
+    [nil ""]
+    (catch clojure.lang.ExceptionInfo e
+      [(:error (ex-data e)) (str (ex-message e))])))
+
+(defn- text-model-rejection-code-and-message! [features stage-keys]
+  (rejection-code-and-message
+   #(with-text-model-mp-and-stubs!
+      features
+      (fn [] (construct/execute-representations-query (query-data (text-model-query stage-keys)))))))
+
+(defn- binned-count [ref]
+  {"aggregation" [["count" {}]]
+   "breakout"    [ref]})
+
+(def ^:private text-column-bins
+  {"num-bins 10 on the column name"
+   ["field" {"binning" {"strategy" "num-bins" "num-bins" 10}} "user_high"]
+
+   "default strategy"
+   ["field" {"binning" {"strategy" "default"}} "user_high"]
+
+   "num-bins 10 on the display name, as in the live test"
+   ["field" {"binning" {"strategy" "num-bins" "num-bins" 10}} "Max No. of Users"]})
+
+(deftest binning-on-text-column-rejected-test
+  (testing "BOT-1482: automatic bins on a text column are rejected before the run, with the `case` advice"
+    (doseq [[label ref] text-column-bins]
+      (testing label
+        (testing "on a database with the cast features"
+          (let [[code msg] (text-model-rejection-code-and-message! cast-features (binned-count ref))]
+            (is (= :binning-on-non-numeric-column code))
+            (is (str/includes? msg "\"Max No. of Users\""))
+            (is (str/includes? msg "`case`"))
+            (testing "the cast goes inside each `case` condition"
+              (is (str/includes? msg "[\"<=\", {}, [\"integer\", {}, <field>], 100]")))
+            (testing "the message does not invite a cast column to bin (live test, 2 of 2 runs)"
+              (is (not (str/includes? msg "wrap it in a cast")))
+              (is (not (str/includes? msg "`between`"))))))
+        (testing "on a database with `float` only, the example casts with `float`"
+          (let [[_ msg] (text-model-rejection-code-and-message! #{:expressions/float} (binned-count ref))]
+            (is (str/includes? msg "[\"<=\", {}, [\"float\", {}, <field>], 100]"))
+            (is (not (str/includes? msg "[\"integer\"")))))
+        (testing "on a database without the cast features"
+          (let [[code msg] (text-model-rejection-code-and-message! #{} (binned-count ref))]
+            (is (= :binning-on-non-numeric-column code))
+            (testing "no `case` advice: the editor gate rejects a `case` that compares text with numbers here"
+              (is (not (str/includes? msg "`case`"))))
+            (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
+            (is (str/includes? msg "String → Integer or String → Float"))
+            (is (str/includes? msg "Table Metadata"))
+            (is (str/includes? msg "SQL question"))
+            (is (not (str/includes? msg "[\"integer\"")))
+            (is (not (str/includes? msg "[\"float\"")))))))))
+
+(deftest binning-hint-example-builds-test
+  (testing "the `case` example of the bin rejection builds, with the text column in place of <field>"
+    (let [users ["integer" {} ["field" {} "user_high"]]]
+      (with-text-model-mp-and-stubs!
+        cast-features
+        #(is (some? (construct/execute-representations-query
+                     (query-data (text-model-query
+                                  {"expressions" {"Users Range" ["case" {} [[["<=" {} users 100] "1-100"]
+                                                                            [["<=" {} users 500] "101-500"]]
+                                                                 "Over 500"]}
+                                   "aggregation" [["count" {}]]
+                                   "breakout"    [["expression" {} "Users Range"]]})))))))))
+
+(deftest binning-on-text-custom-column-of-earlier-stage-test
+  (testing "a binned text custom column of an earlier stage gets no `case` advice again, only \"remove `binning`\""
+    (let [users      ["integer" {} ["field" {} "user_high"]]
+          [code msg] (rejection-code-and-message
+                      #(with-text-model-mp-and-stubs!
+                         cast-features
+                         (fn []
+                           (construct/execute-representations-query
+                            (query-data
+                             {"lib/type" "mbql/query"
+                              "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                           "source-card" text-model-entity-id
+                                           "expressions" {"Users Range" ["case" {} [[["<=" {} users 100] "1-100"]
+                                                                                    [["<=" {} users 500] "101-500"]]
+                                                                         "Over 500"]}}
+                                          {"lib/type"    "mbql.stage/mbql"
+                                           "aggregation" [["count" {}]]
+                                           "breakout"    [["field" {"binning" {"strategy" "num-bins" "num-bins" 10}}
+                                                           "Users Range"]]}]})))))]
+      (is (= :binning-on-non-numeric-column code))
+      (is (str/includes? msg "\"Users Range\""))
+      (is (str/includes? msg "Remove `binning`"))
+      (is (not (str/includes? msg "`case`"))))))
+
+(defn- binned-count-builds? [stage]
+  (some? (construct/execute-representations-query
+          (query-data {"lib/type" "mbql/query"
+                       "stages"   [(merge {"lib/type"    "mbql.stage/mbql"
+                                           "aggregation" [["count" {}]]}
+                                          stage)]}))))
+
+(deftest binning-on-numeric-column-builds-test
+  (testing "automatic bins on a numeric column still build"
+    (doseq [binning [{"strategy" "num-bins" "num-bins" 10}
+                     {"strategy" "default"}]]
+      (testing (str binning)
+        (testing "on a field-id ref of a source table"
+          (with-mp-and-stubs!
+            #(is (binned-count-builds?
+                  {"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                   "breakout"     [["field" {"binning" binning} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]}))))
+        (testing "on a by-name ref of a source card"
+          (with-card-mp-and-stubs!
+            #(is (binned-count-builds?
+                  {"source-card" card-entity-id
+                   "breakout"    [["field" {"binning" binning} "TOTAL"]]}))))))))
+
+(def ^:private mp-coerced-text-number
+  "CHURNS with a text column that an admin coerced to a float."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 30 :name "CHURNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 300 :name "ID"        :table-id 30 :base-type :type/Integer}
+               {:id 302 :name "user_high" :table-id 30 :base-type :type/Text
+                :effective-type :type/Float :coercion-strategy :Coercion/String->Float}]}))
+
+(deftest binning-on-coerced-text-column-builds-test
+  (testing "a text column coerced to a number is not text, so automatic bins on it build"
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced-text-number)
+                                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                                api/read-check                                  allow-read-check
+                                api/query-check                                 allow-read-check]
+      (is (binned-count-builds?
+           {"source-table" ["Sample" "PUBLIC" "CHURNS"]
+            "breakout"     [["field" {"binning" {"strategy" "num-bins" "num-bins" 10}}
+                             ["Sample" "PUBLIC" "CHURNS" "user_high"]]]})))))
+
+;;; BOT-1482: automatic bins on a column with no known min and max
+
+(defn- two-stage-query
+  "A query with the `stage-0` keys on `source`, and a second stage with the `stage-1` keys."
+  [source stage-0 stage-1]
+  {"lib/type" "mbql/query"
+   "stages"   [(merge {"lib/type" "mbql.stage/mbql"} source stage-0)
+               (merge {"lib/type" "mbql.stage/mbql"} stage-1)]})
+
+(def ^:private ten-bins
+  {"binning" {"strategy" "num-bins" "num-bins" 10}})
+
+(deftest binning-on-cast-column-of-earlier-stage-rejected-test
+  (testing "live test run 4: stage 0 casts the text column, stage 1 bins the cast column, which has no known min and max"
+    (let [[code msg] (rejection-code-and-message
+                      #(with-text-model-mp-and-stubs!
+                         cast-features
+                         (fn []
+                           (construct/execute-representations-query
+                            (query-data
+                             (two-stage-query {"source-card" text-model-entity-id}
+                                              {"expressions" {"Max Users Int" ["integer" {} ["field" {} "user_high"]]}}
+                                              (binned-count ["field" ten-bins "Max Users Int"])))))))]
+      (is (= :binning-on-non-numeric-column code))
+      (is (str/includes? msg "\"Max Users Int\""))
+      (is (str/includes? msg "no known min and max"))
+      (is (str/includes? msg "`case`"))
+      (testing "the example puts the cast inside each condition"
+        (is (str/includes? msg "[\"<=\", {}, [\"integer\", {}, <field>], 100]")))
+      (is (not (str/includes? msg "`between`"))))))
+
+(def ^:private orders-total
+  ["Sample" "PUBLIC" "ORDERS" "TOTAL"])
+
+(def ^:private total-times-two
+  {"expressions" {"Total x2" ["*" {} ["field" {} orders-total] 2]}})
+
+(deftest binning-on-numeric-custom-column-of-earlier-stage-rejected-test
+  (testing "a numeric custom column of an earlier stage has no known min and max, so binning it is rejected"
+    (let [[code msg] (rejection-code-and-message
+                      #(with-mp-and-stubs!
+                         (fn []
+                           (construct/execute-representations-query
+                            (query-data
+                             (two-stage-query {"source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                              total-times-two
+                                              (binned-count ["field" ten-bins "Total x2"])))))))]
+      (is (= :binning-on-non-numeric-column code))
+      (is (str/includes? msg "\"Total x2\""))
+      (is (str/includes? msg "no known min and max"))
+      (testing "on a database without a cast, the `case` example has no cast"
+        (is (str/includes? msg "[\"<=\", {}, <field>, 100]"))
+        (is (not (str/includes? msg "[\"integer\"")))
+        (is (not (str/includes? msg "convert text")))))))
+
+(deftest binning-on-custom-column-bounded-by-a-filter-builds-test
+  (testing "a `between` filter in the same stage gives the custom column a min and max, as in the QP"
+    (with-mp-and-stubs!
+      #(is (some? (construct/execute-representations-query
+                   (query-data
+                    (two-stage-query {"source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                     total-times-two
+                                     (assoc (binned-count ["field" ten-bins "Total x2"])
+                                            "filters" [["between" {} ["field" {} "Total x2"] 0 200]])))))))))
+
+(def ^:private total-fingerprint
+  {:type {:type/Number {:min 1.0 :max 160.0}}})
+
+(def ^:private model-entity-id
+  "A valid 21-char NanoID for the model card in [[mp-fingerprinted]]."
+  "fPr123_456DefGhI789_K")
+
+(def ^:private mp-fingerprinted
+  "ORDERS with a fingerprinted TOTAL, and a model over ORDERS whose TOTAL column keeps the field id and fingerprint."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"    :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL" :table-id 10 :base-type :type/Float :fingerprint total-fingerprint}]
+    :cards    [{:id              700
+                :name            "Orders model"
+                :database-id     1
+                :type            :model
+                :entity-id       model-entity-id
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 10}]}
+                :result-metadata [{:name "ID"    :display-name "ID"    :base-type :type/Integer
+                                   :id   100     :table-id     10}
+                                  {:name "TOTAL" :display-name "Total" :base-type :type/Float
+                                   :id   101     :table-id     10      :fingerprint total-fingerprint}]}]}))
+
+(deftest binning-on-fingerprinted-columns-builds-test
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-fingerprinted)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 700 :database_id 1 :entity_id model-entity-id})
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (testing "a fingerprinted numeric table field"
+      (is (binned-count-builds? {"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "breakout"     [["field" ten-bins orders-total]]})))
+    (testing "a model column backed by a fingerprinted field"
+      (is (binned-count-builds? {"source-card" model-entity-id
+                                 "breakout"    [["field" ten-bins "TOTAL"]]})))
+    (testing "a fingerprinted field of an earlier stage"
+      (is (some? (construct/execute-representations-query
+                  (query-data
+                   (two-stage-query {"source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                    {"filters" [[">" {} ["field" {} orders-total] 1]]}
+                                    (binned-count ["field" ten-bins "TOTAL"])))))))))
+
+(deftest binning-on-text-custom-column-without-cast-gives-sql-option-test
+  (testing "live test run 4 (SQLite): without a cast, the \"remove `binning`\" advice also names a SQL question"
+    (let [stage-0   {"expressions" {"Users Label" ["concat" {} "n" ["field" {} "user_high"]]}}
+          rejection (fn [features]
+                      (rejection-code-and-message
+                       #(with-text-model-mp-and-stubs!
+                          features
+                          (fn []
+                            (construct/execute-representations-query
+                             (query-data
+                              (two-stage-query {"source-card" text-model-entity-id}
+                                               stage-0
+                                               (binned-count ["field" ten-bins "Users Label"]))))))))]
+      (testing "without the cast features"
+        (let [[code msg] (rejection #{})]
+          (is (= :binning-on-non-numeric-column code))
+          (is (str/includes? msg "Remove `binning`"))
+          (is (str/includes? msg "SQL question"))
+          (is (not (str/includes? msg "Table Metadata")))))
+      (testing "with the cast features, no SQL option"
+        (let [[code msg] (rejection cast-features)]
+          (is (= :binning-on-non-numeric-column code))
+          (is (str/includes? msg "Remove `binning`"))
+          (is (not (str/includes? msg "SQL question"))))))))
+
+;;; BOT-1482: `integer` and `float` need their database feature, as in the notebook editor
+
+(defn- cast-in-a-case [cast-op]
+  {"expressions" {"User Tier" (user-tier-case [cast-op {} ["field" {} "user_high"]])}})
+
+(defn- cast-in-a-filter [cast-op]
+  {"filters" [[">" {} [cast-op {} ["field" {} "user_high"]] 100]]})
+
+(deftest cast-function-without-feature-rejected-test
+  (testing "without the feature, `integer` and `float` are rejected as the notebook editor rejects them"
+    (doseq [cast-op               ["integer" "float"]
+            [label stage-keys-fn] {"in a custom column" cast-in-a-case
+                                   "in a filter"        cast-in-a-filter}]
+      (testing (str cast-op " " label)
+        (let [[code msg] (text-model-rejection-code-and-message! #{} (stage-keys-fn cast-op))]
+          (is (= :expression-editor-rejection code))
+          (is (str/includes? msg (str "Unsupported function " cast-op)))
+          (is (str/includes? msg "Table Metadata"))
+          (testing "the message says that the editor cannot edit the clause, not that the query cannot be visualized"
+            (is (str/includes? msg "cannot edit this clause"))
+            (is (not (str/includes? msg "could not be visualized")))))))))
+
+(deftest cast-function-without-feature-advice-follows-argument-type-test
+  (testing "without the feature, the advice for a rejected cast follows the type of the cast's argument"
+    ;; `integer`, because the editor's own type check rejects `float` of a number first.
+    (testing "a numeric argument: drop the cast or round, and no text advice"
+      (let [[code msg] (text-model-rejection-code-and-message!
+                        #{} {"filters" [[">" {} ["integer" {} ["field" {} "ID"]] 1]]})]
+        (is (= :expression-editor-rejection code))
+        (is (str/includes? msg "Unsupported function integer"))
+        (is (str/includes? msg "`round`"))
+        (is (not (str/includes? msg "text")))
+        (is (not (str/includes? msg "Table Metadata")))))
+    (doseq [[label stage-keys]
+            {"a text custom column of the same stage"
+             {"expressions" {"Users Label" ["concat" {} "n" ["field" {} "user_high"]]
+                             "Users Num"   ["integer" {} ["expression" {} "Users Label"]]}}
+
+             "a `substring` of a text column"
+             {"filters" [[">" {} ["integer" {} ["substring" {} ["field" {} "user_high"] 1 3]] 100]]}}]
+      (testing (str label ": the text advice, without Table Metadata, because the argument is not a table field")
+        (let [[code msg] (text-model-rejection-code-and-message! #{} stage-keys)]
+          (is (= :expression-editor-rejection code))
+          (is (str/includes? msg "Unsupported function integer"))
+          (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
+          (is (str/includes? msg "SQL question"))
+          (is (not (str/includes? msg "Table Metadata")))
+          (is (not (str/includes? msg "`round`"))))))))
+
+(deftest cast-function-partial-feature-test
+  (testing "each cast needs its own feature"
+    (let [float-only #{:expressions/float}]
+      (testing "`integer` is rejected, and the hint names only the `float` cast"
+        (let [[code msg] (text-model-rejection-code-and-message! float-only (cast-in-a-case "integer"))]
+          (is (= :expression-editor-rejection code))
+          (is (str/includes? msg "Unsupported function integer"))
+          (is (str/includes? msg "[\"float\", {}, <field>]"))
+          (is (not (str/includes? msg "[\"integer\", {}, <field>]")))))
+      (testing "`float` builds"
+        (is (text-model-builds! float-only (cast-in-a-case "float")))))))
+
+(deftest no-cast-advice-names-table-metadata-only-for-table-fields-test
+  (testing "without the cast features, Table Metadata casting is advised only for a column that comes from a table field"
+    (doseq [[label query-fn ref table-field?]
+            [["a table field"                           text-table-query ["field" {} churns-user-high] true]
+             ["a model column backed by a table field"  text-model-query ["field" {} "user_high"]       true]
+             ["a model custom column"                   text-model-query ["field" {} "Users Text"]      false]]]
+      (testing label
+        (doseq [[gate stage-keys] {"the editor gate" {"filters" [[">" {} ref 100]]}
+                                   "the bin gate"    (binned-count (assoc ref 1 {"binning" {"strategy" "default"}}))}]
+          (testing gate
+            (let [[_ msg] (rejection-code-and-message
+                           #(with-text-model-mp-and-stubs!
+                              #{}
+                              (fn [] (construct/execute-representations-query (query-data (query-fn stage-keys))))))]
+              (is (str/includes? msg "The query builder cannot convert text to a number on this database."))
+              (is (str/includes? msg "SQL question"))
+              (is (= table-field? (str/includes? msg "Table Metadata"))))))))))

@@ -52,3 +52,21 @@ export const getQueryAndColumns = (
     ]),
   );
 };
+
+export const getPrimarySourceMetadata = (
+  query: Lib.Query,
+): Lib.TableMetadata | Lib.CardMetadata | null => {
+  const tableId = Lib.primarySourceTableId(query);
+  if (tableId != null) {
+    return Lib.tableMetadata(query, tableId);
+  }
+  const cardId = Lib.primarySourceCardId(query);
+  if (cardId != null) {
+    return Lib.cardMetadata(query, cardId);
+  }
+  return null;
+};
+
+export const hasPrimarySource = (query: Lib.Query): boolean =>
+  Lib.primarySourceTableId(query) != null ||
+  Lib.primarySourceCardId(query) != null;

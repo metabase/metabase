@@ -44,6 +44,7 @@
    ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -109,7 +110,7 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-or-internal-query
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (run-streaming-query
    (-> query
        (dissoc :cache-strategy)
@@ -147,7 +148,8 @@
     format-rows                   :format_rows
     pivot-results                 :pivot_results
     csv-include-bom               :csv_include_bom
-    visualization-settings        :visualization_settings}
+    visualization-settings        :visualization_settings
+    display                       :display}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map {:closed true}
@@ -160,11 +162,17 @@
                                                        {:decode/api (fn [x]
                                                                       (cond-> x
                                                                         (string? x) (json/decode viz-setting-key-fn)))})]
+       ;; the browser form-encodes downloads and JSON-encodes every value, so a display arrives as "\"table\""
+       [:display                {:optional true} [:maybe (mu/with ms/KeywordOrString
+                                                                  {:decode/api (fn [x]
+                                                                                 (cond-> x
+                                                                                   (and (string? x) (= (first x) \"))
+                                                                                   json/decode))})]]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
        [:csv_include_bom         {:default false} ms/BooleanValue]]
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -176,6 +184,7 @@
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
                                                                           :csv-include-bom?       (if (some? csv-include-bom) csv-include-bom false)
+                                                                          :display                (some-> display keyword)
                                                                           :process-viz-settings?  true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query
@@ -203,7 +212,7 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-query
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
@@ -214,7 +223,13 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native"
-  "Fetch a native version of an MBQL query."
+  "Fetch a native version of an MBQL query.
+
+  Display path: workspace remapping is suppressed via
+  [[ws.table-remapping/with-display-context]] so the user sees canonical-schema SQL
+  in the 'Show me the SQL' panel. The query still executes against the workspace
+  isolation schema at warehouse time (separate code path); this endpoint only
+  affects what the user reads."
   {:scope api-scope/data-app}
   [_route-params
    _query-params
@@ -222,32 +237,33 @@
                                            [:pretty {:default true} [:maybe :boolean]]
                                            [::mc/default ::lib-be.schema/maybe-legacy-query]]
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query (dissoc query :pretty)))
-  (model-persistence/with-persisted-substituion-disabled
-    (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
-                    (dissoc :constraints :middleware)
-                    lib/disable-default-limit)]
-      (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-      (qp.setup/with-qp-setup [query query]
-        (binding [driver/*compile-with-inline-parameters* true]
-          ;; Preprocess once, then run the same permission checks the run path (execute chain) runs, so both
-          ;; endpoints agree on which referenced cards and tables the caller may use. Preprocessing resolves
-          ;; `card__N` source tables and card/snippet template tags, so the referenced entities are known by
-          ;; the time we check.
-          (let [preprocessed (qp.preprocess/preprocess query)]
-            (try
-              (qp.perms/check-query-permissions* preprocessed)
-              (catch clojure.lang.ExceptionInfo e
-                (throw (if (:permissions-error? (ex-data e))
-                         (ex-info (ex-message e) (assoc (ex-data e) :status-code 403) e)
-                         e))))
-            (let [compiled (qp.compile/compile-preprocessed preprocessed)
-                  driver (driver.u/database->driver database)]
-              ;; Return only the compiled query and its params, not the internal keys the compiler carries
-              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids). `:collection` is kept so
-              ;; the frontend can pre-select the source table when converting a MongoDB question to native.
-              (-> (select-keys compiled [:query :params :collection])
-                  (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query (dissoc query :pretty)))
+  (ws.table-remapping/with-display-context
+    (model-persistence/with-persisted-substituion-disabled
+      (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
+                      (dissoc :constraints :middleware)
+                      lib/disable-default-limit)]
+        (qp.perms/check-current-user-has-adhoc-native-query-perms query)
+        (qp.setup/with-qp-setup [query query]
+          (binding [driver/*compile-with-inline-parameters* true]
+            ;; Preprocess once, then run the same permission checks the run path (execute chain) runs, so both
+            ;; endpoints agree on which referenced cards and tables the caller may use. Preprocessing resolves
+            ;; `card__N` source tables and card/snippet template tags, so the referenced entities are known by
+            ;; the time we check.
+            (let [preprocessed (qp.preprocess/preprocess query)]
+              (try
+                (qp.perms/check-query-permissions* preprocessed)
+                (catch clojure.lang.ExceptionInfo e
+                  (throw (if (:permissions-error? (ex-data e))
+                           (ex-info (ex-message e) (assoc (ex-data e) :status-code 403) e)
+                           e))))
+              (let [compiled (qp.compile/compile-preprocessed preprocessed)
+                    driver (driver.u/database->driver database)]
+                ;; Return only the compiled query and its params, not the internal keys the compiler carries
+                ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids). `:collection` is kept so
+                ;; the frontend can pre-select the source table when converting a MongoDB question to native.
+                (-> (select-keys compiled [:query :params :collection])
+                    (cond-> pretty (update :query #(driver/prettify-native-form driver %))))))))))))
 
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)
@@ -257,7 +273,7 @@
    _query-params
    {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
+  (some-> (data-apps/request-data-app request) (data-apps/check-adhoc-query query))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
@@ -299,15 +315,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
-  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys     [parameter]
     field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -316,16 +329,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  {:scope api-scope/data-app}
   [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
    {:keys     [parameter]
     field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids query))
 
 (defn param-remapped-value
@@ -348,13 +358,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
-  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
                                            [:value [:ref ::lib.schema.parameter/parameter.value]]
-                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field_ids))
+                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (param-remapped-value field_ids parameter value))

@@ -2,10 +2,10 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
-   [metabase.timeline.schema]
+   [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -46,19 +46,22 @@
 
 ;;;; serialization
 
-(defmethod serdes/deserialization-dependencies "Timeline" [{:keys [collection_id]}]
-  (when collection_id
-    [[{:model "Collection" :id collection_id}]]))
-
-(defmethod serdes/serialization-dependencies "Timeline" [_model-name {:keys [collection_id]}]
-  ;; A Timeline only references its containing Collection, which a selective export may legitimately omit.
-  (when collection_id
-    #{[{:model "Collection" :id collection_id}]}))
-
-(defmethod serdes/make-spec "Timeline" [_model-name opts]
-  {:copy      [:archived :default :description :entity_id :icon :name]
-   :skip      []
-   :transform {:collection_id (serdes/fk :model/Collection)
-               :creator_id    (serdes/fk :model/User)
-               :events        (serdes/nested :model/TimelineEvent :timeline_id (merge {:sort-by (juxt :name :entity_id)} opts))}
+(defmethod serialization/spec :model/Timeline [_]
+  {:schema    ::timeline.schema/external-timeline
+   :copy      [:archived :default :description :entity_id :icon :name]
+   :transform {:collection_id (serialization/fk-transform :model/Collection)
+               :creator_id    serialization/user-transform}
+   :children  {:events :model/TimelineEvent}
    :defaults  {:archived false :default false}})
+
+(defmethod serialization/import-dependencies :model/Timeline [_ entities]
+  (mapv (fn [{:keys [collection_id]}]
+          (when collection_id
+            [[:model/Collection collection_id]]))
+        entities))
+
+(defmethod serialization/export-dependencies :model/Timeline [_ timelines]
+  (mapv (fn [{:keys [collection_id]}]
+          (when collection_id
+            #{[:model/Collection collection_id]}))
+        timelines))

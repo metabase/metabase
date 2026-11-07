@@ -69,6 +69,7 @@
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/ImplicitAction                    metabase.actions.models
+    :model/ImpersonationQueryCache           metabase-enterprise.impersonation.models.impersonation-query-cache
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
     :model/McpGroupPermission                metabase.mcp.models.mcp-group-permission
@@ -140,6 +141,7 @@
     :model/StoredResultUse                   metabase.queries.models.stored-result-use
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
+    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
@@ -165,7 +167,9 @@
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
-    :model/ViewLog                           metabase.view-log.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
+    :model/WorkspaceDatabase                 metabase-enterprise.workspaces.models.workspace-database})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

@@ -6,14 +6,14 @@
    [clojure.test :refer :all]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
-   [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -237,8 +237,7 @@
 (deftest query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "a query action can be inserted and updated without a model, and keeps its own collection"
-      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}
-                     :model/Collection {app-id :id}  {:namespace "data-apps"}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
         (mt/with-model-cleanup [:model/Action]
           (let [insert!   (fn [collection-id]
                             (action/insert! (lib/normalize ::actions.schema/action.for-insert
@@ -252,10 +251,7 @@
                     (action/select-action :id action-id)))
             (action/update! {:id action-id :name "Renamed"} (action/select-action :id action-id))
             (is (=? {:name "Renamed" :model_id nil :collection_id coll-id}
-                    (action/select-action :id action-id)))
-            (testing "a data app collection takes one too"
-              (is (=? {:model_id nil :collection_id app-id}
-                      (action/select-action :id (insert! app-id)))))))))))
+                    (action/select-action :id action-id)))))))))
 
 (deftest action-in-a-data-apps-collection-is-admin-only-test
   (testing "Only administrators write an action in a collection of the data apps namespace"
@@ -264,23 +260,78 @@
       (mt/with-model-cleanup [:model/Action]
         (let [action-in (fn [collection-id]
                           (lib/normalize ::actions.schema/action.for-insert
-                                         {:type          :query
+                                         {:type          :implicit
+                                          :kind          :row/create
                                           :name          "No model"
                                           :collection_id collection-id
-                                          :database_id   (mt/id)
-                                          :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
-              action    (action/select-action :id (action/insert! (action-in app-id)))
+                                          :table_id      (mt/id :categories)}))
               elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
           (mt/with-test-user :crowberto
-            (is (true? (mi/can-write? action)))
-            (is (true? (:can_write (t2/hydrate action :can_write))))
+            (is (true? (mi/can-write? elsewhere)))
             (is (true? (mi/can-create? :model/Action (action-in app-id))))
             (is (true? (mi/can-update? elsewhere {:collection_id app-id}))))
           (mt/with-test-user :rasta
-            (is (false? (mi/can-write? action)))
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                  (api/write-check :model/Action (:id action))))
-            (is (false? (mi/can-create? :model/Action (action-in app-id))))))))))
+            (is (false? (mi/can-write? elsewhere)))
+            (is (false? (mi/can-create? :model/Action (action-in app-id))))
+            (is (false? (mi/can-update? elsewhere {:collection_id app-id})))))))))
+
+(defn- insert-data-app-action!
+  "Insert an action named `action-name` of `action-type` in the collection with `collection-id`, as a load does, with
+  `action-columns` merged into its Action row: an implicit one of no model inserting into the venues table, or a query
+  one running SQL."
+  [collection-id action-type action-name & [action-columns]]
+  (let [action-id (t2/insert-returning-pk! :model/Action (merge {:name          action-name
+                                                                 :type          action-type
+                                                                 :collection_id collection-id
+                                                                 :creator_id    (mt/user->id :crowberto)}
+                                                                action-columns))]
+    (if (= :implicit action-type)
+      (t2/insert! :model/ImplicitAction {:action_id action-id :kind "row/create" :table_id (mt/id :venues)})
+      (t2/insert! :model/QueryAction {:action_id     action-id
+                                      :database_id   (mt/id)
+                                      :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}))
+    action-id))
+
+(def ^:private card-values-parameters
+  "Action parameters, one taking its values from a card that doesn't exist."
+  [{:id "name" :slug "name" :type :string/= :values_source_type "card" :values_source_config {:card_id Integer/MAX_VALUE}}])
+
+(deftest action-in-a-data-apps-collection-is-plain-implicit-action-test
+  (testing "an action in a collection of the data apps namespace is an implicit action of no model, neither archived nor
+            public, whose parameters take no values from a card, however it gets there"
+    (when config/ee-available?
+      (mt/with-temp [:model/Collection {app-id :id}   {:namespace "data-apps"}
+                     :model/Collection {other-id :id} {:namespace "data-actions"}]
+        (mt/with-model-cleanup [:model/Action]
+          (doseq [[label action-type columns message]
+                  [["a query action" :query nil #"must be an implicit action on a table"]
+                   ["archived" :implicit {:archived true} #"can't be archived"]
+                   ["public" :implicit {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :crowberto)}
+                    #"can't be made public"]
+                   ["taking parameter values from a card" :implicit {:parameters card-values-parameters}
+                    #"can't take a parameter's values from a card"]]]
+            (testing label
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                    (insert-data-app-action! app-id action-type label columns)))
+              (testing "moved in from elsewhere, where it is fine"
+                (let [action-id (insert-data-app-action! other-id action-type (str label " elsewhere") columns)]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                        (t2/update! :model/Action :id action-id {:collection_id app-id})))
+                  (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))))
+
+(deftest action-in-a-data-apps-collection-writes-to-any-table-test
+  (testing "the hook reads only the action's rows, so an implicit action of no model there writes to any table"
+    (when config/ee-available?
+      (mt/with-temp [:model/Collection {app-id :id}   {:namespace "data-apps"}
+                     :model/Collection {other-id :id} {:namespace "data-actions"}]
+        (mt/with-model-cleanup [:model/Action]
+          (let [action-id (insert-data-app-action! app-id :implicit "Add venue")]
+            (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})
+            (is (= (mt/id :categories) (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))
+          (testing "and one moves in"
+            (let [action-id (insert-data-app-action! other-id :implicit "Moved in")]
+              (t2/update! :model/Action :id action-id {:collection_id app-id})
+              (is (= app-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))
 
 (deftest implicit-action-requires-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -603,35 +654,35 @@
 (deftest load-skips-http-actions-test
   (testing "HTTP actions from older exports are skipped on load"
     (let [entity-id (u/generate-nano-id)]
-      (serdes/load-one! {:type        "http"
-                         :name        "Old HTTP action"
-                         :entity_id   entity-id
-                         :serdes/meta [{:model "Action" :id entity-id}]}
-                        nil)
+      (serialization/load :model/Action [{:type        "http"
+                                          :name        "Old HTTP action"
+                                          :entity_id   entity-id
+                                          :serdes/meta [{:model "Action"}]}])
       (is (not (t2/exists? :model/Action :entity_id entity-id))))))
 
 (deftest load-table-action-without-its-table-test
-  (testing "a table action doesn't depend on its table for serdes, and loading it makes a stub of a table that isn't there"
+  (testing "table action doesn't depend on its table for serdes, and loading it makes stub of table that isn't there"
     (mt/with-model-cleanup [:model/Action :model/Table]
       (let [action-id (action/insert! {:type :implicit :name "On categories" :kind :row/create
                                        :table_id (mt/id :categories) :creator_id (mt/user->id :crowberto)})
             entity-id (u/generate-nano-id)
-            exported  (-> (u/rfirst (serdes/extract-all "Action" {:filter-column :id :filter-ids [action-id]}))
-                          (assoc :entity_id entity-id :serdes/meta [{:model "Action" :id entity-id :label "copy"}])
+            exported  (-> (u/rfirst (serialization/export :model/Action (t2/select :model/Action :id action-id)))
+                          (assoc :entity_id entity-id)
                           (assoc-in [:implicit 0 :table_id] [(:name (mt/db)) "PUBLIC" "NOT_SYNCED_YET"]))]
-        (is (= #{} (set (filter #(= "Table" (:model (last %))) (serdes/deserialization-dependencies exported)))))
-        (serdes/load-one! exported nil)
+        (is (= #{} (set (filter #(= :model/Table (first %)) (first (serialization/import-dependencies :model/Action [exported]))))))
+        (serialization/load :model/Action [exported])
         (let [table-id (t2/select-one-fn :table_id :model/ImplicitAction
                                          :action_id (t2/select-one-pk :model/Action :entity_id entity-id))]
           (is (= "NOT_SYNCED_YET" (t2/select-one-fn :name :model/Table :id table-id))))))))
 
 (deftest storage-path-test
-  (testing "actions without a model in the data actions root or namespace are stored in the data_actions folder"
+  (testing "actions without model in data actions root or namespace are stored in data_actions folder"
     (mt/with-temp [:model/Collection {folder-eid :entity_id} {:namespace "data-actions"}
                    :model/Collection {app-eid :entity_id}    {:namespace "data-apps"}]
       (let [folder-label (fn [action]
-                           (:label (second (serdes/storage-path (assoc action :serdes/meta [{:model "Action"}]) {}))))]
+                           (:label (second (first (serialization/batch-storage-paths
+                                                   [(assoc action :serdes/meta [{:model "Action"}])])))))]
         (is (= "data_actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
         (is (= "data_actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
-        (is (= "main" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
+        (is (= "data_apps" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
         (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))

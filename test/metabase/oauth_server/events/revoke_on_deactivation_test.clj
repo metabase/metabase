@@ -6,6 +6,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- in-one-hour [] (+ (inst-ms (java.util.Date.)) 3600000))
 
 (defn- insert-access-token! [user-id]

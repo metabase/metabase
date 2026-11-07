@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { isEmbedding } from "metabase/embedding/config";
+import { getPrimarySourceMetadata } from "metabase/querying/common/utils";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
@@ -30,10 +31,7 @@ export const DataStep = ({
 }: NotebookStepProps) => {
   const { dataPickerOptions } = useNotebookContext();
   const { question, stageIndex } = step;
-  const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId
-    ? (Lib.tableOrCardMetadata(query, tableId) ?? undefined)
-    : undefined;
+  const table = getPrimarySourceMetadata(query) ?? undefined;
   const [isOpened, setIsOpened] = useState(() => !table);
   const isMetric = question.type() === "metric";
 

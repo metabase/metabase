@@ -3,11 +3,13 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
-   [metabase.transforms.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -38,17 +40,19 @@
   [_model _instance]
   (api/entitled-data-analyst?))
 
-(defn tag-name-exists?
+(mu/defn tag-name-exists? :- :boolean
   "Check if a tag with the given name already exists"
-  [tag-name]
+  [tag-name :- :string]
   (transforms.db/tag-name-exists? tag-name))
 
-(defn tag-name-exists-excluding?
+(mu/defn tag-name-exists-excluding? :- :boolean
   "Check if a tag with the given name exists, excluding the specified ID"
-  [tag-name tag-id]
+  [tag-name :- :string
+   tag-id   :- ms/PositiveInt]
   (transforms.db/tag-name-exists-excluding? tag-name tag-id))
 
-(defn- translate-name [tag]
+(mu/defn- translate-name :- [:map {:closed true} [:name [:maybe mu/localized-string-schema]]]
+  [tag :- [:or ::transforms.schema/transform-tag ::transforms.schema/transform-tag.update]]
   (let [values {"hourly"  (i18n/deferred-trs "hourly")
                 "daily"   (i18n/deferred-trs "daily")
                 "weekly"  (i18n/deferred-trs "weekly")
@@ -96,13 +100,15 @@
                                 tag-id->transform-ids)]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
 
-(defmethod serdes/make-spec "TransformTag"
-  [_model-name _opts]
-  {:copy [:entity_id :built_in_type]
-   :transform {:name {:export str :import identity}}})
+(defmethod serialization/spec :model/TransformTag [_]
+  {:schema    ::transforms.schema/external-transform-tag
+   :copy      [:entity_id :built_in_type]
+   :transform {:name {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}}})
 
-(defmethod serdes/storage-path "TransformTag" [tt _ctx]
-  [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
+(defmethod serialization/storage-paths :model/TransformTag [_ entities _ctx]
+  (mapv (fn [tt]
+          [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
+        entities))
 
 ;; Event hooks for remote-sync tracking
 (t2/define-after-insert :model/TransformTag [tag]

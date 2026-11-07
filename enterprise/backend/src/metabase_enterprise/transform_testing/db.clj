@@ -29,8 +29,8 @@
   (t2/insert-returning-instance! :model/TransformTest transform-test))
 
 (mu/defn insert-transform-test-run! :- ::transform-testing.schema/transform-test-run
-  "Insert a started TransformTestRun for `transform-test-id` and return it."
-  [transform-test-id :- ms/PositiveInt
+  "Insert a started TransformTestRun for `transform-test-id`, nil for a test that is not saved, and return it."
+  [transform-test-id :- [:maybe ms/PositiveInt]
    initiated-by      :- [:maybe ::lib.schema.id/user]]
   (t2/insert-returning-instance! :model/TransformTestRun
                                  {:transform_test_id transform-test-id
@@ -46,8 +46,8 @@
    [:ended-at-start    {:optional true} [:maybe ms/TemporalInstant]]
    [:ended-at-end      {:optional true} [:maybe ms/TemporalInstant]]])
 
-(defn- run-filter-clause
-  [{:keys [transform-test-id statuses started-at-start started-at-end ended-at-start ended-at-end]}]
+(mu/defn- run-filter-clause :- vector?
+  [{:keys [transform-test-id statuses started-at-start started-at-end ended-at-start ended-at-end]} :- RunFilters]
   (cond-> [:and [:= :transform_test_id transform-test-id]]
     (seq statuses)   (conj [:in :status (map name statuses)])
     started-at-start (conj [:>= :start_time started-at-start])
@@ -126,3 +126,9 @@
   "The TransformTest with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/TransformTest :entity_id entity-id))
+
+(mu/defn transforms-by-entity-ids
+  "The entity id, name, and Collection id of the Transforms with `eids`."
+  [eids :- [:sequential :string]]
+  (when (seq eids)
+    (t2/select [:model/Transform :entity_id :name :collection_id] :entity_id [:in [:auto/param eids]])))

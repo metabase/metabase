@@ -25,7 +25,6 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [toucan2.core :as t2])
   (:import
@@ -38,11 +37,9 @@
 ;; authentication test on every single individual endpoint
 
 (defn- user-table-fn
-  "The value of `column` on the Table with `table-id` as users see it: what they set, else what sync wrote. A bare
-  `t2/select :model/Table` shows sync's values only."
+  "The value of `column` on the Table with `table-id`."
   [column table-id]
-  (t2/select-one-fn column :model/Table :id table-id
-                    {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one-fn column :model/Table :id table-id))
 
 (deftest ^:parallel unauthenticated-test
   (is (= (get api.response/response-unauthentic :body)
@@ -261,7 +258,7 @@
     (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
       (testing "Sensitive fields are included"
         (is (= (merge
-                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :initial_sync_error nil})
+                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :admin_details nil, :initial_sync_error nil})
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
@@ -433,9 +430,9 @@
 (deftest query-metadata-transform-hydration-test
   (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
     (mt/with-temp [:model/Transform transform {:name   "My transform"
-                                               :source {:type  "query"
+                                               :source {:type  :query
                                                         :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
-                                               :target {:database (mt/id) :table "my_transform_table"}}
+                                               :target {:type "table" :database (mt/id) :name "my_transform_table"}}
                    :model/Table     {table-id :id} {:db_id        (mt/id)
                                                     :transform_id (:id transform)}]
       (testing "self-hosted (not hosted) without :transforms-basic still hydrates the source transform"
@@ -482,7 +479,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details :initial_sync_error])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details :initial_sync_error])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"

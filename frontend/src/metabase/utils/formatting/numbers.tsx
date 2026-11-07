@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { CurrencyPosition } from "metabase-types/api";
+
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
@@ -20,6 +22,7 @@ export type FormatNumberOptions = {
   compact?: boolean;
   currency?: string;
   currency_in_header?: boolean;
+  currency_position?: CurrencyPosition;
   currency_style?: string;
   decimals?: string | number;
   maximumFractionDigits?: number;
@@ -124,7 +127,13 @@ export function formatNumber(
         nf = numberFormatterForOptions(options);
       }
 
-      let formatted = nf.format(number);
+      const currencyAfterAmount =
+        options.number_style === "currency" &&
+        options.currency_position === "after" &&
+        options.currency_style !== "name";
+      let formatted = currencyAfterAmount
+        ? formatCurrencyAfterAmount(nf, number)
+        : nf.format(number);
 
       // extract number portion of currency if we're formatting a cell
       if (
@@ -161,6 +170,24 @@ export function formatNumber(
       return FIXED_NUMBER_FORMATTER.format(number);
     }
   }
+}
+
+function formatCurrencyAfterAmount(
+  formatter: Intl.NumberFormat,
+  value: number | bigint,
+): string {
+  const parts = formatter.formatToParts(value);
+  const currency = parts.find((part) => part.type === "currency");
+  if (!currency) {
+    return formatter.format(value);
+  }
+
+  const amount = parts
+    .filter((part) => part.type !== "currency" && part.type !== "literal")
+    .map((part) => part.value)
+    .join("");
+
+  return `${amount}\u00a0${currency.value}`;
 }
 
 export function formatChangeWithSign(
@@ -236,17 +263,23 @@ function formatNumberCompact(
         ...options,
         ...COMPACT_CURRENCY_OPTIONS,
       });
+      const currencyPosition = options.currency_position ?? "before";
 
       if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
-        return nf.format(value);
+        return currencyPosition === "after"
+          ? formatCurrencyAfterAmount(nf, value)
+          : nf.format(value);
       }
       const { value: currency } = nf
         .formatToParts(value)
-        .find((p: any) => p.type === "currency") ?? { value: "" };
+        .find((part) => part.type === "currency") ?? { value: "" };
 
       const valueSign = value < 0 ? "-" : "";
+      const amount = _formatNumberCompact(abs(value), options);
 
-      return valueSign + currency + _formatNumberCompact(abs(value), options);
+      return currencyPosition === "after"
+        ? `${valueSign}${amount}\u00a0${currency}`
+        : valueSign + currency + amount;
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
       return _formatNumberCompact(value, options);

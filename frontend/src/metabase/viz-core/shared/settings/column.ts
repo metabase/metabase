@@ -1,5 +1,9 @@
 import { isCurrency, isPercentage } from "metabase-lib/v1/types/utils/isa";
-import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  CurrencyPosition,
+  DatasetColumn,
+} from "metabase-types/api";
 
 export function getDefaultNumberStyle(
   column: DatasetColumn,
@@ -54,6 +58,10 @@ export function getDefaultCurrencyStyle(
 
 export function getDefaultCurrencyInHeader() {
   return true;
+}
+
+export function getDefaultCurrencyPosition(): CurrencyPosition {
+  return "before";
 }
 
 export function getDefaultNumberSeparators() {

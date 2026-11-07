@@ -10,13 +10,13 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -25,6 +25,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
@@ -239,21 +241,20 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/deserialization-dependencies "Segment" [{:keys [definition]}]
-  (serdes/mbql-deps false definition))
+(defmethod serialization/storage-paths :model/Segment [_ entities _ctx]
+  (mapv (fn [segment]
+          (let [table-path (-> segment :definition serialization/serialized-query-source-table)]
+            (into (serialization/storage-path-prefixes table-path)
+                  [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
+        entities))
 
-(defmethod serdes/storage-path "Segment" [segment _ctx]
-  (let [table-path (-> segment :definition serdes/serialized-query-source-table)]
-    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
-          [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
-
-(defmethod serdes/make-spec "Segment" [_model-name _opts]
-  {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
-               :table_id]
-   :transform {:creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import serdes/import-mbql}}
-   :defaults {:archived false :show_in_getting_started false}})
+(defmethod serialization/spec :model/Segment [_]
+  {:schema    ::segments.schema/external-segment
+   :copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+   :skip      [:table_id]
+   :transform {:creator_id serialization/user-transform
+               :definition serialization/mbql-transform}
+   :defaults  {:archived false :show_in_getting_started false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -275,21 +276,19 @@
                   :table_display_name        :table.display_name
                   :table_schema              :table.schema
                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Publishing is a user setting, so the published state and collection come from the table's
-                  ;; user settings when they are set, as in `metabase.warehouse-schema-overlay.core/table-query`.
                   ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
-                  :table-collection-id       [:case
-                                              [:not= :settings.is_published nil] :settings.collection_id
-                                              :else :table.collection_id]
-                  :table-is-published        [:coalesce :settings.is_published :table.is_published]
+                  :table-collection-id       :table.collection_id
+                  :table-is-published        :table.is_published
                   :table-collection-location :collection.location
                   :table-collection-type     :collection.type}
    ;; Only published tables count as library content, matching the table spec's own collection join.
    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-           :settings   [:model/TableUserSettings [:= :settings.table_id :this.table_id]]
            :collection [:model/Collection
                         [:and
-                         [:= [:coalesce :settings.is_published :table.is_published] true]
-                         [:= :collection.id [:case
-                                             [:not= :settings.is_published nil] :settings.collection_id
-                                             :else :table.collection_id]]]]}})
+                         [:= :table.is_published true]
+                         [:= :collection.id :table.collection_id]]]}})
+
+(defmethod serialization/import-dependencies :model/Segment [_ entities]
+  (mapv (fn [{:keys [definition]}]
+          (serialization/import-mbql-dependencies definition))
+        entities))

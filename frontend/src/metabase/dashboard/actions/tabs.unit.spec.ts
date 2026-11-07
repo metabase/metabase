@@ -10,6 +10,8 @@ import { waitFor } from "__support__/ui";
 import type { StoreDashcard } from "metabase/redux/store";
 import { performUndo } from "metabase/redux/undo";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   DashCardDataMap,
   Parameter,
@@ -24,9 +26,8 @@ import {
   createMockHeadingDashboardCard,
   createMockParameter,
   createMockParameterMapping,
-  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import { ORDERS, ORDERS_ID, PRODUCTS } from "metabase-types/api/mocks/presets";
+import { ORDERS, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
 import { getDashboard, getDashcards, getTabs } from "../selectors";
@@ -37,9 +38,9 @@ import { deleteTab, duplicateTab } from "./tabs-thunks";
 
 const ORDERS_CARD = createMockCard({
   id: 1,
-  dataset_query: createMockStructuredDatasetQuery({
-    query: { "source-table": ORDERS_ID },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
 });
 
 const DASHBOARD_LEVEL_PARAMETER = createMockParameter({

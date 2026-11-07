@@ -1,9 +1,9 @@
 import type {
-  ConcreteTableId,
   InspectorField,
   InspectorFieldStats,
   InspectorSource,
   InspectorTarget,
+  TableId,
 } from "metabase-types/api";
 
 export type FieldInfoSectionProps = {
@@ -24,7 +24,7 @@ export type FieldTreeNode = {
 };
 
 export type TableWithFields = {
-  table_id?: ConcreteTableId | null;
+  table_id?: TableId | null;
   table_name: string;
   fields: InspectorField[];
 };

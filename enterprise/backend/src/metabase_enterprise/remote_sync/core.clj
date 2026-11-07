@@ -8,10 +8,12 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -39,15 +41,6 @@
                                    (:namespace collection)
                                    ;; the root collection has no ID, and nothing in it is synced
                                    (some-> (u/id collection) remote-sync.db/collection-namespace))}))))))
-
-(defenterprise collection-syncable?
-  "Whether `collection` can be remote-synced: a Collection of a namespace remote sync syncs, the Library and every Collection inside it, and any other once custom collections are on."
-  :feature :none
-  [{:keys [location] :as collection}]
-  (or (not (settings/custom-collection? collection))
-      (settings/remote-sync-custom-collections-enabled)
-      (= collections/library-collection-type
-         (some-> location collections/location-path->ids first collections/root-collection-type-by-id))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
@@ -305,79 +298,107 @@
   [{:keys [model id]}]
   [model id])
 
-(defn- subsumed-dependency?
-  "Whether reporting `dep` would tell an admin nothing new: everything that reaches it is itself an
-  ineligible dependency with the same remedy, and that remedy is a switch covering a whole collection, so
-  the row already on screen fixes this one too. Click behaviour pointing at an unsynced dashboard drags in
-  every card that dashboard holds, and syncing the dashboard's collection covers them all. Neither a
-  referrer with a *different* remedy nor a remedy [[remedy-syncable?]] rejects subsumes: there the fix is
-  to move each item, which the parent's move doesn't do, so hiding one refuses the next save for a reason
-  never shown."
-  [dep remedies]
-  (when-let [referrers (seq (referencing-entities dep))]
-    (let [remedy (get remedies (dependency-key dep))]
-      ;; Referrers outside `remedies` are eligible content, so they never subsume.
-      (and (remedy-syncable? remedy)
-           (every? #(= remedy (get remedies %)) referrers)))))
-
 (defn- describe-dependencies
-  "Renders [[collections/ineligible-dependencies]] for the API: what each dependency is, the collection it
+  "Renders the dependencies of [[unsynced-dependency-failures]] for the API: what each dependency is, the collection it
   lives in, the entities that reference it, and the collection (or the Library) that would have to be
-  synced to cover it. Dependencies the traversal only reached through another one with the same remedy
-  are dropped — see [[subsumed-dependency?]]."
+  synced to cover it."
   [deps]
   (let [collections (collections-by-id (map (comp :collection_id :instance) deps))
         top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))
-        ;; Resolved once for the whole refusal rather than per snippet dependency.
         library     (collections/library-collection)
         remedies    (zipmap (map dependency-key deps)
-                            (map #(sync-remedy % collections top-levels library) deps))
-        reported    (into [] (remove #(subsumed-dependency? % remedies)) deps)]
+                            (map #(sync-remedy % collections top-levels library) deps))]
     (mapv (fn [described used-by {:keys [instance] :as dep}]
             (merge described
                    {:remedy  (get remedies (dependency-key dep))
                     :used_by used-by}
                    (dependency-collection instance collections)))
-          (describe-entities reported)
-          (describe-used-by reported)
-          reported)))
+          (describe-entities deps)
+          (describe-used-by deps)
+          deps)))
 
-(defn- describe-dependents
-  "Renders [[collections/remote-synced-dependents]] for the API. Each dependent arrives as a path map like
-  `{\"DashboardCard\" 12 \"Dashboard\" 3}`; every entry an admin can actually open is reported, and the
-  nested models (DashboardCard, DashboardCardSeries, Action) fall away — they have no name of their own,
-  and the parent that does is in the same path."
-  [dependents]
-  (describe-entities
-   (vec (distinct (for [dependent       dependents
-                        [model-name id] dependent
-                        :when           (contains? model-name->collection-item-model model-name)]
-                    {:model model-name :id id})))))
+(defn- nodes
+  "The set of `[model-name id]` nodes of `entities`, a map of model-name to ids."
+  [entities]
+  (set (for [[model-name ids] entities, id ids] [model-name id])))
+
+(defn- expanded-nodes
+  "The [[nodes]] of `entities`, a Collection node expanded to everything in it."
+  [entities]
+  (let [collection-ids (get entities "Collection")]
+    (into (nodes entities)
+          (when (seq collection-ids)
+            (nodes (spec/collection-entities collection-ids))))))
+
+(defn- dependencies-of
+  "The `[from to]` pairs of `[model-name id]`: each of `froms` with what it depends on outside them."
+  [froms]
+  (for [[[dep-model dep-id] referrers] (serialization/export-escapes
+                                        (into {}
+                                              (for [[model-name ids] (u/group-by first second froms)
+                                                    :let [model (keyword "model" model-name)]]
+                                                [model (eduction (partition-all serialization/batch-size)
+                                                                 (mapcat #(ee.serialization/select-rows model {:ids (vec %)}))
+                                                                 ids)])))
+        [model id] referrers]
+    [[(name model) id] [(name dep-model) dep-id]]))
+
+(def ^:private guarded-models
+  "The models whose entities remote-synced content must not depend on when remote sync does not export them: the items
+  of collections, and the actions of dashboard cards."
+  (conj (set (keys model-name->collection-item-model)) "Action"))
+
+(defenterprise dangling-dependencies
+  "The `[from to]` pairs of `[model-name id]` of what remote sync exports and the [[guarded-models]] content it
+  depends on that remote sync does not export: those from the `:from` entities, or on the `:to` entities, given as maps of
+  model-name to ids, a Collection standing for everything in it."
+  :feature :none
+  [{:keys [from to]}]
+  (let [selected (nodes (spec/exportable-entities))
+        froms    (if from (filter selected (expanded-nodes from)) selected)
+        tos      (when to (expanded-nodes to))]
+    (into []
+          (filter (fn [[_ [model-name :as dep]]]
+                    (and (guarded-models model-name)
+                         (not (selected dep))
+                         (or (nil? tos) (tos dep)))))
+          (dependencies-of froms))))
 
 (defn- unsynced-dependency-failures
-  "For each collection being synced on, the dependencies that syncing it would leave outside remote sync.
-  Unlike [[collections/check-non-remote-synced-dependencies]] this reports every offending collection
-  rather than throwing on the first, so an admin sees the whole picture in one pass. Realized eagerly:
-  eligibility only reads correctly against the pending updates, so nothing may be left for
-  [[describe-required-syncs]] to force after the transaction rolls back."
+  "For each collection being synced on, the dependencies that syncing it would leave outside remote sync, each
+  `{:model :id :instance :used-by}`. Reports every offending collection rather than stopping at the first, so an
+  admin sees the whole picture in one pass."
   [collections-to-sync]
   (vec
    (for [collection collections-to-sync
-         :let  [deps (collections/ineligible-dependencies collection)]
-         :when (seq deps)]
-     {:collection collection :dependencies deps})))
+         :let  [pairs (dangling-dependencies {:from {"Collection" [(:id collection)]}})]
+         :when (seq pairs)
+         :let  [used-by   (u/group-by second (fn [[[model-name id]]] {model-name id}) pairs)
+                instances (into {}
+                                (for [[model-name ids] (u/group-by first second (keys used-by))
+                                      row              (into [] (ee.serialization/select-rows (keyword "model" model-name)
+                                                                                              {:ids (vec (distinct ids))}))]
+                                  [[model-name (:id row)] row]))]]
+     {:collection   collection
+      :dependencies (vec (for [[[model-name id :as dep] referrers] used-by]
+                           {:model model-name :id id :instance (get instances dep) :used-by (vec (distinct referrers))}))})))
 
 (defn- remote-synced-dependent-failure
-  "The first collection being synced off that remote-synced content still depends on, if any. Stops at the
-  first, unlike [[unsynced-dependency-failures]]: every [[collections/remote-synced-dependents]] call
-  traverses every remote-synced root, and the admin's remedy is the same however many collections are at
-  fault — leave them synced."
+  "The first of `collections-to-unsync` that remote-synced content still depends on, as `{:collection :dependents}`
+  with the dependents as `{:model :id}` maps, or nil."
   [collections-to-unsync]
   (first
    (for [collection collections-to-unsync
-         :let  [dependents (collections/remote-synced-dependents collection)]
-         :when (seq dependents)]
-     {:collection collection :dependents (vec dependents)})))
+         :let  [pairs (dangling-dependencies {:to {"Collection" [(:id collection)]}})]
+         :when (seq pairs)]
+     {:collection collection
+      :dependents (vec (distinct (for [[[model-name id]] pairs] {:model model-name :id id})))})))
+
+(defn- describe-dependent-failure
+  "Renders a [[remote-synced-dependent-failure]] for the API."
+  [{:keys [collection dependents]}]
+  {:collection (select-keys collection [:id :name])
+   :dependents (describe-entities dependents)})
 
 (defn- group-remedy
   "The remedy an entry is keyed on. A `:none` remedy carries the collection the dependency lives in —
@@ -424,11 +445,6 @@
                :dependencies (pooled-dependencies (map :dep group))}))
           (distinct (map :remedy entries)))))
 
-(defn- describe-dependent-failure
-  [{:keys [collection dependents]}]
-  {:collection (select-keys collection [:id :name])
-   :dependents (describe-dependents dependents)})
-
 (defn- rejection
   "Turns the marker [[bulk-set-remote-sync]] throws out of its transaction into the 400 the API returns.
   Describing a failure takes several more selects, and they run here — after the rollback — rather than
@@ -463,13 +479,6 @@
                                                            (remote-sync.db/collections sync-on)))
                                        (update :sync-off #(when-let [sync-off (seq %)]
                                                             (remote-sync.db/collections sync-off))))]
-    ;; a data app's collection is synced with its app, and a pull refuses its file once it says remote-synced
-    (when (some spec/data-apps-namespace-collection? sync-on)
-      (throw (ex-info (tru "A data app''s collection is synced with its app and can''t be marked as synced.")
-                      {:status-code 400})))
-    (doseq [collection sync-on
-            :when (not (:is_remote_synced collection))]
-      (collections/assert-remote-syncable (assoc collection :is_remote_synced true)))
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)
@@ -488,7 +497,7 @@
         (when-let [failures (not-empty (unsynced-dependency-failures sync-on))]
           (throw (ex-info (tru "Uses content that is not remote synced.")
                           {::unsynced-dependencies failures})))
-        (when-let [failure (remote-synced-dependent-failure sync-off)]
+        (when-let [failure (some-> (not-empty sync-off) remote-synced-dependent-failure)]
           (throw (ex-info (tru "Used by remote synced content.")
                           {::remote-synced-dependents failure}))))
       (catch clojure.lang.ExceptionInfo e

@@ -6,7 +6,6 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId, waitForRequestsToSettle } from "__support__/utils";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   createMockColumn,
   createMockDatabase,
@@ -42,8 +41,6 @@ const idColumn = createMockColumn({
   semantic_type: "type/PK",
 });
 const table = createMockTable({
-  id: getQuestionVirtualTableId(modelId),
-  type: "model",
   fields: [idField],
 });
 
@@ -66,6 +63,7 @@ function setup({
       query={undefined}
       row={[1]}
       rowId={1}
+      modelId={modelId}
       showImplicitActions
       showNav={showNav}
       table={table}

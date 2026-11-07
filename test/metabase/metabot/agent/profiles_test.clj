@@ -7,7 +7,8 @@
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest get-profile-test
   ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
@@ -209,6 +210,15 @@
           (is (=? {"create_sql_query" some?, "run_query" some?}
                   (profiles/get-tools-for-profile :internal-sql ["permission:write_sql_queries"]))))))))
 
+(deftest sql-profile-offers-snippet-tools-with-sql-generation-test
+  (testing "the :sql profile offers the snippet tools only to a user with Metabot's SQL generation permission"
+    (let [snippet-tools #{"list_snippets" "get_snippet_details"}
+          offered       (fn [perms]
+                          (binding [scope/*current-user-scope* (scope/user-metabot-perms->scopes perms)]
+                            (into #{} (filter snippet-tools) (keys (profiles/get-tools-for-profile :sql [])))))]
+      (is (= snippet-tools (offered scope/all-yes-permissions)))
+      (is (= #{} (offered (assoc scope/all-yes-permissions :permission/metabot-sql-generation :no)))))))
+
 (deftest nlq-data-discovery-fallback-test
   (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
     (binding [scope/*current-user-scope* api-scope/unrestricted]
@@ -267,3 +277,13 @@
         (is (contains? tools "read_resource")
             "precondition: read_resource is active (would otherwise match a skill)")
         (is (not (contains? tools "load_skill")))))))
+
+(deftest ^:parallel every-tool-is-in-a-profile-test
+  (testing "every tool is in a profile"
+    ;; `profile->tools` adds load_skill to every profile that has skills
+    (let [offered (into #{#'tools/load-skill-tool} (mapcat :tools) (vals @@#'profiles/*profiles))]
+      (is (= #{}
+             (into #{}
+                   (comp (filter #(mr/validate @#'profiles/tool-var-schema %))
+                         (remove offered))
+                   (vals (ns-publics 'metabase.metabot.tools))))))))

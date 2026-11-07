@@ -280,33 +280,57 @@
                  :ai-proxied            (boolean ai-proxy?)})))
            part))))
 
+(defn track-ai-service-event!
+  "Fires one :snowplow/ai_service_event named `event` for the turn in `tracking-opts`, with the envelope every
+  Metabot event shares: the hashed license token, the request id in its hex form, source, user, session, profile.
+  Fires only when :source and :request-id are present. `event-fields` carries what is the event's own:
+  :result, :duration-ms, :event-details. One envelope keeps the events of a turn joinable on request_id.
+
+  Never throws: a report must not change the outcome of the turn it reports. The envelope reads settings
+  before `track-event!` and its own guard run, so a failure there is caught here, logged, and returns false,
+  the same contract as `track-event!`."
+  [{:keys [request-id session-id source profile-id]} event event-fields]
+  (boolean
+   (when (and (some? source)
+              (some? request-id))
+     (try
+       (analytics.core/track-event! :snowplow/ai_service_event
+                                    (merge {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
+                                            :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
+                                            :source                        source
+                                            :event                         event
+                                            :user-id                       api/*current-user-id*
+                                            :session-id                    session-id
+                                            :profile                       (some-> profile-id name)}
+                                           event-fields))
+       (catch Throwable e
+         (log/warnf e "Error sending %s ai_service_event" event)
+         false)))))
+
 (defn- report-tool-usage-xf
   "Transducer that fires an agent_used_tool :snowplow/ai_service_event per tool call.
   Only fires when :source and :request-id are present in tracking-opts. A tool name outside `tools` is
-  model output that may carry user data, so it is reported as \"unknown\"."
-  [{:keys [request-id session-id source profile-id iteration]} tools]
+  model output that may carry user data, so it is reported as \"unknown\".
+
+  A failed call also reports its error's class and code from `tools.runtime/invoke`.
+  The codes are namespaced keywords, so moving or renaming one changes the reported value.
+  They describe the whole call, not the failed items inside a batched call.
+  The message and the recovery text never leave the instance."
+  [{:keys [iteration] :as tracking-opts} tools]
   (map (fn [part]
-         (when (and (some? source)
-                    (some? request-id)
-                    (= (:type part) :tool-output))
-           (analytics.core/track-event! :snowplow/ai_service_event
-                                        {:hashed-metabase-license-token (analytics.core/hashed-metabase-token-or-uuid)
-                                         :request-id                    (analytics.core/uuid->ai-service-hex-uuid request-id)
-                                         :source                        source
-                                         :event                         "agent_used_tool"
-                                         :user-id                       api/*current-user-id*
-                                         :session-id                    session-id
-                                         :profile                       (some-> profile-id name)
-                                         :duration-ms                   (some-> (:duration-ms part) long)
-                                         ;; A failed call carries `:error` on its result — success
-                                         ;; is the absence of it, as it is everywhere else.
-                                         :result                        (if (get-in part [:result :error])
-                                                                          "error"
-                                                                          "success")
-                                         :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
-                                                                                               (:function part)
-                                                                                               "unknown")}
-                                                                          (some? iteration) (assoc "step" iteration))}))
+         (when (= (:type part) :tool-output)
+           (let [{:keys [class code] :as error} (get-in part [:result :error])]
+             (track-ai-service-event! tracking-opts "agent_used_tool"
+                                      {:duration-ms   (some-> (:duration-ms part) long)
+                                       ;; A failed call carries `:error` on its result — success
+                                       ;; is the absence of it, as it is everywhere else.
+                                       :result        (if error "error" "success")
+                                       :event-details (cond-> {"tool_name" (if (contains? tools (:function part))
+                                                                             (:function part)
+                                                                             "unknown")}
+                                                        (some? iteration) (assoc "step" iteration)
+                                                        error             (assoc "error_class" (name class)
+                                                                                 "error_code"  (u/qualified-name code)))})))
          part)))
 
 (defn- with-retries
@@ -589,7 +613,8 @@
                            log/warn pointing at the caller's source/tag.
 
   `llm-opts` is an optional map of provider-facing call options — see
-  [[parse-provider-model]]'s adapters for what each one honors.
+  [[parse-provider-model]]'s adapters for what each one honors. With `:tool-choice \"none\"` the tools are still
+  declared, but no tool runs, even when a provider that ignores the field returns a call.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip as an
   OTel span and retries transient errors with exponential backoff. Global usage
@@ -618,7 +643,7 @@
                                      tool-choice)           (assoc :tool_choice tool-choice)
                                 (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
                make-source    (fn []
-                                (eduction (comp (core/tool-executor-xf tools)
+                                (eduction (comp (core/tool-executor-xf (if (= "none" tool-choice) {} tools))
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)

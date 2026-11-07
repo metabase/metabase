@@ -2,6 +2,8 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { getDataFromClicked } from "metabase/value-formatting";
 import * as dateFormatUtils from "metabase/value-formatting";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -15,7 +17,6 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockField,
-  createMockNativeDatasetQuery,
   createMockParameter,
 } from "metabase-types/api/mocks";
 import {
@@ -75,6 +76,8 @@ const metadata = createMockMetadata({
     }),
   ],
 });
+
+const provider = createMetadataProvider({ metadata });
 
 const productId = checkNotNull(metadata.field(PRODUCTS.ID));
 const productTitle = checkNotNull(metadata.field(PRODUCTS.TITLE));
@@ -159,10 +162,10 @@ describe("metabase/dashboard/utils/click-behavior", () => {
       const [{ id, name, target }] = getTargetsForQuestion(
         new Question(
           createMockCard({
-            dataset_query: createMockNativeDatasetQuery({
-              native: {
-                query: "{{foo}}",
-                "template-tags": {
+            dataset_query: Lib.toJsQuery(
+              Lib.createTestNativeQuery(provider, {
+                query: "{{my_variable}}",
+                templateTags: {
                   my_variable: {
                     "display-name": "My Variable",
                     id: "foo123",
@@ -170,8 +173,8 @@ describe("metabase/dashboard/utils/click-behavior", () => {
                     type: "text",
                   },
                 },
-              },
-            }),
+              }),
+            ),
           }),
           metadata,
         ),
@@ -185,13 +188,13 @@ describe("metabase/dashboard/utils/click-behavior", () => {
       const [{ id, name, target }] = getTargetsForQuestion(
         new Question(
           createMockCard({
-            dataset_query: createMockNativeDatasetQuery({
-              native: {
+            dataset_query: Lib.toJsQuery(
+              Lib.createTestNativeQuery(provider, {
                 query: "{{my_field_filter}}",
-                "template-tags": {
+                templateTags: {
                   my_field_filter: {
                     default: null,
-                    dimension: ["field", PRODUCTS.CATEGORY, null],
+                    dimension: PRODUCTS.CATEGORY,
                     "display-name": "My Field Filter",
                     id: "foo123",
                     name: "my_field_filter",
@@ -199,8 +202,8 @@ describe("metabase/dashboard/utils/click-behavior", () => {
                     "widget-type": "category",
                   },
                 },
-              },
-            }),
+              }),
+            ),
           }),
           metadata,
         ),
@@ -378,11 +381,10 @@ describe("metabase/dashboard/utils/click-behavior", () => {
         it(`should filter sources for a ${targetVariableType} variable target`, () => {
           const question = new Question(
             createMockCard({
-              dataset_query: createMockNativeDatasetQuery({
-                type: "native",
-                native: {
-                  query: "{{foo}}",
-                  "template-tags": {
+              dataset_query: Lib.toJsQuery(
+                Lib.createTestNativeQuery(provider, {
+                  query: "{{my_variable}}",
+                  templateTags: {
                     my_variable: {
                       "display-name": "My Variable",
                       id: "foo123",
@@ -390,8 +392,8 @@ describe("metabase/dashboard/utils/click-behavior", () => {
                       type: targetVariableType,
                     },
                   },
-                },
-              }),
+                }),
+              ),
             }),
             metadata,
           );
@@ -463,14 +465,14 @@ describe("metabase/dashboard/utils/click-behavior", () => {
         it(`should filter sources for a ${field.effective_type} dimension target`, () => {
           const question = new Question(
             createMockCard({
-              dataset_query: createMockNativeDatasetQuery({
-                native: {
+              dataset_query: Lib.toJsQuery(
+                Lib.createTestNativeQuery(provider, {
                   query: "{{my_field_filter}}",
-                  "template-tags": {
+                  templateTags: {
                     my_field_filter: {
                       default: null,
                       // Unjustified type cast. FIXME
-                      dimension: ["field", field.id as FieldId, null],
+                      dimension: field.id as FieldId,
                       "display-name": "My Field Filter",
                       id: "foo123",
                       name: "my_field_filter",
@@ -478,8 +480,8 @@ describe("metabase/dashboard/utils/click-behavior", () => {
                       "widget-type": "category",
                     },
                   },
-                },
-              }),
+                }),
+              ),
             }),
             metadata,
           );

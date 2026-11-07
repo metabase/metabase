@@ -400,7 +400,7 @@
    (fn [_]
      {:entity_id (u/generate-nano-id)
       :name (str "Test Transform " (u/generate-nano-id))
-      :source {:type  "query"
+      :source {:type  :query
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
                :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))
@@ -452,7 +452,20 @@
             :email (u.random/random-email)
             :entity_id (u/generate-nano-id)
             :date_joined (t/zoned-date-time)
-            :updated_at (t/zoned-date-time)})})
+            :updated_at (t/zoned-date-time)})
+
+   :model/Workspace
+   (fn [_] (default-timestamped
+            {:name       (u.random/random-name)
+             :creator_id (rasta-id)}))
+
+   :model/WorkspaceDatabase
+   (fn [_] (default-timestamped
+            {:database_id      (data/id)
+             :database_details {}
+             :input_schemas    []
+             :output_namespace ""
+             :status           :unprovisioned}))})
 
 ;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
 ;; Bind `*allow-direct-deletion*` so with-temp cleanup works.
@@ -493,17 +506,6 @@
   ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
   (locking dimension-lock
     (next-method model explicit-attributes f)))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
-  "Give a temp data app a temp collection named like the one the API creates, unless the attributes set
-  `resource_collection_id`, even to nil."
-  [model explicit-attributes f]
-  (let [attributes (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)]
-    (if (contains? attributes :resource_collection_id)
-      (next-method model attributes f)
-      (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:name      (str "Data App: " (:name attributes))
-                                                                      :namespace "data-apps"}]
-        (next-method model (assoc attributes :resource_collection_id collection-id) f)))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]

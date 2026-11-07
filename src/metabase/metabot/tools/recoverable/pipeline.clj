@@ -2,7 +2,7 @@
   "One declared recoverable error per `:error` code the representations pipeline raises.
 
   The pipeline (`metabase.agent-lib.representations*`, `metabase.metabot.tools.construct`,
-  `metabase.models.serialization.resolve.mp`) throws a bare statement of what went wrong plus
+  `metabase.serialization.protocol.mp`) throws a bare statement of what went wrong plus
   structured `ex-data` carrying an `:error` keyword. It deliberately knows nothing about which tools
   its caller has, so it cannot say how to recover. This namespace supplies that half: each `:error`
   code gets a declaration whose recovery steps are written in the tool vocabulary — `read_resource`,
@@ -154,11 +154,12 @@
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
 
-(def ^:private cross-database-step
+(def cross-database-step
+  "The recovery step for a query that references a table, card, measure or segment in another database."
   {:uses #{}
-   :text (str "A query can only reference saved questions, models, metrics, measures and segments "
-              "from its own database. Use one from that database, or change the source to a table "
-              "in the referenced item's database.")})
+   :text (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a "
+              "notebook query or in SQL. Tell the user that you can't combine data from these two databases in one "
+              "query, and say what you can do instead.")})
 
 (defn- card-fields-step
   "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
@@ -181,6 +182,14 @@
   `(defrecoverable ~sym ~docstring {:payload ::payload} [payload#]
      {:message  (:message payload#)
       :recovery ~recovery}))
+
+;;; Curation
+
+(defpipeline-error uncurated-source!
+  "The query reads a table, model, metric, measure, or segment that a curated-only Metabot may not use."
+  [{:uses #{"search"}
+    :text (str "Call `search` to find curated tables, models, or metrics and build the query on those instead. "
+               "A table related to a curated one may be joined, but not used as the query's source.")}])
 
 ;;; Table resolution
 
@@ -210,6 +219,10 @@
                    :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the "
                               "available tables and retry with a more specific portable FK.")}
                   (with-id database-id))]})
+
+(defpipeline-error cross-database-table!
+  "A portable table FK names a different database than the query's."
+  [cross-database-step])
 
 ;;; Database resolution
 
@@ -259,8 +272,8 @@
 
 (defpipeline-error unresolved-join-alias-field!
   "A reference through a join alias named a column that join does not return."
-  ;; No step: the message already lists the columns the join returns, and for a grouped join those
-  ;; are its breakouts and aggregations, not a table's fields.
+  ;; No step: the message already lists the columns the join returns, and says how to reach another
+  ;; table's column through a plain table join.
   [])
 
 (defrecoverable column-not-returned!
@@ -356,6 +369,14 @@
   ;; No step: the message names the source each metric needs, or says it has none.
   [])
 
+(defpipeline-error metric-as-source-card!
+  "A metric was the stage's `source-card:`, and the stage did not aggregate it."
+  ;; The message names the source the metric needs, or says to drop the metric when it has none. The step gives
+  ;; the reference form for the first case.
+  [{:uses #{}
+    :text (str "When you build the stage on the metric's source, reference the metric by its `portable_entity_id`: "
+               "`aggregation: [[\"metric\", {}, \"<portable_entity_id>\"]]`.")}])
+
 ;;; Query shape
 
 (defpipeline-error missing-source-in-first-stage!
@@ -444,6 +465,10 @@
 (defpipeline-error temporal-unit-on-non-temporal-column!
   "A temporal bucket was applied to a column that is not a date or time."
   [list-fields-step])
+
+(defpipeline-error binning-on-non-numeric-column!
+  "Automatic binning was applied to a column that is not numeric, or that has no known min and max."
+  [])
 
 (defpipeline-error unencodable-temporal-clause!
   "A temporal clause has no representations encoding."

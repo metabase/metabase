@@ -19,6 +19,7 @@
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.dependencies.init]
    [metabase-enterprise.gsheets.init]
+   [metabase-enterprise.impersonation.init]
    [metabase-enterprise.mcp.init]
    [metabase-enterprise.memoize-monitor.init]
    [metabase-enterprise.metabot.init]
@@ -34,4 +35,5 @@
    [metabase-enterprise.support-access-grants.init]
    [metabase-enterprise.tenants.init]
    [metabase-enterprise.transform-testing.init]
-   [metabase-enterprise.transforms-python.init]))
+   [metabase-enterprise.transforms-python.init]
+   [metabase-enterprise.workspaces.init]))

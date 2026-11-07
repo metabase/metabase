@@ -11,14 +11,14 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
-   [metabase.measures.schema]
+   [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -27,6 +27,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/Measure [_model] :measure)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :measure] [_original-model _k] :model/Measure)
@@ -212,32 +214,23 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/deserialization-dependencies "Measure" [{:keys [definition]}]
-  (serdes/mbql-deps false definition))
+(defmethod serialization/storage-paths :model/Measure [_ entities _ctx]
+  (mapv (fn [measure]
+          (let [table-path (-> measure :definition serialization/serialized-query-source-table)]
+            (into (serialization/storage-path-prefixes table-path)
+                  [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
+        entities))
 
-(defmethod serdes/storage-path "Measure" [measure _ctx]
-  (let [table-path (-> measure :definition serdes/serialized-query-source-table)]
-    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
-          [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
-
-(defn- import-measure-definition
-  "Import a measure definition from serialization format.
-  Converts portable IDs back to numeric IDs, then converts MBQL4 to MBQL5."
-  [exported]
-  (let [with-ids (serdes/import-mbql exported)]
-    (if (seq with-ids)
-      (lib-be/normalize-query with-ids)
-      with-ids)))
-
-(defmethod serdes/make-spec "Measure" [_model-name _opts]
-  {:copy [:name :archived :description :entity_id]
-   :skip [;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings
-          ;; always re-derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
-   :transform {:creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import import-measure-definition}}
-   :defaults {:archived false}})
+(defmethod serialization/spec :model/Measure [_]
+  {:schema    ::measures.schema/external-measure
+   :copy      [:name :archived :description :entity_id]
+   :skip      [:dimensions :dimension_mappings :table_id]
+   :transform {:creator_id serialization/user-transform
+               :definition (assoc serialization/mbql-transform
+                                  :import (fn [store _ queries opts]
+                                            (mapv #(cond-> % (seq %) lib-be/normalize-query)
+                                                  (serialization/import-mbql store queries opts))))}
+   :defaults  {:archived false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -258,24 +251,17 @@
                   :table_display_name        :table.display_name
                   :table_schema              :table.schema
                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Publishing is a user setting, so the published state and collection come from the table's
-                  ;; user settings when they are set, as in `metabase.warehouse-schema-overlay.core/table-query`.
                   ;; Listing these terms also reindexes a measure when its table moves into or out of the Library.
-                  :table-collection-id       [:case
-                                              [:not= :settings.is_published nil] :settings.collection_id
-                                              :else :table.collection_id]
-                  :table-is-published        [:coalesce :settings.is_published :table.is_published]
+                  :table-collection-id       :table.collection_id
+                  :table-is-published        :table.is_published
                   :table-collection-location :collection.location
                   :table-collection-type     :collection.type}
    ;; Only published tables count as library content, matching the table spec's own collection join.
    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-           :settings   [:model/TableUserSettings [:= :settings.table_id :this.table_id]]
            :collection [:model/Collection
                         [:and
-                         [:= [:coalesce :settings.is_published :table.is_published] true]
-                         [:= :collection.id [:case
-                                             [:not= :settings.is_published nil] :settings.collection_id
-                                             :else :table.collection_id]]]]}})
+                         [:= :table.is_published true]
+                         [:= :collection.id :table.collection_id]]]}})
 
 ;;; ------------------------------------------------- Dimension Persistence --------------------------------------------------
 
@@ -283,3 +269,8 @@
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
     (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+
+(defmethod serialization/import-dependencies :model/Measure [_ entities]
+  (mapv (fn [{:keys [definition]}]
+          (serialization/import-mbql-dependencies definition))
+        entities))

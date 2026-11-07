@@ -14,10 +14,11 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
-   [metabase.models.serialization.resolve :as resolve]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -25,13 +26,22 @@
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections (fn [f]
-                                                   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                                                     (test-helpers/clean-remote-sync-state f))))
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (test-helpers/clean-remote-sync-state f))))
+
+(defn- count-definition
+  "A Measure definition counting the rows of the Table `table-id` in the Database `db-id`."
+  [db-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
 
 ;; import! tests
 
@@ -102,77 +112,65 @@
       (is (= :error (:status result)))
       (is (re-find #"Failed to reload from git repository" (:message result))))))
 
+(defn- exported
+  "An exported entity of `model` named `entity-name` with entity id `eid`."
+  [model eid entity-name & {:as extra}]
+  (merge {:serdes/meta [{:model (name model)}] :entity_id eid :name entity-name} extra))
+
 (deftest source-error-message-entity-not-found-test
   (testing "source-error-message produces helpful message for missing entity errors"
-    (let [e (ex-info "Database 'clickhouse' was not found"
-                     {:path  "Database clickhouse"
-                      :model "Database"
-                      :id    "clickhouse"
-                      :error :metabase-enterprise.serialization.v2.load/not-found})]
-      (is (= "Import failed: Database (`clickhouse`) does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
-             (impl/source-error-message e)))))
-  (testing "source-error-message names the entity holding the dangling reference when known (GHY-3992)"
-    (let [e (ex-info "Collection 'xyz789' was not found"
-                     {:path     "Collection xyz789"
-                      :model    "Collection"
-                      :id       "xyz789"
-                      :referrer {:model "Card" :id "abc123" :name "Orders by Month"}
-                      :error    :metabase-enterprise.serialization.v2.load/not-found})]
+    (is (= "Import failed: Database (`clickhouse`) does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
+           (impl/source-error-message (serialization/target-not-found :model/Database "clickhouse")))))
+  (testing "source-error-message names entity holding dangling reference when known (GHY-3992)"
+    (let [e (serialization/load-error :model/Card (exported :model/Card "abc123" "Orders by Month")
+                                      (serialization/target-not-found :model/Collection "xyz789"))]
       (is (= (str "Import failed: Card `Orders by Month` (`abc123`) references Collection (`xyz789`), which does not "
                   "exist on this instance. Make sure all referenced databases and other dependencies are set up "
                   "before importing.")
              (impl/source-error-message e)))))
-  (testing "surrounding whitespace in a referenced name is visible because names are backtick-quoted (GHY-3992)"
+  (testing "dangling reference deeper in cause chain is still found"
+    (let [e (ex-info "Import failed" {}
+                     (serialization/load-error :model/Card (exported :model/Card "abc123" "Orders by Month")
+                                               (ex-info "wrapped" {}
+                                                        (serialization/target-not-found :model/Card "src123"))))]
+      (is (str/includes? (impl/source-error-message e) "Card `Orders by Month` (`abc123`) references Card (`src123`)"))))
+  (testing "surrounding whitespace in referenced name is visible because names are backtick-quoted (GHY-3992)"
     (doseq [db-name ["My Database " " My Database" "My Database"]]
-      (let [e (ex-info (format "Database '%s' was not found" db-name)
-                       {:path  (str "Database " db-name)
-                        :model "Database"
-                        :id    db-name
-                        :error :metabase-enterprise.serialization.v2.load/not-found})]
-        (is (str/includes? (impl/source-error-message e)
-                           (format "Database (`%s`)" db-name))
-            (format "expected %s to be quoted verbatim" (pr-str db-name)))))))
+      (is (str/includes? (impl/source-error-message (serialization/target-not-found :model/Database db-name))
+                         (format "Database (`%s`)" db-name))
+          (format "expected %s to be quoted verbatim" (pr-str db-name))))))
 
 (deftest source-error-message-load-failure-test
-  (testing "source-error-message names the entity and the underlying reason (GHY-3992)"
-    (let [cause (ex-info "NOT NULL constraint failed: report_card.display" {})
-          e     (ex-info "Failed to load into database for Card abc123"
-                         {:path   "Card abc123"
-                          :entity {:model "Card" :id "abc123" :name "Orders by Month"}
-                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
-                         cause)]
+  (testing "source-error-message names entity and underlying reason (GHY-3992)"
+    (let [e (serialization/load-error :model/Card (exported :model/Card "abc123" "Orders by Month")
+                                      (ex-info "NOT NULL constraint failed: report_card.display" {}))]
       (is (= (str "Import failed: could not save Card `Orders by Month` (`abc123`). "
                   "NOT NULL constraint failed: report_card.display.")
              (impl/source-error-message e)))))
-  (testing "a reason that already ends in a period is not double-punctuated"
-    (let [e (ex-info "Failed to load into database for Card abc123"
-                     {:entity {:model "Card" :id "abc123" :name "Orders by Month"}
-                      :error  :metabase-enterprise.serialization.v2.load/load-failure}
-                     (ex-info "Something went wrong." {}))]
+  (testing "reason that already ends in period is not double-punctuated"
+    (let [e (serialization/load-error :model/Card (exported :model/Card "abc123" "Orders by Month")
+                                      (ex-info "Something went wrong." {}))]
       (is (str/ends-with? (impl/source-error-message e) "went wrong."))))
-  (testing "a load-failure with no cause omits the reason clause"
-    (let [e (ex-info "Failed to load into database for Card abc123"
-                     {:entity {:model "Card" :id "abc123" :name "Orders by Month"}
-                      :error  :metabase-enterprise.serialization.v2.load/load-failure})]
+  (testing "load error with no cause omits reason clause"
+    (let [e (serialization/load-error :model/Card (exported :model/Card "abc123" "Orders by Month") nil)]
       (is (= "Import failed: could not save Card `Orders by Month` (`abc123`)."
              (impl/source-error-message e)))))
-  (testing "stripped keys are reported, since a partial row may have been committed (GHY-3992)"
-    (let [cause (ex-info "some db error" {})
-          e     (ex-info "Failed to load into database for Dashboard xyz"
-                         {:path          "Dashboard xyz"
-                          :entity        {:model "Dashboard" :id "xyz" :name "Sales"}
-                          :stripped-keys #{:parameters :dashcards}
-                          :error         :metabase-enterprise.serialization.v2.load/load-failure}
-                         cause)]
+  (testing "load error wrapped by another error is still described"
+    (let [e (ex-info "Import failed" {}
+                     (serialization/load-error :model/Card (exported :model/Card "abc123" "Orders by Month")
+                                               (ex-info "boom" {})))]
+      (is (= "Import failed: could not save Card `Orders by Month` (`abc123`). boom."
+             (impl/source-error-message e)))))
+  (testing "stripped keys are reported, since partial row may have been committed (GHY-3992)"
+    (let [e (serialization/load-error :model/Dashboard
+                                      (exported :model/Dashboard "xyz" "Sales" :serdes/stripped #{:parameters :dashcards})
+                                      (ex-info "some db error" {}))]
       (is (= (str "Import failed: could not save Dashboard `Sales` (`xyz`). some db error. "
                   "It may have been saved without: `dashcards`, `parameters`.")
              (impl/source-error-message e)))))
-  (testing "a tenant-collection cause still wins over the generic load-failure branch"
-    (let [cause (ex-info "Can't create a tenant collection without tenants enabled" {})
-          e     (ex-info "Failed to load into database for Collection abc"
-                         {:entity {:model "Collection" :id "abc"}
-                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
-                         cause)]
+  (testing "tenant-collection cause still wins over generic load-failure branch"
+    (let [e (serialization/load-error :model/Collection (exported :model/Collection "abc" nil)
+                                      (ex-info "Can't create a tenant collection without tenants enabled" {}))]
       (is (str/includes? (impl/source-error-message e) "tenants feature is disabled")))))
 
 (deftest source-error-message-ingest-errors-test
@@ -442,6 +440,41 @@
               "the collection's row records the file it was imported from")
           (is (= card-path (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Card" :model_id card-id))
               "the card's row records the file it was imported from"))))))
+
+(deftest import!-card-with-legacy-collection-preview-test
+  (testing "importing a card file written before collection_preview was removed ignores the key"
+    (let [card-eid    "legacy-preview-cardxx"
+          test-files  {"main" {"collections/main/test_collection_1/test_collection_1.yaml"
+                               (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
+                               "collections/main/test_collection_1/legacy_preview_card.yaml"
+                               (str (test-helpers/generate-card-yaml card-eid "Legacy Preview Card" "test-collection-1xxxx")
+                                    "collection_preview: false\n")}}
+          mock-source (test-helpers/create-mock-source :initial-files test-files)]
+      (mt/with-model-cleanup [:model/Card :model/Collection :model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+              result  (impl/import! (source.p/snapshot mock-source) task-id)]
+          (is (= :success (:status result)))
+          (is (=? {:name "Legacy Preview Card"}
+                  (t2/select-one :model/Card :entity_id card-eid))))))))
+
+(deftest export!-card-omits-collection-preview-test
+  (testing "exported card files no longer carry collection_preview"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                     :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
+        (t2/insert! :model/RemoteSyncObject
+                    [{:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                      :status "create" :status_changed_at (t/offset-date-time)}
+                     {:model_type "Card" :model_id card-id :model_name "Test Card"
+                      :status "create" :status_changed_at (t/offset-date-time)}])
+        (let [mock-source (test-helpers/create-mock-source)
+              task-id     (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+              result      (impl/export! (source.p/snapshot mock-source) task-id "Test export")
+              card-yaml   (some (fn [[path content]] (when (str/includes? path "test_card") content))
+                                (get @(:files-atom mock-source) "main"))]
+          (is (= :success (:status result)))
+          (is (=? {:entity_id "test-card-1xxxxxxxxxx"} (yaml/parse-string card-yaml)))
+          (is (not (contains? (yaml/parse-string card-yaml) :collection_preview))))))))
 
 (deftest error-handling-propagation-through-private-functions-test
   (testing "error handling propagation through private functions"
@@ -831,6 +864,7 @@
         (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
           (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}
                          :model/Table {table-id :id} {:name "test-table" :db_id db-id}
+                         :model/Field {field-id :id} {:name "test-field" :table_id table-id :base_type :type/Integer}
                          :model/Collection {coll-id :id}
                          {:name "Active Collection"
                           :is_remote_synced true
@@ -840,7 +874,7 @@
                          {:name "Test Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 1 nil] 0]}
+                                       :filter [:> [:field field-id nil] 0]}
                           :entity_id "test-segment-xxxxxxxx"}]
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
@@ -872,7 +906,7 @@
                          {:name "Test Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 1 nil] 0]}
+                                       :filter [:> [:field field-id nil] 0]}
                           :entity_id "test-segment-xxxxxxxx"}]
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
@@ -939,18 +973,19 @@
                                                       :db_id db-id
                                                       :collection_id coll-id
                                                       :is_published true}
+                         :model/Field {field-id :id} {:name "test-field" :table_id table-id :base_type :type/Integer}
                          :model/Segment {_active-seg-id :id}
                          {:name "Active Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 1 nil] 0]}
+                                       :filter [:> [:field field-id nil] 0]}
                           :entity_id "active-segment-xxxxxx"
                           :archived false}
                          :model/Segment {_archived-seg-id :id}
                          {:name "Archived Segment"
                           :table_id table-id
                           :definition {:source-table table-id
-                                       :filter [:> [:field 2 nil] 0]}
+                                       :filter [:> [:field field-id nil] 0]}
                           :entity_id "archived-segment-xxxx"
                           :archived true}]
             (let [mock-source (test-helpers/create-mock-source)
@@ -1169,11 +1204,13 @@
                          :model/Measure {_active-measure-id :id}
                          {:name "Active Measure"
                           :table_id table-id
+                          :definition (count-definition db-id table-id)
                           :entity_id "active-measure-xxxxxx"
                           :archived false}
                          :model/Measure {_archived-measure-id :id}
                          {:name "Archived Measure"
                           :table_id table-id
+                          :definition (count-definition db-id table-id)
                           :entity_id "archived-measure-xxxx"
                           :archived true}]
             (let [mock-source (test-helpers/create-mock-source)
@@ -1876,7 +1913,7 @@ serdes/meta:
                                     spec/extract-entities-for-export (constantly [{:dummy true}])
                                     source/compute-merge (fn [_ _ _ _ & _]
                                                            {:merged []
-                                                            :conflicts [{:key [["Card" "A"]]
+                                                            :conflicts [{:key [:model/Card "A"]
                                                                          :ours {:path "collections/a.yaml" :content "x"}
                                                                          :theirs {:path "collections/a.yaml" :content "y"}}]
                                                             :summary {:added 0 :updated 0 :removed 0}})
@@ -2164,7 +2201,7 @@ serdes/meta:
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "import"}]
       (mt/with-dynamic-fn-redefs [source/compute-merge (fn [_ _ _ _ & _]
                                                          {:merged []
-                                                          :conflicts [{:key [["Card" "A"]]
+                                                          :conflicts [{:key [:model/Card "A"]
                                                                        :ours {:path "collections/a.yaml" :content "x"}
                                                                        :theirs {:path "collections/a.yaml" :content "z"}}]
                                                           :summary {:added 0 :updated 0 :removed 0}})
@@ -2191,8 +2228,7 @@ serdes/meta:
 (defn- merge-extraction-probe
   "Stubs for a merging sync that record how the extraction reaches `compute-merge`. Returns
   `{:targets :stream :walks :received :stubs}`: `walks` counts target walks; `received` captures the targets the
-  extraction was built from, the stream `compute-merge` got, its `:total`, and whether the serdes cache was
-  bound; `stream` is the marker eduction the extraction stub hands back."
+  extraction was built from, the stream `compute-merge` got, and its `:total`; `stream` is the marker eduction the extraction stub hands back."
   []
   (let [walks    (atom 0)
         received (atom {})
@@ -2207,8 +2243,7 @@ serdes/meta:
                 :compute-merge       (fn [s _ _ _ & {:keys [total]}]
                                        (swap! received assoc
                                               :stream  s
-                                              :total   total
-                                              :cached? (some? resolve/*export-resolver*))
+                                              :total   total)
                                        {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}})
                 :load-snapshot!      (fn [_ _ _ & {:keys [finalize!]}] (when finalize! (finalize!)))}}))
 
@@ -2217,8 +2252,7 @@ serdes/meta:
   (is (= 1 @walks) "the dependency walk runs once")
   (is (identical? targets (:targets @received)) "the extraction is built from the walked targets")
   (is (identical? stream (:stream @received)) "the merge receives the extraction stream unrealized")
-  (is (= (spec/exportable-entity-count targets) (:total @received)) ":total is the count of the same targets")
-  (is (true? (:cached? @received)) "the merge extracts under serdes/with-cache"))
+  (is (= (spec/exportable-entity-count targets) (:total @received)) ":total is the count of the same targets"))
 
 (deftest import!-merge-extracts-once-test
   (testing "a merging pull walks the targets once and hands the merge the unrealized extraction with its total"
@@ -2288,18 +2322,25 @@ serdes/meta:
             (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id)))
             (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
           (testing "a settings file v64 wrote, carrying its Fields' settings under `fields`, keeps them"
-            (let [files    (table-files)
-                  content  (fn [suffix]
-                             (serdes/restore-path (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files)))))
-                  legacy   (assoc (content "test_table___tableusersettings.yaml")
-                                  :fields [(content "f1___fieldusersettings.yaml")])
-                  [path _] (u/seek #(str/ends-with? (key %) "test_table___tableusersettings.yaml") files)]
+            (let [files     (table-files)
+                  content   (fn [suffix] (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files))))
+                  settings  (content "test_table___tableusersettings.yaml")
+                  field     (content "f1___fieldusersettings.yaml")
+                  path-meta (fn [& elements]
+                              (let [[db schema table] (:table_id settings)]
+                                (into (cond-> [{:model "Database" :id db}] schema (conj {:model "Schema" :id schema}))
+                                      (cons {:model "Table" :id table} elements))))
+                  legacy    (-> (dissoc settings :table_id)
+                                (assoc :serdes/meta (path-meta {:model "TableUserSettings" :id "1"})
+                                       :fields [(-> (dissoc field :field_id)
+                                                    (assoc :serdes/meta (path-meta {:model "Field" :id (peek (:field_id field))}
+                                                                                   {:model "FieldUserSettings" :id "1"})))]))
+                  [path _]  (u/seek #(str/ends-with? (key %) "test_table___tableusersettings.yaml") files)]
               (swap! (:files-atom mock-source) update "main"
                      #(-> (into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %)
                           (assoc (str/replace path "___tableusersettings" "") (yaml/generate-string legacy)))))
             (is (= :success (:status (import-snapshot! mock-source))))
-            (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
-            (is (not (t2/exists? :model/Dimension :field_id f2-id))))
+            (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id))))
           (testing "a settings file v64 wrote for a Table without Field settings carries an empty `fields`"
             (swap! (:files-atom mock-source) update "main"
                    (fn [files]
@@ -2310,18 +2351,6 @@ serdes/meta:
                            files)))
             (is (= :success (:status (import-snapshot! mock-source))))
             (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id))))
-          (testing "a Field file an older git sync wrote keeps the Dimensions it carries"
-            (swap! (:files-atom mock-source) update "main"
-                   assoc "databases/test-db/tables/test_table/fields/f2.yaml"
-                   (yaml/generate-string {:name        "F2"
-                                          :table_id    ["test-db" nil "Test Table"]
-                                          :base_type   "type/Text"
-                                          :dimensions  [{:name "Remapped F2" :type "internal" :entity_id (u/generate-nano-id)}]
-                                          :serdes/meta [{:model "Database" :id "test-db"}
-                                                        {:model "Table" :id "Test Table"}
-                                                        {:model "Field" :id "F2"}]}))
-            (is (= :success (:status (import-snapshot! mock-source))))
-            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
           (testing "deleting the files drops the Table's settings and its Fields'"
             (swap! (:files-atom mock-source) update "main"
                    #(into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %))
@@ -2436,13 +2465,3 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
-
-(deftest keep-library-dashboards-test
-  (testing "An import with the Library keeps its Dashboards collection, even from a repo that predates it"
-    (is (= #{collection/library-entity-id collection/library-dashboards-entity-id "other-collection-xxxxx"}
-           (get-in (#'impl/keep-library-dashboards
-                    {:by-entity-id {"Collection" #{collection/library-entity-id "other-collection-xxxxx"}}})
-                   [:by-entity-id "Collection"]))))
-  (testing "An import without the Library leaves it to be removed with the Library"
-    (is (= {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}}
-           (#'impl/keep-library-dashboards {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}})))))

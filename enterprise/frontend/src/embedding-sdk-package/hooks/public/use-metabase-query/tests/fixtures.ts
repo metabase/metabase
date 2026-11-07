@@ -1,5 +1,7 @@
 /* eslint-disable metabase/no-external-references-for-sdk-package-code */
 
+import * as Lib from "metabase-lib";
+import type { TestAggregationSpec } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 const column = <
@@ -8,7 +10,7 @@ const column = <
   TName extends string,
   TDisplayName extends string,
   TJsType extends string,
-  TOptions extends object = object,
+  const TOptions extends object = object,
 >(
   fieldId: TFieldId,
   tableId: TTableId,
@@ -64,38 +66,22 @@ const metadataField = (
   ...options,
 });
 
-const cardMetadata = (
-  id: number,
-  name: string,
-  sourceTable: number,
-  aggregation?: [["sum", ["field", number, null]]],
-) =>
-  createMockCard({
-    id,
-    name,
-    ...(aggregation && { type: "metric" }),
-    dataset_query: {
-      type: "query",
-      database: 1,
-      query: {
-        "source-table": sourceTable,
-        ...(aggregation && { aggregation }),
-      },
-    },
-  });
-
 export const TEST_SCHEMA = {
   tables: {
     orders: {
       type: "table" as const,
       id: 1,
       fields: {
-        id: column(100, 1, "ID", "ID", "number"),
+        id: column(100, 1, "ID", "ID", "number", { slug: "id" }),
         createdAt: column(103, 1, "CREATED_AT", "Created At", "Date", {
-          baseType: "type/DateTime",
+          slug: "created_at",
         }),
-        amount: column(102, 1, "AMOUNT", "Amount", "number"),
-        status: column(101, 1, "STATUS", "Status", "string"),
+        amount: column(102, 1, "AMOUNT", "Amount", "number", {
+          slug: "amount",
+        }),
+        status: column(101, 1, "STATUS", "Status", "string", {
+          slug: "status",
+        }),
       },
       segments: {
         completed: { type: "segment" as const, id: 11, tableId: 1 },
@@ -114,7 +100,7 @@ export const TEST_SCHEMA = {
       type: "table" as const,
       id: 2,
       fields: {
-        price: column(201, 2, "PRICE", "Price", "number"),
+        price: column(201, 2, "PRICE", "Price", "number", { slug: "price" }),
       },
       segments: {
         active: { type: "segment" as const, id: 12, tableId: 2 },
@@ -160,35 +146,6 @@ export const TEST_SCHEMA = {
       sourceCardId: 41,
     },
   },
-  actions: {
-    createOrder: {
-      kind: "action" as const,
-      id: 51,
-      name: "Create Order",
-      type: "query" as const,
-      parameters: [
-        {
-          slug: "status",
-          displayName: "Status",
-          jsType: "string" as const,
-        },
-      ],
-    },
-    updateOrder: {
-      kind: "action" as const,
-      id: 52,
-      name: "Update Order",
-      type: "query" as const,
-      parameters: [
-        {
-          slug: "id",
-          displayName: "ID",
-          jsType: "number" as const,
-          required: true,
-        },
-      ],
-    },
-  },
   questions: {
     // Generated question columns carry only `type`, `name`, and `jsType`; the
     // display name is rendered as a comment, not as runtime metadata.
@@ -204,7 +161,7 @@ export const TEST_SCHEMA = {
   },
 } as const;
 
-export const TEST_METADATA = {
+const BASE_METADATA = {
   databases: {
     1: {
       id: 1,
@@ -255,8 +212,45 @@ export const TEST_METADATA = {
       },
     },
   },
+};
+
+const BASE_PROVIDER = Lib.metadataProvider(
+  1,
+  // `Lib.Metadata` is opaque, and a fixture in the API shape cannot build it otherwise.
+  // A clone keeps the provider from caching parsed state into the shared fixture.
+  structuredClone(BASE_METADATA) as unknown as Lib.Metadata,
+);
+
+const cardMetadata = (
+  id: number,
+  name: string,
+  sourceTable: number,
+  aggregation?: TestAggregationSpec,
+) =>
+  createMockCard({
+    id,
+    name,
+    ...(aggregation && { type: "metric" }),
+    dataset_query: Lib.toLegacyQuery(
+      Lib.createTestQuery(BASE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: sourceTable },
+            ...(aggregation && { aggregations: [aggregation] }),
+          },
+        ],
+      }),
+    ),
+  });
+
+export const TEST_METADATA = {
+  ...BASE_METADATA,
   questions: {
     41: cardMetadata(41, "Orders question", 1),
-    31: cardMetadata(31, "Revenue", 1, [["sum", ["field", 102, null]]]),
+    31: cardMetadata(31, "Revenue", 1, {
+      type: "operator",
+      operator: "sum",
+      args: [{ type: "column", fieldId: 102 }],
+    }),
   },
 };

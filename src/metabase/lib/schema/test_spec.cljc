@@ -89,6 +89,14 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :literal]]
    [:value [:ref ::literal/literal]]])
 
+(mr/def ::test-literal-arg-spec
+  "A literal argument of an operator: a value, or several values that are each an argument, as in `[:= x 4 5]`."
+  [:map {:closed true}
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :literal]]
+   [:value [:or
+            [:ref ::literal/literal]
+            [:sequential {:min 1} [:ref ::literal/literal]]]]])
+
 (mr/def ::test-operator-spec
   ;; TODO(@romeovs): be more specific here and limit to all valid operators?
   keyword?)
@@ -112,7 +120,7 @@
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)}
    [:column [:ref ::test-column-spec]]
-   [:literal [:ref ::test-literal-expression-spec]]
+   [:literal [:ref ::test-literal-arg-spec]]
    [:operator [:ref ::test-operator-expression-spec]]
    [:segment [:ref ::test-segment-spec]]
    [:measure [:ref ::test-measure-spec]]
@@ -223,6 +231,11 @@
    [:map
     [:card-id {:optional true} ::lib.schema.id/card]]])
 
+(mr/def ::test-table-spec
+  [:merge
+   [:ref ::lib.schema.template-tag/source-table]
+   [:ref ::test-common-spec]])
+
 (mr/def ::test-raw-value-spec
   [:merge
    [:ref ::lib.schema.template-tag/raw-value]
@@ -237,6 +250,7 @@
    [:dimension     [:ref ::test-field-filter-spec]]
    [:snippet       [:ref ::test-snippet-spec]]
    [:card          [:ref ::test-source-query-spec]]
+   [:table         [:ref ::test-table-spec]]
    ;; :number, :text, :date, :boolean
    [::mc/default   [:ref ::test-raw-value-spec]]])
 

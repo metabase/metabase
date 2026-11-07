@@ -513,9 +513,9 @@ describe("scenarios > embedding > full app", () => {
           tableName: "Products",
           databaseName: "Sample Database",
         });
-        verifyTableSelected({
-          tableName: modelDetails.name,
-        });
+        H.getNotebookStep("join")
+          .findByLabelText("Right table")
+          .should("contain.text", modelDetails.name);
       });
     });
   });
@@ -568,16 +568,21 @@ describe("scenarios > embedding > full app", () => {
 
     const DEFAULT_ALIASES = {
       cardAlias: "@getCard",
+      cardQueryMetadataAlias: "@getCardQueryMetadata",
       tableMetadataAlias: "@getTableMetadata",
     };
 
     function interceptDataPickerRequests(name) {
       cy.intercept("GET", "/api/card/*").as(`getCard${name}`);
+      cy.intercept("GET", "/api/card/*/query_metadata").as(
+        `getCardQueryMetadata${name}`,
+      );
       cy.intercept("GET", "/api/table/*/query_metadata").as(
         `getTableMetadata${name}`,
       );
       return {
         cardAlias: `@getCard${name}`,
+        cardQueryMetadataAlias: `@getCardQueryMetadata${name}`,
         tableMetadataAlias: `@getTableMetadata${name}`,
       };
     }
@@ -614,7 +619,7 @@ describe("scenarios > embedding > full app", () => {
         );
         cy.findByText(cardName).click();
       });
-      cy.wait(aliases.tableMetadataAlias);
+      cy.wait(aliases.cardQueryMetadataAlias);
       if (cardType !== "metric") {
         cy.wait(aliases.cardAlias);
       }
@@ -677,6 +682,9 @@ describe("scenarios > embedding > full app", () => {
     beforeEach(() => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
+      cy.intercept("GET", "/api/card/*/query_metadata").as(
+        "getCardQueryMetadata",
+      );
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
     });
 
@@ -864,6 +872,51 @@ describe("scenarios > embedding > full app", () => {
             tableName: "Animals",
             schemaName: "Domestic",
             databaseName: "Writable Postgres12",
+          });
+        },
+      );
+
+      it(
+        "should drill down from the databases to the schemas and tables, then back up, with the staged data picker",
+        { tags: "@external" },
+        () => {
+          H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
+          cy.signInAsAdmin();
+          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+          H.popover().within(() => {
+            cy.findByText("Raw Data").click();
+
+            cy.log("the databases are listed under the Raw Data back link");
+            cy.findByText("Raw Data").should("be.visible");
+            cy.findByText("Sample Database").should("be.visible");
+            cy.findByText("Writable Postgres12").should("be.visible");
+            cy.findByText("Writable Postgres12").click();
+
+            cy.log("a database with several schemas lists its schemas");
+            cy.findByText("Domestic").should("be.visible");
+            cy.findByText("Wild").should("be.visible");
+            cy.findByText("Sample Database").should("not.exist");
+            cy.findByText("Wild").click();
+
+            cy.log("a schema lists its tables");
+            cy.findByText("Birds").should("be.visible");
+            cy.findByText("Animals").should("be.visible");
+            cy.findByText("Domestic").should("not.exist");
+
+            cy.log("going back from the tables lands on the schemas");
+            cy.findByTestId("source-database").click();
+            cy.findByText("Domestic").should("be.visible");
+            cy.findByText("Wild").should("be.visible");
+            cy.findByText("Birds").should("not.exist");
+
+            cy.log("going back from the schemas lands on the databases");
+            cy.findByText("Writable Postgres12").click();
+            cy.findByText("Sample Database").should("be.visible");
+            cy.findByText("Writable Postgres12").should("be.visible");
+            cy.findByText("Domestic").should("not.exist");
           });
         },
       );

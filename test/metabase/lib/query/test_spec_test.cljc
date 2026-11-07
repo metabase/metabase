@@ -100,6 +100,21 @@
       (is (=? [[:> {} [:field {} (meta/id :venues :price)] 3]]
               (lib/filters query))))))
 
+(deftest ^:parallel test-query-with-multiple-values-filter-test
+  (testing "a literal argument with several values passes each one as an argument"
+    (let [query (lib.query.test-spec/test-query
+                 meta/metadata-provider
+                 {:stages [{:source  {:type :table
+                                      :id   (meta/id :venues)}
+                            :filters [{:type     :operator
+                                       :operator :=
+                                       :args     [{:type :column
+                                                   :name "PRICE"}
+                                                  {:type  :literal
+                                                   :value [3 4]}]}]}]})]
+      (is (=? [[:= {} [:field {} (meta/id :venues :price)] 3 4]]
+              (lib/filters query))))))
+
 (deftest ^:parallel test-query-with-aggregations-test
   (testing "test-query adds aggregations to the query"
     (let [query (lib.query.test-spec/test-query
@@ -1156,6 +1171,22 @@
                 :name         "#123"
                 :display-name "Card 123"
                 :card-id      1}]
+              (lib/template-tags query))))))
+
+(deftest ^:parallel test-native-query-with-table-tag-test
+  (testing "test-native-query creates a native query with table template tag"
+    (let [query (lib.query.test-spec/test-native-query
+                 meta/metadata-provider
+                 {:database-id    (meta/id)
+                  :query          "SELECT * FROM {{my_table}}"
+                  :template-tags  {"my_table" {:type         :table
+                                               :name         "my_table"
+                                               :display-name "My Table"
+                                               :table-id     (meta/id :orders)}}})]
+      (is (=? [{:type         :table
+                :name         "my_table"
+                :display-name "My Table"
+                :table-id     (meta/id :orders)}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-multiple-tags-test

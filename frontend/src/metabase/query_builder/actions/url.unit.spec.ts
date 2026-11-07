@@ -22,12 +22,14 @@ import {
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { SET_CURRENT_STATE } from "../store/actions";
@@ -42,6 +44,12 @@ jest.mock("metabase/router", () => ({
   navigate: jest.fn(),
   getPendingNavigationPath: jest.fn(() => null),
 }));
+
+function createSavedStructuredCard() {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  });
+}
 
 type UpdateUrlOptions = Parameters<typeof updateUrl>[1];
 

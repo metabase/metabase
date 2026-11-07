@@ -11,7 +11,6 @@
    [metabase.batch-processing.core :as grouper]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.core :as lib]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -365,40 +364,6 @@
                                             :row 4 :col 0 :size_x 4 :size_y 4})
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (deps.test/do-with-immediate-hook-writes
-             #(serdes/with-cache
-                (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
+             #(serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false)))
           (is (= 1 (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
           (is (seq @submitted)))))))
-
-(deftest ^:synchronized database-delete-marks-source-transforms-stale-test
-  (testing "deleting a database marks its source transforms' analysis findings stale so they surface on /dependency-diagnostics/broken (GDGT-2447)"
-    (deps.test/run-with-dependencies-setup!
-     (fn [_mp]
-       (mt/with-temp [:model/Database {db-id :id} {}
-                      :model/Transform {transform-id :id}
-                      {:source {:type :query
-                                :query {:database db-id
-                                        :type :native
-                                        :native {:query "SELECT 1"}}}
-                       :target {:schema "public" :name "out" :type :table}}
-                      :model/AnalysisFinding _ {:entity_type :transform
-                                                :entity_id transform-id
-                                                :result true
-                                                :analyzed_at :%now}]
-         (t2/delete! :model/Database :id db-id)
-         (is (nil? (t2/select-one :model/Database :id db-id))
-             "the Database row is actually gone")
-         (is (pending? :transform transform-id))
-         (deps.test/synchronously-run-dependency-job!)
-         (testing "and the analysis finding job flips :result false so the transform shows on broken-diagnostics"
-           (deps.test/run-analysis-finding-job!)
-           (is (false? (t2/select-one-fn :result :model/AnalysisFinding
-                                         :entity_type :transform
-                                         :entity_id transform-id)))
-           (testing "an analysis_finding_error row points the transform at itself so the diagnostics page (`/graph/breaking`) surfaces it"
-             (is (=? {:source_entity_type :transform
-                      :source_entity_id   transform-id
-                      :error_type         :validation-exception-error}
-                     (t2/select-one :model/AnalysisFindingError
-                                    :analyzed_entity_type :transform
-                                    :analyzed_entity_id transform-id))))))))))

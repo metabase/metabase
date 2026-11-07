@@ -7,11 +7,9 @@
    [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.serialization :as serdes]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private PermissionsRow
@@ -39,11 +37,6 @@
   "The ::collections.schema/collection of `type`, or nil."
   [type :- :string]
   (t2/select-one :model/Collection :type type))
-
-(mu/defn collection-with-entity-id
-  "The ::collections.schema/collection with `entity-id`, or nil."
-  [entity-id :- :string]
-  (t2/select-one :model/Collection :entity_id entity-id))
 
 (mu/defn root-remote-synced-collection
   "The top-level remote-synced ::collections.schema/collection, or nil."
@@ -87,10 +80,10 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :namespace :model/Collection :id collection-id))
 
-(mu/defn collection-location
-  "The location of the ::collections.schema/collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :location :model/Collection :id collection-id))
+(mu/defn collection-locations :- [:map-of ::lib.schema.id/collection :string]
+  "The map from id to location of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-fn->fn :id :location :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
@@ -179,32 +172,6 @@
   [effective-children-clause :- [:maybe vector?]]
   (t2/select [:model/Collection :id :name :description :type] {:where effective-children-clause}))
 
-(mu/defn collections-for-serdes-reducible
-  "A reducible of the Collections to export via serdes, in stable storage order (which keeps filename de-dup suffixes
-  stable across exports, see GHY-3754). The Trash is never exported, nor are archived Collections when
-  `skip-archived?`. When `collection-set` is non-empty only those Collections are exported (nil in the set counts as
-  the root collection); otherwise every non-personal Collection is. `filter-column` and `filter-ids`, when given,
-  further restrict the export to the rows whose `filter-column` is one of `filter-ids`."
-  [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
-   skip-archived? :- [:maybe :boolean]
-   filter-column  :- [:maybe :keyword]
-   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
-  (t2/reducible-select :model/Collection
-                       {:where    [:and
-                                   (when skip-archived? [:not :archived])
-                                   (if (seq collection-set)
-                                     [:or
-                                      [:in :id collection-set]
-                                      (when (some nil? collection-set)
-                                        [:= :id nil])]
-                                     [:= :personal_owner_id nil])
-                                   [:or
-                                    [:= :type nil]
-                                    [:not= :type collections.schema/trash-collection-type]]
-                                   (when filter-column
-                                     [:in filter-column filter-ids])]
-                        :order-by serdes/stable-storage-order}))
-
 (mu/defn collection-count-by-ids
   "The number of Collections among `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
@@ -251,26 +218,6 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    type           :- :string]
   (t2/select-pks-set :model/Collection :id [:in collection-ids] :type type))
-
-(mu/defn child-collection-ids
-  "The IDs of the non-trash Collections directly at `location`, excluding archived ones when `skip-archived?`."
-  [location       :- :string
-   trash-type     :- :string
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Collection
-                     {:where [:and
-                              [:= :location location]
-                              (when skip-archived? [:not :archived])
-                              [:or
-                               [:not= :type trash-type]
-                               [:= :type nil]]]}))
-
-(mu/defn remote-synced-root-collection-ids
-  "The IDs of the top-level remote-synced Collections."
-  []
-  (t2/select-pks-set :model/Collection {:where [:and
-                                                [:= :is_remote_synced true]
-                                                [:= :location "/"]]}))
 
 (mu/defn personal-collection-ids
   "The IDs of every personal ::collections.schema/collection."
@@ -362,12 +309,6 @@
   (t2/delete! :model/Collection :location location))
 
 ;;; ---------------------------------------------- ::collections.schema/collection contents ----------------------------------------------
-
-(mu/defn instances-with-columns
-  "The `columns` of the instances with `ids`."
-  [columns :- [:sequential :keyword]
-   ids     :- [:set ms/PositiveInt]]
-  (t2/select columns :id [:in ids]))
 
 (mu/defn instance-by-id
   "The instance of `model` with `id`, or nil."
@@ -483,78 +424,15 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/delete! :model/Timeline :collection_id [:in collection-ids]))
 
-(mu/defn dashboard-ids-in-collection
-  "The IDs of the Dashboards in the ::collections.schema/collection with `collection-id` (nil for the root ::collections.schema/collection), excluding archived
-  ones when `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Dashboard
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
-
 (defn cards-in-collection
   "The Cards in the Collection with `collection-id`."
   [collection-id]
   (t2/select :model/Card :collection_id collection-id))
 
-(mu/defn card-ids-in-collection
-  "The IDs of the Cards in the Collection with `collection-id`, excluding archived ones when `skip-archived?` and
-  excluding Cards materialized by an exploration Summary."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:= :collection_id collection-id]
-                                          (when skip-archived? [:not :archived])
-                                          [:or
-                                           [:= :document_id nil]
-                                           [:in :document_id
-                                            ^:allow-subquery {:select [:id]
-                                                              :from   [:document]
-                                                              :where  [:= :exploration_id nil]}]]]}))
-
-(mu/defn document-ids-in-collection
-  "The IDs of the non-exploration Documents in the ::collections.schema/collection with `collection-id`, excluding archived ones when
-  `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Document {:where [:and
-                                              [:= :collection_id collection-id]
-                                              [:= :exploration_id nil]
-                                              (when skip-archived? [:not :archived])]}))
-
-(mu/defn action-ids-in-collection
-  "The IDs of the Actions in the Collection with `collection-id`, excluding archived ones when `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Action
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
-
-(mu/defn timeline-ids-in-collection
-  "The IDs of the Timelines in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Timeline
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
-
-(mu/defn published-table-ids-in-collection
-  "The IDs of the published Tables in the ::collections.schema/collection with `collection-id`, excluding archived ones when
-  `skip-archived?`."
-  [collection-id  :- [:maybe ::lib.schema.id/collection]
-   skip-archived? :- [:maybe :boolean]]
-  (t2/select-pks-set :model/Table {:from [(warehouse-schema-overlay/table-query)]
-                                   :where [:and
-                                           [:= :collection_id collection-id]
-                                           [:= :is_published true]
-                                           (when skip-archived? [:= :archived_at nil])]}))
-
-(mu/defn transform-ids-in-collection
-  "The IDs of the Transforms in the ::collections.schema/collection with `collection-id`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-pks-set :model/Transform {:where [:= :collection_id collection-id]}))
-
 (mu/defn published-table-ids-in-collections
   "The IDs of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true))
 
 (mu/defn unpublish-tables-in-collections!
   "Unpublish the Tables in the Collections with `collection-ids`, in `metabase_table` and in their user settings,
@@ -597,7 +475,7 @@
   "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
   [collection-ids]
   (t2/query {:select-distinct [:collection_id]
-             :from            [(warehouse-schema-overlay/table-query)]
+             :from            [(t2/table-name :model/Table)]
              :where           [:and
                                [:= :is_published true]
                                [:= :archived_at nil]
@@ -697,5 +575,3 @@
   "The IDs of the Users among `user-ids` that are not API key users."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :type [:not= :api-key]))
-
-;;; -------------------------------------------------- Hydration --------------------------------------------------

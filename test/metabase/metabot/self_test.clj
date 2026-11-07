@@ -198,6 +198,65 @@
                       (throw e))))
                 (is (= expected (:tool_choice @captured)))))))))))
 
+(deftest call-llm-none-tool-choice-test
+  (llm.tu/with-default-connections
+    (testing "every adapter declares the tools and tells the provider that the model may call none of them"
+      (let [captured (atom nil)]
+        (mt/with-premium-features #{:metabase-ai-managed}
+          ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.
+          (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                     (when (:body opts)
+                                                       (reset! captured (json/decode+kw (:body opts))))
+                                                     (throw (ex-info "stop" {::skip true :api-error true})))]
+            (mt/with-temporary-setting-values [llm-proxy-base-url "http://proxy.example"]
+              (doseq [[model expected] [["anthropic/claude-haiku-5-5"           {:type "none"}]
+                                        ["anthropic/claude-opus-5-5"            {:type "none"}]
+                                        ["metabase/anthropic/claude-sonnet-4-6" {:type "none"}]
+                                        ["azure/anthropic/claude-deployment"    {:type "none"}]
+                                        ["bedrock/anthropic.claude-haiku-4-5"   {:type "none"}]
+                                        ["deepseek/deepseek-flash"              {:type "none"}]
+                                        ["google/anthropic/claude-haiku-4-5"    {:type "none"}]
+                                        ["google/google/gemini-3.5-flash"       "NONE"]
+                                        ["openai/test-model"                    "none"]
+                                        ["azure/openai/gpt-4.1-mini"            "none"]
+                                        ["openrouter/test-model"                "none"]
+                                        ["mistral/mistral-medium-3-5"           "none"]
+                                        ["moonshot/kimi-k3"                     "none"]
+                                        ["xai/grok-4.7"                         "none"]
+                                        ["zai/glm-5.2"                          "none"]]]
+                (testing model
+                  (reset! captured nil)
+                  (try
+                    (run! identity (self/call-llm model
+                                                  nil
+                                                  [{:role :user :content "hi"}]
+                                                  {"get-time" (get test-util/TOOLS "get-time")}
+                                                  {:tag "agent"}
+                                                  {:tool-choice "none"}))
+                    (catch Exception e
+                      (when-not (::skip (ex-data e))
+                        (throw e))))
+                  (is (seq (or (:tools @captured) (:functionDeclarations (first (:tools @captured))))))
+                  (is (= expected (or (:tool_choice @captured)
+                                      (get-in @captured [:toolConfig :functionCallingConfig :mode])))))))))))
+    (testing "a call that a provider returns anyway runs no tool"
+      (let [ran? (atom false)
+            tool (assoc (get test-util/TOOLS "get-time") :fn (fn [_] (reset! ran? true) "12:00"))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (test-util/mock-llm-response
+                                                             [{:type      :tool-input
+                                                               :id        "c1"
+                                                               :function  "get-time"
+                                                               :arguments {:tz "UTC"}}]))]
+          (let [parts (into [] (self/call-llm "openrouter/test-model"
+                                              nil
+                                              [{:role :user :content "hi"}]
+                                              {"get-time" tool}
+                                              {:tag "agent"}
+                                              {:tool-choice "none"}))]
+            (is (some #(= :unknown-tool (get-in % [:result :error :code])) parts))
+            (is (false? @ran?))))))))
+
 (deftest call-llm-fast-mode-test
   (llm.tu/with-default-connections
     (testing "the llm-fast-mode setting reaches the Anthropic wire for a fast-capable model"
@@ -672,6 +731,18 @@
                             :error  {:class :unrecoverable :code :internal}}}
               (last result))))))
 
+(deftest ^:parallel escaped-jvm-errors-keep-their-code-test
+  (testing "a JVM error or an interrupt that escapes a tool is reported with its own code"
+    (doseq [[throwable code] [[(StackOverflowError.) :jvm-error]
+                              [(InterruptedException.) :interrupted]]]
+      (let [tools  {"fail" {:tool-name "fail"
+                            :doc       "Throws."
+                            :schema    [:=> [:cat [:map {:closed true}]] :any]
+                            :fn        (fn [_] (throw throwable))}}
+            chunks (test-util/parts->aisdk-chunks [{:type :tool-input :id "call-1" :function "fail" :arguments {}}])]
+        (is (=? {:result {:error {:class :unrecoverable :code code}}}
+                (last (into [] (self.core/tool-executor-xf tools) chunks))))))))
+
 (def ^:private failing-tool-exception
   "What `failing-tool` throws. An atom so the tool can be a real var, which is what `adapt` accepts."
   (atom nil))
@@ -727,17 +798,162 @@
 
 (deftest ^:parallel tool-executor-xf-stream-error-test
   (testing "once an :error chunk comes through, a call still streaming never runs and a running one keeps its result"
-    (let [running  (test-util/parts->aisdk-chunks
+    (let [started  (promise)
+          tools    (update-in test-util/TOOLS ["get-time" :fn]
+                              (fn [get-time]
+                                (fn [args]
+                                  (deliver started true)
+                                  (get-time args))))
+          running  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
           cut-off  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-2" :function "convert-currency"
                       :arguments {:amount 100, :from "EUR", :to "USD"}}])
-          streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
+          error    {:type :error :errorText "Overloaded"}
+          streamed (concat running (butlast cut-off) [error])]
       (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
         (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
-                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+                (into [] (self.core/tool-executor-xf tools)
+                      ;; A call that has not started when the error comes never starts
+                      (concat running (butlast cut-off) (lazy-seq (deref started 5000 nil) [error (last cut-off)])))))
         (testing "and a warning names the call that never ran"
           (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
+
+(defn- releasable-tool
+  "A tool entry named `tool-name` whose call delivers `started`, then waits until `release` is delivered."
+  [tool-name runs-alone? started release]
+  {:tool-name   tool-name
+   :doc         "Waits until the test releases it."
+   :schema      [:=> [:cat [:map {:closed true}]] :any]
+   :runs-alone? runs-alone?
+   :fn          (fn [_]
+                  (deliver started true)
+                  @release
+                  {:output "ok"})})
+
+(defn- response-chunks
+  "The chunks of one model response that calls each tool in `tool-names`, in order, with the call IDs `call-0`,
+   `call-1` and so on."
+  [tool-names]
+  (test-util/parts->aisdk-chunks
+   (map-indexed (fn [i tool-name]
+                  {:type :tool-input :id (str "call-" i) :function tool-name :arguments {}})
+                tool-names)))
+
+(defn- tool-output-count
+  "How many tool results `chunks` holds."
+  [chunks]
+  (count (filter #(= :tool-output-available (:type %)) chunks)))
+
+(deftest ^:parallel tool-executor-xf-runs-alone-test
+  (testing "a call that runs alone starts after the calls before it in the response, and the calls after it wait for it"
+    (let [calls    ["before" "alone" "after"]
+          started  (zipmap calls (repeatedly promise))
+          release  (zipmap calls (repeatedly promise))
+          tools    (into {} (for [tool-name calls]
+                              [tool-name (releasable-tool tool-name (= "alone" tool-name)
+                                                          (started tool-name) (release tool-name))]))
+          response (future (into [] (self.core/tool-executor-xf tools) (response-chunks calls)))
+          starts?  #(deref (started %) 5000 false)
+          waits?   #(not (deref (started %) 100 false))]
+      (try
+        (is (starts? "before"))
+        (is (waits? "alone"))
+        (deliver (release "before") true)
+        (is (starts? "alone"))
+        (is (waits? "after"))
+        (deliver (release "alone") true)
+        (is (starts? "after"))
+        (finally
+          (run! #(deliver % true) (vals release))))
+      (is (= 3 (tool-output-count (deref response 5000 nil)))))))
+
+(deftest tool-executor-xf-waiting-calls-leave-the-pool-free-test
+  (testing "calls that wait for a call that runs alone take no thread from the pool that every conversation shares"
+    (let [release   (promise)
+          done      (doto (promise) (deliver true))
+          tools     {"slow"  (releasable-tool "slow" false (promise) release)
+                     "alone" (releasable-tool "alone" true (promise) done)
+                     "after" (releasable-tool "after" false (promise) done)}
+          ;; If the waiting calls held threads, they and the slow call would take all 20 threads of the pool
+          calls     (concat ["slow" "alone"] (repeat 18 "after"))
+          scheduled (promise)
+          response  (future (into [] (comp (self.core/tool-executor-xf tools)
+                                           (map (fn [chunk]
+                                                  (when (= :text-delta (:type chunk))
+                                                    (deliver scheduled true))
+                                                  chunk)))
+                                  (concat (response-chunks calls) [{:type :text-delta :id "text" :delta "Done."}])))
+          unrelated (promise)]
+      (try
+        (is (deref scheduled 5000 false))
+        (.execute ^java.util.concurrent.Executor @#'self.core/tool-executor ^Runnable #(deliver unrelated true))
+        (is (deref unrelated 5000 false))
+        (finally
+          (deliver release true)))
+      (is (= 20 (tool-output-count (deref response 5000 nil)))))))
+
+(deftest ^:parallel tool-executor-xf-starts-no-waiting-call-after-an-error-test
+  (testing "after an :error chunk, the calls waiting behind a running call never start, and the running call finishes"
+    (let [started (promise)
+          release (promise)
+          ran     (atom [])
+          tool    (fn [tool-name runs-alone?]
+                    {:tool-name   tool-name
+                     :doc         "Records that it ran."
+                     :schema      [:=> [:cat [:map {:closed true}]] :any]
+                     :runs-alone? runs-alone?
+                     :fn          (fn [_]
+                                    (swap! ran conj tool-name)
+                                    {:output "ok"})})
+          tools   {"slow"  (releasable-tool "slow" false started release)
+                   "edit"  (tool "edit" true)
+                   "after" (tool "after" false)
+                   "late"  (tool "late" false)}
+          chunks  (concat (response-chunks ["slow" "edit" "after"])
+                          ;; The error comes once the slow call is running, as it would during a long query
+                          (lazy-seq
+                           (deref started 5000 nil)
+                           (cons {:type :error :errorText "Overloaded"}
+                                 (test-util/parts->aisdk-chunks
+                                  [{:type :tool-input :id "late" :function "late" :arguments {}}]))))
+          result  (into [] (comp (self.core/tool-executor-xf tools)
+                                 (map (fn [chunk]
+                                        (when (= :error (:type chunk))
+                                          (deliver release true))
+                                        chunk)))
+                        chunks)]
+      (is (= [] @ran))
+      (is (= ["call-0"] (keep #(when (= :tool-output-available (:type %)) (:toolCallId %)) result)))
+      (testing "and the calls whose input comes after the error are dropped"
+        (is (not-any? #(= "late" (:toolCallId %)) result))))))
+
+(deftest tool-executor-xf-returns-results-in-call-order-test
+  (testing "calls that run at the same time and finish in reverse order return their results in call order"
+    (let [n        10
+          ids      (mapv #(str "call-" %) (range n))
+          all-in   (java.util.concurrent.CountDownLatch. n)
+          finished (vec (repeatedly n promise))
+          together (atom [])
+          order    (atom [])
+          tools    {"ordinary" {:tool-name "ordinary"
+                                :doc       "Waits until every call has started, then for the call after it to finish."
+                                :schema    [:=> [:cat [:map {:closed true} [:i :int]]] :any]
+                                :fn        (fn [{:keys [i]}]
+                                             (.countDown all-in)
+                                             (swap! together conj
+                                                    (.await all-in 5 java.util.concurrent.TimeUnit/SECONDS))
+                                             (some-> (get finished (inc i)) (deref 5000 nil))
+                                             (swap! order conj i)
+                                             (deliver (finished i) true)
+                                             {:output (str i)})}}
+          result   (into [] (self.core/tool-executor-xf tools)
+                         (test-util/parts->aisdk-chunks (for [i (range n)]
+                                                          {:type :tool-input :id (ids i) :function "ordinary"
+                                                           :arguments {:i i}})))]
+      (is (= (repeat n true) @together))
+      (is (= (reverse (range n)) @order))
+      (is (= ids (keep #(when (= :tool-output-available (:type %)) (:toolCallId %)) result))))))
 
 ;;; tool argument validation tests
 
@@ -2088,7 +2304,9 @@
                                     "event_details" {"tool_name" "get-time"}}}
                          {:data {"event"         "agent_used_tool"
                                  "result"        "error"
-                                 "event_details" {"tool_name" "unknown"}}}]
+                                 "event_details" {"tool_name"   "unknown"
+                                                  "error_class" "validation"
+                                                  "error_code"  "unknown-tool"}}}]
                         tool-events))
                 (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
                 (is (some #(str/includes? (:message %) "call-2") logs))
@@ -2910,17 +3128,24 @@
   (testing (str "from `invoke` through the part to the SSE writer and persistence. Nothing spanned "
                 "this before, which is how the error moving into `:result` left three consumers "
                 "still reading it off the part and reporting every failure as a success.")
-    (doseq [[label thrower expected-text]
+    (doseq [[label thrower expected-text expected-class expected-code]
             [["recoverable"
               #(tools.error/throw-recoverable! :metabase.metabot.tools.recoverable.common/not-found
                                                {:kind :table :id 7})
-              "Metabot could not complete this step."]
+              "Metabot could not complete this step."
+              "recoverable" "metabase.metabot.tools.recoverable.common/not-found"]
              ["unrecoverable with a :user-message"
               #(tools.error/unrecoverable! ::nope {:user-message "Ask an admin for access."})
-              "Ask an admin for access."]
+              "Ask an admin for access."
+              "unrecoverable" "metabase.metabot.self-test/nope"]
              ["unrecoverable without one"
               #(tools.error/unrecoverable! ::nope {})
-              "Metabot could not complete this step."]]]
+              "Metabot could not complete this step."
+              "unrecoverable" "metabase.metabot.self-test/nope"]
+             ["an exception nothing classified"
+              #(throw (ex-info "connection reset by peer" {}))
+              "Metabot could not complete this step."
+              "unrecoverable" "internal"]]]
       (testing label
         (let [outcome (failed-outcome "failer" thrower)
               part    (tool-output-part outcome)]
@@ -2936,20 +3161,47 @@
               (testing "and never the model's own text, nor the EDN of the error map"
                 (is (not (str/includes? body "Don't retry")) body)
                 (is (not (str/includes? body ":class")) body))))
+          (testing "the Snowplow event carries the class and the code of the error, and no text of it"
+            (snowplow-test/with-fake-snowplow-collector
+              (transduce (#'self/report-tool-usage-xf (assoc snowplow-tracking-opts :profile-id :nlq :iteration 2)
+                                                      #{"failer"})
+                         (constantly nil)
+                         [part])
+              ;; The collector may also hold a `new_instance_created` from the first read of a setting in
+              ;; this JVM, so filter for the tool events as the other Snowplow tests do.
+              (let [events (filter #(= "agent_used_tool" (get-in % [:data "event"]))
+                                   (snowplow-test/pop-event-data-and-user-id!))]
+                (is (=? [{:data {"event"         "agent_used_tool"
+                                 "profile"       "nlq"
+                                 "result"        "error"
+                                 "event_details" {"tool_name"   "failer"
+                                                  "step"        2
+                                                  "error_class" expected-class
+                                                  "error_code"  expected-code}}}]
+                        events))
+                (is (not (str/includes? (pr-str events) (:output outcome)))
+                    "the text written for the model stays on the instance")
+                (is (not (str/includes? (pr-str events) expected-text))
+                    "so does the text written for the reader"))))
           (testing (str "persistence stores it as a failed step, keeping the MODEL's text: "
                         "`tool-part->llm-messages` replays `:errorText` to the model, so a generic "
-                        "sentence here would lose the authored failure on every replay")
-            (let [stored (#'persistence/internal-parts->storable
-                          [{:type :tool-input :id "c1" :function "failer" :arguments {}}
-                           part])
-                  entry  (first (filter #(= "tool-failer" (:type %)) stored))]
+                        "sentence here would lose the authored failure on every replay. Only an exception "
+                        "nothing classified is stored as one neutral sentence, because its live text tells "
+                        "the model not to retry in a turn that will have ended")
+            (let [stored   (#'persistence/internal-parts->storable
+                            [{:type :tool-input :id "c1" :function "failer" :arguments {}}
+                             part])
+                  entry    (first (filter #(= "tool-failer" (:type %)) stored))
+                  replayed (if (= "internal" expected-code)
+                             "This call failed with an unexpected error."
+                             (:output outcome))]
               (is (= "output-error" (:state entry)) (pr-str entry))
-              (is (= (:output outcome) (:errorText entry)))
+              (is (= replayed (:errorText entry)))
               (is (nil? (:output entry))
                   "a failed step stores no :output; its text is the :errorText")
               (testing "and that text replays to the model verbatim"
                 ;; a pair: the assistant's tool_call, then the `:tool` message the model reads
-                (is (= (:output outcome)
+                (is (= replayed
                        (:content (last (persistence/tool-part->llm-messages entry)))))))))))))
 
 (deftest a-rejected-argument-is-failed-at-every-consumer-test

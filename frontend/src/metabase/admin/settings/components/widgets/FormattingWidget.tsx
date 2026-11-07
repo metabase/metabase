@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,14 +7,12 @@ import { useAdminSetting } from "metabase/settings";
 import { SettingsSection } from "metabase/settings-components";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
-  getCurrencyOptions,
-  getCurrencyStyleOptions,
-} from "metabase/utils/formatting";
-import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/value-formatting";
-import type { CurrencyStyle, FormattingSettings } from "metabase-types/api";
+import type { FormattingSettings } from "metabase-types/api";
+
+import { CurrencyFormattingSection } from "./CurrencyFormattingSection";
 
 const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
   "type/Temporal": {
@@ -30,11 +28,6 @@ const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
     currency_style: "symbol",
   },
 };
-
-const mapNameToLabel = (option: { name: string; value: any }) => ({
-  label: option.name,
-  value: option.value,
-});
 
 export function FormattingWidget() {
   const {
@@ -62,21 +55,6 @@ export function FormattingWidget() {
 
   const { number_separators: numberSeparators } =
     localValue?.["type/Number"] || {};
-
-  const { currency, currency_style: currencyStyle } =
-    localValue?.["type/Currency"] || {};
-
-  const [currencyOptions, currencyStyleOptions] = useMemo(() => {
-    // Unjustified type cast. FIXME
-    const currencyOptions = (
-      getCurrencyOptions() as { name: string; value: string }[]
-    ).map(mapNameToLabel);
-    const currencyStyleOptions = getCurrencyStyleOptions(
-      currency,
-      currencyStyle,
-    ).map(mapNameToLabel);
-    return [currencyOptions, currencyStyleOptions];
-  }, [currency, currencyStyle]);
 
   const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
 
@@ -181,43 +159,15 @@ export function FormattingWidget() {
               }
             />
           </SettingsSection>
-          <SettingsSection title={t`Currency`}>
-            <FormattingInput
-              id="currency"
-              label={t`Unit of currency`}
-              value={currency}
-              inputType="select"
-              searchable
-              options={currencyOptions}
-              onChange={(newValue) =>
-                handleChange({
-                  ...localValue,
-                  "type/Currency": {
-                    ...localValue?.["type/Currency"],
-                    // Unjustified type cast. FIXME
-                    currency: newValue as string,
-                  },
-                })
-              }
-            />
-            <FormattingInput
-              id="currency_style"
-              label={t`Currency label style`}
-              value={currencyStyle}
-              inputType="radio"
-              options={currencyStyleOptions}
-              onChange={(newValue) =>
-                handleChange({
-                  ...localValue,
-                  "type/Currency": {
-                    ...localValue?.["type/Currency"],
-                    // Unjustified type cast. FIXME
-                    currency_style: newValue as CurrencyStyle,
-                  },
-                })
-              }
-            />
-          </SettingsSection>
+          <CurrencyFormattingSection
+            value={localValue?.["type/Currency"] ?? {}}
+            onChange={(currencySettings) =>
+              handleChange({
+                ...localValue,
+                "type/Currency": currencySettings,
+              })
+            }
+          />
         </>
       )}
     </Stack>

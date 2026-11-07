@@ -1,5 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import NativeQuery, {
@@ -57,15 +59,15 @@ function makeDatasetQuery(
   queryText: string,
   templateTags: TemplateTags | undefined,
   databaseId: DatabaseId,
+  metadata: Metadata,
 ): DatasetQuery {
-  return {
-    type: "native",
-    database: databaseId,
-    native: {
-      query: queryText,
-      "template-tags": templateTags,
-    },
-  };
+  const query = Lib.createTestNativeQuery(
+    createMetadataProvider({ databaseId, metadata }),
+    { query: queryText },
+  );
+  return Lib.toJsQuery(
+    templateTags ? Lib.withTemplateTags(query, templateTags) : query,
+  );
 }
 
 function makeQuery(
@@ -75,14 +77,14 @@ function makeQuery(
 ) {
   return new NativeQuery(
     Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
-    makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
+    makeDatasetQuery(query, templateTags, SAMPLE_DB_ID, metadata),
   );
 }
 
 function makeMongoQuery(query: string) {
   return new NativeQuery(
     Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata: METADATA }),
-    makeDatasetQuery(query, undefined, MONGO_DB_ID),
+    makeDatasetQuery(query, undefined, MONGO_DB_ID, METADATA),
   );
 }
 
@@ -175,6 +177,15 @@ describe("NativeQuery", () => {
       it("returns null for a non-mongo query", () => {
         expect(query.table()).toBe(null);
         expect(query.setQueryText("SELECT * FROM ORDERS").table()).toBe(null);
+      });
+    });
+
+    describe("setDatabaseId()", () => {
+      it("switches a SQL query to a Mongo database (metabase#53299)", () => {
+        const mongoQuery = makeQuery("SELECT 1").setDatabaseId(MONGO_DB_ID);
+        expect(mongoQuery.engine()).toBe("mongo");
+        expect(mongoQuery.requiresTable()).toBe(true);
+        expect(mongoQuery.queryText()).toBe("SELECT 1");
       });
     });
   });
@@ -301,6 +312,61 @@ describe("NativeQuery", () => {
         );
         expect(q.canRun()).toBe(true);
       });
+
+      it("field filter mapped to a field of another database (metabase#31926)", () => {
+        const otherDatabaseId = SAMPLE_DB_ID + 2;
+        const metadata = createMockMetadata({
+          databases: [
+            createSampleDatabase(),
+            createMockDatabase({ id: otherDatabaseId }),
+          ],
+        });
+        const query = makeQuery(
+          "SELECT COUNT(*) FROM PRODUCTS WHERE {{filter}}",
+          {
+            filter: createMockTemplateTag({
+              name: "filter",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "string/=",
+            }),
+          },
+          metadata,
+        );
+        expect(query.canRun()).toBe(true);
+
+        const otherDatabaseQuery = query.setDatabaseId(otherDatabaseId);
+        expect(
+          otherDatabaseQuery.templateTagsMap().filter.dimension,
+        ).toBeUndefined();
+        expect(otherDatabaseQuery.canRun()).toBe(false);
+      });
+    });
+
+    describe("required template tags", () => {
+      it.each(["text", "number", "date"] as const)(
+        "should run and save without a default value for a required %s tag",
+        (type) => {
+          const q = makeQuery().setQueryText(
+            "SELECT * from ORDERS where {{foo}}",
+          );
+          const requiredQuery = q.setTemplateTag(
+            "foo",
+            createMockTemplateTag({
+              name: "foo",
+              "display-name": "Foo",
+              type,
+              required: true,
+              default: undefined,
+            }),
+          );
+
+          expect(requiredQuery.canRun()).toBe(true);
+          expect(
+            Lib.canSave(requiredQuery.question().query(), "question"),
+          ).toBe(true);
+        },
+      );
     });
 
     describe("snippet template tags", () => {
@@ -360,6 +426,108 @@ describe("NativeQuery", () => {
         ]);
       });
 
+      it("should take the inner tags of an updated snippet from the metadata", () => {
+        const oldSnippet = createMockNativeQuerySnippet({
+          name: "filter-snippet",
+          content: "category = {{filter}}",
+          template_tags: {
+            filter: createMockTemplateTag({ name: "filter", type: "text" }),
+          },
+        });
+        const oldQuery = makeQuery(
+          "",
+          {},
+          createMockMetadata({ snippets: [oldSnippet] }),
+        ).setQueryText(
+          "select id from products where {{snippet: filter-snippet}}",
+        );
+        expect(oldQuery.templateTags().map((tag) => tag.name)).toEqual([
+          "snippet: filter-snippet",
+          "filter",
+        ]);
+
+        const newSnippet = createMockNativeQuerySnippet({
+          ...oldSnippet,
+          content: "ean = {{ean}} or vendor = {{vendor}}",
+          template_tags: {
+            ean: createMockTemplateTag({ name: "ean", type: "text" }),
+            vendor: createMockTemplateTag({ name: "vendor", type: "text" }),
+          },
+        });
+        const newQuery = makeQuery(
+          oldQuery.queryText(),
+          oldQuery.templateTagsMap(),
+          createMockMetadata({ snippets: [newSnippet] }),
+        ).updateSnippet(oldSnippet, newSnippet);
+
+        expect(newQuery.queryText()).toBe(oldQuery.queryText());
+        expect(newQuery.templateTags().map((tag) => tag.name)).toEqual([
+          "snippet: filter-snippet",
+          "ean",
+          "vendor",
+        ]);
+      });
+
+      it("should keep the changed type of a snippet's inner tag", () => {
+        const snippet = createMockNativeQuerySnippet({
+          name: "filter-snippet",
+          content: "ID = {{filter}}",
+          template_tags: {
+            filter: createMockTemplateTag({ name: "filter", type: "text" }),
+          },
+        });
+        const metadata = createMockMetadata({ snippets: [snippet] });
+        const queryText =
+          "select id from products where {{snippet: filter-snippet}}";
+        const parsedQuery = makeQuery("", {}, metadata).setQueryText(queryText);
+        const filterTag = checkNotNull(parsedQuery.templateTagsMap().filter);
+
+        const queryWithNumberTag = parsedQuery
+          .setTemplateTag("filter", { ...filterTag, type: "number" })
+          .setQueryText(`${queryText} limit 1`);
+
+        expect(queryWithNumberTag.templateTagsMap().filter).toMatchObject({
+          id: filterTag.id,
+          name: "filter",
+          type: "number",
+        });
+      });
+
+      it("should link a renamed snippet tag to the snippet with the new name (metabase#15387)", () => {
+        const ordersSnippet = createMockNativeQuerySnippet({
+          id: 1,
+          name: "Table: Orders",
+          content: "ORDERS",
+        });
+        const reviewsSnippet = createMockNativeQuerySnippet({
+          id: 2,
+          name: "Table: Reviews",
+          content: "REVIEWS",
+        });
+        const metadata = createMockMetadata({
+          snippets: [ordersSnippet, reviewsSnippet],
+        });
+        const ordersQuery = makeQuery("", {}, metadata).setQueryText(
+          "select * from {{snippet: Table: Orders}} limit 1",
+        );
+        expect(ordersQuery.templateTags()).toMatchObject([
+          { name: "snippet: Table: Orders", "snippet-id": ordersSnippet.id },
+        ]);
+
+        const reviewsQuery = ordersQuery.setQueryText(
+          "select * from {{snippet: Table: Reviews}} limit 1",
+        );
+
+        expect(reviewsQuery.templateTags()).toEqual([
+          expect.objectContaining({
+            name: "snippet: Table: Reviews",
+            type: "snippet",
+            "snippet-id": reviewsSnippet.id,
+            "snippet-name": reviewsSnippet.name,
+          }),
+        ]);
+      });
+
       it("should update query text with new snippet names", () => {
         const q = makeQuery("{{ snippet: foo }}", {
           "snippet: foo": createMockTemplateTag({
@@ -375,15 +543,9 @@ describe("NativeQuery", () => {
       });
 
       it("should update snippet names that differ on spacing", () => {
-        const q = makeQuery("{{ snippet: foo }} {{snippet:  foo  }}", {
-          " snippet: foo ": createMockTemplateTag({
-            name: " snippet: foo ",
-            type: "snippet",
-            "snippet-id": SNIPPET_ID,
-            "snippet-name": "foo",
-          }),
-          "snippet:  foo  ": createMockTemplateTag({
-            name: "snippet:  foo  ",
+        const q = makeQuery("{{ snippet: foo }} {{snippet: foo}}", {
+          "snippet: foo": createMockTemplateTag({
+            name: "snippet: foo",
             type: "snippet",
             "snippet-id": SNIPPET_ID,
             "snippet-name": "foo",
@@ -402,6 +564,25 @@ describe("NativeQuery", () => {
         );
         expect(q.templateTags().map((v) => v["card-id"])).toEqual([1, 2, 1]);
       });
+
+      it("should keep differently-named tags for the same card verbatim", () => {
+        const queryText = "SELECT 1 FROM {{#1-foo}} AS a, {{#1-bar}} AS b";
+        const q = makeQuery().setQueryText(queryText);
+
+        expect(q.queryText()).toBe(queryText);
+        expect(q.templateTagsMap()).toEqual({
+          "#1-foo": expect.objectContaining({
+            name: "#1-foo",
+            type: "card",
+            "card-id": 1,
+          }),
+          "#1-bar": expect.objectContaining({
+            name: "#1-bar",
+            type: "card",
+            "card-id": 1,
+          }),
+        });
+      });
     });
   });
 
@@ -416,6 +597,20 @@ describe("NativeQuery", () => {
       );
 
       expect(oldQuery.templateTags()).toEqual(newQuery.templateTags());
+    });
+
+    it("should preserve the order of template tags when the type of a tag changes (metabase#11580)", () => {
+      const oldQuery = makeQuery().setQueryText("SELECT {{foo}} {{bar}}");
+      const newQuery = oldQuery.setTemplateTag("foo", {
+        ...oldQuery.templateTagsMap()["foo"],
+        type: "number",
+      });
+
+      expect(newQuery.templateTags().map((tag) => tag.name)).toEqual([
+        "foo",
+        "bar",
+      ]);
+      expect(newQuery.templateTagsMap()["foo"].type).toBe("number");
     });
 
     it("should allow setting source settings for tags", () => {
@@ -436,6 +631,25 @@ describe("NativeQuery", () => {
       expect(newParameters[0].values_query_type).toEqual("search");
       expect(newParameters[0].values_source_type).toEqual("static-list");
       expect(newParameters[0].values_source_config).toEqual({ values: ["A"] });
+    });
+
+    it("should use the default value of a required tag as the parameter default", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{cat}}",
+      );
+      const newQuery = oldQuery.setTemplateTag("cat", {
+        ...oldQuery.templateTagsMap()["cat"],
+        required: true,
+        default: "Gizmo",
+      });
+
+      const newParameters = newQuery.question().parameters();
+      expect(newParameters).toHaveLength(1);
+      expect(newParameters[0]).toMatchObject({
+        slug: "cat",
+        required: true,
+        default: "Gizmo",
+      });
     });
   });
 

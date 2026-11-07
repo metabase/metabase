@@ -5,14 +5,16 @@
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform]
    [metabase.transforms.schedule :as transforms.schedule]
-   [metabase.transforms.schema]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -81,13 +83,13 @@
       (for [job jobs]
         (assoc job :last_run (get last-executions (:id job)))))))
 
-(defn- active-flip-lock-name
+(mu/defn- active-flip-lock-name :- :keyword
   "Per-job cluster-lock keyword used to serialize `:active` flips of the same job across the
   cluster. Concurrent flips of *different* jobs run in parallel."
-  [job-id]
+  [job-id :- ms/PositiveInt]
   (keyword "metabase.transforms.transform-job-active" (str job-id)))
 
-(defn activate-job!
+(mu/defn activate-job! :- :nil
   "Activate a transform job: set `:active` to true and (re)create its Quartz trigger from the
   job's stored schedule so cron firings begin again. Idempotent — calling on an already-active
   job is a no-op.
@@ -95,28 +97,31 @@
   Concurrent activate/deactivate of the same job is serialized by a per-job cluster lock so
   the app-DB row and the Quartz trigger cannot diverge. The lock is held across the trigger
   write."
-  [job-id]
+  [job-id :- ms/PositiveInt]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
     (when (pos? (transforms.db/activate-job! job-id))
-      (transforms.schedule/initialize-job! (transforms.db/job job-id)))))
+      (transforms.schedule/initialize-job! (transforms.db/job job-id)))
+    nil))
 
-(defn deactivate-job!
+(mu/defn deactivate-job! :- :nil
   "Deactivate a transform job: set `:active` to false and remove its Quartz trigger so cron
   firings stop. Manual runs via the API still work. Idempotent — calling on an already-inactive
   job is a no-op.
 
   Concurrent activate/deactivate of the same job is serialized by a per-job cluster lock — see
   [[activate-job!]]."
-  [job-id]
+  [job-id :- ms/PositiveInt]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
     (when (pos? (transforms.db/deactivate-job! job-id))
-      (transforms.schedule/delete-trigger! job-id))))
+      (transforms.schedule/delete-trigger! job-id))
+    nil))
 
-(defn update-job-tags!
+(mu/defn update-job-tags! :- :nil
   "Update the tags associated with a job using smart diff logic.
    Only modifies what has changed: deletes removed tags, updates positions for moved tags,
    and inserts new tags. Duplicate tag IDs are automatically deduplicated."
-  [job-id tag-ids]
+  [job-id  :- [:maybe ms/PositiveInt]
+   tag-ids :- [:sequential ms/PositiveInt]]
   (when job-id
     (t2/with-transaction [_conn]
       (let [;; Deduplicate, just in case
@@ -150,9 +155,13 @@
           (transforms.db/insert-job-tag-links! (for [tag-id to-insert]
                                                  {:job_id   job-id
                                                   :tag_id   tag-id
-                                                  :position (get new-positions tag-id)})))))))
+                                                  :position (get new-positions tag-id)})))))
+    nil))
 
-(defn- translated-name-and-description [job]
+(mu/defn- translated-name-and-description :- [:map {:closed true}
+                                              [:name        [:maybe mu/localized-string-schema]]
+                                              [:description [:maybe mu/localized-string-schema]]]
+  [job :- [:or ::transforms.schema/transform-job ::transforms.schema/transform-job.update]]
   (let [values {"hourly"
                 [(i18n/deferred-trs "Hourly job")
                  (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
@@ -198,20 +207,21 @@
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
-(defmethod serdes/make-spec "TransformJob"
-  [_model-name opts]
-  {:copy [:entity_id :built_in_type :schedule :ui_display_type]
-   :skip [;; admin-owned state of this instance
-          :active]
-   :transform {:name {:export str :import identity}
-               :description {:export str :import identity}
-               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :entity_id)} opts))}})
+(defmethod serialization/spec :model/TransformJob [_]
+  {:schema    ::transforms.schema/external-transform-job
+   :copy      [:entity_id :built_in_type :schedule :ui_display_type]
+   :skip      [:active]
+   :transform {:name        {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}
+               :description {:export (fn [_ _ values _] (mapv str values)) :import serialization/import-unchanged}}
+   :children  {:job_tags :model/TransformJobTransformTag}})
 
-(defmethod serdes/deserialization-dependencies "TransformJob"
-  [{:keys [job_tags]}]
-  (set
-   (for [{tag-id :tag_id} job_tags]
-     [{:model "TransformTag" :id tag-id}])))
+(defmethod serialization/storage-paths :model/TransformJob [_ entities _ctx]
+  (mapv (fn [job]
+          [{:label "transforms"} {:label "transform_jobs"} {:label (:name job) :key (:entity_id job)}])
+        entities))
 
-(defmethod serdes/storage-path "TransformJob" [job _ctx]
-  [{:label "transforms"} {:label "transform_jobs"} {:label (:name job) :key (:entity_id job)}])
+(defmethod serialization/import-dependencies :model/TransformJob [_ entities]
+  (mapv (fn [{:keys [job_tags]}]
+          (set (for [{tag-id :tag_id} job_tags]
+                 [:model/TransformTag tag-id])))
+        entities))

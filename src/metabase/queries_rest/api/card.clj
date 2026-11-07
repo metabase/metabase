@@ -9,7 +9,6 @@
    [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -423,7 +422,8 @@
        [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
        [:query       {:optional true} [:maybe ms/NonBlankString]]
        [:exclude_ids {:optional true} [:maybe [:fn
-                                               {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
+                                               {:error/fn    (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))
+                                                :json-schema {:type "array" :items {:type "integer" :minimum 1}}}
                                                (fn [ids]
                                                  (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
@@ -548,7 +548,6 @@
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_preview     {:optional true} [:maybe :boolean]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -718,10 +717,13 @@
           (reverse (range starting-position (+ (count sorted-cards) starting-position)))
           (reverse sorted-cards)))))
 
+(defn- write-check-collection-or-root [collection-id-or-nil]
+  (if collection-id-or-nil
+    (api/write-check :model/Collection collection-id-or-nil)
+    (api/write-check collection/root-collection)))
+
 (defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
-  ;; if moving to a collection, make sure we have write perms for it
-  (when new-collection-id-or-nil
-    (api/write-check :model/Collection new-collection-id-or-nil))
+  (write-check-collection-or-root new-collection-id-or-nil)
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards  (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil) ; poisioned NULLs = ick
@@ -730,9 +732,9 @@
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
-      ;; ...and check that we have write permissions for the old collections if applicable
-      (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
-        (api/write-check :model/Collection old-collection-id))
+      ;; ...and check that we have write permissions for the old collections, root included
+      (doseq [old-collection-id (set (map :collection_id cards))]
+        (write-check-collection-or-root old-collection-id))
       ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
@@ -775,18 +777,6 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-(defn- metric-card-without-query-breakouts
-  [card]
-  (if-not (= :metric (:type card))
-    card
-    (let [metadata-provider (lib-be/application-database-metadata-provider (:database_id card))
-          query             (lib/query metadata-provider (:dataset_query card))]
-      (cond-> card
-        (and (= 1 (count (:stages query)))
-             (lib/mbql-stage? query -1)
-             (seq (lib/breakouts query -1)))
-        (assoc :dataset_query (lib/remove-all-breakouts query))))))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -813,10 +803,9 @@
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort]}
+   {:keys [parameters ignore_cache dashboard_id stored_result_id sort]}
    :- [:map {:closed true}
        [:ignore_cache       {:default false} :boolean]
-       [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
        [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
        [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
@@ -838,15 +827,8 @@
          :parameters parameters
          :ignore-cache ignore_cache
          :dashboard-id dashboard_id
-         :card-transform (cond
-                           ;; Collection previews start from the aggregate so no usable default stays scalar
-                           collection_preview (comp qp.dashboard/card-with-default-metric-dimension
-                                                    metric-card-without-query-breakouts)
-                           dashboard_id       qp.dashboard/card-with-default-metric-dimension)
-         :context (cond
-                    collection_preview :collection
-                    dashboard_id       :dashboard
-                    :else              :question)
+         :card-transform (when dashboard_id qp.dashboard/card-with-default-metric-dimension)
+         :context (if dashboard_id :dashboard :question)
          :middleware   {:process-viz-settings? false})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -984,14 +966,11 @@
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/queries/1/params/abc/values"
-  {:scope api-scope/data-app}
   [{:keys [card-id param-key]} :- [:map {:closed true}
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]
    _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter card-id param-key))
+   _body]
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
@@ -1006,15 +985,12 @@
      GET /api/queries/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
-  {:scope api-scope/data-app}
   [{:keys [card-id param-key query]} :- [:map {:closed true}
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]
    _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter card-id param-key))
+   _body]
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
 
@@ -1027,14 +1003,11 @@
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/queries/1/params/abc/remapping?value=100"
-  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
    {:keys [value]}        :- [:map {:closed true} [:value :string]]
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter id param-key))
+   _body]
   (binding [qp.perms/*param-values-query* true]
     (-> (api/read-check :model/Card id)
         (queries/card-param-remapped-value param-key (codec/url-decode value)))))

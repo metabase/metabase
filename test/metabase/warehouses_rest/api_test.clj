@@ -15,6 +15,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -45,6 +46,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.core :as warehouses]
@@ -165,7 +167,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :write_data_details :initial_sync_error :schedules))
+                   (dissoc :details :write_data_details :admin_details :initial_sync_error :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -295,18 +297,14 @@
      :model/Segment  _                {:table_id table-id-2}
      :model/Transform _                {:name   "Source DB transform"
                                         :source {:type  :query
-                                                 :query {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "select 1"}}}
+                                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
                                         :target {:type     "table"
                                                  :database db-id
                                                  :schema "PUBLIC"
                                                  :name "source_db_transform_target"}}
      :model/Transform _                {:name   "Target DB transform"
                                         :source {:type  :query
-                                                 :query {:database db-id
-                                                         :type     :native
-                                                         :native   {:query "select 1"}}}
+                                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1")}
                                         :target {:type     "table"
                                                  :database db-id
                                                  :schema "PUBLIC"
@@ -906,7 +904,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1121,20 +1119,26 @@
                                            (mt/user-http-request :rasta :get 200
                                                                  (format "database/%d/autocomplete_suggestions" (mt/id))
                                                                  :prefix "price"))))]
-      (testing "a user-set semantic_type replaces the sync value"
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id          field-id
-                                                   :semantic_type     :type/Currency
-                                                   :semantic_type_set true}]
-          (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))))
-      (testing "a user-set sensitive visibility_type hides the Field"
-        (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :visibility_type :sensitive}]
-          (is (nil? (venues-row))))))))
+      (mt/with-temp-vals-in-db :model/Field field-id (select-keys (t2/select-one :model/Field :id field-id)
+                                                                  [:semantic_type :visibility_type])
+        (testing "a user-set semantic_type replaces the sync value"
+          (try
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Currency})
+            (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))
+            (finally
+              (field-user-settings/delete-field-user-settings! [field-id]))))
+        (testing "a user-set sensitive visibility_type hides the Field"
+          (try
+            (field-user-settings/upsert-field-user-settings! {:id field-id} {:visibility_type :sensitive})
+            (is (nil? (venues-row)))
+            (finally
+              (field-user-settings/delete-field-user-settings! [field-id]))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
     (testing " returns sane Cache-Control headers"
       (is (=? {"Cache-Control" "public, max-age=60"
-               "Vary"          "Cookie, X-Metabase-Client"}
+               "Vary"          "Cookie"}
               (-> (client/client-full-response (test.users/username->token :rasta) :get 200
                                                (format "database/%s/autocomplete_suggestions" (mt/id))
                                                :prefix "u")
@@ -1237,7 +1241,7 @@
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details :write_data_details :initial_sync_error))]
+                                (disj :details :write_data_details :admin_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -3391,21 +3395,192 @@
                                        {:write_data_details {:host "write-host"
                                                              :write-data-connection true}}))))))))
 
+;;; ----------------------------------------- admin_details tests -----------------------------------------
+
+(deftest ^:parallel upsert-sensitive-fields-admin-details-test
+  (testing "upsert-sensitive-fields works with :admin_details key"
+    (is (= {:host "localhost"
+            :port 5432
+            :password "new-password"}
+           (#'api.database/upsert-sensitive-fields
+            {:engine :h2
+             :id (mt/id)
+             :details {:host "localhost" :port 5432 :password "main-pass"}
+             :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
+            {:host "localhost"
+             :port 5432
+             :password "new-password"}
+            :admin_details)))
+    (testing "protected passwords are replaced from original"
+      (is (= {:host "localhost"
+              :port 5432
+              :password "admin-pass"}
+             (#'api.database/upsert-sensitive-fields
+              {:engine :h2
+               :id (mt/id)
+               :details {:host "localhost" :port 5432 :password "main-pass"}
+               :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
+              {:host "localhost"
+               :port 5432
+               :password secret/protected-password}
+              :admin_details))))))
+
+(deftest get-database-admin-details-test
+  (testing "GET /api/database/:id"
+    (testing "Superusers see admin_details with sensitive fields redacted"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :admin_details {:host "admin-host"
+                                                                  :password "secret-admin-pass"}}]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (= "admin-host" (get-in response [:admin_details :host])))
+          (is (= secret/protected-password (get-in response [:admin_details :password]))))))
+    (testing "Regular users do not see admin_details"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :admin_details {:host "admin-host"}}]
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+          (is (not (contains? response :admin_details)))
+          (is (not (contains? response :details))))))))
+
+(deftest update-database-admin-details-test
+  (testing "PUT /api/database/:id with admin_details"
+    (testing "Superusers can set admin_details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (let [response (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                                 {:admin_details {:host "admin-host"
+                                                                  :password "admin-pass"
+                                                                  :admin-connection true}})]
+              (is (= "admin-host" (get-in response [:admin_details :host])))
+              (is (= secret/protected-password (get-in response [:admin_details :password])))
+              (let [db (t2/select-one :model/Database :id db-id)]
+                (is (= {:host "admin-host" :password "admin-pass" :admin-connection true}
+                       (:admin_details db)))))))))
+    (testing "Superusers can clear admin_details by setting it to nil"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :admin_details {:host "admin-host"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:admin_details nil})
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (nil? (:admin_details db))))))))
+    (testing "Sensitive fields are preserved when protected-password is sent"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :admin_details {:host "admin-host"
+                                                                    :password "original-pass"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:admin_details {:host "new-admin-host"
+                                                   :password secret/protected-password
+                                                   :admin-connection true}})
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (= "new-admin-host" (get-in db [:admin_details :host])))
+              (is (= "original-pass" (get-in db [:admin_details :password]))))))))
+    (testing "Returns 402 without :workspaces feature"
+      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (constantly false)]
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}}]
+          (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
+                                {:admin_details {:host "admin-host"}}))))))
+
 (deftest update-database-preserves-overlay-details-test
-  (testing "PUT /api/database/:id without write_data_details/provider_name keys"
+  (testing "PUT /api/database/:id without write_data_details/admin_details/provider_name keys"
     (testing "preserves nullable fields instead of nil-ing them out"
-      (mt/with-premium-features #{:writable-connection}
+      (mt/with-premium-features #{:writable-connection :workspaces}
         (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
                                                     :details            {:host "localhost"}
                                                     :write_data_details {:host "write-host"}
+                                                    :admin_details      {:host "admin-host"}
                                                     :provider_name      "AWS RDS"}]
           (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:name "Renamed DB"})
             (is (=? {:name               "Renamed DB"
                      :write_data_details {:host "write-host"}
+                     :admin_details      {:host "admin-host"}
                      :provider_name      "AWS RDS"}
                     (t2/select-one :model/Database :id db-id)))))))))
+
+(deftest put-validates-admin-details-connection-test
+  (when config/ee-available?
+    (testing "PUT /api/database/:id returns 400 when admin connection test fails"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (fn [_engine details]
+                                              (if (:admin-connection details)
+                                                (throw (Exception. "Admin connection failed"))
+                                                true))]
+            (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                                 {:admin_details {:host "totally-bogus-host"
+                                                                  :admin-connection true}})]
+              (is (= "Admin connection failed" (:message response))))))))))
+
+(deftest admin-details-guardrails-test
+  (testing "PUT /api/database/:id admin_details guardrails"
+    (testing "admin-connection must not be truthy in details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "admin-connection must not be set in details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:details {:host             "localhost"
+                                                  :admin-connection true}}))))))
+    (testing "admin-connection must be truthy in admin_details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "admin-connection must be set in admin_details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:admin_details {:host "admin-host"}}))))))
+    (testing "Destination-database must be false in admin_details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "destination-database must be false in admin_details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:admin_details {:host                 "admin-host"
+                                                        :admin-connection     true
+                                                        :destination-database true}}))))))
+    (testing "Fields hidden for admin connections must not be in admin_details"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (str/includes?
+               (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                     {:admin_details {:host             "admin-host"
+                                                      :admin-connection true
+                                                      :auto_run_queries true}})
+               "admin_details must not contain fields hidden for admin connections")))))
+    (testing "Cannot set admin_details on a destination database"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {dest-id :id}   {:engine             :h2
+                                                        :details            {:host "localhost"}
+                                                        :router_database_id router-id}]
+          (is (= "Cannot configure an admin connection on a destination database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                       {:admin_details {:host             "admin-host"
+                                                        :admin-connection true}}))))))
+    (testing "Cannot set admin_details on a router database"
+      (mt/with-premium-features #{:workspaces}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {_dest-id :id}  {:engine             :h2
+                                                        :details            {:host "localhost"}
+                                                        :router_database_id router-id}]
+          (is (= "Cannot configure an admin connection on a router database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
+                                       {:admin_details {:host             "admin-host"
+                                                        :admin-connection true}}))))))))
 
 (deftest databases-list-can-upload-respects-view-data-test
   (testing "GET /api/database/:id can_upload reflects the user's view-data permission, not just uploads_enabled"
