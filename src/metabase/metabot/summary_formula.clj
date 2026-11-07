@@ -3,9 +3,12 @@
   The client is responsible for compiling and validating the generated expressions."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
 (def ^:private required-permission :permission/metabot-nlq)
@@ -110,43 +113,86 @@
             u/not-blank
             (u/truncate max-name-chars))))
 
-(def ^:private unavailable-messages
-  {:metabot-disabled  "AI features are turned off."
-   :no-llm            "No AI provider is connected."
-   :usage-limit       "The AI usage limit has been reached."
-   :permission-denied "You don't have access to AI features."})
+(defn- unavailable-error
+  "Return an HTTP exception for an unavailable LLM call with `reason`."
+  [reason]
+  (let [[status-code message] (case reason
+                                :metabot-disabled  [403 (tru "AI features are not enabled.")]
+                                :no-llm            [503 (tru "No AI provider is connected.")]
+                                :usage-limit       [429 (or (metabot.usage/check-usage-limits!)
+                                                            (tru "The AI usage limit has been reached."))]
+                                :permission-denied [403 (tru "You don''t have access to AI features.")]
+                                [503 (tru "AI features aren''t available right now.")])]
+    (ex-info message {:status-code status-code})))
+
+(defn- provider-status->response-code
+  "Map a provider's HTTP `status` to the response status."
+  [status]
+  (cond
+    (= status 429)           429
+    (some-> status (>= 500)) 503
+    :else                    502))
+
+(defn- llm-call-error
+  "Return an HTTP exception for the LLM call's exception `e`."
+  [e]
+  (let [{:keys [status-code type status]} (ex-data e)
+        [response-code message]
+        (case type
+          :metabot/usage-limit-reached [429 (ex-message e)]
+          :metabot/permission-denied   [403 (tru "You don''t have access to AI features.")]
+          [(provider-status->response-code status)
+           (or (:message (metabot.self/provider-error e))
+               ;; An adapter's own HTTP error, like a missing connection or a failed credential refresh, explains a
+               ;; setup problem that only an admin can fix.
+               (when (and status-code api/*is-superuser?*)
+                 (ex-message e))
+               (tru "The AI provider couldn''t draft a formula. Please try again."))])]
+    (ex-info message {:status-code response-code} e)))
+
+(defn- call-llm
+  [messages]
+  (metabot.self/call-llm-structured
+   (metabot.settings/llm-mini-model)
+   messages
+   formula-json-schema
+   nil
+   max-formula-tokens
+   {:request-id          (str (random-uuid))
+    ;; a new ai_usage_log source needs new analytics views and a migration, so usage is logged as "unknown"; `:tag`
+    ;; still names it in traces
+    :source              "unknown"
+    :tag                 "summary-formula"
+    :required-permission required-permission}))
+
+(defn- llm-messages
+  [{:keys [mode] :as request}]
+  [{:role    "system"
+    :content (if (= mode "expression")
+               expression-system-prompt
+               aggregation-system-prompt)}
+   {:role "user" :content (user-message request)}])
 
 (defn suggest-formula
   "Draft a custom expression for `prompt`, a natural-language phrase typed into a summary well. `mode` is
   `\"aggregation\"` for Values or `\"expression\"` for the custom columns Rows and Columns group by. `columns` are maps
   of `:name` (the column's name in expression syntax, without brackets) and an optional `:type`.
 
-  Returns `{:expression <source or nil> :name <name or nil> :error <message or nil>}`; `:expression` is nil when no
-  LLM is available, the call fails, or nothing in the columns fits."
-  [{:keys [mode] :as request}]
-  (if-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
-    {:expression nil :name nil :error (get unavailable-messages reason "AI isn't available.")}
-    (try
-      (let [{:keys [expression name]} (metabot.self/call-llm-structured
-                                       (metabot.settings/llm-mini-model)
-                                       [{:role    "system"
-                                         :content (if (= mode "expression")
-                                                    expression-system-prompt
-                                                    aggregation-system-prompt)}
-                                        {:role "user" :content (user-message request)}]
-                                       formula-json-schema
-                                       nil
-                                       max-formula-tokens
-                                       {:request-id          (str (random-uuid))
-                                        ;; a new ai_usage_log source needs new analytics views and a migration, so
-                                        ;; usage is logged as "unknown"; `:tag` still names it in traces
-                                        :source              "unknown"
-                                        :tag                 "summary-formula"
-                                        :required-permission required-permission})
-            expression (clean-expression expression)]
-        {:expression expression
-         :name       (when expression (clean-name name))
-         :error      (when-not expression "Nothing in this data matches that.")})
-      (catch Exception e
-        (log/warn e "Unable to suggest a summary formula")
-        {:expression nil :name nil :error "Couldn't generate a formula."}))))
+  Returns `{:expression <source> :name <name>}`. Throws an HTTP error with a plain-text message when
+  the request can't be served, including when nothing in the columns or metrics fits or the LLM call fails. The
+  managed AI lock's error propagates as it is."
+  [{:keys [prompt] :as request}]
+  (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
+    (throw (unavailable-error reason)))
+  (metabot.usage/check-metabase-managed-free-limit!)
+  (let [{:keys [expression name]} (try
+                                    (call-llm (llm-messages request))
+                                    (catch Exception e
+                                      (log/warn e "Summary formula LLM call failed")
+                                      (throw (llm-call-error e))))
+        expression (clean-expression expression)
+        ;; a usable expression is still worth returning when its name cleans to blank
+        name       (or (clean-name name) (clean-name prompt))]
+    (when-not (and expression name)
+      (throw (ex-info (tru "Nothing in this data matches that.") {:status-code 422})))
+    {:expression expression :name name}))

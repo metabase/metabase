@@ -463,22 +463,19 @@
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/summary-formula" :- [:map
-                                                     [:expression [:maybe :string]]
-                                                     [:name       [:maybe :string]]
-                                                     [:error      [:maybe :string]]]
-  "Draft a custom expression for `prompt`, a natural-language phrase typed into a summarize sidebar well. `mode` is
-  `aggregation` for Values and `expression` for Rows and Columns. `expression` is nil, with an `error`, when no LLM is
-  available or nothing in `columns` fits; the client compiles and validates the formula."
+                                                     [:expression ms/NonBlankString]
+                                                     [:name       ms/NonBlankString]]
+  "Draft a custom expression from the summary sidebar's natural-language request in `body`."
   [_route-params
    _query-params
    body :- [:map {:closed true}
-            [:prompt     ms/NonBlankString]
-            [:mode       [:enum "aggregation" "expression"]]
-            [:columns    [:sequential [:map {:closed true}
-                                       [:name ms/NonBlankString]
-                                       [:type {:optional true} [:maybe :string]]]]]
-            [:metrics    {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-            [:table_name {:optional true} [:maybe :string]]]]
+            [:mode        [:enum "aggregation" "expression"]]
+            [:prompt      ms/NonBlankString]
+            [:columns     [:sequential [:map {:closed true}
+                                        [:name ms/NonBlankString]
+                                        [:type {:optional true} [:maybe ms/NonBlankString]]]]]
+            [:metrics     {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+            [:table_name  {:optional true} [:maybe ms/NonBlankString]]]]
   (metabot.summary-formula/suggest-formula body))
 
 (def ^{:arglists '([request respond raise])} routes
