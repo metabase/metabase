@@ -215,6 +215,35 @@
             (is (= :failed (t2/select-one-fn :status :model/TransformRun :transform_id (:id transform))))
             (is (empty? (t2/select :model/TableRemapping :database_id (mt/id))))))))))
 
+(deftest delete-after-failed-first-run-drops-the-workspace-copy-test
+  (testing "deleting a transform whose only run failed drops its workspace copy, not the canonical table"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+        (let [spec    (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+              exists? (fn [schema table-name]
+                        (= 1 (:count (first (jdbc/query spec ["SELECT count(*) AS count FROM information_schema.tables
+                                                               WHERE table_schema = ? AND table_name = ?"
+                                                              schema table-name])))))]
+          (try
+            (jdbc/execute! spec ["CREATE TABLE public.ws_drop_failed (id INT)"])
+            (with-pg-workspace-transform! "ws_drop_failed_iso" "ws_drop_failed"
+              (fn [transform]
+                ;; The run writes its copy, then fails before recording the remapping.
+                (mt/with-dynamic-fn-redefs [transforms-base.u/record-workspace-target-remapping!
+                                            (fn [_] (throw (ex-info "record failed" {})))]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"record failed"
+                                        (transforms.execute/execute! transform {:run-method :manual}))))
+                (is (empty? (t2/select :model/TableRemapping :database_id (mt/id))))
+                (is (exists? "ws_drop_failed_iso" "public__ws_drop_failed")
+                    "the failed run left its workspace copy behind")
+                (transforms-base.u/delete-target-table! transform)
+                (is (not (exists? "ws_drop_failed_iso" "public__ws_drop_failed"))
+                    "the workspace copy is dropped")
+                (is (exists? "public" "ws_drop_failed")
+                    "the canonical table is untouched")))
+            (finally
+              (jdbc/execute! spec ["DROP TABLE IF EXISTS public.ws_drop_failed"]))))))))
+
 (deftest refused-overlapping-run-keeps-remapping-test
   (testing "a run refused because the transform is already running leaves the running run's remapping in place"
     (mt/test-driver :postgres
