@@ -22,6 +22,7 @@ import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
   Parameter,
+  ParameterFieldInfo,
   ParameterId,
   ParameterValueOrArray,
 } from "./parameters";
@@ -96,7 +97,7 @@ export interface Card<
   parameter_mappings?: CardParameterMapping[] | null;
 
   result_metadata: DatasetColumn[] | null;
-  param_fields?: Record<ParameterId, Field[]>;
+  param_fields?: Record<ParameterId, ParameterFieldInfo[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 

@@ -1,10 +1,11 @@
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { asNotNull } from "metabase/utils/types";
-import type { Field, FieldId } from "metabase-types/api";
+import type { Field, FieldId, ParameterFieldInfo } from "metabase-types/api";
 import {
   createMockField,
   createMockFieldDimension,
+  createMockParameterFieldInfo,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -133,8 +134,13 @@ const allFields: Field[] = [
   ...reviewsFields,
 ];
 
-export const getField = (id: FieldId) =>
-  asNotNull(allFields.find((field) => field.id === id));
+export const getField = (id: FieldId): ParameterFieldInfo => {
+  const field = asNotNull(allFields.find((field) => field.id === id));
+  return createMockParameterFieldInfo({
+    ...field,
+    has_remapping: field.dimensions != null || field.name_field != null,
+  });
+};
 
 export const state = createMockState({
   entities: createMockEntitiesState({

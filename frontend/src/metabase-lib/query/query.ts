@@ -171,6 +171,12 @@ export function fromJsQueryAndMetadata(
   return fromJsQuery(metadataProvider(jsQuery.database, metadata), jsQuery);
 }
 
+export function isNativeJsQuery(
+  query: DatasetQuery | Record<string, never>,
+): boolean {
+  return ML.js_query_native_QMARK_(query);
+}
+
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.to_js_query(query);
 }

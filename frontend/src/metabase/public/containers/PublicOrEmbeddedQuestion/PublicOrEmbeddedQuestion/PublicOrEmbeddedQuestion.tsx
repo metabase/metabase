@@ -8,7 +8,6 @@ import { fetchDataOrError } from "metabase/dashboard/utils";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import {
-  paramFieldsFetched,
   selectQuestionFromCard,
   useQuestionFromCard,
 } from "metabase/metadata-store";
@@ -74,10 +73,6 @@ export const PublicOrEmbeddedQuestion = () => {
         );
       } else {
         throw { status: 404 };
-      }
-
-      if (card.param_fields) {
-        await dispatch(paramFieldsFetched(card.param_fields));
       }
 
       const parameters = selectQuestionFromCard(

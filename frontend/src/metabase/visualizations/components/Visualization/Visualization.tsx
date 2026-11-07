@@ -17,6 +17,7 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { isNative } from "metabase/common/utils/card";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -62,7 +63,7 @@ import {
   isSameSeries,
   prefetchVisualizationComponent,
 } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
   Dashboard,
@@ -238,9 +239,7 @@ const isLoading = (series: Series | null) => {
 const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
   const firstCard = rawSeriesArray[0]?.card;
-  const firstQuestion = firstCard != null ? new Question(firstCard) : undefined;
-  const isNativeView =
-    props.queryBuilderMode === "view" && firstQuestion?.isNative();
+  const isNativeView = props.queryBuilderMode === "view" && isNative(firstCard);
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(

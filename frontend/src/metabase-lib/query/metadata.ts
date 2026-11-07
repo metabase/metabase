@@ -1,24 +1,15 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
-  Card,
   CardId,
   CardType,
   DatabaseId,
   DatasetColumn,
   Field,
   FieldId,
-  NativeQuerySnippet,
-  NormalizedDatabase,
   NormalizedField,
-  NormalizedMeasure,
-  NormalizedMetric,
-  NormalizedSegment,
-  NormalizedTable,
-  Settings,
   TableId,
 } from "metabase-types/api";
 
-import type { Joinable } from "./join";
 import type {
   AggregationClause,
   AggregationClauseDisplayInfo,
@@ -56,7 +47,6 @@ import type {
   MetricMetadata,
   OrderByClause,
   OrderByClauseDisplayInfo,
-  PickerInfo,
   Query,
   QueryDisplayInfo,
   SegmentDisplayInfo,
@@ -66,28 +56,8 @@ import type {
   TablePickerInfo,
 } from "./types";
 
-export type JsMetadata = {
-  databases: Record<string, NormalizedDatabase>;
-  tables: Record<string, NormalizedTable>;
-  fields: Record<string, NormalizedField>;
-  segments: Record<string, NormalizedSegment>;
-  measures: Record<string, NormalizedMeasure>;
-  metrics: Record<string, NormalizedMetric>;
-  questions: Record<string, Card>;
-  snippets: Record<string, NativeQuerySnippet>;
-  settings?: Settings;
-};
-
-export const EMPTY_JS_METADATA: JsMetadata = {
-  databases: {},
-  tables: {},
-  fields: {},
-  segments: {},
-  measures: {},
-  metrics: {},
-  questions: {},
-  snippets: {},
-};
+declare const JsMetadataSymbol: unique symbol;
+export type JsMetadata = unknown & { _opaque: typeof JsMetadataSymbol };
 
 export function metadataProvider(
   databaseId: DatabaseId | null,
@@ -199,19 +169,15 @@ export const displayInfo: typeof DisplayInfoFn = ML.display_info;
 declare function PickerInfoFn(
   query: Query,
   tableMetadata: TableMetadata,
-): TablePickerInfo | null;
+): TablePickerInfo;
 declare function PickerInfoFn(
   query: Query,
   cardMetadata: CardMetadata,
-): CardPickerInfo | null;
-declare function PickerInfoFn(
-  query: Query,
-  joinable: Joinable,
-): PickerInfo | null;
+): CardPickerInfo;
 declare function PickerInfoFn(
   query: Query,
   columnMetadata: ColumnMetadata,
-): ColumnPickerInfo | null;
+): ColumnPickerInfo;
 
 export const pickerInfo: typeof PickerInfoFn = ML.picker_info;
 
@@ -322,6 +288,14 @@ export function columnUniqueKey(column: ColumnMetadata): string {
 
 export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.column_metadata_QMARK_(arg);
+}
+
+export function isTableMetadata(arg: unknown): arg is TableMetadata {
+  return ML.table_metadata_QMARK_(arg);
+}
+
+export function isCardMetadata(arg: unknown): arg is CardMetadata {
+  return ML.card_metadata_QMARK_(arg);
 }
 
 export function isMetricMetadata(arg: unknown): arg is MetricMetadata {

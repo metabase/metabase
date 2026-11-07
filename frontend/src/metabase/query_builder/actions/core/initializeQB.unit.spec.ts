@@ -1,6 +1,9 @@
 import fetchMock from "fetch-mock";
 
-import { createMockMetadataFromState } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import { createMockLocation, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
@@ -994,6 +997,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
+        metadata: createMockMetadata(),
         DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
       }).card();
 

@@ -3,27 +3,26 @@ import type { ReactNode } from "react";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/value-formatting";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
-import { isID } from "metabase-lib/v1/types/utils/isa";
+import * as Lib from "metabase-lib";
+import { getFieldTypeInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import type { ParameterFieldInfo } from "metabase-types/api";
 
 import AutoLoadRemapped from "./Remapped";
 
 type RenderNormal = (opts: {
   value?: unknown;
-  column?: ParameterField;
+  column?: ParameterFieldInfo;
 }) => ReactNode;
 type RenderRemapped = (opts: {
   value: unknown;
-  column?: ParameterField;
+  column?: ParameterFieldInfo;
   displayValue?: unknown;
-  displayColumn?: ParameterField;
 }) => ReactNode;
 
 export type RemappedValueProps = {
   value: unknown;
-  column?: ParameterField;
+  column?: ParameterFieldInfo;
   displayValue?: unknown;
-  displayColumn?: ParameterField;
   renderNormal?: RenderNormal;
   renderRemapped?: RenderRemapped;
   autoLoad?: boolean;
@@ -43,7 +42,9 @@ const defaultRenderRemapped: RenderRemapped = ({
     {/* Unjustified type cast. FIXME */}
     <span className={CS.textBold}>{displayValue as ReactNode}</span>
     {/* Show the underlying ID for PK/FK */}
-    {isID(column) && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}
+    {column != null && Lib.isID(getFieldTypeInfo(column)) && (
+      <span style={{ opacity: 0.5 }}>{" - " + value}</span>
+    )}
   </span>
 );
 
@@ -51,24 +52,18 @@ const RemappedValueContent = ({
   value,
   column,
   displayValue,
-  displayColumn,
   renderNormal = defaultRenderNormal,
   renderRemapped = defaultRenderRemapped,
   ...props
 }: Omit<RemappedValueProps, "autoLoad">) => {
   const tc = useTranslateContent();
   const effectiveValue = getEffectiveValue(value, column, props);
-  const effectiveDisplayValue = getEffectiveDisplayValue(
-    tc(displayValue),
-    displayColumn,
-    props,
-  );
+  const effectiveDisplayValue = tc(displayValue);
   if (effectiveDisplayValue != null) {
     return renderRemapped({
       value: effectiveValue,
       displayValue: effectiveDisplayValue,
       column,
-      displayColumn,
     });
   } else {
     return renderNormal({ value: effectiveValue, column });
@@ -77,26 +72,12 @@ const RemappedValueContent = ({
 
 const getEffectiveValue = (
   value: unknown,
-  column: ParameterField | undefined,
+  column: ParameterFieldInfo | undefined,
   props: object,
 ) =>
   column != null
     ? formatValue(value, { ...props, column, jsx: true, remap: false })
     : value;
-
-const getEffectiveDisplayValue = (
-  displayValue: unknown,
-  displayColumn: ParameterField | undefined,
-  props: object,
-) =>
-  displayColumn != null
-    ? formatValue(displayValue, {
-        ...props,
-        column: displayColumn,
-        jsx: true,
-        remap: false,
-      })
-    : displayValue;
 
 export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 

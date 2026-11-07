@@ -68,85 +68,68 @@
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
-(deftest ^:parallel remove-param-fields-non-public-columns-test
-  (testing "nested :name_field, :target (and its :name_field), and :dimensions :human_readable_field are sanitized too, nils dropped"
-    (let [public-field  (zipmap params/param-field-columns (repeat :public))
-          private-field (assoc public-field :fingerprint :secret, :description :secret, :table :secret)]
-      (is (= {:param_fields {"p1" [(assoc public-field
-                                          :name_field public-field
-                                          :target     (assoc public-field :name_field public-field)
-                                          :dimensions [{:id 1, :human_readable_field public-field}])]
-                             "p2" [(assoc public-field :dimensions [])]}}
-             (params/remove-param-fields-non-public-columns
-              {:param_fields {"p1" [(assoc private-field
-                                           :name_field private-field
-                                           :target     (assoc private-field :name_field private-field)
-                                           :dimensions [{:id 1, :human_readable_field private-field}])]
-                              "p2" [(assoc private-field :name_field nil, :target nil, :dimensions [])]}}))))))
+(defn- card-param-fields
+  "The hydrated `:param_fields` of a native Card with a field filter template tag on each Field in `field-ids`."
+  [field-ids]
+  (mt/with-temp [:model/Card card {:dataset_query
+                                   {:database (mt/id)
+                                    :type     :native
+                                    :native   {:query         "SELECT COUNT(*) FROM VENUES"
+                                               :template-tags (into {}
+                                                                    (map (fn [field-id]
+                                                                           [(str field-id)
+                                                                            {:name         (str field-id)
+                                                                             :display_name (str field-id)
+                                                                             :id           (str field-id)
+                                                                             :type         :dimension
+                                                                             :field-id     field-id}]))
+                                                                    field-ids)}}}]
+    (-> (t2/hydrate card :param_fields)
+        :param_fields
+        mt/derecordize)))
 
 (deftest ^:parallel hydrate-param-fields-for-card-test
   (testing "check that we can hydrate param_fields for a Card"
-    (mt/with-temp [:model/Card card {:dataset_query
-                                     {:database (mt/id)
-                                      :type     :native
-                                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-                                                 :template-tags {"name" {:name         "name"
-                                                                         :display_name "Name"
-                                                                         :id           "aaaaaaaa"
-                                                                         :type         :dimension
-                                                                         :field-id     (mt/id :venues :id)}}}}}]
-      (is (= {"aaaaaaaa" [{:id                 (mt/id :venues :id)
-                           :table_id           (mt/id :venues)
-                           :display_name       "ID"
-                           :name               "ID"
-                           :base_type          :type/BigInteger
-                           :effective_type     :type/BigInteger
-                           :semantic_type      :type/PK
-                           :has_field_values   :none
-                           :fk_target_field_id nil
-                           :settings           nil
-                           :target nil
-                           :name_field         {:id                (mt/id :venues :name)
-                                                :table_id          (mt/id :venues)
-                                                :display_name      "Name"
-                                                :name              "NAME"
-                                                :base_type         :type/Text
-                                                :effective_type    :type/Text
-                                                :semantic_type     :type/Name
-                                                :has_field_values  :list
-                                                :fk_target_field_id nil
-                                                :settings          nil}
-                           :dimensions         []}]}
-             (-> (t2/hydrate card :param_fields)
-                 :param_fields
-                 mt/derecordize))))))
+    (is (= {(str (mt/id :venues :id)) [{:id               (mt/id :venues :id)
+                                        :display_name     "ID"
+                                        :name             "ID"
+                                        :base_type        :type/BigInteger
+                                        :effective_type   :type/BigInteger
+                                        :semantic_type    :type/PK
+                                        :has_field_values :none
+                                        :settings         nil
+                                        :has_remapping    true}]}
+           (card-param-fields [(mt/id :venues :id)])))))
+
+(deftest param-fields-has-remapping-test
+  (testing "PK with name field, FK whose target has name field, and Field with Dimension have remapping"
+    (mt/with-temp [:model/Dimension _ {:field_id (mt/id :venues :price)
+                                       :name     "Price"
+                                       :type     :internal}]
+      (is (=? {(str (mt/id :venues :id))          [{:has_remapping true}]
+               (str (mt/id :venues :category_id)) [{:has_remapping true}]
+               (str (mt/id :venues :price))       [{:has_remapping true}]
+               (str (mt/id :venues :name))        [{:has_remapping false}]}
+              (card-param-fields [(mt/id :venues :id)
+                                  (mt/id :venues :category_id)
+                                  (mt/id :venues :price)
+                                  (mt/id :venues :name)]))))))
 
 (deftest hydrate-param-fields-for-dashboard-test
   (testing "check that we can hydrate param_fields for a Dashboard"
     (public-test/with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-      (is (=? {public-test/parameter-id [{:id                 (mt/id :venues :id)
-                                          :table_id           (mt/id :venues)
-                                          :display_name       "ID"
-                                          :name               "ID"
-                                          :base_type          :type/BigInteger
-                                          :semantic_type      :type/PK
-                                          :has_field_values   :none
-                                          :fk_target_field_id nil
-                                          :target             nil
-                                          :name_field         {:id                (mt/id :venues :name)
-                                                               :table_id          (mt/id :venues)
-                                                               :display_name      "Name"
-                                                               :name              "NAME"
-                                                               :base_type         :type/Text
-                                                               :effective_type    :type/Text
-                                                               :semantic_type     :type/Name
-                                                               :has_field_values  :list
-                                                               :fk_target_field_id nil
-                                                               :settings          nil}
-                                          :dimensions         []}]}
-              (-> (t2/hydrate dashboard :param_fields)
-                  :param_fields
-                  mt/derecordize))))))
+      (is (= {public-test/parameter-id [{:id               (mt/id :venues :id)
+                                         :display_name     "ID"
+                                         :name             "ID"
+                                         :base_type        :type/BigInteger
+                                         :effective_type   :type/BigInteger
+                                         :semantic_type    :type/PK
+                                         :has_field_values :none
+                                         :settings         nil
+                                         :has_remapping    true}]}
+             (-> (t2/hydrate dashboard :param_fields)
+                 :param_fields
+                 mt/derecordize))))))
 
 (deftest hydrate-param-fields-for-dashboard-test-2
   (testing "should ignore invalid parameter mappings"

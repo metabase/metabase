@@ -4,25 +4,18 @@ import {
   setupParameterSearchValuesEndpoint,
   setupParameterValuesEndpoints,
 } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Field as FieldType,
+  ParameterFieldInfo,
   ParameterValue,
   ParameterValues,
 } from "metabase-types/api";
 import {
-  createMockField,
+  createMockParameterFieldInfo,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
-import {
-  REVIEWS_ID,
-  createReviewsTable,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
 
 import { ParameterFieldWidget } from "./ParameterFieldWidget";
 
@@ -32,7 +25,7 @@ type SetupOpts = {
   parameter?: UiParameter;
   parameterValues?: ParameterValues;
   parameterSearchValues?: Record<string, ParameterValues>;
-  fieldSettings?: Partial<FieldType>;
+  fieldSettings?: Partial<ParameterFieldInfo>;
 };
 
 function setup({
@@ -46,21 +39,10 @@ function setup({
     setupParameterSearchValuesEndpoint(query, values);
   });
 
-  const field = createMockField({
+  const field = createMockParameterFieldInfo({
     id: FIELD_ID,
-    table_id: REVIEWS_ID,
     ...fieldSettings,
   });
-  const database = createSampleDatabase({
-    tables: [createReviewsTable({ fields: [field] })],
-  });
-
-  const storeInitialState = createMockState({
-    entities: createMockEntitiesState({
-      databases: [database],
-    }),
-  });
-
   const setValue = jest.fn();
   renderWithProviders(
     <ParameterFieldWidget
@@ -68,7 +50,6 @@ function setup({
       fields={[field]}
       setValue={setValue}
     />,
-    { storeInitialState },
   );
 
   return { setValue };
@@ -340,7 +321,7 @@ describe("ParameterFieldWidget", () => {
       base_type: "type/BigInteger",
       effective_type: "type/BigInteger",
       has_field_values: "list",
-    } satisfies Partial<FieldType>;
+    } satisfies Partial<ParameterFieldInfo>;
 
     it("should format numbers with default separators when no custom settings", async () => {
       setup({

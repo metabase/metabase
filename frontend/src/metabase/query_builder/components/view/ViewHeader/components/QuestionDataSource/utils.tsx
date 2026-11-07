@@ -216,28 +216,25 @@ function getDataSourceItem(
   query: Lib.Query,
   source: Lib.TableMetadata | Lib.CardMetadata,
 ): DataSourceItem | undefined {
-  const pickerInfo = Lib.pickerInfo(query, source);
-  if (pickerInfo == null) {
-    return undefined;
-  }
-
   const sourceInfo = Lib.displayInfo(query, -1, source);
-  if (pickerInfo.cardId != null) {
+  if (Lib.isCardMetadata(source)) {
+    const { id: cardId } = Lib.pickerInfo(query, source);
     return {
       type: "card",
-      key: `card:${pickerInfo.cardId}`,
+      key: `card:${cardId}`,
       name: sourceInfo.displayName,
-      href: Urls.card({ id: pickerInfo.cardId, name: sourceInfo.displayName }),
+      href: Urls.card({ id: cardId, name: sourceInfo.displayName }),
       model: getCardModel(sourceInfo),
     };
   }
 
+  const { id: tableId } = Lib.pickerInfo(query, source);
   return {
     type: "table",
-    key: `table:${pickerInfo.tableId}`,
+    key: `table:${tableId}`,
     name: sourceInfo.displayName,
     href: getTableQueryUrl(query, source),
-    tableId: pickerInfo.tableId,
+    tableId,
     schemaName: sourceInfo.schema ?? null,
     description: sourceInfo.description ?? null,
   };

@@ -5,7 +5,7 @@ import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockCard,
   createMockColumn,
-  createMockField,
+  createMockParameterFieldInfo,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
 
@@ -13,13 +13,13 @@ import { setup } from "./setup";
 
 describe("ValuesSourceModal", () => {
   const [field1, field2] = [
-    createMockField({
+    createMockParameterFieldInfo({
       id: 1,
       base_type: "type/Text",
       effective_type: "type/Text",
       semantic_type: "type/Category",
     }),
-    createMockField({
+    createMockParameterFieldInfo({
       id: 2,
       base_type: "type/Text",
       effective_type: "type/Text",

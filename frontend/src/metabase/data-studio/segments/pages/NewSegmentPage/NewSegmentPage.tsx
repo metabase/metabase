@@ -11,6 +11,7 @@ import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get
 import {
   type MetadataSelectorOpts,
   useMetadataProvider,
+  useQuestionFromOptsBuilder,
 } from "metabase/metadata-store";
 import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";
@@ -39,6 +40,7 @@ export function NewSegmentPage({
   getSuccessUrl,
 }: NewSegmentPageProps) {
   const navigate = useNavigate();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const metadataProvider = useMetadataProvider(
     table?.db_id ?? null,
     WITH_HIDDEN_TABLES,
@@ -66,7 +68,9 @@ export function NewSegmentPage({
     (name.trim().length > 0 || description.length > 0 || filters.length > 0);
   const isValid = name.trim().length > 0 && filters.length > 0;
   const previewUrl =
-    filters.length > 0 ? getDatasetQueryPreviewUrl(definition) : undefined;
+    filters.length > 0
+      ? getDatasetQueryPreviewUrl(definition, buildQuestion)
+      : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));

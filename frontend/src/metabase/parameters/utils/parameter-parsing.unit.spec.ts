@@ -1,11 +1,14 @@
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Field,
   Parameter,
+  ParameterFieldInfo,
   ParameterValueOrArray,
   ParameterValuesMap,
 } from "metabase-types/api";
-import { createMockField, createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockParameter,
+  createMockParameterFieldInfo,
+} from "metabase-types/api/mocks";
 
 import {
   getParameterValueFromQueryParams,
@@ -19,10 +22,10 @@ const UNTYPED = "type/*";
 const UNDEFINED_QUERY_PARAMS = undefined as unknown as ParameterValuesMap;
 
 describe("parameters/utils/parameter-values", () => {
-  let field1: Field;
-  let field2: Field;
-  let field3: Field;
-  let field4: Field;
+  let field1: ParameterFieldInfo;
+  let field2: ParameterFieldInfo;
+  let field3: ParameterFieldInfo;
+  let field4: ParameterFieldInfo;
   let parameter1: FieldFilterUiParameter;
   let parameter2: FieldFilterUiParameter;
   let parameter3: FieldFilterUiParameter;
@@ -31,24 +34,20 @@ describe("parameters/utils/parameter-values", () => {
   let queryParams: ParameterValuesMap;
 
   beforeEach(() => {
-    field1 = createMockField({
+    field1 = createMockParameterFieldInfo({
       id: 1,
-      table_id: 1,
       base_type: UNTYPED,
     });
-    field2 = createMockField({
+    field2 = createMockParameterFieldInfo({
       id: 2,
-      table_id: 1,
       base_type: UNTYPED,
     });
-    field3 = createMockField({
+    field3 = createMockParameterFieldInfo({
       id: 3,
-      table_id: 1,
       base_type: UNTYPED,
     });
-    field4 = createMockField({
+    field4 = createMockParameterFieldInfo({
       id: 4,
-      table_id: 1,
       base_type: UNTYPED,
     });
 
@@ -181,7 +180,6 @@ describe("parameters/utils/parameter-values", () => {
       // a unix timestamp is stored as a number and coerced to a date
       field1.base_type = "type/BigInteger";
       field1.effective_type = "type/DateTime";
-      field1.coercion_strategy = "Coercion/UNIXSeconds->DateTime";
       field4.base_type = "type/Integer";
 
       expect(

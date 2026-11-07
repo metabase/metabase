@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
-import {
-  paramFieldsFetched,
-  useQuestionFromCardBuilder,
-} from "metabase/metadata-store";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { useDispatch } from "metabase/redux";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 type UseParameterListProps = {
@@ -19,7 +15,6 @@ export const useAvailableParameters = ({
   experience,
   resource,
 }: UseParameterListProps) => {
-  const dispatch = useDispatch();
   const buildQuestion = useQuestionFromCardBuilder();
 
   // We need initial available parameters to display the `discard changes` button
@@ -58,14 +53,6 @@ export const useAvailableParameters = ({
   if (resource && initialAvailableParametersRef.current === null) {
     initialAvailableParametersRef.current = availableParameters;
   }
-
-  useEffect(() => {
-    if (resource && "param_fields" in resource && resource.param_fields) {
-      // This is needed to make some parameter widget populate the dropdown list
-      // otherwise they will use a normal text input
-      dispatch(paramFieldsFetched(resource.param_fields));
-    }
-  }, [resource, dispatch]);
 
   return {
     availableParameters,

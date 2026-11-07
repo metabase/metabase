@@ -111,13 +111,8 @@
   [fields]
   (filter #(isa? (:semantic_type %) :type/PK) fields))
 
-(def param-field-columns
-  "The only Field columns appropriate for returning in public/embedded API endpoints, which make heavy use of the
-  functions in this namespace. Used to narrow the Fields selected here, and by the public/embed endpoints to strip
-  every other column from the Fields (and their hydrated `:target`/`:name_field`) in `:param_fields`.
-
-  A parameter widget reads all of these. `:effective_type` decides which widget a coerced Field gets, and
-  `:settings` formats the values it shows."
+(def ^:private param-field-columns
+  "The Field columns selected to build `:param_fields` entries, see [[param-field-info]]."
   [:id :table_id :display_name :base_type :effective_type :name :semantic_type :has_field_values
    :fk_target_field_id :settings])
 
@@ -151,43 +146,6 @@
         (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
                                    (table-id->name-field (:table_id field))))))))
 
-;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
-;; don't want to return. The two functions below work to remove the unneeded ones.
-
-(defn- remove-dimension-nonpublic-columns
-  "Strip nonpublic columns from a `dimension` and from its hydrated human-readable Field."
-  [dimension]
-  (some-> dimension
-          (update :human_readable_field #(select-keys % param-field-columns))
-          ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go
-          ;; ahead and strip them out
-          (dissoc :created_at :updated_at)))
-
-(defn- remove-dimensions-nonpublic-columns
-  "Strip nonpublic columns from the hydrated human-readable Field in the hydrated Dimensions in `fields`."
-  [fields]
-  (for [field fields]
-    (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
-
-(defn- remove-param-field-non-public-columns
-  "Strip every column but [[param-field-columns]] from a `:param_fields` Field, recursing into the nested Fields it
-  carries: its `:name_field`, its FK `:target` (and that target's `:name_field`), and the `:human_readable_field` of
-  its `:dimensions`; `nil` nested Fields are dropped. The frontend depends on the nested Fields to decide whether to
-  call the remapping endpoints, but when the request carries a session, `:target` hydrates as a full Field row, so
-  without this it carries columns like `:fingerprint` and `:description`."
-  [field]
-  (-> (select-keys field (conj param-field-columns :name_field :target :dimensions))
-      (u/update-some :name_field remove-param-field-non-public-columns)
-      (u/update-some :target remove-param-field-non-public-columns)
-      (u/update-some :dimensions (partial mapv #(u/update-some % :human_readable_field
-                                                               remove-param-field-non-public-columns)))))
-
-(defn remove-param-fields-non-public-columns
-  "Strip non-public columns from every Field in the hydrated `:param_fields` of a Card or Dashboard. Used by the
-  public/embed endpoints; see [[remove-param-field-non-public-columns]]."
-  [card-or-dashboard]
-  (m/update-existing card-or-dashboard :param_fields update-vals #(mapv remove-param-field-non-public-columns %)))
-
 (defn- hydrate-param-field-targets
   "Attach each FK Field's `:target`, with the `:name_field` that labels the target's
   values. The usual `:target` hydration reads the target Field through permissions,
@@ -198,23 +156,47 @@
   (let [target-ids (into #{} (keep :fk_target_field_id) fields)
         id->target (when (seq target-ids)
                      (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns target-ids)
-                                         (t2/hydrate :has_field_values :name_field))))]
+                                         (t2/hydrate :name_field))))]
     (for [field fields]
       (assoc field :target (some-> (:fk_target_field_id field) id->target)))))
 
-(mu/defn- param-field-ids->fields
-  "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
-  or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
-  parameter widgets."
+(defn- has-remapping?
+  "Whether the values of a `field` hydrated with `:dimensions`, `:name_field` and `:target` have human-readable labels:
+  an internal or external Dimension, or a `:type/Name` Field for the Field or its FK target."
+  [field]
+  (let [dimension (first (:dimensions field))]
+    (boolean (or (= :internal (keyword (:type dimension)))
+                 (:human_readable_field_id dimension)
+                 (:name_field (or (:target field) field))))))
+
+(defn- param-field-info
+  "The `:param_fields` entry for a hydrated `field`: only what a parameter widget reads."
+  [field]
+  (-> (select-keys field [:id :name :display_name :base_type :effective_type :semantic_type :settings
+                          :has_field_values])
+      (assoc :has_remapping (has-remapping? field))))
+
+(mu/defn- param-field-ids->fields :- [:maybe [:map-of ::lib.schema.parameter/id [:sequential :metabase.queries.schema/param-field]]]
+  "Get the `:param_fields` entries (as a map of Parameter ID -> entries) that should be returned for hydrated
+  `:param_fields` for a Card or Dashboard. These only contain the minimal amount of information necessary needed to
+  power public or embedded parameter widgets."
   [param-id->field-ids :- [:maybe [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
-                          (m/index-by :id (-> (parameters.db/fields-with-columns param-field-columns field-ids)
-                                              (t2/hydrate :has_field_values :name_field [:dimensions [:human_readable_field :has_field_values]])
-                                              hydrate-param-field-targets
-                                              remove-dimensions-nonpublic-columns)))]
+                          (m/index-by :id (->> (-> (parameters.db/fields-with-columns param-field-columns field-ids)
+                                                   (t2/hydrate :has_field_values :name_field :dimensions)
+                                                   hydrate-param-field-targets)
+                                               (map param-field-info))))]
     (->> param-id->field-ids
          (m/map-vals #(into [] (keep field-id->field) %)))))
+
+(mu/defn param-field-id->table-id :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "The Table ID of each Field in the `:param_fields` of a Card or Dashboard, keyed by Field ID."
+  [param-fields :- [:maybe [:map-of ::lib.schema.parameter/id [:sequential :metabase.queries.schema/param-field]]]]
+  (let [field-ids (into #{} (comp cat (map :id)) (vals param-fields))]
+    (if (seq field-ids)
+      (into {} (map (juxt :id :table_id)) (parameters.db/fields-with-columns [:id :table_id] field-ids))
+      {})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               DASHBOARD-SPECIFIC                                               |

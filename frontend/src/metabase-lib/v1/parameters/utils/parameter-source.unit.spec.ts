@@ -1,5 +1,5 @@
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import { createMockField } from "metabase-types/api/mocks";
+import { createMockParameterFieldInfo } from "metabase-types/api/mocks";
 
 import {
   canListParameterValues,
@@ -14,23 +14,23 @@ const SEARCH_FIELD_ID = 3;
 const SEARCH_FIELD_2_ID = 4;
 const NO_VALUES_FIELD_ID = 5;
 
-const listField = createMockField({
+const listField = createMockParameterFieldInfo({
   id: LIST_FIELD_ID,
   has_field_values: "list",
 });
-const listField2 = createMockField({
+const listField2 = createMockParameterFieldInfo({
   id: LIST_FIELD_2_ID,
   has_field_values: "list",
 });
-const searchField = createMockField({
+const searchField = createMockParameterFieldInfo({
   id: SEARCH_FIELD_ID,
   has_field_values: "search",
 });
-const searchField2 = createMockField({
+const searchField2 = createMockParameterFieldInfo({
   id: SEARCH_FIELD_2_ID,
   has_field_values: "search",
 });
-const noValuesField = createMockField({
+const noValuesField = createMockParameterFieldInfo({
   id: NO_VALUES_FIELD_ID,
   has_field_values: "none",
 });

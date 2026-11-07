@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import { createMockField } from "metabase-types/api/mocks";
+import { createMockParameterFieldInfo } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
@@ -15,7 +15,7 @@ function setup(opts: Partial<SetupOpts> = {}) {
 }
 
 describe("ValuesSourceModal", () => {
-  const field1 = createMockField({
+  const field1 = createMockParameterFieldInfo({
     id: 1,
     base_type: "type/Text",
     semantic_type: "type/Category",

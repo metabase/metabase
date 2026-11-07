@@ -156,10 +156,7 @@ export const getShallowTableForeignKeys = createSelector(
     }),
 );
 
-const getMetadataForOpts: (
-  state: State,
-  props: MetadataSelectorOpts,
-) => JsMetadata = createSelector(
+const getMetadataForOpts = createSelector(
   [
     getNormalizedDatabases,
     getNormalizedTables,
@@ -196,6 +193,13 @@ const getMetadataForOpts: (
   }),
 );
 
+function toJsMetadata(
+  metadata: ReturnType<typeof getMetadataForOpts>,
+): JsMetadata {
+  // JsMetadata is opaque so that only metabase-lib reads the store records
+  return metadata as unknown as JsMetadata;
+}
+
 const NO_OPTS: MetadataSelectorOpts = {};
 
 /**
@@ -207,7 +211,7 @@ const NO_OPTS: MetadataSelectorOpts = {};
 export const getMetadata = (
   state: State,
   props: MetadataSelectorOpts = NO_OPTS,
-): JsMetadata => getMetadataForOpts(state, props);
+): JsMetadata => toJsMetadata(getMetadataForOpts(state, props));
 
 const UNFILTERED_OPTS: MetadataSelectorOpts = {
   includeHiddenTables: true,

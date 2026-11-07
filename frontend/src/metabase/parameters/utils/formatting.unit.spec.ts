@@ -1,8 +1,5 @@
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import {
-  createMockField,
-  createMockFieldDimension,
-} from "metabase-types/api/mocks";
+import { createMockParameterFieldInfo } from "metabase-types/api/mocks";
 import {
   createOrdersTotalField,
   createProductsCategoryField,
@@ -11,23 +8,11 @@ import {
 
 import { formatParameterValue } from "./formatting";
 
-const REMAPPED_FIELD_ID = 100;
-
-const numberField = createOrdersTotalField();
-const textField = createProductsTitleField();
-const categoryField = createProductsCategoryField();
-const remappedField = {
-  ...createMockField({
-    id: REMAPPED_FIELD_ID,
-    base_type: "type/Integer",
-    dimensions: [
-      createMockFieldDimension({
-        type: "internal",
-      }),
-    ],
-  }),
-  remapping: new Map([[123456789, "A"]]),
-};
+const numberField = createMockParameterFieldInfo(createOrdersTotalField());
+const textField = createMockParameterFieldInfo(createProductsTitleField());
+const categoryField = createMockParameterFieldInfo(
+  createProductsCategoryField(),
+);
 
 describe("metabase/parameters/utils/formatting", () => {
   describe("formatParameterValue without settings", () => {
@@ -177,22 +162,6 @@ describe("metabase/parameters/utils/formatting", () => {
         expect(formatParameterValue(value, parameter)).toEqual(expected);
       },
     );
-
-    it("should not remap a field filter parameter connected to more than one field", () => {
-      const parameter = createMockUiParameter({
-        type: "number/=",
-        fields: [remappedField, numberField],
-      });
-      expect(formatParameterValue(123456789, parameter)).toEqual("123,456,789");
-    });
-
-    it("should remap a field filter parameter value with a target field that is remapped", () => {
-      const parameter = createMockUiParameter({
-        type: "number/=",
-        fields: [remappedField],
-      });
-      expect(formatParameterValue(123456789, parameter)).toEqual("A");
-    });
   });
 
   describe("formatParameterValue with settings", () => {

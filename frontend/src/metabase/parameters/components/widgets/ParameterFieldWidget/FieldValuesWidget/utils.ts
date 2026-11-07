@@ -4,8 +4,11 @@ import _ from "underscore";
 import type { ComboboxItem } from "metabase/ui";
 import { isTransientId } from "metabase/utils/dashboard";
 import { stripId } from "metabase/utils/formatting";
-import { getSearchField } from "metabase-lib/v1/metadata/utils/remapping";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
+import * as Lib from "metabase-lib";
+import {
+  getFieldTypeInfo,
+  hasRemappedFields,
+} from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   canListParameterValues,
   canSearchParameterValues,
@@ -15,15 +18,12 @@ import {
   isIdParameter,
   isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import {
-  isID,
-  isNumeric as isNumericField,
-} from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   DashboardId,
   FieldValue,
   Parameter,
+  ParameterFieldInfo,
   RowValue,
 } from "metabase-types/api";
 
@@ -56,25 +56,20 @@ function getNonSearchableTokenFieldPlaceholder(parameter: Parameter) {
 
 function getSearchableTokenFieldPlaceholder(
   parameter: Parameter,
-  fields: ParameterField[],
+  fields: ParameterFieldInfo[],
 ) {
-  const names = new Set(
-    fields.map((field) => stripId(getSearchField(field)?.display_name ?? "")),
-  );
+  const names = new Set(fields.map((field) => stripId(field.display_name)));
 
-  if (names.size !== 1 || getSourceType(parameter) != null) {
+  if (
+    names.size !== 1 ||
+    getSourceType(parameter) != null ||
+    hasRemappedFields(fields)
+  ) {
     return t`Search`;
   }
 
   const [name] = names;
-  const [firstField] = fields;
-  const canEnterId =
-    firstField != null &&
-    isID(firstField) &&
-    firstField !== getSearchField(firstField);
-  return canEnterId
-    ? t`Search by ${name}` + t` or enter an ID`
-    : t`Search by ${name}`;
+  return t`Search by ${name}`;
 }
 
 export function hasList({
@@ -120,7 +115,7 @@ export function getTokenFieldPlaceholder({
   options,
   valuesMode,
 }: {
-  fields: ParameterField[];
+  fields: ParameterFieldInfo[];
   parameter: Parameter;
   placeholder?: string;
   options: FieldValue[];
@@ -146,10 +141,11 @@ export function getValuesMode(parameter: Parameter): ValuesMode {
   return "none";
 }
 
-export function isNumeric(parameter: Parameter, fields: ParameterField[]) {
+export function isNumeric(parameter: Parameter, fields: ParameterFieldInfo[]) {
   return (
     isNumberParameter(parameter) ||
-    (fields.length > 0 && fields.every(isNumericField))
+    (fields.length > 0 &&
+      fields.every((field) => Lib.isNumeric(getFieldTypeInfo(field))))
   );
 }
 

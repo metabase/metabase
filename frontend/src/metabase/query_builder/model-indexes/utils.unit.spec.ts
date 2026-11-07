@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
 import {
@@ -11,6 +12,7 @@ import { canIndexField } from "./utils";
 const createModelWithResultMetadata = (fields: DatasetColumn[]) => {
   return new Question(
     createMockCard({ result_metadata: fields, type: "model" }),
+    createMockMetadata(),
   );
 };
 

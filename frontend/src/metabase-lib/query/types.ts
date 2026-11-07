@@ -5,6 +5,7 @@ import type {
   DatabaseNativePermissions,
   DatasetColumn,
   DatetimeUnit,
+  FieldFormattingSettings,
   FieldId,
   FieldValuesType,
   JoinConditionOperator,
@@ -655,11 +656,23 @@ export const isBrushClickObject = (
   clicked.column != null &&
   clicked.event != null;
 
-export interface FieldValuesSearchInfo {
+export interface FieldSearchInfo {
   fieldId: FieldId | null;
   searchField: ColumnMetadata | null;
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
+}
+
+export interface FieldRemappingInfo {
+  id: FieldId | null;
+  name: string;
+  displayName: string;
+  baseType: string | null;
+  effectiveType: string | null;
+  semanticType: string | null;
+  settings: FieldFormattingSettings | null;
+  hasFieldValues: FieldValuesType;
+  hasRemapping: boolean;
 }
 
 export type QueryDisplayInfo = {
@@ -698,22 +711,14 @@ export type JsColumnTypeInfo = {
 };
 
 export type TablePickerInfo = {
-  databaseId: DatabaseId;
-  tableId: TableId;
-  cardId?: never;
-  isModel?: never;
+  id: TableId;
 };
 
 export type CardPickerInfo = {
-  databaseId: DatabaseId;
-  tableId?: never;
-  cardId: CardId;
-  isModel: boolean;
+  id: CardId;
 };
 
-export type PickerInfo = TablePickerInfo | CardPickerInfo;
-
 export type ColumnPickerInfo = {
-  id: FieldId;
-  tableId: TableId;
+  id: FieldId | null;
+  tableId: TableId | null;
 };

@@ -6,6 +6,7 @@ import * as dashboardActions from "metabase/redux/dashboard";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { FieldId } from "metabase-types/api";
+import { createMockParameterFieldInfo } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PRODUCTS,
@@ -51,13 +52,13 @@ describe("ParameterLinkedFilters", () => {
       parameter: createMockUiParameter({
         id: "p1",
         name: "P1",
-        fields: [createProductsCategoryField()],
+        fields: [createMockParameterFieldInfo(createProductsCategoryField())],
       }),
       otherParameters: [
         createMockUiParameter({
           id: "p2",
           name: "P2",
-          fields: [createProductsVendorField()],
+          fields: [createMockParameterFieldInfo(createProductsVendorField())],
         }),
       ],
       filteringIdsByFilteredId: {
@@ -75,18 +76,24 @@ describe("ParameterLinkedFilters", () => {
       parameter: createMockUiParameter({
         id: "p1",
         name: "P1",
-        fields: [createProductsCreatedAtField(), createOrdersCreatedAtField()],
+        fields: [
+          createMockParameterFieldInfo(createProductsCreatedAtField()),
+          createMockParameterFieldInfo(createOrdersCreatedAtField()),
+        ],
       }),
       otherParameters: [
         createMockUiParameter({
           id: "p2",
           name: "P2",
-          fields: [createOrdersIdField(), createPeopleCreatedAtField()],
+          fields: [
+            createMockParameterFieldInfo(createOrdersIdField()),
+            createMockParameterFieldInfo(createPeopleCreatedAtField()),
+          ],
         }),
         createMockUiParameter({
           id: "p3",
           name: "P3",
-          fields: [createPeopleCreatedAtField()],
+          fields: [createMockParameterFieldInfo(createPeopleCreatedAtField())],
         }),
       ],
       filteringIdsByFilteredId: {

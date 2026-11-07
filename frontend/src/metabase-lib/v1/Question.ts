@@ -41,7 +41,7 @@ export type QuestionCreatorOpts = {
   cardType?: CardType;
   collectionId?: CollectionId;
   dashboardId?: DashboardId;
-  metadata?: Lib.JsMetadata;
+  metadata: Lib.JsMetadata;
   parameterValues?: ParameterValuesMap;
   name?: string;
   display?: CardDisplayType;
@@ -93,11 +93,11 @@ class Question {
     // card boundary stays loosely typed. Internally it is treated as a `Card`,
     // guarding the saved-only fields (id, name, type, ...) where they are read.
     card: any,
-    metadata?: Lib.JsMetadata,
+    metadata: Lib.JsMetadata,
     parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
-    this._metadata = metadata ?? Lib.EMPTY_JS_METADATA;
+    this._metadata = metadata;
     this._parameterValues = parameterValues || {};
   }
 
@@ -343,7 +343,7 @@ class Question {
     return this.setQuery(query);
   }
 
-  composeQuestionAdhoc(options: QuestionCreatorOpts = {}): Question {
+  composeQuestionAdhoc(options: { display?: CardDisplayType } = {}): Question {
     if (!this.isSaved()) {
       return this;
     }
@@ -705,7 +705,7 @@ class Question {
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
-  }: QuestionCreatorOpts = {}) {
+  }: QuestionCreatorOpts) {
     // `create` builds an unsaved draft that lacks the fields a saved Card has
     // (id, entity_id, name, type, ...). The Question class nevertheless treats
     // `_card` as a full Card, so we assert the draft shape here.

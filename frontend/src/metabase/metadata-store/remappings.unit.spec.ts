@@ -3,35 +3,22 @@ import fetchMock from "fetch-mock";
 import { getMainStore } from "__support__/entities-store";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
-import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 import {
-  PEOPLE,
-  PEOPLE_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+  createMockParameter,
+  createMockParameterFieldInfo,
+} from "metabase-types/api/mocks";
+import { PEOPLE, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { fetchRemapping } from "./remappings";
 
-// the shape the backend hydrates into `param_fields`: a plain object with the
-// remap target nested, and none of the v1 wrapper's methods
-const idField: ParameterField = createMockField({
+const idField = createMockParameterFieldInfo({
   id: PEOPLE.ID,
-  table_id: PEOPLE_ID,
   name: "ID",
   display_name: "ID",
   base_type: "type/BigInteger",
   semantic_type: "type/PK",
   has_field_values: "none",
-  name_field: createMockField({
-    id: PEOPLE.NAME,
-    table_id: PEOPLE_ID,
-    name: "NAME",
-    display_name: "Name",
-    base_type: "type/Text",
-    semantic_type: "type/Name",
-    has_field_values: "list",
-  }),
+  has_remapping: true,
 });
 
 const parameter = createMockParameter({

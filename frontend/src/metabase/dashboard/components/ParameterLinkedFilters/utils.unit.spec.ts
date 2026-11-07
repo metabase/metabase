@@ -1,4 +1,5 @@
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import { createMockParameterFieldInfo } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PRODUCTS,
@@ -18,20 +19,20 @@ describe("getFilterFieldsRequest", () => {
     {
       parameter: createMockUiParameter({
         name: "p1",
-        fields: [createProductsCategoryField()],
+        fields: [createMockParameterFieldInfo(createProductsCategoryField())],
       }),
       otherParameters: [
         createMockUiParameter({
           name: "p2",
-          fields: [createProductsVendorField()],
+          fields: [createMockParameterFieldInfo(createProductsVendorField())],
         }),
         createMockUiParameter({
           name: "p3",
-          fields: [createProductsVendorField()],
+          fields: [createMockParameterFieldInfo(createProductsVendorField())],
         }),
         createMockUiParameter({
           name: "p4",
-          fields: [createOrdersIdField()],
+          fields: [createMockParameterFieldInfo(createOrdersIdField())],
         }),
       ],
       expectedRequest: {
@@ -42,7 +43,7 @@ describe("getFilterFieldsRequest", () => {
     {
       parameter: createMockUiParameter({
         name: "p1",
-        fields: [createProductsCategoryField()],
+        fields: [createMockParameterFieldInfo(createProductsCategoryField())],
       }),
       otherParameters: [
         createMockUiParameter({
@@ -60,7 +61,7 @@ describe("getFilterFieldsRequest", () => {
       otherParameters: [
         createMockUiParameter({
           name: "p2",
-          fields: [createProductsCategoryField()],
+          fields: [createMockParameterFieldInfo(createProductsCategoryField())],
         }),
       ],
       expectedRequest: undefined,
@@ -80,23 +81,29 @@ describe("getLinkedParametersInfo", () => {
     const parameters = [
       createMockUiParameter({
         id: "p1",
-        fields: [createProductsVendorField()],
+        fields: [createMockParameterFieldInfo(createProductsVendorField())],
       }),
       createMockUiParameter({
         id: "p2",
-        fields: [createReviewsRatingField()],
+        fields: [createMockParameterFieldInfo(createReviewsRatingField())],
       }),
       createMockUiParameter({
         id: "p3",
-        fields: [createOrdersIdField(), createPeopleIdField()],
+        fields: [
+          createMockParameterFieldInfo(createOrdersIdField()),
+          createMockParameterFieldInfo(createPeopleIdField()),
+        ],
       }),
       createMockUiParameter({
         id: "p4",
-        fields: [createOrdersIdField(), createOrdersProductIdField()],
+        fields: [
+          createMockParameterFieldInfo(createOrdersIdField()),
+          createMockParameterFieldInfo(createOrdersProductIdField()),
+        ],
       }),
       createMockUiParameter({
         id: "p5",
-        fields: [createPeopleIdField()],
+        fields: [createMockParameterFieldInfo(createPeopleIdField())],
       }),
     ];
 

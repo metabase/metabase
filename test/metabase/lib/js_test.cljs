@@ -767,6 +767,26 @@
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
 
+(deftest ^:parallel js-query-native?-test
+  (testing "legacy queries"
+    (is (true? (lib.js/js-query-native? #js {:type "native", :native #js {:query "SELECT 1"}})))
+    (is (false? (lib.js/js-query-native? #js {:type "query", :query #js {:source-table 1}}))))
+  (testing "MBQL 5 queries"
+    (is (true? (lib.js/js-query-native? (lib.js/to-js-query (lib/native-query meta/metadata-provider "SELECT 1")))))
+    (is (false? (lib.js/js-query-native? (lib.js/to-js-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
+  (testing "empty query"
+    (is (false? (lib.js/js-query-native? #js {})))))
+
+(deftest ^:parallel picker-info-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+    (testing "table returns its ID"
+      (is (= {:id (meta/id :orders)}
+             (js->clj (lib.js/picker-info query (meta/table-metadata :orders)) :keywordize-keys true))))
+    (testing "card returns its ID"
+      (let [card (:orders (lib.tu/mock-cards))]
+        (is (= {:id (:id card)}
+               (js->clj (lib.js/picker-info query card) :keywordize-keys true)))))))
+
 (deftest ^:parallel picker-info-column-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/expression "double total" (lib/* (meta/field-metadata :orders :total) 2)))
@@ -777,5 +797,6 @@
       (is (= {:id      (meta/id :orders :total)
               :tableId (meta/id :orders)}
              (js->clj (lib.js/picker-info query total) :keywordize-keys true))))
-    (testing "expression column returns nil"
-      (is (nil? (lib.js/picker-info query expr))))))
+    (testing "expression column returns nil IDs"
+      (is (= {:id nil, :tableId nil}
+             (js->clj (lib.js/picker-info query expr) :keywordize-keys true))))))

@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import { setupUserEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
@@ -28,9 +29,12 @@ describe("ModerationReviewText", () => {
     renderWithProviders(
       <ModerationReviewTextForQuestion
         question={
-          new Question({
-            moderation_reviews: [moderationReview],
-          })
+          new Question(
+            {
+              moderation_reviews: [moderationReview],
+            },
+            createMockMetadata(),
+          )
         }
       />,
       {

@@ -30,6 +30,20 @@
   "The `:settings` column of a Field, decoded."
   ms/VisualizationSettings)
 
+(mr/def ::field.name-field
+  "The `:type/Name` Field of a PK's Table, as the `:name_field` hydration attaches it."
+  [:map {:closed true}
+   [:id                 ::lib.schema.id/field]
+   [:table_id           [:maybe ::lib.schema.id/table]]
+   [:display_name       [:maybe :string]]
+   [:base_type          [:maybe [:or :keyword :string]]]
+   [:effective_type     [:maybe [:or :keyword :string]]]
+   [:name               :string]
+   [:semantic_type      [:maybe [:or :keyword :string]]]
+   [:has_field_values   [:maybe [:or :keyword :string]]]
+   [:fk_target_field_id [:maybe ::lib.schema.id/field]]
+   [:settings           [:maybe ::field.settings]]])
+
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
   [:merge
@@ -38,7 +52,7 @@
     [:id                         ::lib.schema.id/field]
     [:unique_field_helper        {:optional true} [:maybe :int]]
     [:dimensions                 {:optional true} [:maybe [:sequential [:ref ::dimension]]]]
-    [:name_field                 {:optional true} [:maybe :metabase.queries.schema/param-field.name-field]]
+    [:name_field                 {:optional true} [:maybe [:ref ::field.name-field]]]
     [:target                     {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::field.update

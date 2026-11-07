@@ -4,10 +4,7 @@ import * as LibMetric from "metabase-lib/metric";
 import type { NormalizedMetric } from "metabase-types/api";
 
 export function createMetricMetadata(metrics: NormalizedMetric[]): JsMetadata {
-  return {
-    ...createMockMetadata(),
-    metrics: Object.fromEntries(metrics.map((metric) => [metric.id, metric])),
-  };
+  return createMockMetadata({ metrics });
 }
 
 export function setupDefinition(

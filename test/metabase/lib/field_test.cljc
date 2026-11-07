@@ -1920,7 +1920,7 @@
               (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
                                                  [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
-(deftest ^:parallel field-values-search-info-test
+(deftest ^:parallel field-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
     (let [name-field (meta/field-metadata :venues :name)
           metadata-provider (lib.tu/merged-mock-metadata-provider
@@ -1942,7 +1942,7 @@
                :search-field     {:id (meta/id :venues :name)
                                   :display-name "Name"}
                :has-field-values :search}
-              (lib.field/field-values-search-info metadata-provider venues-id)))))
+              (lib.field/field-search-info metadata-provider venues-id)))))
   (testing "type/FK field remapped to a field in another table"
     (let [metadata-provider (-> meta/metadata-provider
                                 (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :name)
@@ -1967,9 +1967,56 @@
                :search-field     {:id (meta/id :categories :name)
                                   :display-name "Name"}
                :has-field-values :search}
-              (lib.field/field-values-search-info metadata-provider venues-name))))))
+              (lib.field/field-search-info metadata-provider venues-name))))))
 
-(deftest ^:parallel field-values-search-info-pks-test
+(deftest ^:parallel field-remapping-info-test
+  (let [has-remapping? (fn [metadata-provider field-id]
+                         (:has-remapping (lib.field/field-remapping-info
+                                          metadata-provider
+                                          (lib.metadata/field metadata-provider field-id))))]
+    (testing "Field info"
+      (is (=? {:id               (meta/id :venues :name)
+               :name             "NAME"
+               :display-name     "Name"
+               :base-type        :type/Text
+               :effective-type   :type/Text
+               :semantic-type    :type/Name
+               :has-field-values :list
+               :has-remapping    false}
+              (lib.field/field-remapping-info meta/metadata-provider
+                                              (meta/field-metadata :venues :name)))))
+    (testing "external remapping"
+      (is (true? (has-remapping? (lib.tu/remap-metadata-provider meta/metadata-provider
+                                                                 (meta/id :venues :category-id)
+                                                                 (meta/id :categories :name))
+                                 (meta/id :venues :category-id)))))
+    (testing "internal remapping"
+      (is (true? (has-remapping? (lib.tu/remap-metadata-provider meta/metadata-provider
+                                                                 (meta/id :venues :price)
+                                                                 ["$" "$$" "$$$" "$$$$"])
+                                 (meta/id :venues :price)))))
+    (testing "PK with name field"
+      (is (true? (has-remapping? (lib.tu/merged-mock-metadata-provider
+                                  meta/metadata-provider
+                                  {:fields [{:id (meta/id :venues :id), :name-field (meta/id :venues :name)}]})
+                                 (meta/id :venues :id)))))
+    (testing "FK whose target has name field"
+      (is (true? (has-remapping? (lib.tu/merged-mock-metadata-provider
+                                  meta/metadata-provider
+                                  {:fields [{:id (meta/id :categories :id), :name-field (meta/id :categories :name)}]})
+                                 (meta/id :venues :category-id)))))
+    (testing "no remapping"
+      (is (false? (has-remapping? meta/metadata-provider (meta/id :venues :price))))))
+  (testing "column without Field"
+    (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                     (lib/expression "double price" (lib/* (meta/field-metadata :venues :price) 2)))
+          column (m/find-first #(= "double price" (:name %)) (lib/visible-columns query))]
+      (is (=? {:id               nil
+               :has-field-values :none
+               :has-remapping    false}
+              (lib.field/field-remapping-info query column))))))
+
+(deftest ^:parallel field-search-info-pks-test
   (testing "Don't return anything for PKs"
     (let [metadata-provider (-> meta/metadata-provider
                                 (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :id)
@@ -1979,17 +2026,17 @@
               :search-field-id  nil
               :search-field     nil
               :has-field-values :list}
-             (lib.field/field-values-search-info
+             (lib.field/field-search-info
               metadata-provider
               (lib.metadata/field metadata-provider (meta/id :venues :id))))))))
 
-(deftest ^:parallel field-values-search-info-native-test
+(deftest ^:parallel field-search-info-native-test
   (testing "No field-id without custom metadata (#37100)"
     (is (= {:field-id nil
             :search-field-id nil
             :search-field nil
             :has-field-values :none}
-           (lib.field/field-values-search-info
+           (lib.field/field-search-info
             meta/metadata-provider
             (-> (lib.tu/native-query)
                 lib/visible-columns
@@ -1998,7 +2045,7 @@
             :search-field-id nil
             :search-field nil
             :has-field-values :none}
-           (lib.field/field-values-search-info
+           (lib.field/field-search-info
             meta/metadata-provider
             (-> (lib.tu/query-with-stage-metadata-from-card
                  meta/metadata-provider
@@ -2009,7 +2056,7 @@
             :search-field-id nil
             :search-field nil
             :has-field-values :none}
-           (lib.field/field-values-search-info
+           (lib.field/field-search-info
             meta/metadata-provider
             (-> (lib.tu/query-with-stage-metadata-from-card
                  meta/metadata-provider
@@ -2021,7 +2068,7 @@
             :search-field-id nil
             :search-field nil
             :has-field-values :none}
-           (lib.field/field-values-search-info
+           (lib.field/field-search-info
             meta/metadata-provider
             (->> (lib.tu/query-with-stage-metadata-from-card
                   meta/metadata-provider
@@ -2030,14 +2077,14 @@
                  lib/visible-columns
                  (m/find-first (comp #{"NAME"} :name))))))))
 
-(deftest ^:parallel field-values-search-info-native-test-2
+(deftest ^:parallel field-search-info-native-test-2
   (testing "field-id with custom metadata (#37100)"
     (is (=? {:field-id 1
              :search-field-id 1
              :search-field {:id 1
                             :display-name "Search"}
              :has-field-values :search}
-            (lib.field/field-values-search-info
+            (lib.field/field-search-info
              meta/metadata-provider
              (-> (update-in (lib.tu/native-query) [:stages 0 :lib/stage-metadata :columns] conj
                             {:lib/type :metadata/column
@@ -2051,7 +2098,7 @@
             :search-field-id nil
             :search-field nil
             :has-field-values :none}
-           (lib.field/field-values-search-info
+           (lib.field/field-search-info
             meta/metadata-provider
             (-> (update-in (lib.tu/native-query) [:stages 0 :lib/stage-metadata :columns] conj
                            {:lib/type :metadata/column

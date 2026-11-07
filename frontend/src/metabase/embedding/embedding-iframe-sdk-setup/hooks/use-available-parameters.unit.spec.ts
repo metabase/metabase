@@ -8,10 +8,7 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-const mockDispatch = jest.fn();
-
 jest.mock("metabase/redux", () => ({
-  useDispatch: () => mockDispatch,
   useSelector: jest.fn(),
 }));
 
@@ -26,10 +23,6 @@ const mockCardParameters = jest.fn();
 
 jest.mock("metabase/metadata-store", () => ({
   useQuestionFromCardBuilder: () => () => ({ parameters: mockCardParameters }),
-  paramFieldsFetched: jest.fn((paramFields) => ({
-    type: "metabase/entities/UPDATE",
-    payload: paramFields,
-  })),
 }));
 
 const mockUseSelector = jest.requireMock("metabase/redux").useSelector;
@@ -295,28 +288,6 @@ describe("useAvailableParameters", () => {
 
       // initialAvailableParameters should be reset to null when resource becomes null
       expect(result.current.initialAvailableParameters).toBeNull();
-    });
-  });
-
-  describe("param_fields handling", () => {
-    it("should mirror the param_fields the resource carries", () => {
-      const dashboardWithParamFields = {
-        ...mockDashboard,
-        param_fields: {
-          field1: [{ id: 1, name: "Field 1" }],
-          field2: [{ id: 2, name: "Field 2" }],
-        },
-      };
-
-      renderHook(() =>
-        useAvailableParameters({
-          experience: "dashboard",
-          // Unjustified type cast. FIXME
-          resource: dashboardWithParamFields as unknown as Dashboard,
-        }),
-      );
-
-      expect(mockDispatch).toHaveBeenCalled();
     });
   });
 });

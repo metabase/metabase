@@ -1,34 +1,16 @@
-import type { RemappableField } from "metabase-lib/v1/metadata/utils/remapping";
 import type {
-  FieldFormattingSettings,
-  FieldValuesType,
   Parameter,
+  ParameterFieldInfo,
   ParameterTarget,
   ParameterValueOrArray,
-  TableId,
 } from "metabase-types/api";
-
-/**
- * What a parameter widget reads off a field it filters on.
- *
- * The API field and the v1 `Field` wrapper both match it. They are not
- * assignable to each other, because the wrapper hydrates `table` into a v1
- * `Table`, so the parameter pipeline names the fields it reads instead.
- */
-export interface ParameterField extends RemappableField<ParameterField> {
-  name: string;
-  display_name: string;
-  table_id: TableId;
-  has_field_values: FieldValuesType;
-  settings?: FieldFormattingSettings;
-}
 
 interface ValuePopulatedParameter extends ParameterWithTemplateTagTarget {
   value?: ParameterValueOrArray | null;
 }
 
 export interface FieldFilterUiParameter extends ValuePopulatedParameter {
-  fields: ParameterField[];
+  fields: ParameterFieldInfo[];
 }
 
 export type UiParameter = (FieldFilterUiParameter | ValuePopulatedParameter) & {

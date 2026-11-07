@@ -2,7 +2,6 @@ import { cardApi, dashboardApi, datasetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -10,13 +9,14 @@ import type {
   DashboardId,
   FieldValue,
   Parameter,
+  ParameterFieldInfo,
   RowValue,
 } from "metabase-types/api";
 
 type FetchRemappingOptions = {
   parameter?: Parameter | null;
   value: RowValue;
-  field?: ParameterField | null;
+  field?: ParameterFieldInfo | null;
   cardId?: CardId | null;
   dashboardId?: DashboardId | null;
   uuid?: string | null;

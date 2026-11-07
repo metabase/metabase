@@ -239,7 +239,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           .click();
 
         // Type in the search input to trigger the search endpoint
-        cy.findByPlaceholderText("Search by Name or enter an ID").type("Hud");
+        cy.findByPlaceholderText("Search").type("Hud");
 
         cy.wait("@parameterSearchApiRequest");
 
@@ -700,7 +700,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
           .click();
 
         // Type in the search input to trigger the search endpoint
-        cy.findByPlaceholderText("Search by Name or enter an ID").type("Hud");
+        cy.findByPlaceholderText("Search").type("Hud");
 
         cy.wait("@parameterSearchApiRequest");
 

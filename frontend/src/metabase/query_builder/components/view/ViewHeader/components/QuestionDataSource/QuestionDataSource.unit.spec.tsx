@@ -231,7 +231,10 @@ function getTableQuestion(table: Table) {
   });
 }
 
-function getQuestion(card: Partial<Card>, metadata?: JsMetadata) {
+function getQuestion(
+  card: Partial<Card>,
+  metadata: JsMetadata = createMockMetadata(),
+) {
   return new Question(card, metadata);
 }
 
@@ -712,7 +715,7 @@ describe("QuestionDataSource", () => {
       metadataProvider,
       "SELECT * FROM ORDERS",
     );
-    const originalQuestion = Question.create()
+    const originalQuestion = Question.create({ metadata: createMockMetadata() })
       .setId(1)
       .setDisplayName("SQL query")
       .setQuery(originalQuery);
@@ -727,7 +730,9 @@ describe("QuestionDataSource", () => {
         Lib.cardMetadata(newMetadataProvider, originalQuestion.id()),
       ),
     );
-    const newQuestion = Question.create().setQuery(newQuery);
+    const newQuestion = Question.create({
+      metadata: createMockMetadata(),
+    }).setQuery(newQuery);
     setup({ card: newQuestion.card(), originalCard: originalQuestion.card() });
     expect(screen.getByText("SQL query")).toBeInTheDocument();
     expect(getIcon("table2")).toBeInTheDocument();

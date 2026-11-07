@@ -2,6 +2,7 @@ import { createMockSettingsState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import type { EntitiesState } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
 import {
   createMockDatabase,
   createMockField,
@@ -47,22 +48,20 @@ function setup() {
 }
 
 describe("getMetadata", () => {
-  it("should properly transfer metadata", () => {
-    const { metadata, sampleDatabase, segments, settings } = setup();
+  it("should give metabase-lib store databases, tables and fields", () => {
+    const { metadata, sampleDatabase } = setup();
     const sampleDatabaseTables = checkNotNull(sampleDatabase.tables);
+    const provider = Lib.metadataProvider(sampleDatabase.id, metadata);
 
-    expect(Object.keys(metadata.databases).length).toEqual(2);
-    expect(Object.keys(metadata.tables).length).toEqual(
-      sampleDatabase?.tables?.length,
-    );
-    expect(Object.keys(metadata.fields).length).toEqual(
-      sampleDatabaseTables.reduce(
-        (count, table) => count + checkNotNull(table.fields).length,
-        0,
-      ),
-    );
-    expect(Object.keys(metadata.segments).length).toEqual(segments.length);
-    expect(metadata.settings).toEqual(settings);
+    expect(
+      Lib.databaseMetadata(Lib.metadataProvider(2, metadata)),
+    ).not.toBeNull();
+    sampleDatabaseTables.forEach((table) => {
+      expect(Lib.tableMetadata(provider, table.id)).not.toBeNull();
+      checkNotNull(table.fields).forEach((field) => {
+        expect(Lib.fieldMetadata(provider, Number(field.id))).not.toBeNull();
+      });
+    });
   });
 });
 

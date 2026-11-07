@@ -3,15 +3,14 @@ import _ from "underscore";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type {
   ConcreteFieldReference,
   FieldId,
   FieldReference,
   NativeParameterDimensionTarget,
-  NormalizedField,
   Parameter,
+  ParameterFieldInfo,
   ParameterTarget,
   ParameterTextTarget,
   ParameterVariableTarget,
@@ -88,7 +87,7 @@ export function getParameterTargetField(
       return null;
     }
 
-    return findField(question, fieldId);
+    return findField(query, fieldId);
   }
 
   // mbql queries
@@ -100,40 +99,30 @@ export function getParameterTargetField(
 }
 
 function findField(
-  question: Question,
+  query: Lib.Query,
   fieldId: FieldId,
-): ParameterField | undefined {
-  // FIXME!!! Metadata is for Lib only. Do NOT read it anywhere else. This lookup
-  // stays only until parameter fields are built from Lib (column display info
-  // plus fields fetched by id). Do not copy this pattern.
-  const fields = Object.values(question.metadata().fields);
-  const getField = (id: FieldId | undefined) =>
-    id != null ? fields.find((field) => field.id === id) : undefined;
-  const toParameterField = (
-    field: NormalizedField | undefined,
-  ): ParameterField | undefined =>
-    field != null
-      ? {
-          ...field,
-          target: undefined,
-          name_field: undefined,
-          dimensions: undefined,
-        }
-      : undefined;
-  const field = getField(fieldId);
-  return field != null
-    ? {
-        ...field,
-        target: toParameterField(getField(field.target)),
-        name_field: toParameterField(getField(field.name_field)),
-        dimensions: field.dimensions?.map((dimension) => ({
-          ...dimension,
-          human_readable_field: toParameterField(
-            getField(dimension.human_readable_field_id ?? undefined),
-          ),
-        })),
-      }
-    : undefined;
+): ParameterFieldInfo | undefined {
+  const column = Lib.fieldMetadata(query, fieldId);
+  if (column == null) {
+    return undefined;
+  }
+
+  const info = Lib.fieldRemappingInfo(query, column);
+  if (info.id == null || info.baseType == null) {
+    return undefined;
+  }
+
+  return {
+    id: info.id,
+    name: info.name,
+    display_name: info.displayName,
+    base_type: info.baseType,
+    effective_type: info.effectiveType,
+    semantic_type: info.semanticType,
+    settings: info.settings,
+    has_field_values: info.hasFieldValues,
+    has_remapping: info.hasRemapping,
+  };
 }
 
 function getParameterTargetFieldFromFieldRef(
@@ -145,7 +134,7 @@ function getParameterTargetFieldFromFieldRef(
   if (typeof fieldIdOrName === "number") {
     // performance optimization:
     // we can match by id directly without finding this column via query
-    return findField(question, fieldIdOrName);
+    return findField(question.query(), fieldIdOrName);
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
@@ -164,15 +153,8 @@ function getParameterTargetFieldFromFieldRef(
     );
 
     if (columnIndex >= 0) {
-      const column = stageColumns[columnIndex];
-      const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
-
-      if (fieldValuesInfo.fieldId == null) {
-        // the column does not represent to a database field, e.g. coming from an aggregation clause
-        return null;
-      }
-
-      return findField(question, fieldValuesInfo.fieldId);
+      const { id: fieldId } = Lib.pickerInfo(query, stageColumns[columnIndex]);
+      return fieldId != null ? findField(query, fieldId) : null;
     }
   }
 

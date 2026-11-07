@@ -1,21 +1,19 @@
-import {
-  getSearchField,
-  getSharedRemappedField,
-} from "metabase-lib/v1/metadata/utils/remapping";
 import { isFuzzyOperator } from "metabase-lib/v1/operators/utils";
-import type {
-  ParameterField,
-  ParameterWithTemplateTagTarget,
-} from "metabase-lib/v1/parameters/types";
+import type { ParameterWithTemplateTagTarget } from "metabase-lib/v1/parameters/types";
 import type {
   Parameter,
+  ParameterFieldInfo,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
 
 import { deriveFieldOperatorFromParameter } from "./operators";
-import { getFields } from "./parameter-fields";
+import {
+  getFields,
+  hasRemappedFields,
+  isSearchableField,
+} from "./parameter-fields";
 import { getParameterType } from "./parameter-type";
 
 export const getQueryType = (
@@ -51,9 +49,9 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
  */
 export const hasRemappedParameterValues = (
   parameter: Parameter | null | undefined,
-  fields: ParameterField[],
+  fields: ParameterFieldInfo[],
 ): boolean => {
-  if (getSharedRemappedField(fields) != null) {
+  if (hasRemappedFields(fields)) {
     return true;
   }
 
@@ -127,11 +125,11 @@ export const canListParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canListFields;
 };
 
-export const canListFieldValues = (fields: ParameterField[]) => {
+export const canListFieldValues = (fields: ParameterFieldInfo[]) => {
   const hasFields = fields.length > 0;
-  const hasFieldValues = fields
-    .filter((field) => typeof field.id === "number")
-    .every((field) => field.has_field_values === "list");
+  const hasFieldValues = fields.every(
+    (field) => field.has_field_values === "list",
+  );
 
   return hasFields && hasFieldValues;
 };
@@ -152,9 +150,9 @@ export const canSearchParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canSearchFields;
 };
 
-export const canSearchFieldValues = (fields: ParameterField[]) => {
+export const canSearchFieldValues = (fields: ParameterFieldInfo[]) => {
   const hasFields = fields.length > 0;
-  const canSearch = fields.every((field) => getSearchField(field) != null);
+  const canSearch = fields.every(isSearchableField);
   const hasFieldValues = fields.some(
     (field) => field.has_field_values === "search",
   );

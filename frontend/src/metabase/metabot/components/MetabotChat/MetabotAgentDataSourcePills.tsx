@@ -17,6 +17,10 @@ import {
   getCollectionLocationLabel,
   getDatabaseLocationLabel,
 } from "metabase/metabot/utils/source-location";
+import {
+  type DraftQuestionBuilder,
+  useQuestionFromOptsBuilder,
+} from "metabase/metadata-store";
 import { EntitySmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/EntitySmartLink";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
 import {
@@ -35,7 +39,6 @@ import {
 } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type {
   DatasetQuery,
   MetabotCodeEdit,
@@ -78,13 +81,16 @@ type SourceFeedbackTarget = Pick<
   "source_id" | "source_type"
 >;
 
-const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
+const decodeQuery = (
+  datasetQuery: DatasetQuery | undefined,
+  buildQuestion: DraftQuestionBuilder,
+): DecodedQuery => {
   try {
     if (!datasetQuery) {
       return { kind: "none" };
     }
 
-    const question = Question.create({ dataset_query: datasetQuery });
+    const question = buildQuestion({ dataset_query: datasetQuery });
     const query = question.query();
     const isNativeOnly =
       Lib.queryDisplayInfo(query).isNative && Lib.stageCount(query) === 1;
@@ -485,7 +491,11 @@ const DatasetQueryTablePills = ({
   messageId?: string;
   datasetQuery: DatasetQuery | undefined;
 }) => {
-  const decoded = useMemo(() => decodeQuery(datasetQuery), [datasetQuery]);
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const decoded = useMemo(
+    () => decodeQuery(datasetQuery, buildQuestion),
+    [datasetQuery, buildQuestion],
+  );
 
   if (decoded.kind === "none") {
     return null;

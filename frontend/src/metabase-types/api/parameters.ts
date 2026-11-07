@@ -1,5 +1,10 @@
 import type { CardId } from "./card";
 import type { RowValue, TemporalUnit } from "./dataset";
+import type {
+  FieldFormattingSettings,
+  FieldId,
+  FieldValuesType,
+} from "./field";
 import type { FieldReference } from "./query";
 
 export type StringParameterType =
@@ -38,6 +43,18 @@ export type ParameterType =
   | string; // x-rays generate broken parameter types not in the list
 
 export type ParameterId = string;
+
+export interface ParameterFieldInfo {
+  id: FieldId;
+  name: string;
+  display_name: string;
+  base_type: string;
+  effective_type: string | null;
+  semantic_type: string | null;
+  settings: FieldFormattingSettings | null;
+  has_field_values: FieldValuesType;
+  has_remapping: boolean;
+}
 
 export type ActionParameterValue = string | number | boolean;
 

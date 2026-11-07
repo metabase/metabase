@@ -25,15 +25,6 @@ export function updateMetadata(data: unknown, schema: Schema) {
   return { type: UPDATE, payload };
 }
 
-/**
- * The fields a card or dashboard names in its parameters, keyed by parameter.
- *
- * Widgets read these to decide whether a parameter gets a value picker or a
- * plain text input, and the endpoints that return them do not hydrate.
- */
-export const paramFieldsFetched = (paramFields: Record<string, Field[]>) =>
-  updateMetadata(Object.values(paramFields).flat(), [FieldSchema]);
-
 export const databaseFetched = (database: Database) =>
   updateMetadata(database, DatabaseSchema);
 

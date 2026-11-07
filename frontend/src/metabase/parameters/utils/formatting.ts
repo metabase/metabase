@@ -2,7 +2,6 @@ import { msgid, ngettext } from "ttag";
 
 import { formatValue } from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
-import { getSharedRemappedField } from "metabase-lib/v1/metadata/utils/remapping";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
@@ -75,14 +74,9 @@ export function formatParameterValue(
     if (hasFields(parameter)) {
       const fields = getFields(parameter);
       const [firstField] = fields;
-      // when a parameter targets multiple fields we won't know
-      // which parameter the value is associated with, so we take
-      // the first field for remapping
-      const remap = getSharedRemappedField(fields) != null;
       return formatValue(value, {
         column: firstField,
         maximumFractionDigits: 20,
-        remap,
       });
     }
   }

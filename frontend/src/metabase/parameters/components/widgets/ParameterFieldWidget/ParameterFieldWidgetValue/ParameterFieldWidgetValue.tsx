@@ -1,15 +1,19 @@
 import { renderNumberOfSelections } from "metabase/parameters/utils/formatting";
-import { getSharedRemappedField } from "metabase-lib/v1/metadata/utils/remapping";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
+import { hasRemappedFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
-import type { CardId, DashboardId, Parameter } from "metabase-types/api";
+import type {
+  CardId,
+  DashboardId,
+  Parameter,
+  ParameterFieldInfo,
+} from "metabase-types/api";
 
 import { Value } from "../Value";
 import { normalizeValue } from "../normalizeValue";
 
 type ParameterFieldWidgetValueProps = {
   value: unknown;
-  fields: ParameterField[];
+  fields: ParameterFieldInfo[];
   parameter?: Parameter;
   cardId?: CardId;
   dashboardId?: DashboardId;
@@ -29,7 +33,7 @@ export function ParameterFieldWidgetValue({
   const shouldRemap =
     (parameter != null
       ? hasRemappedParameterValues(parameter, fields)
-      : getSharedRemappedField(fields) != null) || displayValue != null;
+      : hasRemappedFields(fields)) || displayValue != null;
 
   return numberOfValues > 1 ? (
     <>{renderNumberOfSelections(numberOfValues)}</>

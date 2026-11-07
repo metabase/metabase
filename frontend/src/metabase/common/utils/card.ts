@@ -10,7 +10,6 @@ import {
 } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -25,6 +24,7 @@ import type {
   Parameter,
   ParameterValuesMap,
   UnsavedCard,
+  VirtualCard,
   VirtualDashCardParameterMapping,
 } from "metabase-types/api";
 import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
@@ -198,12 +198,8 @@ export function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-export function isNative(card?: UnsavedCard | null | undefined) {
-  if (!card) {
-    return false;
-  }
-  const question = Question.create({ dataset_query: card.dataset_query });
-  return question.isNative();
+export function isNative(card: UnsavedCard | VirtualCard | null | undefined) {
+  return card?.dataset_query != null && Lib.isNativeJsQuery(card.dataset_query);
 }
 
 function cardVisualizationIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {

@@ -44,7 +44,7 @@ import {
   getRegisteredDefaultSize,
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import type { Card, CardId, DashboardTabId } from "metabase-types/api";
 
@@ -113,7 +113,9 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     dispatch(loadMetadataForCard(card));
 
     // if the name of the card changed this will update the url slug
-    dispatch(updateUrl(new Question(card), { dirty: false }));
+    dispatch(
+      updateUrl(selectQuestionFromCard(getState(), card), { dirty: false }),
+    );
 
     return card;
   };

@@ -11,6 +11,7 @@ import type {
   Field,
   FieldId,
   Parameter,
+  ParameterFieldInfo,
   ParameterId,
   ParameterTarget,
   ParameterValueOrArray,
@@ -90,7 +91,7 @@ export interface Dashboard {
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
   width: DashboardWidth;
-  param_fields?: Record<ParameterId, Field[]>;
+  param_fields?: Record<ParameterId, ParameterFieldInfo[]>;
 
   moderation_reviews: ModerationReview[];
   view_count?: number;

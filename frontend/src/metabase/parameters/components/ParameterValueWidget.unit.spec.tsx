@@ -17,6 +17,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockParameter,
+  createMockParameterFieldInfo,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
 import {
@@ -134,7 +135,7 @@ const NUMBER_PARAMETER: Partial<UiParameter> = { type: "number/=" };
 const FIELD_FILTER_PARAMETER: Partial<UiParameter> = {
   type: "string/=",
   hasVariableTemplateTagTarget: false,
-  fields: [createProductsCategoryField()],
+  fields: [createMockParameterFieldInfo(createProductsCategoryField())],
 };
 
 describe("ParameterValueWidget", () => {
@@ -148,7 +149,11 @@ describe("ParameterValueWidget", () => {
           slug: "number",
           name: "Number Equals",
         }),
-        fields: [createProductsRatingField({ has_field_values: "none" })],
+        fields: [
+          createMockParameterFieldInfo(
+            createProductsRatingField({ has_field_values: "none" }),
+          ),
+        ],
       },
     });
 
@@ -518,7 +523,7 @@ describe("ParameterValueWidget", () => {
       const { setValue } = setup({
         parameter: {
           ...createMockParameter({ id: "category-param", type: "category" }),
-          fields: [createProductsCategoryField()],
+          fields: [createMockParameterFieldInfo(createProductsCategoryField())],
         },
       });
 
@@ -588,7 +593,7 @@ describe("ParameterValueWidget", () => {
             required: true,
             default: ["Gizmo"],
           }),
-          fields: [createProductsCategoryField()],
+          fields: [createMockParameterFieldInfo(createProductsCategoryField())],
         },
         value: ["Widget"],
         enableRequiredBehavior: true,

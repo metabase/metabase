@@ -50,12 +50,12 @@ export function getSourceFieldOptions(
       continue;
     }
 
-    const fieldInfo = Lib.pickerInfo(query, column);
-    if (fieldInfo == null || seenFieldIds.has(fieldInfo.id)) {
+    const { id: fieldId } = Lib.pickerInfo(query, column);
+    if (fieldId == null || seenFieldIds.has(fieldId)) {
       continue;
     }
 
-    seenFieldIds.add(fieldInfo.id);
+    seenFieldIds.add(fieldId);
 
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
     const label = opts?.labelPrefix
@@ -63,7 +63,7 @@ export function getSourceFieldOptions(
       : columnInfo.longDisplayName;
 
     options.push({
-      value: String(fieldInfo.id),
+      value: String(fieldId),
       label,
       supportsLookback: Lib.isDateOrDateTime(column),
     });

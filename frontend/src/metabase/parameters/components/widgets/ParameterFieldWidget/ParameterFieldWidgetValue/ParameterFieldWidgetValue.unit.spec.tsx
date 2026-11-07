@@ -3,7 +3,10 @@ import fetchMock from "fetch-mock";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
-import { createMockField, createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockParameter,
+  createMockParameterFieldInfo,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { ParameterFieldWidgetValue } from "./ParameterFieldWidgetValue";
@@ -24,27 +27,15 @@ describe("when fields is empty array", () => {
 
 describe("when a field remaps its values", () => {
   const PEOPLE_ID = 10;
-  const PEOPLE_NAME_ID = 11;
 
-  // the shape the backend hydrates into `param_fields`: a PK carries the
-  // `type/Name` field of its table, which is what its values remap to
-  const nameField = createMockField({
-    id: PEOPLE_NAME_ID,
-    name: "NAME",
-    display_name: "Name",
-    base_type: "type/Text",
-    semantic_type: "type/Name",
-    has_field_values: "list",
-  });
-
-  const idField = createMockField({
+  const idField = createMockParameterFieldInfo({
     id: PEOPLE_ID,
     name: "ID",
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
     has_field_values: "none",
-    name_field: nameField,
+    has_remapping: true,
   });
 
   it("should render remapped label for value", async () => {

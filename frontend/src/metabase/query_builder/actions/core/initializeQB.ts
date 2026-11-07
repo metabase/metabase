@@ -8,7 +8,6 @@ import {
 import { canUserCreateQueries, getUser } from "metabase/current-user";
 import {
   getShallowTables,
-  paramFieldsFetched,
   selectQuestionFromCard,
   selectQuestionFromOpts,
 } from "metabase/metadata-store";
@@ -401,13 +400,6 @@ async function handleQBInit(
 
   if (isStale()) {
     return;
-  }
-
-  // Populate the metadata store with param_fields from the card response.
-  // This ensures field filter widgets have has_field_values even when the user
-  // lacks create-queries permission on the underlying table (GHY-1605).
-  if (card.param_fields) {
-    await dispatch(paramFieldsFetched(card.param_fields));
   }
 
   let question = selectQuestionFromCard(getState(), card);

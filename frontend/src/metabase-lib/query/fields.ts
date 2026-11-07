@@ -4,7 +4,8 @@ import type { FieldReference } from "metabase-types/api";
 import type {
   Clause,
   ColumnMetadata,
-  FieldValuesSearchInfo,
+  FieldRemappingInfo,
+  FieldSearchInfo,
   MetricMetadata,
   Query,
   SegmentMetadata,
@@ -45,11 +46,18 @@ export function fieldableColumns(
   return ML.fieldable_columns(query, stageIndex);
 }
 
-export function fieldValuesSearchInfo(
+export function fieldSearchInfo(
   query: Query,
   column: ColumnMetadata,
-): FieldValuesSearchInfo {
-  return ML.field_values_search_info(query, column);
+): FieldSearchInfo {
+  return ML.field_search_info(query, column);
+}
+
+export function fieldRemappingInfo(
+  query: Query,
+  column: ColumnMetadata,
+): FieldRemappingInfo {
+  return ML.field_remapping_info(query, column);
 }
 
 export function legacyRef(
