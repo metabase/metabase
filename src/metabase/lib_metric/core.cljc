@@ -82,7 +82,8 @@
      update-dimension
      resolve-dimension-to-field-id]
     [lib-metric.dimension.jvm
-     compute-dimension-pairs]
+     compute-dimension-pairs
+     group-id]
     [lib-metric.metadata.provider
      database-provider-for-table
      metric-context-metadata-provider]

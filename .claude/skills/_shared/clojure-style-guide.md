@@ -12,7 +12,14 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 **Function Naming:**
 
 - Pure functions should be nouns describing the value they return (e.g., `age` not `calculate-age` or `get-age`)
-- Functions with side effects must end with `!`
+- End a function's name with `!` when, and only when, it mutates shared global state, which makes it unsafe to call
+  from several threads at once: it writes to the app DB, an atom or another global, a setting or a cache, or changes
+  something outside the process, such as a file or an external service. The `!` warns callers, and the
+  `:metabase/validate-deftest` linter treats every function whose name ends in `!` as unsafe in a `^:parallel` test.
+- Throwing an exception is not a reason for `!`. A throw mutates no shared state and is thread-safe, so a function
+  that only checks something and throws, or only builds an exception and throws it, has no `!`: name it for what it
+  checks or throws (`check-declared-type`, `throw-invalid-date`). When the parallel-test linter flags such a function,
+  fix its name; don't add it to the linter's `:parallel/safe` list.
 - Don't repeat namespace alias in function names
 
 **Destructuring:**
