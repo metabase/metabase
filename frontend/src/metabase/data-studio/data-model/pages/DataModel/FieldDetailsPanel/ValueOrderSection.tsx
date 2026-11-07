@@ -25,11 +25,26 @@ import { Card, Group, Icon, Loader, Select, Stack, Text } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../DetailPanel";
-import { InferredValue } from "../TableSection/InferenceReview";
+import {
+  InferredActions,
+  InferredIcon,
+  InferredValue,
+} from "../TableSection/InferenceReview";
 
 interface ValueOrderSectionProps {
   field: Field;
   table: Table;
+}
+
+/** Whether a column's values have a kind worth setting, so the section shows */
+export function useHasValueKind(field: Field): boolean {
+  const { getFieldLifecycle } = useLifecycle();
+  // Free-text columns don't need this; lifecycle-like and listed ones do
+  return (
+    getFieldLifecycle(getRawTableFieldId(field)).enumKind != null ||
+    inferEnumKind(field).kind !== "nominal" ||
+    field.has_field_values === "list"
+  );
 }
 
 /**
@@ -46,13 +61,9 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
   const enumKind = overrides.enumKind ?? kindInference.kind;
   const isOrdinal = enumKind === "ordinal";
   const order = useValueOrder(isOrdinal ? field : undefined);
+  const hasValueKind = useHasValueKind(field);
 
-  // Free-text columns don't need this; lifecycle-like and listed ones do
-  const isRelevant =
-    overrides.enumKind != null ||
-    kindInference.kind !== "nominal" ||
-    field.has_field_values === "list";
-  if (!isRelevant) {
+  if (!hasValueKind) {
     return null;
   }
 
@@ -76,26 +87,13 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
             />
           }
         />
-        {isOrdinal && (
-          <DetailsRow
-            label={t`Order`}
-            value={
-              <OrderSummary
-                order={order}
-                readOnly={readOnly}
-                onConfirm={() => saveOrder(order.values)}
-              />
-            }
-          />
-        )}
       </DetailsTable>
-      {isOrdinal && order.values.length > 0 && (
-        <OrderedValueList
-          values={order.values}
-          // Editable even while it's a guess: a drag or a bucket change saves
-          // the order, which confirms the rest of the guess with it
-          isEditable={!readOnly}
+      {isOrdinal && (
+        <ValueOrder
+          order={order}
+          readOnly={readOnly}
           onChange={saveOrder}
+          onConfirm={() => saveOrder(order.values)}
         />
       )}
     </SidebarSection>
@@ -157,49 +155,45 @@ function EnumKindValue({
   );
 }
 
-function OrderSummary({
+/**
+ * The values in lifecycle order, right under the Kind row. While it's sync's
+ * guess, the AI icon and Confirm and Change sit below the list; dragging a
+ * value or changing a bucket also saves it.
+ */
+function ValueOrder({
   order,
   readOnly,
+  onChange,
   onConfirm,
 }: {
   order: ResolvedValueOrder;
   readOnly: boolean;
+  onChange: (values: OrderedValue[]) => void;
   onConfirm: () => void;
 }) {
-  if (order.isLoading) {
-    return <Loader size="xs" />;
-  }
-  if (order.values.length === 0) {
-    return (
-      <Text c="text-secondary">
-        {t`No cached values. Re-scan this column's values to order them.`}
-      </Text>
-    );
-  }
-  const openCount = order.values.filter(
-    ({ bucket }) => bucket === "open",
-  ).length;
-  const summary = t`${order.values.length} values, ${openCount} open`;
-  if (order.isInferred) {
-    // Confirming saves the guess as is; editing the list below saves it too
-    return (
-      <InferredValue
-        value={summary}
-        inference={t`Inferred: ${order.inference.signal}`}
-        readOnly={readOnly}
-        isInset={false}
-        onConfirm={onConfirm}
-        onChange={onConfirm}
-        data-testid="field-value-order-review"
-      />
-    );
-  }
+  const hasValues = order.values.length > 0;
   return (
-    <Text>
-      {order.isSaved
-        ? summary
-        : t`${summary}. Drag values below to put them in lifecycle order.`}
-    </Text>
+    <Stack gap="sm">
+      {order.isLoading ? (
+        <Loader size="xs" />
+      ) : !hasValues ? (
+        <Text c="text-secondary">
+          {t`No cached values. Re-scan this column's values to order them.`}
+        </Text>
+      ) : (
+        <OrderedValueList
+          values={order.values}
+          isEditable={!readOnly}
+          onChange={onChange}
+        />
+      )}
+      {hasValues && order.isInferred && !readOnly && (
+        <Group gap="sm" wrap="nowrap">
+          <InferredIcon description={t`Inferred: ${order.inference.signal}`} />
+          <InferredActions onConfirm={onConfirm} onChange={onConfirm} />
+        </Group>
+      )}
+    </Stack>
   );
 }
 

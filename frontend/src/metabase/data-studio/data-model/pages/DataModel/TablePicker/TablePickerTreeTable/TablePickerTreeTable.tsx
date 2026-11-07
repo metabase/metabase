@@ -16,9 +16,9 @@ import {
   useDataLayers,
 } from "metabase/metadata/data-layers";
 import {
+  getTableRoleIcon,
   getTableRoleLabel,
   useCustomPropertyParents,
-  useHistoryReviewStatus,
   useTableFields,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -30,7 +30,6 @@ import {
   Group,
   Icon,
   Text,
-  Tooltip,
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
@@ -67,7 +66,6 @@ import {
   transformToTreeTableFormat,
 } from "../utils";
 
-import S from "./TablePickerTreeTable.module.css";
 import { TableSubjectCell } from "./TableSubjectCell";
 
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
@@ -502,56 +500,34 @@ export function TablePickerTreeTable({
       isChildrenLoading={isChildrenLoading}
       isRowDisabled={isRowDisabled}
       getRowProps={getRowProps}
-      classNames={{ cell: S.cell }}
       ariaLabel={t`Tables`}
     />
   );
 }
 
-/** PROTOTYPE: mocked. The table's role, flagged when it needs an admin's review. */
+/** PROTOTYPE: mocked. The table's role, with an icon for what kind it is. */
 function TableRoleCell({ table }: { table: Table }) {
   const fields = useTableFields(table);
   const { getTableStructure } = useTableStructures();
-  const historyReview = useHistoryReviewStatus({
-    ...table,
-    fields,
-  });
 
   if (fields == null) {
     return null;
   }
 
-  const { role, needsReview, inference } = getTableStructure({
-    ...table,
-    fields,
-  });
-  const reviewReason = needsReview
-    ? inference.signal
-    : historyReview?.needsReview && historyReview.issue;
+  const { role } = getTableStructure({ ...table, fields });
 
   return (
-    <Box className={S.role} data-testid="table-role">
-      {reviewReason && (
-        <Tooltip label={t`Needs review. ${reviewReason}`}>
-          <Icon
-            name="flag"
-            c="icon-secondary"
-            className={S.flag}
-            aria-label={t`Needs review`}
-          />
-        </Tooltip>
+    <Group gap="xs" wrap="nowrap" miw={0} data-testid="table-role">
+      {role ? (
+        <Group gap="sm" wrap="nowrap" flex="0 0 auto">
+          <Icon name={getTableRoleIcon(role)} c="text-secondary" />
+          <Text truncate>{getTableRoleLabel(role)}</Text>
+        </Group>
+      ) : (
+        <Text c="text-secondary">{t`No role`}</Text>
       )}
-      <Group gap="xs" wrap="nowrap">
-        {role ? (
-          <Text truncate flex="0 0 auto">
-            {getTableRoleLabel(role)}
-          </Text>
-        ) : (
-          <Text c="text-secondary">{t`No role`}</Text>
-        )}
-        <HistoryListSummary table={{ ...table, fields }} />
-      </Group>
-    </Box>
+      <HistoryListSummary table={{ ...table, fields }} />
+    </Group>
   );
 }
 

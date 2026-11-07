@@ -11,6 +11,7 @@ import {
   type Grouping,
   type GroupingInferenceContext,
   type ResolvedGrouping,
+  type ResolvedGroupings,
   getGroupingSummary,
   useGroupings,
   useResolvedGroupings,
@@ -52,6 +53,25 @@ interface GroupingsSectionProps {
 type EditorState = { grouping: Grouping | undefined };
 
 /**
+ * Whether a column takes groupings. Keys and free text don't group;
+ * categories and flags can, once an admin adds one, and a foreign key can
+ * group by a column of the table it points to.
+ */
+export function useCanHaveGroupings(field: Field, table: Table): boolean {
+  const resolved = useResolvedGroupings(field, table);
+  return canHaveGroupings(field, resolved);
+}
+
+const canHaveGroupings = (
+  field: Field,
+  resolved: Pick<ResolvedGroupings, "builtIns" | "groupings">,
+) =>
+  resolved.builtIns.length > 0 ||
+  resolved.groupings.length > 0 ||
+  ((isCategory(field) || isBoolean(field)) && !isPK(field) && !isFK(field)) ||
+  (isFK(field) && field.target != null);
+
+/**
  * PROTOTYPE: mocked. Ways to group a column's values in Group by: built-in
  * time units and bins, sync's proposals, and an admin's, plus the default.
  */
@@ -63,14 +83,7 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
     useGroupings();
   const [editor, setEditor] = useState<EditorState | null>(null);
 
-  // Keys and free text don't group; categories and flags can, once an admin
-  // adds one, and a foreign key can group by a column of the table it points to
-  const canHaveGroupings =
-    resolved.builtIns.length > 0 ||
-    resolved.groupings.length > 0 ||
-    ((isCategory(field) || isBoolean(field)) && !isPK(field) && !isFK(field)) ||
-    (isFK(field) && field.target != null);
-  if (!canHaveGroupings) {
+  if (!canHaveGroupings(field, resolved)) {
     return null;
   }
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -9,6 +10,7 @@ import {
   BehaviorSection,
   CoercionStrategyPicker,
   FormattingSection,
+  MetadataCardVariantProvider,
 } from "metabase/metadata/components";
 import {
   useFieldCasting,
@@ -19,7 +21,7 @@ import {
   canCoerceFieldType,
   getFieldRawName,
 } from "metabase/metadata/utils/field";
-import { Code, Stack, Switch, Text } from "metabase/ui";
+import { Code, Stack, Switch, Tabs, Text } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -34,8 +36,12 @@ import {
   useIsHistoryTable,
 } from "./FieldHistoryRoleInput";
 import { FieldSemanticsSection } from "./FieldSemanticsSection";
-import { GroupingsSection } from "./GroupingsSection";
-import { ValueOrderSection } from "./ValueOrderSection";
+import { GroupingsSection, useCanHaveGroupings } from "./GroupingsSection";
+import { ValueOrderSection, useHasValueKind } from "./ValueOrderSection";
+
+type FieldTab = "details" | "values" | "behavior" | "formatting";
+
+const FIELD_TABS: FieldTab[] = ["details", "values", "behavior", "formatting"];
 
 interface FieldDetailsProps {
   field: Field;
@@ -44,8 +50,8 @@ interface FieldDetailsProps {
 }
 
 /**
- * A field's settings in the drawer: an editable details table with the name,
- * description, and data type, followed by the shared metadata sections.
+ * A field's settings in the drawer, in tabs: its details and metadata, how
+ * its values relate and group, and the shared behavior and formatting.
  */
 export function FieldDetails({ field, table }: FieldDetailsProps) {
   const readOnly = !table.can_write;
@@ -54,7 +60,14 @@ export function FieldDetails({ field, table }: FieldDetailsProps) {
   const { handleNameChange, handleDescriptionChange } = useFieldUpdateHandlers({
     field,
   });
-
+  // PROTOTYPE: the tab lives in state, not the URL, and carries over when
+  // another field opens
+  const [tab, setTab] = useState<FieldTab>("details");
+  const hasValueKind = useHasValueKind(field);
+  const canHaveGroupings = useCanHaveGroupings(field, table);
+  const hasValuesTab = hasValueKind || canHaveGroupings;
+  // A field with nothing on Values falls back to Details
+  const visibleTab = tab === "values" && !hasValuesTab ? "details" : tab;
   const saveName = (value: string) => {
     const name = value.trim();
     if (name.length > 0 && name !== field.display_name) {
@@ -70,102 +83,139 @@ export function FieldDetails({ field, table }: FieldDetailsProps) {
   };
 
   return (
-    <Stack gap="xxl" data-testid="field-section">
-      <SidebarSection title={t`Details`}>
-        <DetailsTable>
-          <DetailsRow
-            label={t`Display name`}
-            fillValue
-            value={
-              <DetailsEditableText
-                initialValue={field.display_name}
-                placeholder={t`Give this field a name`}
-                maxLength={254}
-                isDisabled={readOnly}
-                onChange={saveName}
-                data-testid="field-display-name-input"
+    <Tabs
+      value={visibleTab}
+      onChange={(value) => {
+        const next = FIELD_TABS.find((known) => known === value);
+        if (next) {
+          setTab(next);
+        }
+      }}
+      data-testid="field-section"
+    >
+      {/* Bleeds into the panel's padding so the border spans the drawer */}
+      <Tabs.List mb="xl" mx="-xl" px="xl">
+        <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+        {hasValuesTab && <Tabs.Tab value="values">{t`Values`}</Tabs.Tab>}
+        <Tabs.Tab value="behavior">{t`Behavior`}</Tabs.Tab>
+        <Tabs.Tab value="formatting">{t`Formatting`}</Tabs.Tab>
+      </Tabs.List>
+
+      <Tabs.Panel value="details">
+        <Stack gap="xxl">
+          <SidebarSection title={t`Details`}>
+            <DetailsTable>
+              <DetailsRow
+                label={t`Display name`}
+                fillValue
+                value={
+                  <DetailsEditableText
+                    initialValue={field.display_name}
+                    placeholder={t`Give this field a name`}
+                    maxLength={254}
+                    isDisabled={readOnly}
+                    onChange={saveName}
+                    data-testid="field-display-name-input"
+                  />
+                }
               />
-            }
-          />
-          <DetailsRow
-            label={t`Raw name`}
-            value={<Code>{getFieldRawName(field)}</Code>}
-          />
-          <DetailsRow
-            label={t`Description`}
-            fillValue
-            value={
-              <DetailsEditableText
-                initialValue={field.description}
-                placeholder={t`No description`}
-                isMultiline
-                isOptional
-                isDisabled={readOnly}
-                onChange={saveDescription}
-                data-testid="field-description-input"
+              <DetailsRow
+                label={t`Raw name`}
+                value={<Code>{getFieldRawName(field)}</Code>}
               />
-            }
-          />
-          <DetailsRow
-            label={t`Data type`}
-            value={<Code>{field.database_type}</Code>}
-          />
-          {canCoerceFieldType(field) && (
-            <DetailsRow
-              label={t`Casting`}
-              value={<FieldCastingInput field={field} disabled={readOnly} />}
-            />
-          )}
-          <DetailsRow
-            label={t`Grain`}
-            value={<FieldGrainInput field={field} disabled={readOnly} />}
-          />
-          {isHistoryTable && (
-            <DetailsRow
-              label={t`History`}
-              value={
-                <FieldHistoryRoleInput
-                  field={field}
-                  table={table}
-                  disabled={readOnly}
+              <DetailsRow
+                label={t`Description`}
+                fillValue
+                value={
+                  <DetailsEditableText
+                    initialValue={field.description}
+                    placeholder={t`No description`}
+                    isMultiline
+                    isOptional
+                    isDisabled={readOnly}
+                    onChange={saveDescription}
+                    data-testid="field-description-input"
+                  />
+                }
+              />
+              <DetailsRow
+                label={t`Data type`}
+                value={<Code>{field.database_type}</Code>}
+              />
+              {canCoerceFieldType(field) && (
+                <DetailsRow
+                  label={t`Casting`}
+                  value={
+                    <FieldCastingInput field={field} disabled={readOnly} />
+                  }
                 />
-              }
-            />
-          )}
-          {isHistoryTable && isHistoryAttribute && (
-            <DetailsRow
-              label={t`Changes`}
-              value={
-                <FieldCorrectionInput
-                  field={field}
-                  table={table}
-                  disabled={readOnly}
+              )}
+              <DetailsRow
+                label={t`Grain`}
+                value={<FieldGrainInput field={field} disabled={readOnly} />}
+              />
+              {isHistoryTable && (
+                <DetailsRow
+                  label={t`History`}
+                  value={
+                    <FieldHistoryRoleInput
+                      field={field}
+                      table={table}
+                      disabled={readOnly}
+                    />
+                  }
                 />
-              }
-            />
-          )}
-        </DetailsTable>
-      </SidebarSection>
-      <CustomFieldSection field={field} table={table} />
-      <FieldSemanticsSection field={field} table={table} />
-      <ValueOrderSection field={field} table={table} />
-      <GroupingsSection field={field} table={table} />
-      <SidebarSection title={t`Behavior`}>
-        <BehaviorSection
-          field={field}
-          databaseId={table.db_id}
-          disabled={readOnly}
-          onTrackMetadataChange={trackMetadataChange}
-        />
-      </SidebarSection>
-      <SidebarSection title={t`Formatting`}>
-        <FormattingSection
-          field={field}
-          disabled={readOnly}
-          onTrackMetadataChange={trackMetadataChange}
-        />
-      </SidebarSection>
-    </Stack>
+              )}
+              {isHistoryTable && isHistoryAttribute && (
+                <DetailsRow
+                  label={t`Changes`}
+                  value={
+                    <FieldCorrectionInput
+                      field={field}
+                      table={table}
+                      disabled={readOnly}
+                    />
+                  }
+                />
+              )}
+            </DetailsTable>
+          </SidebarSection>
+          <CustomFieldSection field={field} table={table} />
+          <FieldSemanticsSection field={field} table={table} />
+        </Stack>
+      </Tabs.Panel>
+
+      {hasValuesTab && (
+        <Tabs.Panel value="values">
+          <Stack gap="xxl">
+            <ValueOrderSection field={field} table={table} />
+            <GroupingsSection field={field} table={table} />
+          </Stack>
+        </Tabs.Panel>
+      )}
+
+      {/* One section each, so the tab names and frames them: no card */}
+      <Tabs.Panel value="behavior">
+        <MetadataCardVariantProvider value="plain">
+          <BehaviorSection
+            field={field}
+            databaseId={table.db_id}
+            disabled={readOnly}
+            onTrackMetadataChange={trackMetadataChange}
+          />
+        </MetadataCardVariantProvider>
+      </Tabs.Panel>
+
+      <Tabs.Panel value="formatting">
+        <MetadataCardVariantProvider value="plain">
+          <FormattingSection
+            field={field}
+            disabled={readOnly}
+            onTrackMetadataChange={trackMetadataChange}
+          />
+        </MetadataCardVariantProvider>
+      </Tabs.Panel>
+    </Tabs>
   );
 }
 

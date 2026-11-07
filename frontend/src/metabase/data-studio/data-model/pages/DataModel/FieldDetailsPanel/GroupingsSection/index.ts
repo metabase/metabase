@@ -1,1 +1,1 @@
-export { GroupingsSection } from "./GroupingsSection";
+export { GroupingsSection, useCanHaveGroupings } from "./GroupingsSection";
