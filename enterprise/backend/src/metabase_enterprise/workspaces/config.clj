@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
+   [metabase.secrets.core :as secrets]
    [metabase.util.yaml :as yaml]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
@@ -105,6 +106,81 @@
       :else
       details)))
 
+(def ^:private inlined-secrets
+  "The `:secret` connection properties whose value the config carries, each with the detail that turns it on. Both are
+   public: the root certificate verifies the warehouse, and the known hosts verify the SSH tunnel's host key. Without
+   the known hosts the child's tunnel would skip host-key verification, so a known-hosts Secret that can't be resolved
+   is refused rather than dropped."
+  [{:label      "SSL root certificate"
+    :name       "ssl-root-cert"
+    :enabled-by :ssl
+    :id         :ssl-root-cert-id
+    :options    :ssl-root-cert-options
+    :value      :ssl-root-cert-value
+    :required?  false}
+   {:label      "SSH known hosts"
+    :name       "tunnel-known-hosts"
+    :enabled-by :tunnel-enabled
+    :id         :tunnel-known-hosts-id
+    :options    :tunnel-known-hosts-options
+    :value      :tunnel-known-hosts-value
+    :required?  true}])
+
+(defn- unreadable-secret [db label cause]
+  (ex-info (format "The %s of database %s can't be read on this instance" label (pr-str (:name db)))
+           {:status-code 409
+            :database_id (:id db)}
+           cause))
+
+(defn- inlined-secret-entries
+  "The keys `secret` adds to the config when the connection uses it: the value of its Secret, or a value the driver
+   keeps in `:details` as is (Postgres doesn't store the known hosts as a Secret). A Secret the parent can't read (e.g.
+   a missing local file) is a 409 naming the database rather than an opaque 500."
+  [db details {:keys [label enabled-by id options value required?] secret-name :name}]
+  (cond
+    (not (get details enabled-by))
+    nil
+
+    (get details id)
+    (let [secret-value (try
+                         (secrets/value-as-string (:engine db) details secret-name)
+                         (catch Exception e
+                           (throw (unreadable-secret db label e))))]
+      (when (and required? (nil? secret-value))
+        (throw (unreadable-secret db label nil)))
+      (when secret-value
+        {options "uploaded"
+         value   secret-value}))
+
+    :else
+    (select-keys details [options value])))
+
+(defn- inline-secrets
+  "Replace the `:secret` connection properties' Secret ids with what the child can use. `:secret` properties keep only
+   the id of their Secret row in `:details`, and the parent's ids don't resolve in the child's app DB: there they could
+   name an unrelated Secret the child's own import created. So every `-id` and `-options` is dropped, and the values in
+   `inlined-secrets` ship instead, for the child's config-file import to store as Secrets of its own.
+
+   The client certificate and key are not inlined (MBC10-87), so a connection that authenticates with them is a 409:
+   the child would otherwise fail only when it connects."
+  [db details]
+  (when (and (:ssl details) (:ssl-use-client-auth details))
+    (throw (ex-info (format "Database %s uses SSL client-certificate authentication, which workspace sidecars don't support"
+                            (pr-str (:name db)))
+                    {:status-code 409
+                     :database_id (:id db)})))
+  (let [;; the `-id`/`-options` naming follows `metabase.secrets.models.secret`. The inlined secrets are listed on
+        ;; their own: Postgres nests the SSH-tunnel properties so that `secret-conn-props-by-name` doesn't list
+        ;; `tunnel-known-hosts`.
+        secret-names (into (set (map :name inlined-secrets))
+                           (keys (secrets/secret-conn-props-by-name (:engine db))))
+        drop-keys    (mapcat (fn [secret-name]
+                               [(keyword (str secret-name "-id")) (keyword (str secret-name "-options"))])
+                             secret-names)]
+    (into (apply dissoc details drop-keys)
+          (map #(inlined-secret-entries db details %))
+          inlined-secrets)))
+
 (defn- database-entry [wsd db]
   {:name    (:name db)
    :engine  (:engine db)
@@ -112,11 +188,11 @@
    ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
-   :details (drop-unused-tunnel-secrets
-             (merge (apply dissoc (:details db) parent-login-keys)
-                    (:database_details wsd)
-                    (schema-filter-entries db wsd)
-                    {:let-user-control-scheduling false}))})
+   :details (inline-secrets db (drop-unused-tunnel-secrets
+                                (merge (apply dissoc (:details db) parent-login-keys)
+                                       (:database_details wsd)
+                                       (schema-filter-entries db wsd)
+                                       {:let-user-control-scheduling false})))})
 
 (defn- expand-output
   "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`

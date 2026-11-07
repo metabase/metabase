@@ -6,7 +6,8 @@
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -85,6 +86,152 @@
              (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "ssh-key"}) (keys tunnel-secrets)))))
     (testing ":secret properties never reach the config as values; the Secret table keeps them"
       (is (= {} (select-keys (details-for {:tunnel-enabled true}) (keys ssl-secrets)))))))
+
+(deftest build-workspace-config-carries-ssl-root-cert-value-test
+  (testing "the SSL root cert ships as its value; the parent's Secret id would not resolve in the child"
+    (let [root-cert "-----BEGIN CERTIFICATE-----\nMIIBroot\n-----END CERTIFICATE-----\n"]
+      (mt/with-temp [:model/Database {db-id :id}
+                     {:name    "Cert DW" :engine :postgres
+                      :details {:host                    "h" :port 5432 :user "admin"
+                                :ssl                     true
+                                :ssl-mode                "verify-full"
+                                :ssl-root-cert-options   "uploaded"
+                                :ssl-root-cert-value     root-cert
+                                :ssl-client-cert-options "uploaded"
+                                :ssl-client-cert-value   "client-cert"
+                                :ssl-key-options         "uploaded"
+                                :ssl-key-value           "client-key"
+                                :ssl-key-password-value  "client-key-pass"}}
+                     :model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _
+                     {:workspace_id     ws-id :database_id db-id
+                      :database_details {:user "iso" :password "iso-pass"}
+                      :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+        (let [stored  (t2/select-one-fn :details :model/Database :id db-id)
+              details (->> (config/build-workspace-config ws-id) :config :databases
+                           (some #(when (= "Cert DW" (:name %)) (:details %))))]
+          (testing "precondition: the parent stores the certs and the key as Secrets"
+            (is (every? int? (map stored [:ssl-root-cert-id :ssl-client-cert-id :ssl-key-id :ssl-key-password-id]))))
+          (is (= {:ssl-root-cert-options "uploaded" :ssl-root-cert-value root-cert}
+                 (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value])))
+          (testing "the client cert and key ship neither their parent Secret ids, options nor values (MBC10-87)"
+            (is (= {} (select-keys details [:ssl-client-cert-id :ssl-client-cert-options :ssl-client-cert-value
+                                            :ssl-key-id :ssl-key-options :ssl-key-value
+                                            :ssl-key-password-id :ssl-key-password-options
+                                            :ssl-key-password-value])))))))))
+
+(defn- with-cert-workspace
+  "Run `f` with the id of a provisioned workspace over a Postgres database named \"Cert DW\" with `details`."
+  [details f]
+  (mt/with-temp [:model/Database {db-id :id} {:name "Cert DW" :engine :postgres :details details}
+                 :model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
+                 :model/WorkspaceDatabase _
+                 {:workspace_id     ws-id :database_id db-id
+                  :database_details {:user "iso" :password "iso-pass"}
+                  :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+    (f ws-id)))
+
+(deftest build-workspace-config-drops-unresolvable-ssl-root-cert-id-test
+  (testing "a root cert id with no Secret behind it is dropped: in the child it could name an unrelated Secret"
+    (with-cert-workspace
+      {:host "h" :port 5432 :ssl true :ssl-mode "verify-full" :ssl-root-cert-id Integer/MAX_VALUE}
+      (fn [ws-id]
+        (let [details (->> (config/build-workspace-config ws-id) :config :databases
+                           (some #(when (= "Cert DW" (:name %)) (:details %))))]
+          (is (= {:host "h" :ssl-mode "verify-full"} (select-keys details [:host :ssl-mode])))
+          (is (= {} (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value]))))))))
+
+(deftest build-workspace-config-ssl-off-drops-root-cert-test
+  (testing "with :ssl off the root cert is not read or shipped, and its parent Secret id is dropped"
+    ;; A local-file root cert is refused on hosted instances, so run as self-hosted.
+    (mt/with-premium-features #{}
+      (with-cert-workspace
+        {:host "h" :port 5432 :ssl false
+         :ssl-root-cert-options "local" :ssl-root-cert-path "/nonexistent/fe103/root.crt"}
+        (fn [ws-id]
+          (let [details (->> (config/build-workspace-config ws-id) :config :databases
+                             (some #(when (= "Cert DW" (:name %)) (:details %))))]
+            (is (= {:host "h" :ssl false} (select-keys details [:host :ssl])))
+            (is (= {} (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value])))))))))
+
+(deftest build-workspace-config-carries-ssh-known-hosts-value-test
+  (let [known-hosts "bastion.example ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIknownhosts\n"
+        tunnel      {:host "h" :port 5432 :tunnel-enabled true :tunnel-host "bastion.example" :tunnel-user "t"}
+        kh-keys     [:tunnel-known-hosts-id :tunnel-known-hosts-options :tunnel-known-hosts-value]
+        details-of  (fn [ws-id]
+                      (->> (config/build-workspace-config ws-id) :config :databases
+                           (some #(when (= "Cert DW" (:name %)) (:details %)))))]
+    (testing "tunnel on, known hosts stored as a Secret: they ship as their value, so the child's tunnel still
+              verifies the host key"
+      (mt/with-temp [:model/Secret {secret-id :id} {:name "kh" :kind "binary-blob" :source "uploaded" :value known-hosts}]
+        (with-cert-workspace
+          (assoc tunnel :tunnel-known-hosts-id secret-id)
+          (fn [ws-id]
+            (is (= {:tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
+                   (select-keys (details-of ws-id) kh-keys)))))))
+    (testing "tunnel on, known hosts kept as a plain value (Postgres doesn't store them as a Secret): the value ships"
+      (with-cert-workspace
+        (assoc tunnel :tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts)
+        (fn [ws-id]
+          (is (= {:tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
+                 (select-keys (details-of ws-id) kh-keys))))))
+    (testing "tunnel off: the known hosts aren't read, and the parent Secret id doesn't ship"
+      (with-cert-workspace
+        {:host "h" :port 5432 :tunnel-enabled false :tunnel-known-hosts-id Integer/MAX_VALUE}
+        (fn [ws-id]
+          (is (= {} (select-keys (details-of ws-id) kh-keys))))))
+    (testing "tunnel off: a leftover -options key doesn't ship"
+      (with-cert-workspace
+        {:host "h" :port 5432 :tunnel-enabled false :tunnel-known-hosts-options "uploaded"}
+        (fn [ws-id]
+          (is (= {} (select-keys (details-of ws-id) kh-keys))))))
+    (testing "tunnel on with a known-hosts id that doesn't resolve: a 409, since dropping it would skip host-key checks"
+      (with-cert-workspace
+        (assoc tunnel :tunnel-known-hosts-id Integer/MAX_VALUE)
+        (fn [ws-id]
+          (is (=? {:status-code 409}
+                  (try
+                    (config/build-workspace-config ws-id)
+                    nil
+                    (catch clojure.lang.ExceptionInfo e
+                      (is (= "The SSH known hosts of database \"Cert DW\" can't be read on this instance"
+                             (ex-message e)))
+                      (ex-data e))))))))))
+
+(deftest build-workspace-config-refuses-ssl-client-auth-test
+  (testing "a database that authenticates with an SSL client certificate is a 409: the child gets no client cert, so
+            it would fail only when it connects"
+    (with-cert-workspace
+      {:host "h" :port 5432 :ssl true :ssl-mode "verify-full" :ssl-use-client-auth true
+       :ssl-client-cert-options "uploaded" :ssl-client-cert-value "client-cert"
+       :ssl-key-options "uploaded" :ssl-key-value "client-key"}
+      (fn [ws-id]
+        (is (=? {:status-code 409}
+                (try
+                  (config/build-workspace-config ws-id)
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (is (= (str "Database \"Cert DW\" uses SSL client-certificate authentication, which workspace "
+                                "sidecars don't support")
+                           (ex-message e)))
+                    (ex-data e)))))))))
+
+(deftest build-workspace-config-unreadable-ssl-root-cert-test
+  (testing "a root cert the parent can't read is a 409 naming the database, not an opaque 500"
+    ;; A local-file root cert is refused on hosted instances, so run as self-hosted.
+    (mt/with-premium-features #{}
+      (with-cert-workspace
+        {:host "h" :port 5432 :ssl true :ssl-mode "verify-full"
+         :ssl-root-cert-options "local" :ssl-root-cert-path "/nonexistent/fe103/root.crt"}
+        (fn [ws-id]
+          (is (=? {:status-code 409}
+                  (try
+                    (config/build-workspace-config ws-id)
+                    nil
+                    (catch clojure.lang.ExceptionInfo e
+                      (is (= "The SSL root certificate of database \"Cert DW\" can't be read on this instance"
+                             (ex-message e)))
+                      (ex-data e))))))))))
 
 (deftest build-workspace-config-three-slot-engine-test
   (when (workspaces.tu/driver-loadable? :sqlserver)
