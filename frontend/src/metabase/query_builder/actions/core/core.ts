@@ -46,13 +46,7 @@ import {
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type {
-  Card,
-  CardId,
-  DashboardTabId,
-  DatasetQuery,
-} from "metabase-types/api";
+import type { Card, CardId, DashboardTabId } from "metabase-types/api";
 
 import {
   trackNewQuestionSaved,
@@ -226,20 +220,15 @@ export const navigateToNewCardInsideQB = createThunkAction(
   },
 );
 
-// DEPRECATED, still used in a couple places
-export const setDatasetQuery =
-  (datasetQuery: DatasetQuery) => (dispatch: Dispatch, getState: GetState) => {
-    if (datasetQuery instanceof NativeQuery) {
-      datasetQuery = datasetQuery.datasetQuery();
-    }
-
+export const setQuery =
+  (query: Lib.Query) => (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
 
     if (!question) {
       return;
     }
 
-    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
+    dispatch(updateQuestion(question.setQuery(query)));
   };
 
 export type OnCreateOptions = {

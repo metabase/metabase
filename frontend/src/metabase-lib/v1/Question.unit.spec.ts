@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
@@ -17,7 +16,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import Question from "./Question";
-import NativeQuery from "./queries/NativeQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -185,24 +183,12 @@ describe("Question", () => {
   });
 
   describe("At the heart of a question is an MBQL query.", () => {
-    describe("legacyNativeQuery()", () => {
-      it("returns a correct class instance for structured query", () => {
-        expect(orders_raw_question.legacyNativeQuery()).toBeUndefined();
-      });
-
-      it("returns a correct class instance for native query", () => {
-        const query = native_orders_count_question.legacyNativeQuery();
-        expect(query instanceof NativeQuery).toBe(true);
-      });
-    });
-
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
-        const rawQuery = checkNotNull(
-          native_orders_count_question.legacyNativeQuery(),
+        const newRawQuestion = orders_raw_question.setQuery(
+          native_orders_count_question.query(),
         );
-        const newRawQuestion = orders_raw_question.setLegacyQuery(rawQuery);
-        expect(newRawQuestion.legacyNativeQuery() instanceof NativeQuery).toBe(
+        expect(Lib.queryDisplayInfo(newRawQuestion.query()).isNative).toBe(
           true,
         );
       });
@@ -214,9 +200,7 @@ describe("Question", () => {
           native_orders_count_question.datasetQuery(),
         );
 
-        expect(rawQuestion.legacyNativeQuery() instanceof NativeQuery).toBe(
-          true,
-        );
+        expect(Lib.queryDisplayInfo(rawQuestion.query()).isNative).toBe(true);
       });
     });
   });

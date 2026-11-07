@@ -4,13 +4,13 @@ import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { getVariableTemplateTags } from "metabase/querying/native";
 import { Box, Tabs } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatabaseId,
-  DatasetQuery,
   EmbeddingParameterVisibility,
   Parameter,
   ParameterId,
@@ -30,12 +30,11 @@ type GetEmbeddedParamVisibility = (
 ) => EmbeddingParameterVisibility;
 
 interface TagEditorSidebarProps {
-  query: NativeQuery;
   databases?: Database[];
   question: Question;
   originalQuestion?: Question;
   sampleDatabaseId?: DatabaseId;
-  setDatasetQuery: (query: DatasetQuery) => void;
+  setQuery: (query: Lib.Query) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig: (
     tag: TemplateTag,
@@ -48,12 +47,11 @@ interface TagEditorSidebarProps {
 }
 
 export function TagEditorSidebar({
-  query,
   databases,
   question,
   originalQuestion,
   sampleDatabaseId,
-  setDatasetQuery,
+  setQuery,
   setTemplateTag,
   setTemplateTagConfig,
   setParameterValue,
@@ -63,7 +61,7 @@ export function TagEditorSidebar({
 }: TagEditorSidebarProps) {
   const [section, setSection] = useState<TabId>("settings");
 
-  const tags = query.variableTemplateTags();
+  const tags = getVariableTemplateTags(question.query());
   const database = question.database();
   const parameters = question.parameters();
   const parametersById = _.indexBy(parameters, "id");
@@ -103,7 +101,7 @@ export function TagEditorSidebar({
             <TagEditorHelp
               database={database}
               sampleDatabaseId={sampleDatabaseId}
-              setDatasetQuery={setDatasetQuery}
+              setQuery={setQuery}
               switchToSettings={() => setSection("settings")}
             />
           </Box>

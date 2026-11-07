@@ -1,7 +1,47 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   canFormatForEngine,
   formatQuery,
+  updateSnippet,
 } from "metabase/querying/components/NativeQueryEditor/utils";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import {
+  createMockNativeQuerySnippet,
+  createMockTemplateTag,
+} from "metabase-types/api/mocks";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+const SNIPPET_ID = 1;
+
+const OLD_SNIPPET = createMockNativeQuerySnippet({
+  id: SNIPPET_ID,
+  name: "old-filter",
+  content: "1 = 1",
+});
+
+function createSnippetQuery(newSnippet: typeof OLD_SNIPPET) {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    snippets: [newSnippet],
+  });
+  const query = Lib.createTestNativeQuery(
+    createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata }),
+    { query: "select * from products where {{snippet: old-filter}}" },
+  );
+  return Lib.withTemplateTags(query, {
+    "snippet: old-filter": createMockTemplateTag({
+      name: "snippet: old-filter",
+      "display-name": "Snippet: Old Filter",
+      type: "snippet",
+      "snippet-id": SNIPPET_ID,
+      "snippet-name": "old-filter",
+    }),
+  });
+}
 
 const formattingTestCases = [
   {
@@ -208,5 +248,47 @@ describe("utils", () => {
         expect(formatted).toBe(output);
       },
     );
+  });
+
+  describe("updateSnippet", () => {
+    it("should rename snippet references after snippet rename", () => {
+      const newSnippet = { ...OLD_SNIPPET, name: "new-filter" };
+      const query = updateSnippet(
+        createSnippetQuery(newSnippet),
+        OLD_SNIPPET,
+        newSnippet,
+      );
+
+      expect(Lib.rawNativeQuery(query)).toBe(
+        "select * from products where {{snippet: new-filter}}",
+      );
+      expect(Object.keys(Lib.templateTags(query))).toEqual([
+        "snippet: new-filter",
+      ]);
+    });
+
+    it("should add variables from edited snippet content", () => {
+      const newSnippet = {
+        ...OLD_SNIPPET,
+        content: "category = {{category}}",
+        template_tags: {
+          category: createMockTemplateTag({
+            name: "category",
+            "display-name": "Category",
+            type: "text",
+          }),
+        },
+      };
+      const query = updateSnippet(
+        createSnippetQuery(newSnippet),
+        OLD_SNIPPET,
+        newSnippet,
+      );
+
+      expect(Object.keys(Lib.templateTags(query)).sort()).toEqual([
+        "category",
+        "snippet: old-filter",
+      ]);
+    });
   });
 });

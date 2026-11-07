@@ -2,10 +2,8 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
-import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
   ConcreteFieldReference,
   FieldReference,
@@ -15,6 +13,7 @@ import type {
   ParameterTextTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  TemplateTag,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 
@@ -146,11 +145,15 @@ function getParameterTargetFieldFromFieldRef(
   return null;
 }
 
-export function buildDimensionTarget(
-  dimension: TemplateTagDimension,
+export function buildTemplateTagDimensionTarget(
+  tag: TemplateTag,
   stageIndex: number,
 ): NativeParameterDimensionTarget {
-  return ["dimension", dimension.mbql(), { "stage-number": stageIndex }];
+  return [
+    "dimension",
+    ["template-tag", tag.name],
+    { "stage-number": stageIndex },
+  ];
 }
 
 export function buildColumnTarget(
@@ -168,13 +171,12 @@ export function buildColumnTarget(
 }
 
 export function buildTemplateTagVariableTarget(
-  variable: TemplateTagVariable,
+  tag: TemplateTag,
 ): ParameterVariableTarget | NativeParameterDimensionTarget {
-  const tag = variable.tag();
-  if (tag?.type === "temporal-unit") {
-    return ["dimension", variable.mbql(), { "stage-number": 0 }];
+  if (tag.type === "temporal-unit") {
+    return ["dimension", ["template-tag", tag.name], { "stage-number": 0 }];
   } else {
-    return ["variable", variable.mbql()];
+    return ["variable", ["template-tag", tag.name]];
   }
 }
 

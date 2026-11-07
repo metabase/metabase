@@ -19,7 +19,6 @@ import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEdito
 import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import { DatasetNotebook } from "./DatasetNotebook";
@@ -39,10 +38,7 @@ const QueryEditorContainer = ({
 
 const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
 
-type DatasetQueryEditorProps = Omit<
-  ComponentProps<typeof NativeQueryEditor>,
-  "query"
-> & {
+type DatasetQueryEditorProps = ComponentProps<typeof NativeQueryEditor> & {
   isActive: boolean; // if QB mode is set to "query"
   height: number;
   // optional: derived from a measured container, so it is undefined until
@@ -71,7 +67,6 @@ function DatasetNativeQueryEditor({
       <NativeQueryEditor
         {...props}
         question={question}
-        query={checkNotNull(question.legacyNativeQuery())} // memoized query
         isInitiallyOpen
         canAutoOpenDataReference={!isMetabotSidebarOpen}
         hasSqlGenerationAccess={hasSqlGenerationAccess}

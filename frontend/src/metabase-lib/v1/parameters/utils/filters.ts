@@ -1,12 +1,9 @@
 import * as Lib from "metabase-lib";
-import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import { getParameterOperatorName } from "metabase-lib/v1/parameters/utils/operators";
 import {
   getParameterSubType,
   getParameterType,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
-import type Variable from "metabase-lib/v1/variables/Variable";
 import type {
   FieldValuesType,
   Parameter,
@@ -116,26 +113,33 @@ export function columnFilterForParameter(
     });
 }
 
-export function dimensionFilterForParameter(parameter: Parameter | string) {
-  const fieldFilter = fieldFilterForParameter(parameter);
-  return (dimension: TemplateTagDimension) => {
-    const field = dimension.field();
-    return field != null && fieldFilter(field);
+export function dimensionTagFilterForParameter(
+  query: Lib.Query,
+  parameter: Parameter | string,
+): (tag: TemplateTag) => boolean {
+  return (tag) => {
+    const fieldId = tag["field-id"];
+    const column =
+      tag.type === "dimension" && fieldId != null
+        ? Lib.fieldMetadata(query, fieldId)
+        : null;
+    return (
+      column != null &&
+      isParameterCompatibleWithColumn(parameter, {
+        isString: Lib.isStringOrStringLike(column),
+        isNumeric: Lib.isNumeric(column),
+        isBoolean: Lib.isBoolean(column),
+        isTemporal: Lib.isTemporal(column),
+        isID: Lib.isID(column),
+        isAddress: Lib.isAddress(column),
+        isTemporalBucketable: false,
+        hasFieldValues: Lib.fieldValuesSearchInfo(query, column).hasFieldValues,
+      })
+    );
   };
 }
 
-export function variableFilterForParameter(parameter: Parameter | string) {
-  const tagFilter = tagFilterForParameter(parameter);
-  return (variable: Variable) => {
-    if (variable instanceof TemplateTagVariable) {
-      const tag = variable.tag();
-      return tag ? tagFilter(tag) : false;
-    }
-    return false;
-  };
-}
-
-function tagFilterForParameter(
+export function variableTagFilterForParameter(
   parameter: Parameter | string,
 ): (tag: TemplateTag) => boolean {
   const type = getParameterType(parameter);

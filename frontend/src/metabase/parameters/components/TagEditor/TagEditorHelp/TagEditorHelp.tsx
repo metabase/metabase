@@ -9,11 +9,7 @@ import { Box, Button, Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  DatabaseId,
-  DatasetQuery,
-  TemplateTags,
-} from "metabase-types/api";
+import type { DatabaseId, TemplateTags } from "metabase-types/api";
 
 type QueryExample = {
   query: string;
@@ -185,14 +181,14 @@ const TagExample = ({ example, onTry }: TagExampleProps) => (
 interface TagEditorHelpProps {
   database?: Database | null;
   sampleDatabaseId?: DatabaseId;
-  setDatasetQuery: (datasetQuery: DatasetQuery, run?: boolean) => void;
+  setQuery: (query: Lib.Query) => void;
   switchToSettings: () => void;
 }
 
 export const TagEditorHelp = ({
   database,
   sampleDatabaseId,
-  setDatasetQuery,
+  setQuery,
   switchToSettings,
 }: TagEditorHelpProps) => {
   const engine = database?.engine;
@@ -208,7 +204,7 @@ export const TagEditorHelp = ({
             Lib.nativeQuery(datasetId, metadataProvider, example.query),
             example.templateTags,
           );
-          setDatasetQuery(Lib.toJsQuery(query), true);
+          setQuery(query);
           switchToSettings();
         }
       : undefined;

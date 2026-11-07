@@ -1,6 +1,5 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   DatasetColumn,
@@ -90,10 +89,9 @@ export function checkCanBeModel(question: Question) {
     return true;
   }
 
-  // Unjustified type cast. FIXME
-  return (question.legacyNativeQuery() as NativeQuery)
-    .templateTags()
-    .every(isSupportedTemplateTagForModel);
+  return Object.values(Lib.templateTags(question.query())).every(
+    isSupportedTemplateTagForModel,
+  );
 }
 
 export function isAdHocModelOrMetricQuestion(
