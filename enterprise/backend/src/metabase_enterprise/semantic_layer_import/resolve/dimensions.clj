@@ -5,9 +5,11 @@
   [[resolve.columns/join-context]]), and its time dimension as the default, bucketed by the metric's `time-grain` when
   it has one (see [[dimension-set]]). A dimension mapping targets a column, so a dimension whose `expr` is SQL is
   reported per metric rather than written, as is a dimension that bounds a slowly changing dimension's validity
-  window, and every dimension behind a join that cannot be made. Ids are derived, not generated, so a re-run writes
-  the same ids and a re-import updates the dimensions in place. Every dimension is written `:status/active`, the
-  status the instance gives a dimension whose column it finds, so its first refresh of the set changes nothing."
+  window, every dimension behind a join that cannot be made, and a dimension that is on more than one of the tables
+  reached through joins of one name, unless one of those is preferred (see [[joins-dimensions]]). Ids are derived,
+  not generated, so a re-run writes the same ids and a re-import updates the dimensions in place. Every dimension is
+  written `:status/active`, the status the instance gives a dimension whose column it finds, so its first refresh of
+  the set changes nothing."
   (:require
    [better-cond.core :as b]
    [clojure.string :as str]
@@ -134,41 +136,114 @@
                    :target       column-ref}
        :path      path})))
 
+(mr/def ::unsupported-result
+  "Why a dimension could not become a curated dimension, with the `path` it is spelled by from the metric's table (see
+  [[dimension-path]]), which names it in the report when another dimension of the set shares its name (see
+  [[with-unique-names]])."
+  [:map {:closed true}
+   [:name   :string]
+   [:reason :string]
+   [:path   :string]])
+
 (mr/def ::dimension-result
   "A [[dimension-pair]], or why a dimension could not become one."
-  [:or ::dimension-pair ::resolved/unsupported-dimension])
+  [:or ::dimension-pair ::unsupported-result])
 
-(mu/defn- unsupported-dimension :- ::resolved/unsupported-dimension
-  "The report entry for a dimension that could not become a curated dimension, and why."
-  [dimension-name :- :string
+(mu/defn- unsupported-dimension :- ::unsupported-result
+  "The report entry for a dimension that could not become a curated dimension, and why. `join-name` is the join it is
+  reached through; nil for one of the metric's own table."
+  [join-name      :- [:maybe :string]
+   dimension-name :- :string
    reason         :- :string]
-  {:name dimension-name, :reason reason})
+  {:name dimension-name, :reason reason, :path (dimension-path join-name dimension-name)})
 
 (mu/defn- own-dimensions :- [:sequential ::dimension-result]
-  "A [[dimension-pair]] for every dimension of `context`'s table, or the reason it cannot be one. `join-name` is the
-  join the table is reached through; nil for the metric's own table."
-  [{:keys [table] :as context} :- ::resolve.columns/context
-   group                       :- ::lib.schema.metadata/dimension-group
-   join-name                   :- [:maybe :string]]
-  (vec (for [{dimension-name :name, :as dimension} (:dimensions table)]
+  "A [[dimension-pair]] for each of `dimensions`, dimensions of `context`'s table, or the reason it cannot be one.
+  `join-name` is the join the table is reached through; nil for the metric's own table."
+  [context    :- ::resolve.columns/context
+   group      :- ::lib.schema.metadata/dimension-group
+   join-name  :- [:maybe :string]
+   dimensions :- [:sequential ::ir/dimension]]
+  (vec (for [{dimension-name :name, :as dimension} dimensions]
          (unsupported/catching #(dimension-pair context group (dimension-path join-name dimension-name) dimension)
-                               #(unsupported-dimension dimension-name %)))))
+                               #(unsupported-dimension join-name dimension-name %)))))
 
 (mu/defn- joined-dimensions :- [:sequential ::dimension-result]
-  "The dimensions reached through `join` from `context`'s table, see [[resolve.columns/join-context]]. When the join
-  cannot be made, what is behind it is reported with the reason, so a dimension the project declares is never
-  silently dropped: for a join the source could not make, its `unreachable` names; for one this stage cannot follow,
-  every dimension of the table it leads to."
+  "The dimensions reached through `join` from `context`'s table, see [[resolve.columns/join-context]], but for those
+  named in `skip`, which [[joins-dimensions]] reports on its own. When the join cannot be made, what is behind it is
+  reported with the reason, so a dimension the project declares is never silently dropped: for a join the source could
+  not make, its `unreachable` names; for one this stage cannot follow, every dimension of the table it leads to."
   [{:keys [env] :as context} :- ::resolve.columns/context
-   join                      :- ::ir/join]
+   join                      :- ::ir/join
+   skip                      :- [:set :string]]
   (unsupported/catching
    (fn []
      (let [{:keys [table] :as joined} (resolve.columns/join-context context join)]
-       (own-dimensions joined (dimension-group "connection" table) (:name join))))
+       (own-dimensions joined (dimension-group "connection" table) (:name join)
+                       (remove #(skip (:name %)) (:dimensions table)))))
    (fn [reason]
-     (mapv #(unsupported-dimension % reason)
+     (mapv #(unsupported-dimension (:name join) % reason)
            (or (:unreachable join)
                (map :name (get-in env [:tables (:table join) :dimensions])))))))
+
+(mu/defn- clashing-dimensions :- [:sequential ::unsupported-result]
+  "The report entries for `shared`, the dimensions that are on more than one of the tables the joins named `join-name`
+  lead to (see [[shared-dimensions]]): ambiguous (see [[resolve.columns/ambiguous-dimension-reason]]) unless one of
+  the joins is `preferred`, by table name, in which case its dimension is the one written and the same-named ones on
+  the other tables are reported as shadowed by it. Each entry is named by its path, `<join>__<dimension>`, the
+  reference the source resolves the same way, which also tells a shadowed dimension apart from the written one of its
+  name."
+  [join-name :- :string
+   preferred :- [:maybe :string]
+   shared    :- [:sequential [:tuple :string [:sequential :string]]]]
+  (vec (for [[dimension-name tables] shared]
+         (unsupported-dimension
+          nil (dimension-path join-name dimension-name)
+          (if (some #{preferred} tables)
+            (format (str "dimension %s is also on %s; the one on table %s, which the source prefers for join %s (for"
+                         " dbt, :entity-models), is the dimension written")
+                    (pr-str dimension-name)
+                    (str/join ", " (map #(str "table " (pr-str %)) (remove #{preferred} tables)))
+                    (pr-str preferred) (pr-str join-name))
+            (resolve.columns/ambiguous-dimension-reason join-name dimension-name tables))))))
+
+(mu/defn- shared-dimensions :- [:sequential [:tuple :string [:sequential :string]]]
+  "The dimensions that are on more than one of the tables `joins`, supported joins, lead to: each one's name and the
+  tables, in the order the dimensions first appear."
+  [context :- ::resolve.columns/context
+   joins   :- [:sequential ::ir/join.supported]]
+  (let [reached (for [join           joins
+                      dimension-name (resolve.columns/joined-dimension-names context join)]
+                  [dimension-name (:table join)])
+        owners  (reduce (fn [owners [dimension-name table-name]]
+                          (update owners dimension-name (fnil conj []) table-name))
+                        {}
+                        reached)]
+    (vec (for [dimension-name (distinct (map first reached))
+               :let           [tables (get owners dimension-name)]
+               :when          (next tables)]
+           [dimension-name tables]))))
+
+(mu/defn- joins-dimensions :- [:sequential ::dimension-result]
+  "The dimensions reached through `joins`, the joins of `context`'s table that share one name (see
+  `::ir/join.supported`): through the one join, those of the table it leads to (see [[joined-dimensions]]); through
+  several, those of every table they lead to, except that a dimension on more than one of those tables (see
+  [[shared-dimensions]]) is reported rather than written twice, unless one join is preferred, whose dimension it then
+  is (see [[clashing-dimensions]])."
+  [context :- ::resolve.columns/context
+   joins   :- [:sequential ::ir/join]]
+  (if-not (next joins)
+    (joined-dimensions context (first joins) #{})
+    (let [supported (filterv (complement :reason) joins)
+          shared    (shared-dimensions context supported)
+          preferred (:table (m/find-first :preferred? supported))
+          skip      (fn [join]
+                      (if (= preferred (:table join))
+                        #{}
+                        (into #{} (map first) shared)))]
+      (-> []
+          (into (mapcat #(joined-dimensions context % (skip %))) joins)
+          (into (clashing-dimensions (:name (first joins)) preferred shared))))))
 
 (mr/def ::dimension-set
   "A metric's curated dimensions, their mappings, and the dimensions that could not become one."
@@ -205,7 +280,7 @@
    results                                               :- [:sequential ::dimension-result]]
   (b/cond
     (and (nil? time-dimension) time-grain)
-    (conj results (unsupported-dimension no-time-dimension
+    (conj results (unsupported-dimension nil no-time-dimension
                                          (format (str "the metric's time grain %s applies to its time dimension, and"
                                                       " the metric has none: its inputs do not agree on one, or it"
                                                       " declares none")
@@ -215,7 +290,7 @@
     results
 
     (not (m/find-first #(= time-dimension (:name %)) (:dimensions table)))
-    (conj results (unsupported-dimension time-dimension
+    (conj results (unsupported-dimension nil time-dimension
                                          (format "the metric's time dimension %s is not a dimension of table %s"
                                                  (pr-str time-dimension) (pr-str (:name table)))))
 
@@ -229,35 +304,56 @@
               result))
           results)))
 
+(mu/defn- result-name :- :string
+  "The name of a [[dimension-pair]] or an unsupported dimension: the dimension's."
+  [{:keys [dimension] :as result} :- ::dimension-result]
+  (or (:name dimension) (:name result)))
+
+(mu/defn- renamed :- ::dimension-result
+  "`result` named `new-name`, whichever kind it is."
+  [{:keys [dimension] :as result} :- ::dimension-result
+   new-name                       :- :string]
+  (if dimension
+    (assoc-in result [:dimension :name] new-name)
+    (assoc result :name new-name)))
+
 (mu/defn- with-unique-names :- [:sequential ::dimension-result]
-  "`results` with no two curated dimensions of the same name: a joined dimension named like another dimension of the
-  set takes its path, `<join>__<dimension>`, as its name. The metric's own dimensions keep their names. Display names
-  are left alone: two dimensions may share one, as two columns of the same name on the metric's table and a joined
-  table do in Metabase, and their groups tell them apart."
+  "`results` with no two of the same name, curated or reported: a joined dimension named like another dimension of
+  the set takes its path, `<join>__<dimension>`, as its name, so that two reported dimensions are told apart as two
+  written ones are. The metric's own dimensions keep their names. Display names are left alone: two dimensions may
+  share one, as two columns of the same name on the metric's table and a joined table do in Metabase, and their groups
+  tell them apart."
   [results :- [:sequential ::dimension-result]]
-  (let [shared? (->> (keep (comp :name :dimension) results)
+  (let [shared? (->> (map result-name results)
                      frequencies
                      (m/filter-vals #(> % 1))
                      keys
                      set)]
-    (mapv (fn [{:keys [dimension path] :as result}]
-            (if (and dimension
-                     (shared? (:name dimension))
-                     (= "connection" (-> dimension :group :type)))
-              (assoc-in result [:dimension :name] path)
-              result))
+    (mapv (fn [{:keys [path] :as result}]
+            (let [the-name (result-name result)]
+              (if (and (shared? the-name) (not= path the-name))
+                (renamed result path)
+                result)))
           results)))
+
+(mu/defn- joins-by-name :- [:sequential [:sequential ::ir/join]]
+  "`joins` grouped by name, the groups in the order of their first join, as [[joins-dimensions]] takes them."
+  [joins :- [:sequential ::ir/join]]
+  (mapv (fn [join-name]
+          (filterv #(= join-name (:name %)) joins))
+        (distinct (map :name joins))))
 
 (mu/defn dimension-set :- ::dimension-set
   "The curated dimension set of the metric `context` is for: its own table's dimensions first, with the default among
   them (see [[with-default-dimension]]), then those reached through each of its table's joins, in the order the table
-  declares them. No two dimensions share a name (see [[with-unique-names]])."
+  declares them, the joins of one name together (see [[joins-dimensions]]). No two dimensions share a name (see
+  [[with-unique-names]])."
   [{:keys [table] :as context} :- ::resolve.columns/context]
   (let [results (-> (with-default-dimension context
-                      (own-dimensions context (dimension-group "main" table) nil))
-                    (into (mapcat #(joined-dimensions context %)) (:joins table))
+                      (own-dimensions context (dimension-group "main" table) nil (:dimensions table)))
+                    (into (mapcat #(joins-dimensions context %)) (joins-by-name (:joins table)))
                     with-unique-names)
         pairs   (filter :mapping results)]
     {:dimensions             (mapv :dimension pairs)
      :dimension-mappings     (mapv :mapping pairs)
-     :unsupported-dimensions (filterv :reason results)}))
+     :unsupported-dimensions (into [] (comp (filter :reason) (map #(select-keys % [:name :reason]))) results)}))

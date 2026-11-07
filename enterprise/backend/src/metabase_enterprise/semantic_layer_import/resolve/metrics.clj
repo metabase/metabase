@@ -279,7 +279,7 @@
             :table             (:name table)
             :time-dimension    time-dimension
             :query             query
-            :notes             (notes query)}
+            :notes             (into (vec (:notes ir)) (notes query))}
            (update dimensions :dimension-mappings without-ref-types))))
 
 (mu/defn- resolve-simple :- ::resolved/metric

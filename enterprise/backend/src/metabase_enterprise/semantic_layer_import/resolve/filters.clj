@@ -40,8 +40,9 @@
 (mu/defn- locate-dimension :- ::located-dimension
   "The dimension `reference` names and the context its expr is written against: with an empty path, or one naming the
   table itself (see `aliases` on `::ir/table`), one of the table's own dimensions; through a join, a dimension of the
-  table the join leads to (see [[resolve.columns/join-context]]). A dimension mapping is one implicit join, so a path
-  of more than one join is [[unsupported/throw-reason]]."
+  table the join leads to (see [[resolve.columns/join-context]]), or of the one among several of that name that has it
+  (see [[resolve.columns/dimension-join]]). A dimension mapping is one implicit join, so a path of more than one join
+  is [[unsupported/throw-reason]]."
   [{:keys [table] :as context}         :- ::resolve.columns/context
    {:keys [path], dimension-name :name} :- ::ir/reference.dimension]
   (let [[step & more] path]
@@ -57,7 +58,8 @@
       (own-dimension context dimension-name)
 
       :else
-      (own-dimension (resolve.columns/join-context context (resolve.columns/table-join context step)) dimension-name))))
+      (own-dimension (resolve.columns/join-context context (resolve.columns/dimension-join context step dimension-name))
+                     dimension-name))))
 
 (mu/defn- metric-time-dimension :- ::located-dimension
   "The metric's time dimension, on its own table."

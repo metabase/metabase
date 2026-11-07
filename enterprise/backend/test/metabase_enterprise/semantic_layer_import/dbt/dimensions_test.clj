@@ -10,6 +10,7 @@
   whose fixture carries dimensions."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase-enterprise.semantic-layer-import.dbt.test-util :as tu :refer [fld]]
@@ -233,41 +234,106 @@
         "product_category_dim"
         "msrp"
         "first_order_date")))
-  (testing "two semantic models claiming the same primary entity is ambiguous"
+  (testing "a dimension that is on two semantic models keyed by the same entity is ambiguous"
     (let [twin      (-> (tu/product-semantic-model)
                         (assoc :unique_id "semantic_model.p.dim_product_2", :name "dim_product_2")
                         (update :dimensions conj (tu/dimension "twin_only" "categorical")))
           with-twin (fn [tweaks]
                       (assoc tweaks :edit #(assoc-in % [:semantic_models "semantic_model.p.dim_product_2"] twin)))
+          ambiguous (re-pattern (str "^dimension \"[a-z_]+\" is on more than one of the tables join \"product\" leads"
+                                     " to \\(\"dim_product\", \"dim_product_2\"\\); the source has to say which one"
+                                     " it means \\(for dbt, name the semantic model in :entity-models\\)$"))
           reasons   (tu/unsupported-dimensions (with-twin {}))]
-      (are [dimension-name] (re-find #"more than one semantic model has entity \"product\" as its primary or a unique"
-                                     (reason-for reasons dimension-name))
-        "product_category_dim"
-        "msrp"
-        "first_order_date"
-        "twin_only")
-      (testing "unless the :entity-models option says which one the entity joins to"
+      (testing "reported once, under its dbt reference, whether or not it is a column"
+        (are [dimension-name] (re-find ambiguous (reason-for reasons dimension-name))
+          "product__product_category_dim"
+          "product__msrp"
+          "product__first_order_date"
+          "product__is_aviation_order")
+        (is (= #{"product__product_category_dim" "product__msrp" "product__first_order_date"
+                 "product__is_aviation_order" "is_big_sale" "next_day" "is_cancelled_order"}
+               (set (keys reasons)))))
+      (testing "a dimension that is on only one of the two models is reached through that one"
+        ;; `twin_only` is a column the project does not document, so it has no effective type
+        (is (= (-> (joined-dimension "product_key" "dim_product" "twin_only" nil product-group)
+                   (dissoc :effective-type)
+                   (assoc :name "twin_only", :display-name "Twin Only"))
+               (get (tu/dimension-set (with-twin {})) "twin_only")))
+        (is (= ["date_day" "created_at" "status" "amount" "is_returned"
+                "order_status_dim" "order_date"
+                "twin_only"]
+               (tu/dimension-names (with-twin {}))))
+        (testing "in a filter too"
+          (is (= [[:= {} (tu/joined-fld "product_key" "dim_product" "twin_only" nil) "x"]]
+                 (tu/filters (with-twin {:metric {:filter (tu/where-filters
+                                                           "{{ Dimension('product__twin_only') }} = 'x'")}}))))))
+      (testing "a filter on an ambiguous dimension reports the metric"
+        (is (re-find ambiguous (str/replace (tu/unsupported (with-twin {:metric {:filter planes-filter}}))
+                                            #"^filter .*?: " ""))))
+      (testing "unless the :entity-models option says which model's dimension it is"
         (let [chosen     (with-twin {:entity-models {"product" "dim_product_2"}})
-              dimensions (tu/dimension-set chosen)]
+              dimensions (tu/dimension-set chosen)
+              shadowed   (re-pattern (str "^dimension \"[a-z_]+\" is also on table \"dim_product\"; the one on table"
+                                          " \"dim_product_2\", which the source prefers for join \"product\" \\(for"
+                                          " dbt, :entity-models\\), is the dimension written$"))]
           (is (contains? dimensions "twin_only"))
           (is (= {:table-id (tu/portable-table "dim_product")
                   :target   (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text)}
                  (select-keys (get dimensions "product_category_dim") [:table-id :target])))
-          (is (not-any? #{"product_category_dim" "msrp" "first_order_date" "twin_only"}
-                        (keys (tu/unsupported-dimensions chosen))))
-          (testing "and a filter through the entity joins to the same model"
+          (testing "and the same-named dimensions on the other model are reported as shadowed, not dropped"
+            (let [reasons (tu/unsupported-dimensions chosen)]
+              (are [dimension-name] (re-find shadowed (reason-for reasons dimension-name))
+                "product__product_category_dim"
+                "product__msrp"
+                "product__first_order_date")
+              (is (not (contains? reasons "product__twin_only")))))
+          (testing "and a filter through the entity takes the preferred model's dimension"
             (is (= [[:= {} (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text) "Planes"]]
                    (tu/filters (with-twin {:entity-models {"product" "dim_product"}
                                            :metric        {:filter planes-filter}})))))))
-      (testing "an :entity-models entry naming a model that is not primary for the entity is reported"
+      (testing "an :entity-models entry naming a model that is not keyed by the entity is reported"
         (let [reasons (tu/unsupported-dimensions (with-twin {:entity-models {"product" "dim_order"}}))]
           (is (re-find (re-pattern (str ":entity-models names semantic model \"dim_order\" for entity \"product\", but"
                                         " the models with it as their primary or a unique entity are \"dim_product\","
                                         " \"dim_product_2\""))
-                       (reason-for reasons "msrp")))))
+                       (reason-for reasons "msrp"))))
+        (testing "even when one model is keyed by it"
+          (is (re-find #":entity-models names semantic model \"dim_product\" for entity \"order\""
+                       (reason-for (tu/unsupported-dimensions {:entity-models {"order" "dim_product"}})
+                                   "order_status_dim")))))
       (testing "an entry for an entity exactly one model is primary for changes nothing"
         (is (= (tu/dimension-set {})
-               (tu/dimension-set {:entity-models {"order" "dim_order"}})))))))
+               (tu/dimension-set {:entity-models {"order" "dim_order"}}))))))
+  (testing "two models keyed by one entity with different dimensions need no :entity-models at all"
+    (let [other   (-> (tu/product-semantic-model)
+                      (assoc :unique_id "semantic_model.p.dim_product_other", :name "dim_product_other")
+                      (assoc :dimensions [(tu/dimension "other_only" "categorical")]))
+          reasons (tu/unsupported-dimensions {:edit #(assoc-in % [:semantic_models (:unique_id other)] other)})]
+      (is (= ["date_day" "created_at" "status" "amount" "is_returned"
+              "order_status_dim" "order_date"
+              "product_category_dim" "msrp" "first_order_date"
+              "other_only"]
+             (tu/dimension-names {:edit #(assoc-in % [:semantic_models (:unique_id other)] other)})))
+      (is (= sql-dimensions (set (keys reasons)))))))
+
+(deftest ^:parallel reported-dimension-names-test
+  (testing (str "a reported dimension named like another dimension of the set, reported or written, takes its dbt"
+                " reference as its name, so two reports are told apart")
+    (let [same-sql (tu/edit-semantic-model
+                    tu/order-sm-id
+                    #(update % :dimensions conj (tu/dimension "is_big_sale" "categorical" :expr "amount > 100")))
+          reasons  (tu/unsupported-dimensions {:edit same-sql})]
+      (is (= (conj sql-dimensions "order__is_big_sale") (set (keys reasons))))
+      (is (re-find #"\"is_big_sale\" is the SQL expression \"case when sales > 100 then 1 else 0 end\""
+                   (reason-for reasons "is_big_sale")))
+      (is (re-find #"\"is_big_sale\" is the SQL expression \"amount > 100\""
+                   (reason-for reasons "order__is_big_sale"))))
+    (testing "and a reported joined dimension named like a written one of the metric's own"
+      (let [sql-status (tu/edit-semantic-model
+                        tu/order-sm-id
+                        #(update % :dimensions conj (tu/dimension "status" "categorical" :expr "upper(status)")))]
+        (is (contains? (tu/unsupported-dimensions {:edit sql-status}) "order__status"))
+        (is (contains? (tu/dimension-set {:edit sql-status}) "status"))))))
 
 (defn- retype-entity
   "A `:edit` fn for [[tu/build-manifest]] that gives the entity `entity-name` of semantic model `sm-id` the type

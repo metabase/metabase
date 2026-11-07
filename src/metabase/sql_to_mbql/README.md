@@ -74,6 +74,14 @@ clauses from its tree. `metabase-enterprise.semantic-layer-import` is the module
   warehouse driver to support regular expressions (the `:regex` feature; Postgres does, SQL Server does not), and
   `(?i)` to be understood where `~*` is used;
 - both forms of `CASE`, with or without `ELSE`, the simple `CASE x WHEN v` as `CASE WHEN x = v`;
+- a searched `CASE` as a condition, when every result, the `ELSE` included, is `TRUE`, `FALSE` or `NULL` (a missing
+  `ELSE` is `NULL`), as in the `CASE WHEN c THEN TRUE ELSE FALSE END` a dbt `sum_boolean` measure is often written as.
+  When the `TRUE` branches come first, the `CASE` is true exactly when one of their conditions is, so it is those
+  conditions `OR`ed, and `c` alone for that idiom. Otherwise it is `CASE ... END = TRUE`: a `TRUE` branch after a
+  `FALSE` one is taken when the condition `c` before it is false or null, and `NOT c` leaves out the rows where `c` is
+  null. Under a `NOT` it is `CASE ... END = TRUE` too: where `c` is null the `CASE` is false, which `NOT` makes true,
+  while `NOT c` is null. A `CASE` that is never true is reported, and so are a simple `CASE x WHEN` and a `CASE` with
+  any other result;
 - `CAST` (and `::`) to an integer, decimal, float, text, date or timestamp type, as `integer`, `float`, `text`,
   `date` and `datetime`, where the warehouse keeps the digits the conversion does: a `DECIMAL(p, s)` rounds to `s`
   decimals and a bare `DECIMAL` is a scale-0 type on most warehouses (not Postgres, BigQuery or SQLite), and
@@ -86,7 +94,15 @@ clauses from its tree. `metabase-enterprise.semantic-layer-import` is the module
   `trim`/`ltrim`/`rtrim` (of spaces), `length`/`char_length`, `replace`, `substring`/`substr`, `concat` and `||`,
   `extract`/`date_part` of `year`, `quarter`, `month`, `day`, `hour`, `minute` or `second`,
   `now()`/`current_timestamp`, `current_date`, and `date_trunc` over a column to a Metabase temporal unit
-  (`millisecond` through `year`, the units `truncation-unit` reads), which is the column bucketed by that unit.
+  (`millisecond` through `year`, the units `truncation-unit` reads), which is the column bucketed by that unit;
+- `DATEDIFF(unit, start, end)` on Snowflake, Redshift and SQL Server, BigQuery's `DATE_DIFF(end, start, unit)` and
+  MySQL's `DATEDIFF(end, start)` (in days), in years, quarters, months, days, hours, minutes or seconds. Each counts
+  the unit boundaries between the two values, so `DATEDIFF(month, '2024-01-31', '2024-02-01')` is 1, where Metabase's
+  `datetime-diff`, which counts whole units, gives 0; the two agree only in days, which both count by the calendar.
+  So a difference in days is `datetime-diff` in days, one in years the difference of the two `get-year`s, and one in
+  any other unit the boundaries of the next larger unit times the number of units in it, plus the difference of the
+  two places in it: in months, the years times 12 plus the difference of the two `get-month`s, in hours the days times
+  24 plus the difference of the two `get-hour`s.
 
 Anything outside that subset is reported, naming the construct.
 
@@ -95,7 +111,8 @@ Anything outside that subset is reported, naming the construct.
 `date_trunc('week', ...)` on most warehouses truncates to the ISO week, which starts on Monday. A Metabase `week`
 starts on the day the instance's "First day of the week" setting names (Sunday by default), so the converter's `week`,
 Metabase's, agrees with the warehouse's only on an instance set to Monday. `truncation-unit` reads `week` as Metabase's
-unit too. `extract(dow ...)` and `extract(week ...)` depend on the first day of the week as well, and are reported.
+unit too. `extract(dow ...)` and `extract(week ...)` depend on the first day of the week as well, and are reported, as
+is `DATEDIFF` in weeks, which counts the week boundaries between two dates.
 
 ## What does not convert
 
@@ -104,6 +121,7 @@ What the subset leaves out, and what it would take:
 | SQL | Example | Why it is unsupported | What it would take |
 | -- | -- | -- | -- |
 | a function with no MBQL expression function of the same meaning | `greatest(a, b)`, `regexp_replace(x, 'a', 'b')`, `to_char(d, 'YYYY')`, `ln(x)`, `log(2, x)`, `dateadd(day, 1, d)`, `extract(dow from d)`, `trim('x' from s)`, `round(x, -1)`, `round(x, 19)`, `date_trunc('decade', d)`, `date_trunc('month', d + 1)` | The functions that have an MBQL expression function with the same meaning are mapped (the list is above); the rest have nothing to map onto. `round` to a number of decimals is `round(x * 10^n) / 10^n`, so the decimals have to be a literal. `date_trunc` is a temporal bucket on a column ref, so there is nothing to bucket when its argument is an expression, and nothing for a unit Metabase does not have. | Extend the converter where MBQL has an equivalent under another shape (`dateadd` as `datetime-add`, `greatest` as a `case`); extend MBQL with the rest (a regex replace, a date format, a natural log, week and day-of-week extraction that agrees on the first day of the week). |
+| `DATEDIFF` on a dialect other than Snowflake, Redshift, SQL Server, BigQuery and MySQL, or in a unit other than years, quarters, months, days, hours, minutes or seconds | `datediff('day', a, b)` on Postgres, `date_diff('month', a, b)` on Trino, `datediff(week, a, b)`, `datediff(millisecond, a, b)` | Where it converts, `DATEDIFF` counts unit boundaries. Trino's and Presto's `date_diff` counts whole units, and Postgres has no `DATEDIFF`: sqlglot reads `datediff('day', a, b)` there as a function of `'day'` and `a` in the unit `b`, so the converter reports it rather than guess which argument is which. Week boundaries depend on the first day of the week, which the warehouse and the instance may set differently (see "Weeks"). | Add a dialect to the converter's table (`date-diff-dialects`) once what its `DATEDIFF` counts is known, and how sqlglot orders its arguments; extend MBQL with a week difference that takes the first day of the week. |
 | a `CAST` to anything but an integer, decimal, float, text, date or timestamp type | `cast(x as boolean)`, `x::uuid`, `cast(x as interval)` | MBQL's conversions are `integer`, `float`, `text`, `date` and `datetime`, and the common SQL spellings of those types map onto them (`cast(amount_cents as decimal) / 100` converts on Postgres). | Extend MBQL with the missing conversions. |
 | a `CAST` to a decimal with a scale, or to a bare `DECIMAL` where that is a scale-0 type | `cast(x as numeric(10, 2))`, `x::decimal(12)`, `cast(x as decimal)` on MySQL, SQL Server, Oracle, Redshift, Snowflake, Spark/Databricks or Trino | The warehouse rounds the value to the scale (`DECIMAL(10, 2)` to two decimals, a bare `DECIMAL` to none everywhere but Postgres, where it is unconstrained, BigQuery, where `NUMERIC` has nine, and SQLite, which has no fixed point), and MBQL's `float` conversion keeps every digit, so the number would silently differ. | Extend MBQL with a conversion to a decimal of a given scale, or convert `DECIMAL(p, s)` as `round(x * 10^s) / 10^s` where the warehouse's rounding mode is known. |
 | a `CAST` to an integer where the warehouse truncates and Metabase rounds | `cast(x as int)` of a non-integer value on Spark/Databricks, SQLite, ClickHouse or Redshift (whose `enable_numeric_rounding` is off by default) | Those warehouses drop the fraction, where Metabase compiles its `integer` conversion there as `CAST(ROUND(x) AS BIGINT)`, so `2.7` is `2` to the warehouse and `3` to Metabase. A value already known to be an integer converts. | Write `floor(x)` in the SQL, or extend MBQL's `integer` conversion with a rounding mode. |

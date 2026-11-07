@@ -9,7 +9,9 @@
   each `{:name :reason}`. A note says where the metric agrees with the source only under some conditions, read off the
   finished query so that every way of writing the case is caught: a cumulative metric is a running total across whatever
   it is broken out by, so it is right only with its time dimension as the finest breakout, and a metric that buckets
-  anything by week starts its weeks on the instance's first day of the week (see [the caveat on weeks](sql.md#weeks));
+  anything by week starts its weeks on the instance's first day of the week (see [the caveat on weeks](sql.md#weeks)).
+  A source adds a note of its own where only it can tell (`notes` on the IR metric): dbt's cumulative metric with
+  `period_agg: first` differs from Metabase's running total under a breakout coarser than its grain;
 - `:unsupported`, one `{:kind :name :reason}` per entry that could not be converted;
 - `:errors`, one `{:kind :name :unique-id :message}` per entry the import itself failed on: an unexpected exception,
   which is a bug or an input the import did not anticipate, rather than something the source can say that Metabase
