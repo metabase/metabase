@@ -13,7 +13,6 @@
   or the wording of a message agree."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.results :as results]
@@ -52,15 +51,6 @@
   [sql]
   (some->> sql (re-seq sql-token) (mapv str/trim)))
 
-(defn- sets-of-used-fields
-  "`field-references` output with every `:used-fields` as a set: the parsers find the same fields in different orders,
-  and order carries no meaning."
-  [value]
-  (walk/postwalk (fn [x]
-                   (cond-> x
-                     (and (map? x) (contains? x :used-fields)) (update :used-fields set)))
-                 value))
-
 (defn logical-value
   "What callers get from `method`'s `value`, without what carries no meaning for them: order where order is not
   meaningful, the layout of SQL, and the wording of messages."
@@ -74,7 +64,7 @@
     (:add-into-clause
      :add-insert-clause
      :replace-names)          (sql-tokens value)
-    :field-references         (sets-of-used-fields (results/field-references value))
+    :field-references         (results/field-references value)
     :single-stmt-of-type      (-> value (update :sql sql-tokens) (update :error some?))
     :transpile-sql            (if (= "success" (:status value))
                                 (update value :transpiled_sql sql-tokens)
