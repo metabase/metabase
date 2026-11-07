@@ -649,7 +649,13 @@ class Question {
   }
 
   setQuery(query: Query): Question {
-    return this.setDatasetQuery(Lib.toJsQuery(query));
+    const queryInfo = Lib.queryDisplayInfo(query);
+    return this.setCard(
+      chain(this.card())
+        .assoc("dataset_query", Lib.toJsQuery(query))
+        .assoc("query_type", queryInfo.isNative ? "native" : "query")
+        .value(),
+    );
   }
 
   generateQueryDescription() {

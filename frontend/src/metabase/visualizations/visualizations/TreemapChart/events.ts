@@ -1,7 +1,6 @@
 import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useMemo } from "react";
 
-import { isNative } from "metabase/common/utils/card";
 import type {
   ClickObject,
   VisualizationProps,
@@ -100,7 +99,7 @@ export function getTreemapClickData({
     settings,
   };
 
-  if (!isNative(rawSeries[0].card)) {
+  if (rawSeries[0].card.query_type !== "native") {
     clickData.dimensions = dimensions;
   }
 

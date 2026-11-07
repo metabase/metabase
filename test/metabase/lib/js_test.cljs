@@ -767,16 +767,6 @@
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
 
-(deftest ^:parallel js-query-native?-test
-  (testing "legacy queries"
-    (is (true? (lib.js/js-query-native? #js {:type "native", :native #js {:query "SELECT 1"}})))
-    (is (false? (lib.js/js-query-native? #js {:type "query", :query #js {:source-table 1}}))))
-  (testing "MBQL 5 queries"
-    (is (true? (lib.js/js-query-native? (lib.js/to-js-query (lib/native-query meta/metadata-provider "SELECT 1")))))
-    (is (false? (lib.js/js-query-native? (lib.js/to-js-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
-  (testing "empty query"
-    (is (false? (lib.js/js-query-native? #js {})))))
-
 (deftest ^:parallel picker-info-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
     (testing "table returns its ID"

@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { isNative } from "metabase/common/utils/card";
 import { displayNameForColumn } from "metabase/value-formatting";
 import {
   trackTableFreezeColumnsEnabled,
@@ -159,17 +158,10 @@ export const TABLE_DEFINITION = {
       getHidden: ([{ data }]: Series) => data && data.cols.length < 3,
       getDefault: ([series]: Series) => {
         const { card, data } = series;
-        let native: boolean;
-        try {
-          native = isNative(card);
-        } catch (error) {
-          // isNative throws when used in the visualizer
-          native = false;
-        }
         if (
           !data ||
           data.cols.length !== 3 ||
-          native ||
+          card.query_type === "native" ||
           data.cols.filter(isMetric).length !== 1 ||
           data.cols.filter(isDimension).length !== 2
         ) {

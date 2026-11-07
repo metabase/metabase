@@ -1,7 +1,6 @@
 import type { EChartsType } from "echarts/core";
 import { useMemo } from "react";
 
-import { isNative } from "metabase/common/utils/card";
 import type {
   ClickObject,
   VisualizationProps,
@@ -72,7 +71,7 @@ export const createSankeyClickData = (
     });
   } else if (isSankeyEdgeEvent(event)) {
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);
-    if (!isNative(rawSeries[0].card)) {
+    if (rawSeries[0].card.query_type !== "native") {
       clickData.dimensions = [
         {
           column: sankeyColumns.source.column,

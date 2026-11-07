@@ -17,7 +17,6 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { isNative } from "metabase/common/utils/card";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -239,7 +238,8 @@ const isLoading = (series: Series | null) => {
 const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
   const firstCard = rawSeriesArray[0]?.card;
-  const isNativeView = props.queryBuilderMode === "view" && isNative(firstCard);
+  const isNativeView =
+    props.queryBuilderMode === "view" && firstCard?.query_type === "native";
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(

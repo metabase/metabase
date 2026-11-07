@@ -2,7 +2,6 @@ import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { isNative } from "metabase/common/utils/card";
 import type { SelectedTabId } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import {
@@ -184,7 +183,7 @@ export function getInlineParameterTabMap(dashboard: Dashboard) {
 }
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
-  return isNative(dashcard.card);
+  return dashcard.card.query_type === "native";
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
@@ -572,7 +571,7 @@ export function hasActionsMenu(dashcard: DashboardCard) {
 
   // This seems to work, but it isn't the right logic.
   // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
-  return !isNative(dashcard.card);
+  return dashcard.card.query_type !== "native";
 }
 
 export function hasColumnLevelClickBehavior(dashcard: DashboardCard) {

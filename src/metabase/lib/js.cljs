@@ -762,17 +762,6 @@
               (mbql.normalize/normalize q)))]
     (-> a-query (js->clj :keywordize-keys true) unwrap normalize*)))
 
-(defn ^:export js-query-native?
-  "Whether the JS legacy or MBQL 5 query `a-query` is native, without a metadata provider.
-
-  > **Code health:** Healthy"
-  [a-query]
-  (let [clj-query (js->clj a-query :keywordize-keys true)]
-    (case (lib.util/normalized-query-type clj-query)
-      :native     true
-      :mbql/query (= "mbql.stage/native" (some-> clj-query :stages first :lib/type u/qualified-name))
-      false)))
-
 (defn ^:export normalize
   "Normalize the MBQL or MBQL 5 query `a-query`.
   Returns the JS form of the normalized query."

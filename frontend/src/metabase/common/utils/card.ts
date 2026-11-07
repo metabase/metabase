@@ -24,7 +24,6 @@ import type {
   Parameter,
   ParameterValuesMap,
   UnsavedCard,
-  VirtualCard,
   VirtualDashCardParameterMapping,
 } from "metabase-types/api";
 import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
@@ -69,6 +68,7 @@ function getCleanCard(
     "display",
     "name",
     "parameters",
+    "query_type",
     "type",
     "visualization_settings",
   ];
@@ -196,10 +196,6 @@ export function parseHash(hash?: string) {
   }
 
   return { options, serializedCard };
-}
-
-export function isNative(card: UnsavedCard | VirtualCard | null | undefined) {
-  return card?.dataset_query != null && Lib.isNativeJsQuery(card.dataset_query);
 }
 
 function cardVisualizationIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {

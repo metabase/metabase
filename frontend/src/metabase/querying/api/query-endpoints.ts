@@ -1,5 +1,4 @@
 import { cardApi, dashboardApi, embedApi, publicApi } from "metabase/api";
-import { isNative } from "metabase/common/utils/card";
 import type { Dispatch } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -52,7 +51,7 @@ export function shouldUsePivotEndpoint(question: Question): boolean {
   // throws for query types Lib doesn't
   // support (e.g. the `internal` queries the audit pages run), so it must not
   // be evaluated for non-pivot/native cards.
-  if (question.display() !== "pivot" || isNative(question.card())) {
+  if (question.display() !== "pivot" || question.isNative()) {
     return false;
   }
   const features = Lib.databaseDisplayInfo(question.query())?.features;
