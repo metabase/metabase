@@ -18,7 +18,6 @@
    [metabase.sql-parsing.parser :as parser]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.results :as results]
-   [metabase.sql-parsing.shadow :as shadow]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
@@ -28,21 +27,11 @@
 (set! *warn-on-reflection* true)
 
 (defn parser
-  "The [[metabase.sql-parsing.protocol/SqlParser]] for `backend`: `:sqlglot` (GraalPy) or `:sqlglot-java` (the Java
-  port). Every parsing function in this namespace takes it as its first argument."
+  "The [[metabase.sql-parsing.protocol/SqlParser]] for `backend`: `:sqlglot` (GraalPy), `:sqlglot-java` (the Java
+  port), or the shadow backends `:sqlglot-shadow` and `:sqlglot-java-shadow` (see [[metabase.sql-parsing.parser]]).
+  Every parsing function in this namespace takes it as its first argument."
   [backend]
   (parser/parser backend))
-
-(defn shadow-parser
-  "A parser that answers with `primary-backend` and compares `shadow-backend` on the same input in the background,
-  when `(sample? method)` says to (see [[metabase.sql-parsing.shadow/parser]]). It owns a thread pool, so keep it for
-  the life of the process."
-  [primary-backend shadow-backend sample?]
-  (shadow/parser {:primary-backend primary-backend
-                  :primary         (parser/parser primary-backend)
-                  :shadow-backend  shadow-backend
-                  :shadow          (parser/parser shadow-backend)
-                  :sample?         sample?}))
 
 (defn parse-error?
   "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser

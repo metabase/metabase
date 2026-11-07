@@ -161,7 +161,7 @@
         (doseq [backend [:sqlglot-java :sqlglot-shadow :sqlglot-java-shadow]]
           (is (identical? (get-method multimethod :sqlglot) (get-method multimethod backend)) backend)))))
   (testing "the shared :sqlglot methods ask for the parser the dispatch value names"
-    (doseq [backend [:sqlglot :sqlglot-java]]
+    (doseq [backend [:sqlglot :sqlglot-java :sqlglot-shadow :sqlglot-java-shadow]]
       (testing backend
         (let [seen (atom [])]
           (binding [settings/*parser-backend-override* backend]

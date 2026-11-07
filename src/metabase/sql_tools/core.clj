@@ -259,7 +259,7 @@
 (defn sqlglot-parser
   "The sqlglot parser for [[sqlglot-backend]]."
   []
-  (sqlglot/parser (sqlglot-backend)))
+  (sql-parsing/parser (sqlglot-backend)))
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will

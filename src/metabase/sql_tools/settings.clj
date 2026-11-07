@@ -62,10 +62,3 @@
   []
   (or *parser-backend-override*
       (sql-tools-parser-backend)))
-
-(defsetting sql-tools-parser-shadow-sample-rate
-  "Share of calls, from 0.0 to 1.0, that a shadow parser backend also runs on its second parser."
-  :visibility :internal
-  :export? false
-  :type :double
-  :default 1.0)
