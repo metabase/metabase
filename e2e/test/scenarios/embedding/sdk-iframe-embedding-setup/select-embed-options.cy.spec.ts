@@ -1,8 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  embedModalEnableEmbedding,
-  mockEmbedJsToDevServer,
-} from "e2e/support/helpers";
+import { mockEmbedJsToDevServer } from "e2e/support/helpers";
 
 import {
   codeBlock,
@@ -25,66 +22,6 @@ const RERENDER_TIMEOUT = 15000;
 
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed options";
-
-describe("OSS", { tags: "@OSS" }, () => {
-  describe(suiteTitle, () => {
-    beforeEach(() => {
-      H.restore();
-      H.resetSnowplow();
-      cy.signInAsAdmin();
-      H.enableTracking();
-      H.updateSetting("enable-embedding-modular", true);
-
-      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-      mockEmbedJsToDevServer();
-    });
-
-    it("should show upsell for Allow subscriptions option", () => {
-      navigateToEmbedOptionsStep({
-        experience: "dashboard",
-        resourceName: DASHBOARD_NAME,
-      });
-
-      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
-    });
-
-    it("should show upsell for Allow alerts option", () => {
-      navigateToEmbedOptionsStep({
-        experience: "chart",
-        resourceName: QUESTION_NAME,
-      });
-
-      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
-    });
-  });
-});
-
-describe("EE without license", () => {
-  describe(suiteTitle, () => {
-    beforeEach(() => {
-      H.restore();
-      H.resetSnowplow();
-      cy.signInAsAdmin();
-      H.activateToken("starter");
-      H.enableTracking();
-      H.updateSetting("enable-embedding-modular", true);
-
-      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-      mockEmbedJsToDevServer();
-    });
-
-    it("should show upsell banner", () => {
-      navigateToEmbedOptionsStep({
-        experience: "dashboard",
-        resourceName: DASHBOARD_NAME,
-      });
-
-      getEmbedSidebar().findByTestId("upsell-card").should("be.visible");
-    });
-  });
-});
 
 describe(suiteTitle, () => {
   beforeEach(() => {
@@ -192,72 +129,6 @@ describe(suiteTitle, () => {
     });
 
     codeBlock().should("contain", 'drills="false"');
-  });
-
-  it("cannot select subscriptions for dashboard when email is not set up", () => {
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-      preselectGuest: true,
-    });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow subscriptions")
-      .should("not.be.checked")
-      .and("be.disabled");
-
-    cy.log("Email warning should only be shown on non-guest embedding");
-    // Use trigger("mouseenter") instead of realHover() because Chrome v133+
-    // headless CDP hit-testing on elements near disabled inputs suppresses
-    // mouse boundary events, preventing the Tooltip from appearing.
-    getEmbedSidebar()
-      .findByLabelText("Allow subscriptions")
-      .closest("[data-testid=tooltip-warning]")
-      .icon("info")
-      .trigger("mouseenter");
-    H.tooltip().should(
-      "contain.text",
-      "Not available if Guest Mode is selected",
-    );
-
-    H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Subscriptions" })
-      .should("not.exist");
-
-    cy.log("snippet should show subscriptions as false");
-    getEmbedSidebar().findByText("Get code").click();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_options_completed",
-      event_detail: "settings=default",
-    });
-
-    cy.log("test non-guest embeds");
-    getEmbedSidebar().within(() => {
-      cy.button("Back").click();
-      cy.button("Back").click();
-
-      cy.findByLabelText("Metabase account (SSO)").click();
-    });
-
-    embedModalEnableEmbedding();
-
-    getEmbedSidebar().within(() => {
-      cy.button("Next").click();
-
-      // Trigger mouseover (not mouseenter) because this HoverCard is outside a
-      // HoverCardGroup, so Mantine attaches a React onMouseEnter prop. React 18
-      // simulates onMouseEnter from mouseover events (which bubble to the React
-      // root for delegation). Native mouseenter doesn't bubble and React ignores it.
-      cy.findByLabelText("Allow subscriptions")
-        .closest("[data-testid=tooltip-warning]")
-        .icon("info")
-        .trigger("mouseover");
-    });
-    H.hovercard().should(
-      "contain.text",
-      "To allow subscriptions, set up email in admin settings",
-    );
   });
 
   it("toggles subscriptions for dashboard when email is set up", () => {
@@ -536,65 +407,6 @@ describe(suiteTitle, () => {
       cy.findByLabelText("Auto").should("exist");
       cy.findByTestId("behavior-docs-link").should("not.exist");
     });
-  });
-
-  it("cannot select alerts for question when email is not set up", () => {
-    navigateToEmbedOptionsStep({
-      experience: "chart",
-      resourceName: QUESTION_NAME,
-      preselectGuest: true,
-    });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow alerts")
-      .should("not.be.checked")
-      .and("be.disabled");
-
-    cy.log("Email warning should only be shown on non-guest embedding");
-    getEmbedSidebar()
-      .findByLabelText("Allow alerts")
-      .closest("[data-testid=tooltip-warning]")
-      .icon("info")
-      .trigger("mouseenter");
-    H.tooltip().should(
-      "contain.text",
-      "Not available if Guest Mode is selected",
-    );
-
-    H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
-      .should("not.exist");
-
-    cy.log("snippet should show alerts as false");
-    getEmbedSidebar().findByText("Get code").click();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_options_completed",
-      event_detail: "settings=default",
-    });
-
-    cy.log("test non-guest embeds");
-    getEmbedSidebar().within(() => {
-      cy.button("Back").click();
-      cy.button("Back").click();
-
-      cy.findByLabelText("Metabase account (SSO)").click();
-    });
-
-    embedModalEnableEmbedding();
-
-    getEmbedSidebar().within(() => {
-      cy.button("Next").click();
-
-      cy.findByLabelText("Allow alerts")
-        .closest("[data-testid=tooltip-warning]")
-        .icon("info")
-        .trigger("mouseover");
-    });
-    H.hovercard().should(
-      "contain.text",
-      "To allow alerts, set up email in admin settings",
-    );
   });
 
   it("toggles alerts for question when email is set up", () => {

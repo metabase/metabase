@@ -17,7 +17,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDashboard,
@@ -25,6 +25,7 @@ import {
   createMockDatabase,
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
@@ -32,9 +33,13 @@ import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 export const setup = (options?: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   modularEmbeddingEnabled?: boolean;
+  /** The `embedding_simple` token feature. Defaults to `modularEmbeddingEnabled`. */
+  hasEmbeddingSimpleTokenFeature?: boolean;
+  recentItems?: RecentItem[];
   showModularEmbedTerms?: boolean;
   showStaticEmbedTerms?: boolean;
   jwtReady?: boolean;
+  isAdmin?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
   hasEmailSetup?: boolean;
   metabotEnabled?: boolean;
@@ -50,14 +55,11 @@ export const setup = (options?: {
       enable_embedding: true,
     });
 
-  if (enterprisePlugins) {
-    enterprisePlugins.forEach((plugin) => {
-      setupEnterpriseOnlyPlugin(plugin);
-    });
-  }
-
   const tokenFeatures = createMockTokenFeatures({
-    embedding_simple: options?.modularEmbeddingEnabled ?? false,
+    embedding_simple:
+      options?.hasEmbeddingSimpleTokenFeature ??
+      options?.modularEmbeddingEnabled ??
+      false,
   });
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
@@ -74,7 +76,18 @@ export const setup = (options?: {
     "site-url": options?.siteUrl ?? window.location.origin,
   });
 
-  setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
+  const mockedSettings = mockSettings(settingValues);
+
+  // Plugins read the token features when they initialize, so the settings
+  // have to be in place before.
+  enterprisePlugins?.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
+
+  setupRecentViewsAndSelectionsEndpoints(options?.recentItems ?? [], [
+    "selections",
+    "views",
+  ]);
   setupSearchEndpoints([]);
   setupDatabasesEndpoints([mockDatabase]);
   setupCollectionByIdEndpoint({
@@ -106,7 +119,10 @@ export const setup = (options?: {
     />,
     {
       storeInitialState: createMockState({
-        settings: mockSettings(settingValues),
+        currentUser: createMockUser({
+          is_superuser: options?.isAdmin ?? false,
+        }),
+        settings: mockedSettings,
       }),
     },
   );

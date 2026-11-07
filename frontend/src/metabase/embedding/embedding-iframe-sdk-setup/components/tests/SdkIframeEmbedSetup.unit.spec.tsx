@@ -4,16 +4,23 @@ import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, screen, waitFor } from "__support__/ui";
-import { waitForRequestsToSettle } from "__support__/utils";
+import { fireEvent, screen, waitFor, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  waitForRequestsToSettle,
+} from "__support__/utils";
 import * as Analytics from "metabase/analytics";
-import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+  reinitialize,
+} from "metabase/plugins";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockDashboard,
   createMockDashboardCard,
   createMockDatabase,
+  createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 
 import { setup } from "./test-setup";
@@ -678,5 +685,326 @@ describe("Embed flow > Metabot", () => {
 
     await userEvent.click(saveCheckbox);
     expect(saveCheckbox).toBeChecked();
+  });
+});
+
+function setupQuestion(id = 456, name = "Question") {
+  const mockCard = createMockCard({ id, name });
+
+  setupCardEndpoints(mockCard);
+  setupCardQueryMetadataEndpoint(
+    mockCard,
+    createMockCardQueryMetadata({ databases: [createMockDatabase()] }),
+  );
+}
+
+describe("Embed flow > select embed options", () => {
+  const dashboardState = {
+    resourceType: "dashboard",
+    resourceId: 1,
+  } as const;
+  const questionState = {
+    resourceType: "question",
+    resourceId: 456,
+  } as const;
+
+  const licensedPlugins = ["embedding_iframe_sdk_setup" as const];
+
+  afterEach(() => {
+    reinitialize();
+  });
+
+  describe("OSS", () => {
+    it("should show upsell for Allow subscriptions option", async () => {
+      setup({ isAdmin: true, initialState: dashboardState });
+
+      expect(await screen.findByTestId("upsell-card")).toBeVisible();
+    });
+
+    it("should show upsell for Allow alerts option", async () => {
+      setupQuestion();
+      setup({ isAdmin: true, initialState: questionState });
+
+      expect(await screen.findByTestId("upsell-card")).toBeVisible();
+    });
+  });
+
+  describe("EE without license", () => {
+    it("should show upsell banner", async () => {
+      // EE build whose token has no `embedding_simple` feature (e.g. Starter)
+      setup({
+        isAdmin: true,
+        enterprisePlugins: licensedPlugins,
+        modularEmbeddingEnabled: true,
+        hasEmbeddingSimpleTokenFeature: false,
+        initialState: dashboardState,
+      });
+
+      expect(await screen.findByTestId("upsell-card")).toBeVisible();
+    });
+  });
+
+  describe("EE with license", () => {
+    it("does not show the upsell banner", async () => {
+      setup({
+        isAdmin: true,
+        enterprisePlugins: licensedPlugins,
+        modularEmbeddingEnabled: true,
+        initialState: dashboardState,
+      });
+
+      // The enabled checkbox shows that the licensed Behavior step rendered.
+      await waitFor(() =>
+        expect(
+          screen.getByRole("checkbox", { name: "Allow downloads" }),
+        ).toBeEnabled(),
+      );
+      expect(screen.queryByTestId("upsell-card")).not.toBeInTheDocument();
+    });
+
+    describe("email is not set up", () => {
+      let trackSimpleEvent: jest.SpyInstance;
+
+      beforeEach(() => {
+        trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      });
+
+      afterEach(() => {
+        trackSimpleEvent.mockRestore();
+      });
+
+      const getTooltipWarning = (checkboxLabel: string) => {
+        const warning = screen
+          .getAllByTestId("tooltip-warning")
+          .find((element) =>
+            within(element).queryByRole("checkbox", { name: checkboxLabel }),
+          );
+
+        if (!warning) {
+          throw new Error(`No tooltip warning around "${checkboxLabel}"`);
+        }
+
+        return warning;
+      };
+
+      const expectGuestModeCheckboxUnavailable = async (
+        checkboxLabel: string,
+      ) => {
+        const checkbox = screen.getByRole("checkbox", { name: checkboxLabel });
+        expect(checkbox).not.toBeChecked();
+        expect(checkbox).toBeDisabled();
+
+        await userEvent.hover(
+          within(getTooltipWarning(checkboxLabel)).getByLabelText("info icon"),
+        );
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          "Not available if Guest Mode is selected",
+        );
+      };
+
+      const expectDefaultSettingsTrackedOnGetCode = async () => {
+        await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+        await waitFor(() =>
+          expect(trackSimpleEvent).toHaveBeenCalledWith({
+            event: "embed_wizard_options_completed",
+            event_detail: "settings=default",
+          }),
+        );
+      };
+
+      const expectSsoModeCheckboxNeedsEmail = async (
+        checkboxLabel: string,
+        hovercardText: RegExp,
+      ) => {
+        await userEvent.click(screen.getByRole("button", { name: "Back" }));
+        await userEvent.click(
+          await screen.findByRole("radio", { name: "Metabase account (SSO)" }),
+        );
+
+        expect(
+          await screen.findByRole("checkbox", { name: checkboxLabel }),
+        ).toBeDisabled();
+        await userEvent.hover(
+          within(getTooltipWarning(checkboxLabel)).getByLabelText("info icon"),
+        );
+        expect(await screen.findByText(hovercardText)).toBeVisible();
+        expect(
+          screen.getByRole("link", { name: "admin settings" }),
+        ).toHaveAttribute("href", "/admin/settings/email");
+      };
+
+      it("cannot select subscriptions for dashboard when email is not set up", async () => {
+        setup({
+          enterprisePlugins: licensedPlugins,
+          modularEmbeddingEnabled: true,
+          hasEmailSetup: false,
+          initialState: { ...dashboardState, isGuest: true },
+        });
+
+        await expectGuestModeCheckboxUnavailable("Allow subscriptions");
+        // Whether the preview iframe has no Subscriptions button is a runtime
+        // check; it stays in the Cypress test "toggles subscriptions for
+        // dashboard when email is set up".
+        await expectDefaultSettingsTrackedOnGetCode();
+        await expectSsoModeCheckboxNeedsEmail(
+          "Allow subscriptions",
+          /To allow subscriptions, set up email in/,
+        );
+      });
+
+      it("cannot select alerts for question when email is not set up", async () => {
+        setupQuestion();
+        setup({
+          enterprisePlugins: licensedPlugins,
+          modularEmbeddingEnabled: true,
+          hasEmailSetup: false,
+          initialState: { ...questionState, isGuest: true },
+        });
+
+        await expectGuestModeCheckboxUnavailable("Allow alerts");
+        // Whether the preview iframe has no Alerts button is a runtime check;
+        // it stays in the Cypress test "toggles alerts for question when email
+        // is set up".
+        await expectDefaultSettingsTrackedOnGetCode();
+        await expectSsoModeCheckboxNeedsEmail(
+          "Allow alerts",
+          /To allow alerts, set up email in/,
+        );
+      });
+    });
+  });
+});
+
+describe("Embed flow > get code step", () => {
+  // The virtualized item list of the picker needs a layout to render rows.
+  mockGetBoundingClientRect();
+
+  let trackSimpleEvent: jest.SpyInstance;
+
+  beforeEach(() => {
+    trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+  });
+
+  afterEach(() => {
+    trackSimpleEvent.mockRestore();
+    reinitialize();
+  });
+
+  const sessionLabel = "Existing session (local testing only)";
+
+  it("should track embed_wizard_options_completed with settings=default properly (metabase#68285)", async () => {
+    const firstQuestion = createMockRecentCollectionItem({
+      id: 456,
+      model: "card",
+      name: "First question",
+    });
+    const pickedQuestion = createMockRecentCollectionItem({
+      id: 789,
+      model: "card",
+      name: "Picked question",
+    });
+    setupQuestion(firstQuestion.id, firstQuestion.name);
+    setupQuestion(pickedQuestion.id, pickedQuestion.name);
+    setup({
+      enterprisePlugins: ["embedding_iframe_sdk_setup"],
+      modularEmbeddingEnabled: true,
+      recentItems: [firstQuestion, pickedQuestion],
+    });
+
+    await userEvent.click(await screen.findByRole("radio", { name: /Chart/ }));
+    // The most recent question is preselected for the chart experience.
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Change chart" }),
+    );
+    // Picking another question is what adds `initialSqlParameters` to the
+    // settings, which the default settings have to include as well.
+    const picker = await screen.findByRole("dialog", {
+      name: "Select a chart",
+    });
+    await userEvent.click(await within(picker).findByText(pickedQuestion.name));
+    expect(
+      await screen.findByRole("button", { name: "Change chart" }),
+    ).toHaveTextContent(pickedQuestion.name);
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Get code" }),
+    );
+
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "embed_wizard_options_completed",
+        event_detail: "settings=default",
+      }),
+    );
+  });
+
+  it("should set question-id for regular chart experience", async () => {
+    setupQuestion();
+    setup({
+      enterprisePlugins: ["embedding_iframe_sdk_setup"],
+      modularEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: {
+        resourceType: "question",
+        resourceId: 456,
+        useExistingUserSession: false,
+      },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+    await userEvent.click(await screen.findByLabelText(sessionLabel));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("embed-code-snippet")).toHaveTextContent(
+        'question-id="456"',
+      ),
+    );
+  });
+});
+
+describe("Embed flow > auth type switch", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
+  it("allows to select the `guest` and `Metabase Account` items even when modular embedding is disabled", async () => {
+    setup({
+      isAdmin: true,
+      enterprisePlugins: ["embedding_iframe_sdk_setup"],
+      modularEmbeddingEnabled: false,
+      hasEmbeddingSimpleTokenFeature: true,
+    });
+
+    expect(await screen.findByLabelText("Guest")).toBeEnabled();
+    expect(screen.getByLabelText("Metabase account (SSO)")).toBeEnabled();
+  });
+
+  describe("without the `embedding_simple` token feature", () => {
+    type EnterprisePlugins = NonNullable<
+      Parameters<typeof setup>[0]
+    >["enterprisePlugins"];
+
+    it.each<{ edition: string; enterprisePlugins: EnterprisePlugins }>([
+      { edition: "OSS", enterprisePlugins: [] },
+      {
+        edition: "Starter",
+        enterprisePlugins: ["embedding_iframe_sdk_setup"],
+      },
+    ])(
+      "allows to select the `guest` item when modular embedding is disabled, but not the `Metabase Account` item when token feature is missing ($edition)",
+      async ({ enterprisePlugins }) => {
+        setup({
+          isAdmin: true,
+          enterprisePlugins,
+          modularEmbeddingEnabled: false,
+          hasEmbeddingSimpleTokenFeature: false,
+        });
+
+        expect(await screen.findByLabelText("Guest")).toBeEnabled();
+        expect(screen.getByLabelText("Metabase account (SSO)")).toBeDisabled();
+      },
+    );
   });
 });

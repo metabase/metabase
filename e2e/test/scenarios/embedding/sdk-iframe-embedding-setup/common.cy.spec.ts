@@ -6,7 +6,6 @@ import {
   getEmbedSidebar,
   navigateToEntitySelectionStep,
   navigateToGetCodeStep,
-  visitNewEmbedPage,
 } from "./helpers";
 
 const { H } = cy;
@@ -93,15 +92,6 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
   });
 
   describe("auth type switch", () => {
-    it("allows to select the `guest` and `Metabase Account` items even when modular embedding is disabled", () => {
-      H.updateSetting("enable-embedding-modular", false);
-
-      visitNewEmbedPage({ waitForResource: false });
-
-      cy.findByLabelText("Guest").should("be.enabled");
-      cy.findByLabelText("Metabase account (SSO)").should("be.enabled");
-    });
-
     describe("default auth mode follows SSO configuration", () => {
       const openFromCommandPalette = () => {
         cy.visit("/");
@@ -191,38 +181,4 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       });
     });
   });
-});
-
-describe("scenarios > embedding > sdk iframe embed setup > common (oss and starter)", () => {
-  describe("OSS", { tags: "@OSS" }, () =>
-    runOssAndStarterTests({ token: null }),
-  );
-
-  describe("Starter", () => runOssAndStarterTests({ token: "starter" }));
-
-  function runOssAndStarterTests({ token }: { token: "starter" | null }) {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-
-      if (token) {
-        H.activateToken(token);
-      }
-
-      H.enableTracking();
-
-      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-      H.mockEmbedJsToDevServer();
-    });
-
-    it("allows to select the `guest` item when modular embedding is disabled, but not the `Metabase Account` item when token feature is missing", () => {
-      H.updateSetting("enable-embedding-modular", false);
-
-      visitNewEmbedPage({ waitForResource: false });
-
-      cy.findByLabelText("Guest").should("be.enabled");
-      cy.findByLabelText("Metabase account (SSO)").should("be.disabled");
-    });
-  }
 });

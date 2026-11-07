@@ -1,7 +1,4 @@
-import {
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 import { enableSamlAuth } from "e2e/support/helpers/embedding-sdk-testing";
 
@@ -15,7 +12,6 @@ import {
 const { H } = cy;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
-const QUESTION_NAME = "Orders, Count";
 
 describe("scenarios > embedding > sdk iframe embed setup > get code step", () => {
   beforeEach(() => {
@@ -111,36 +107,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
         event_detail:
           "experience=dashboard,snippetType=frontend,authSubType=user-session",
       });
-    });
-  });
-
-  it("should track embed_wizard_options_completed with settings=default properly (metabase#68285)", () => {
-    navigateToGetCodeStep({
-      experience: "chart",
-      resourceName: QUESTION_NAME,
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_options_completed",
-      event_detail: "settings=default",
-    });
-  });
-
-  it("should set question-id for regular chart experience", () => {
-    enableJwtAuth();
-    navigateToGetCodeStep({
-      experience: "chart",
-      resourceName: QUESTION_NAME,
-      preselectSso: true,
-    });
-
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing session (local testing only)").click();
-
-      codeBlock().should(
-        "contain",
-        `question-id="${ORDERS_COUNT_QUESTION_ID}"`,
-      );
     });
   });
 
