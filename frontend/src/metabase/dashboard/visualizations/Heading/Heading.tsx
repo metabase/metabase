@@ -1,9 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import type { JSX, MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import { CollapsibleDashboardParameterList } from "metabase/dashboard/components/CollapsibleDashboardParameterList";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -26,13 +29,10 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  HEADING_FONT_SIZE,
-  HEADING_FONT_WEIGHT,
-  HeadingContent,
-  HeadingTextInput,
-  InputContainer,
-} from "./Heading.styled";
+import S from "./Heading.module.css";
+
+const HEADING_FONT_SIZE = "1.375rem";
+const HEADING_FONT_WEIGHT = 700;
 
 interface HeadingProps {
   isMobile: boolean;
@@ -71,7 +71,7 @@ export function Heading({
   const isPreviewing = !isFocused;
 
   const [textValue, setTextValue] = useState(settings.text);
-  const preventDragging = (e: MouseEvent<HTMLInputElement>) => {
+  const preventDragging = (e: MouseEvent) => {
     e.stopPropagation();
   };
 
@@ -125,7 +125,7 @@ export function Heading({
 
   if (isEditingParameter) {
     leftContent = (
-      <Box h="100%" style={{ overflow: "hidden" }}>
+      <Box className={CS.overflowHidden} h="100%">
         {hasVariables ? (
           <DashCardParameterMapper
             compact
@@ -133,7 +133,7 @@ export function Heading({
             isMobile={isMobile}
           />
         ) : (
-          <Flex h="100%" display="flex" align="center">
+          <Flex h="100%" align="center">
             <Ellipsified>{t`You can connect widgets to {{ variables }} in heading cards.`}</Ellipsified>
           </Flex>
         )}
@@ -152,12 +152,22 @@ export function Heading({
     );
   } else {
     leftContent = (
-      <HeadingTextInput
+      <Box
+        component="input"
+        className={cx(S.input, CS.textEllipsis)}
         name="heading"
         data-testid="editing-dashboard-heading-input"
         placeholder={placeholder}
         value={textValue}
         autoFocus={justAdded || isFocused}
+        flex={1}
+        w="100%"
+        mah="100%"
+        p={0}
+        my="xxs"
+        c="text-primary"
+        fz={HEADING_FONT_SIZE}
+        fw={HEADING_FONT_WEIGHT}
         onChange={(e) => setTextValue(e.target.value)}
         onMouseDown={preventDragging}
         onBlur={() => {
@@ -172,10 +182,21 @@ export function Heading({
   }
   if (isEditing) {
     return (
-      <InputContainer
+      <Flex
+        className={cx(
+          S.root,
+          DashboardS.DashCardEditOutline,
+          CS.overflowHidden,
+          {
+            [S.borderAdjusted]: !isPreviewing || !hasContent,
+            [S.empty]: !hasContent,
+          },
+        )}
         data-testid="editing-dashboard-heading-container"
-        isEmpty={!hasContent}
-        isPreviewing={isPreviewing}
+        w="100%"
+        h="100%"
+        justify="space-between"
+        align="center"
         onClick={toggleFocusOn}
         ref={containerRef}
         style={{
@@ -190,18 +211,18 @@ export function Heading({
             ref={parameterListRef}
           />
         )}
-      </InputContainer>
+      </Flex>
     );
   }
 
   return (
     <Flex
+      className={CS.overflowHidden}
       w="100%"
       h="100%"
       align="center"
       justify="space-between"
-      pl="0.75rem"
-      style={{ overflow: "hidden" }}
+      pl="md"
       ref={containerRef}
     >
       <HeadingContent
@@ -218,5 +239,40 @@ export function Heading({
         />
       )}
     </Flex>
+  );
+}
+
+type HeadingContentProps = {
+  children: React.ReactNode;
+  hasFilters: boolean;
+  isEditing?: boolean;
+  onMouseDown?: (event: MouseEvent) => void;
+  "data-testid": string;
+};
+
+function HeadingContent({
+  children,
+  hasFilters,
+  isEditing,
+  ...props
+}: HeadingContentProps) {
+  return (
+    <Box
+      component="h2"
+      className={cx(S.content, {
+        [S.editing]: isEditing,
+        [CS.textNoWrap]: hasFilters,
+        [CS.textEllipsis]: hasFilters,
+      })}
+      flex={1}
+      mah="100%"
+      fz={HEADING_FONT_SIZE}
+      fw={HEADING_FONT_WEIGHT}
+      p={0}
+      my="xxs"
+      {...props}
+    >
+      {children}
+    </Box>
   );
 }
