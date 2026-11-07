@@ -1,8 +1,8 @@
 (ns metabase.sql-tools.sqlglot.core
-  "The `:sqlglot` implementations of the [[metabase.sql-tools.interface]] multimethods. They also serve `:sqlglot-java`,
-  which derives from `:sqlglot` in [[metabase.sql-tools.interface/backend-hierarchy]]: each method hands its dispatch
-  value to [[metabase.sql-parsing.core/parser]] to get the GraalPy or Java parser, and the shared pipeline in
-  [[metabase.sql-tools.common]] dispatches its nested calls with that same value."
+  "The `:sqlglot` implementations of the [[metabase.sql-tools.interface]] multimethods. They serve every backend in
+  [[metabase.sql-parsing.core/backends]]: each method hands the backend it receives to
+  [[metabase.sql-parsing.core/parser]], and the shared pipeline in [[metabase.sql-tools.common]] dispatches its
+  nested calls with that same backend."
   (:require
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]

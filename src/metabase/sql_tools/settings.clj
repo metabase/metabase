@@ -6,21 +6,14 @@
   The SQL parser backend can be switched using the `MB_SQL_TOOLS_PARSER_BACKEND` env var:
 
   ```bash
-  # SQLGlot on GraalPy (default)
+  # SQLGlot (default)
   MB_SQL_TOOLS_PARSER_BACKEND=sqlglot
-
-  # SQLGlot, Java port (opt-in)
-  MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java
-
-  # GraalPy answers; the Java port runs on the same SQL in the background and the results are compared
-  MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-shadow
-
-  # The Java port answers; GraalPy runs in the background and the results are compared
-  MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java-shadow
 
   # Macaw (legacy)
   MB_SQL_TOOLS_PARSER_BACKEND=macaw
   ```
+
+  Any other backend in [[metabase.sql-parsing.core/backends]] is also accepted.
 
   This is useful for:
   - Running tests with a specific backend:
@@ -32,10 +25,11 @@
   Once SQLGlot is stable, this env var will be removed and Macaw deprecated."
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util.i18n :refer [tru]]))
 
 (def ^:private available-parser-backends
-  #{:macaw :sqlglot :sqlglot-java :sqlglot-shadow :sqlglot-java-shadow})
+  (conj sql-parsing/backends :macaw))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parser-backend-override*

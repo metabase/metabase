@@ -8,7 +8,7 @@
    [metabase.sql-parsing.sqlglot-java :as sqlglot-java]
    [metabase.sql-parsing.sqlglot-java.ast :as sqlglot-java.ast]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.sql-tools.interface]
+   [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.settings :as settings]
    [metabase.test :as mt])
   (:import
@@ -153,14 +153,15 @@
       (is (= #{"a" "b"} (into #{} (map :column) (:used-fields (references :sqlglot-java)))) dialect))))
 
 (deftest backend-dispatch-test
-  (testing "every sql-tools multimethod runs its :sqlglot method for :sqlglot-java, through the backend hierarchy"
+  (testing "every sql-tools multimethod has a :sqlglot method, and every sql-parsing backend dispatches to it"
     (is (= 11 (count (interface-multimethods))))
     (doseq [[sym ^clojure.lang.MultiFn multimethod] (interface-multimethods)]
       (testing sym
-        (is (some? (get-method multimethod :sqlglot)))
-        (doseq [backend [:sqlglot-java :sqlglot-shadow :sqlglot-java-shadow]]
-          (is (identical? (get-method multimethod :sqlglot) (get-method multimethod backend)) backend)))))
-  (testing "the shared :sqlglot methods ask for the parser the dispatch value names"
+        (is (some? (get-method multimethod :sqlglot)))))
+    (doseq [backend [:sqlglot :sqlglot-java :sqlglot-shadow :sqlglot-java-shadow]]
+      (is (= :sqlglot (interface/parser-driver-dispatch backend nil)) backend))
+    (is (= :macaw (interface/parser-driver-dispatch :macaw nil))))
+  (testing "the shared :sqlglot methods ask for the parser the backend names"
     (doseq [backend [:sqlglot :sqlglot-java :sqlglot-shadow :sqlglot-java-shadow]]
       (testing backend
         (let [seen (atom [])]

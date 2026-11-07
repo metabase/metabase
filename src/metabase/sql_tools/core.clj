@@ -2,10 +2,7 @@
   "Public API for sql-tools SQL parsing functionality.
 
    This namespace provides parser-agnostic functions that delegate to the
-   configured backend (Macaw or SQLGlot) via multimethods.
-
-   Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
-   metabase.sql-tools.init to avoid circular dependencies."
+   configured backend (Macaw or SQLGlot) via multimethods."
   (:require
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as common]
@@ -161,7 +158,7 @@
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
   "Given a driver and SQL string, return table references. With `:fail-on-parse-error?`, propagate
-  SQLGlot parse errors instead of treating them as an empty set of references."
+  parse errors instead of treating them as an empty set of references."
   ([driver :- :keyword
     sql-str :- [:maybe :string]]
    (referenced-tables-raw driver sql-str {}))
@@ -250,11 +247,11 @@
                                 sql from-dialect to-dialect))
 
 (defn sqlglot-backend
-  "The current backend when it is a sqlglot backend, else `:sqlglot`. Statement checks always parse with sqlglot, so
-  with Macaw selected they use GraalPy."
+  "The current backend when it is one of [[metabase.sql-parsing.core/backends]], else `:sqlglot`. Statement checks
+  always parse with sqlglot, so with Macaw selected they use the default sqlglot backend."
   []
   (let [backend (sql-tools.settings/current-parser-backend)]
-    (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot)))
+    (if (sql-parsing/backends backend) backend :sqlglot)))
 
 (defn sqlglot-parser
   "The sqlglot parser for [[sqlglot-backend]]."
@@ -268,8 +265,8 @@
   tree (see [[read-only-select?]]).
 
   The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
-  parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk a GraalPy
-  OOM) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
+  parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk the parser
+  running out of memory) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
   original one. Only `:verdict :allowed` is permission to proceed.
 
   See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]

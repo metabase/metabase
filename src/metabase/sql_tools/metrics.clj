@@ -7,13 +7,14 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------------- Known labels --------------------------------------------------
 
-(def ^:private parsers ["macaw" "sqlglot" "sqlglot-java" "sqlglot-shadow" "sqlglot-java-shadow"])
+(def ^:private parsers (sort (map name (conj sql-parsing/backends :macaw))))
 
 (def ^:private operations
   ["returned-columns"

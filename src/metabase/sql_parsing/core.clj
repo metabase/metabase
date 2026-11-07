@@ -15,9 +15,10 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.sql-parsing.parser :as parser]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.results :as results]
+   [metabase.sql-parsing.settings :as sql-parsing.settings]
+   [metabase.sql-parsing.shadow :as shadow]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
@@ -26,12 +27,47 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private shadow-backends
+  "Each shadow backend, as the backend that answers and the backend compared with it in the background."
+  {:sqlglot-shadow      [:sqlglot :sqlglot-java]
+   :sqlglot-java-shadow [:sqlglot-java :sqlglot]})
+
+(defn- base-parser
+  "The SqlParser for a backend that is not a shadow backend."
+  [backend]
+  (case backend
+    :sqlglot      ((requiring-resolve 'metabase.sql-parsing.graal/parser))
+    :sqlglot-java ((requiring-resolve 'metabase.sql-parsing.sqlglot-java/parser))
+    (throw (ex-info (str "Unknown SQL parser backend; choose :sqlglot (GraalPy), :sqlglot-java, :sqlglot-shadow or"
+                         " :sqlglot-java-shadow.")
+                    {:backend backend}))))
+
+(defn- sample?
+  [_method]
+  (< (rand) (sql-parsing.settings/sql-parsing-shadow-sample-rate)))
+
+(def ^:private shadow-parsers
+  "One parser per shadow backend for the life of the process: each owns the thread pool its comparisons run on."
+  (update-vals shadow-backends
+               (fn [[primary-backend shadow-backend]]
+                 (delay (shadow/parser {:primary-backend primary-backend
+                                        :primary         (base-parser primary-backend)
+                                        :shadow-backend  shadow-backend
+                                        :shadow          (base-parser shadow-backend)
+                                        :sample?         sample?})))))
+
+(def backends
+  "Every backend name [[parser]] accepts."
+  (into #{:sqlglot :sqlglot-java} (keys shadow-backends)))
+
 (defn parser
   "The [[metabase.sql-parsing.protocol/SqlParser]] for `backend`: `:sqlglot` (GraalPy), `:sqlglot-java` (the Java
-  port), or the shadow backends `:sqlglot-shadow` and `:sqlglot-java-shadow` (see [[metabase.sql-parsing.parser]]).
+  port), or the shadow backends `:sqlglot-shadow` and `:sqlglot-java-shadow`.
   Every parsing function in this namespace takes it as its first argument."
   [backend]
-  (parser/parser backend))
+  (if-let [shadow-parser (shadow-parsers backend)]
+    @shadow-parser
+    (base-parser backend)))
 
 (defn parse-error?
   "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser
@@ -606,13 +642,6 @@
   string that was checked."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type gate-limits))
-
-(comment
-  (referenced-tables (parser :sqlglot) "postgres" "select * from transactions")
-
-  (validate-query (parser :sqlglot-java) "postgres" "SELECT * FROM users" nil)
-
-  (referenced-fields (parser :sqlglot) "postgres" "SELECT id, name FROM users WHERE active = true"))
 
 ;;;; Transpile sql
 
