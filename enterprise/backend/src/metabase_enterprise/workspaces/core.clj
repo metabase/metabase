@@ -198,14 +198,17 @@
 
 (defn- assert-input-schemas
   "Return `input-schemas`, refusing (400) an empty list for a driver that has schemas.
-   The workspace config scopes sync on such drivers with an inclusion filter built from
-   `input-schemas`, and a blank inclusion filter matches every schema, the workspace's
-   own output schema included. Empty is legitimate only for schemaless drivers (MySQL),
-   where the connection's bound database scopes sync instead."
+   On such a driver an empty list leaves the workspace nothing to read. On the
+   `schema-filters` drivers (Postgres, Redshift, SQL Server) it is also unsafe: the
+   workspace config's inclusion filter is then blank, and a blank filter syncs every
+   schema, the workspace's own output schema included. Empty is legitimate only for
+   schemaless drivers (MySQL), where the connection's bound database scopes sync instead.
+   The `:schemas` check matches the drivers [[metabase-enterprise.workspaces.config]]
+   builds a schema filter for; keep the two in step."
   [database input-schemas]
   (when (and (empty? input-schemas)
              (driver.u/supports? (:engine database) :schemas database))
-    (throw (ex-info "Database has no synced tables to use as workspace inputs; sync it first"
+    (throw (ex-info "Database has no synced schemas to use as workspace inputs; sync it first"
                     {:status-code 400 :database_id (:id database)})))
   input-schemas)
 
