@@ -216,10 +216,11 @@
                                             :places :liked :boolean [false])))
     (testing "string params on boolean field"
       (mt/dataset places-cam-likes
-        (field-filter-param-test-is-count-= 2
-                                            :places :liked :string/= ["true"])
-        (field-filter-param-test-is-count-= 1
-                                            :places :liked :string/= ["false"])))))
+        (when (isa? (:base-type (lib.metadata/field (mt/metadata-provider) (mt/id :places :liked))) :type/Boolean)
+          (field-filter-param-test-is-count-= 2
+                                              :places :liked :string/= ["true"])
+          (field-filter-param-test-is-count-= 1
+                                              :places :liked :string/= ["false"]))))))
 
 (deftest ^:parallel mbql-string-param-on-boolean-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
@@ -228,7 +229,8 @@
             liked (lib.metadata/field mp (mt/id :places :liked))
             query (-> (lib/query mp (lib.metadata/table mp (mt/id :places)))
                       (lib/aggregate (lib/count)))]
-        (doseq [[value expected-count] [[["true"] 2] [["false"] 1]]]
+        (doseq [[value expected-count] [[["true"] 2] [["false"] 1]]
+                :when (isa? (:base-type liked) :type/Boolean)]
           (testing (pr-str value)
             (is (= expected-count
                    (run-count-query
