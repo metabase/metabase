@@ -1,9 +1,11 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [clojure.set :as set]
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
    [metabase.search.debug :as search.debug]
@@ -253,6 +255,22 @@
     (when-let [updates (seq (hook-selectors [instance] always?))]
       (search.ingestion/ingest-maybe-async! updates))))
 
+(defn after-commit!
+  "Run each of `steps` in order once the enclosing transaction commits; a rollback discards them.
+  They run off the committing thread unless ingestion is forced synchronous.
+  A step that throws is logged, naming the work by `description`, and the steps after it still run."
+  [description & steps]
+  (mdb/do-after-commit
+   (fn []
+     (let [run #(doseq [step steps]
+                  (try
+                    (step)
+                    (catch Throwable e
+                      (log/errorf e "Failed search-index handoff: %s" description))))]
+       (if search.ingestion/*force-sync*
+         (run)
+         (future (run)))))))
+
 ;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows."
@@ -261,12 +279,98 @@
     (when-let [updates (seq (hook-selectors instances true))]
       (search.ingestion/ingest-maybe-async! updates))))
 
+(defn- cascading-selectors
+  "Hook selectors for `instances` naming documents ingestion could not purge on its own, by search-model."
+  [instances]
+  (->> (hook-selectors instances true)
+       (remove (comp search.ingestion/purgeable-selector? second))
+       (u/group-by first second)))
+
+;; Ingestion recovers a document id only from a `:this.id` selector, so anything reached through a join on another
+;; column, or keyed by a compound id, has to be enumerated while it still exists.
+;; TODO (Chris 2026-11-05) -- collapse same-shape `[:= v col]` selectors into one `[:in col vs]` per column. A wide
+;; delete ORs one selector per row into this query, inside the caller's transaction.
+(defn cascading-documents
+  "Document ids that `instances` feed which would become unpurgeable once those rows are gone, by search-model.
+  Resolve this before the delete and hand the result to [[reconcile-cascading-documents!]] after it commits.
+  A search-model whose enumeration fails, or reaches past the enumeration ceiling, is logged and left out."
+  [instances]
+  (when (supports-index?)
+    (not-empty
+     (u/for-map [[search-model selectors] (cascading-selectors instances)
+                 :let  [ids (try
+                              (search.ingestion/doc-ids search-model (into [:or] selectors))
+                              ;; The id query runs in its own nested transaction, so a failure leaves the
+                              ;; caller's usable; see [[search.db/spec-index-doc-ids-reducible]].
+                              (catch Exception e
+                                (log/errorf e "Skipping cascade enumeration for %s" search-model)
+                                nil))]
+                 :when (seq ids)]
+       [search-model ids]))))
+
+(defn- document-count
+  [cascading]
+  (transduce (map count) + 0 (vals cascading)))
+
+;; A delete issued in batches, such as a Database's cards, would otherwise hold one ceiling's worth of ids per batch
+;; until it commits.
+(defn add-cascading-documents
+  "Merge what [[cascading-documents]] enumerates for `instances` into `cascading`, an earlier result or nil.
+  Once `cascading` holds [[search.ingestion/max-enumerated-documents]] documents, `instances` are not enumerated, and
+  the documents they cascade to are left to the reindex.
+  The batch that reaches the ceiling is kept whole, so the result can pass it by up to one batch's worth."
+  [cascading instances]
+  (if (<= search.ingestion/max-enumerated-documents (document-count cascading))
+    cascading
+    (let [merged (merge-with into cascading (cascading-documents instances))]
+      (when (<= search.ingestion/max-enumerated-documents (document-count merged))
+        (log/warnf "Cascade enumeration reached %d documents; later batches' cascades are left to the reindex"
+                   search.ingestion/max-enumerated-documents))
+      merged)))
+
+;; The ingestion worker ORs a whole batch of same-model selectors into a single query, so one unchunked id list
+;; would put up to the enumeration ceiling's worth of bind parameters in every statement it joins. Chunking caps a
+;; worker batch at its message limit times this size; the synchronous path still ORs every chunk into one statement.
+;; A statement the database rejects loses the entire batch, not just the oversized message.
+(def ^:private reindex-batch-size
+  "Ids per re-derivation message."
+  100)
+
+(defn- reconcile-search-model!
+  "Settle the enumerated `ids` of one `search-model`: re-derive the documents that still resolve, remove the rest."
+  [search-model ids]
+  ;; Nil means the survivors could not be enumerated, and reading it as "none survived" would purge live documents.
+  (when-some [alive (search.ingestion/existing-doc-ids search-model ids)]
+    (let [gone     (set/difference ids alive)
+          messages (cond-> (mapv (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)])
+                                 (partition-all reindex-batch-size alive))
+                     (seq gone) (conj (search.ingestion/tombstone search-model gone)))]
+      (when (seq messages)
+        (search.ingestion/ingest-maybe-async! messages)))))
+
+;; Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
+;; rather than deleted still produces a document, and the relationship that changed is usually indexed on it.
+(defn reconcile-cascading-documents!
+  "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
+  Documents that still resolve are re-derived, and only the ones that stopped resolving are removed.
+  A search-model whose surviving documents cannot be enumerated is left alone.
+  A failure while checking one search-model's survivors is logged and does not stop the others.
+  Its queued work shares the ingestion worker's batches, where one failing message loses the whole batch."
+  [cascading]
+  (when (and (seq cascading) (supports-index?))
+    (doseq [[search-model ids] cascading]
+      (try
+        (reconcile-search-model! search-model ids)
+        (catch Exception e
+          (log/errorf e "Failed to reconcile cascaded %s documents" search-model))))))
+
 (defn delete!
-  "Given a model and a list of model's ids, remove corresponding search entries."
+  "Queue removal of a model's corresponding search entries after all earlier re-index messages.
+  Runs at once when ingestion is synchronous."
   [model ids]
   (when (supports-index?)
-    (doseq [e            (search.engine/active-engines)
-            search-model (->> (vals (search.spec/specifications))
-                              (filter (comp #{model} :model))
-                              (map :name))]
-      (search.engine/delete! e search-model ids))))
+    (search.ingestion/ingest-maybe-async!
+     (for [search-model (->> (vals (search.spec/specifications))
+                             (filter (comp #{model} :model))
+                             (map :name))]
+       (search.ingestion/tombstone search-model ids)))))

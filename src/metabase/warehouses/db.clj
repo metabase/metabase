@@ -88,13 +88,6 @@
                                  [:in :table_id table-ids-query]
                                  extra-clause]})))
 
-(mu/defn delete-cards-for-database-returning-ids-reducible
-  "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
-  [database-id :- ::lib.schema.id/database]
-  (t2/reducible-query {:delete-from (t2/table-name :model/Card)
-                       :where       [:= :database_id database-id]
-                       :returning   [:id]}))
-
 (mu/defn card-ids-for-database-reducible
   "A reducible of the `:id`s of the Cards of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -114,11 +107,25 @@
     (t2/delete! :model/Action :id [:in action-ids])
     0))
 
-(mu/defn delete-cards-for-database!
-  "Delete the Cards of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
+;; The ids come from an earlier, unlocked scan, so keeping `database_id` in the predicate spares a card that moved to
+;; another database in between.
+(mu/defn delete-cards!
+  "Delete the Cards with `card-ids` that still belong to the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   card-ids    :- [:sequential ::lib.schema.id/card]]
   (t2/query {:delete-from (t2/table-name :model/Card)
-             :where       [:= :database_id database-id]}))
+             :where       [:and
+                           [:= :database_id database-id]
+                           [:in :id card-ids]]}))
+
+(mu/defn existing-card-ids :- [:set ::lib.schema.id/card]
+  "The ids among `card-ids` that still name a Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (into #{}
+        (map :id)
+        (t2/query {:select [:id]
+                   :from   [(t2/table-name :model/Card)]
+                   :where  [:in :id card-ids]})))
 
 (mu/defn delete-transforms-for-database! :- :int
   "Delete the Transforms reading from the Database with `database-id`, each through its own hooks, returning the number

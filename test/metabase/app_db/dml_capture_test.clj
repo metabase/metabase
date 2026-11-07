@@ -35,7 +35,12 @@
   "Values of `capture-fields` for `::bird`, so a test can switch capture off without redefining a method."
   (atom {:delete [:id :group_id]}))
 
+(def ^:private bird-dependents
+  "The `dependents` implementation for `::bird`, so a test can change it without redefining a method."
+  (atom (constantly nil)))
+
 (defmethod dml-capture/capture-fields ::bird [_ op] (get @bird-capture-fields op))
+(defmethod dml-capture/dependents ::bird [_ rows] (@bird-dependents rows))
 (defmethod dml-capture/capture-fields ::moody-bird [_ _op] [:id :group_id])
 
 (defmethod dml-capture/captured! ::bird [_ event] (swap! captured conj event))
@@ -72,7 +77,8 @@
 ;; may insert its fixture rows afterwards.
 (defn- reset-capture! []
   (reset! captured [])
-  (reset! bird-capture-fields {:delete [:id :group_id]}))
+  (reset! bird-capture-fields {:delete [:id :group_id]})
+  (reset! bird-dependents (constantly nil)))
 
 (defn- events [] @captured)
 
@@ -344,3 +350,33 @@
         (is (not-any? t2/instance? rows)))
       (testing "no decoration keys leak into the snapshot"
         (is (= #{:id :group_id :name} (set (mapcat keys rows))))))))
+
+(deftest dependents-ride-on-the-event-test
+  (testing "what dependents returns, given the pre-image rows, is delivered as :dependents"
+    (reset-capture!)
+    (let [id (t2/insert-returning-pk! ::bird (bird 130 "a"))]
+      (reset! bird-dependents (fn [rows] {:seen (mapv :id rows)}))
+      (is (= 1 (t2/delete! ::bird :id id)))
+      (is (=? [{:rows [{:id id}], :dependents {:seen [id]}}] (events)))))
+  (testing "a nil result leaves the key off the event"
+    (reset-capture!)
+    (let [id (t2/insert-returning-pk! ::bird (bird 131 "a"))]
+      (t2/delete! ::bird :id id)
+      (is (=? [{:rows [{:id id}]}] (events)))
+      (is (not (contains? (first (events)) :dependents)))))
+  (testing "dependents is not asked when the snapshot is empty"
+    (reset-capture!)
+    (let [calls (atom 0)]
+      (reset! bird-dependents (fn [_rows] (swap! calls inc) nil))
+      (is (= 0 (t2/delete! ::bird :group_id 132)))
+      (is (zero? @calls))))
+  (testing "a dependents failure aborts the delete before it runs"
+    (reset-capture!)
+    (let [id (t2/insert-returning-pk! ::bird (bird 133 "a"))]
+      (reset! bird-dependents (fn [_rows] (throw (ex-info "dependents failed" {}))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"dependents failed"
+                            (t2/delete! ::bird :id id)))
+      (is (true? (t2/exists? ::bird :id id)))
+      (is (empty? (events)))
+      (reset-capture!)
+      (t2/delete! ::bird :id id))))

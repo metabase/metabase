@@ -8,6 +8,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -262,31 +263,108 @@
               [model id]
               nil))
 
-       :and (first (keep (partial extract-model-and-id model) values))))))
+       :and (first (keep (partial extract-model-and-id model) values))
+
+       ;; Any other operator names rows without naming a document, so there is nothing to purge. Returning nil
+       ;; rather than throwing lets callers enqueue re-derivations under selectors like `:in`.
+       nil))))
+
+;; Only `:this.id` yields a document id, so a search-model reached through a join on another column, or one whose
+;; `:id` attr is compound, has to have its documents enumerated before they are deleted.
+(defn purgeable-selector?
+  "Whether a hook's where-clause names a document [[bulk-ingest!]] could purge if it stopped resolving."
+  [where-clause]
+  (some? (extract-model-and-id ::probe where-clause)))
+
+;; A single delete, or a batched one such as a Database's cards, can fan out to arbitrarily many dependent documents,
+;; and this enumeration happens on the caller's thread inside its transaction, so past the ceiling the documents are
+;; left to the convergence backstop rather than held in heap.
+(def max-enumerated-documents
+  "Ceiling on how many documents one statement may enumerate before it runs.
+  A batched delete also stops enumerating further batches once it holds this many."
+  10000)
+
+(defn doc-ids
+  "The ids of the documents `search-model` currently produces under `where-clause`, or nil past
+  [[max-enumerated-documents]]."
+  [search-model where-clause]
+  ;; Narrows the spec's indexing query to its `:id` attr, so enumerating documents costs an id scan rather than a
+  ;; full document build.
+  ;; The LIMIT stops the database sending ids past the ceiling; buffering JDBC drivers otherwise read them all first.
+  (let [fetch-limit (inc max-enumerated-documents)
+        ids         (into []
+                          (comp (map :id) (take fetch-limit))
+                          (search.db/spec-index-doc-ids-reducible search-model where-clause fetch-limit))]
+    (if (< max-enumerated-documents (count ids))
+      (do (log/warnf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
+                     search-model max-enumerated-documents)
+          nil)
+      (set ids))))
+
+;; TODO (Chris 2026-11-05) -- match a compound id on its component columns. Comparing the `concat_ws` expression
+;; cannot use an index, so each indexed-entity check scans model_index_value.
+(defn doc-id-selector
+  "A where-clause matching `search-model`'s documents by their own ids, whatever their relationships now are."
+  [search-model ids]
+  [:in (search.ingestion.query/doc-id-expression search-model) (vec ids)])
+
+;; Asks about the documents themselves rather than the relationship that found them: a row whose foreign key was
+;; nulled rather than deleted still has a document, and must not be purged.
+(defn existing-doc-ids
+  "Which of `ids` `search-model` still produces a document for, or nil past [[max-enumerated-documents]]."
+  [search-model ids]
+  (when (seq ids)
+    (doc-ids search-model (doc-id-selector search-model ids))))
+
+;; Tombstones share ingestion's single worker with re-index messages, so an update that read a row before its delete
+;; committed is applied before, never after, the removal.
+(defn tombstone
+  "A queue message that removes `search-model`'s documents with these `ids`, in queue order with re-index messages."
+  [search-model ids]
+  {:op :delete, :search-model search-model, :ids (set (map str ids))})
+
+(defn- tombstone?
+  "Whether a queued `message` is a [[tombstone]] rather than a re-index message."
+  [message]
+  (= :delete (:op message)))
+
+(defn- apply-tombstones!
+  "Remove the documents a run of [[tombstone]] messages names from every active engine."
+  [tombstones]
+  (update! [] (mapcat (fn [{:keys [search-model ids]}]
+                        (map (fn [id] [search-model id]) ids))
+                      tombstones)))
+
+(defn- ingest-updates!
+  "Re-index the documents a run of re-index messages selects, and purge the ones that no longer resolve."
+  [updates]
+  (let [documents        (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                                (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                              ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                              (reduce u/rconcat [])
+                              query->documents)
+        passed-documents (map extract-model-and-id updates)
+        ;; Keep only [model id] pairs, not whole documents; the eduction replays the streaming query when update!
+        ;; consumes it.
+        indexed-pairs    (into #{} (map (juxt :model (comp str :id))) documents)
+        ;; Only `:this.id` selectors name a document here, so this diff never purges documents reached through a
+        ;; relationship or keyed by a compound id.
+        ;; Deletes enumerate those up front instead, see [[metabase.search.core/cascading-documents]] and [[tombstone]].
+        to-delete        (remove indexed-pairs passed-documents)]
+    (update! documents to-delete)))
 
 (defn bulk-ingest!
-  "Process the given search model updates."
+  "Process the given search model updates and tombstones, in queue order."
   [updates]
   (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
     (lib-be/with-metadata-provider-cache
-      (if (seq (search.engine/active-engines))
-        (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-                               (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-                             ;; init collection is only for clj-kondo, as we know that the list is non-empty
-                             (reduce u/rconcat [])
-                             query->documents)
-              passed-documents (map extract-model-and-id updates)
-              ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
-              ;; The eduction will replay the streaming query when passed to update!.
-              indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
-              ;; TODO: The list of documents to delete is not completely accurate.
-              ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
-              ;; This will not work for cases like indexed-entries with compound PKs,
-              ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
-              ;; Long-term, we should find a better approach to knowing what to purge.
-              to-delete (remove indexed-pairs passed-documents)]
-          (update! documents to-delete))
-        {}))))
+      (when (seq (search.engine/active-engines))
+        ;; Preserve the queue's relative ordering: an update after a tombstone is authoritative, while a prior update
+        ;; must finish before the delete. Only contiguous re-index messages are coalesced.
+        (doseq [messages (partition-by tombstone? updates)]
+          (if (tombstone? (first messages))
+            (apply-tombstones! messages)
+            (ingest-updates! messages)))))))
 
 (defn- track-queue-size! []
   (analytics/set-gauge! :metabase-search/queue-size (.size queue)))

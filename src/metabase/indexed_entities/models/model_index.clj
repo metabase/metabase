@@ -32,6 +32,9 @@
 (derive :model/ModelIndex :hook/created-at-timestamped?)
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
 #_(derive :model/ModelIndex :hook/search-index)
+;; Deleting a model index still cascades its values away with no statement toucan can see, orphaning their
+;; indexed-entity documents, so it takes search's delete capture on its own.
+(derive :model/ModelIndex :hook/search-index-delete)
 
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the

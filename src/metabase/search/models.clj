@@ -1,6 +1,5 @@
 (ns metabase.search.models
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.app-db.dml-capture :as dml-capture]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -31,11 +30,17 @@
 ;; Delivery is registered after commit, so a rollback discards it and a worker never races uncommitted state.
 ;; Ingestion re-reads the affected rows, and its asked-for-but-not-indexed diff purges entries named by their own
 ;; id whose backing row is gone.
-(derive :hook/search-index dml-capture/hook)
+;;
+;; The `:hook/search-index` keyword carries the row-level insert/update hooks as well, and some models that feed
+;; search documents are deliberately kept out of it.
+;; They still need their deletes captured, so delete capture hangs off its own keyword, which
+;; `:hook/search-index` derives from, and which such models (ModelIndex, in its own namespace) derive directly.
+(derive :hook/search-index-delete dml-capture/hook)
+(derive :hook/search-index :hook/search-index-delete)
 
 ;; Tests that run against an old schema disable updates, and the snapshot select could read columns it lacks.
 ;; This runs inside the user's delete, so a search error must not fail it; the delete goes uncaptured instead.
-(defmethod dml-capture/capture-fields :hook/search-index
+(defmethod dml-capture/capture-fields :hook/search-index-delete
   [model op]
   (when (and (= op :delete)
              (not search.ingestion/*disable-updates*))
@@ -52,21 +57,26 @@
   [model rows]
   (mapv #(t2/instance model %) rows))
 
-(defn- submit-handoff!
-  [model op thunk]
-  (let [run #(try
-               (thunk)
-               (catch Throwable e
-                 (log/errorf e "Failed search-index handoff for %s %s" model op)))]
-    (if search.ingestion/*force-sync*
-      (run)
-      (future (run)))))
+;; A database-level cascade removes rows Toucan never sees, so documents reached through a join on anything but
+;; `:this.id` have to be enumerated while the delete's own rows are still there to point at them.
+;; This runs inside the user's delete, so a search bug must not fail it: an error skips the enumeration and leaves
+;; those documents to the scheduled reindex.
+;; [[search/cascading-documents]] already catches each search-model's query failure once that query's own nested
+;; transaction has rolled back; this catch covers the rest, which runs no SQL.
+(defmethod dml-capture/dependents :hook/search-index-delete
+  [model rows]
+  (try
+    (search/cascading-documents (rows->instances model rows))
+    (catch Exception e
+      (log/errorf e "Skipping search cascade enumeration for %s" model)
+      nil)))
 
-(defmethod dml-capture/captured! :hook/search-index
-  [model {:keys [op rows]}]
+(defmethod dml-capture/captured! :hook/search-index-delete
+  [model {:keys [op rows dependents]}]
   (when (= op :delete)
     ;; Do not hand the re-derivation off until the outer transaction commits; Metabase discards the callback on
     ;; rollback.
     (let [instances (rows->instances model rows)]
-      (mdb/do-after-commit
-       #(submit-handoff! model op (fn [] (search/bulk-update! instances)))))))
+      (search/after-commit! (format "%s %s" model op)
+                            (fn [] (search/bulk-update! instances))
+                            (fn [] (search/reconcile-cascading-documents! dependents))))))

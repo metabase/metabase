@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -14,9 +15,14 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
+
+;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
+;; database.
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest extract-model-and-id
   (is (= ["action" "1895"] (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.id]])))
@@ -248,6 +254,20 @@
         (search/init-index!)
         (is (= 3 @factory-calls)
             "Factory should be called once per unique database-id, not once per lookup")))))
+
+(deftest ^:synchronized tombstone-ordering-within-a-batch-test
+  (testing "a tombstone applies where it sits in the batch, not before or after every re-index in it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Tombstoneorderingprobe"}]
+        (let [indexed?  #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))
+              reindex   ["card" [:= id :this.id]]
+              tombstone (search.ingestion/tombstone "card" [id])]
+          (testing "a re-index queued before the tombstone does not resurrect the entry"
+            (search.ingestion/bulk-ingest! [reindex tombstone])
+            (is (false? (indexed?))))
+          (testing "a re-index queued after it is authoritative"
+            (search.ingestion/bulk-ingest! [tombstone reindex])
+            (is (true? (indexed?)))))))))
 
 (deftest curation-signals-surfaced-in-results-test
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,

@@ -44,6 +44,19 @@
    where-clause :- [:maybe vector?]]
   (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
 
+(mu/defn spec-index-doc-ids-reducible
+  "A reducible of at most `limit` document ids `search-model` produces under `where-clause`, each row as `{:id id}`.
+  The where-clause is a search-spec fragment, as for [[spec-index-reducible-rows]].
+  Reducing it runs the query in its own transaction, a savepoint inside an enclosing one, so a failed query leaves
+  the enclosing transaction usable."
+  [search-model :- :string
+   where-clause :- vector?
+   limit        :- pos-int?]
+  (mdb/streaming-reducible-query
+   (assoc (ingestion.query/spec-index-query-where search-model where-clause)
+          :select [(ingestion.query/doc-id-select-item search-model)]
+          :limit  limit)))
+
 (mu/defn spec-index-row
   "A probe row when the `search-model` row with the underlying model PK `id` is indexable, or nil."
   [search-model :- :string
