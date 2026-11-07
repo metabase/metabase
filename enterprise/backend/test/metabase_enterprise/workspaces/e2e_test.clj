@@ -897,9 +897,19 @@
                   (finally
                     (ws/clear-instance-workspace!)
                     (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
-                    (try (ws/delete-workspace! ws-id)
-                         (catch Throwable t
-                           (log/warn t "delete-workspace! failed during failed-run cleanup")))))))
+                    ;; On MySQL/MariaDB the teardown's app-DB delete of the TableRemapping rows waits on the locks
+                    ;; this test's rollback-only `with-temp` transaction holds, and times out. Force-clear the rows
+                    ;; on this connection, as [[workspace-full-e2e-test]] does, so the `with-temp` Database cleanup
+                    ;; is not refused for active workspace_database rows.
+                    (let [deleted? (try (ws/delete-workspace! ws-id)
+                                        true
+                                        (catch Throwable t
+                                          (log/warnf t "delete-workspace! left workspace %d behind; force-clearing WSD"
+                                                     ws-id)
+                                          false))]
+                      (when-not deleted?
+                        (t2/delete! :model/WorkspaceDatabase :workspace_id ws-id)
+                        (t2/delete! :model/Workspace :id ws-id)))))))
             (finally
               (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-name)
                    (catch Throwable _ nil)))))))))

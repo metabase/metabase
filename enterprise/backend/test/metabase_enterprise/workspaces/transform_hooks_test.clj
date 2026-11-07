@@ -161,21 +161,30 @@
 (defn- with-pg-workspace-transform!
   "Postgres: with a workspace whose output schema is `iso-schema`, call `body-fn` with a native
   `SELECT 1 AS x` transform targeting `public.<table-name>`. Cleans up the remappings, the
-  transform and the workspace schema."
+  transform and the workspace schema.
+
+  The transform is committed rather than made with `mt/with-temp`: a top-level `with-temp` runs
+  `body-fn` in one rollback-only app-DB transaction that `future`s inherit, so concurrent runs would
+  share it, and on Postgres the refused run's unique-key violation aborts it for the other run too."
   [iso-schema table-name body-fn]
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
     (with-instance-workspace-for-db! iso-schema
       (fn []
-        (try
-          (ws.table-remapping/clear-mappings-for-db! (mt/id))
-          (mt/with-temp [:model/Transform transform
-                         {:name   (str "ws-remap-" table-name)
-                          :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")}
-                          :target {:type :table :schema "public" :name table-name}}]
-            (body-fn transform))
-          (finally
+        (let [transform (atom nil)]
+          (try
             (ws.table-remapping/clear-mappings-for-db! (mt/id))
-            (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" iso-schema)])))))))
+            (reset! transform (t2/insert-returning-instance!
+                               :model/Transform
+                               {:name   (str "ws-remap-" table-name)
+                                :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")}
+                                :target {:type :table :schema "public" :name table-name}}))
+            (body-fn @transform)
+            (finally
+              (when-let [{transform-id :id} @transform]
+                (t2/delete! :model/TransformRun :transform_id transform-id)
+                (t2/delete! :model/Transform :id transform-id))
+              (ws.table-remapping/clear-mappings-for-db! (mt/id))
+              (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" iso-schema)]))))))))
 
 (deftest post-success-failure-keeps-remapping-test
   (testing "a run marked succeeded whose post-run processing throws keeps its remapping"
