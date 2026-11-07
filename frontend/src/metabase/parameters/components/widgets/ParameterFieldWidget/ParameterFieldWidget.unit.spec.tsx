@@ -340,7 +340,6 @@ describe("ParameterFieldWidget", () => {
       base_type: "type/BigInteger",
       effective_type: "type/BigInteger",
       has_field_values: "list",
-      values: [[1000], [2000], [3000]],
     } satisfies Partial<FieldType>;
 
     it("should format numbers with default separators when no custom settings", async () => {

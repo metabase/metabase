@@ -18,7 +18,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 export const LISTABLE_PK_FIELD_ID = 100;
-export const LISTABLE_PK_FIELD_VALUE = "1234";
 export const STRING_PK_FIELD_ID = 101;
 export const SEARCHABLE_FK_FIELD_ID = 102;
 export const REMAPPED_TO_STRING_FIELD_ID = 104;
@@ -50,7 +49,6 @@ const reviewsFields = [
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
     has_field_values: "list",
-    values: [[LISTABLE_PK_FIELD_VALUE]],
   }),
   createMockField({
     id: STRING_PK_FIELD_ID,
