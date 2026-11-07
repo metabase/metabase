@@ -1311,7 +1311,7 @@ describe("Remote Sync", () => {
       cy.log("the missing database is created as a stub");
       cy.visit("/admin/databases");
       cy.findByRole("link", { name: STUB_DATABASE_NAME })
-        .closest("tr")
+        .closest("[data-testid='browse-card']")
         .findByText("Stubbed")
         .should("be.visible");
       cy.findByRole("link", { name: STUB_DATABASE_NAME }).click();

@@ -8,6 +8,7 @@ import {
   Ellipsified,
   FixedSizeIcon,
   Flex,
+  Stack,
   Title,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -38,15 +39,17 @@ export const BrowseCard = ({
   iconColor = "core-brand",
   title,
   size = "md",
+  description,
   className,
   children,
   onClick,
 }: {
-  icon: IconName;
+  icon: IconName | React.ReactElement;
   to: string;
   iconColor?: ColorName;
   title: string;
   size?: "md" | "lg";
+  description?: React.ReactNode;
   className?: string;
   children?: React.ReactNode;
   onClick?: () => void;
@@ -56,6 +59,7 @@ export const BrowseCard = ({
       data-testid="browse-card"
       withBorder
       shadow="none"
+      radius="sm"
       h={sizeOptions[size].height}
       p="1.5rem"
       classNames={{
@@ -77,25 +81,34 @@ export const BrowseCard = ({
         h="100%"
         w="100%"
       >
-        <FixedSizeIcon
-          name={icon}
-          c={iconColor}
-          size={sizeOptions[size].iconSize}
-        />
-        <Link to={to} onClick={onClick} className={S.link}>
-          <Ellipsified className={S.title}>
-            <Title
-              order={2}
-              size="md"
-              lh={1.2}
-              display="inline"
-              style={{ overflow: "hidden" }}
-              w="100%"
-            >
-              {title}
-            </Title>
-          </Ellipsified>
-        </Link>
+        {typeof icon === "string" ? (
+          <FixedSizeIcon
+            name={icon}
+            c={iconColor}
+            size={sizeOptions[size].iconSize}
+          />
+        ) : (
+          icon
+        )}
+        <Stack gap="xs" miw={0} maw="100%">
+          <Link to={to} onClick={onClick} className={S.link}>
+            {/* Plain-text label: the nowrap <Title> would stop long names wrapping in the tooltip */}
+            <Ellipsified className={S.title} tooltip={title}>
+              <Title
+                order={2}
+                size="md"
+                lh={1.2}
+                display="inline"
+                textWrap="nowrap"
+                style={{ overflow: "hidden" }}
+                w="100%"
+              >
+                {title}
+              </Title>
+            </Ellipsified>
+          </Link>
+          {description}
+        </Stack>
         <Box
           ml="auto"
           style={{ flexShrink: 0 }}
