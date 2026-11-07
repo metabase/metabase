@@ -4,7 +4,6 @@ import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
-import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type {
   ConcreteFieldReference,
@@ -116,7 +115,6 @@ function findField(
     field != null
       ? {
           ...field,
-          values: getFieldValues(field),
           target: undefined,
           name_field: undefined,
           dimensions: undefined,
@@ -126,7 +124,6 @@ function findField(
   return field != null
     ? {
         ...field,
-        values: getFieldValues(field),
         target: toParameterField(getField(field.target)),
         name_field: toParameterField(getField(field.name_field)),
         dimensions: field.dimensions?.map((dimension) => ({

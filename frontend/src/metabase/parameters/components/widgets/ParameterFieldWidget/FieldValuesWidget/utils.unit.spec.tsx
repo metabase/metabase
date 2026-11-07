@@ -1,7 +1,6 @@
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import {
-  LISTABLE_FIELD_WITH_MANY_VALUES_ID,
   PK_REMAPPED_TO_NUMBER_FIELD_ID,
   REMAPPED_TO_NUMBER_FIELD_ID,
   REMAPPED_TO_STRING_FIELD_ID,
@@ -36,7 +35,6 @@ describe("Components > FieldValuesWidget > utils", () => {
   describe("isSearchable", () => {
     const listField = getField(PRODUCTS.CATEGORY);
     const searchField = getField(PEOPLE.EMAIL);
-    const nonExhaustiveListField = getField(LISTABLE_FIELD_WITH_MANY_VALUES_ID);
     const idField = getField(PRODUCTS.ID);
 
     describe("when the `valuesMode` is already set to 'search'", () => {
@@ -61,11 +59,6 @@ describe("Components > FieldValuesWidget > utils", () => {
 
       it("should be true if there is at least one field that requires search", () => {
         const fields = [searchField, listField];
-        expect(isSearchable({ fields })).toBe(true);
-      });
-
-      it("should be true if there is at least one field that shows a list but said list is not exhaustive", () => {
-        const fields = [nonExhaustiveListField, listField];
         expect(isSearchable({ fields })).toBe(true);
       });
     });

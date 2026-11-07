@@ -1,7 +1,6 @@
 import type { RemappableField } from "metabase-lib/v1/metadata/utils/remapping";
 import type {
   FieldFormattingSettings,
-  FieldValue,
   FieldValuesType,
   Parameter,
   ParameterTarget,
@@ -21,8 +20,6 @@ export interface ParameterField extends RemappableField<ParameterField> {
   display_name: string;
   table_id: TableId;
   has_field_values: FieldValuesType;
-  has_more_values?: boolean;
-  values?: FieldValue[];
   settings?: FieldFormattingSettings;
 }
 
