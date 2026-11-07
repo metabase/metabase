@@ -285,6 +285,7 @@
               :googleanalytics
               :hive-like
               :mongo
+              :motherduck
               :oracle
               :presto-jdbc
               :redshift
