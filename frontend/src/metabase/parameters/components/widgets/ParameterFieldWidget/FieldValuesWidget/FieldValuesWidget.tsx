@@ -24,7 +24,6 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { addRemappings } from "metabase/metadata-store";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
@@ -199,7 +198,6 @@ export const FieldValuesWidgetInner = forwardRef<
         hasMoreOptions = result.has_more_values;
       }
     } finally {
-      updateRemappings(newOptions);
       setOptions(newOptions);
       setValuesMode(
         hasMoreOptions && !isNumericParameter ? "search" : valuesMode,
@@ -250,17 +248,6 @@ export const FieldValuesWidgetInner = forwardRef<
         query,
       }),
     );
-  };
-
-  // ? this may rely on field mutations
-  const updateRemappings = (options: FieldValue[]) => {
-    if (getSharedRemappedField(fields) != null) {
-      fields.forEach((field) => {
-        if (typeof field.id === "number") {
-          dispatch(addRemappings(field.id, options));
-        }
-      });
-    }
   };
 
   const onInputChange = (value: string) => {

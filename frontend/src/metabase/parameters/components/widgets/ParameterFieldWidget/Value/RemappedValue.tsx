@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { getRemappedFieldValue } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
 import { formatValue } from "metabase/value-formatting";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import { isID } from "metabase-lib/v1/types/utils/isa";
@@ -102,22 +100,9 @@ const getEffectiveDisplayValue = (
 
 export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 
-export const FieldRemappedValue = (props: RemappedValueProps) => {
-  const remappedValue = useRemappedValue(props.column, props.value);
-
-  return (
-    <RemappedValueContent
-      {...props}
-      displayValue={props.displayValue ?? remappedValue}
-    />
-  );
-};
-
-function useRemappedValue(column: ParameterField | undefined, value: unknown) {
-  return useSelector((state) =>
-    column == null ? undefined : getRemappedFieldValue(state, column, value),
-  );
-}
+export const FieldRemappedValue = (props: RemappedValueProps) => (
+  <RemappedValueContent {...props} />
+);
 
 const RemappedValue = ({ autoLoad = true, ...props }: RemappedValueProps) =>
   autoLoad && !props.displayValue ? (

@@ -6,14 +6,10 @@ import { getSettings } from "metabase/settings";
 import { formatField } from "metabase/utils/formatting";
 import type { JsMetadata } from "metabase-lib";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
-import type { ParameterField } from "metabase-lib/v1/parameters/types";
-import { getRemappings } from "metabase-lib/v1/queries/utils/field";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatabaseId,
   FieldId,
   FieldReference,
-  FieldValue,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
@@ -382,48 +378,4 @@ export const getShallowFieldName = createSelector(
 
 function isNotNull<T>(value: T | null | undefined): value is T {
   return value != null;
-}
-
-/**
- * A field's client-accumulated remappings. No endpoint returns these: they are
- * merged in as values are fetched, and one component's fetch labels values for
- * another, so a component cannot answer this from its own result.
- */
-export function getFieldRemappings(
-  state: MetadataState,
-  fieldId: FieldId,
-): FieldValue[] {
-  return state.entities.fields[fieldId]?.remappings ?? NO_REMAPPINGS;
-}
-
-// a shared empty array, so a field with no remappings keeps its identity
-// between calls and a `useSelector` on it does not re-render
-const NO_REMAPPINGS: FieldValue[] = [];
-
-/**
- * The label a field carries for `value`.
- *
- * It reads the remappings the client accumulated as widgets fetched values, so
- * a field a caller holds cannot answer this on its own.
- */
-export function getRemappedFieldValue(
-  state: State,
-  field: ParameterField,
-  value: unknown,
-): string | undefined {
-  const fieldId = typeof field.id === "number" ? field.id : null;
-  const remappings =
-    fieldId == null ? NO_REMAPPINGS : getFieldRemappings(state, fieldId);
-
-  // parameter values arrive from the URL as strings
-  const key =
-    isNumeric(field) && typeof value !== "number"
-      ? parseFloat(String(value))
-      : value;
-
-  const labels = new Map<unknown, string | undefined>(
-    getRemappings({ remappings }),
-  );
-
-  return labels.get(key);
 }
