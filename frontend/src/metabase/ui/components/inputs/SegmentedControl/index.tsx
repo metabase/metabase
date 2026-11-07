@@ -1,5 +1,11 @@
-import type { SegmentedControlProps as MantineSegmentedControlProps } from "@mantine/core";
-import { SegmentedControl as MantineSegmentedControl } from "@mantine/core";
+import type {
+  SegmentedControlProps as MantineSegmentedControlProps,
+  MantineSpacing,
+} from "@mantine/core";
+import {
+  SegmentedControl as MantineSegmentedControl,
+  getSpacing,
+} from "@mantine/core";
 import type { FocusEvent, KeyboardEvent, ReactElement } from "react";
 
 import type { IconName } from "metabase-types/api";
@@ -58,6 +64,8 @@ export type SegmentedControlProps<Value extends string> = Omit<
   onChange?: (value: Value) => void;
   /** CSS length, e.g. `20ch`. Longer labels truncate at this width and show a tooltip. */
   labelMaxWidth?: string;
+  /** Horizontal padding of each segment. Defaults to `md`. */
+  itemPaddingX?: MantineSpacing;
 };
 
 export function SegmentedControl<Value extends string = string>({
@@ -67,6 +75,7 @@ export function SegmentedControl<Value extends string = string>({
   onBlur,
   onKeyDown,
   labelMaxWidth,
+  itemPaddingX,
   ...props
 }: SegmentedControlProps<Value>) {
   const tooltip = useItemTooltip(data);
@@ -116,7 +125,10 @@ export function SegmentedControl<Value extends string = string>({
   return (
     <MantineSegmentedControl
       {...props}
-      __vars={{ "--segmented-control-label-max-width": labelMaxWidth }}
+      __vars={{
+        "--segmented-control-label-max-width": labelMaxWidth,
+        "--segmented-control-item-padding-x": getSpacing(itemPaddingX),
+      }}
       data={items}
       onChange={handleChange}
       onFocus={handleFocus}

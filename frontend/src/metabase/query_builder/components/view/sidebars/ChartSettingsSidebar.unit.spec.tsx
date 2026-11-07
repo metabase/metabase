@@ -53,7 +53,7 @@ describe("ChartSettingsSidebar", () => {
     fireEvent.click(screen.getByText("Formatting"));
 
     // you see the formatting stuff
-    expect(screen.getByText("Style")).toBeInTheDocument();
+    expect(screen.getByText("Format")).toBeInTheDocument();
 
     // but the sections and back title are unchanged
     expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
@@ -80,6 +80,6 @@ describe("ChartSettingsSidebar", () => {
 
     // see header with formatting fields
     expect(screen.getByText("Number options")).toBeInTheDocument();
-    expect(screen.getByText("Style")).toBeInTheDocument();
+    expect(screen.getByText("Format")).toBeInTheDocument();
   });
 });
