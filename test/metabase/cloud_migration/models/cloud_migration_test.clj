@@ -1,13 +1,19 @@
 (ns metabase.cloud-migration.models.cloud-migration-test
   (:require
    [clj-http.fake :as http-fake]
+   [clojure.set :as set]
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
+   [metabase.cmd.copy :as copy]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -156,6 +162,201 @@
       (mt/with-temporary-setting-values [read-only-mode true]
         (is (=? {:values seq}
                 (mt/user-http-request :crowberto :get 200 url)))))))
+
+(def ^:private read-only-mode-blocked-models
+  "Models in [[copy/entities]] that are NOT in [[cloud-migration/read-only-mode-exceptions]].
+  For any new model added to [[copy/entities]], you must decide whether to add it here or
+  in [[cloud-migration/read-only-mode-exceptions]]."
+  (into #{:metabot_permissions
+          :model/Action
+          :model/ApiKey
+          :model/ApplicationPermissionsRevision
+          :model/BookmarkOrdering
+          :model/CardBookmark
+          :model/Channel
+          :model/ChannelTemplate
+          :model/Collection
+          :model/CollectionBookmark
+          :model/CollectionPermissionGraphRevision
+          :model/Comment
+          :model/CommentReaction
+          :model/Dashboard
+          :model/DashboardBookmark
+          :model/DashboardCard
+          :model/DashboardCardSeries
+          :model/DashboardTab
+          :model/DataPermissions
+          :model/Database
+          :model/Dimension
+          :model/Document
+          :model/DocumentBookmark
+          :model/EmbeddingTheme
+          :model/Exploration
+          :model/ExplorationBlock
+          :model/ExplorationBookmark
+          :model/ExplorationPage
+          :model/ExplorationQuery
+          :model/ExplorationThread
+          :model/ExplorationThreadTimeline
+          :model/Field
+          :model/FieldUserSettings
+          :model/Glossary
+          :model/ImplicitAction
+          :model/McpFeedback
+          :model/McpGroupPermission
+          :model/Measure
+          :model/Metabot
+          :model/MetabotConversation
+          :model/MetabotFeedback
+          :model/MetabotMessage
+          :model/MetabotPrompt
+          :model/MetabotSourceFeedback
+          :model/MetabotUsedTable
+          :model/ModelIndex
+          :model/ModelIndexValue
+          :model/ModerationReview
+          :model/NativeQuerySnippet
+          :model/Notification
+          :model/NotificationCard
+          :model/NotificationHandler
+          :model/NotificationRecipient
+          :model/NotificationSubscription
+          :model/OAuthClient
+          :model/OsiAiContext
+          :model/ParameterCard
+          :model/Permissions
+          :model/PermissionsGroup
+          :model/PermissionsGroupMembership
+          :model/PermissionsRevision
+          :model/PersistedInfo
+          :model/Pulse
+          :model/PulseCard
+          :model/PulseChannel
+          :model/PulseChannelRecipient
+          :model/QueryAction
+          :model/RecentViews
+          :model/Revision
+          :model/Secret
+          :model/Segment
+          :model/Table
+          :model/TableUserSettings
+          :model/Timeline
+          :model/TimelineEvent
+          :model/Transform
+          :model/TransformDagRun
+          :model/TransformJob
+          :model/TransformJobRun
+          :model/TransformJobTransformTag
+          :model/TransformRun
+          :model/TransformRunCancelation
+          :model/TransformTag
+          :model/TransformTransformTag}
+        (when config/ee-available?
+          [:model/ConnectionImpersonation
+           :model/ContentDiagnosticsFinding
+           :model/CustomVizPlugin
+           :model/MetabotGroupLimit
+           :model/MetabotInstanceLimit
+           :model/Sandbox
+           :model/TableRemapping
+           :model/Tenant
+           :model/TransformTest
+           :model/TransformTestRun
+           :model/Workspace
+           :model/WorkspaceDatabase])))
+
+(def ^:private read-only-mode-blocked-columns
+  "The set of columns explicitly blocked for a model when in read-only-mode.
+  If you add or remove a column from any of these models, you must decide whether to add or remove it here or
+  in [[cloud-migration/read-only-mode-exceptions]]."
+  {:model/AuthIdentity #{:confirmed_at
+                         :created_at
+                         :credentials
+                         :expires_at
+                         :id
+                         :metadata
+                         :provider
+                         :provider_id
+                         :user_id}
+   :model/Card #{:archived
+                 :archived_directly
+                 :cache_invalidated_at
+                 :cache_ttl
+                 :card_schema
+                 :collection_id
+                 :collection_position
+                 :created_at
+                 :creator_id
+                 :dashboard_id
+                 :database_id
+                 :dataset_query
+                 :dataset_query_metrics_v2_migration_backup
+                 :description
+                 :dimension_mappings
+                 :dimensions
+                 :display
+                 :document_id
+                 :embedding_params
+                 :embedding_type
+                 :enable_embedding
+                 :entity_id
+                 :initially_published_at
+                 :legacy_query
+                 :made_public_by_id
+                 :metabase_version
+                 :metabot_chart_id
+                 :metabot_conversation_id
+                 :name
+                 :parameter_mappings
+                 :parameters
+                 :public_uuid
+                 :public_uuid_prefix
+                 :query_type
+                 :result_metadata
+                 :source_card_id
+                 :table_id
+                 :type
+                 :view_count
+                 :visualization_settings}
+   :model/FieldValues #{:created_at
+                        :field_id
+                        :has_more_values
+                        :hash_key
+                        :human_readable_values
+                        :id
+                        :type
+                        :values}})
+
+(deftest read-only-mode-all-models-accounted-for-test
+  (let [copied     (into #{} (map t2/table-name) copy/entities)
+        exceptions (set (keys @#'cloud-migration/read-only-mode-exceptions))
+        blocked    (into #{} (map t2/table-name) read-only-mode-blocked-models)]
+    (testing "Every copied table is an exception or blocked, and nothing else is listed"
+      (is (= copied (set/union exceptions blocked))
+          (str "Add a new copied model to `read-only-mode-exceptions` if it must stay writable during a migration,"
+               " otherwise to `read-only-mode-blocked-models`.")))
+    (testing "No table is both an exception and blocked"
+      (is (= #{} (set/intersection exceptions blocked))))))
+
+(deftest read-only-mode-all-blocked-columns-accounted-for-test
+  (mt/with-empty-h2-app-db!
+    (let [exceptions (m/filter-vals set? @#'cloud-migration/read-only-mode-exceptions)]
+      (testing "Every column-scoped exception lists its blocked columns"
+        (is (= (set (keys exceptions))
+               (into #{} (map t2/table-name) (keys read-only-mode-blocked-columns)))))
+      (doseq [[model blocked] read-only-mode-blocked-columns
+              :let [table   (t2/table-name model)
+                    allowed (get exceptions table)
+                    columns (into #{}
+                                  (map (comp keyword u/lower-case-en))
+                                  (keys (u.conn/app-db-column-types (mdb/app-db) table)))]]
+        (testing model
+          (testing "No column is both allowed and blocked"
+            (is (= #{} (set/intersection allowed blocked))))
+          (testing "Every column is allowed or blocked, and nothing else is listed"
+            (is (= columns (set/union allowed blocked))
+                (str "Add a new column to the model's entry in `read-only-mode-exceptions` if it must stay writable"
+                     " during a migration, otherwise to `read-only-mode-blocked-columns`."))))))))
 
 (deftest ^:synchronized store-url-test
   (testing "When not dev"
