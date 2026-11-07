@@ -92,7 +92,8 @@ export const BrowseCard = ({
         )}
         <Stack gap="xs" miw={0} maw="100%">
           <Link to={to} onClick={onClick} className={S.link}>
-            <Ellipsified className={S.title}>
+            {/* Plain-text label: the nowrap <Title> would stop long names wrapping in the tooltip */}
+            <Ellipsified className={S.title} tooltip={title}>
               <Title
                 order={2}
                 size="md"
