@@ -164,9 +164,7 @@ export const canSearchFieldValues = (
     getSearchField(field, disablePKRemapping),
   );
   const hasFieldValues = fields.some(
-    (field) =>
-      field.has_field_values === "search" ||
-      (field.has_field_values === "list" && field.has_more_values === true),
+    (field) => field.has_field_values === "search",
   );
 
   return hasFields && canSearch && hasFieldValues;

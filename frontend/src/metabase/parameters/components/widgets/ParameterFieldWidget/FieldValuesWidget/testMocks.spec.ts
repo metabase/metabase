@@ -21,7 +21,6 @@ export const LISTABLE_PK_FIELD_ID = 100;
 export const LISTABLE_PK_FIELD_VALUE = "1234";
 export const STRING_PK_FIELD_ID = 101;
 export const SEARCHABLE_FK_FIELD_ID = 102;
-export const LISTABLE_FIELD_WITH_MANY_VALUES_ID = 103;
 export const REMAPPED_TO_STRING_FIELD_ID = 104;
 export const REMAPPED_TO_NUMBER_FIELD_ID = 105;
 export const PK_REMAPPED_TO_NUMBER_FIELD_ID = 106;
@@ -69,15 +68,6 @@ const reviewsFields = [
     effective_type: "type/Text",
     semantic_type: "type/FK",
     has_field_values: "search",
-  }),
-  createMockField({
-    id: LISTABLE_FIELD_WITH_MANY_VALUES_ID,
-    table_id: REVIEWS_ID,
-    display_name: "Big list",
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    has_field_values: "list",
-    has_more_values: true,
   }),
   createMockField({
     id: REMAPPED_TO_STRING_FIELD_ID,
