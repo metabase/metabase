@@ -209,7 +209,7 @@ export function isSensible({ cols }: { cols: DatasetColumn[] }) {
 
 export function checkRenderable(
   [{ data }]: Series,
-  settings: VisualizationSettings,
+  _settings: VisualizationSettings,
 ) {
   if (data.cols.some((col) => col.source === "native")) {
     throw new Error(

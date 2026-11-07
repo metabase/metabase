@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { useListDatabasesQuery } from "metabase/api";
 import type { TemplateTagsSidebarProps } from "metabase/querying/editor/types";
 import { setTemplateTag, setTemplateTagConfig } from "metabase/querying/native";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { TagEditorSidebar } from "./TagEditor/TagEditorSidebar";
 
