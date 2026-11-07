@@ -635,7 +635,7 @@
    Inputs:
    - `db-id` -- the canonical `:model/Database` id.
    - `target` -- the transform's target map, with `:schema` and `:name` for the canonical
-     identifier the transform was configured to write to. Same shape `resolve-transform-target`
+     identifier the transform was configured to write to. Same shape `workspace-transform-target`
      already passes around.
 
    Resolution:
