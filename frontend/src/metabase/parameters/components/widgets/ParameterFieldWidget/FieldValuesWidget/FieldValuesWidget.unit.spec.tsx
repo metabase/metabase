@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupParameterValuesEndpoints } from "__support__/server-mocks";
+import { setupParameterSearchValuesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockParameter,
@@ -127,23 +127,22 @@ describe("FieldValuesWidget", () => {
     });
 
     it("should accept the top matching option when pressing enter", async () => {
-      setupParameterValuesEndpoints(
-        createMockParameterValues({ values: [["Gadget"], ["Gizmo"]] }),
+      setupParameterSearchValuesEndpoint(
+        "Ga",
+        createMockParameterValues({ values: [["Gadget"]] }),
       );
       const { onChange } = setup({
         placeholder: "Value",
-        disableList: true,
         parameter: createMockParameter({
           values_source_type: "static-list",
           values_source_config: { values: [["Gadget"], ["Gizmo"]] },
-          values_query_type: "list",
+          values_query_type: "search",
         }),
       });
 
       const input = screen.getByPlaceholderText("Value");
-      await userEvent.click(input);
-      expect(await screen.findByText("Gadget")).toBeInTheDocument();
       await userEvent.type(input, "Ga");
+      expect(await screen.findByText("Gadget")).toBeInTheDocument();
       await userEvent.keyboard("{enter}");
 
       expect(onChange).toHaveBeenLastCalledWith(["Gadget"]);
@@ -157,21 +156,21 @@ describe("FieldValuesWidget", () => {
     ];
 
     it("should commit the underlying value, not the label, when clicking a remapped option", async () => {
-      setupParameterValuesEndpoints(
+      setupParameterSearchValuesEndpoint(
+        "Ga",
         createMockParameterValues({ values: REMAPPED_VALUES }),
       );
       const { onChange } = setup({
         placeholder: "Value",
-        disableList: true,
         parameter: createMockParameter({
           values_source_type: "static-list",
           values_source_config: { values: REMAPPED_VALUES },
-          values_query_type: "list",
+          values_query_type: "search",
         }),
       });
 
       const input = screen.getByPlaceholderText("Value");
-      await userEvent.click(input);
+      await userEvent.type(input, "Ga");
       await userEvent.click(await screen.findByText("Gadget"));
 
       // Mantine's Autocomplete commits option.label on submit; the widget must
@@ -180,22 +179,22 @@ describe("FieldValuesWidget", () => {
     });
 
     it("should not clear a numeric filter when clicking a remapped option", async () => {
-      setupParameterValuesEndpoints(
+      setupParameterSearchValuesEndpoint(
+        "Ga",
         createMockParameterValues({ values: REMAPPED_VALUES }),
       );
       const { onChange } = setup({
         placeholder: "Value",
-        disableList: true,
         parameter: createMockParameter({
           type: "number/=",
           values_source_type: "static-list",
           values_source_config: { values: REMAPPED_VALUES },
-          values_query_type: "list",
+          values_query_type: "search",
         }),
       });
 
       const input = screen.getByPlaceholderText("Value");
-      await userEvent.click(input);
+      await userEvent.type(input, "Ga");
       await userEvent.click(await screen.findByText("Gadget"));
 
       // Committing the label "Gadget" fails numeric parsing and clears the

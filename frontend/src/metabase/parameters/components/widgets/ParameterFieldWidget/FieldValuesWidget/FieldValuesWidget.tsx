@@ -89,10 +89,6 @@ export interface IFieldValuesWidgetProps {
   minWidth?: number | null;
   width?: number | null;
 
-  disableList?: boolean;
-  disableSearch?: boolean;
-  disablePKRemappingForSearch?: boolean;
-
   parameter: Parameter;
   parameters?: Parameter[]; // linked parameters with values
   // a field filter parameter that has no mapped fields still renders this
@@ -123,9 +119,6 @@ export const FieldValuesWidgetInner = forwardRef<
     maxWidth = 500,
     minWidth,
     width,
-    disableList = false,
-    disableSearch = false,
-    disablePKRemappingForSearch,
     parameter,
     parameters,
     fields = [],
@@ -144,13 +137,8 @@ export const FieldValuesWidgetInner = forwardRef<
   const [options, setOptions] = useState<FieldValue[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
   const [lastValue, setLastValue] = useState<string>("");
-  const [valuesMode, setValuesMode] = useState<ValuesMode>(
-    getValuesMode({
-      parameter,
-      fields,
-      disableSearch,
-      disablePKRemappingForSearch,
-    }),
+  const [valuesMode, setValuesMode] = useState<ValuesMode>(() =>
+    getValuesMode(parameter),
   );
   const [isExpanded, setIsExpanded] = useState(false);
   const dispatch = useDispatch();
@@ -162,7 +150,7 @@ export const FieldValuesWidgetInner = forwardRef<
   const entityIdentifier = uuid ?? token ?? null;
 
   useMount(() => {
-    if (shouldList({ parameter, fields, disableSearch })) {
+    if (shouldList(parameter)) {
       fetchValues();
     }
   });
@@ -305,24 +293,14 @@ export const FieldValuesWidgetInner = forwardRef<
   const tokenFieldPlaceholder = getTokenFieldPlaceholder({
     fields,
     parameter,
-    disableSearch,
     placeholder,
-    disablePKRemappingForSearch,
     options,
     valuesMode,
   });
 
-  const isListMode =
-    !disableList &&
-    shouldList({ parameter, fields, disableSearch }) &&
-    valuesMode === "list";
+  const isListMode = shouldList(parameter) && valuesMode === "list";
   const isLoading = loadingState === "LOADING";
-  const hasListValues = hasList({
-    parameter,
-    fields,
-    disableSearch,
-    options,
-  });
+  const hasListValues = hasList({ parameter, options });
   const isNumericParameter = isNumeric(parameter, fields);
 
   const parseNumericValue = (value: string) => {
