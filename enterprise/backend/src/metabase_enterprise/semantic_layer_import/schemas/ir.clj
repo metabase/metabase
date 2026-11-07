@@ -78,11 +78,15 @@
 
 (mr/def ::join.supported
   "A join from a table to the table named `table`. Metabase joins implicitly, through `source-column` of the table the
-  join is on, whose foreign key the instance has to know."
+  join is on, whose foreign key the instance has to know. Several joins of a table may share a `name` when the source
+  reaches several tables the same way (dbt: several semantic models keyed by one entity); a reference through the
+  name then leads to whichever of them has the dimension it names, and a dimension on more than one of them is
+  ambiguous unless one join is `preferred`, the source's choice (dbt's `:entity-models`), whose dimension it then is."
   [:map {:closed true}
    [:name          :string]
    [:table         :string]
-   [:source-column :string]])
+   [:source-column :string]
+   [:preferred?    {:optional true} :boolean]])
 
 (mr/def ::join.unsupported
   "A join the source could not make, and why. `unreachable` names what the dimension set reports with the reason: the
@@ -180,7 +184,9 @@
   derived (see [[metabase-enterprise.semantic-layer-import.ids]]). `filters` apply to the metric itself; empty means
   none. `fill-nulls-with` is the value the metric takes where its aggregation is null. `time-grain` is the coarsest
   grain the metric is meant to be queried at; nil means its time dimension's own. `meta` is the project's free-form
-  metadata, carried for a later mapping and not written anywhere."
+  metadata, carried for a later mapping and not written anywhere. `notes` is what the source knows that the converted
+  metric agrees with it only under some conditions, which only the source can tell (a dbt cumulative metric's
+  `period_agg`); the resolve stage adds them to the report's notes next to the ones it reads off the query."
   [:map {:closed true}
    [:type            [:enum :simple :cumulative :ratio :derived]]
    [:name            :string]
@@ -190,7 +196,8 @@
    [:filters         [:sequential ::filter]]
    [:fill-nulls-with [:maybe :int]]
    [:time-grain      [:maybe ::grain]]
-   [:meta            [:maybe [:map {::mr/deliberately-open true, :description "free-form metadata"}]]]])
+   [:meta            [:maybe [:map {::mr/deliberately-open true, :description "free-form metadata"}]]]
+   [:notes           {:optional true} [:sequential :string]]])
 
 (mr/def ::metric.simple
   "One aggregation over the table named `table`. A cumulative metric is the same with its aggregation running over

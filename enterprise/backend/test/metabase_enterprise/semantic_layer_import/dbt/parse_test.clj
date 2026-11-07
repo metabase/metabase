@@ -434,16 +434,37 @@
                             :type-params {:cumulative_type_params {:window        nil
                                                                    :grain_to_date nil
                                                                    :period_agg    "last"}}}))))
-  (testing (str "period_agg first, dbt's default, and average are the running total at the start of each period or its"
-                " mean, which Metabase does not compute")
-    (are [type-params] (re-find (re-pattern (str "^a cumulative metric with period_agg (first|average) has no Metabase"
-                                                 " equivalent: .* set period_agg: last to convert it$"))
-                                (tu/unsupported {:metric {:type "cumulative"}, :type-params type-params}))
+  (testing (str "period_agg first, dbt's default, is the running total at the start of each period under a coarser"
+                " breakout, which Metabase does not compute, but the same running total at the metric's own grain:"
+                " it converts with a note saying so")
+    (are [type-params] (= {:aggregation [:cum-sum {} (fld "sales" :type/Float)]
+                           :notes       [(str "a cumulative metric with period_agg first (dbt's default): at the"
+                                              " metric's own grain it agrees with the source, but under a breakout"
+                                              " coarser than that grain the source takes the running total at the"
+                                              " start of each period and Metabase gives the one at its end, which is"
+                                              " period_agg last")
+                                         (str "a cumulative metric is a running total over whatever it is broken out"
+                                              " by: it agrees with the source with its time dimension as the finest"
+                                              " breakout, and is a running total across the categories under any"
+                                              " other")]}
+                          (select-keys (tu/convert {:metric {:type "cumulative"}, :type-params type-params})
+                                       [:aggregation :notes]))
       {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "first"}}
-      {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "average"}}
       ;; a manifest without period_agg means dbt's default
       {:cumulative_type_params {:window nil, :grain_to_date nil}}
       {})
+    (testing "where period_agg last carries only the running total's note"
+      (is (= 1 (count (:notes (tu/convert {:metric      {:type "cumulative"}
+                                           :type-params {:cumulative_type_params {:window        nil
+                                                                                  :grain_to_date nil
+                                                                                  :period_agg    "last"}}})))))))
+  (testing "period_agg average is the mean of the running total over each period, which Metabase does not compute"
+    (is (re-find (re-pattern (str "^a cumulative metric with period_agg average has no Metabase equivalent: .* set"
+                                  " period_agg: last \\(or first\\) to convert it$"))
+                 (tu/unsupported {:metric      {:type "cumulative"}
+                                  :type-params {:cumulative_type_params {:window        nil
+                                                                         :grain_to_date nil
+                                                                         :period_agg    "average"}}})))
     (testing "a window or grain_to_date is the reason before period_agg is"
       (is (re-find #"^a cumulative metric with a window"
                    (tu/unsupported {:metric      {:type "cumulative"}

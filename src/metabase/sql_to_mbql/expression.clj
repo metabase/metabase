@@ -6,8 +6,9 @@
   [[metabase.sql-parsing.core/parse-expression]] (sqlglot) parses an expression on its own, without a surrounding
   SELECT, in the warehouse's dialect, and a subset of its tree is built with Lib's clause constructors: column
   references, literals, arithmetic, comparisons, AND/OR/NOT, IN, BETWEEN, IS [NOT] NULL/TRUE/FALSE, LIKE, ILIKE and
-  SIMILAR TO patterns and regex matches (see [[like-clause]] and [[regex-match]]), both forms of CASE, casts to the
-  types Lib has a conversion for (see [[cast-targets]]) and the functions that have a Lib expression function with the
+  SIMILAR TO patterns and regex matches (see [[like-clause]] and [[regex-match]]), both forms of CASE, and a CASE of
+  TRUE, FALSE and NULL as a condition (see [[case->predicate]]), casts to the types Lib has a conversion for (see
+  [[cast-targets]]), DATEDIFF (see [[date-diff->value]]) and the functions that have a Lib expression function with the
   same meaning. Each sqlglot node class the subset covers has a
   converter in [[value-converters]], for a node used as a value, or [[predicate-converters]], for one used where a
   boolean is expected; [[->value]] and [[->predicate]] dispatch on the class. `NULLIF(x, 0)` as a divisor is plain
@@ -65,10 +66,12 @@
 
 (mr/def ::context
   "What a converter needs besides its node: the dialect the SQL was parsed in, for the converters whose meaning depends
-  on the warehouse (see [[default-like-escape]] and [[cast->value]]), and the column callback."
+  on the warehouse (see [[default-like-escape]] and [[cast->value]]), the column callback, and whether the condition
+  being converted is under a `NOT`, where a false condition and a null one are told apart (see [[case->predicate]])."
   [:map {:closed true}
    [:dialect        ::dialect]
-   [:resolve-column ::resolve-column]])
+   [:resolve-column ::resolve-column]
+   [:negated?       {:optional true} :boolean]])
 
 (mr/def ::converter
   "A function of a node and the [[::context]] that converts the node, see [[value-converters]] and
@@ -322,7 +325,8 @@
                     (if operand
                       (do (without-null-operands node [operand when-node])
                           (lib/= (->value operand ctx) (->value when-node ctx)))
-                      (->predicate when-node ctx)))
+                      ;; a WHEN picks its branch when its condition is true, whatever is around the CASE
+                      (->predicate when-node (dissoc ctx :negated?))))
         branches  (mapv (fn [if-node]
                           [(condition (arg if-node :this))
                            (->value (arg if-node :true) ctx)])
@@ -365,8 +369,8 @@
 
 (mu/defn- variadic :- ::value
   "`(lib-fn & values)`, or the one value when there is only one: `coalesce(x)` and `concat(x)` are `x`. `lib-fn` is a
-  variadic Lib constructor, [[lib/coalesce]] or [[lib/concat]]; `values` are the Lib expressions it takes, at least
-  one."
+  variadic Lib constructor, [[lib/coalesce]], [[lib/concat]] or [[lib/or]]; `values` are the Lib expressions it
+  takes, at least one."
   [lib-fn :- ifn?
    values :- [:sequential ::value]]
   (if (next values)
@@ -481,6 +485,88 @@
     (when-not (lib/clause-of-type? value :field)
       (throw-unsupported "date_trunc over an expression is not supported, only over a column: %s" (:sql node)))
     (lib/with-temporal-bucket value unit)))
+
+(def ^:private date-diff-dialects
+  "The sqlglot dialects whose `DATEDIFF` [[date-diff->value]] converts. Snowflake, Redshift and SQL Server write it
+  `DATEDIFF(unit, start, end)`, BigQuery `DATE_DIFF(end, start, unit)` and MySQL `DATEDIFF(end, start)`, in days; each
+  counts the unit boundaries between the two values, so that `DATEDIFF(month, '2024-01-31', '2024-02-01')` is 1.
+  Trino's and Presto's `date_diff` counts whole units instead, and Postgres has no `DATEDIFF`: sqlglot reads one there
+  with its arguments in another order."
+  #{"snowflake" "redshift" "tsql" "bigquery" "mysql"})
+
+(mr/def ::date-diff-unit
+  "A unit [[boundaries-between]] counts."
+  [:enum :year :quarter :month :day :hour :minute :second])
+
+(def ^:private date-diff-places
+  "Each unit [[boundaries-between]] counts by its place in a larger unit: the larger unit, how many of the unit it
+  holds, and the Lib function for the unit's place in it."
+  {:quarter [:year   4  lib/get-quarter]
+   :month   [:year   12 lib/get-month]
+   :hour    [:day    24 lib/get-hour]
+   :minute  [:hour   60 lib/get-minute]
+   :second  [:minute 60 lib/get-second]})
+
+(mu/defn- boundaries-between :- ::value
+  "The number of `unit` boundaries between the temporal values `start-thunk` and `end-thunk` return, negative when the
+  end is before the start, as `DATEDIFF` counts them: a year is the difference of the two years, a day the calendar
+  days between them, and any other unit the boundaries of the larger unit in [[date-diff-places]] times the number of
+  `unit`s in it, plus the difference of the two places in it. The thunks are called afresh for each use, so that no
+  two refs share a uuid."
+  [unit        :- ::date-diff-unit
+   start-thunk :- ifn?
+   end-thunk   :- ifn?]
+  (case unit
+    :year (lib/- (lib/get-year (end-thunk)) (lib/get-year (start-thunk)))
+    ;; Metabase's datetime-diff counts whole units, which in days the drivers of `date-diff-dialects` compile as the
+    ;; calendar days between the two, as DATEDIFF counts them; in months it counts whole months, which DATEDIFF does not
+    :day  (lib/expression-clause :datetime-diff [(start-thunk) (end-thunk) :day] nil)
+    (let [[larger n place] (get date-diff-places unit)]
+      (lib/+ (lib/* (boundaries-between larger start-thunk end-thunk) n)
+             (lib/- (place (end-thunk)) (place (start-thunk)))))))
+
+(mu/defn- date-diff-unit :- ::date-diff-unit
+  "The unit of the `DATEDIFF` `node`, a day when it has none (MySQL's). [[throw-unsupported]] for a week, whose
+  boundaries depend on the first day of the week, and for a unit [[boundaries-between]] does not count."
+  [node :- ::node]
+  (let [unit-node (arg node :unit)
+        unit-name (case (:class unit-node)
+                    nil         "DAY"
+                    ;; BigQuery's WEEK and WEEK(MONDAY)
+                    "WeekStart" "WEEK"
+                    (:sql unit-node))
+        unit      (truncation-unit unit-name)]
+    (cond
+      (= unit :week)
+      (throw-unsupported (str "%s counts the week boundaries between the two, which depend on the first day of the"
+                              " week; Metabase's datetime-diff counts whole weeks")
+                         (:sql node))
+
+      (not (mr/validate ::date-diff-unit unit))
+      (throw-unsupported "DATEDIFF in %s is not supported" unit-name)
+
+      :else
+      unit)))
+
+(mu/defn- date-diff->value :- ::value
+  "`DATEDIFF(unit, start, end)`, `end - start` in `unit`s counted as the unit boundaries between the two (see
+  [[boundaries-between]]), on the dialects in [[date-diff-dialects]]; [[throw-unsupported]] on any other, and for a
+  unit [[date-diff-unit]] does not read."
+  [node           :- ::node
+   ctx            :- ::context]
+  (when-not (contains? date-diff-dialects (:dialect ctx))
+    (throw-unsupported (str "the function datediff is not supported on %s, only on Snowflake, Redshift, SQL Server,"
+                            " BigQuery and MySQL")
+                       (dialect-name (:dialect ctx))))
+  (let [unit    (date-diff-unit node)
+        ;; sqlglot gives the end as `this` and the start as `expression`, and wraps SQL Server's in a `TimeStrToTime`,
+        ;; the cast of a string to a timestamp that SQL Server applies and a date or timestamp does not need
+        operand (fn [k]
+                  (let [operand-node (arg node k)]
+                    #(->value (cond-> operand-node
+                                (= "TimeStrToTime" (:class operand-node)) (arg :this))
+                              ctx)))]
+    (boundaries-between unit (operand :expression) (operand :this))))
 
 (mu/defn- boolean-typed? :- :boolean
   "Can `value` be a boolean: is its type `:type/Boolean`, or unknown (`:type/*`, a column whose ref has no type),
@@ -661,7 +747,48 @@
       (negated-match #(->value (match-subject inner) ctx) (->predicate inner ctx))
 
       :else
-      (lib/not (->predicate inner ctx)))))
+      (lib/not (->predicate inner (update ctx :negated? not))))))
+
+(mu/defn- boolean-result :- [:maybe :boolean]
+  "The `THEN` or `ELSE` `result` of the `CASE` `node` used as a condition: true or false for the literal `TRUE` or
+  `FALSE`, nil for `NULL` or a missing `ELSE`. [[throw-unsupported]] for any other result."
+  [node   :- ::node
+   result :- [:maybe ::node]]
+  (let [result (some-> result unparenthesized)]
+    (case (:class result)
+      nil       nil
+      "Null"    nil
+      "Boolean" (boolean (arg result :this))
+      (throw-unsupported "%s is not supported as a condition" (describe node)))))
+
+(mu/defn- case->predicate :- ::condition
+  "A searched `CASE` used as a condition, whose every result, the `ELSE` included, is the literal `TRUE`, `FALSE` or
+  `NULL`. When the `TRUE` results come first, it is true exactly when one of their conditions is, so it is those
+  conditions ORed: `CASE WHEN c THEN TRUE ELSE FALSE END` is `c`. Otherwise, and under a `NOT`, it is
+  `CASE ... END = TRUE`. [[throw-unsupported]] for a simple `CASE x WHEN`, a result that is not one of those literals,
+  and a `CASE` that is never true."
+  [node           :- ::node
+   ctx            :- ::context]
+  (when (arg node :this)
+    (throw-unsupported "%s is not supported as a condition" (describe node)))
+  (let [ifs      (arg node :ifs)
+        results  (mapv #(boolean-result node (arg % :true)) ifs)
+        default  (boolean-result node (arg node :default))
+        leading  (count (take-while true? results))]
+    (cond
+      (not-any? true? (conj results default))
+      (throw-unsupported "%s is never true, so as a condition it matches no rows" (:sql node))
+
+      ;; the conditions are true where the CASE is, and no other conditions describe it exactly: a later TRUE branch is
+      ;; taken where an earlier condition `c` is null, which `NOT c` leaves out; and where `c` is null the CASE is
+      ;; false, which a NOT around it turns into true where it turns `c` into null
+      (and (not (:negated? ctx))
+           (not-any? true? (drop leading results))
+           (not (true? default)))
+      (variadic lib/or (map #(->predicate (arg % :this) ctx) (take leading ifs)))
+
+      :else
+      (lib/= (case->value node ctx) true))))
 
 (mu/defn- between->predicate :- ::condition
   "`x BETWEEN low AND high`, none of them `NULL` (see [[without-null-operands]])."
@@ -975,6 +1102,9 @@
    "Extract"          extract->value
    "TimestampTrunc"   date-trunc->value
    "DateTrunc"        date-trunc->value
+   "DateDiff"         date-diff->value
+   ;; Redshift's `DATEDIFF`
+   "TsOrDsDiff"       date-diff->value
    "CurrentTimestamp" (fn [_node _ctx] (lib/now))
    "CurrentDate"      (fn [_node _ctx] (lib/today))})
 
@@ -992,6 +1122,7 @@
    "And"         (logical lib/and "And")
    "Or"          (logical lib/or "Or")
    "Not"         not->predicate
+   "Case"        case->predicate
    "Is"          (fn [node ctx] (is node ctx (boolean (arg node :negate))))
    "In"          (fn [node ctx] (in node ctx false))
    "Between"     between->predicate

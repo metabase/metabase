@@ -4462,13 +4462,15 @@
   enterprise/semantic-layer-import
   {:team "Querying Platform"
    :api  #{}
-   :uses #{driver
+   :uses #{collections
+           driver
            lib
            lib.metadata
            lib.metric
            lib.schema
            metrics
            models
+           queries
            sql-to-mbql
            sql-tools
            util

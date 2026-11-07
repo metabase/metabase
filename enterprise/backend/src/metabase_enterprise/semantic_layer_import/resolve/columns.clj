@@ -121,12 +121,59 @@
   (or (m/find-first #(= key-name (:name %)) (:keys table))
       (unsupported/throw-reason "key %s is not on table %s" (pr-str key-name) (pr-str (:name table)))))
 
-(mu/defn table-join :- ::ir/join
-  "The join named `join-name` on `context`'s table."
+(mu/defn table-joins :- [:sequential ::ir/join]
+  "The joins named `join-name` on `context`'s table: usually one, several when the source reaches several tables the
+  same way (see `::ir/join.supported`). [[unsupported/throw-reason]] when there is none."
   [{:keys [table]} :- ::context
    join-name       :- :string]
-  (or (m/find-first #(= join-name (:name %)) (:joins table))
+  (or (not-empty (filterv #(= join-name (:name %)) (:joins table)))
       (unsupported/throw-reason "join %s is not on table %s" (pr-str join-name) (pr-str (:name table)))))
+
+(mu/defn joined-dimension-names :- [:sequential :string]
+  "The names of the dimensions of the table `join`, a supported join, leads to; none for an unsupported join."
+  [{:keys [env]} :- ::context
+   join          :- ::ir/join]
+  (if (:reason join)
+    []
+    (map :name (get-in env [:tables (:table join) :dimensions]))))
+
+(mu/defn ambiguous-dimension-reason :- :string
+  "Why the dimension `dimension-name`, reached through `join-name`, cannot be resolved: it is on more than one of the
+  tables the joins of that name lead to, `table-names`, and the source did not say which one it means."
+  [join-name      :- :string
+   dimension-name :- :string
+   table-names    :- [:sequential :string]]
+  (format (str "dimension %s is on more than one of the tables join %s leads to (%s); the source has to say which one"
+               " it means (for dbt, name the semantic model in :entity-models)")
+          (pr-str dimension-name) (pr-str join-name) (str/join ", " (map pr-str table-names))))
+
+(mu/defn dimension-join :- ::ir/join
+  "The join named `join-name` on `context`'s table that leads to the dimension `dimension-name`. The one join of that
+  name, whatever it leads to: an unsupported one reports its reason when followed, and a dimension that is not on the
+  table it leads to reports that. Of several, the supported one whose table has the dimension, or the preferred one
+  when more than one does (see `::ir/join.supported`); [[unsupported/throw-reason]] when none has it (with the reason
+  of an unsupported join among them, which might have led to it) or several do and none is preferred."
+  [context        :- ::context
+   join-name      :- :string
+   dimension-name :- :string]
+  (let [joins (table-joins context join-name)]
+    (if-not (next joins)
+      (first joins)
+      (let [leading (filter #(some #{dimension-name} (joined-dimension-names context %)) joins)]
+        (cond
+          (empty? leading)
+          (if-let [unsupported (m/find-first :reason joins)]
+            (unsupported/throw-reason (:reason unsupported))
+            (unsupported/throw-reason "dimension %s is not on any of the tables join %s leads to (%s)"
+                                      (pr-str dimension-name) (pr-str join-name)
+                                      (str/join ", " (map (comp pr-str :table) joins))))
+
+          (not (next leading))
+          (first leading)
+
+          :else
+          (or (m/find-first :preferred? leading)
+              (unsupported/throw-reason (ambiguous-dimension-reason join-name dimension-name (map :table leading)))))))))
 
 (mu/defn join-context :- ::context
   "A context for the table `join` from `context`'s table leads to: bare column names resolve to that table's columns,

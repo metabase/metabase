@@ -23,10 +23,14 @@
    [metabase-enterprise.semantic-layer-import.schemas.resolved :as resolved]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.dump :as dump]
+   ;; for the Card and Collection serdes specs, which [[serdes/extract-one]] dispatches to: a bare REPL that has not
+   ;; loaded the models otherwise fails with "No serialization spec defined for model Card"
+   [metabase.collections.core]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.core]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -40,6 +44,9 @@
    (org.apache.commons.io FileUtils)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.collections.core/keep-me
+         metabase.queries.core/keep-me)
 
 (def card-schema
   "The `card_schema` the emitted cards declare: 24, the version whose `:dimensions` and `:dimension_mappings` shape the

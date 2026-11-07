@@ -20,8 +20,8 @@
   code here destructures, so absence and `null` take the same path.
 
   Simple, cumulative, ratio and derived metrics are parsed. What is structurally beyond Metabase is reported in
-  `:unsupported` with a reason here: a cumulative metric with a window, a `grain_to_date` or a `period_agg` other than
-  `last`, an input with an offset, conversion metrics, a non-additive measure, a percentile without a value, outside
+  `:unsupported` with a reason here: a cumulative metric with a window, a `grain_to_date` or `period_agg: average`,
+  an input with an offset, conversion metrics, a non-additive measure, a percentile without a value, outside
   0..1 or discrete, and filter syntax the IR has no place for. So is a manifest that disagrees with itself, where a
   name in `type_params` is not what `depends_on` resolved to. Whether the metrics a ratio or derived metric refers to
   exist is the resolve stage's business. An unexpected exception while parsing one metric or semantic model is logged
@@ -416,20 +416,27 @@
            :inputs (unsupported/with-reason-prefix (str "expr " (pr-str expr))
                      #(mapv parse-metric-input metrics)))))
 
+(mu/defn- period-agg :- [:enum :first :last :average]
+  "The `period_agg` of a cumulative metric's `type-params`: which value of the running total stands for a period
+  coarser than the metric's grain. A manifest without one means dbt's default, `first`."
+  [{cumulative-type-params :cumulative_type_params} :- ::manifest/metric-type-params]
+  (or (:period_agg cumulative-type-params) :first))
+
 (mu/defn- cumulative-reason :- [:maybe :string]
   "Why a cumulative metric cannot be converted: a window or a `grain_to_date`, written the 1.12 way in
-  `cumulative_type_params` or the legacy way directly in `type_params`, or a `period_agg` other than `last`. Without
-  a window or `grain_to_date` it is a running total over everything, which Metabase has, but only as the value at the
-  end of each period when broken out coarser than its grain: dbt's `period_agg: last`. The default, `first`, is the
-  value at the start of each period, and `average` the mean over its days; neither is what Metabase computes, so both
-  are reported rather than approximated. A manifest without `period_agg` means dbt's default."
+  `cumulative_type_params` or the legacy way directly in `type_params`, or `period_agg: average`. Without a window or
+  `grain_to_date` it is a running total over everything, which Metabase has, as the value at the end of each period
+  when broken out coarser than its grain: dbt's `period_agg: last`. The default, `first`, is the value at the start of
+  each period instead, which agrees with Metabase at the metric's own grain and differs under a coarser breakout, so
+  it converts with a note saying so (see [[period-agg-first-note]]); `average`, the mean over the period's days, is
+  nothing Metabase computes and is reported."
   [{:keys                  [window]
     grain-to-date          :grain_to_date
-    cumulative-type-params :cumulative_type_params}
+    cumulative-type-params :cumulative_type_params
+    :as                    type-params}
    :- ::manifest/metric-type-params]
   (let [window        (or window (:window cumulative-type-params))
-        grain-to-date (or grain-to-date (:grain_to_date cumulative-type-params))
-        period-agg    (or (:period_agg cumulative-type-params) :first)]
+        grain-to-date (or grain-to-date (:grain_to_date cumulative-type-params))]
     (cond
       window
       (format (str "a cumulative metric with a window of %d %s has no Metabase equivalent: MBQL has no rolling-window"
@@ -441,11 +448,18 @@
                    " at each %s needs a breakout the metric cannot require")
               (pr-str grain-to-date) grain-to-date)
 
-      (not= period-agg :last)
-      (format (str "a cumulative metric with period_agg %s has no Metabase equivalent: under a breakout coarser than"
-                   " its grain, Metabase's running total is the value at the end of each period, which is"
-                   " period_agg last; set period_agg: last to convert it")
-              (name period-agg)))))
+      (= (period-agg type-params) :average)
+      (str "a cumulative metric with period_agg average has no Metabase equivalent: under a breakout coarser than its"
+           " grain it is the mean of the running total over the period, where Metabase's running total is the value"
+           " at the end of each period, which is period_agg last; set period_agg: last (or first) to convert it"))))
+
+(def ^:private period-agg-first-note
+  "The note a cumulative metric with `period_agg: first`, dbt's default, carries into the report (see `notes` on
+  `::ir/metric.common`): at the metric's own grain the running total is the running total, and the two agree, but
+  under a coarser breakout dbt takes the value at the start of each period and Metabase gives the one at its end."
+  (str "a cumulative metric with period_agg first (dbt's default): at the metric's own grain it agrees with the"
+       " source, but under a breakout coarser than that grain the source takes the running total at the start of each"
+       " period and Metabase gives the one at its end, which is period_agg last"))
 
 (mu/defn- aggregation-reason :- [:maybe :string]
   "Why an aggregation has no Metabase equivalent: a non-additive dimension, or a percentile without a value, outside
@@ -638,8 +652,9 @@
   with the filters and `fill_nulls_with` [[simple-metric-extras]] gathers. Its time dimension is the aggregation's
   `agg_time_dimension`. An inline-spec (dbt 1.12) cumulative metric points at the simple metric it runs over instead
   (see [[cumulative-input]]) and takes that metric's aggregation and semantic model. A cumulative metric with a window,
-  a `grain_to_date` or a `period_agg` other than `last` is [[unsupported/throw-reason]] (see [[cumulative-reason]]), as
-  is an aggregation Metabase cannot express (see [[aggregation-reason]])."
+  a `grain_to_date` or `period_agg: average` is [[unsupported/throw-reason]] (see [[cumulative-reason]]), as is an
+  aggregation Metabase cannot express (see [[aggregation-reason]]); one with `period_agg: first`, dbt's default,
+  carries [[period-agg-first-note]]."
   [models  :- [:map-of :string ::model]
    metrics :- [:map-of :string ::manifest/metric]
    {metric-type :type, type-params :type_params :as metric} :- ::manifest/metric]
@@ -650,11 +665,13 @@
         {:keys [model aggregation]}               (aggregation-source models (or input-metric metric))]
     (some-> (aggregation-reason aggregation) unsupported/throw-reason)
     (let [{:keys [filters fill-nulls-with]} (simple-metric-extras metric input-metric reference)]
-      (assoc (metric-common metric-type metric filters)
-             :fill-nulls-with fill-nulls-with
-             :table           (-> model :table :name)
-             :aggregation     (ir-aggregation aggregation)
-             :time-dimension  (:agg-time-dimension aggregation)))))
+      (cond-> (assoc (metric-common metric-type metric filters)
+                     :fill-nulls-with fill-nulls-with
+                     :table           (-> model :table :name)
+                     :aggregation     (ir-aggregation aggregation)
+                     :time-dimension  (:agg-time-dimension aggregation))
+        (and (= metric-type :cumulative) (= (period-agg type-params) :first))
+        (assoc :notes [period-agg-first-note])))))
 
 (mu/defn- error-report :- ::ir/unsupported
   "The `:unsupported` entry for an entry of the manifest that threw something other than an unsupported reason while

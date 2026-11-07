@@ -114,15 +114,17 @@
                                                               options (assoc :options options))))
             ambiguous     (fn [report]
                             (->> report :converted first :unsupported-dimensions
-                                 (filter #(re-find #"more than one semantic model has entity \"product\"" (:reason %)))
+                                 (filter #(re-find #"is on more than one of the tables join \"product\" leads to"
+                                                   (:reason %)))
                                  (map :name)
                                  set))]
         (spit manifest-file (json/encode (tu/build-manifest
                                           {:edit #(assoc-in % [:semantic_models (:unique_id twin)] twin)})))
-        (testing "without :entity-models, every dimension joined through the twice-keyed entity is ambiguous"
-          (is (= (set (map :name (:dimensions twin)))
+        (testing (str "without :entity-models, every dimension on both semantic models keyed by the entity is"
+                      " ambiguous, under its dbt reference")
+          (is (= (into #{} (map #(str "product__" (:name %))) (:dimensions twin))
                  (ambiguous (convert! nil)))))
-        (testing "with them, it joins to the semantic model they name"
+        (testing "with them, the dimensions are the named semantic model's"
           (is (= #{}
                  (ambiguous (convert! {:entity-models {"product" "dim_product"}})))))
         (testing "an option the dbt source does not know fails the run"

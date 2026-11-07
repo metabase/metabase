@@ -84,9 +84,9 @@
    :edit        with-input-metrics})
 
 (def ^:private period-agg-last
-  "The `cumulative_type_params` of a cumulative metric with no window and `period_agg: last`, the one `period_agg` the
-  converter accepts (dbt's default, `first`, is reported; see
-  [[metabase-enterprise.semantic-layer-import.dbt.parse-test/advanced-metric-types-test]])."
+  "The `cumulative_type_params` of a cumulative metric with no window and `period_agg: last`, the `period_agg` that
+  converts without a note (dbt's default, `first`, converts with one and `average` is reported; see
+  [[metabase-enterprise.semantic-layer-import.dbt.parse-test/cumulative-period-agg-test]])."
   {:window nil, :grain_to_date nil, :period_agg "last"})
 
 (defn- cumulative

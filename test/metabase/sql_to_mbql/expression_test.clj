@@ -263,6 +263,126 @@
   (testing "a bare column as a condition is column = true, so one that is not boolean is reported"
     (is (= "name is not a boolean column, so it cannot stand alone as a condition" (condition "postgres" "name")))))
 
+(deftest ^:parallel boolean-case-condition-test
+  (testing "a CASE whose results are TRUE, FALSE or NULL is a condition: the conditions of its leading TRUE branches"
+    (are [sql clause] (= clause (condition "postgres" sql))
+      "CASE WHEN name = 'a' THEN TRUE ELSE FALSE END"         [:= {} venue-name "a"]
+      "case when name = 'a' then true end"                    [:= {} venue-name "a"]
+      "CASE WHEN name = 'a' THEN TRUE ELSE NULL END"          [:= {} venue-name "a"]
+      "(CASE WHEN name = 'a' THEN (TRUE) ELSE (FALSE) END)"   [:= {} venue-name "a"]
+      "CASE WHEN name = 'a' THEN TRUE WHEN name = 'b' THEN TRUE ELSE FALSE END"
+      [:or {} [:= {} venue-name "a"] [:= {} venue-name "b"]]
+      "CASE WHEN name = 'a' THEN TRUE WHEN name = 'b' THEN FALSE WHEN name = 'c' THEN NULL ELSE FALSE END"
+      [:= {} venue-name "a"]))
+  (testing "inside AND, and in a WHEN even of a CASE under NOT, where only true counts, likewise"
+    (are [sql clause] (= clause (condition "postgres" sql))
+      "name > 'x' AND CASE WHEN name = 'a' THEN TRUE ELSE FALSE END"
+      [:and {} [:> {} venue-name "x"] [:= {} venue-name "a"]]
+      "NOT (CASE WHEN CASE WHEN name = 'a' THEN TRUE ELSE FALSE END THEN TRUE ELSE FALSE END)"
+      [:not {} [:= {} [:case {} [[[:= {} venue-name "a"] true]] false] true]]))
+  (testing (str "a TRUE after a FALSE or NULL branch, or in the ELSE, is the CASE = TRUE: the branch is taken when the"
+                " conditions before it are false or null, and NOT over them would leave the null rows out")
+    (are [sql clause] (= clause (condition "postgres" sql))
+      "CASE WHEN name = 'a' THEN FALSE ELSE TRUE END"
+      [:= {} [:case {} [[[:= {} venue-name "a"] false]] true] true]
+      "CASE WHEN name = 'a' THEN NULL WHEN name = 'b' THEN TRUE END"
+      [:= {} [:case {} [[[:= {} venue-name "a"] nil] [[:= {} venue-name "b"] true]]] true]
+      "CASE WHEN name = 'a' THEN TRUE WHEN name = 'b' THEN FALSE ELSE TRUE END"
+      [:= {} [:case {} [[[:= {} venue-name "a"] true] [[:= {} venue-name "b"] false]] true] true]))
+  (testing "under NOT, where false and null differ, it is the CASE = TRUE too"
+    (are [sql clause] (= clause (condition "postgres" sql))
+      "NOT (CASE WHEN name = 'a' THEN TRUE ELSE FALSE END)"
+      [:not {} [:= {} [:case {} [[[:= {} venue-name "a"] true]] false] true]]
+      "NOT (name > 'x' OR CASE WHEN name = 'a' THEN TRUE END)"
+      [:not {} [:or {} [:> {} venue-name "x"] [:= {} [:case {} [[[:= {} venue-name "a"] true]]] true]]]
+      "NOT NOT (CASE WHEN name = 'a' THEN TRUE ELSE FALSE END)"
+      [:not {} [:not {} [:= {} venue-name "a"]]]))
+  (testing "the clauses compile to SQL that counts the rows the CASE does"
+    (are [sql where] (= where (where-sql sql))
+      "CASE WHEN name = 'a' THEN TRUE ELSE FALSE END" "name = ?"
+      "CASE WHEN name = 'a' THEN FALSE ELSE TRUE END" "CASE WHEN name = ? THEN FALSE ELSE TRUE END = TRUE"))
+  (testing "a CASE that is never true is reported"
+    (are [sql] (= (str sql " is never true, so as a condition it matches no rows") (condition "postgres" sql))
+      "CASE WHEN name = 'a' THEN FALSE ELSE FALSE END"
+      "CASE WHEN name = 'a' THEN NULL END"))
+  (testing "a CASE with another result, or a simple CASE, is still not a condition"
+    (are [sql] (re-find #"\(Case\) is not supported as a condition" (condition "postgres" sql))
+      "CASE WHEN name = 'a' THEN 1 ELSE 0 END"
+      "CASE WHEN name = 'a' THEN TRUE ELSE name END"
+      "CASE WHEN name = 'a' THEN 'true' ELSE FALSE END"
+      "CASE name WHEN 'a' THEN TRUE ELSE FALSE END")))
+
+(defn- resolve-date
+  "A column callback that resolves each identifier to a date column of that name, so that a clause shows which
+  argument went where."
+  [identifier]
+  [:field {:lib/uuid (str (random-uuid)), :base-type :type/Date, :effective-type :type/Date} identifier])
+
+(defn- date-column
+  "The ref [[resolve-date]] returns for `column-name`, without its uuid."
+  [column-name]
+  [:field {:base-type :type/Date, :effective-type :type/Date} column-name])
+
+(defn- date-expression
+  "The expression the SQL value expression `sql` converts to in `dialect` with [[resolve-date]], uuids removed; the
+  reason when it is reported."
+  [dialect sql]
+  (reason #(without-uuids (sql-to-mbql.expression/expression->mbql dialect sql resolve-date))))
+
+(def ^:private day-diff
+  "`DATEDIFF(day, claim_open_date, claim_close_date)`, converted."
+  [:datetime-diff {} (date-column "claim_open_date") (date-column "claim_close_date") :day])
+
+(defn- part-diff
+  "`part(claim_close_date) - part(claim_open_date)`, the Lib clause [[date-expression]] gives for a date part."
+  [part]
+  [:- {} [part {} (date-column "claim_close_date")] [part {} (date-column "claim_open_date")]])
+
+(deftest ^:parallel datediff-test
+  (testing "DATEDIFF(unit, start, end) is end - start, in each spelling of the dialects that have it"
+    (are [dialect sql] (= day-diff (date-expression dialect sql))
+      "snowflake" "DATEDIFF('day', claim_open_date, claim_close_date)"
+      "snowflake" "datediff(day, claim_open_date, claim_close_date)"
+      "snowflake" "DATEDIFF('days', claim_open_date, claim_close_date)"
+      "snowflake" "TIMESTAMPDIFF(day, claim_open_date, claim_close_date)"
+      "redshift"  "DATEDIFF('day', claim_open_date, claim_close_date)"
+      "redshift"  "DATEDIFF(day, claim_open_date, claim_close_date)"
+      "tsql"      "DATEDIFF(day, claim_open_date, claim_close_date)"
+      "tsql"      "DATEDIFF(dd, claim_open_date, claim_close_date)"
+      "bigquery"  "DATE_DIFF(claim_close_date, claim_open_date, DAY)"
+      "mysql"     "DATEDIFF(claim_close_date, claim_open_date)"))
+  (testing "a month, quarter or year is the number of boundaries between the two, as DATEDIFF counts them"
+    (are [dialect sql] (= [:+ {} [:* {} (part-diff :get-year) 12] (part-diff :get-month)] (date-expression dialect sql))
+      "snowflake" "DATEDIFF('month', claim_open_date, claim_close_date)"
+      "snowflake" "DATEDIFF(mon, claim_open_date, claim_close_date)"
+      "redshift"  "DATEDIFF(month, claim_open_date, claim_close_date)"
+      "tsql"      "DATEDIFF(month, claim_open_date, claim_close_date)"
+      "bigquery"  "DATE_DIFF(claim_close_date, claim_open_date, MONTH)")
+    (is (= [:+ {} [:* {} (part-diff :get-year) 4] (part-diff :get-quarter)]
+           (date-expression "snowflake" "DATEDIFF(quarter, claim_open_date, claim_close_date)")))
+    (is (= (part-diff :get-year) (date-expression "snowflake" "DATEDIFF(year, claim_open_date, claim_close_date)"))))
+  (testing "an hour, minute or second likewise, over the days between the two"
+    (let [hours [:+ {} [:* {} day-diff 24] (part-diff :get-hour)]]
+      (is (= hours (date-expression "snowflake" "DATEDIFF(hour, claim_open_date, claim_close_date)")))
+      (is (= [:+ {} [:* {} [:+ {} [:* {} hours 60] (part-diff :get-minute)] 60] (part-diff :get-second)]
+             (date-expression "snowflake" "DATEDIFF(second, claim_open_date, claim_close_date)")))))
+  (testing "an argument that is an expression converts too"
+    (is (= [:datetime-diff {} (date-column "claim_open_date") [:today {}] :day]
+           (date-expression "snowflake" "DATEDIFF(day, claim_open_date, current_date)"))))
+  (testing "a week, whose boundaries depend on the first day of the week, is reported, like extract(week)"
+    (are [dialect sql] (re-find #"counts the week boundaries between .*, which depend on the first day of the week"
+                                (date-expression dialect sql))
+      "snowflake" "DATEDIFF(week, claim_open_date, claim_close_date)"
+      "bigquery"  "DATE_DIFF(claim_close_date, claim_open_date, WEEK)"))
+  (testing "a unit datetime-diff does not have is reported, naming it"
+    (is (= "DATEDIFF in MILLISECOND is not supported"
+           (date-expression "snowflake" "DATEDIFF(millisecond, claim_open_date, claim_close_date)"))))
+  (testing (str "on a dialect whose DATEDIFF counts something else, or that has none, it is reported: on Postgres"
+                " sqlglot reads DATEDIFF(unit, start, end) with the arguments in another order")
+    (are [dialect] (re-find #"^the function datediff is not supported on .*, only on Snowflake, Redshift"
+                            (date-expression dialect "DATEDIFF('day', claim_open_date, claim_close_date)"))
+      "postgres" "trino" "databricks" nil)))
+
 (deftest ^:parallel unsupported-test
   (testing "what does not convert throws an exception unsupported? recognises, and no other exception is one"
     (is (sql-to-mbql.expression/unsupported?

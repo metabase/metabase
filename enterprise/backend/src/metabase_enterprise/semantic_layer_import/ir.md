@@ -9,7 +9,7 @@ terms where they are the warehouse's (column names, type strings, SQL) and its o
 | relation | The table's database, schema and name, with the parts the project quoted | `node_relation`, `relation_name` | `sql_table`; a dataset's `source` |
 | dimension | Something a metric can be broken out and filtered by: a column or SQL, `:categorical` or `:time`, a time one with a default grain | a dimension | a dimension; a field with `dimension` |
 | key | A named key of a table, a column or SQL, which a filter can refer to | an entity | a primary key; a dataset's keys |
-| join | A way from a table to another, through a column of the table, which Metabase follows as an implicit join | a foreign or unique entity, matched to the model keyed by it | a join; a relationship |
+| join | A way from a table to another, through a column of the table, which Metabase follows as an implicit join; several joins may share a name when the source reaches several tables the same way, one of them perhaps preferred | a foreign or unique entity, matched to each model keyed by it, `:entity-models` naming the preferred one | a join; a relationship |
 | alias | A name by which a reference can name a table itself | a model's primary entity | a cube's own name |
 | metric | `:simple` (one aggregation over one table), `:cumulative` (its running total), `:ratio` or `:derived` (arithmetic over other metrics) | a metric, with its measure folded in | a measure; a metric |
 | aggregation | An operator over an expression, with SQL's meaning (see below) | `agg` and `expr` | a measure's `type` and `sql` |
@@ -51,5 +51,7 @@ expression, a condition, holds). Its `expr` is a column, a literal or SQL; `:sum
 A metric's dimension set holds its table's dimensions, those of every table its joins lead to (reached by an implicit
 join, the `:source-field` of the field ref), and its time dimension as the default, bucketed by its time grain when it
 has one. A dimension whose `expr` is SQL, one that bounds a slowly changing dimension's validity window, and every
-dimension behind a join that cannot be made are reported under the metric's `:unsupported-dimensions`. A joined
-dimension named like another of the set is named `<join>__<dimension>` instead.
+dimension behind a join that cannot be made are reported under the metric's `:unsupported-dimensions`, as is a
+dimension that is on more than one of the tables reached through joins of one name, unless one of those joins is
+preferred, whose dimension is then written and the others reported as shadowed by it. A joined dimension named like
+another of the set, written or reported, is named `<join>__<dimension>` instead.

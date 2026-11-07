@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [clojure.tools.namespace.parse :as ns.parse]
    [medley.core :as m]
    [metabase-enterprise.semantic-layer-import.dbt.test-util :as tu :refer [fld]]
    [metabase-enterprise.semantic-layer-import.emit :as emit]
@@ -17,6 +18,16 @@
    (java.nio.file Path Paths)))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:parallel serdes-specs-loaded-test
+  (testing (str "emit requires the namespaces that define the Card and Collection serdes specs, so a REPL that has"
+                " loaded nothing but the import can run it")
+    (let [required (with-open [reader (java.io.PushbackReader.
+                                       (io/reader "enterprise/backend/src/metabase_enterprise/semantic_layer_import/emit.clj"))]
+                     (ns.parse/deps-from-ns-decl (ns.parse/read-ns-decl reader)))]
+      (is (set/subset? #{'metabase.queries.core 'metabase.collections.core} required)))
+    (is (some? (serdes/make-spec "Card" nil)))
+    (is (some? (serdes/make-spec "Collection" nil)))))
 
 (deftest ^:parallel dataset-query-test
   (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))
