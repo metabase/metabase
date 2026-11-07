@@ -2,10 +2,11 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   createMockCard,
   createMockColumn,
-  createMockParameterField,
+  createMockField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
 
@@ -13,18 +14,22 @@ import { setup } from "./setup";
 
 describe("ValuesSourceModal", () => {
   const [field1, field2] = [
-    createMockParameterField({
-      id: 1,
-      base_type: "type/Text",
-      effective_type: "type/Text",
-      semantic_type: "type/Category",
-    }),
-    createMockParameterField({
-      id: 2,
-      base_type: "type/Text",
-      effective_type: "type/Text",
-      semantic_type: "type/Category",
-    }),
+    getParameterFieldInfo(
+      createMockField({
+        id: 1,
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+    ),
+    getParameterFieldInfo(
+      createMockField({
+        id: 2,
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+    ),
   ];
 
   describe("fields source", () => {

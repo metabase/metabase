@@ -7,13 +7,14 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
-  ParameterField,
+  Field,
   ParameterValue,
   ParameterValues,
 } from "metabase-types/api";
 import {
-  createMockParameterField,
+  createMockField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
 
@@ -25,7 +26,7 @@ type SetupOpts = {
   parameter?: UiParameter;
   parameterValues?: ParameterValues;
   parameterSearchValues?: Record<string, ParameterValues>;
-  fieldSettings?: Partial<ParameterField>;
+  fieldSettings?: Partial<Field>;
 };
 
 function setup({
@@ -39,10 +40,12 @@ function setup({
     setupParameterSearchValuesEndpoint(query, values);
   });
 
-  const field = createMockParameterField({
-    id: FIELD_ID,
-    ...fieldSettings,
-  });
+  const field = getParameterFieldInfo(
+    createMockField({
+      id: FIELD_ID,
+      ...fieldSettings,
+    }),
+  );
   const setValue = jest.fn();
   renderWithProviders(
     <ParameterFieldWidget
@@ -321,7 +324,7 @@ describe("ParameterFieldWidget", () => {
       base_type: "type/BigInteger",
       effective_type: "type/BigInteger",
       has_field_values: "list",
-    } satisfies Partial<ParameterField>;
+    } satisfies Partial<Field>;
 
     it("should format numbers with default separators when no custom settings", async () => {
       setup({

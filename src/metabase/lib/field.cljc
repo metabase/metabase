@@ -845,71 +845,53 @@
                            (infer-has-field-values column)
                            :none)})))
 
-(mr/def ::parameter-name-field
-  [:map
-   [:id             [:ref ::lib.schema.id/field]]
-   [:display-name   :string]
-   [:base-type      [:ref ::lib.schema.common/base-type]]
-   [:effective-type [:maybe [:ref ::lib.schema.common/base-type]]]
-   [:semantic-type  [:maybe [:ref ::lib.schema.common/semantic-or-relation-type]]]
-   [:settings       [:maybe :map]]])
-
-(mr/def ::parameter-target-field
-  [:map
-   [:id         [:ref ::lib.schema.id/field]]
-   [:name-field [:maybe [:ref ::parameter-name-field]]]])
-
-(mr/def ::parameter-field-dimension
-  [:map
-   [:type                 [:enum :internal :external]]
-   [:human-readable-field [:maybe [:ref ::parameter-name-field]]]])
-
 (mr/def ::parameter-field-info
-  [:merge
-   [:ref ::parameter-name-field]
-   [:map
-    [:has-field-values [:ref ::field-search-info.has-field-values]]
-    [:dimensions       [:sequential [:ref ::parameter-field-dimension]]]
-    [:name-field       [:maybe [:ref ::parameter-name-field]]]
-    [:target           [:maybe [:ref ::parameter-target-field]]]]])
+  [:map
+   [:id                         [:ref ::lib.schema.id/field]]
+   [:display-name               :string]
+   [:search-field-display-name  [:maybe :string]]
+   [:string?                    :boolean]
+   [:boolean?                   :boolean]
+   [:date?                      :boolean]
+   [:numeric?                   :boolean]
+   [:settings                   [:maybe :map]]
+   [:has-field-values           [:ref ::field-search-info.has-field-values]]
+   [:has-remapped-values?       :boolean]])
 
-(mu/defn- parameter-name-field :- ::parameter-name-field
-  [field :- ::lib.schema.metadata/column]
-  (select-keys field [:id :display-name :base-type :effective-type :semantic-type :settings]))
-
-(mu/defn- name-field :- [:maybe ::parameter-name-field]
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   field                 :- ::lib.schema.metadata/column]
-  (some->> (:name-field field) u/the-id (lib.metadata/field metadata-providerable) parameter-name-field))
-
-(mu/defn- parameter-field-dimensions :- [:sequential ::parameter-field-dimension]
+(mu/defn- name-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  (cond
-    (:lib/internal-remap column)
-    [{:type :internal, :human-readable-field nil}]
+  (some->> (:name-field column) u/the-id (lib.metadata/field metadata-providerable)))
 
-    (:lib/external-remap column)
-    [{:type                 :external
-      :human-readable-field (some->> (get-in column [:lib/external-remap :field-id])
-                                     (lib.metadata/field metadata-providerable)
-                                     parameter-name-field)}]
-
-    :else
-    []))
+(mu/defn- external-remapped-field :- [:maybe ::lib.schema.metadata/column]
+  "The Field that labels the values of `column`: its external remap Field, or the `:type/Name` Field of the column or its
+  FK target."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (if-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+    (lib.metadata/field metadata-providerable remap-field-id)
+    (name-field metadata-providerable
+                (or (some->> (:fk-target-field-id column) (lib.metadata/field metadata-providerable))
+                    column))))
 
 (mu/defn parameter-field-info :- [:maybe ::parameter-field-info]
-  "The Field of `column` as a parameter widget reads it: its names, types, settings and FieldValues, and the Fields its
-  values are remapped to through Dimensions, its `:type/Name` Field, or its FK target's. `nil` for a column without
-  a Field."
+  "What a parameter widget needs to know about the Field of `column`: its name, the name of the Field its values are
+  searched by, its type, its formatting settings, its FieldValues, and whether its values have human-readable labels.
+  `nil` for a column without a Field."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
   (when (int? (:id column))
-    (let [target (some->> (:fk-target-field-id column) (lib.metadata/field metadata-providerable))]
-      (merge (parameter-name-field column)
-             {:has-field-values (infer-has-field-values column)
-              :dimensions       (parameter-field-dimensions metadata-providerable column)
-              :name-field       (name-field metadata-providerable column)
-              :target           (when target
-                                  {:id         (:id target)
-                                   :name-field (name-field metadata-providerable target)})}))))
+    (let [remapped-field (external-remapped-field metadata-providerable column)
+          search-column  (cond
+                           (and remapped-field (lib.types.isa/searchable? remapped-field)) remapped-field
+                           (lib.types.isa/searchable? column)                              column)]
+      {:id                        (:id column)
+       :display-name              (:display-name column)
+       :search-field-display-name (:display-name search-column)
+       :string?                   (lib.types.isa/string-or-string-like? column)
+       :boolean?                  (lib.types.isa/boolean? column)
+       :date?                     (lib.types.isa/temporal? column)
+       :numeric?                  (lib.types.isa/numeric? column)
+       :settings                  (:settings column)
+       :has-field-values          (infer-has-field-values column)
+       :has-remapped-values?      (boolean (or (:lib/internal-remap column) remapped-field))})))

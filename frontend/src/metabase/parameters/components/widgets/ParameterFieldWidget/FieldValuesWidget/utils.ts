@@ -4,11 +4,7 @@ import _ from "underscore";
 import type { ComboboxItem } from "metabase/ui";
 import { isTransientId } from "metabase/utils/dashboard";
 import { stripId } from "metabase/utils/formatting";
-import * as Lib from "metabase-lib";
-import {
-  getFieldTypeInfo,
-  getSearchField,
-} from "metabase-lib/v1/parameters/utils/parameter-fields";
+import type * as Lib from "metabase-lib";
 import {
   canListParameterValues,
   canSearchParameterValues,
@@ -23,7 +19,6 @@ import type {
   DashboardId,
   FieldValue,
   Parameter,
-  ParameterField,
   RowValue,
 } from "metabase-types/api";
 
@@ -56,10 +51,10 @@ function getNonSearchableTokenFieldPlaceholder(parameter: Parameter) {
 
 function getSearchableTokenFieldPlaceholder(
   parameter: Parameter,
-  fields: ParameterField[],
+  fields: Lib.ParameterFieldInfo[],
 ) {
   const names = new Set(
-    fields.map((field) => stripId(getSearchField(field)?.display_name ?? "")),
+    fields.map((field) => stripId(field.searchFieldDisplayName ?? "")),
   );
 
   if (names.size !== 1 || getSourceType(parameter) != null) {
@@ -70,8 +65,8 @@ function getSearchableTokenFieldPlaceholder(
   const [firstField] = fields;
   const canEnterId =
     firstField != null &&
-    Lib.isID(getFieldTypeInfo(firstField)) &&
-    getSearchField(firstField)?.id !== firstField.id;
+    firstField.hasRemappedValues &&
+    firstField.searchFieldDisplayName !== firstField.displayName;
   return canEnterId
     ? t`Search by ${name}` + t` or enter an ID`
     : t`Search by ${name}`;
@@ -120,7 +115,7 @@ export function getTokenFieldPlaceholder({
   options,
   valuesMode,
 }: {
-  fields: ParameterField[];
+  fields: Lib.ParameterFieldInfo[];
   parameter: Parameter;
   placeholder?: string;
   options: FieldValue[];
@@ -146,11 +141,13 @@ export function getValuesMode(parameter: Parameter): ValuesMode {
   return "none";
 }
 
-export function isNumeric(parameter: Parameter, fields: ParameterField[]) {
+export function isNumeric(
+  parameter: Parameter,
+  fields: Lib.ParameterFieldInfo[],
+) {
   return (
     isNumberParameter(parameter) ||
-    (fields.length > 0 &&
-      fields.every((field) => Lib.isNumeric(getFieldTypeInfo(field))))
+    (fields.length > 0 && fields.every((field) => field.isNumeric))
   );
 }
 

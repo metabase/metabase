@@ -31,6 +31,7 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { defer } from "metabase/utils/promise";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type { Card, CollectionItem, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
@@ -39,7 +40,7 @@ import {
   createMockCollectionItem,
   createMockColumn,
   createMockDatabase,
-  createMockParameterField,
+  createMockField,
   createMockParameterValues,
   createMockTokenFeatures,
   createMockUser,
@@ -50,18 +51,22 @@ import ValuesSourceModal from "./ValuesSourceModal";
 describe("ValuesSourceModal", () => {
   describe("string parameter", () => {
     const [field1, field2] = [
-      createMockParameterField({
-        id: 1,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        semantic_type: "type/Category",
-      }),
-      createMockParameterField({
-        id: 2,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        semantic_type: "type/Category",
-      }),
+      getParameterFieldInfo(
+        createMockField({
+          id: 1,
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+      ),
+      getParameterFieldInfo(
+        createMockField({
+          id: 2,
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+      ),
     ];
 
     describe("fields source", () => {
@@ -774,16 +779,20 @@ describe("ValuesSourceModal", () => {
 
   describe("number parameter", () => {
     const [field1, field2] = [
-      createMockParameterField({
-        id: 1,
-        base_type: "type/Integer",
-        effective_type: "type/Integer",
-      }),
-      createMockParameterField({
-        id: 2,
-        base_type: "type/Integer",
-        effective_type: "type/Integer",
-      }),
+      getParameterFieldInfo(
+        createMockField({
+          id: 1,
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        }),
+      ),
+      getParameterFieldInfo(
+        createMockField({
+          id: 2,
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        }),
+      ),
     ];
 
     describe("fields source", () => {

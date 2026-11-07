@@ -1,8 +1,8 @@
+import type * as Lib from "metabase-lib";
 import { isFuzzyOperator } from "metabase-lib/v1/operators/utils";
 import type { ParameterWithTemplateTagTarget } from "metabase-lib/v1/parameters/types";
 import type {
   Parameter,
-  ParameterField,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -10,9 +10,9 @@ import type {
 
 import { deriveFieldOperatorFromParameter } from "./operators";
 import {
+  canSearchField,
   getFields,
-  getSearchField,
-  getSharedRemappedField,
+  hasRemappedFieldValues,
 } from "./parameter-fields";
 import { getParameterType } from "./parameter-type";
 
@@ -49,9 +49,9 @@ export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
  */
 export const hasRemappedParameterValues = (
   parameter: Parameter | null | undefined,
-  fields: ParameterField[],
+  fields: Lib.ParameterFieldInfo[],
 ): boolean => {
-  if (getSharedRemappedField(fields) != null) {
+  if (hasRemappedFieldValues(fields)) {
     return true;
   }
 
@@ -125,10 +125,10 @@ export const canListParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canListFields;
 };
 
-export const canListFieldValues = (fields: ParameterField[]) => {
+export const canListFieldValues = (fields: Lib.ParameterFieldInfo[]) => {
   const hasFields = fields.length > 0;
   const hasFieldValues = fields.every(
-    (field) => field.has_field_values === "list",
+    (field) => field.hasFieldValues === "list",
   );
 
   return hasFields && hasFieldValues;
@@ -150,11 +150,11 @@ export const canSearchParameterValues = (parameter: Parameter) => {
     : queryType !== "none" && canSearchFields;
 };
 
-export const canSearchFieldValues = (fields: ParameterField[]) => {
+export const canSearchFieldValues = (fields: Lib.ParameterFieldInfo[]) => {
   const hasFields = fields.length > 0;
-  const canSearch = fields.every((field) => getSearchField(field) != null);
+  const canSearch = fields.every(canSearchField);
   const hasFieldValues = fields.some(
-    (field) => field.has_field_values === "search",
+    (field) => field.hasFieldValues === "search",
   );
 
   return hasFields && canSearch && hasFieldValues;

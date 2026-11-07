@@ -7,12 +7,10 @@ import {
 } from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
-import { getFieldTypeInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
-  ParameterField,
   ParameterType,
   ParameterValue,
   ParameterValueOrArray,
@@ -117,28 +115,18 @@ function parseParameterValueForNumber(
 function parseParameterValueForFields(
   type: ParameterType,
   value: ParameterValueOrArray,
-  fields: ParameterField[],
+  fields: Lib.ParameterFieldInfo[],
 ): ParameterValueOrArray {
-  const typeInfos = fields.map(getFieldTypeInfo);
-
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
-  if (
-    typeInfos.every(
-      (typeInfo) => Lib.isNumeric(typeInfo) && !Lib.isTemporal(typeInfo),
-    )
-  ) {
+  if (fields.every((field) => field.isNumeric && !field.isDate)) {
     return normalizeNumberParameterValue(type, value);
   }
 
-  if (typeInfos.every(Lib.isBoolean)) {
+  if (fields.every((field) => field.isBoolean)) {
     return normalizeBooleanParameterValue(value);
   }
 
-  if (
-    typeInfos.every(
-      (typeInfo) => Lib.isString(typeInfo) || Lib.isStringLike(typeInfo),
-    )
-  ) {
+  if (fields.every((field) => field.isString)) {
     return normalizeStringParameterValue(value);
   }
 

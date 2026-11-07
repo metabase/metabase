@@ -1,6 +1,8 @@
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { asNotNull } from "metabase/utils/types";
+import type * as Lib from "metabase-lib";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type { Field, FieldId } from "metabase-types/api";
 import {
   createMockField,
@@ -133,8 +135,8 @@ const allFields: Field[] = [
   ...reviewsFields,
 ];
 
-export const getField = (id: FieldId): Field =>
-  asNotNull(allFields.find((field) => field.id === id));
+export const getField = (id: FieldId): Lib.ParameterFieldInfo =>
+  getParameterFieldInfo(asNotNull(allFields.find((field) => field.id === id)));
 
 export const state = createMockState({
   entities: createMockEntitiesState({

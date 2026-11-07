@@ -1972,47 +1972,51 @@
 (deftest ^:parallel parameter-field-info-test
   (let [info (fn [metadata-provider field-id]
                (lib.field/parameter-field-info metadata-provider (lib.metadata/field metadata-provider field-id)))
-        name-field {:id             (meta/id :categories :name)
-                    :display-name   "Name"
-                    :base-type      :type/Text
-                    :effective-type :type/Text
-                    :semantic-type  :type/Name}]
-    (testing "Field without remapping"
-      (is (=? {:id               (meta/id :venues :name)
-               :display-name     "Name"
-               :base-type        :type/Text
-               :effective-type   :type/Text
-               :semantic-type    :type/Name
-               :has-field-values :list
-               :dimensions       []
-               :name-field       nil
-               :target           nil}
-              (info meta/metadata-provider (meta/id :venues :name)))))
-    (testing "external Dimension"
-      (is (=? {:dimensions [{:type :external, :human-readable-field name-field}]}
+        categories-name-field-mp (lib.tu/merged-mock-metadata-provider
+                                  meta/metadata-provider
+                                  {:fields [{:id (meta/id :categories :id), :name-field (meta/id :categories :name)}]})]
+    (testing "text Field without remapping is searched by itself"
+      (is (= {:id                        (meta/id :venues :name)
+              :display-name              "Name"
+              :search-field-display-name "Name"
+              :string?                   true
+              :boolean?                  false
+              :date?                     false
+              :numeric?                  false
+              :settings                  nil
+              :has-field-values          :list
+              :has-remapped-values?      false}
+             (info meta/metadata-provider (meta/id :venues :name)))))
+    (testing "numeric Field without remapping cannot be searched"
+      (is (=? {:search-field-display-name nil
+               :numeric?                  true
+               :has-remapped-values?      false}
+              (info meta/metadata-provider (meta/id :venues :price)))))
+    (testing "temporal Field"
+      (is (=? {:date? true}
+              (info meta/metadata-provider (meta/id :checkins :date)))))
+    (testing "external remapping is searched by its remap Field"
+      (is (=? {:search-field-display-name "Name"
+               :has-remapped-values?      true}
               (info (lib.tu/remap-metadata-provider meta/metadata-provider
                                                     (meta/id :venues :category-id)
                                                     (meta/id :categories :name))
                     (meta/id :venues :category-id)))))
-    (testing "internal Dimension"
-      (is (=? {:dimensions [{:type :internal, :human-readable-field nil}]}
+    (testing "internal remapping"
+      (is (=? {:search-field-display-name nil
+               :has-remapped-values?      true}
               (info (lib.tu/remap-metadata-provider meta/metadata-provider
                                                     (meta/id :venues :price)
                                                     ["$" "$$" "$$$" "$$$$"])
                     (meta/id :venues :price)))))
-    (testing "PK with name Field"
-      (is (=? {:name-field name-field}
-              (info (lib.tu/merged-mock-metadata-provider
-                     meta/metadata-provider
-                     {:fields [{:id (meta/id :categories :id), :name-field (meta/id :categories :name)}]})
-                    (meta/id :categories :id)))))
-    (testing "FK target with name Field"
-      (is (=? {:target {:id         (meta/id :categories :id)
-                        :name-field name-field}}
-              (info (lib.tu/merged-mock-metadata-provider
-                     meta/metadata-provider
-                     {:fields [{:id (meta/id :categories :id), :name-field (meta/id :categories :name)}]})
-                    (meta/id :venues :category-id))))))
+    (testing "PK is searched by its name Field"
+      (is (=? {:search-field-display-name "Name"
+               :has-remapped-values?      true}
+              (info categories-name-field-mp (meta/id :categories :id)))))
+    (testing "FK is searched by name Field of its target"
+      (is (=? {:search-field-display-name "Name"
+               :has-remapped-values?      true}
+              (info categories-name-field-mp (meta/id :venues :category-id))))))
   (testing "column without Field"
     (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                      (lib/expression "double price" (lib/* (meta/field-metadata :venues :price) 2)))

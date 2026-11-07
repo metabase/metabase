@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
+  getParameterFieldFormatColumn,
   hasFields,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
@@ -75,7 +76,8 @@ export function formatParameterValue(
       const fields = getFields(parameter);
       const [firstField] = fields;
       return formatValue(value, {
-        column: firstField,
+        ...firstField.settings,
+        column: getParameterFieldFormatColumn(firstField),
         maximumFractionDigits: 20,
       });
     }

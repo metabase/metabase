@@ -2611,34 +2611,24 @@
          :searchFieldId  search-field-id
          :hasFieldValues (name has-field-values)}))
 
-(defn- parameter-name-field->js
-  [{:keys [id display-name base-type effective-type semantic-type settings]}]
-  #js {:id            id
-       :displayName   display-name
-       :baseType      (u/qualified-name base-type)
-       :effectiveType (some-> effective-type u/qualified-name)
-       :semanticType  (some-> semantic-type u/qualified-name)
-       :settings      (some-> settings clj->js)})
-
 (defn ^:export parameter-field-info
-  "The Field of `column` as a parameter widget reads it, in the shape of a `param_fields` Field with camelCased keys:
-  its names, types, settings and FieldValues, its Dimensions, its `:type/Name` Field, and its FK target. `nil` for a
-  column without a Field.
+  "What a parameter widget needs to know about the Field of `column`: its name, the name of the Field its values are
+  searched by, its type, its FieldValues, and whether its values have human-readable labels. `nil` for a column without
+  a Field.
 
   > **Code health:** Single use. Only used to describe the field of a parameter target."
   [metadata-providerable column]
-  (when-let [{:keys [has-field-values dimensions name-field target], :as info}
-             (lib.field/parameter-field-info metadata-providerable column)]
-    (doto (parameter-name-field->js info)
-      (gobject/set "hasFieldValues" (name has-field-values))
-      (gobject/set "dimensions" (to-array (for [{dimension-type :type, :keys [human-readable-field]} dimensions]
-                                            #js {:type               (name dimension-type)
-                                                 :humanReadableField (some-> human-readable-field
-                                                                             parameter-name-field->js)})))
-      (gobject/set "nameField" (some-> name-field parameter-name-field->js))
-      (gobject/set "target" (when target
-                              #js {:id        (:id target)
-                                   :nameField (some-> (:name-field target) parameter-name-field->js)})))))
+  (when-let [info (lib.field/parameter-field-info metadata-providerable column)]
+    #js {:id                     (:id info)
+         :displayName            (:display-name info)
+         :searchFieldDisplayName (:search-field-display-name info)
+         :isString               (:string? info)
+         :isBoolean              (:boolean? info)
+         :isDate                 (:date? info)
+         :isNumeric              (:numeric? info)
+         :settings               (some-> (:settings info) clj->js)
+         :hasFieldValues         (name (:has-field-values info))
+         :hasRemappedValues      (:has-remapped-values? info)}))
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map

@@ -1,14 +1,12 @@
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
+  Field,
   Parameter,
-  ParameterField,
   ParameterValueOrArray,
   ParameterValuesMap,
 } from "metabase-types/api";
-import {
-  createMockParameter,
-  createMockParameterField,
-} from "metabase-types/api/mocks";
+import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 
 import {
   getParameterValueFromQueryParams,
@@ -22,10 +20,10 @@ const UNTYPED = "type/*";
 const UNDEFINED_QUERY_PARAMS = undefined as unknown as ParameterValuesMap;
 
 describe("parameters/utils/parameter-values", () => {
-  let field1: ParameterField;
-  let field2: ParameterField;
-  let field3: ParameterField;
-  let field4: ParameterField;
+  let field1: Field;
+  let field2: Field;
+  let field3: Field;
+  let field4: Field;
   let parameter1: FieldFilterUiParameter;
   let parameter2: FieldFilterUiParameter;
   let parameter3: FieldFilterUiParameter;
@@ -34,19 +32,19 @@ describe("parameters/utils/parameter-values", () => {
   let queryParams: ParameterValuesMap;
 
   beforeEach(() => {
-    field1 = createMockParameterField({
+    field1 = createMockField({
       id: 1,
       base_type: UNTYPED,
     });
-    field2 = createMockParameterField({
+    field2 = createMockField({
       id: 2,
       base_type: UNTYPED,
     });
-    field3 = createMockParameterField({
+    field3 = createMockField({
       id: 3,
       base_type: UNTYPED,
     });
-    field4 = createMockParameterField({
+    field4 = createMockField({
       id: 4,
       base_type: UNTYPED,
     });
@@ -57,7 +55,9 @@ describe("parameters/utils/parameter-values", () => {
         id: "111",
         slug: "foo",
       }),
-      fields: [field1, field4],
+      get fields() {
+        return [field1, field4].map(getParameterFieldInfo);
+      },
     };
     // found in queryParams and defaulted
     parameter2 = {
@@ -66,7 +66,9 @@ describe("parameters/utils/parameter-values", () => {
         slug: "bar",
         default: "parameter2 default value",
       }),
-      fields: [field2],
+      get fields() {
+        return [field2].map(getParameterFieldInfo);
+      },
     };
     // not found in queryParams and defaulted
     parameter3 = {
@@ -75,7 +77,9 @@ describe("parameters/utils/parameter-values", () => {
         slug: "baz",
         default: "parameter3 default value",
       }),
-      fields: [field3],
+      get fields() {
+        return [field3].map(getParameterFieldInfo);
+      },
     };
     // not found in queryParams and not defaulted
     parameter4 = createMockParameter({
@@ -313,7 +317,9 @@ describe("parameters/utils/parameter-values", () => {
       const typelessParameter = {
         id: "555",
         slug: "legacy",
-        fields: [field1, field4],
+        get fields() {
+          return [field1, field4].map(getParameterFieldInfo);
+        },
       } as unknown as FieldFilterUiParameter;
 
       expect(

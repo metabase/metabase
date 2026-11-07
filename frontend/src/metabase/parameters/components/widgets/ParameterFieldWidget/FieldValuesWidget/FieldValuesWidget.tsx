@@ -38,10 +38,8 @@ import {
 } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
-import {
-  getSearchField,
-  getSharedRemappedField,
-} from "metabase-lib/v1/parameters/utils/parameter-fields";
+import type * as Lib from "metabase-lib";
+import { hasRemappedFieldValues } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -49,7 +47,6 @@ import type {
   DashboardId,
   FieldValue,
   Parameter,
-  ParameterField,
   ParameterValueOrArray,
   RowValue,
 } from "metabase-types/api";
@@ -93,7 +90,7 @@ export interface IFieldValuesWidgetProps {
   parameters?: Parameter[]; // linked parameters with values
   // a field filter parameter that has no mapped fields still renders this
   // widget, so that it can query values by parameter instead
-  fields?: ParameterField[];
+  fields?: Lib.ParameterFieldInfo[];
   dashboardId?: DashboardId;
   cardId?: CardId;
 
@@ -444,7 +441,7 @@ function getNothingFoundMessage({
   loadingState,
   lastValue,
 }: {
-  fields: (ParameterField | null)[];
+  fields: (Lib.ParameterFieldInfo | null)[];
   loadingState: LoadingStateType;
   lastValue: string;
 }) {
@@ -453,8 +450,7 @@ function getNothingFoundMessage({
   }
   if (fields.length === 1 && fields[0] != null) {
     const [field] = fields;
-    const searchField = getSearchField(field);
-    return t`No matching ${searchField?.display_name} found.`;
+    return t`No matching ${field.searchFieldDisplayName} found.`;
   } else {
     return t`No matching result`;
   }
@@ -471,7 +467,7 @@ function renderValue({
   compact,
   displayValue,
 }: {
-  fields: ParameterField[];
+  fields: Lib.ParameterFieldInfo[];
   formatOptions: Record<string, any>;
   value: RowValue;
   parameter?: Parameter;
@@ -484,12 +480,12 @@ function renderValue({
   return (
     <ValueComponent
       value={value}
-      column={fields[0]}
+      field={fields[0]}
       parameter={parameter}
       cardId={cardId}
       dashboardId={dashboardId}
       maximumFractionDigits={20}
-      remap={displayValue || getSharedRemappedField(fields) != null}
+      remap={displayValue || hasRemappedFieldValues(fields)}
       displayValue={displayValue}
       {...formatOptions}
       autoLoad={autoLoad}
@@ -500,7 +496,7 @@ function renderValue({
 
 type RemappedValueProps = {
   parameter: Parameter;
-  fields: ParameterField[];
+  fields: Lib.ParameterFieldInfo[];
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
@@ -573,12 +569,12 @@ function RemappedValue({
 
 type RemappedOptionProps = {
   option: { value: string; label?: string };
-  fields: ParameterField[];
+  fields: Lib.ParameterFieldInfo[];
   tc: ContentTranslationFunction;
 };
 
 function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
-  const isRemapped = getSharedRemappedField(fields) != null;
+  const isRemapped = hasRemappedFieldValues(fields);
   const label = tc(option.label ?? option.value);
 
   if (!isRemapped) {

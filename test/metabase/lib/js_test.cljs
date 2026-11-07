@@ -770,24 +770,20 @@
 (deftest ^:parallel parameter-field-info-test
   (let [mp (lib.tu/merged-mock-metadata-provider
             meta/metadata-provider
-            {:fields [{:id (meta/id :categories :id), :name-field (meta/id :categories :name)}]})
-        name-field {:id            (meta/id :categories :name)
-                    :displayName   "Name"
-                    :baseType      "type/Text"
-                    :effectiveType "type/Text"
-                    :semanticType  "type/Name"}]
-    (testing "FK with name field of its target"
-      (is (=? {:id             (meta/id :venues :category-id)
-               :displayName    "Category ID"
-               :baseType       "type/Integer"
-               :semanticType   "type/FK"
-               :hasFieldValues "none"
-               :dimensions     []
-               :nameField      nil
-               :target         {:id        (meta/id :categories :id)
-                                :nameField name-field}}
-              (js->clj (lib.js/parameter-field-info mp (lib.metadata/field mp (meta/id :venues :category-id)))
-                       :keywordize-keys true))))
+            {:fields [{:id (meta/id :categories :id), :name-field (meta/id :categories :name)}]})]
+    (testing "FK searched by name Field of its target"
+      (is (= {:id                     (meta/id :venues :category-id)
+              :displayName            "Category ID"
+              :searchFieldDisplayName "Name"
+              :isString               false
+              :isBoolean              false
+              :isDate                 false
+              :isNumeric              true
+              :settings               nil
+              :hasFieldValues         "none"
+              :hasRemappedValues      true}
+             (js->clj (lib.js/parameter-field-info mp (lib.metadata/field mp (meta/id :venues :category-id)))
+                      :keywordize-keys true))))
     (testing "column without Field"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                       (lib/expression "double price" (lib/* (meta/field-metadata :venues :price) 2)))

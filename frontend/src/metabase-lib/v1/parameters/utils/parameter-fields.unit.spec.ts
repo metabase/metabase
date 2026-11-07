@@ -3,16 +3,12 @@ import type { Field, FieldId } from "metabase-types/api";
 import {
   createMockField,
   createMockFieldDimension,
-  createMockParameterField,
 } from "metabase-types/api/mocks";
 
 import {
-  getExternalRemappedField,
-  getRemappedField,
-  getSearchField,
-  getSharedRemappedField,
+  getParameterFieldInfo,
   hasFields,
-  isSearchableField,
+  hasRemappedFieldValues,
 } from "./parameter-fields";
 
 const TEXT_FIELD_ID = 2;
@@ -43,43 +39,64 @@ const createFieldRemappedTo = (
 
 describe("hasFields", () => {
   it("should return true if there is at least one field in fields", () => {
-    const field = createMockParameterField({ id: 1 });
-    const parameterWithFields = createMockUiParameter({
-      fields: [field],
-    });
-    const parameterWithoutFields = createMockUiParameter({
-      fields: [],
-    });
-    const parameterWithoutFieldsKey = createMockUiParameter();
-    expect(hasFields(parameterWithFields)).toBe(true);
-    expect(hasFields(parameterWithoutFields)).toBe(false);
-    expect(hasFields(parameterWithoutFieldsKey)).toBe(false);
+    const field = getParameterFieldInfo(createMockField({ id: 1 }));
+    expect(hasFields(createMockUiParameter({ fields: [field] }))).toBe(true);
+    expect(hasFields(createMockUiParameter({ fields: [] }))).toBe(false);
+    expect(hasFields(createMockUiParameter())).toBe(false);
   });
 });
 
-describe("isSearchableField", () => {
-  it("accepts string field", () => {
-    expect(isSearchableField(createTextField(1))).toBe(true);
-  });
-
-  it("rejects number field", () => {
-    expect(isSearchableField(createNumberField(1))).toBe(false);
-  });
-});
-
-describe("getExternalRemappedField", () => {
-  it("returns display field of external dimension", () => {
-    const displayField = createTextField(TEXT_FIELD_ID);
-
+describe("getParameterFieldInfo", () => {
+  it("describes field types", () => {
     expect(
-      getExternalRemappedField(
-        createFieldRemappedTo(TEXT_FIELD_ID, displayField),
+      getParameterFieldInfo(
+        createMockField({
+          id: 1,
+          display_name: "Total",
+          base_type: "type/Float",
+          has_field_values: "none",
+          settings: { currency: "EUR" },
+        }),
       ),
-    ).toBe(displayField);
+    ).toEqual({
+      id: 1,
+      displayName: "Total",
+      searchFieldDisplayName: null,
+      isString: false,
+      isBoolean: false,
+      isDate: false,
+      isNumeric: true,
+      settings: { currency: "EUR" },
+      hasFieldValues: "none",
+      hasRemappedValues: false,
+    });
   });
 
-  it("returns null when external dimension carries no display field", () => {
-    const field = createMockField({
+  it("searches string field by itself", () => {
+    expect(
+      getParameterFieldInfo(createTextField(1, { display_name: "Email" })),
+    ).toMatchObject({
+      searchFieldDisplayName: "Email",
+      isString: true,
+      hasRemappedValues: false,
+    });
+  });
+
+  it("searches field by display field of external dimension", () => {
+    const field = createFieldRemappedTo(
+      TEXT_FIELD_ID,
+      createTextField(TEXT_FIELD_ID, { display_name: "Title" }),
+      { base_type: "type/Integer" },
+    );
+
+    expect(getParameterFieldInfo(field)).toMatchObject({
+      searchFieldDisplayName: "Title",
+      hasRemappedValues: true,
+    });
+  });
+
+  it("does not fall back to name field when external dimension carries no display field", () => {
+    const field = createNumberField(1, {
       name_field: createTextField(OTHER_TEXT_FIELD_ID),
       dimensions: [
         createMockFieldDimension({
@@ -89,111 +106,81 @@ describe("getExternalRemappedField", () => {
       ],
     });
 
-    expect(getExternalRemappedField(field)).toBeNull();
+    expect(getParameterFieldInfo(field)).toMatchObject({
+      searchFieldDisplayName: null,
+      hasRemappedValues: false,
+    });
   });
 
-  it("falls back to field's own name field", () => {
-    const nameField = createTextField(OTHER_TEXT_FIELD_ID);
+  it("searches PK by its name field", () => {
     const field = createNumberField(1, {
       semantic_type: "type/PK",
-      name_field: nameField,
+      name_field: createTextField(OTHER_TEXT_FIELD_ID, {
+        display_name: "Name",
+      }),
     });
 
-    expect(getExternalRemappedField(field)).toBe(nameField);
+    expect(getParameterFieldInfo(field)).toMatchObject({
+      searchFieldDisplayName: "Name",
+      hasRemappedValues: true,
+    });
   });
 
   it("prefers name field of FK target over its own", () => {
-    const targetNameField = createTextField(NUMBER_FIELD_ID);
     const field = createNumberField(1, {
-      name_field: createTextField(OTHER_TEXT_FIELD_ID),
-      target: createNumberField(5, { name_field: targetNameField }),
+      name_field: createTextField(OTHER_TEXT_FIELD_ID, { display_name: "Own" }),
+      target: createNumberField(5, {
+        name_field: createTextField(NUMBER_FIELD_ID, {
+          display_name: "Target",
+        }),
+      }),
     });
 
-    expect(getExternalRemappedField(field)).toBe(targetNameField);
+    expect(getParameterFieldInfo(field)).toMatchObject({
+      searchFieldDisplayName: "Target",
+    });
   });
 
-  it("returns null when nothing remaps field", () => {
-    expect(getExternalRemappedField(createTextField(1))).toBeNull();
-  });
-});
-
-describe("getRemappedField", () => {
-  it("returns field itself for internal remapping", () => {
-    const field = createMockField({
+  it("has remapped values for internal dimension", () => {
+    const field = createNumberField(1, {
       dimensions: [createMockFieldDimension({ type: "internal" })],
     });
 
-    expect(getRemappedField(field)).toBe(field);
-  });
-
-  it("returns external remap target otherwise", () => {
-    const displayField = createTextField(TEXT_FIELD_ID);
-
-    expect(
-      getRemappedField(createFieldRemappedTo(TEXT_FIELD_ID, displayField)),
-    ).toBe(displayField);
-  });
-});
-
-describe("getSharedRemappedField", () => {
-  it("returns target when every field remaps to it", () => {
-    const displayField = createTextField(TEXT_FIELD_ID);
-
-    expect(
-      getSharedRemappedField([
-        createFieldRemappedTo(TEXT_FIELD_ID, displayField, { id: 10 }),
-        createFieldRemappedTo(TEXT_FIELD_ID, displayField, { id: 11 }),
-      ]),
-    ).toBe(displayField);
-  });
-
-  it("returns null when fields remap to different targets", () => {
-    expect(
-      getSharedRemappedField([
-        createFieldRemappedTo(TEXT_FIELD_ID, createTextField(TEXT_FIELD_ID), {
-          id: 10,
-        }),
-        createFieldRemappedTo(
-          OTHER_TEXT_FIELD_ID,
-          createTextField(OTHER_TEXT_FIELD_ID),
-          { id: 11 },
-        ),
-      ]),
-    ).toBeNull();
-  });
-
-  it("returns null for empty list", () => {
-    expect(getSharedRemappedField([])).toBeNull();
-  });
-});
-
-describe("getSearchField", () => {
-  it("returns searchable field itself", () => {
-    const field = createTextField(1);
-
-    expect(getSearchField(field)).toBe(field);
-  });
-
-  it("returns null for field that cannot be searched", () => {
-    expect(getSearchField(createNumberField(1))).toBeNull();
-  });
-
-  it("returns remap target when it is searchable", () => {
-    const displayField = createTextField(TEXT_FIELD_ID);
-    const field = createFieldRemappedTo(TEXT_FIELD_ID, displayField, {
-      base_type: "type/Integer",
+    expect(getParameterFieldInfo(field)).toMatchObject({
+      searchFieldDisplayName: null,
+      hasRemappedValues: true,
     });
-
-    expect(getSearchField(field)).toBe(displayField);
   });
 
   it("ignores remap target that cannot be searched", () => {
     const field = createFieldRemappedTo(
       NUMBER_FIELD_ID,
       createNumberField(NUMBER_FIELD_ID),
-      { base_type: "type/Text" },
+      { base_type: "type/Text", display_name: "Code" },
     );
 
-    expect(getSearchField(field)).toBe(field);
+    expect(getParameterFieldInfo(field)).toMatchObject({
+      searchFieldDisplayName: "Code",
+      hasRemappedValues: true,
+    });
+  });
+});
+
+describe("hasRemappedFieldValues", () => {
+  const remappedField = getParameterFieldInfo(
+    createFieldRemappedTo(TEXT_FIELD_ID, createTextField(TEXT_FIELD_ID)),
+  );
+  const plainField = getParameterFieldInfo(createTextField(1));
+
+  it("is true when every field has remapped values", () => {
+    expect(hasRemappedFieldValues([remappedField, remappedField])).toBe(true);
+  });
+
+  it("is false when some field has no remapped values", () => {
+    expect(hasRemappedFieldValues([remappedField, plainField])).toBe(false);
+  });
+
+  it("is false for empty list", () => {
+    expect(hasRemappedFieldValues([])).toBe(false);
   });
 });

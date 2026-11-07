@@ -2,14 +2,13 @@ import { Component, type ComponentType } from "react";
 
 import { fetchRemapping } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import { getRemappedField } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import type { ParameterField } from "metabase-types/api";
+import type * as Lib from "metabase-lib";
 
 type Remapping = [value: unknown, label: unknown];
 
 interface RemappedOwnProps {
   value?: unknown;
-  column?: ParameterField;
+  field?: Lib.ParameterFieldInfo;
   parameter?: { id?: unknown };
   cardId?: unknown;
   dashboardId?: unknown;
@@ -22,7 +21,7 @@ interface RemappedDispatchProps {
   fetchRemapping: (args: {
     parameter?: { id?: unknown };
     value?: unknown;
-    field?: ParameterField;
+    field?: Lib.ParameterFieldInfo;
     cardId?: unknown;
     dashboardId?: unknown;
     uuid?: unknown;
@@ -59,7 +58,7 @@ export default (ComposedComponent: ComponentType<any>) => {
     UNSAFE_componentWillReceiveProps(nextProps: RemappedClassProps) {
       if (
         this.props.value !== nextProps.value ||
-        this.props.column?.id !== nextProps.column?.id ||
+        this.props.field?.id !== nextProps.field?.id ||
         this.props.parameter?.id !== nextProps.parameter?.id ||
         this.props.cardId !== nextProps.cardId ||
         this.props.dashboardId !== nextProps.dashboardId ||
@@ -75,7 +74,7 @@ export default (ComposedComponent: ComponentType<any>) => {
       const result = await props.fetchRemapping({
         parameter: props.parameter,
         value: props.value,
-        field: props.column,
+        field: props.field,
         cardId: props.cardId,
         dashboardId: props.dashboardId,
         uuid: props.uuid,
@@ -100,19 +99,8 @@ export default (ComposedComponent: ComponentType<any>) => {
     render() {
       const { fetchRemapping, ...props } = this.props;
       const displayValue = this.getDisplayValue();
-      const displayColumn =
-        (displayValue != null &&
-          props.column != null &&
-          getRemappedField(props.column)) ||
-        null;
 
-      return (
-        <ComposedComponent
-          {...props}
-          displayValue={displayValue}
-          displayColumn={displayColumn}
-        />
-      );
+      return <ComposedComponent {...props} displayValue={displayValue} />;
     }
   }
 

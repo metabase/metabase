@@ -2,6 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   createMockCard,
   createMockField,
@@ -57,7 +58,7 @@ describe("parameters/utils/cards", () => {
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
-          fields: [firstField, secondField],
+          fields: [firstField, secondField].map(getParameterFieldInfo),
           hasVariableTemplateTagTarget: false,
         });
         expect(variableUiParameter).toMatchObject({
@@ -83,7 +84,7 @@ describe("parameters/utils/cards", () => {
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
-          fields: [field],
+          fields: [getParameterFieldInfo(field)],
           hasVariableTemplateTagTarget: false,
         });
       });

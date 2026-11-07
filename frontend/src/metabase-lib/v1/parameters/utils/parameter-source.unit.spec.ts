@@ -1,5 +1,6 @@
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import { createMockParameterField } from "metabase-types/api/mocks";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { createMockField } from "metabase-types/api/mocks";
 
 import {
   canListParameterValues,
@@ -14,26 +15,36 @@ const SEARCH_FIELD_ID = 3;
 const SEARCH_FIELD_2_ID = 4;
 const NO_VALUES_FIELD_ID = 5;
 
-const listField = createMockParameterField({
-  id: LIST_FIELD_ID,
-  has_field_values: "list",
-});
-const listField2 = createMockParameterField({
-  id: LIST_FIELD_2_ID,
-  has_field_values: "list",
-});
-const searchField = createMockParameterField({
-  id: SEARCH_FIELD_ID,
-  has_field_values: "search",
-});
-const searchField2 = createMockParameterField({
-  id: SEARCH_FIELD_2_ID,
-  has_field_values: "search",
-});
-const noValuesField = createMockParameterField({
-  id: NO_VALUES_FIELD_ID,
-  has_field_values: "none",
-});
+const listField = getParameterFieldInfo(
+  createMockField({
+    id: LIST_FIELD_ID,
+    has_field_values: "list",
+  }),
+);
+const listField2 = getParameterFieldInfo(
+  createMockField({
+    id: LIST_FIELD_2_ID,
+    has_field_values: "list",
+  }),
+);
+const searchField = getParameterFieldInfo(
+  createMockField({
+    id: SEARCH_FIELD_ID,
+    has_field_values: "search",
+  }),
+);
+const searchField2 = getParameterFieldInfo(
+  createMockField({
+    id: SEARCH_FIELD_2_ID,
+    has_field_values: "search",
+  }),
+);
+const noValuesField = getParameterFieldInfo(
+  createMockField({
+    id: NO_VALUES_FIELD_ID,
+    has_field_values: "none",
+  }),
+);
 
 describe("getQueryType", () => {
   describe.each(["string", "location"])("parameter type %s", (type) => {

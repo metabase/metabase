@@ -5,7 +5,6 @@ import type {
   DatabaseNativePermissions,
   DatasetColumn,
   DatetimeUnit,
-  FieldDimensionType,
   FieldFormattingSettings,
   FieldId,
   FieldValuesType,
@@ -664,30 +663,17 @@ export interface FieldSearchInfo {
   hasFieldValues: FieldValuesType;
 }
 
-export type ParameterNameFieldInfo = {
+export type ParameterFieldInfo = {
   id: FieldId;
   displayName: string;
-  baseType: string;
-  effectiveType: string | null;
-  semanticType: string | null;
+  searchFieldDisplayName: string | null;
+  isString: boolean;
+  isBoolean: boolean;
+  isDate: boolean;
+  isNumeric: boolean;
   settings: FieldFormattingSettings | null;
-};
-
-export type ParameterTargetFieldInfo = {
-  id: FieldId;
-  nameField: ParameterNameFieldInfo | null;
-};
-
-export type ParameterFieldDimensionInfo = {
-  type: FieldDimensionType;
-  humanReadableField: ParameterNameFieldInfo | null;
-};
-
-export type ParameterFieldInfo = ParameterNameFieldInfo & {
   hasFieldValues: FieldValuesType;
-  dimensions: ParameterFieldDimensionInfo[];
-  nameField: ParameterNameFieldInfo | null;
-  target: ParameterTargetFieldInfo | null;
+  hasRemappedValues: boolean;
 };
 
 export type QueryDisplayInfo = {

@@ -3,10 +3,8 @@ import fetchMock from "fetch-mock";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockParameter,
-  createMockParameterField,
-} from "metabase-types/api/mocks";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { ParameterFieldWidgetValue } from "./ParameterFieldWidgetValue";
@@ -29,18 +27,20 @@ describe("when a field remaps its values", () => {
   const PEOPLE_ID = 10;
   const PEOPLE_NAME_ID = 11;
 
-  const idField = createMockParameterField({
-    id: PEOPLE_ID,
-    display_name: "ID",
-    base_type: "type/BigInteger",
-    semantic_type: "type/PK",
-    has_field_values: "none",
-    name_field: createMockParameterField({
-      id: PEOPLE_NAME_ID,
-      display_name: "Name",
-      semantic_type: "type/Name",
+  const idField = getParameterFieldInfo(
+    createMockField({
+      id: PEOPLE_ID,
+      display_name: "ID",
+      base_type: "type/BigInteger",
+      semantic_type: "type/PK",
+      has_field_values: "none",
+      name_field: createMockField({
+        id: PEOPLE_NAME_ID,
+        display_name: "Name",
+        semantic_type: "type/Name",
+      }),
     }),
-  });
+  );
 
   it("should render remapped label for value", async () => {
     fetchMock.post("path:/api/dataset/parameter/remapping", [
