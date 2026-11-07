@@ -63,6 +63,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
     case "number":
     case "id":
       return parseParameterValueForNumber(type, coercedValue);
+    case "string":
     case "category":
     case "location":
       return normalizeStringParameterValue(coercedValue);

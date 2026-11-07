@@ -176,6 +176,16 @@ describe("parameters/utils/parameter-values", () => {
       ).toBe(null);
     });
 
+    it("should parse string parameter value as string", () => {
+      parameter1.type = "string/contains";
+
+      expect(
+        getParameterValueFromQueryParams(parameter1, {
+          [parameter1.slug]: false,
+        }),
+      ).toEqual(["false"]);
+    });
+
     it("should parse category parameter value as string", () => {
       parameter1.type = "category";
 
