@@ -91,7 +91,7 @@ jobs:
       fail-fast: false
       matrix:
         test_suite: ${{ fromJSON(needs.get-sample-apps-data.outputs.matrix) }}
-        environment: ["production", "development"]
+        environment: ${{ github.event_name == 'pull_request' && fromJSON('["production"]') || fromJSON('["production","development"]') }}
     if: |
       !cancelled() && needs.get-sample-apps-data.result == 'success'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -202,7 +202,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: ["production", "development"]
+        environment: ${{ github.event_name == 'pull_request' && fromJSON('["production"]') || fromJSON('["production","development"]') }}
     if: |
       !cancelled() && needs.get-sample-apps-data.result == 'success' &&
       (github.ref == 'refs/heads/master' || github.base_ref == 'master')
@@ -358,7 +358,7 @@ jobs:
             "next-15-pages-router-host-app-e2e",
             "angular-20-host-app-e2e",
           ]
-        environment: ["production", "development"]
+        environment: ${{ github.event_name == 'pull_request' && fromJSON('["production"]') || fromJSON('["production","development"]') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
