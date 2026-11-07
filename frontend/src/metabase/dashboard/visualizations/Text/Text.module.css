@@ -1,0 +1,238 @@
+.root {
+  padding: var(--mantine-spacing-md);
+}
+
+/* single-row cards on desktop get tighter spacing and smaller text */
+.compact {
+  padding: 0.3rem var(--mantine-spacing-md);
+  font-size: 0.8em;
+}
+
+/* a full-width dashboard gets the room back on very wide screens */
+@media (--breakpoint-min-xl) {
+  .compact.fluid {
+    padding: var(--mantine-spacing-md);
+    font-size: 1em;
+  }
+}
+
+/* the border is always there, transparent, so the dashcard outline never shifts the text; the dashcard clips at this radius */
+.editing {
+  padding: calc(var(--mantine-spacing-md) - 1px);
+  border: 1px solid transparent;
+  border-radius: var(--mantine-radius-md);
+}
+
+.editing.compact {
+  padding: calc(0.3rem - 1px) calc(var(--mantine-spacing-md) - 1px);
+}
+
+@media (--breakpoint-min-xl) {
+  .editing.compact.fluid {
+    padding: calc(var(--mantine-spacing-md) - 1px);
+  }
+}
+
+/* the dashcard turns pointer events off while the layout is being edited */
+.editing,
+.editing * {
+  pointer-events: all;
+}
+
+.empty {
+  border-color: var(--mb-color-core-brand);
+  color: var(--mb-color-text-disabled);
+}
+
+.markdown :global(.text-card-markdown) {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  pointer-events: all;
+}
+
+.markdown :global(.cursor-text) {
+  cursor: text;
+}
+
+.markdown :global(.text-card-markdown) h1,
+.markdown :global(.text-card-markdown) h2,
+.markdown :global(.text-card-markdown) h3,
+.markdown :global(.text-card-markdown) h4,
+.markdown :global(.text-card-markdown) h5,
+.markdown :global(.text-card-markdown) h6 {
+  margin: 0.375em 0 0.25em 0;
+}
+
+.markdown :global(.text-card-markdown) h1:first-of-type,
+.markdown :global(.text-card-markdown) h2:first-of-type,
+.markdown :global(.text-card-markdown) h3:first-of-type,
+.markdown :global(.text-card-markdown) h4:first-of-type,
+.markdown :global(.text-card-markdown) h5:first-of-type,
+.markdown :global(.text-card-markdown) h6:first-of-type,
+.markdown :global(.text-card-markdown) p:first-of-type,
+.markdown :global(.text-card-markdown) ul:first-of-type,
+.markdown :global(.text-card-markdown) ol:first-of-type,
+.markdown :global(.text-card-markdown) table:first-of-type {
+  margin-top: 0.125em;
+}
+
+.markdown :global(.text-card-markdown) h1:last-child,
+.markdown :global(.text-card-markdown) h2:last-child,
+.markdown :global(.text-card-markdown) h3:last-child,
+.markdown :global(.text-card-markdown) h4:last-child,
+.markdown :global(.text-card-markdown) h5:last-child,
+.markdown :global(.text-card-markdown) h6:last-child,
+.markdown :global(.text-card-markdown) p:last-child,
+.markdown :global(.text-card-markdown) ul:last-child,
+.markdown :global(.text-card-markdown) ol:last-child,
+.markdown :global(.text-card-markdown) table:last-child {
+  margin-bottom: 0.125em;
+}
+
+.markdown :global(.text-card-markdown) h1 {
+  font-size: 1.831em;
+}
+
+.markdown :global(.text-card-markdown) h2 {
+  font-size: 1.627em;
+}
+
+.markdown :global(.text-card-markdown) h3 {
+  font-size: 1.447em;
+}
+
+.markdown :global(.text-card-markdown) h4 {
+  font-size: 1.286em;
+}
+
+.markdown :global(.text-card-markdown) h5 {
+  font-size: 1.143em;
+}
+
+.markdown :global(.text-card-markdown) p {
+  font-size: 1.143em;
+  line-height: 1.602em;
+  padding: 0;
+  margin: 0 0 0.5em 0;
+}
+
+.markdown :global(.text-card-markdown) ul {
+  font-size: 1rem;
+  margin: 0;
+  padding: 0.5em 1.5em;
+  list-style-type: disc;
+}
+
+.markdown :global(.text-card-markdown) ol {
+  font-size: 1rem;
+  margin: 0;
+  padding: 0.5em 1.5em;
+  list-style-type: decimal;
+}
+
+.markdown :global(.text-card-markdown) li {
+  list-style-position: outside;
+  padding: 0.25em 0 0 0;
+}
+
+.markdown :global(.text-card-markdown) a {
+  display: inline-block;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--mb-color-core-brand);
+}
+
+.markdown :global(.text-card-markdown) a:hover {
+  text-decoration: underline;
+}
+
+.markdown :global(.text-card-markdown) th {
+  text-align: left;
+}
+
+.markdown :global(.text-card-markdown) table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 1em 0;
+  width: 100%;
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.79rem;
+  line-height: 0.76rem;
+  text-align: left;
+}
+
+.markdown :global(.text-card-markdown) tr {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.markdown :global(.text-card-markdown) tr:nth-of-type(even) {
+  background-color: var(--text-card-stripe);
+}
+
+.markdown :global(.text-card-markdown) th,
+.markdown :global(.text-card-markdown) td {
+  padding: 0.75em;
+  border: 1px solid var(--mb-color-border-neutral);
+}
+
+.markdown :global(.text-card-markdown) code {
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.79rem;
+  line-height: 1.25rem;
+  padding: 0 0.25em;
+  background-color: var(--mb-color-background_page-secondary);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.markdown :global(.text-card-markdown) pre code {
+  padding: 1em;
+  display: block;
+  margin-right: 1.5em;
+}
+
+.markdown :global(.text-card-markdown) blockquote {
+  color: var(--mb-color-text-secondary);
+  border-left: 5px solid var(--mb-color-border-neutral);
+  padding: 0 1.5em 0 1.0625rem;
+  margin: 0.5em 0 0.5em 1em;
+}
+
+.markdown :global(.text-card-markdown) blockquote p {
+  padding: 0;
+  margin: 0;
+}
+
+.markdown :global(.text-card-markdown) img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown :global(.text-card-markdown) hr {
+  margin: 0;
+}
+
+.input {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  height: inherit;
+  min-height: unset;
+  font-size: 1.143em;
+  line-height: 1.602em;
+  background-color: var(--mb-color-background_page-secondary);
+  border: none;
+  border-radius: var(--mantine-radius-sm);
+  box-shadow: none;
+  outline: none;
+  resize: none;
+  pointer-events: all;
+}
+
+@media (--breakpoint-max-xl) {
+  .inputCompact {
+    line-height: calc(1.602em - 1px);
+  }
+}
