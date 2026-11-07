@@ -216,7 +216,7 @@
             (is (empty? (t2/select :model/TableRemapping :database_id (mt/id))))))))))
 
 (deftest delete-after-failed-first-run-drops-the-workspace-copy-test
-  (testing "deleting a transform whose only run failed drops its workspace copy, not the canonical table"
+  (testing "deleting the output table (DELETE /api/transform/:id/table) of a transform whose only run failed drops its workspace copy, not the canonical table"
     (mt/test-driver :postgres
       (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
         (let [spec    (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
