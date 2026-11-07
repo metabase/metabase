@@ -164,10 +164,10 @@
       (let [java-parser (sqlglot-java/parser)
             slow-sql    (wide-select 2000)]
         (doseq [result (mapv deref (doall (repeatedly 3 #(future
-                                                            (try
-                                                              (protocol/returned-columns-lineage
-                                                               java-parser "postgres" slow-sql nil wide-select-schema)
-                                                              (catch Throwable e e))))))]
+                                                           (try
+                                                             (protocol/returned-columns-lineage
+                                                              java-parser "postgres" slow-sql nil wide-select-schema)
+                                                             (catch Throwable e e))))))]
           (is (instance? TimeoutException result) (pr-str result)))
         (let [start   (System/nanoTime)
               results (mapv deref (doall (repeatedly 3 #(future
