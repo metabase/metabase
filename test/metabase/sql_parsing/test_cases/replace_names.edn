@@ -99,4 +99,16 @@
    :dialect      "postgres"
    :sql          "SELECT id, FROM orders"
    :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
-   :expected     "SELECT id FROM tmp_orders"}]}
+   :expected     "SELECT id FROM tmp_orders"}
+
+  {:name         "ClickHouse positional placeholders in function arguments are kept"
+   :dialect      "clickhouse"
+   :sql          "SELECT * FROM source_table WHERE ts > parseDateTimeBestEffort(?) AND ts <= parseDateTimeBestEffort(?)"
+   :replacements {:tables [[{:table "source_table"} {:db nil :schema nil :table "target_table"}]]}
+   :expected     "SELECT * FROM target_table WHERE ts > parseDateTimeBestEffort(?) AND ts <= parseDateTimeBestEffort(?)"}
+
+  {:name         "ClickHouse named typed parameters are kept"
+   :dialect      "clickhouse"
+   :sql          "SELECT * FROM source_table WHERE ts > {p: DateTime}"
+   :replacements {:tables [[{:table "source_table"} {:db nil :schema nil :table "target_table"}]]}
+   :expected     "SELECT * FROM target_table WHERE ts > {p: DateTime}"}]}
