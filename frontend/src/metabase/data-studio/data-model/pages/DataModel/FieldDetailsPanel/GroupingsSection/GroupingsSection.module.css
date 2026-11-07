@@ -1,0 +1,8 @@
+/* Flat and clickable, like the segment and measure cards */
+.card {
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}

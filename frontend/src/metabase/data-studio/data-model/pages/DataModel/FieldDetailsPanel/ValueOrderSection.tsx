@@ -1,12 +1,7 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
-import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  DetailsRow,
-  DetailsTable,
-  SidebarSection,
-} from "metabase/common/components/DetailSidebar";
+import { SidebarSection } from "metabase/common/components/DetailSidebar";
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import {
   ENUM_KINDS,
@@ -14,6 +9,7 @@ import {
   type OrderedValue,
   type ResolvedValueOrder,
   VALUE_BUCKETS,
+  getEnumKindDescription,
   getEnumKindLabel,
   getValueBucketLabel,
   inferEnumKind,
@@ -24,12 +20,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Card, Group, Icon, Loader, Select, Stack, Text } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
-import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../DetailPanel";
-import {
-  InferredActions,
-  InferredIcon,
-  InferredValue,
-} from "../TableSection/InferenceReview";
+import { InferredIcon } from "../TableSection/InferenceReview";
 
 interface ValueOrderSectionProps {
   field: Field;
@@ -71,23 +62,15 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
 
   return (
     <SidebarSection title={t`Values`}>
-      <DetailsTable>
-        <DetailsRow
-          label={t`Kind`}
-          fillValue
-          value={
-            <EnumKindValue
-              kind={enumKind}
-              isInferred={
-                overrides.enumKind == null && kindInference.kind !== "nominal"
-              }
-              inference={t`Inferred: ${kindInference.signal}`}
-              disabled={readOnly}
-              onChange={(kind) => setEnumKind(fieldId, kind)}
-            />
-          }
-        />
-      </DetailsTable>
+      <EnumKindSelect
+        kind={enumKind}
+        isInferred={
+          overrides.enumKind == null && kindInference.kind !== "nominal"
+        }
+        inference={t`Inferred: ${kindInference.signal}`}
+        disabled={readOnly}
+        onChange={(kind) => setEnumKind(fieldId, kind)}
+      />
       {isOrdinal && (
         <ValueOrder
           order={order}
@@ -100,7 +83,11 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
   );
 }
 
-function EnumKindValue({
+/**
+ * How the values relate. Each option explains itself in the dropdown; a
+ * guess carries the AI icon, and picking any option, even the guess, saves it.
+ */
+function EnumKindSelect({
   kind,
   isInferred,
   inference,
@@ -113,28 +100,9 @@ function EnumKindValue({
   disabled: boolean;
   onChange: (kind: EnumKind) => void;
 }) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
-
-  if (isInferred) {
-    return (
-      <InferredValue
-        value={getEnumKindLabel(kind)}
-        inference={inference}
-        readOnly={disabled}
-        onConfirm={() => onChange(kind)}
-        onChange={() => {
-          setIsSelectOpenOnMount(true);
-          onChange(kind);
-        }}
-        data-testid="field-enum-kind-review"
-      />
-    );
-  }
-
   return (
     <Select
-      aria-label={t`Kind`}
-      classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+      label={t`Kind`}
       data={ENUM_KINDS.map((value) => ({
         value,
         label: getEnumKindLabel(value),
@@ -142,9 +110,31 @@ function EnumKindValue({
       value={kind}
       allowDeselect={false}
       disabled={disabled}
-      autoFocus={isSelectOpenOnMount}
-      defaultDropdownOpened={isSelectOpenOnMount}
-      onChange={(value) => {
+      leftSection={
+        isInferred ? (
+          <InferredIcon
+            description={inference}
+            onConfirm={disabled ? undefined : () => onChange(kind)}
+          />
+        ) : undefined
+      }
+      // "all" lets the AI icon be clicked and show its tooltip
+      leftSectionPointerEvents="all"
+      renderOption={({ option }) => {
+        const optionKind = ENUM_KINDS.find((known) => known === option.value);
+        return (
+          <Stack gap={2} py={2}>
+            <Text>{option.label}</Text>
+            {optionKind && (
+              <Text size="sm" c="text-secondary">
+                {getEnumKindDescription(optionKind)}
+              </Text>
+            )}
+          </Stack>
+        );
+      }}
+      // Fires for the current value too, so picking sync's guess confirms it
+      onOptionSubmit={(value) => {
         const option = ENUM_KINDS.find((known) => known === value);
         if (option) {
           onChange(option);
@@ -157,7 +147,7 @@ function EnumKindValue({
 
 /**
  * The values in lifecycle order, right under the Kind row. While it's sync's
- * guess, the AI icon and Confirm and Change sit below the list; dragging a
+ * guess, a line below says so, with the AI icon to confirm it; dragging a
  * value or changing a bucket also saves it.
  */
 function ValueOrder({
@@ -187,10 +177,15 @@ function ValueOrder({
           onChange={onChange}
         />
       )}
-      {hasValues && order.isInferred && !readOnly && (
-        <Group gap="sm" wrap="nowrap">
-          <InferredIcon description={t`Inferred: ${order.inference.signal}`} />
-          <InferredActions onConfirm={onConfirm} onChange={onConfirm} />
+      {hasValues && order.isInferred && (
+        <Group gap="xs" wrap="nowrap">
+          <Text size="sm" c="text-secondary">
+            {t`Guessed order`}
+          </Text>
+          <InferredIcon
+            description={t`Inferred: ${order.inference.signal}`}
+            onConfirm={readOnly ? undefined : onConfirm}
+          />
         </Group>
       )}
     </Stack>

@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import type { ExpandedState, OnChangeFn, Row } from "@tanstack/react-table";
 import {
   type MouseEvent,
@@ -69,6 +70,11 @@ import {
 import { TableSubjectCell } from "./TableSubjectCell";
 
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
+
+// The fixed columns (Role, Subject, Owner, Data layer) take about 790px; past
+// them, names keep about 240px before Published, then Rows, give way
+const MIN_WIDTH_WITH_PUBLISHED = 1280;
+const MIN_WIDTH_WITH_ROWS = 1160;
 
 interface Props {
   tree: RootNode;
@@ -232,6 +238,12 @@ export function TablePickerTreeTable({
     [handleCheckboxToggle],
   );
 
+  const { ref: frameRef, width: frameWidth } = useElementSize();
+  // Names need room first: Published goes, then Rows. Shown until measured
+  const isMeasured = frameWidth > 0;
+  const showPublished = !isMeasured || frameWidth >= MIN_WIDTH_WITH_PUBLISHED;
+  const showRows = !isMeasured || frameWidth >= MIN_WIDTH_WITH_ROWS;
+
   const columns: TreeTableColumnDef<TablePickerTreeNode>[] = useMemo(() => {
     const columnDefs: TreeTableColumnDef<TablePickerTreeNode>[] = [
       {
@@ -312,7 +324,10 @@ export function TablePickerTreeTable({
           );
         },
       },
-      {
+    ];
+
+    if (showRows) {
+      columnDefs.push({
         id: "rows",
         header: t`Rows`,
         width: "auto",
@@ -327,10 +342,10 @@ export function TablePickerTreeTable({
             </Box>
           ) : null;
         },
-      },
-    ];
+      });
+    }
 
-    if (isLibraryEnabled) {
+    if (isLibraryEnabled && showPublished) {
       columnDefs.push({
         id: "published",
         header: t`Published`,
@@ -353,7 +368,14 @@ export function TablePickerTreeTable({
     }
 
     return columnDefs;
-  }, [isLibraryEnabled, ownerNameById, formatNumber, getTableDataLayer]);
+  }, [
+    isLibraryEnabled,
+    ownerNameById,
+    formatNumber,
+    getTableDataLayer,
+    showRows,
+    showPublished,
+  ]);
 
   const expandedState = useMemo(
     () => Object.fromEntries([...expandedIds].map((id) => [id, true])),
@@ -491,17 +513,20 @@ export function TablePickerTreeTable({
   );
 
   return (
-    <TreeTable
-      instance={instance}
-      showCheckboxes
-      onRowClick={handleRowClick}
-      getSelectionState={getSelectionState}
-      onCheckboxClick={handleCheckboxClick}
-      isChildrenLoading={isChildrenLoading}
-      isRowDisabled={isRowDisabled}
-      getRowProps={getRowProps}
-      ariaLabel={t`Tables`}
-    />
+    // Stands in for the card as the table's flex parent, so it still fills it
+    <Box ref={frameRef} display="flex" flex={1} miw={0} mih={0}>
+      <TreeTable
+        instance={instance}
+        showCheckboxes
+        onRowClick={handleRowClick}
+        getSelectionState={getSelectionState}
+        onCheckboxClick={handleCheckboxClick}
+        isChildrenLoading={isChildrenLoading}
+        isRowDisabled={isRowDisabled}
+        getRowProps={getRowProps}
+        ariaLabel={t`Tables`}
+      />
+    </Box>
   );
 }
 

@@ -99,6 +99,8 @@ interface GroupingModalProps {
   takenNames: string[];
   context: GroupingInferenceContext;
   onSave: (grouping: Grouping) => void;
+  /** Removes the grouping being edited; absent for a new one */
+  onRemove?: () => void;
   onClose: () => void;
 }
 
@@ -114,6 +116,7 @@ export function GroupingModal({
   takenNames,
   context,
   onSave,
+  onRemove,
   onClose,
 }: GroupingModalProps) {
   const kind = getGroupingKind(field);
@@ -202,6 +205,17 @@ export function GroupingModal({
         )}
       </Stack>
       <Modal.Footer>
+        {onRemove && (
+          // Pushed to the left, away from Save
+          <Button
+            variant="subtle"
+            color="negative"
+            mr="auto"
+            onClick={onRemove}
+          >
+            {t`Remove this group`}
+          </Button>
+        )}
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button variant="filled" disabled={!canSave} onClick={handleSave}>
           {t`Save`}

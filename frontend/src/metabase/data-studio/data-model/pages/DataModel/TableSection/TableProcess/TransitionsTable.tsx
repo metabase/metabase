@@ -154,15 +154,12 @@ function ExpectednessSelect({
       allowDeselect={false}
       disabled={disabled}
       // Inside the field, so the guess reads as part of the value; "all" lets
-      // its tooltip show over the input
+      // its icon be clicked to confirm
       leftSection={
         isGuess ? (
           <InferredIcon
-            description={
-              disabled
-                ? t`Inferred: ${row.signal}`
-                : t`Inferred: ${row.signal}. Pick a value to confirm it.`
-            }
+            description={t`Inferred: ${row.signal}`}
+            onConfirm={disabled ? undefined : () => onChange(row.resolvedKind)}
           />
         ) : undefined
       }
