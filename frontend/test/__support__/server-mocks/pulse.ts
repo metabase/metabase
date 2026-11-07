@@ -15,8 +15,15 @@ export const setupNotificationChannelsEndpoints = (
 
 export const setupUnsubscribeFromPulseEndpoint = (
   response: UnsubscribeResponse,
+  { status = 200 }: { status?: number } = {},
 ) => {
-  fetchMock.post("path:/api/pulse/unsubscribe", response);
+  fetchMock.post("path:/api/pulse/unsubscribe", { status, body: response });
+};
+
+export const setupUndoUnsubscribeFromPulseEndpoint = (
+  response: UnsubscribeResponse,
+) => {
+  fetchMock.post("path:/api/pulse/unsubscribe/undo", response);
 };
 
 export const setupSubscriptionEndpoint = (
