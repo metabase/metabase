@@ -31,7 +31,8 @@
   (testing "create, get, list, delete round-trip"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
           (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
@@ -55,7 +56,8 @@
   (testing "DELETE tears down a pending database like any other state"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
           (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
@@ -69,7 +71,8 @@
   (testing "DELETE returns a 500 with the database's error and keeps the workspace when a teardown fails"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                             (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
@@ -95,7 +98,10 @@
                                                       :settings {:database-enable-workspaces true}}
                    :model/Table _ {:db_id eligible-id :schema "public" :active true}
                    :model/Table _ {:db_id eligible-id :schema "analytics" :active true}
-                   :model/Database {ineligible-id :id} {:engine :postgres :details {}}]
+                   :model/Database {ineligible-id :id} {:engine :postgres :details {}}
+                   :model/Database {tableless-id :id} {:engine   :postgres
+                                                       :details  {}
+                                                       :settings {:database-enable-workspaces true}}]
       (mt/with-model-cleanup [:model/Workspace]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
           (is (=? {:databases [{:database_id   eligible-id
@@ -106,6 +112,9 @@
           (testing "an ineligible database is rejected"
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids [ineligible-id]}))
+          (testing "a database with no synced tables is rejected"
+            (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                  {:name "Nope" :database_ids [tableless-id]}))
           (testing "at least one database is required"
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
