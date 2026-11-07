@@ -1203,8 +1203,9 @@
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
         (let [query-metadata (fn [query]
-                               (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                                     (dissoc query :lib/metadata)))
+                               (-> (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                                         (dissoc query :lib/metadata))
+                                   (update :tables (partial map #(dissoc % :view_count)))))
               card-query     (lib/query mp (lib.metadata/card mp card-id))]
           (is (= (assoc (query-metadata query) :cards [])
                  (update (query-metadata card-query) :cards #(remove (comp #{card-id} :id) %))))
