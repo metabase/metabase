@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,11 +10,8 @@ import { Link } from "metabase/common/components/Link";
 import {
   type ResolvedValueOrder,
   type StatusHistoryBinding,
-  TRANSITION_KINDS,
   type TransitionKind,
-  type ValueBucket,
   getProcessEncodingLabel,
-  getTransitionKindLabel,
   getValueBucketLabel,
   inferLifecycleField,
   inferStatusHistoryColumns,
@@ -23,13 +20,17 @@ import {
 } from "metabase/metadata/lifecycle";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
+  ActionIcon,
   Badge,
-  type BadgeProps,
   Group,
+  Icon,
   List,
+  Modal,
+  SegmentedControl,
   Select,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -37,7 +38,13 @@ import type { Field, FieldId, Table } from "metabase-types/api";
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 import { InferredValue } from "../InferenceReview";
 
-import { type TransitionRow, useProcessModel } from "./use-process-model";
+import { BUCKET_BADGE_COLORS, TransitionsDiagram } from "./TransitionsDiagram";
+import { TransitionsSankey } from "./TransitionsSankey";
+import { TransitionsTable } from "./TransitionsTable";
+import { useProcessModel } from "./use-process-model";
+
+type TransitionsView = "diagram" | "sankey" | "list";
+
 interface TableProcessProps {
   table: Table;
   readOnly: boolean;
@@ -66,8 +73,15 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
     historyTable,
     encoding,
     transitions,
-    unexpectedSeen,
   } = model;
+  const [transitionsView, setTransitionsView] =
+    useState<TransitionsView>("list");
+  const [isDiagramExpanded, setIsDiagramExpanded] = useState(false);
+  // Stable, so the diagram's edges don't rebuild on every render
+  const handleKindChange = useCallback(
+    (key: string, kind: TransitionKind) => setTransitionKind(table, key, kind),
+    [table, setTransitionKind],
+  );
 
   return (
     <Stack gap="xxl">
@@ -174,36 +188,69 @@ export function TableProcess({ table, readOnly }: TableProcessProps) {
       {transitions.length > 0 && (
         <SidebarSection
           title={t`Transitions`}
-          description={
-            unexpectedSeen.length > 0
-              ? // The spec's data note: the most common move nobody expects
-                t`${unexpectedSeen[0].count} records went from ${unexpectedSeen[0].from} to ${unexpectedSeen[0].to}, which isn't expected.`
-              : t`Moves between statuses, from the order and from the status history when there is one.`
-          }
-        >
-          <DetailsTable>
-            {transitions.map((row) => (
-              <DetailsRow
-                key={row.key}
-                label={`${row.from} → ${row.to}`}
-                fillValue
-                labelNote={
-                  row.count > 0 && (
-                    <Text size="sm" c="text-secondary">
-                      {t`${row.count} seen`}
-                    </Text>
-                  )
-                }
-                value={
-                  <TransitionKindValue
-                    row={row}
-                    disabled={readOnly}
-                    onChange={(kind) => setTransitionKind(table, row.key, kind)}
-                  />
-                }
+          titleAside={
+            <Group gap="sm" wrap="nowrap">
+              {transitionsView === "diagram" && (
+                <Tooltip label={t`Expand`}>
+                  <ActionIcon
+                    variant="subtle"
+                    aria-label={t`Expand the transitions diagram`}
+                    onClick={() => setIsDiagramExpanded(true)}
+                  >
+                    <Icon name="expand" />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              <SegmentedControl<TransitionsView>
+                data={[
+                  { value: "list", label: t`List` },
+                  { value: "diagram", label: t`Diagram` },
+                  { value: "sankey", label: t`Sankey` },
+                ]}
+                value={transitionsView}
+                onChange={setTransitionsView}
               />
-            ))}
-          </DetailsTable>
+            </Group>
+          }
+          description={t`Moves between statuses, from the order and from the status history when there is one.`}
+        >
+          {transitionsView === "diagram" && (
+            <TransitionsDiagram
+              states={order.values}
+              rows={transitions}
+              readOnly={readOnly}
+              height={360}
+              onKindChange={handleKindChange}
+            />
+          )}
+          {transitionsView === "sankey" && (
+            <TransitionsSankey
+              states={order.values}
+              rows={transitions}
+              height={360}
+            />
+          )}
+          {transitionsView === "list" && (
+            <TransitionsTable
+              rows={transitions}
+              readOnly={readOnly}
+              onKindChange={handleKindChange}
+            />
+          )}
+          <Modal
+            opened={isDiagramExpanded}
+            title={t`Transitions`}
+            size="90%"
+            onClose={() => setIsDiagramExpanded(false)}
+          >
+            <TransitionsDiagram
+              states={order.values}
+              rows={transitions}
+              readOnly={readOnly}
+              height="75vh"
+              onKindChange={handleKindChange}
+            />
+          </Modal>
         </SidebarSection>
       )}
     </Stack>
@@ -397,63 +444,5 @@ function StatesValue({
         </Text>
       </Link>
     </Stack>
-  );
-}
-
-// Good, bad, and neither: a final state's badge says which
-const BUCKET_BADGE_COLORS: Record<ValueBucket, BadgeProps["color"]> = {
-  open: "neutral",
-  won: "positive",
-  lost: "negative",
-  cancelled: "neutral",
-  other: "neutral",
-};
-
-function TransitionKindValue({
-  row,
-  disabled,
-  onChange,
-}: {
-  row: TransitionRow;
-  disabled: boolean;
-  onChange: (kind: TransitionKind) => void;
-}) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
-
-  if (!row.isOverridden) {
-    return (
-      <InferredValue
-        value={getTransitionKindLabel(row.kind)}
-        inference={t`Inferred: ${row.signal}`}
-        readOnly={disabled}
-        onConfirm={() => onChange(row.kind)}
-        onChange={() => {
-          setIsSelectOpenOnMount(true);
-          onChange(row.kind);
-        }}
-      />
-    );
-  }
-
-  return (
-    <Select
-      aria-label={t`Transition from ${row.from} to ${row.to}`}
-      classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
-      data={TRANSITION_KINDS.map((kind) => ({
-        value: kind,
-        label: getTransitionKindLabel(kind),
-      }))}
-      value={row.resolvedKind}
-      allowDeselect={false}
-      disabled={disabled}
-      autoFocus={isSelectOpenOnMount}
-      defaultDropdownOpened={isSelectOpenOnMount}
-      onChange={(value) => {
-        const kind = TRANSITION_KINDS.find((known) => known === value);
-        if (kind) {
-          onChange(kind);
-        }
-      }}
-    />
   );
 }
