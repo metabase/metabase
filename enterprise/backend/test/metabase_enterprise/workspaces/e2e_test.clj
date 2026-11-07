@@ -42,6 +42,7 @@
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -825,6 +826,42 @@
               (try (jdbc/execute! admin-spec
                                   [(format "DROP TABLE IF EXISTS %s"
                                            (qualified-table-sql admin-driver admin-details main-schema tgt-b-name))])
+                   (catch Throwable _ nil)))))))))
+
+(deftest input-schemas-sync-literally-test
+  (mt/test-driver :postgres
+    (testing "the child syncs an input schema whose name contains pattern syntax, and no schema it only resembles"
+      (let [admin-details (:details (mt/db))
+            admin-spec    (admin-warehouse :postgres admin-details)
+            run-id        (random-suffix)
+            plus-schema   (str "a+b_" run-id)
+            dot-schema    (str "sales.v2_" run-id)
+            ;; what `a+b_…` and `sales.v2_…` match when read as regex source
+            near-misses   [(str "ab_" run-id) (str "salesXv2_" run-id)]
+            all-schemas   (into [plus-schema dot-schema] near-misses)]
+        (try
+          (doseq [schema all-schemas]
+            (create-canonical-schema! :postgres admin-spec admin-details schema)
+            (jdbc/execute! admin-spec [(format "CREATE TABLE %s (id INT)" (sql.u/quote-name :postgres :table schema "t"))]))
+          (mt/with-temp [:model/Workspace {ws-id :id} {:name       (str "ws-literal-" run-id)
+                                                       :creator_id (mt/user->id :crowberto)}
+                         :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                                     :database_id      (mt/id)
+                                                     :database_details {}
+                                                     :output_namespace (str "mb__isolation_" run-id)
+                                                     :input_schemas    [plus-schema dot-schema]
+                                                     :status           :provisioned}]
+            (let [child-details (->> (ws.config/build-workspace-config ws-id) :config :databases
+                                     (u/seek #(= (:name (mt/db)) (:name %)))
+                                     :details)]
+              (mt/with-temp [:model/Database child-db {:engine :postgres :details child-details}]
+                (sync/sync-database! (:id child-db) {:scan :schema})
+                (is (= #{plus-schema dot-schema}
+                       (t2/select-fn-set :schema :model/Table :db_id (:id child-db) :active true))))))
+          (finally
+            (doseq [schema all-schemas]
+              (try (jdbc/execute! admin-spec [(format "DROP SCHEMA IF EXISTS %s CASCADE"
+                                                      (sql.u/quote-name :postgres :schema schema))])
                    (catch Throwable _ nil)))))))))
 
 (comment

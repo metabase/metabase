@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.driver.sync :as driver.sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]))
@@ -92,6 +93,78 @@
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= "schema_a,schema_b,schema_c"
                (-> cfg :config :databases first :details :schema-filters-patterns)))))))
+
+(def ^:private schema-name->near-misses
+  "Schema names that sync-filter pattern syntax would misread, each with names its pattern must not match."
+  {"a+b"       ["ab" "aab"]
+   "a,b"       ["a" "b"]
+   "a|b"       ["a" "b"]
+   " sp "      ["sp"]
+   "crazy\\*s" ["crazy*s" "crazys"]
+   "sales.v2"  ["salesXv2"]
+   "*"         ["public" "**"]
+   "x(y"       ["xy"]
+   "my-schema" ["my_schema"]
+   "café"      ["cafe"]
+   "naïve😀"   ["naive" "naïve"]})
+
+(defn- built-schema-filter-patterns
+  "The `:schema-filters-patterns` the config emits for a Postgres database with `input-schemas`."
+  [input-schemas]
+  (mt/with-temp [:model/Database {db-id :id} {:name "DW" :engine :postgres :details {:host "h" :port 5432}}
+                 :model/Workspace {ws-id :id} {:name       "literal"
+                                               :creator_id (mt/user->id :crowberto)}
+                 :model/WorkspaceDatabase _
+                 {:workspace_id     ws-id
+                  :database_id      db-id
+                  :database_details {}
+                  :output_namespace "mb__isolation_slug_7"
+                  :input_schemas    input-schemas
+                  :status           :provisioned}]
+    (->> (config/build-workspace-config ws-id) :config :databases
+         (u/seek #(= "DW" (:name %)))
+         :details
+         :schema-filters-patterns)))
+
+(defn- pattern-matches? [patterns schema-name]
+  (boolean (re-matches (driver.sync/schema-pattern->re-pattern patterns) schema-name)))
+
+(deftest build-workspace-config-input-schemas-match-literally-test
+  (testing "each input schema's sync-filter pattern matches that name and none of its near-misses"
+    (doseq [[schema-name near-misses] schema-name->near-misses]
+      (testing (pr-str schema-name)
+        (let [patterns (built-schema-filter-patterns [schema-name])]
+          (is (pattern-matches? patterns schema-name))
+          (doseq [other (cons "mb__isolation_slug_7" near-misses)]
+            (is (not (pattern-matches? patterns other))
+                (str "should not match " (pr-str other))))))))
+  (testing "joined into one filter, the input schemas match each other and no near-miss"
+    (let [patterns (built-schema-filter-patterns (vec (keys schema-name->near-misses)))]
+      (doseq [schema-name (keys schema-name->near-misses)]
+        (is (pattern-matches? patterns schema-name) (pr-str schema-name)))
+      (doseq [other (cons "mb__isolation_slug_7"
+                          (remove (set (keys schema-name->near-misses))
+                                  (mapcat val schema-name->near-misses)))]
+        (is (not (pattern-matches? patterns other)) (str "should not match " (pr-str other)))))))
+
+(deftest build-workspace-config-clickhouse-db-filters-stay-raw-test
+  (when (workspaces.tu/driver-loadable? :clickhouse)
+    (testing "ClickHouse compares :db-filters-patterns entries to names exactly, so they are emitted unescaped"
+      (mt/with-temp [:model/Database {db-id :id} {:name "CH" :engine :clickhouse :details {:db "default"}}
+                     :model/Workspace {ws-id :id} {:name       "ch-ws"
+                                                   :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _
+                     {:workspace_id     ws-id
+                      :database_id      db-id
+                      :database_details {}
+                      :output_namespace "ws_alice"
+                      :input_schemas    ["sales.v2" "a+b"]
+                      :status           :provisioned}]
+        (is (= "sales.v2,a+b"
+               (->> (config/build-workspace-config ws-id) :config :databases
+                    (u/seek #(= "CH" (:name %)))
+                    :details
+                    :db-filters-patterns)))))))
 
 (deftest build-workspace-config-bigquery-emits-dataset-filters-test
   (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)

@@ -12,26 +12,42 @@
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
+(set! *warn-on-reflection* true)
+
+(defn- literal-schema-pattern
+  "`schema-name` as a sync-filter pattern that matches only `schema-name`.
+   [[metabase.driver.sync/schema-pattern->re-pattern]] splits patterns on `,`, trims each one,
+   expands `*` and passes everything else through as regex source, so a real name containing
+   `,`, `*`, edge whitespace or a regex metacharacter (`.`, `+`, `(`) would miss itself, match
+   other names, or fail to compile.
+   Each character outside `[A-Za-z0-9_]` becomes a Java regex `\\x{HEX}` escape, which contains
+   none of the characters that conversion acts on."
+  [schema-name]
+  (str/replace schema-name #"[^A-Za-z0-9_]" #(format "\\x{%X}" (.codePointAt ^String % 0))))
+
 (defn- schema-filter-entries
   "Build sync-filter keys for the workspace's input scope. Per-engine:
 
    - schema-having JDBC drivers (Postgres, Redshift, SQL Server)
      emit `:schema-filters-*` — `metabase.driver.sync` reads these to scope
-     describe-database to the named schemas.
+     describe-database to the named schemas. Names go through
+     [[literal-schema-pattern]] so each matches only itself.
    - ClickHouse emits `:db-filters-*` — CH calls its top-level namespaces
      'databases' (= schemas in MB's vocabulary) and its describe-database
      impl reads `:db-filters-*`, not `:schema-filters-*`. The canonical
      CH details already carry `:db-filters-patterns <bound-db>`, which would
      otherwise leak through and restrict sync to the canonical DB the
-     workspace user has no GRANTs on.
+     workspace user has no GRANTs on. CH compares these to names exactly,
+     so they stay unescaped.
    - BigQuery emits `:dataset-filters-*` — its `list-datasets` reads these
-     instead (BQ doesn't go through `metabase.driver.sync`).
+     instead, through the same pattern syntax, so names are escaped the same way.
    - No-schema engines (MySQL) emit `{}` — JDBC reports `TABLE_SCHEM` as null
      and `schema-patterns->filter-fn*` documents inclusion patterns NEVER
      match a `nil` schema. Scoping on those is enforced by the connection's
      bound database (`:details.db`)."
   [{:keys [engine] :as db} wsd]
-  (let [patterns (str/join "," (:input_schemas wsd))]
+  (let [input-schemas (:input_schemas wsd)
+        patterns      (str/join "," (map literal-schema-pattern input-schemas))]
     (cond
       (= engine :bigquery-cloud-sdk)
       {:dataset-filters-type     "inclusion"
@@ -39,7 +55,7 @@
 
       (= engine :clickhouse)
       {:db-filters-type     "inclusion"
-       :db-filters-patterns patterns}
+       :db-filters-patterns (str/join "," input-schemas)}
 
       (driver.u/supports? engine :schemas db)
       {:schema-filters-type     "inclusion"
