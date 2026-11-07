@@ -1,17 +1,19 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
   setupEnginesEndpoint,
+  setupSetupGuideChecklistEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   EmbeddingHomepageStatus,
+  EnterpriseSettings,
   IllustrationSettingValue,
+  Settings,
   User,
 } from "metabase-types/api";
 import {
@@ -42,21 +44,24 @@ const setup = ({
   embeddingHomepage,
   hasSimpleEmbedding = false,
 }: SetupOpts = {}) => {
+  const settings: Partial<Settings & EnterpriseSettings> = {
+    "token-features": createMockTokenFeatures({
+      whitelabel: Boolean(landingPageIllustration),
+      embedding_simple: hasSimpleEmbedding,
+    }),
+  };
+  if (landingPageIllustration) {
+    settings["landing-page-illustration"] = landingPageIllustration;
+    settings["landing-page-illustration-custom"] = ILLUSTRATION_URL;
+  }
+  if (embeddingHomepage) {
+    settings["embedding-homepage"] = embeddingHomepage;
+  }
+
+  // Settings before plugins: the plugins read the settings when they register.
   const state = createMockState({
     currentUser,
-    ...((landingPageIllustration || embeddingHomepage) && {
-      settings: mockSettings({
-        ...(landingPageIllustration && {
-          "landing-page-illustration": landingPageIllustration,
-          "landing-page-illustration-custom": ILLUSTRATION_URL,
-        }),
-        ...(embeddingHomepage && { "embedding-homepage": embeddingHomepage }),
-        "token-features": createMockTokenFeatures({
-          whitelabel: Boolean(landingPageIllustration),
-          embedding_simple: hasSimpleEmbedding,
-        }),
-      }),
-    }),
+    settings: mockSettings(settings),
   });
   if (landingPageIllustration) {
     setupEnterpriseOnlyPlugin("whitelabel");
@@ -64,10 +69,7 @@ const setup = ({
   if (embeddingHomepage) {
     setupDatabaseListEndpoint([]);
     setupEnginesEndpoint(createMockEngines());
-    fetchMock.get("path:/api/embedding-hub/checklist", {
-      checklist: {},
-      "data-isolation-strategy": null,
-    });
+    setupSetupGuideChecklistEndpoint();
   }
 
   renderWithProviders(<HomeLayout />, {
@@ -132,7 +134,7 @@ describe("HomeLayout", () => {
       });
 
       expect(
-        (await screen.findAllByText("Get started with modular embedding"))[0],
+        await screen.findByText("Get started with modular embedding"),
       ).toBeInTheDocument();
       expect(screen.queryByTestId("home-page")).not.toBeInTheDocument();
 
@@ -140,22 +142,35 @@ describe("HomeLayout", () => {
       await userEvent.click(screen.getByText("Connect a database"));
 
       // Sanity check: add data modal should open
-      await waitFor(() => {
-        expect(
-          within(screen.getByRole("dialog")).getByRole("heading", {
-            name: "Add data",
-          }),
-        ).toBeInTheDocument();
-      });
+      expect(
+        await within(await screen.findByRole("dialog")).findByRole("heading", {
+          name: "Add data",
+        }),
+      ).toBeInTheDocument();
     });
 
     it.each([
-      ["the setting is hidden", "hidden", true, true],
-      ["simple embedding is not available", "visible", false, true],
-      ["the user is not an admin", "visible", true, false],
+      {
+        case: "the setting is hidden",
+        embeddingHomepage: "hidden",
+        hasSimpleEmbedding: true,
+        isAdmin: true,
+      },
+      {
+        case: "simple embedding is not available",
+        embeddingHomepage: "visible",
+        hasSimpleEmbedding: false,
+        isAdmin: true,
+      },
+      {
+        case: "the user is not an admin",
+        embeddingHomepage: "visible",
+        hasSimpleEmbedding: true,
+        isAdmin: false,
+      },
     ] as const)(
-      "should show the regular homepage when %s",
-      (_name, embeddingHomepage, hasSimpleEmbedding, isAdmin) => {
+      "should show the regular homepage when $case",
+      ({ embeddingHomepage, hasSimpleEmbedding, isAdmin }) => {
         setup({
           currentUser: createMockUser({ is_superuser: isAdmin }),
           embeddingHomepage,

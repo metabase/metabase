@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  createMockSetupGuideChecklist,
   findRequests,
   setupPropertiesEndpoints,
+  setupSetupGuideChecklistEndpoint,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
@@ -19,23 +21,6 @@ import type { SetupGuideChecklist } from "../../api/setup-guide";
 
 import { SetupSsoPage } from "./SetupSsoPage";
 
-const defaultChecklist: SetupGuideChecklist = {
-  "add-data": false,
-  "configure-ai": false,
-  "configure-row-column-security": false,
-  "create-custom-theme": false,
-  "create-dashboard": false,
-  "create-tenants": false,
-  "create-test-embed": false,
-  "data-permissions-and-enable-tenants": false,
-  "embed-production": false,
-  "enable-tenants": false,
-  "move-dashboard-to-shared": false,
-  "setup-data-segregation-strategy": false,
-  "sso-auth-manual-tested": false,
-  "sso-configured": false,
-};
-
 const setup = ({
   checklist = {},
   tokenStatus = null,
@@ -48,9 +33,8 @@ const setup = ({
   setupPropertiesEndpoints(settings);
   setupUpdateSettingsEndpoint();
 
-  fetchMock.get("path:/api/embedding-hub/checklist", {
-    checklist: { ...defaultChecklist, ...checklist },
-    "data-isolation-strategy": null,
+  setupSetupGuideChecklistEndpoint({
+    checklist: createMockSetupGuideChecklist(checklist),
   });
   fetchMock.get("path:/api/util/random_token", {
     token: "test-signing-key",
@@ -152,7 +136,7 @@ describe("SetupSsoPage", () => {
       expect(await screen.findByText("Troubleshooting")).toBeVisible();
     };
 
-    it("shows /help-premium troubleshooting link for pro-cloud plan in sso setup", async () => {
+    it("links to /help-premium with a valid token", async () => {
       setup({
         checklist: { "sso-configured": true },
         tokenStatus: createMockTokenStatus({ valid: true }),

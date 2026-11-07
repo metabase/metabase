@@ -289,6 +289,32 @@ describe("scenarios > embedding > embedding hub > security", () => {
         name: "Standalone Metabase linked from your app toggle",
       }).should("be.checked");
     });
+
+    it("lists published guest embeds even after guest embeds are switched off", () => {
+      cy.log("Publish a dashboard as a guest embed");
+      // Publishing is itself gated on guest embeds being on, so this has to
+      // come before the dashboard is marked embeddable.
+      H.updateSetting("enable-embedding-modular", true);
+      H.createDashboard({ name: "Published dashboard" }).then(
+        ({ body: dashboard }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            enable_embedding: true,
+          });
+        },
+      );
+
+      cy.visit("/embedding/security");
+
+      assertPublishedDashboardIsListed();
+
+      cy.log(
+        "Turning guest embeds off is exactly when an admin needs to audit what is already out there",
+      );
+      H.updateSetting("enable-embedding-modular", false);
+      cy.visit("/embedding/security");
+
+      assertPublishedDashboardIsListed();
+    });
   });
 
   describe("starter", () => {
@@ -595,4 +621,16 @@ function configureSaml() {
       });
     },
   );
+}
+
+function assertPublishedDashboardIsListed() {
+  cy.findByTestId("embedding-hub-main").within(() => {
+    // The hub clips its content and scrolls it internally, so this card sits
+    // below the fold on a CI-sized viewport and Cypress reads it as hidden
+    // until it is scrolled in.
+    cy.findByText("Published guest embeds")
+      .scrollIntoView()
+      .should("be.visible");
+    cy.findByText("Published dashboard").should("be.visible");
+  });
 }
