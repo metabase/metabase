@@ -34,6 +34,8 @@ There are three permission levels for collections:
 
 The group can view, edit, move, delete, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../exploration-and-organization/events-and-timelines.md).
 
+Curate access doesn't let people create or edit a model's actions. Only admins can do that. See [Who can use model actions](../data-modeling/models/actions/introduction.md#who-can-use-model-actions).
+
 ### View access
 
 The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md). Note: Curate access includes View access.
@@ -48,7 +50,7 @@ Collection permissions only apply to viewing and curating existing questions, mo
 
 View access to a collection includes access to the query definition of each item saved in it, including the SQL of native questions. If a group can view a question, they can see how that question was built, including through the [Metabase API](../api.html). This is true even if they lack [Create queries](./data.md#create-queries-permissions) permissions for the underlying data, and even if they can't run the query themselves. If you don't want a group to see a query, don't give them access to the collection where that query is saved.
 
-When a group has their data permission set to [Blocked](./data.md#blocked-view-data-permission) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved. 
+When a group has their data permission set to [Blocked](./data.md#blocked-view-data-permission) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
 
 ## Dashboards with questions from multiple collections
 
@@ -60,7 +62,7 @@ In general, it's easier to manage permissions when keeping all of a dashboard's 
 
 ## Setting permissions for collections
 
-You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
+You can set permissions on a collection by clicking on the three-dot menu (**...**) in the top-right of the screen while viewing the collection, and selecting **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
 
 ![Permissions](./images/collection-permissions.png)
 
@@ -84,7 +86,7 @@ Just like with data access permissions, collection permissions are _additive_, m
 
 ## Deleting collections
 
-Users with curate permission for a collection can move collections to Trash, see [Delete and Restore](../exploration-and-organization/delete-and-restore.md).
+To move a collection to the Trash, people need Curate access to the collection _and_ to every sub-collection inside it, since trashing a collection also trashes everything in it. Moving a collection works the same way, plus people need Curate access to the new parent collection. See [Delete and Restore](../exploration-and-organization/delete-and-restore.md).
 
 ## Pinning items in collections
 
@@ -92,7 +94,7 @@ Users with curate permission for a collection can move collections to Trash, see
 
 People in groups with Curate access to a collection can pin items in the collection. Pinning an item in a collection turns the item into a handsome card at the top of the collection.
 
-To pin an item, select the **pin icon** next to the item's name.
+To pin an item, click the item's three-dot menu (**...**) and select **Pin this**. You can also drag an item to the top of the collection, or select several items and click **Pin all**.
 
 Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing), admins can designate [Official Collections][official-collections].
 
@@ -104,13 +106,13 @@ The "Our analytics" collection and individual personal collections are invincibl
 
 ### Usage analytics
 
-See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+The Usage analytics collection only has two access levels: View and No access. Even admins can't curate it. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md#access-to-usage-analytics).
 
 ### Personal collections
 
 Each person has a personal collection where they're always allowed to save things, even if they don't have Curate permissions for any other collections.
 
-Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking on the **Other users' personal collections** link at the bottom of the sidebar when viewing "Our analytics".
+Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking on the **Other users' personal collections** link at the bottom of the **Collections** section in the left sidebar.
 
 A personal collection works just like any other collection except that its permissions are fixed and cannot be changed. If a sub-collection within a personal collection is moved to a different collection, the sub-collection will inherit the permissions of its new parent collection.
 
@@ -119,6 +121,18 @@ A personal collection works just like any other collection except that its permi
 See [Permissions for the Library and its subcollections](../data-modeling/semantic-layer/library.md#library-permissions).
 
 Do not use collection permissions for **Library > Data** to control access to data in published tables. Use [Data permissions](data.md) instead.
+
+The Data Analysts group always has Curate access to Library collections, and you can't change that.
+
+### Data app collections
+
+Each [data app](../data-apps/start.md) has its own collection. You don't set permissions on a data app's collection directly: groups get View access to it when you [add them to the app](../data-apps/manage.md#choose-who-can-open-an-app). No group can get Curate access to a data app's collection.
+
+No one can edit a data app's collection, or the questions and actions in it, from Metabase, not even admins. Changes come from the app's Git repository when Metabase pulls them.
+
+### Data actions folders
+
+Only admins can create and edit [data actions](../data-modeling/data-actions.md), so you can set data actions folders to View or No access, but not Curate. Groups with View access can run the actions in the folder. See [Data action permissions](../data-modeling/data-actions.md#data-action-permissions).
 
 ### External collections
 
