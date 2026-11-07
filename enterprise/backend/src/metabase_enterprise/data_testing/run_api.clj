@@ -30,6 +30,8 @@
                                                   e))))]
       [(some-> start u.date/parse) (some-> end u.date/parse)])))
 
+;; The filters carry the names of the `test_type` and `test_id` fields of a run, which clients read in the response.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/" :- ::data-testing.schema/data-test-runs.response
   "List the runs of the tests of `test_type`, newest first. With `test_id`, only the runs of that test, which the caller
   must be able to read. Without it, the runs of every test of the type, runs of tests that are not saved included, for
