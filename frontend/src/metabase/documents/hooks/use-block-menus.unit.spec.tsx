@@ -33,7 +33,20 @@ const nodeViewProps = createMockNodeViewProps({
 describe("useBlockMenus", () => {
   const { setIntersecting } = setupMockIntersectionObserver();
 
-  function setup({ comments }: { comments: Comment[] }) {
+  afterEach(() => {
+    delete window.overrideIsWithinIframe;
+  });
+
+  function setup({
+    comments,
+    isWithinIframe = false,
+  }: {
+    comments: Comment[];
+    isWithinIframe?: boolean;
+  }) {
+    if (isWithinIframe) {
+      window.overrideIsWithinIframe = true;
+    }
     setupCommentEndpoints(comments, {
       target_type: "document",
       target_id: mockDocument.id,
@@ -104,6 +117,21 @@ describe("useBlockMenus", () => {
       expect(result.current.unresolvedCommentsCount).toBe(1);
     });
     expect(result.current.shouldShowMenus).toBe(true);
+  });
+
+  it("should not display comments in an embedded app (block menus)", async () => {
+    const { result } = setup({
+      comments: [createMockComment({ child_target_id: NODE_ID })],
+      isWithinIframe: true,
+    });
+
+    setIntersecting(true);
+    // Give a potential (unwanted) comments request a chance to resolve.
+    await delay(0);
+
+    expect(fetchMock.callHistory.called("path:/api/comment")).toBe(false);
+    expect(result.current.unresolvedCommentsCount).toBe(0);
+    expect(result.current.shouldShowMenus).toBe(false);
   });
 });
 

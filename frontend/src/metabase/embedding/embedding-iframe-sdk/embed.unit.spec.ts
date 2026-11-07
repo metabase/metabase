@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { act } from "react";
 
 import type { NavigatedEntityParameterChangePayload } from "embedding-sdk-bundle/types/navigation";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   type MetabaseDashboardElement,
@@ -862,5 +863,103 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       const event = handler.mock.calls[0][0] as CustomEvent;
       expect(event.detail).toEqual(payload);
     });
+  });
+
+  describe("attributes sent to the iframe", () => {
+    const expectSettingsSentToIframe = async (
+      tagName: string,
+      attributes: Record<string, string>,
+      expected: Record<string, unknown>,
+    ) => {
+      defineMetabaseConfig({
+        instanceUrl: "http://localhost:3000",
+        useExistingUserSession: true,
+      });
+
+      const embed = document.createElement(tagName);
+      Object.entries(attributes).forEach(([name, value]) =>
+        embed.setAttribute(name, value),
+      );
+      document.body.appendChild(embed);
+
+      const iframe = checkNotNull(embed.querySelector("iframe"));
+      const iframePostMessageSpy = jest.spyOn(
+        checkNotNull(iframe.contentWindow),
+        "postMessage",
+      );
+
+      triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
+      await flushPromises();
+
+      const setSettingsMessages: unknown[] = iframePostMessageSpy.mock.calls
+        .map(([message]) => message)
+        .filter(
+          (message) =>
+            typeof message === "object" &&
+            message !== null &&
+            "type" in message &&
+            message.type === "metabase.embed.setSettings",
+        );
+      expect(setSettingsMessages).toHaveLength(1);
+      expect(setSettingsMessages[0]).toMatchObject({ data: expected });
+    };
+
+    type AttributeCase = {
+      title: string;
+      tagName: string;
+      attributes: Record<string, string>;
+      key: string;
+      value: unknown;
+    };
+
+    it.each<AttributeCase>([
+      {
+        title: "should hide PDF download button when with-downloads is false",
+        tagName: "metabase-dashboard",
+        attributes: { "dashboard-id": "1", "with-downloads": "false" },
+        key: "withDownloads",
+        value: false,
+      },
+      {
+        title: "should pass through collection-visible-columns parameter",
+        tagName: "metabase-browser",
+        attributes: {
+          "initial-collection": "root",
+          "collection-visible-columns": '["type", "name"]',
+        },
+        key: "collectionVisibleColumns",
+        value: ["type", "name"],
+      },
+      {
+        title:
+          "should hide New Question button when with-new-question is false",
+        tagName: "metabase-browser",
+        attributes: {
+          "initial-collection": "root",
+          "with-new-question": "false",
+        },
+        key: "withNewQuestion",
+        value: false,
+      },
+      {
+        title:
+          "should hide New Dashboard button when with-new-dashboard is false",
+        tagName: "metabase-browser",
+        attributes: {
+          "initial-collection": "root",
+          "read-only": "false",
+          "with-new-dashboard": "false",
+        },
+        key: "withNewDashboard",
+        value: false,
+      },
+    ])(
+      "$title (the attribute is sent as the $key setting)",
+      async ({ tagName, attributes, key, value }) => {
+        await expectSettingsSentToIframe(tagName, attributes, {
+          [key]: value,
+        });
+      },
+    );
   });
 });

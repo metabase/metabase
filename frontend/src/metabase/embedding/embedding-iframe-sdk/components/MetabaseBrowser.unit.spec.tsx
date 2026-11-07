@@ -138,6 +138,87 @@ describe("MetabaseBrowser", () => {
       fetchMock.callHistory.calls("path:/api/collection/root").length,
     ).toBeGreaterThan(0);
   });
+
+  describe("<metabase-browser> (read-only mode)", () => {
+    it("should pass through collection-visible-columns parameter", async () => {
+      setup({
+        initialCollection: "root",
+        settings: {
+          readOnly: true,
+          collectionVisibleColumns: ["type", "name"],
+        },
+      });
+
+      const table = await screen.findByRole("table");
+      expect(await within(table).findByText("Root Dashboard")).toBeVisible();
+      expect(within(table).getByText("Name")).toBeVisible();
+      expect(within(table).getByText("Type")).toBeVisible();
+      expect(
+        within(table).queryByText("Last edited by"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(table).queryByText("Last edited at"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show all the default columns without collection-visible-columns", async () => {
+      setup({ initialCollection: "root", settings: { readOnly: true } });
+
+      const table = await screen.findByRole("table");
+      expect(await within(table).findByText("Root Dashboard")).toBeVisible();
+      expect(within(table).getByText("Last edited by")).toBeVisible();
+      expect(within(table).getByText("Last edited at")).toBeVisible();
+    });
+
+    it("should hide New Question button when with-new-question is false", async () => {
+      setup({
+        initialCollection: "root",
+        settings: { readOnly: true, withNewQuestion: false },
+      });
+
+      expect(await screen.findByText("Root Dashboard")).toBeInTheDocument();
+      expect(queryNewQuestionButton()).not.toBeInTheDocument();
+    });
+
+    it("should show New Question button without with-new-question", async () => {
+      setup({ initialCollection: "root", settings: { readOnly: true } });
+
+      expect(await screen.findByText("Root Dashboard")).toBeInTheDocument();
+      expect(queryNewQuestionButton()).toBeInTheDocument();
+    });
+  });
+
+  describe("<metabase-browser> (read-write mode)", () => {
+    it("should hide New Dashboard button when with-new-dashboard is false", async () => {
+      setup({
+        initialCollection: "root",
+        settings: { readOnly: false, withNewDashboard: false },
+      });
+
+      expect(await screen.findByText("Root Dashboard")).toBeInTheDocument();
+      expect(queryNewQuestionButton()).toBeInTheDocument();
+      expect(queryNewDashboardButton()).not.toBeInTheDocument();
+    });
+
+    it("should hide New Question button when with-new-question is false", async () => {
+      setup({
+        initialCollection: "root",
+        settings: { readOnly: false, withNewQuestion: false },
+      });
+
+      expect(await screen.findByText("Root Dashboard")).toBeInTheDocument();
+      expect(queryNewDashboardButton()).toBeInTheDocument();
+      expect(queryNewQuestionButton()).not.toBeInTheDocument();
+    });
+
+    it("should show both New Question and New Dashboard buttons by default", async () => {
+      setup({ initialCollection: "root", settings: { readOnly: false } });
+
+      expect(await screen.findByText("Root Dashboard")).toBeInTheDocument();
+      expect(queryNewQuestionButton()).toBeInTheDocument();
+      expect(queryNewDashboardButton()).toBeInTheDocument();
+    });
+  });
 });
 
 function getBreadcrumb(name: string) {
@@ -155,11 +236,15 @@ function queryNewDashboardButton() {
 interface SetupOpts {
   initialCollection?: CollectionId | "all";
   initStatus?: LoginStatus;
+  settings?: Partial<
+    Extract<SdkIframeEmbedSettings, { componentName: "metabase-browser" }>
+  >;
 }
 
 function setup({
   initialCollection = "all",
   initStatus = { status: "success" },
+  settings: settingsOverrides = {},
 }: SetupOpts = {}) {
   useLocaleMock.mockReturnValue({ isLocaleLoading: false });
 
@@ -244,6 +329,7 @@ function setup({
     initialCollection,
     // `MetabaseBrowser` defaults `readOnly` to true when the key is absent.
     readOnly: false,
+    ...settingsOverrides,
   };
 
   const authConfig = createMockSdkConfig();

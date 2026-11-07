@@ -71,24 +71,5 @@ describe("scenarios > embedding > sdk iframe embedding > pdf downloads", () => {
         event: "dashboard_pdf_exported",
       });
     });
-
-    it("should hide PDF download button when with-downloads is false", () => {
-      const frame = setup({
-        elements: [
-          {
-            component: "metabase-dashboard",
-            attributes: {
-              dashboardId: ORDERS_DASHBOARD_ID,
-              withDownloads: false,
-            },
-          },
-        ],
-      });
-
-      frame
-        .should("contain", "Orders in a dashboard")
-        .findByLabelText("Download as PDF")
-        .should("not.exist");
-    });
   });
 });

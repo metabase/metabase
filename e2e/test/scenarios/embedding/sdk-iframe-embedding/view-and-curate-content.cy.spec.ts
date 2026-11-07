@@ -34,20 +34,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       });
     });
 
-    it("should pass through collection-visible-columns parameter", () => {
-      setupEmbed(`
-        <metabase-browser
-          initial-collection="root"
-          collection-visible-columns='["type", "name"]'
-        />
-      `);
-
-      H.getSimpleEmbedIframeContent().should("contain", "Name");
-      H.getSimpleEmbedIframeContent().should("contain", "Type");
-      H.getSimpleEmbedIframeContent().should("not.contain", "Last edited by");
-      H.getSimpleEmbedIframeContent().should("not.contain", "Last edited at");
-    });
-
     it("should pass through collection-page-size parameter", () => {
       setupEmbed(`
         <metabase-browser
@@ -60,23 +46,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       H.getSimpleEmbedIframeContent()
         .findAllByTestId("collection-entry-type")
         .should("have.length", 5);
-    });
-
-    it("should hide New Question button when with-new-question is false", () => {
-      setupEmbed(`
-        <metabase-browser
-          initial-collection="root"
-          with-new-question="false"
-        />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("Orders")
-        .first()
-        .should("be.visible");
-      H.getSimpleEmbedIframeContent()
-        .findByText("New question")
-        .should("not.exist");
     });
   });
 
@@ -152,23 +121,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       });
     });
 
-    it("should hide New Dashboard button when with-new-dashboard is false", () => {
-      setupEmbed(`
-        <metabase-browser
-          initial-collection="root"
-          read-only="false"
-          with-new-dashboard="false"
-        />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("New question")
-        .should("be.visible");
-      H.getSimpleEmbedIframeContent()
-        .findByText("New dashboard")
-        .should("not.exist");
-    });
-
     it("should create a dashboard in a new collection", () => {
       setupEmbed(
         '<metabase-browser initial-collection="root" read-only="false" />',
@@ -234,23 +186,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .findByTestId("dashboard-header")
         .findByText("Foo Bar Dashboard", { timeout: 10_000 })
         .should("be.visible");
-    });
-
-    it("should hide New Question button when with-new-question is false", () => {
-      setupEmbed(`
-        <metabase-browser
-          initial-collection="root"
-          read-only="false"
-          with-new-question="false"
-        />
-      `);
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("New dashboard")
-        .should("be.visible");
-      H.getSimpleEmbedIframeContent()
-        .findByText("New question")
-        .should("not.exist");
     });
 
     it("should pass through data-picker-entity-types parameter", () => {

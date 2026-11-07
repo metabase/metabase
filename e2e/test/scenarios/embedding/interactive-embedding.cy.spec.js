@@ -9,7 +9,6 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { uuid } from "metabase/utils/uuid";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
@@ -1448,93 +1447,6 @@ describe("scenarios > embedding > full app", () => {
       });
     });
   });
-
-  describe("x-ray dashboards", () => {
-    it("should show the dashboard header by default and hide it by a param", () => {
-      visitXrayDashboardUrl({ url: "/auto/dashboard/table/1" });
-
-      cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
-      cy.button("Save this").should("be.visible");
-
-      cy.log("hide the dashboard header by a param");
-      visitXrayDashboardUrl({
-        url: "/auto/dashboard/table/1",
-        qs: { header: false },
-      });
-
-      cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
-      cy.button("Save this").should("not.exist");
-    });
-  });
-
-  describe("documents > comments", () => {
-    it("should not display comments in an embedded app", () => {
-      const DOCUMENT_ID = 1;
-      const PARAGRAPH_ID = "b7fa322a-964e-d668-8d30-c772ef4f0022";
-
-      H.createDocument({
-        idAlias: "documentId",
-        name: "Lorem ipsum",
-        document: {
-          type: "doc",
-          content: [
-            {
-              type: "paragraph",
-              attrs: {
-                _id: PARAGRAPH_ID,
-              },
-              content: [
-                {
-                  type: "text",
-                  text: "Lorem ipsum dolor sit amet.",
-                },
-              ],
-            },
-          ],
-        },
-      });
-      H.createComment({
-        target_type: "document",
-        target_id: DOCUMENT_ID,
-        child_target_id: PARAGRAPH_ID,
-        parent_comment_id: null,
-        content: {
-          type: "doc",
-          content: [
-            {
-              type: "paragraph",
-              attrs: { _id: uuid() },
-              content: [{ type: "text", text: "Test comment" }],
-            },
-          ],
-        },
-        html: "<p>Test comment</p>",
-      });
-
-      cy.intercept({
-        method: "GET",
-        path: "/api/document/*",
-      }).as("documentGet");
-
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/comment",
-      }).as("commentGet");
-
-      H.visitFullAppEmbeddingUrl({
-        url: `/document/${DOCUMENT_ID}`,
-      });
-
-      cy.wait("@documentGet");
-      H.documentContent().should("contain.text", "Lorem ipsum dolor sit amet.");
-
-      cy.findByLabelText("Show all comments").should("not.exist");
-
-      cy.findAllByRole("link", { name: "Comments" }).should("not.exist");
-
-      cy.get("@commentGet.all").should("have.length", 0);
-    });
-  });
 });
 
 describe("scenarios > embedding > full app - jwt sso integration", () => {
@@ -1647,11 +1559,6 @@ const visitDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
-};
-
-const visitXrayDashboardUrl = (urlOptions) => {
-  H.visitFullAppEmbeddingUrl(urlOptions);
-  cy.wait("@getXrayDashboard");
 };
 
 const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {

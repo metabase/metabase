@@ -1,12 +1,16 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { delay } from "__support__/utils";
 import {
   PrintContext,
   type PrintContextValue,
 } from "metabase/documents/contexts/PrintContext";
+import type { Comment } from "metabase-types/api";
 import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
+import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
@@ -17,6 +21,8 @@ const defaultDocument = createMockDocument({
   updated_at: "2024-01-15T10:30:00Z",
 });
 
+const NO_COMMENTS: Comment[] = [];
+
 const setup = ({
   document = defaultDocument,
   documentTitle = "Test Document",
@@ -26,6 +32,8 @@ const setup = ({
   isBookmarked = false,
   isAdmin = false,
   isPublicSharingEnabled = false,
+  comments = NO_COMMENTS,
+  isWithinIframe = false,
   onTitleChange = jest.fn(),
   onSave = jest.fn(),
   onMove = jest.fn(),
@@ -52,7 +60,11 @@ const setup = ({
     onShowHistory,
   };
 
-  setupCommentEndpoints([], {
+  if (isWithinIframe) {
+    window.overrideIsWithinIframe = true;
+  }
+
+  setupCommentEndpoints(comments, {
     target_type: "document",
     target_id: document.id,
   });
@@ -82,6 +94,10 @@ const setup = ({
 };
 
 describe("DocumentHeader", () => {
+  afterEach(() => {
+    delete window.overrideIsWithinIframe;
+  });
+
   describe("Title input", () => {
     it("should render document title", () => {
       setup({ documentTitle: "My Document" });
@@ -301,6 +317,30 @@ describe("DocumentHeader", () => {
       await userEvent.click(screen.getByLabelText("More options"));
       await userEvent.click(screen.getByText("Duplicate"));
       expect(onDuplicate).toHaveBeenCalled();
+    });
+  });
+
+  describe("Comments", () => {
+    const comments = [createMockComment({ target_id: defaultDocument.id })];
+
+    it("should display comments outside of an embedded app", async () => {
+      setup({ comments });
+
+      expect(
+        await screen.findByRole("link", { name: "Show all comments" }),
+      ).toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/comment")).toBe(true);
+    });
+
+    it("should not display comments in an embedded app (document header)", async () => {
+      setup({ comments, isWithinIframe: true });
+
+      expect(screen.getByText("John Doe")).toBeInTheDocument();
+      // The request-not-sent assertion carries this test; the link check alone
+      // would pass before any comments could load (the positive control above
+      // shows the link once they do).
+      await delay(0);
+      expect(fetchMock.callHistory.called("path:/api/comment")).toBe(false);
     });
   });
 });
