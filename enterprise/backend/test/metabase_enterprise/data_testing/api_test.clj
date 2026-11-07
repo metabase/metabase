@@ -211,9 +211,9 @@
             (mt/user-http-request :crowberto :put (str "ee/transform-test/" test-id) {:expectations []})
             (is (= ["no rows"] (mapv :name (t2/select-one-fn :expectations :model/TransformTest :id test-id)))))
           (testing "a refused saved run records no run"
-            (let [before (t2/count :model/TransformTestRun :transform_test_id empty-id)]
+            (let [before (t2/count :model/DataTestRun :test_type :transform :test_id empty-id)]
               (mt/user-http-request :crowberto :post (format "ee/transform-test/%d/run" empty-id))
-              (is (= before (t2/count :model/TransformTestRun :transform_test_id empty-id)))))
+              (is (= before (t2/count :model/DataTestRun :test_type :transform :test_id empty-id)))))
           (finally
             (t2/delete! :model/TransformTest :transform_id transform-id :id [:not-in [test-id empty-id]])))))))
 
