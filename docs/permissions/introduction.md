@@ -14,7 +14,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 - Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people. Though you can define user attributes to apply permissions person to person.
 - People can be in more than one group.
-- If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has Curate access to a collection, then that person will have curate access to that collection.
+- If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has Curate access to a collection, then that person will have curate access to that collection. One exception: if [row and column security](./row-and-column-security.md) applies to a person for any table in a database, that person can't write native queries on that database, even if another of their groups allows it. See [Query builder and native permissions](./data.md#query-builder-and-native-create-queries-permission).
 - By default, everyone is in the All users group, so be sure to block that group's access before granting permissions to other groups. Thankfully, Metabase will warn you if the All users group has more permissive permissions than the group you're restricting.
 
 ## What you can set permissions on
@@ -23,7 +23,9 @@ If instead you're wondering about what data Metabase the company can see, check 
   - [View data](./data.md#view-data-permissions)
   - [Create queries](./data.md#create-queries-permissions)
   - [Download results](./data.md#download-results-permissions)
+  - [Manage table metadata](./data.md#manage-table-metadata-permissions)
   - [Manage database](./data.md#manage-database-permissions)
+  - [Transforms](./data.md#transform-permissions)
 - [Collection permissions][collections] - Control access to questions, dashboards, models, metrics, events, and timelines
 - [Application permissions](application.md) - Control access to admin features (Pro and Enterprise plans only):
   - [Settings tab in Admin panel](application.md#settings-access)
@@ -47,10 +49,10 @@ With [Database routing](./database-routing.md), you can build a question once, a
 
 With [Connection impersonation](./impersonation.md), you can manage permissions with roles you define in your database.
 
-[collections]: ../exploration-and-organization/collections.md
+[collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
 [slack-integration]: ../configuring-metabase/slack.md
-[snippet-folders]: ../questions/native-editor/snippets.md
+[snippet-folders]: ./snippets.md
 [troubleshooting-permissions]: ../troubleshooting-guide/permissions.md

@@ -11,6 +11,14 @@ You can use a single Metabase to manage permissions for all of your customers. W
 - [One database per customer](#one-database-per-customer)
 - [One schema per customer](#multiple-schemas-one-schema-per-customer)
 
+The tools on this page work on people with Metabase accounts, so they need an embedding setup with SSO. [Guest embeds](../embedding/guest-embedding.md) don't know who's viewing them, so features that rely on user attributes, like row and column security and database routing, don't apply. To restrict data in a guest embed, use [locked parameters](../embedding/guest-embedding.md#locked-parameters).
+
+## Permissions for tenants
+
+If you use [tenants](../embedding/tenants.md), you'll set data permissions on the **All tenant users** group and on your tenant groups. See [Data permissions for tenants](../embedding/tenants.md#data-permissions-for-tenants). You can also use [tenant attributes](../embedding/tenants.md#tenant-attributes) to set up row and column security, impersonation, and database routing for everyone in a tenant.
+
+When you add a new database to Metabase, tenant groups (including **All tenant users**) get no access to it: their View data is set to **Blocked**, and Create queries to **No**. You'll need to grant tenant groups access to the new database yourself.
+
 ## One database for all customers (commingled setups)
 
 If all your customer data is in the same schema and on the same tables (often referred to as "data commingling"):
@@ -121,7 +129,7 @@ Say you have a single database with ten different tables, each corresponding to 
 
 1. **Create a group** for your first customer in **Admin** > **People**. If you need different permission levels within a company (some employees can ask questions, others can only view), create multiple groups like **Company A (Self-service)** and **Company A (View only)**.
 
-2. **Grant table access** by going to **Admin** > **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
+2. **Grant table access** by going to **Admin** > **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create queries** permissions to **Query builder only**.
 
    For employees who should only view data and create collections to house those specific questions and dashboards, see [collection permissions](./collections.md).
 

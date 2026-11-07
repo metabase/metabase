@@ -13,6 +13,7 @@ What you can do with alerts and dashboard subscriptions depends on whether you'r
 
 - [All Users group](#all-users-group-notification-permissions)
 - [Groups with impersonation or row and column security](#groups-with-impersonation-or-row-and-column-security)
+- [Tenant users](#tenant-users)
 - [Administrators group](#administrators-group-notification-permissions)
 
 ### All Users group notification permissions
@@ -25,11 +26,17 @@ Everyone's in the All Users group. Which means that everyone can:
 
 When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using the **creator's** [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
 
+On Pro and Enterprise plans, people also need the [Subscriptions and alerts](./application.md#subscriptions-and-alerts) application permission to create or edit alerts and subscriptions. The All Users group has this permission by default.
+
 ### Groups with impersonation or row and column security
 
 People in groups with [impersonation](./impersonation.md) or [row and column security](./row-and-column-security.md) permissions cannot create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md). They can still set up email alerts and subscriptions.
 
 For email alerts and subscriptions, people in these groups will only see themselves in the list of recipients.
+
+### Tenant users
+
+[Tenant users](../embedding/tenants.md) can't create Slack alerts or dashboard subscriptions either. In the list of recipients, tenant users only see people from their own tenant. Tenant users start without the Subscriptions and alerts permission; see [Subscription permissions for tenants](../embedding/tenants.md#subscription-permissions-for-tenants).
 
 ### Administrators group notification permissions
 

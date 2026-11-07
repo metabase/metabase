@@ -41,7 +41,7 @@ Row and column security shows specific data to each person based on their [user 
 | Goal                                           | Row (filter by a column in the table) | Custom (use a saved SQL question) |
 | ---------------------------------------------- | ------------------------------------- | --------------------------------- |
 | Restrict rows by filtering on a single column  | ✅                                    | ✅                                |
-| Restrict rows by filtering on multiple columns | ❌                                    | ✅                                |
+| Restrict rows by filtering on multiple columns | ✅                                    | ✅                                |
 | Restrict columns                               | ❌                                    | ✅                                |
 | Edit columns                                   | ❌                                    | ✅                                |
 
@@ -53,6 +53,8 @@ For example, you can filter the Accounts table for a group so that the user attr
 
 - "Basic" will see rows where `Plan = "Basic"` (rows where the Plan column matches the value "Basic").
 - "Premium" will see the rows where `Plan = "Premium"` (rows where the Plan column matches the value "Premium").
+
+To filter on more than one column, click **Add a filter** and map another column to a user attribute. People will only see rows that match all of the filters.
 
 ### Custom row and column security: use a SQL question to create a custom "view" of a table
 
@@ -83,7 +85,7 @@ For example, you can set up a row-level security so that the user attribute `pla
 
 Metabase uses the user attribute key to look up the user attribute value for a specific person. User attribute keys can be mapped to parameters in Metabase.
 
-The **user attribute value** must be an exact, case-sensitive match for the filter value. For example, if you add row security to the Accounts table with the filter `Plan = "Basic"`, make sure that you enter "Basic" as the user attribute value. If you set the user attribute value to lowercase "basic" (a value which doesn't exist in the Plan column of the Accounts table), the person will get an empty result instead of the table.
+The **user attribute value** must exactly match the filter value. Whether the match is case-sensitive depends on your database (for example, PostgreSQL compares text case-sensitively, while MySQL and SQL Server usually don't), so it's safest to match the case too. For example, if you add row security to the Accounts table with the filter `Plan = "Basic"`, make sure that you enter "Basic" as the user attribute value. If you set the user attribute value to lowercase "basic" (a value which doesn't exist in the Plan column of the Accounts table), the person will get an empty result instead of the table.
 
 Examples of user attributes in play:
 
@@ -126,9 +128,9 @@ Aside from excluding rows and columns, you can also **display edited columns** (
 
 For example, you can create an "Edited Accounts" SQL question that truncates the Email column to display usernames instead of complete email addresses.
 
-If you edit a column, the schema of the SQL question (the question you want to display instead of the table) must match the schema of the original table. That means the "Edited Accounts" SQL question must return the same number of columns and corresponding data types as the original Accounts table.
+If you edit a column, keep the column's name and data type the same as in the original table. Metabase matches the question's columns to the table's columns by name, and it'll show an error if a column's data type doesn't match. For example, the "Edited Accounts" question can return a shortened Email column, as long as the column is still called Email and still returns text.
 
-You cannot add columns.
+The question can leave out columns from the original table (that's how you hide them), but it can't add new ones. Metabase drops any columns that aren't in the original table.
 
 ## Setting up column security
 
@@ -136,10 +138,10 @@ You cannot add columns.
 2. Go to **Admin** > **Permissions**.
 3. Select the database and table that you want to secure.
 4. Find the group to restrict.
-5. Click on the dropdown under **Data access** for that group.
+5. Click on the dropdown under **View data** for that group.
 6. Select "Row and column security".
 7. Select "Use a saved question to create a custom view for this table".
-8. Select your saved question. The question should be written in SQL. If the question contains parameters, those parameters must be required (they cannot be optional).
+8. Select your saved question. Metabase lets you pick any saved question or model, but a SQL question is the safest choice (see [Creating a SQL question](#creating-a-sql-question-for-metabase-to-display-instead-of-a-table)). If the question contains parameters, those parameters must be required (they can't be optional).
 9. Optional: [restrict rows based on people's user attributes](#restricting-rows-with-user-attributes-using-a-sql-variable).
 
 You can find sample setups in the [Row and column security examples](./row-and-column-security-examples.md).
@@ -236,6 +238,7 @@ Say you've set up [column security](#custom-row-and-column-security-use-a-sql-qu
 
 The Email column may get exposed to someone if:
 
+- The person is also in another group with **Can view** access to the Accounts table. Metabase gives people the most permissive access across all of their groups, so it won't apply the row and column security policy to that person.
 - The person belongs to [multiple row and column security policies](#multiple-row-and-column-security-permissions).
 - Someone else in a non-secured group shares the Email column from:
   - A [SQL question](../questions/native-editor/writing-sql.md)
@@ -286,10 +289,14 @@ Metabase can only create row and column security using the group membership or u
 
 Some things to keep in mind when using row and column security.
 
-### Groups with native query permissions (access to the SQL editor) can bypass row and column security
+### People with row and column security can't use the SQL editor on that database
 
-Row and column security is limited to the [query builder](../questions/query-builder/editor.md).
-You can't set up [native query permissions](./data.md#create-queries-permissions) for groups with row and column security.
+Row and column security is limited to the [query builder](../questions/query-builder/editor.md). Native (SQL) queries would get around it, so Metabase keeps people with row and column security out of the SQL editor:
+
+- You can't give [native query permissions](./data.md#create-queries-permissions) to a group with row and column security on that database. When you save a row and column security policy, Metabase changes the group's **Create queries** permission for the database from **Query builder and native** to **Query builder only**.
+- If row and column security applies to a person on any table in a database, that person can't run native queries on that database, even if another of their groups has native query access.
+- People with row and column security can't view the SQL that Metabase generates for their questions, or convert their questions to SQL.
+- Groups with row and column security can't get [Transforms](./data.md#transform-permissions) permissions, since transforms require native query access.
 
 To enforce row-level permissions with the native query editor, check out [impersonation](./impersonation.md).
 
@@ -299,9 +306,9 @@ Since Metabase can't parse SQL queries, the results of SQL questions will always
 
 [Use collection permissions](#you-cannot-secure-the-rows-or-columns-of-sql-results) to prevent groups from viewing saved SQL questions with restricted data.
 
-### Non-SQL databases have limited row and column security
+### MongoDB only supports row-level security
 
-MongoDB and Druid only support [row-level security](#row-level-security-filter-by-a-column-in-the-table). Neither supports column-level security.
+MongoDB only supports [row-level security](#row-level-security-filter-by-a-column-in-the-table). It doesn't support column-level security.
 
 ### Advanced data types require a workaround
 
@@ -328,6 +335,23 @@ People in groups with row and column security can't create Slack [alerts](../que
 If row and column security applies to a person on any table in a database, that person can't run [actions](../data-modeling/data-actions.md) on that database. Actions write to tables directly, so they would get around the row and column security.
 
 [Public action forms](../data-modeling/data-actions.md#share-a-data-action-as-a-public-form) don't check row and column security. An admin can make any action public, even on a database where row and column security applies to some groups, and anyone with the link can then run the action. Before you make an action public, make sure that it's OK for anyone to make that change to your data.
+
+### Other features aren't available to people with row and column security
+
+If row and column security applies to a person on any table, that person can't:
+
+- [Upload CSVs](../databases/uploads.md).
+- See or use [SQL snippets](../questions/native-editor/snippets.md).
+- See other people when they pick recipients for an alert or subscription. They'll only see themselves.
+- Find individual records from [models with indexed values](../data-modeling/models/models.md#surface-individual-records-in-search-by-matching-against-this-column) in search results.
+
+### Only admins can change questions that row and column security uses
+
+If a row and column security policy uses a saved question, only admins can change that question's query, archive it, or delete it. The same goes for anything that the question uses, like other questions, snippets, segments, and measures, even if other people have [Curate access](./collections.md#curate-access) to the collection the item is in.
+
+### Queries fail if your plan doesn't include row and column security
+
+If your Metabase can't confirm that your plan includes row and column security (for example, if your license token is no longer valid), Metabase won't run queries for people with row and column security. Those people get an error instead of unfiltered data.
 
 ## Further reading
 

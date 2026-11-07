@@ -1,7 +1,7 @@
 ---
 title: Row and column security examples
 redirect_from:
-  - /docs/latest/permissions/row-and-column-security-examples
+  - /docs/latest/permissions/data-sandbox-examples
 ---
 
 # Row and column security examples
@@ -29,7 +29,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 5. **Add Mr. Beer to the Customers group**: See [adding people to groups](../people-and-groups/managing.md#adding-people-to-groups).
 
-6. **Create a collection that is only viewable by Admins.** Call it "Admin collection". We'll use this collection to store SQL questions that we use to secure tables in examples 2 and 3. See [Collection permissions](./collections.md).
+6. **Create a collection that is only viewable by Admins.** Call it "Admins collection". We'll use this collection to store SQL questions that we use to secure tables in examples 2 and 3. See [Collection permissions](./collections.md).
 
 ## Filtering rows based on user attributes
 
@@ -43,7 +43,7 @@ In this example, we’ll secure our `Orders` table so that anyone in our Custome
 
 ![Set row and column security](./images/apply-row-and-column-security.png)
 
-4. **Filter by a column for each table.** For each table, Metabase will ask us "How do you want to filter this table for users in this group?". In each case, we'll keep the default selection: "Filter by a column on this table." For the `Orders` table, we'll filter by the `User ID` column, which we'll set equal to the `user_id` attribute for people in the Customers group.
+4. **Filter by a column for each table.** For each table, Metabase will ask us "How do you want to filter this table?". In each case, we'll keep the default selection: "Filter by a column in the table." For the `Orders` table, we'll filter by the `User ID` column, which we'll set equal to the `user_id` attribute for people in the Customers group.
 
 ![Select user attribute](images/select-user-attribute.png)
 
@@ -56,7 +56,7 @@ For the `People` table, we'll filter by the `ID` column, which we'll set equal t
 To test out Mr. Beer's view of the world, we’ll open up a new incognito/private browser window and log in using Mr. Beer's account.
 
 1. Log in as Cloyd Beer.
-2. Click **Browse** > **Databases**.
+2. In the left sidebar, click **Data** > **Databases**.
 3. Click on the **Orders** table.
 4. Confirm that Metabase displays only the orders that Mr. Beer placed, that is, orders associated with the User ID of `2499`.
 
