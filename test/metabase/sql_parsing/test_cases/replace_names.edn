@@ -111,4 +111,29 @@
    :dialect      "clickhouse"
    :sql          "SELECT * FROM source_table WHERE ts > {p: DateTime}"
    :replacements {:tables [[{:table "source_table"} {:db nil :schema nil :table "target_table"}]]}
-   :expected     "SELECT * FROM target_table WHERE ts > {p: DateTime}"}]}
+   :expected     "SELECT * FROM target_table WHERE ts > {p: DateTime}"}
+
+  {:name         "a CTE with the name of a replaced table is not replaced"
+   :dialect      "postgres"
+   :sql          "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders JOIN people ON TRUE"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]
+                           [{:table "people"} {:db nil :schema nil :table "tmp_people"}]]}
+   :expected     "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders JOIN tmp_people ON TRUE"}
+
+  {:name         "a column read through a table alias is not replaced"
+   :dialect      "postgres"
+   :sql          "SELECT o.total AS amount FROM orders o WHERE o.total > 10"
+   :replacements {:columns [[{:table "orders" :column "total"} "grand_total"]]}
+   :expected     "SELECT o.total AS amount FROM orders AS o WHERE o.total > 10"}
+
+  {:name         "a schema is replaced"
+   :dialect      "postgres"
+   :sql          "SELECT * FROM public.orders JOIN public.users ON users.id = orders.user_id"
+   :replacements {:schemas {"public" "warehouse"}}
+   :expected     "SELECT * FROM warehouse.orders JOIN warehouse.users ON users.id = orders.user_id"}
+
+  {:name         "a quoted table name with a space is replaced, and its qualifier too"
+   :dialect      "snowflake"
+   :sql          "SELECT \"Weird Name\".\"Col A\" FROM \"Weird Name\""
+   :replacements {:tables [[{:table "Weird Name"} {:db nil :schema nil :table "TMP_T"}]]}
+   :expected     "SELECT \"TMP_T\".\"Col A\" FROM \"TMP_T\""}]}

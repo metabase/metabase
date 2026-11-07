@@ -107,6 +107,15 @@
         (is (= expected (sql-parsing/simple-query? (sql-tools/sqlglot-parser) dialect sql))
             (pr-str sql))))))
 
+;;; ------------------------------------------------ transpile-sql -------------------------------------------------
+
+(deftest ^:parallel transpile-sql-test
+  (testing "a query rewritten from one dialect to another, or skipped when it holds a template tag"
+    (doseq [{:keys [name sql from to expected]} (cases "transpile_sql")]
+      (testing name
+        (is (= expected (sql-parsing/transpile-sql (sql-tools/sqlglot-parser) sql from to))
+            (pr-str sql))))))
+
 ;;; ------------------------------------------------ field-references ----------------------------------------------
 
 (deftest ^:parallel field-references-test
