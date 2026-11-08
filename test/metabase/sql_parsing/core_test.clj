@@ -33,6 +33,27 @@
        sort
        vec))
 
+(defn- built
+  "The case's SQL: written out, or built from `:build` when the point of the case is SQL too long to write. Each
+  item is formatted with its index three times and then the index plus one."
+  [{:keys [sql build]}]
+  (or sql
+      (let [{:keys [prefix item count extra separator suffix]} build
+            items (cond-> (mapv #(format item % % % (inc %)) (range count))
+                    extra (conj extra))]
+        (str prefix (str/join (or separator ", ") items) suffix))))
+
+(defn- expanded-cases
+  "The cases in `test_cases/<file-name>.edn`, with a case that lists `:dialects` or `:sqls` made into one case for
+  each dialect and SQL."
+  [file-name]
+  (for [{:keys [dialects sqls] :as case} (cases file-name)
+        dialect (if (contains? case :dialects) dialects [(:dialect case)])
+        sql     (or sqls [(built case)])]
+    (-> case
+        (dissoc :dialects :sqls :build)
+        (assoc :dialect dialect :sql sql))))
+
 ;;; --------------------------------------------- parse-error-message ----------------------------------------------
 
 (defn- parse-failure
@@ -129,13 +150,14 @@
 
 (deftest ^:parallel single-stmt-classification-test
   (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
-    (doseq [{:keys [name sql dialect stmt-type expected]} (cases "single_stmt")]
-      (testing name
-        (is (=? expected (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type))
-            (pr-str sql))
-        (is (= (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)
-               (sql-parsing/classify-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type))
-            (pr-str sql))))))
+    (doseq [{:keys [name sql dialect stmt-type expected validate-expected]} (expanded-cases "single_stmt")]
+      (testing (str name ", dialect " (pr-str dialect))
+        (let [classified (sql-parsing/classify-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)
+              validated  (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)]
+          (is (=? expected classified) (pr-str sql))
+          (if validate-expected
+            (is (=? validate-expected validated) (pr-str sql))
+            (is (= classified validated) (pr-str sql))))))))
 
 ;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
 
@@ -175,15 +197,6 @@
               (pr-str sql)))))))
 
 ;;; ------------------------------------------- strip-large-literal-lists ------------------------------------------
-
-(defn- built
-  "The case's SQL: written out, or built from `:build` when the point of the case is a list too long to write."
-  [{:keys [sql build]}]
-  (or sql
-      (let [{:keys [prefix item count extra separator suffix]} build
-            items (cond-> (mapv #(format item % % %) (range count))
-                    extra (conj extra))]
-        (str prefix (str/join (or separator ", ") items) suffix))))
 
 (deftest ^:parallel strip-large-literal-lists-test
   (testing "the literal lists too big for the parser to hold, replaced by a single NULL before it sees them"
