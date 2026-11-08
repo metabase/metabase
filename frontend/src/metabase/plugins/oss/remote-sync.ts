@@ -21,7 +21,9 @@ type PluginRemoteSync = {
   SettingsPage: ComponentType;
   SettingsModal: ComponentType<RemoteSyncSettingsModalProps>;
   SetupMenuItem: ComponentType<RemoteSyncSetupMenuItemProps>;
+  AppBarControls: ComponentType;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
+  getIsRemoteSyncVisible: (state: State) => boolean;
 };
 
 const getDefaultPluginRemoteSync = (): PluginRemoteSync => ({
@@ -30,7 +32,9 @@ const getDefaultPluginRemoteSync = (): PluginRemoteSync => ({
   SettingsPage: PluginPlaceholder,
   SettingsModal: PluginPlaceholder,
   SetupMenuItem: PluginPlaceholder,
+  AppBarControls: PluginPlaceholder,
   getIsRemoteSyncReadOnly: () => false,
+  getIsRemoteSyncVisible: () => false,
 });
 
 export const PLUGIN_REMOTE_SYNC = definePluginSlot(getDefaultPluginRemoteSync);

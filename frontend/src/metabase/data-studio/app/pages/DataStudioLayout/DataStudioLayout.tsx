@@ -206,6 +206,7 @@ export function DataStudioLayout() {
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
+      headerControls={<PLUGIN_REMOTE_SYNC.AppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
     >
