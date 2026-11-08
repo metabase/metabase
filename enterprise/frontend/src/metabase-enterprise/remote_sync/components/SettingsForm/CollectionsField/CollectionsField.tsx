@@ -1,23 +1,28 @@
 import { useField } from "formik";
-import { t } from "ttag";
 
 import { Stack, Switch, Text } from "metabase/ui";
 
 import type { SyncableCollection } from "../../../types";
 
 type CollectionsFieldProps = {
+  title: string;
+  emptyMessage: string;
   collections: SyncableCollection[];
 };
 
-export const CollectionsField = ({ collections }: CollectionsFieldProps) => {
+export const CollectionsField = ({
+  title,
+  emptyMessage,
+  collections,
+}: CollectionsFieldProps) => {
   const [{ value }, , { setValue }] =
     useField<Record<number, boolean>>("collections");
 
   return (
     <Stack gap="sm">
-      <Text fw="bold">{t`Collections to sync`}</Text>
+      <Text fw="bold">{title}</Text>
       {collections.length === 0 && (
-        <Text c="text-secondary">{t`There are no top-level collections yet.`}</Text>
+        <Text c="text-secondary">{emptyMessage}</Text>
       )}
       {collections.map((collection) => (
         <Switch

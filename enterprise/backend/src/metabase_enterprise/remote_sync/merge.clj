@@ -10,7 +10,11 @@
   "The name of the entity of `key` for people, from whichever of `docs` has it."
   [key & docs]
   (let [entity (some :entity docs)]
-    (or (:name entity) (:term entity) (:path entity) (str (name (first key)) " " (second key)))))
+    (or (:name entity)
+        (:term entity)
+        (:path entity)
+        (let [ref (second key)]
+          (if (sequential? ref) (str (last ref)) (str (name (first key)) " " ref))))))
 
 (defn merge-documents
   "The merge of `ours` and `theirs`, maps from key to document, since `base`: `:merged`, the documents to keep;

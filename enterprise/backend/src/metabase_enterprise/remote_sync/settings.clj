@@ -127,7 +127,7 @@
   (let [url (or (:remote-sync-url settings) (setting/get :remote-sync-url))]
     (when (str/blank? url)
       (throw (ex-info (tru "Remote sync is not configured.") {})))
-    (when-not (re-find #"^(https?|file)://" url)
+    (when-not (or (not (str/includes? url ":")) (re-find #"^(https?|file)://" url))
       (throw (ex-info (tru "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)")
                       {})))
     (let [branches (protocol/branches (git/repository url (token settings)))

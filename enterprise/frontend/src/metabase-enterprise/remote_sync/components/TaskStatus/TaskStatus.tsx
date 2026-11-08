@@ -8,6 +8,7 @@ import { useDispatch } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { Button, Group, List, Modal, Progress, Stack, Text } from "metabase/ui";
 import {
+  EnterpriseApi,
   useCancelRemoteSyncCurrentTaskMutation,
   useGetRemoteSyncCurrentTaskQuery,
 } from "metabase-enterprise/api";
@@ -64,6 +65,13 @@ const TaskStatusModal = () => {
       sendToast({ message: getOutcomeMessage(task.outcome), icon: "check" });
       if (task.sync_task_type === "import") {
         dispatch(Api.util.resetApiState());
+      } else {
+        dispatch(
+          EnterpriseApi.util.invalidateTags([
+            "session-properties",
+            "remote-sync-dirty",
+          ]),
+        );
       }
     } else {
       setFailedTask(task);

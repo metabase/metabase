@@ -7,6 +7,7 @@ import {
   collectionTable,
   entityPickerModal,
   entityPickerModalItem,
+  modal,
   navigationSidebar,
   popover,
 } from "./e2e-ui-elements-helpers";
@@ -238,91 +239,51 @@ export const goToSyncedCollection = (
     .findByRole("treeitem", { name: new RegExp(collectionName) })
     .click(opts);
 
-// Git sync controls are now in the app bar, not the sidebar
 export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
 
-const ensureGitSyncMenuOpen = () => {
-  getGitSyncControls().then(($btn) => {
-    if ($btn.attr("data-expanded") !== "true") {
-      cy.wrap($btn).click();
-    }
-  });
-};
+const openGitSyncMenu = () =>
+  getGitSyncControls().findByRole("button", { name: /Sync/ }).click();
 
 export const getPullOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Pull changes/ });
+  openGitSyncMenu();
+  return popover().findByRole("menuitem", { name: /Pull changes/ });
 };
 
 export const getPushOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Push changes/ });
+  openGitSyncMenu();
+  return popover().findByRole("menuitem", { name: /Push changes/ });
 };
 
-// Mantine combobox options can drop a synthetic `.click()` if the dropdown's
-// state machine isn't fully wired yet (e.g. right after the menu opens — the
-// dropdown is visible but the option's handler isn't attached). `realClick`
-// dispatches native mouse events that Mantine processes reliably, and we then
-// verify the menu closed; if not, re-click once with a synthetic click.
-//
-// We detect "menu still open" by looking for the main-menu options (Pull/Push) —
-// neither "any popover visible" nor the controls' `data-expanded` attribute
-// distinguishes the main menu from follow-up popovers.
-const MAIN_MENU_OPTION_RE = /Pull changes|Push changes/;
-const clickGitSyncOption = (
-  getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
-) => {
-  // Clicks are swallowed while `data-combobox-disabled` is set (cleared once the git round-trips resolve)
-  getOption().should("not.have.attr", "data-combobox-disabled");
-  getOption().realClick();
-  cy.get("body").then(($body) => {
-    const mainMenuStillOpen =
-      $body
-        .find('[role="option"]:visible')
-        .filter((_, el) => MAIN_MENU_OPTION_RE.test(el.textContent || ""))
-        .length > 0;
-    if (mainMenuStillOpen) {
-      cy.log("git-sync menu didn't close — re-clicking option");
-      getOption().click();
-    }
-  });
-};
+export const clickPullOption = () => getPullOption().click();
 
-export const clickPullOption = () => clickGitSyncOption(getPullOption);
-export const clickPushOption = () => clickGitSyncOption(getPushOption);
-
-// --- Branch switching (moved from the app bar to the instance Settings panel) ---
+export const clickPushOption = () => getPushOption().click();
 
 export const visitRemoteSyncSettings = () =>
   cy.visit("/admin/settings/remote-sync");
 
-// The read-write branch switcher lives in the "Sync branch" section of the Settings page.
-export const getSettingsBranchSwitcher = () =>
-  cy.findByTestId("settings-branch-switcher");
-
-// Open the branch picker on the Settings page (navigates there first).
-const openSettingsBranchPicker = () => {
-  visitRemoteSyncSettings();
-  // The Sync branch section sits below the fold at the default viewport, and Cypress treats an element
-  // clipped by a scrollable ancestor as hidden, so scroll to it before asserting visibility.
-  getSettingsBranchSwitcher().scrollIntoView().should("be.visible").click();
-};
-
-// Create a new branch (forks the current branch and switches to it) via the Settings branch switcher.
-export const createBranchViaSettings = (name: string) => {
-  openSettingsBranchPicker();
-  popover().findByPlaceholderText("Find or create a branch...").type(name);
-  popover()
-    .findByRole("option", { name: /Create branch/ })
-    .click();
-};
-
-// Select an existing branch via the Settings branch switcher. With unsaved changes this opens the
-// choose-what-to-do modal instead of switching immediately.
-export const switchBranchViaSettings = (branch: string) => {
-  openSettingsBranchPicker();
-  popover().findByPlaceholderText("Find or create a branch...").type(branch);
+export const switchBranch = (branch: string) => {
+  getGitSyncControls().findByRole("textbox", { name: "Branch" }).click();
   popover().findByRole("option", { name: branch }).click();
+};
+
+export const pushToNewBranch = (branch: string, message = "New branch") => {
+  openGitSyncMenu();
+  popover()
+    .findByRole("menuitem", { name: /Push to a new branch/ })
+    .click();
+  modal().within(() => {
+    cy.findByLabelText("Branch name").type(branch);
+    cy.findByLabelText("Commit message").type(message);
+    cy.button("Push").click();
+  });
+};
+
+export const pushChanges = (message = "Local changes") => {
+  clickPushOption();
+  modal().within(() => {
+    cy.findByLabelText("Commit message").type(message);
+    cy.button("Push").click();
+  });
 };
 
 // Enable tenants feature for testing
@@ -341,15 +302,6 @@ export const createSharedTenantCollection = (name: string) => {
 
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
-
-/**
- * The import/export confirmation modal stays open until the user closes it (GHY-3747). Dismiss it so a
- * subsequent interaction isn't blocked by the modal overlay. Waits for the Close button since the modal
- * renders from the same task poll that `waitForTask` observes.
- */
-export const closeSyncResultModal = () => {
-  cy.findByTestId("sync-success-close-button").click();
-};
 
 // An import's first native SQL parse starts the Python parser, which on a slow runner takes longer than the
 // fifteen seconds thirty polls allow. Giving up while the import still runs is worse than waiting: a retry
@@ -371,8 +323,7 @@ export const waitForTask = (
     } else if (body?.status !== "successful") {
       return waitForTask({ taskName }, retries + 1);
     }
-    // A UI-triggered sync leaves its confirmation modal open; close it so the next step can run.
-    return closeSyncResultModal();
+    return cy.wrap(body);
   });
 };
 

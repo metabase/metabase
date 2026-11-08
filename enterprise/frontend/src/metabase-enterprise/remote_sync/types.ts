@@ -7,6 +7,7 @@ export type SettingsFormValues = {
   "remote-sync-branch": string;
   "remote-sync-auto-import": boolean;
   "remote-sync-transforms": boolean;
+  library: boolean;
   collections: Record<number, boolean>;
 };
 

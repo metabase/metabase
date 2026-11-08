@@ -2313,7 +2313,6 @@
                                  :where  [:and
                                           [:= :synced_root.is_remote_synced true]
                                           [:= :synced_root.location "/"]
-                                          [:= :synced_root.namespace nil]
                                           [:or
                                            [:= :synced_root.id (column :id)]
                                            [:like (column :location) [:concat (h2x/literal "/") :synced_root.id (h2x/literal "/%")]]]]}]

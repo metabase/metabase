@@ -1,4 +1,5 @@
 import { useFormikContext } from "formik";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -16,6 +17,7 @@ import {
 import { useSetting } from "metabase/settings";
 import { Button, Group, Radio, Stack } from "metabase/ui";
 import {
+  useCreateLibraryMutation,
   useTestRemoteSyncConnectionMutation,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api";
@@ -27,7 +29,12 @@ import {
 import type { SettingsFormValues, SyncableCollection } from "../../types";
 
 import { CollectionsField } from "./CollectionsField";
-import { useSettingsFormValues, useSyncableCollections } from "./hooks";
+import {
+  useLibraryCollection,
+  useSettingsFormValues,
+  useSyncableCollections,
+  useSyncableTenantCollections,
+} from "./hooks";
 
 type SettingsFormProps = {
   triggeredFrom: "admin-settings" | "data-studio";
@@ -40,9 +47,31 @@ export const SettingsForm = ({
   onSaved,
   onCancel,
 }: SettingsFormProps) => {
-  const collections = useSyncableCollections();
-  const initialValues = useSettingsFormValues(collections);
+  const regularCollections = useSyncableCollections();
+  const tenantCollections = useSyncableTenantCollections();
+  const collections = useMemo(
+    () => [...regularCollections, ...tenantCollections],
+    [regularCollections, tenantCollections],
+  );
+  const library = useLibraryCollection();
+  const initialValues = useSettingsFormValues(collections, library);
   const [updateSettings] = useUpdateRemoteSyncSettingsMutation();
+  const [createLibrary] = useCreateLibraryMutation();
+
+  const getLibraryChange = async (
+    isLibrarySynced: boolean,
+  ): Promise<Record<number, boolean>> => {
+    if (library) {
+      return isLibrarySynced !== library.isRemoteSynced
+        ? { [library.id]: isLibrarySynced }
+        : {};
+    }
+    if (!isLibrarySynced) {
+      return {};
+    }
+    const created = await createLibrary().unwrap();
+    return typeof created.id === "number" ? { [created.id]: true } : {};
+  };
   const [sendToast] = useToast();
 
   const handleSubmit = async (values: SettingsFormValues) => {
@@ -59,6 +88,9 @@ export const SettingsForm = ({
         ]),
     );
     const isReadWrite = values["remote-sync-type"] === "read-write";
+    const libraryChange = isReadWrite
+      ? await getLibraryChange(values.library)
+      : {};
     await updateSettings({
       "remote-sync-url": values["remote-sync-url"],
       "remote-sync-token": values["remote-sync-token"] || null,
@@ -66,7 +98,9 @@ export const SettingsForm = ({
       "remote-sync-branch": values["remote-sync-branch"] || null,
       "remote-sync-auto-import": values["remote-sync-auto-import"],
       "remote-sync-transforms": values["remote-sync-transforms"],
-      collections: isReadWrite ? changedCollections : null,
+      collections: isReadWrite
+        ? { ...changedCollections, ...libraryChange }
+        : null,
     }).unwrap();
     trackRemoteSyncSettingsChanged({ triggeredFrom });
     sendToast({ message: t`Remote sync settings saved`, icon: "check" });
@@ -79,17 +113,27 @@ export const SettingsForm = ({
       enableReinitialize
       onSubmit={handleSubmit}
     >
-      <SettingsFormBody collections={collections} onCancel={onCancel} />
+      <SettingsFormBody
+        regularCollections={regularCollections}
+        tenantCollections={tenantCollections}
+        onCancel={onCancel}
+      />
     </FormProvider>
   );
 };
 
 type SettingsFormBodyProps = {
-  collections: SyncableCollection[];
+  regularCollections: SyncableCollection[];
+  tenantCollections: SyncableCollection[];
   onCancel?: () => void;
 };
 
-const SettingsFormBody = ({ collections, onCancel }: SettingsFormBodyProps) => {
+const SettingsFormBody = ({
+  regularCollections,
+  tenantCollections,
+  onCancel,
+}: SettingsFormBodyProps) => {
+  const isTenantsEnabled = useSetting("use-tenants");
   const { values, dirty } = useFormikContext<SettingsFormValues>();
   const isEnabled = useSetting("remote-sync-enabled");
   const isReadWrite = values["remote-sync-type"] === "read-write";
@@ -131,11 +175,23 @@ const SettingsFormBody = ({ collections, onCancel }: SettingsFormBodyProps) => {
         />
         {isReadWrite ? (
           <>
+            <FormSwitch name="library" label={t`Sync Library`} />
             <FormSwitch
               name="remote-sync-transforms"
-              label={t`Sync transforms`}
+              label={t`Sync Transforms`}
             />
-            <CollectionsField collections={collections} />
+            <CollectionsField
+              title={t`Collections to sync`}
+              emptyMessage={t`There are no top-level collections yet.`}
+              collections={regularCollections}
+            />
+            {isTenantsEnabled && (
+              <CollectionsField
+                title={t`Shared tenant collections to sync`}
+                emptyMessage={t`No shared tenant collections found`}
+                collections={tenantCollections}
+              />
+            )}
           </>
         ) : (
           <FormSwitch

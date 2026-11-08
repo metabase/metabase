@@ -66,10 +66,9 @@ describe("Remote Sync first-time setup", () => {
     H.clickPushOption();
     H.modal().within(() => {
       cy.findAllByText("PRODUCTS").should("have.length.at.least", 1);
-      cy.findByText(FIRST_SETUP_TRANSFORM_NAME)
-        .scrollIntoView()
-        .should("be.visible");
-      cy.button(/Push changes/).click();
+      cy.findByText(FIRST_SETUP_TRANSFORM_NAME).should("exist");
+      cy.findByLabelText("Commit message").type("First push");
+      cy.button("Push").click();
     });
     H.waitForTask({ taskName: "export" });
 
@@ -83,25 +82,23 @@ describe("Remote Sync first-time setup", () => {
     });
   });
 
-  it("opens branch picker after push", () => {
+  it("pushes to a new branch and switches to it", () => {
     H.createLibrary().then(({ libraryCollectionId }) => {
       H.configureGit("read-write", LOCAL_GIT_URL, {
         [libraryCollectionId]: true,
       });
     });
-    H.createBranchViaSettings("first-branch");
 
     H.publishTables({ table_ids: [SAMPLE_DATABASE.PRODUCTS_ID] });
     cy.visit("/collection/root");
-    H.clickPushOption();
-    H.modal()
-      .button(/Push changes/)
-      .click();
+    H.pushChanges("Publish products");
     H.waitForTask({ taskName: "export" });
 
-    cy.log("Branch picker opens with both branches listed");
-    H.createBranchViaSettings("second-branch");
-    H.getSettingsBranchSwitcher().should("contain.text", "second-branch");
+    H.pushToNewBranch("second-branch");
+    H.waitForTask({ taskName: "export" });
+    H.getGitSyncControls()
+      .findByRole("textbox", { name: "Branch" })
+      .should("have.value", "second-branch");
   });
 
   it("sets up git sync from the Data Studio modal, creating Library and syncing it with transforms", () => {
