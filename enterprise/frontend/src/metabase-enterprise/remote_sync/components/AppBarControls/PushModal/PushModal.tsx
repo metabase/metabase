@@ -46,10 +46,11 @@ type PushFormValues = {
   strategy: PushStrategy;
 };
 
-const PUSH_SCHEMA = Yup.object({
-  message: Yup.string().trim().required(Errors.required),
-  strategy: Yup.string().oneOf(["merge", "overwrite"]),
-});
+const getPushSchema = () =>
+  Yup.object({
+    message: Yup.string().trim().required(Errors.required),
+    strategy: Yup.string().oneOf(["merge", "overwrite"]),
+  });
 
 export const PushModal = ({ opened, branch, onClose }: PushModalProps) => (
   <Modal opened={opened} title={t`Push changes`} size="lg" onClose={onClose}>
@@ -95,7 +96,7 @@ const ModalBody = ({ branch, onClose }: ModalBodyProps) => {
         message: "",
         strategy: preflight.clean ? "merge" : "overwrite",
       }}
-      validationSchema={PUSH_SCHEMA}
+      validationSchema={getPushSchema()}
       onSubmit={handleSubmit}
     >
       <Form>

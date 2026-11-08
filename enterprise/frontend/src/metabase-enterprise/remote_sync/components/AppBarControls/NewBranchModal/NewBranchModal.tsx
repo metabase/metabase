@@ -26,10 +26,11 @@ type NewBranchFormValues = {
   message: string;
 };
 
-const NEW_BRANCH_SCHEMA = Yup.object({
-  branch: Yup.string().trim().required(Errors.required),
-  message: Yup.string().trim().required(Errors.required),
-});
+const getNewBranchSchema = () =>
+  Yup.object({
+    branch: Yup.string().trim().required(Errors.required),
+    message: Yup.string().trim().required(Errors.required),
+  });
 
 export const NewBranchModal = ({ opened, onClose }: NewBranchModalProps) => (
   <Modal opened={opened} title={t`Push to a new branch`} onClose={onClose}>
@@ -55,7 +56,7 @@ const ModalBody = ({ onClose }: ModalBodyProps) => {
   return (
     <FormProvider<NewBranchFormValues>
       initialValues={{ branch: "", message: "" }}
-      validationSchema={NEW_BRANCH_SCHEMA}
+      validationSchema={getNewBranchSchema()}
       onSubmit={handleSubmit}
     >
       <Form>
