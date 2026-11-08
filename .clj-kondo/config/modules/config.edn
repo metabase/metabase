@@ -4367,6 +4367,12 @@
    :ns-prefix "metabase-enterprise.dashboard-subscription-filters"
    :uses #{premium-features}}
 
+  enterprise/remote-sync
+  {:team       "Data Apps"
+   :codeowners true
+   :api  #{}
+   :uses #{settings util}}
+
   enterprise/search
   {:team "Metabot"
    :codeowners true
