@@ -120,13 +120,10 @@
 
 (deftest ^:parallel field-references-test
   (testing "the fields a query reads and returns, and the qualifiers that resolve to nothing"
-    (doseq [{:keys [name sql dialect errors returned]} (cases "field_references")]
+    (doseq [{:keys [name sql dialect expected]} (cases "field_references")]
       (testing name
-        (let [result (sql-parsing/field-references (sql-tools/sqlglot-parser) dialect sql)]
-          (is (= (set errors) (set (:errors result))) (pr-str sql))
-          (is (= (sort returned)
-                 (sort (keep :column (:returned-fields result))))
-              (pr-str sql)))))))
+        (is (= expected (sql-parsing/field-references (sql-tools/sqlglot-parser) dialect sql))
+            (pr-str sql))))))
 
 ;;; ------------------------------------------ single-stmt classification ------------------------------------------
 
