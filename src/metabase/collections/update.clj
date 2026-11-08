@@ -23,6 +23,8 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/collection-update :metabase/event)
+
 (def UpdateCollectionArguments
   "The arguments to an update-collection call — what the public API surface accepts. Absent keys
   are left alone; `:archived` and `:parent_id` are acted on only when present, so a caller that
