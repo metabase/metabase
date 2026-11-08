@@ -1,24 +1,10 @@
-import type {
-  BaseQueryFn,
-  QueryDefinition,
-  TagDescription,
-} from "@reduxjs/toolkit/query";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 
-import type { TagType } from "metabase/api/tags";
-import type { UseQuery } from "metabase/api/types/rtk";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import type {
-  GitSyncSetupMenuItemProps,
-  SyncedCollectionsSidebarSectionProps,
-} from "metabase/plugins";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
-import type {
-  RemoteSyncChangesResponse,
-  RemoteSyncEntity,
-} from "metabase-types/api";
+import type { CollectionId, RemoteSyncEntity } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
 
@@ -28,97 +14,70 @@ export type CollectionsNavTreeProps = {
   onSelect?: (item: ITreeNodeItem) => void;
 };
 
-export interface GitSettingsModalProps {
+export type RemoteSyncSettingsModalProps = {
   isOpen: boolean;
   onClose: () => void;
-}
+};
 
-export interface RemoteSyncDirtyState {
-  /** Array of all dirty entities */
+export type RemoteSyncSetupMenuItemProps = {
+  isNavbarOpened: boolean;
+  onClick: () => void;
+};
+
+export type RemoteSyncDirtyAreas = {
+  library: boolean;
+  transforms: boolean;
+  snippets: boolean;
+  dataActions: boolean;
+  glossary: boolean;
+};
+
+export type RemoteSyncDirtyState = {
   dirty: RemoteSyncEntity[];
-  /** Map of collection IDs that have dirty child entities */
-  changedCollections: Record<number, boolean>;
-  /** Whether any dirty changes exist globally */
-  isDirty: boolean;
-  /** Whether data is loading */
-  isLoading: boolean;
-  /** Check if a specific collection has dirty items */
-  isCollectionDirty: (collectionId: number | string | undefined) => boolean;
-  /** Check if any collection in a set has dirty items */
-  hasAnyCollectionDirty: (collectionIds: Set<number> | number[]) => boolean;
-  /** Check if any dirty entity (including collections) is in the given set of IDs */
-  hasDirtyInCollectionTree: (collectionIds: Set<number>) => boolean;
-  /** Refetch the dirty state data */
-  refetch: ReturnType<
-    UseQuery<
-      QueryDefinition<void, BaseQueryFn, TagType, RemoteSyncChangesResponse>
-    >
-  >["refetch"];
-}
+  areas: RemoteSyncDirtyAreas;
+  isCollectionDirty: (collectionId: CollectionId | undefined) => boolean;
+};
 
-const getDefaultPluginRemoteSync = () => ({
-  isEnabled: false,
-  LibraryNav: PluginPlaceholder,
-  RemoteSyncSettings: PluginPlaceholder,
-  SyncedCollectionsSidebarSection: PluginPlaceholder,
-  // Unjustified type cast. FIXME
-  GitSyncAppBarControls: PluginPlaceholder as ComponentType,
-  // Unjustified type cast. FIXME
-  GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,
-  GitSyncSetupMenuItem: PluginPlaceholder,
-  // Unjustified type cast. FIXME
-  CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
-  // Unjustified type cast. FIXME
-  CollectionSyncStatusBadge: null as ComponentType | null,
-  REMOTE_SYNC_INVALIDATION_TAGS: null,
-  useSyncStatus: () => ({
-    isIdle: true,
-    taskType: null,
-    progress: 0,
-    message: "",
-    progressModal: null,
-  }),
-  useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
-  useHasLibraryDirtyChanges: () => false,
-  useHasSnippetsDirtyChanges: () => false,
-  useHasDataActionsDirtyChanges: () => false,
-  useHasTransformDirtyChanges: () => false,
-  useHasGlossaryDirtyChanges: () => false,
-  getIsRemoteSyncReadOnly: () => false,
-  useRemoteSyncDirtyState: () =>
-    // Unjustified type cast. FIXME
-    ({
-      isCollectionDirty: false,
-    }) as unknown as RemoteSyncDirtyState,
-});
+const NO_DIRTY_STATE: RemoteSyncDirtyState = {
+  dirty: [],
+  areas: {
+    library: false,
+    transforms: false,
+    snippets: false,
+    dataActions: false,
+    glossary: false,
+  },
+  isCollectionDirty: () => false,
+};
 
-export const PLUGIN_REMOTE_SYNC: {
+type PluginRemoteSync = {
   isEnabled: boolean;
-  LibraryNav: ComponentType;
-  RemoteSyncSettings: ComponentType;
-  SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
-  GitSyncAppBarControls: ComponentType;
-  GitSettingsModal: ComponentType<GitSettingsModalProps>;
-  GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
+  SettingsPage: ComponentType;
+  SettingsNavItem: ComponentType;
+  SettingsModal: ComponentType<RemoteSyncSettingsModalProps>;
+  SetupMenuItem: ComponentType<RemoteSyncSetupMenuItemProps>;
+  AppBarControls: ComponentType;
+  TaskStatus: ComponentType;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
-  REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
-  useSyncStatus: () => {
-    isIdle: boolean;
-    taskType: any;
-    progress: number;
-    message: string;
-    progressModal: ReactNode;
-  };
-  useGitSyncVisible: () => {
-    isVisible: boolean;
-    currentBranch: string | null | undefined;
-  };
-  useHasLibraryDirtyChanges: () => boolean;
-  useHasSnippetsDirtyChanges: () => boolean;
-  useHasDataActionsDirtyChanges: () => boolean;
-  useHasTransformDirtyChanges: () => boolean;
-  useHasGlossaryDirtyChanges: () => boolean;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
+  useIsRemoteSyncVisible: () => boolean;
   useRemoteSyncDirtyState: () => RemoteSyncDirtyState;
-} = definePluginSlot(getDefaultPluginRemoteSync);
+};
+
+const getDefaultPluginRemoteSync = (): PluginRemoteSync => ({
+  isEnabled: false,
+  SettingsPage: PluginPlaceholder,
+  SettingsNavItem: PluginPlaceholder,
+  SettingsModal: PluginPlaceholder,
+  SetupMenuItem: PluginPlaceholder,
+  AppBarControls: PluginPlaceholder,
+  TaskStatus: PluginPlaceholder,
+  CollectionsNavTree: null,
+  CollectionSyncStatusBadge: null,
+  getIsRemoteSyncReadOnly: () => false,
+  useIsRemoteSyncVisible: () => false,
+  useRemoteSyncDirtyState: () => NO_DIRTY_STATE,
+});
+
+export const PLUGIN_REMOTE_SYNC = definePluginSlot(getDefaultPluginRemoteSync);

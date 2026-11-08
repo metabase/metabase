@@ -1,6 +1,7 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
+  setupCollectionsEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -64,6 +65,7 @@ export const setup = ({
       }),
     });
     setupPropertiesEndpoints(settings);
+    setupCollectionsEndpoints({ collections });
     state = createMockState({
       settings: mockSettings(settings),
       currentUser: createMockUser({ is_superuser: true }),

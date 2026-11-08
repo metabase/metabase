@@ -25,8 +25,8 @@ import {
   tenantSpecificCollections,
   tenantUsersPersonalCollections,
 } from "metabase/urls";
-import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
-import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
+import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/CollectionSyncStatusBadge";
+import { useRemoteSyncDirtyState } from "metabase-enterprise/remote_sync/hooks";
 import type { Collection } from "metabase-types/api";
 
 export const MainNavSharedCollections = ({
@@ -61,10 +61,7 @@ export const MainNavSharedCollections = ({
     [tenantCollectionsList],
   );
 
-  const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
-    skip: !hasRemoteSyncedTenantCollections,
-    refetchOnFocus: true,
-  });
+  const { isCollectionDirty } = useRemoteSyncDirtyState();
 
   const [createCollection] = useCreateCollectionMutation();
 
@@ -73,24 +70,12 @@ export const MainNavSharedCollections = ({
     [sharedTenantCollections],
   );
 
-  const changedCollections = useMemo(
-    () => dirtyData?.changedCollections ?? {},
-    [dirtyData?.changedCollections],
-  );
-
   const showChangesBadge = useCallback(
-    (itemId?: number | string) => {
-      if (
-        !hasRemoteSyncedTenantCollections ||
-        !changedCollections ||
-        typeof itemId !== "number"
-      ) {
-        return false;
-      }
-
-      return !!changedCollections[itemId];
-    },
-    [hasRemoteSyncedTenantCollections, changedCollections],
+    (itemId?: number | string) =>
+      hasRemoteSyncedTenantCollections &&
+      typeof itemId === "number" &&
+      isCollectionDirty(itemId),
+    [hasRemoteSyncedTenantCollections, isCollectionDirty],
   );
 
   const handleCreateTenantCollection = useCallback(

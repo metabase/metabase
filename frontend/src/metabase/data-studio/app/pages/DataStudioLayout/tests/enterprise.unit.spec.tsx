@@ -113,7 +113,7 @@ describe("DataStudioLayout", () => {
       expect(screen.getByText("Semantic layer")).toBeInTheDocument();
     });
 
-    it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
+    it("should render remote sync controls when sidebar is expanded", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
@@ -127,7 +127,7 @@ describe("DataStudioLayout", () => {
       expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
     });
 
-    it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
+    it("should not render remote sync controls when sidebar is collapsed", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",

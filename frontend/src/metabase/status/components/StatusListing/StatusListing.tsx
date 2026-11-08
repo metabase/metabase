@@ -20,7 +20,6 @@ import { FileUploadStatus } from "../FileUploadStatus";
 
 export const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
-  const { progressModal } = PLUGIN_REMOTE_SYNC.useSyncStatus();
 
   const uploadInProgress = useSelector(hasActiveUploads);
 
@@ -47,7 +46,7 @@ export const StatusListing = () => {
         <DownloadsStatus />
         {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
       </Box>
-      {progressModal}
+      {isAdmin && <PLUGIN_REMOTE_SYNC.TaskStatus />}
     </>
   );
 };

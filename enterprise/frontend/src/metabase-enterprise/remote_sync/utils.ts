@@ -1,258 +1,73 @@
-import { t } from "ttag";
-
-import type { ColorName } from "metabase/ui/colors/types";
+import type { RemoteSyncDirtyAreas } from "metabase/plugins";
 import type {
   Collection,
-  IconName,
-  RemoteSyncEntityStatus,
-  RemoteSyncTaskType,
-  SettingDefinition,
+  CollectionId,
+  RemoteSyncEntity,
 } from "metabase-types/api";
 
-import type { CollectionPathSegment } from "./displayGroups";
+import { TABLE_MODELS, TRANSFORM_MODELS } from "./constants";
 
-// Re-export from displayGroups for backwards compatibility
-export {
-  TRANSFORMS_ROOT_ID,
-  isTableChildModel,
-  type CollectionPathSegment,
-} from "./displayGroups";
+const getAncestorIds = (collection: Collection): CollectionId[] =>
+  (collection.location ?? "")
+    .split("/")
+    .filter((id) => id.length > 0)
+    .map(Number);
 
-type ErrorData = {
-  message?: string;
-  conflicts?: boolean;
-  /** Set by the backend CAS guard when the requested branch != the configured remote-sync-branch. */
-  branch_mismatch?: boolean;
-  /** The authoritative branch the instance is actually on, when branch_mismatch is set. */
-  current_branch?: string;
+export const getDirtyCollectionIds = (
+  dirty: RemoteSyncEntity[],
+  collections: Collection[],
+): Set<CollectionId> => {
+  const collectionById = new Map(
+    collections.map((collection) => [collection.id, collection]),
+  );
+  const ownIds = dirty.flatMap((entity) =>
+    entity.model === "collection" ? [entity.id] : (entity.collection_id ?? []),
+  );
+  return new Set(
+    ownIds.flatMap((id) => {
+      const collection = collectionById.get(id);
+      return collection ? [id, ...getAncestorIds(collection)] : [id];
+    }),
+  );
 };
 
-export type SyncError = {
-  data?: ErrorData;
-  message?: string;
+const getLibraryCollectionIds = (
+  collections: Collection[],
+): Set<CollectionId> => {
+  const library = collections.find(
+    (collection) => collection.type === "library",
+  );
+  if (!library) {
+    return new Set();
+  }
+  return new Set(
+    collections
+      .filter(
+        (collection) =>
+          collection.id === library.id ||
+          getAncestorIds(collection).includes(Number(library.id)),
+      )
+      .map((collection) => collection.id),
+  );
 };
 
-type ParsedError = {
-  errorMessage: string | null;
-  hasConflict: boolean;
-  /** True when the request was rejected because the branch changed in another session. */
-  hasBranchMismatch: boolean;
-  /** The branch the instance is actually on, when hasBranchMismatch is true. */
-  currentBranch: string | null;
-};
-
-// TODO: Should merge with getExtraFormFieldProps from admin/settings/utils.ts
-export const getEnvSettingProps = <T>(
-  setting?: SettingDefinition,
-  extras?: T,
-) => {
-  if (setting?.is_env_setting) {
-    return {
-      description: t`Using ${setting.env_name}`,
-      readOnly: true,
-      ...extras,
-    };
-  }
-  return {};
-};
-
-// Thresholds follow the backend checkpoints: import reports 0.05 after the conflict scan, 0.70 after the
-// load and 0.90 after the ledger commit; export reports 0.33 after planning and 0.66 after serializing.
-export const getProgressPhaseLabel = (
-  progress: number,
-  taskType: RemoteSyncTaskType,
-): string => {
-  if (taskType === "export") {
-    if (progress < 0.33) {
-      return t`preparing`;
-    }
-    if (progress < 0.66) {
-      return t`exporting content`;
-    }
-    return t`pushing`;
-  }
-  if (progress < 0.05) {
-    return t`preparing`;
-  }
-  if (progress < 0.7) {
-    return t`importing content`;
-  }
-  if (progress < 0.9) {
-    return t`recording sync state`;
-  }
-  return t`finishing`;
-};
-
-export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {
-  switch (status) {
-    case "create":
-      return "add";
-    case "removed":
-    case "delete":
-      return "trash";
-    case "update":
-    case "touch":
-      return "pencil";
-    default:
-      return "warning";
-  }
-};
-
-export const getSyncStatusColor = (
-  status: RemoteSyncEntityStatus,
-): ColorName => {
-  switch (status) {
-    case "create":
-      return "feedback-positive";
-    case "removed":
-    case "delete":
-      return "feedback-negative";
-    case "update":
-    case "touch":
-      return "core-blue-saturated";
-    default:
-      return "core-info";
-  }
-};
-
-const isValidErrorData = (data: unknown): data is ErrorData =>
-  typeof data === "object" && data !== null;
-
-const hasConflictProperty = (data: ErrorData): boolean => !!data.conflicts;
-
-const getErrorMessage = (data: ErrorData): string | undefined =>
-  "message" in data && typeof data.message === "string"
-    ? data.message
-    : undefined;
-
-export const parseSyncError = (exportError: SyncError | null): ParsedError => {
-  if (!exportError) {
-    return {
-      errorMessage: null,
-      hasConflict: false,
-      hasBranchMismatch: false,
-      currentBranch: null,
-    };
-  }
-
-  if (
-    "data" in exportError &&
-    exportError.data &&
-    isValidErrorData(exportError.data)
-  ) {
-    const errorData = exportError.data;
-    const messageFromData = getErrorMessage(errorData);
-    const hasConflict = hasConflictProperty(errorData);
-
-    if (errorData.branch_mismatch) {
-      const currentBranch = errorData.current_branch ?? null;
-      return {
-        errorMessage:
-          messageFromData ||
-          t`The sync branch changed in another session. Refresh the page and try again.`,
-        hasConflict: false,
-        hasBranchMismatch: true,
-        currentBranch,
-      };
-    }
-
-    if (hasConflict) {
-      return {
-        errorMessage:
-          messageFromData ||
-          t`Your changes conflict with the remote repository. You can force push to override them.`,
-        hasConflict: true,
-        hasBranchMismatch: false,
-        currentBranch: null,
-      };
-    }
-
-    return {
-      errorMessage:
-        messageFromData || t`Something went wrong. Please try again.`,
-      hasConflict: false,
-      hasBranchMismatch: false,
-      currentBranch: null,
-    };
-  }
-
-  if ("message" in exportError && typeof exportError.message === "string") {
-    return {
-      errorMessage:
-        exportError.message || t`Something went wrong. Please try again.`,
-      hasConflict: false,
-      hasBranchMismatch: false,
-      currentBranch: null,
-    };
-  }
+export const getDirtyAreas = (
+  dirty: RemoteSyncEntity[],
+  collections: Collection[],
+): RemoteSyncDirtyAreas => {
+  const libraryIds = getLibraryCollectionIds(collections);
+  const isInLibrary = (entity: RemoteSyncEntity) =>
+    TABLE_MODELS.has(entity.model) ||
+    (entity.collection_id != null && libraryIds.has(entity.collection_id)) ||
+    (entity.model === "collection" && libraryIds.has(entity.id));
 
   return {
-    errorMessage: t`Something went wrong. Please try again.`,
-    hasConflict: false,
-    hasBranchMismatch: false,
-    currentBranch: null,
+    library: dirty.some(isInLibrary),
+    transforms: dirty.some((entity) => TRANSFORM_MODELS.has(entity.model)),
+    snippets: dirty.some((entity) => entity.model === "nativequerysnippet"),
+    dataActions: dirty.some(
+      (entity) => entity.model === "action" && entity.card_id == null,
+    ),
+    glossary: dirty.some((entity) => entity.model === "glossary"),
   };
-};
-
-export const buildCollectionMap = (
-  collectionTree: Collection[],
-): Map<number, Collection> => {
-  const map = new Map<number, Collection>();
-
-  const processCollection = (parents: Collection[], collection: Collection) => {
-    if (typeof collection.id === "number") {
-      map.set(collection.id, { ...collection, effective_ancestors: parents });
-    }
-    if (collection.children) {
-      collection.children.forEach((child) => {
-        processCollection([...parents, collection], child);
-      });
-    }
-  };
-
-  collectionTree.forEach((collection) => {
-    processCollection([], collection);
-  });
-  return map;
-};
-
-export const getCollectionPathSegments = (
-  collectionId: number | undefined,
-  collectionMap: Map<number, Collection>,
-): CollectionPathSegment[] => {
-  if (!collectionId) {
-    return [{ id: "root", name: t`Root` }];
-  }
-
-  const collection = collectionMap.get(collectionId);
-  if (!collection) {
-    return [{ id: "root", name: t`Root` }];
-  }
-
-  const segments: CollectionPathSegment[] = [];
-
-  if (collection.effective_ancestors) {
-    collection.effective_ancestors.forEach((ancestor) => {
-      segments.push({ id: ancestor.id, name: ancestor.name });
-    });
-    segments.push({ id: collection.id, name: collection.name });
-    return segments;
-  }
-
-  if (collection.effective_location) {
-    const locationParts = collection.effective_location
-      .split("/")
-      .filter(Boolean);
-
-    locationParts.forEach((idStr) => {
-      const parentId = parseInt(idStr);
-      const parent = collectionMap.get(parentId);
-      if (parent) {
-        segments.push({ id: parent.id, name: parent.name });
-      }
-    });
-  }
-
-  segments.push({ id: collection.id, name: collection.name });
-  return segments;
 };

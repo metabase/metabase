@@ -94,8 +94,7 @@ export function NavbarLibrarySection({
     "expand-library-in-nav",
   );
 
-  const { isVisible: isGitSyncVisible } =
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+  const isGitSyncVisible = PLUGIN_REMOTE_SYNC.useIsRemoteSyncVisible();
   const { isCollectionDirty } = PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
 
   const libraryTree = useMemo(() => {

@@ -1,17 +1,17 @@
-import type { State } from "metabase/redux/store";
-import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
+import type { RemoteSyncType } from "metabase-types/api";
 
-import type { SYNC_LIBRARY_PENDING_KEY } from "./constants";
-import type { SyncTaskState } from "./sync-task-slice";
+export type SettingsFormValues = {
+  "remote-sync-url": string;
+  "remote-sync-token": string;
+  "remote-sync-type": RemoteSyncType;
+  "remote-sync-branch": string;
+  "remote-sync-auto-import": boolean;
+  "remote-sync-transforms": boolean;
+  collections: Record<number, boolean>;
+};
 
-export interface RemoteSyncStoreState extends State {
-  plugins?: {
-    remoteSyncPlugin?: SyncTaskState;
-  };
-}
-
-export type RemoteSyncSettingsVariant = "admin" | "settings-modal";
-
-export type RemoteSyncSettingsFormState = RemoteSyncConfigurationSettings & {
-  [Key in typeof SYNC_LIBRARY_PENDING_KEY]?: boolean;
+export type SyncableCollection = {
+  id: number;
+  name: string;
+  isRemoteSynced: boolean;
 };

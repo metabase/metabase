@@ -39,15 +39,12 @@ export function DataStudioLayout() {
   const canAccessDataModel = useSelector(canAccessDataModelSelector);
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
   const isAdmin = useSelector(getUserIsAdmin);
-  const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
-  const hasTransformDirtyChanges =
-    PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
-  const hasSnippetsDirtyChanges =
-    PLUGIN_REMOTE_SYNC.useHasSnippetsDirtyChanges();
-  const hasDataActionsDirtyChanges =
-    PLUGIN_REMOTE_SYNC.useHasDataActionsDirtyChanges();
-  const hasGlossaryDirtyChanges =
-    PLUGIN_REMOTE_SYNC.useHasGlossaryDirtyChanges();
+  const { areas: dirtyAreas } = PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
+  const hasDirtyChanges = dirtyAreas.library;
+  const hasTransformDirtyChanges = dirtyAreas.transforms;
+  const hasSnippetsDirtyChanges = dirtyAreas.snippets;
+  const hasDataActionsDirtyChanges = dirtyAreas.dataActions;
+  const hasGlossaryDirtyChanges = dirtyAreas.glossary;
   const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
   const hasLibraryFeature = useHasTokenFeature("library");
@@ -197,11 +194,11 @@ export function DataStudioLayout() {
     <>
       {hasRemoteSyncFeature ? (
         <>
-          <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
+          <PLUGIN_REMOTE_SYNC.SetupMenuItem
             isNavbarOpened={isNavbarOpened}
             onClick={() => setIsGitSettingsOpen(true)}
           />
-          <PLUGIN_REMOTE_SYNC.GitSettingsModal
+          <PLUGIN_REMOTE_SYNC.SettingsModal
             isOpen={isGitSettingsOpen}
             onClose={() => setIsGitSettingsOpen(false)}
           />
@@ -243,7 +240,7 @@ export function DataStudioLayout() {
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
-      headerControls={<PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
+      headerControls={<PLUGIN_REMOTE_SYNC.AppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
     >

@@ -65,8 +65,7 @@ export const AppBarLarge = ({
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
   const isInfoVisible = !isNavBarVisible || isQuestionLineageVisible;
-  const { isVisible: isGitSyncVisible } =
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+  const isGitSyncVisible = PLUGIN_REMOTE_SYNC.useIsRemoteSyncVisible();
 
   const { hasMetabotAccess: isMetabotVisibleToUser } =
     useUserMetabotPermissions();
@@ -99,7 +98,7 @@ export const AppBarLarge = ({
           isGitSyncVisible={isGitSyncVisible}
           onLogoClick={onOpenNavbar}
         />
-        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
+        <PLUGIN_REMOTE_SYNC.AppBarControls />
         <Flex
           className={cx(S.fade, { [S.hidden]: !isInfoVisible })}
           opacity={isInfoVisible ? 1 : 0}

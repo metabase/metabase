@@ -9,10 +9,12 @@ import {
   setupApiKeyEndpoints,
   setupDatabasesEndpoints,
   setupEmailEndpoints,
+  setupCollectionsEndpoints,
   setupGroupsEndpoint,
   setupLibraryEndpoints,
   setupNotificationChannelsEndpoints,
   setupPropertiesEndpoints,
+  setupRemoteSyncEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
   setupSlackAppInfoEndpoint,
@@ -181,14 +183,8 @@ export const setup = async ({
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
   setupLibraryEndpoints();
-  fetchMock.get("path:/api/ee/remote-sync/dirty", {
-    data: [],
-    metadata: {
-      changed_collections: {},
-      is_dirty: false,
-      has_removed_items: false,
-    },
-  });
+  setupRemoteSyncEndpoints();
+  setupCollectionsEndpoints({ collections: [] });
 
   const user = createMockUser({
     is_superuser: isAdmin,

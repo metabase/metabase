@@ -203,7 +203,6 @@ const PYTHON_LIBRARY_MODEL = "pythonlibrary" satisfies RemoteSyncEntityModel;
 const SYNC_STATUS_COLOR: Record<RemoteSyncEntityStatus, ColorName> = {
   create: "feedback-positive",
   update: "feedback-warning",
-  touch: "feedback-warning",
   delete: "feedback-negative",
   removed: "feedback-negative",
 };
@@ -242,8 +241,7 @@ export function getFolderSyncColor(
 export function useGetNodeSyncColor(): (
   node: TreeNode,
 ) => ColorName | undefined {
-  const { isVisible: isRemoteSyncVisible } =
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+  const isRemoteSyncVisible = PLUGIN_REMOTE_SYNC.useIsRemoteSyncVisible();
   const { dirty } = PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
 
   const { dirtyTransformById, dirtyPythonLibraries } = useMemo(() => {

@@ -73,18 +73,7 @@ const setupDirtyEndpoints = ({
   dirty?: RemoteSyncEntity[];
   collections?: Collection[];
 } = {}) => {
-  const changedCollections: Record<number, boolean> = {};
-  for (const entity of dirty) {
-    if (entity.collection_id != null) {
-      changedCollections[entity.collection_id] = true;
-    }
-  }
-
-  setupRemoteSyncEndpoints({
-    dirty,
-    changedCollections,
-    branches: ["main"],
-  });
+  setupRemoteSyncEndpoints({ dirty, branches: ["main"] });
 
   setupCollectionsEndpoints({ collections });
 };
