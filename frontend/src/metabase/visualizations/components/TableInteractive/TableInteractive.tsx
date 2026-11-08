@@ -49,7 +49,7 @@ import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { normalizeNewLines } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
-import { formatValue } from "metabase/value-formatting";
+import { formatValue, getImageHeightPx } from "metabase/value-formatting";
 import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
 import type {
   ClickActionsMode,
@@ -89,6 +89,9 @@ import { MiniBarCell } from "./cells/MiniBarCell";
 import { useSyncColumnWidths } from "./hooks/use-sync-column-widths";
 import { getInfoPopoversDisabled } from "./utils/get-info-popovers-disabled";
 import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
+
+// Matches the vertical padding of `.bodyCellWithImage` in TableInteractive.module.css
+const IMAGE_CELL_VERTICAL_PADDING_PX = 6;
 
 const getHighlightCellClassName = (
   isHighlightingActive: boolean,
@@ -579,6 +582,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         headerClickTargetSelector: "[data-header-click-target]",
         align,
         wrap,
+        minRowHeight: isImage
+          ? getImageHeightPx(columnSettings["image_size"]) +
+            IMAGE_CELL_VERTICAL_PADDING_PX
+          : undefined,
         sortDirection,
         sortingFn: isString(col) ? "alphanumeric" : undefined,
         enableResizing: true,
@@ -731,15 +738,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         height - (HEADER_HEIGHT + FOOTER_HEIGHT + getScrollBarSize()),
         0,
       );
+      const tallestRowHeight = Math.max(
+        ROW_HEIGHT,
+        ...columnsOptions.map((column) => column.minRowHeight ?? 0),
+      );
 
       const heightBasedPageSize = Math.floor(
-        availableSpaceForRows / ROW_HEIGHT,
+        availableSpaceForRows / tallestRowHeight,
       );
 
       return heightBasedPageSize > 0 ? heightBasedPageSize : undefined;
     }
     return undefined;
-  }, [height, settings]);
+  }, [height, settings, columnsOptions]);
 
   const minGridWidth = useMemo(() => {
     return isDashcardViewTable || isEmbeddingSdk ? width : undefined;

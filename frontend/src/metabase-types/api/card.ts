@@ -289,6 +289,7 @@ export type YAxisScale = NumericScale;
 
 export type MapType = "region" | "pin" | "heat" | "grid";
 export type PinMapStyle = "tiles" | "markers" | "grid" | "heat";
+export type ImageSize = "small" | "medium" | "large";
 
 export type ColumnSettings = TimeOnlyOptions & {
   _column_title_full?: string;
@@ -308,6 +309,7 @@ export type ColumnSettings = TimeOnlyOptions & {
   date_separator?: string;
   date_style?: string | null;
   decimals?: number;
+  image_size?: ImageSize;
   isExclude?: boolean;
   jsx?: boolean;
   link_text?: string;

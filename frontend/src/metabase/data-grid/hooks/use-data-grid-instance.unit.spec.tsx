@@ -1,9 +1,13 @@
 import { act, renderHook } from "@testing-library/react";
 
+import { ROW_HEIGHT } from "../constants";
+import type { ColumnOptions } from "../types";
+
 import { useDataGridInstance } from "./use-data-grid-instance";
 
 type TestRow = { value: string };
 type TwoColumnRow = { a: string; b: string };
+type NullableRow = { value: string | null };
 
 // Module scope so the hook sees a stable reference across renders, which is
 // what the fix relies on
@@ -88,6 +92,70 @@ describe("useDataGridInstance", () => {
         isTruncated: false,
         onExpand: expect.any(Function),
       });
+    });
+  });
+
+  describe("minRowHeight", () => {
+    interface SetupOpts {
+      data: NullableRow[];
+      minRowHeight: number;
+    }
+
+    const setup = ({ data, minRowHeight }: SetupOpts) => {
+      const columnsOptions: ColumnOptions<NullableRow, string | null>[] = [
+        {
+          id: "value",
+          name: "Value",
+          accessorFn: (row) => row.value,
+          minRowHeight,
+        },
+      ];
+      // Pagination turns off row virtualization, so every row reports the
+      // height computed for it
+      const { result } = renderHook(() =>
+        useDataGridInstance<NullableRow, string | null>({
+          data,
+          columnsOptions,
+          pageSize: data.length,
+        }),
+      );
+      return result.current.getCenterRows().map((row) => ({
+        value: row.origin.original.value,
+        height: row.height,
+      }));
+    };
+
+    it("makes rows with a value in the column at least that tall", () => {
+      const rows = setup({
+        data: [{ value: "https://example.com/a.png" }, { value: "b" }],
+        minRowHeight: 156,
+      });
+
+      expect(rows).toEqual([
+        { value: "https://example.com/a.png", height: 156 },
+        { value: "b", height: 156 },
+      ]);
+    });
+
+    it("keeps the default height for rows with an empty value in the column", () => {
+      const rows = setup({
+        data: [{ value: "https://example.com/a.png" }, { value: null }],
+        minRowHeight: 156,
+      });
+
+      expect(rows).toEqual([
+        { value: "https://example.com/a.png", height: 156 },
+        { value: null, height: ROW_HEIGHT },
+      ]);
+    });
+
+    it("never makes rows shorter than the default height", () => {
+      const rows = setup({
+        data: [{ value: "a" }],
+        minRowHeight: ROW_HEIGHT - 10,
+      });
+
+      expect(rows).toEqual([{ value: "a", height: ROW_HEIGHT }]);
     });
   });
 });

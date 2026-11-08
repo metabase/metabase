@@ -319,6 +319,7 @@
    :prefix                        ::prefix
    :suffix                        ::suffix
    :view_as                       ::view-as
+   :image_size                    ::image-size
    :link_text                     ::link-text
    :link_url                      ::link-url
    :show_mini_bar                 ::show-mini-bar

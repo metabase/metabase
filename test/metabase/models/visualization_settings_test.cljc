@@ -90,6 +90,14 @@
       (t/is (= norm-col-settings (mb.viz/db->norm db-col-settings-old)))
       (t/is (= db-col-settings-new (mb.viz/norm->db norm-col-settings))))))
 
+(t/deftest ^:parallel image-size-column-setting-test
+  (t/testing "The :image_size column setting survives normalization and converting back to the DB form"
+    (let [db-col-settings   {:column_settings {"[\"name\",\"Photo\"]" {:view_as "image" :image_size "large"}}}
+          norm-col-settings {::mb.viz/column-settings {{::mb.viz/column-name "Photo"} {::mb.viz/view-as    "image"
+                                                                                       ::mb.viz/image-size "large"}}}]
+      (t/is (= norm-col-settings (mb.viz/db->norm db-col-settings)))
+      (t/is (= db-col-settings (mb.viz/norm->db norm-col-settings))))))
+
 (t/deftest ^:parallel form-transformation-test-2
   (t/testing "Invalid column refs are dropped when viz settings are normalized (#18972)"
     (t/is (= {::mb.viz/column-settings {}}
