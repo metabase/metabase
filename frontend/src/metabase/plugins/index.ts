@@ -127,7 +127,11 @@ export {
   type PermissionOption,
   type PostActionFunction,
 } from "./oss/permissions";
-export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
+export {
+  PLUGIN_REMOTE_SYNC,
+  type RemoteSyncSettingsModalProps,
+  type RemoteSyncSetupMenuItemProps,
+} from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,
   type SourceReplacementButtonChildProps,
