@@ -215,7 +215,8 @@ describe("Remote Sync", () => {
       cy.findByTestId("admin-layout-content").findByText("Read-write").click();
       cy.button("Set up remote sync").click();
       cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
-      cy.button("Save changes").should("exist");
+      H.undoToast().should("contain.text", "Remote sync settings saved");
+      cy.button("Turn off remote sync").should("exist");
     });
 
     it("disables setup until a repository URL is given (#65653)", () => {
