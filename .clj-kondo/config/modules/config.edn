@@ -1220,9 +1220,10 @@
    :uses #{analytics
            api
            driver
-           lib.legacy-mbql
+           lib
+           lib.be
+           lib.metadata
            lib.schema
-           models
            permissions
            query-processor
            search
@@ -2302,7 +2303,6 @@
    :uses #{api
            lib
            lib.be
-           lib.legacy-mbql
            lib.metadata
            lib.schema
            models
@@ -3048,7 +3048,6 @@
    :uses #{api
            lib
            lib.be
-           lib.legacy-mbql
            lib.schema
            parameters.schema
            premium-features
@@ -4333,7 +4332,6 @@
            driver
            lib
            lib.be
-           lib.legacy-mbql
            lib.metadata
            lib.schema
            models
