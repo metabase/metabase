@@ -12,7 +12,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -76,15 +75,13 @@
                (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))))))
 
 (mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Transform `transform-id`, while remote sync allows editing
-  transforms."
+  "Whether the current user may save or delete a test of the Transform `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (boolean
-   (and (remote-sync/transforms-editable?)
-        (when-let [transform (transform-testing.db/transform transform-id)]
-          (or api/*is-superuser?*
-              (and (transforms-base.i/source-db-id transform)
-                   (can-run-test? (transforms.u/->definition transform))))))))
+   (when-let [transform (transform-testing.db/transform transform-id)]
+     (or api/*is-superuser?*
+         (and (transforms-base.i/source-db-id transform)
+              (can-run-test? (transforms.u/->definition transform)))))))
 
 (defmethod mi/can-read? :model/TransformTest
   ([instance]

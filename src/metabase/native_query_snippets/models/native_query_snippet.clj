@@ -9,7 +9,6 @@
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -147,15 +146,13 @@
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
   [_model k snippets]
   (let [non-nil-snippets (remove nil? snippets)
-        snippets-with-collections (t2/hydrate non-nil-snippets :collection)
-        editable-map (remote-sync/batch-model-editable? :model/NativeQuerySnippet non-nil-snippets)]
+        snippets-with-collections (t2/hydrate non-nil-snippets :collection)]
     (mi/instances-with-hydrated-data
      snippets k
      #(into {}
             (map (fn [snippet]
                    [(:id snippet)
-                    (and (get editable-map (:id snippet) true)
-                         (mi/can-write? snippet))]))
+                    (mi/can-write? snippet)]))
             snippets-with-collections)
      :id
      {:default false})))

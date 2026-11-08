@@ -16,6 +16,9 @@
 
 (methodical/defmethod t2/table-name :model/PythonLibrary [_model] :python_library)
 
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
+  (derive :model/PythonLibrary trait))
+
 (defn- normalize-path
   "Ensure the path ends with .py extension."
   [path]
@@ -32,9 +35,6 @@
   (cond-> library
     (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
     (:path library)                          (update :path normalize-path)))
-
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
-  (derive :model/PythonLibrary trait))
 
 (defmethod mi/can-read? :model/PythonLibrary
   ([_instance]

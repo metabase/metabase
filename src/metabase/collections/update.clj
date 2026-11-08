@@ -23,6 +23,9 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! ::collection-event :metabase/event)
+(events/derive! :event/collection-update ::collection-event)
+
 (def UpdateCollectionArguments
   "The arguments to an update-collection call — what the public API surface accepts. Absent keys
   are left alone; `:archived` and `:parent_id` are acted on only when present, so a caller that
@@ -65,9 +68,7 @@
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
                                                   (collection/perms-for-moving collection-before-update new-parent)))
         ;; ok, we're good to move!
-        (collection/move-collection! collection-before-update new-location
-                                     (collection/moving-into-remote-synced? (collection/location-path->parent-id orig-location)
-                                                                            new-parent-id))))))
+        (collection/move-collection! collection-before-update new-location)))))
 
 (defn- archive-collection!
   "If `collection-updates` specifies that we should archive a collection, do the appropriate permissions checks and

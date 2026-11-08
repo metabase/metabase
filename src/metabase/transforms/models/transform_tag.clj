@@ -13,6 +13,10 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(events/derive! :event/transform-tag-create :metabase/event)
+(events/derive! :event/transform-tag-update :metabase/event)
+(events/derive! :event/transform-tag-delete :metabase/event)
+
 (methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tag)
 
 (doto :model/TransformTag

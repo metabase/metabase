@@ -16,7 +16,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -69,39 +68,35 @@
   ([_model pk]
    (mi/can-read? (measures.db/measure pk))))
 
-;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
-;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
+;; Measures can be written by superusers or data analysts with unrestricted view data permissions.
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
                    (measures.db/table (:table_id instance)))]
-     (and (or api/*is-superuser?*
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/table-editable? table))))
+     (or api/*is-superuser?*
+         (and (api/entitled-data-analyst?)
+              (perms/user-has-permission-for-table?
+               api/*current-user-id*
+               :perms/view-data
+               :unrestricted
+               (:db_id table)
+               (u/the-id table))))))
   ([_model pk]
    (mi/can-write? (measures.db/measure pk))))
 
-;; Measures can be created by superusers, but only if the parent table is editable
-;; (not in a remote-synced collection in read-only mode).
+;; Measures can be created by superusers or data analysts with unrestricted view data permissions.
 (defmethod mi/can-create? :model/Measure
   [_model instance]
   (let [table (or (:table instance)
                   (measures.db/table (:table_id instance)))]
-    (and (or api/*is-superuser?*
-             (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
-         (remote-sync/table-editable? table))))
+    (or api/*is-superuser?*
+        (and (api/entitled-data-analyst?)
+             (perms/user-has-permission-for-table?
+              api/*current-user-id*
+              :perms/view-data
+              :unrestricted
+              (:db_id table)
+              (u/the-id table))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
   "Batched hydration for :can_write on measures. First hydrates :table for all measures,

@@ -2,14 +2,9 @@ import { createMockMetadata } from "__support__/metadata";
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type {
-  DatabaseId,
-  RemoteSyncEntity,
-  RemoteSyncEntityStatus,
-} from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 import {
   createMockCollection,
-  createMockRemoteSyncEntity,
   createMockTemplateTag,
   createMockTransform,
   createMockTransformOwner,
@@ -19,20 +14,8 @@ import {
 import {
   buildTreeData,
   getDescendantCollectionIds,
-  getFolderSyncColor,
   getIncrementalWarning,
-  getSyncColorForEntities,
 } from "./utils";
-
-const dirtyEntity = (
-  status: RemoteSyncEntityStatus,
-  overrides: Partial<RemoteSyncEntity> = {},
-): RemoteSyncEntity =>
-  createMockRemoteSyncEntity({
-    model: "transform",
-    sync_status: status,
-    ...overrides,
-  });
 
 jest.mock("metabase/transforms/utils", () => ({
   getLibQuery: jest.fn(),
@@ -179,95 +162,6 @@ describe("getDescendantCollectionIds", () => {
     const [folderNode] = buildTreeData(collections, transforms);
 
     expect(getDescendantCollectionIds(folderNode)).toEqual(new Set([10]));
-  });
-});
-
-describe("getSyncColorForEntities", () => {
-  it("returns undefined when there are no changes", () => {
-    expect(getSyncColorForEntities([])).toBeUndefined();
-  });
-
-  it("colors a created entity green (feedback-positive)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("create")])).toBe(
-      "feedback-positive",
-    );
-  });
-
-  it("colors an updated entity amber (feedback-warning)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("update")])).toBe(
-      "feedback-warning",
-    );
-  });
-
-  it("colors a removed entity red (feedback-negative)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("removed")])).toBe(
-      "feedback-negative",
-    );
-  });
-});
-
-describe("getFolderSyncColor", () => {
-  const collection = (id: number, status: RemoteSyncEntityStatus) =>
-    dirtyEntity(status, { id, model: "collection" });
-  const childTransform = (
-    collectionId: number,
-    status: RemoteSyncEntityStatus,
-  ) =>
-    dirtyEntity(status, {
-      id: 100 + collectionId,
-      collection_id: collectionId,
-    });
-
-  it("returns undefined when the subtree has no changes", () => {
-    expect(getFolderSyncColor([], 1)).toBeUndefined();
-  });
-
-  it("colors a brand-new folder green", () => {
-    expect(getFolderSyncColor([collection(1, "create")], 1)).toBe(
-      "feedback-positive",
-    );
-  });
-
-  it("colors a renamed or moved folder amber, not green", () => {
-    expect(getFolderSyncColor([collection(1, "update")], 1)).toBe(
-      "feedback-warning",
-    );
-  });
-
-  it("colors an existing folder amber when it only contains new children", () => {
-    expect(getFolderSyncColor([childTransform(1, "create")], 1)).toBe(
-      "feedback-warning",
-    );
-  });
-
-  it("colors an existing folder amber when a child was removed", () => {
-    expect(getFolderSyncColor([childTransform(1, "removed")], 1)).toBe(
-      "feedback-warning",
-    );
-  });
-
-  it("keeps a brand-new folder green even with new children", () => {
-    expect(
-      getFolderSyncColor(
-        [collection(1, "create"), childTransform(1, "create")],
-        1,
-      ),
-    ).toBe("feedback-positive");
-  });
-
-  it("keeps nested brand-new folders green (new folder > new folder > new transform)", () => {
-    const subtree = [
-      collection(1, "create"),
-      collection(2, "create"),
-      childTransform(2, "create"),
-    ];
-    expect(getFolderSyncColor(subtree, 1)).toBe("feedback-positive");
-    expect(
-      getFolderSyncColor(
-        [collection(2, "create"), childTransform(2, "create")],
-        2,
-      ),
-    ).toBe("feedback-positive");
   });
 });
 

@@ -5,27 +5,24 @@
    [metabase.audit-app.core :as audit]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]))
 
 (defenterprise current-user-can-write-field?
-  "Enterprise version. Returns a boolean whether the current user can write the given field.
-   Checks both that the user has manage-table-metadata permission and that the parent table
-   is editable (not in a remote-synced collection in read-only mode)."
+  "Enterprise version. Returns a boolean whether the current user has manage-table-metadata permission for the table
+  of the given field."
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
-                  (advanced-permissions.db/table (:table_id instance)))]
-    (and (remote-sync/table-editable? table)
-         (let [db-id (or (:db_id table)
-                         (database/table-id->database-id (:table_id instance)))]
-           (perms/user-has-permission-for-table?
-            api/*current-user-id*
-            :perms/manage-table-metadata
-            :yes
-            db-id
-            (:table_id instance))))))
+                  (advanced-permissions.db/table (:table_id instance)))
+        db-id (or (:db_id table)
+                  (database/table-id->database-id (:table_id instance)))]
+    (perms/user-has-permission-for-table?
+     api/*current-user-id*
+     :perms/manage-table-metadata
+     :yes
+     db-id
+     (:table_id instance))))
 
 (defenterprise current-user-can-manage-schema-metadata?
   "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
@@ -50,17 +47,15 @@
    db-id))
 
 (defenterprise current-user-can-write-table?
-  "Enterprise version. Checks both that the user has manage-table-metadata permission and
-   that the table is editable (not in a remote-synced collection in read-only mode)."
+  "Enterprise version. Checks that the user has manage-table-metadata permission for the table."
   :feature :advanced-permissions
   [table]
-  (and (remote-sync/table-editable? table)
-       (perms/user-has-permission-for-table?
-        api/*current-user-id*
-        :perms/manage-table-metadata
-        :yes
-        (:db_id table)
-        (:id table))))
+  (perms/user-has-permission-for-table?
+   api/*current-user-id*
+   :perms/manage-table-metadata
+   :yes
+   (:db_id table)
+   (:id table)))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.

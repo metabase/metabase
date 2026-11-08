@@ -34,7 +34,6 @@ export * from "./performance";
 export * from "./permissions";
 export * from "./pulse";
 export * from "./query";
-export * from "./remote-sync";
 export * from "./replacement";
 export * from "./revision";
 export * from "./schema";

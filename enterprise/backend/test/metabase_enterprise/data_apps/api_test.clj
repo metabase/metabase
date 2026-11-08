@@ -67,22 +67,6 @@
           (is (str/includes? (str (mt/user-real-request :crowberto :get 200 (data-apps.tu/app-url app "bundle")))
                              "BUNDLE")))))))
 
-(deftest read-only-remote-sync-allows-enabling-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp app {}]
-      (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
-                                         remote-sync-type :read-only]
-        (testing "enabling and disabling an app is allowed on a read-only instance"
-          (is (=? {:enabled false}
-                  (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled false}))))))))
-
-(deftest enabling-a-data-app-is-not-a-synced-change-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/RemoteSyncObject]
-      (mt/with-temp [:model/DataApp app {}]
-        (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled false})
-        (is (not (t2/exists? :model/RemoteSyncObject :model_type "DataApp" :model_id (:id app))))))))
-
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
     (mt/user-http-request :crowberto :put 402 "ee/apps/demo" {:enabled false})))

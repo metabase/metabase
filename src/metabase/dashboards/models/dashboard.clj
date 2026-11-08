@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -369,8 +368,7 @@
                                dashcard))]
       (check-dashcard-parameter-mapping-permissions dashcards-to-add)
       (add-dashcards! dashboard dashcards-to-add)
-      (cond-> dashboard
-        (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
+      dashboard)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.

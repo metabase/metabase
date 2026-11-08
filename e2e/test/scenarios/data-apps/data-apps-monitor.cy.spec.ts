@@ -26,7 +26,7 @@ function selectFilterOption(label: string, option: string) {
 }
 
 // The log has more columns than the default viewport fits.
-describe(
+describe.skip(
   "scenarios > data apps > monitor",
   { tags: ["@external", "@actions"], viewportWidth: 1600 },
   () => {

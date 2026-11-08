@@ -12,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
@@ -93,40 +92,36 @@
 ;; Segments can be created by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
-;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
                    (segments.db/table (:table_id instance)))]
-     (and (or (mi/superuser?)
-              (and (api/entitled-data-analyst?)
-                   (perms/user-has-permission-for-table?
-                    api/*current-user-id*
-                    :perms/view-data
-                    :unrestricted
-                    (:db_id table)
-                    (u/the-id table))))
-          (remote-sync/table-editable? table))))
+     (or (mi/superuser?)
+         (and (api/entitled-data-analyst?)
+              (perms/user-has-permission-for-table?
+               api/*current-user-id*
+               :perms/view-data
+               :unrestricted
+               (:db_id table)
+               (u/the-id table))))))
   ([_model pk]
    (mi/can-write? (segments.db/segment pk))))
 
 ;; Segments can be created by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
-;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
                   (segments.db/table (:table_id instance)))]
-    (and (or (mi/superuser?)
-             (and (api/entitled-data-analyst?)
-                  (perms/user-has-permission-for-table?
-                   api/*current-user-id*
-                   :perms/view-data
-                   :unrestricted
-                   (:db_id table)
-                   (u/the-id table))))
-         (remote-sync/table-editable? table))))
+    (or (mi/superuser?)
+        (and (api/entitled-data-analyst?)
+             (perms/user-has-permission-for-table?
+              api/*current-user-id*
+              :perms/view-data
+              :unrestricted
+              (:db_id table)
+              (u/the-id table))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
   "Batched hydration for :can_write on segments. First hydrates :table for all segments,

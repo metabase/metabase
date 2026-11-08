@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -1295,11 +1294,9 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (u/prog1 (queries.db/insert-card! (cond-> card-data
-                                                                                  metadata
-                                                                                  (assoc :result_metadata metadata)))
-                                                (when (collections/remote-synced-collection? (:collection_id <>))
-                                                  (collections/check-non-remote-synced-dependencies <>))))]
+                                              (queries.db/insert-card! (cond-> card-data
+                                                                         metadata
+                                                                         (assoc :result_metadata metadata))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
@@ -1535,7 +1532,7 @@
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
-    (collection/check-for-remote-sync-update card-before-update)))
+    (queries.db/card (:id card-before-update))))
 
 (defn- changed-action-events
   "The `[topic action]` pairs that announce how an update to a card changed its actions: `:event/action-delete` with

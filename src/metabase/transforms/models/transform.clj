@@ -12,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
@@ -35,6 +34,9 @@
    [toucan2.instance :as t2.instance]))
 
 (set! *warn-on-reflection* true)
+
+(events/derive! :event/create-transform :metabase/event)
+(events/derive! :event/delete-transform :metabase/event)
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
@@ -77,8 +79,7 @@
    (transform-writable? instance nil))
   ([instance     :- ::instance
     models-cache :- [:maybe ::transforms.u/source-models]]
-   (and (remote-sync/transforms-editable?)
-        (transforms.u/check-feature-enabled (transforms.u/->definition instance))
+   (and (transforms.u/check-feature-enabled (transforms.u/->definition instance))
         (or api/*is-superuser?*
             (and (transform-readable? instance models-cache)
                  (transform-database-permissions? instance)
@@ -113,10 +114,9 @@
 (defmethod mi/can-create? :model/Transform
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
-  ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
+  ;; can-write? requires: can-read? and has-db-transforms-permission?
   ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
-  (and (remote-sync/transforms-editable?)
-       (transforms.u/check-feature-enabled (transforms.u/->definition instance))
+  (and (transforms.u/check-feature-enabled (transforms.u/->definition instance))
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and (api/entitled-data-analyst?)

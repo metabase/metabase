@@ -413,7 +413,7 @@ describe("scenarios > data studio > library", () => {
         .should("not.exist");
     });
 
-    describe("read-only mode", () => {
+    describe.skip("read-only mode", () => {
       beforeEach(() => {
         H.setupGitSync();
         H.configureGitAndPullChanges("read-only");
@@ -666,7 +666,7 @@ describe("scenarios > data studio > library", () => {
       );
     });
 
-    it("offers no bulk selection on remote-sync read-only instances", () => {
+    it.skip("offers no bulk selection on remote-sync read-only instances", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
 

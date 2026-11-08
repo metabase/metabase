@@ -34,7 +34,6 @@
    [metabase-enterprise.metabot.api.routes]
    [metabase-enterprise.mfa.routes]
    [metabase-enterprise.permission-debug.api]
-   [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
@@ -144,7 +143,6 @@
    "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
    "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
-   "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)

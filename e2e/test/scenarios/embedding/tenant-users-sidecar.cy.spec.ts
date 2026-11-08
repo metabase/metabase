@@ -142,7 +142,7 @@ describe("scenarios > sidecar > tenant users", () => {
     H.entityPickerModal().findByText("Our data").should("be.visible");
   });
 
-  it("tenant users should not see the synced collection icons", () => {
+  it.skip("tenant users should not see the synced collection icons", () => {
     cy.signInAsAdmin();
 
     // Setup git sync

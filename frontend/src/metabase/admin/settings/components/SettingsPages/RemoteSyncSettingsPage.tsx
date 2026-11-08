@@ -1,6 +1,5 @@
 import { UpsellRemoteSync } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getPlan, isProPlan, useSetting } from "metabase/settings";
 
 export function RemoteSyncSettingsPage() {
@@ -9,7 +8,7 @@ export function RemoteSyncSettingsPage() {
   const isPro = isProPlan(getPlan(tokenFeatures));
 
   if (hasRemoteSync || isPro) {
-    return <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />;
+    return null;
   }
 
   return <UpsellRemoteSync source="settings-git-sync" />;

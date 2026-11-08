@@ -383,7 +383,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     });
   });
 
-  describe("read-only remote sync", () => {
+  describe.skip("read-only remote sync", () => {
     const SEGMENT_IN_ORDERS = "Segment in Orders table (published)";
     const SEGMENT_IN_PEOPLE = "Segment in People table (Unpublished)";
 

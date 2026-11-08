@@ -77,6 +77,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
 
+(mu/defn action
+  "The Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one :model/Action :id action-id))
+
 (mu/defn action-collection-id
   "The Collection id of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]

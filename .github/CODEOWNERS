@@ -108,12 +108,6 @@ enterprise/backend/src/metabase_enterprise/dependencies.* @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/dependencies @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/dependencies_test.* @metabase/data-apps
 
-# enterprise/remote-sync (Data Apps)
-enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
-enterprise/backend/src/metabase_enterprise/remote_sync.* @metabase/data-apps
-enterprise/backend/test/metabase_enterprise/remote_sync @metabase/data-apps
-enterprise/backend/test/metabase_enterprise/remote_sync_test.* @metabase/data-apps
-
 # enterprise/search (Metabot)
 enterprise/backend/src/metabase_enterprise/search @metabase/metabot
 enterprise/backend/src/metabase_enterprise/search.* @metabase/metabot
@@ -137,12 +131,6 @@ src/metabase/dependencies @metabase/data-apps
 src/metabase/dependencies.* @metabase/data-apps
 test/metabase/dependencies @metabase/data-apps
 test/metabase/dependencies_test.* @metabase/data-apps
-
-# remote-sync (Data Apps)
-src/metabase/remote_sync @metabase/data-apps
-src/metabase/remote_sync.* @metabase/data-apps
-test/metabase/remote_sync @metabase/data-apps
-test/metabase/remote_sync_test.* @metabase/data-apps
 
 # search (Metabot)
 src/metabase/search @metabase/metabot

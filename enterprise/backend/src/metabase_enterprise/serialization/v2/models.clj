@@ -157,8 +157,6 @@
    :model/QueryTable
    :model/RecentViews
    :model/ReplacementRun
-   :model/RemoteSyncObject
-   :model/RemoteSyncTask
    :model/ResultMetadataStatus
    :model/Revision
    :model/Sandbox

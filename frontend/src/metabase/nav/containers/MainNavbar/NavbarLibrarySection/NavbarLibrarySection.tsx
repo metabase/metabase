@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
@@ -15,7 +15,6 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/Sidebar";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
 import type { Collection, CollectionType } from "metabase-types/api";
 
@@ -94,10 +93,6 @@ export function NavbarLibrarySection({
     "expand-library-in-nav",
   );
 
-  const { isVisible: isGitSyncVisible } =
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
-  const { isCollectionDirty } = PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
-
   const libraryTree = useMemo(() => {
     const libraryCollection = collections.find(isLibraryCollection);
     if (!libraryCollection) {
@@ -128,16 +123,6 @@ export function NavbarLibrarySection({
     );
   }, [collections]);
 
-  const showChangesBadge = useCallback(
-    (itemId?: number | string) => {
-      if (!isGitSyncVisible || typeof itemId !== "number") {
-        return false;
-      }
-      return isCollectionDirty(itemId);
-    },
-    [isGitSyncVisible, isCollectionDirty],
-  );
-
   if (libraryTree.length === 0) {
     return null;
   }
@@ -161,13 +146,6 @@ export function NavbarLibrarySection({
             TreeNode={SidebarCollectionLink}
             role="tree"
             aria-label="library-collection-tree"
-            rightSection={(item) =>
-              isGitSyncVisible &&
-              showChangesBadge(item?.id) &&
-              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge && (
-                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-              )
-            }
           />
         </CollapseSection>
       </ErrorBoundary>

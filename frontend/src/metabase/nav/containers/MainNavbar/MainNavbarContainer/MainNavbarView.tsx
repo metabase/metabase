@@ -21,11 +21,7 @@ import {
   getUserCanWriteToCollections,
 } from "metabase/current-user";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
-import {
-  PLUGIN_DATA_APPS,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_TENANTS,
-} from "metabase/plugins";
+import { PLUGIN_DATA_APPS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
@@ -273,22 +269,14 @@ export function MainNavbarView({
                 role="section"
                 aria-label={t`Collections`}
               >
-                {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-                  <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-                    collections={regularCollections}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                  />
-                ) : (
-                  <Tree
-                    data={regularCollections}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                    TreeNode={SidebarCollectionLink}
-                    role="tree"
-                    aria-label="collection-tree"
-                  />
-                )}
+                <Tree
+                  data={regularCollections}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                  aria-label="collection-tree"
+                />
                 {showOtherUsersCollections && (
                   <SidebarLink
                     icon="group"

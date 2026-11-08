@@ -14,7 +14,6 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -287,10 +286,6 @@
     model-id
     ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
 
-    (and (= read-or-write :write)
-         (not (remote-sync/model-editable? :model/Action (assoc action :model_id nil))))
-    #{"___no-remote-sync-access"}
-
     (nil? collection-id)
     (perms/perms-objects-set-for-parent-collection collection/data-actions-ns nil read-or-write)
 
@@ -378,7 +373,7 @@
                                     (not= (:collection_id updates) (:collection_id existing-action))
                                     (:collection_id updates))]
         (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
-      (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
+      (actions.db/action id))))
 
 (mu/defn update!
   "Updates an Action and the related type table.
