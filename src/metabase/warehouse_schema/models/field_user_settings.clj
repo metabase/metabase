@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -27,6 +28,7 @@
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :hook/timestamped?)
   (derive :hook/dependencies))
 
@@ -150,3 +152,9 @@
 (defmethod serialization/after-load :model/FieldUserSettings [_ items]
   (doseq [{{:keys [field_id] :as settings} :instance} items]
     (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
+
+(defmethod remote-sync/synced-where :model/FieldUserSettings
+  [_model alias ctx]
+  [:in (u/qualified-key alias :field_id) ^:allow-subquery {:select [:f.id]
+                                                           :from   [[:metabase_field :f]]
+                                                           :where  [:in :f.table_id (remote-sync/synced-ids :model/TableUserSettings ctx)]}])

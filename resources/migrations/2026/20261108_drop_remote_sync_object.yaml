@@ -1,0 +1,65 @@
+## Remote sync compares the app DB with git on every sync and no longer tracks the sync state of each entity
+
+databaseChangeLog:
+  - changeSet:
+      id: idq4ap
+      author: ranquild
+      comment: Drop remote_sync_object, which remote sync no longer uses
+      changes:
+        - dropTable:
+            tableName: remote_sync_object
+      rollback:
+        - createTable:
+            tableName: remote_sync_object
+            remarks: The sync state of the entities remote sync tracks
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_changed_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_collection_id
+                  type: int
+              - column:
+                  name: model_display
+                  type: varchar(50)
+              - column:
+                  name: model_table_id
+                  type: int
+              - column:
+                  name: model_table_name
+                  type: varchar(255)
+              - column:
+                  name: file_path
+                  type: ${text.type}
+              - column:
+                  name: content_hash
+                  type: ${text.type}

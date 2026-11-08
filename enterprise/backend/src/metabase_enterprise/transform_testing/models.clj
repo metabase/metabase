@@ -27,6 +27,7 @@
 
 (doto :model/TransformTest
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
@@ -80,7 +81,7 @@
   transforms."
   [transform-id :- ::lib.schema.id/transform]
   (boolean
-   (and (remote-sync/transforms-editable?)
+   (and (remote-sync/editable? :model/Transform transform-id)
         (when-let [transform (transform-testing.db/transform transform-id)]
           (or api/*is-superuser?*
               (and (transforms-base.i/source-db-id transform)
@@ -185,3 +186,7 @@
   (mapv (fn [{:keys [transform_id]}]
           #{[:model/Transform transform_id]})
         entities))
+
+(defmethod remote-sync/synced-where :model/TransformTest
+  [_model alias ctx]
+  [:in (u/qualified-key alias :transform_id) (remote-sync/synced-ids :model/Transform ctx)])

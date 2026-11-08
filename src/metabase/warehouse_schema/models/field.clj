@@ -207,7 +207,7 @@
   [instance]
   (let [table (or (:table instance)
                   (warehouse-schema.db/table (:table_id instance)))]
-    (and (remote-sync/table-editable? table)
+    (and (remote-sync/editable? :model/TableUserSettings (:id table))
          (mi/superuser?))))
 
 (defmethod mi/can-write? :model/Field

@@ -1,90 +1,40 @@
 (ns metabase-enterprise.remote-sync.init
   (:require
-   [clojure.java.io :as io]
-   [clojure.string :as str]
-   [metabase-enterprise.remote-sync.events :as events]
-   [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
+   [metabase-enterprise.remote-sync.hooks]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
-   [metabase-enterprise.remote-sync.settings :as settings]
-   [metabase-enterprise.remote-sync.task.import]
+   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
+   [metabase-enterprise.remote-sync.stats]
+   [metabase-enterprise.remote-sync.sync :as sync]
+   [metabase-enterprise.remote-sync.task.auto-import]
    [metabase-enterprise.remote-sync.task.table-cleanup]
-   [metabase.collections.models.collection :as collection]
+   [metabase-enterprise.remote-sync.tasks :as tasks]
+   [metabase.collections.core :as collections]
+   [metabase.settings.core :as setting]
    [metabase.startup.core :as startup]
-   [metabase.util.log :as log])
-  (:import
-   (org.eclipse.jgit.storage.file FileBasedConfig)
-   (org.eclipse.jgit.util FS SystemReader SystemReader$Delegate)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(defn- create-isolated-system-reader
-  "Creates a SystemReader that does not read any system git configuration.
-  This prevents JGit from reading ~/.gitconfig or /etc/gitconfig files."
+(defn- remote-sync-init!
+  "Ends the tasks a stopped server left running, stops syncing collections when remote sync is off, and pulls the
+  synced branch into a read-only instance."
   []
-  (let [base-reader (SystemReader/getInstance)]
-    (proxy [SystemReader$Delegate] [base-reader]
-      (getenv [variable]
-        (if (= "GIT_CONFIG_NOSYSTEM" variable)
-          "true"
-          (.getenv base-reader variable)))
-
-      (openUserConfig [_config ^FS fs]
-        (proxy [FileBasedConfig] [(io/file "_no_config_") ^FS fs]
-          (load [] nil)
-          (save [] nil)))
-
-      (openSystemConfig [_config ^FS fs]
-        (proxy [FileBasedConfig] [(io/file "_no_config_")  ^FS fs]
-          (load [] nil)
-          (save [] nil))))))
-
-(defn- remote-sync-init []
-  ;; Only stale rows: a fresh open row may belong to a worker on another node sharing this app DB.
   (remote-sync.task/supersede-stale-tasks!)
-  (when (and (not (settings/remote-sync-enabled)) (collection/has-remote-synced-collection?))
-    (log/info "Remote sync is disabled but a remote-synced collection exists. Marking collections as not remote-sync.")
-    (collection/clear-remote-synced-collection!))
-  (events/convert-legacy-transforms-root!)
-  (when (settings/remote-sync-enabled)
-    (when (= :read-only (settings/remote-sync-type))
-      (let [branch (settings/remote-sync-branch)]
-        (when (str/blank? branch)
-          (throw (ex-info "Remote sync is enabled with read-only type, but no branch is set." {})))
-        (when (remote-sync.object/dirty?)
-          (if (some-> (settings/remote-sync-allow) (str/includes? "overwrite-unpublished"))
-            (impl/async-import! branch true {}
-                                :on-success (fn [task-id _result]
-                                              (impl/publish-sync-event! :event/remote-sync-import task-id
-                                                                        {:branch branch :auto true} nil)))
-            (throw (ex-info "Remote sync is enabled with read-only type, but there are unpublished changes. To force an overwrite, set `MB_REMOTE_SYNC_ALLOW=overwrite-unpublished`" {}))))))
-    ;; Read-only instances are skipped: a dirty ledger would fail the check above, and their next full pull
-    ;; rebuilds the ledger anyway.
-    (when (and (= :read-write (settings/remote-sync-type))
-               (settings/library-is-remote-synced?))
-      (let [n (events/backfill-glossary-tracking!)]
-        (when (pos? n)
-          (log/infof "Tracking %d existing glossary entries for remote sync" n))))
-    (when (= :read-write (settings/remote-sync-type))
-      (let [n (events/backfill-action-tracking!)]
-        (when (pos? n)
-          (log/infof "Tracking %d existing actions for remote sync" n))))
-    (when-not (collection/has-remote-synced-collection?)
-      (if (nil? (settings/remote-sync-branch))
-        (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")
-        (let [branch (settings/remote-sync-branch)]
-          (log/info "Remote sync is enabled but no remote-sync collection exists. Importing")
-          (impl/async-import! branch true {}
-                              :on-success (fn [task-id _result]
-                                            (impl/publish-sync-event! :event/remote-sync-import task-id
-                                                                      {:branch branch :auto true} nil))))))))
+  (let [ctx (remote-sync/context)]
+    (cond
+      (nil? ctx)
+      (when (collections/has-remote-synced-collection?)
+        (log/info "Remote sync is off: no collection is synced any more")
+        (collections/clear-remote-synced-collection!))
 
-(SystemReader/setInstance (create-isolated-system-reader))
+      (:read-only? ctx)
+      (let [branch (setting/get :remote-sync-branch)]
+        (tasks/start! {:type "import" :branch branch :event :event/remote-sync-import}
+                      (fn [_report]
+                        (sync/pull! (remote-sync.settings/repository) branch ctx (tasks/base-version)
+                                    {:force? true})))))))
 
 (defmethod startup/def-startup-logic! ::remote-sync-setup
   [_]
-  (remote-sync-init))
-
-(defmethod startup/def-shutdown-logic! ::remote-sync-shutdown
-  [_]
-  (impl/fail-running-tasks! "Interrupted by server shutdown"))
+  (remote-sync-init!))

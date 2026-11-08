@@ -9,6 +9,7 @@
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -20,6 +21,7 @@
 
 (doto :model/DashboardCard
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
@@ -363,3 +365,7 @@
                                                                opts))))
                :parameter_mappings     serialization/parameter-mappings-transform
                :visualization_settings serialization/visualization-settings-transform}})
+
+(defmethod remote-sync/synced-where :model/DashboardCard
+  [_model alias ctx]
+  [:in (u/qualified-key alias :dashboard_id) (remote-sync/synced-ids :model/Dashboard ctx)])

@@ -3,20 +3,27 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(events/derive! :event/transform-tag-create :metabase/event)
+(events/derive! :event/transform-tag-update :metabase/event)
+(events/derive! :event/transform-tag-delete :metabase/event)
+
 (methodical/defmethod t2/table-name :model/TransformTag [_model] :transform_tag)
 
 (doto :model/TransformTag
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
@@ -122,3 +129,8 @@
 (t2/define-before-delete :model/TransformTag [tag]
   (events/publish-event! :event/transform-tag-delete {:object tag})
   tag)
+
+(defmethod remote-sync/synced-where :model/TransformTag
+  [_model alias {:keys [transforms?]}]
+  (when transforms?
+    [:= (u/qualified-key alias :built_in_type) nil]))

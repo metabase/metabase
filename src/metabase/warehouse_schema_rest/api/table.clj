@@ -42,6 +42,8 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/table-update :metabase/event)
+
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
   (into [:enum] (map name table/visibility-types)))

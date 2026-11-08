@@ -28,6 +28,7 @@
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
+   [metabase.remote-sync.hooks :as remote-sync.hooks]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
@@ -44,6 +45,7 @@
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.after :as t2.after]
    [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
@@ -721,6 +723,47 @@
 
 (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
   (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
+
+(t2/define-after-insert :hook/remote-synced
+  [instance]
+  (remote-sync.hooks/after-insert &model instance)
+  instance)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/insert.* :hook/remote-synced :default]
+  "Run the INSERT of a `:hook/remote-synced` model and its after-insert hooks in one transaction, so that a row the hook
+  refuses rolls back."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(t2/define-before-update :hook/remote-synced
+  [instance]
+  (remote-sync.hooks/before-update &model instance)
+  instance)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/remote-synced :default]
+  "Run the before-update hooks of a `:hook/remote-synced` model in the transaction of its UPDATE, so that the check
+  its before-update hook leaves for the commit sees the updated row."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(t2/define-before-delete :hook/remote-synced
+  [instance]
+  instance)
+
+(methodical/defmethod t2.before-delete/before-delete :before :hook/remote-synced
+  [model instance]
+  (remote-sync.hooks/before-delete model instance)
+  instance)
+
+(methodical/prefer-method! #'t2.after/each-row-fn
+                           [:toucan.query-type/insert.* :hook/remote-synced]
+                           [:toucan.query-type/insert.* :hook/search-index])
+(methodical/prefer-method! #'t2.before-update/before-update :hook/dependencies :hook/remote-synced)
+(methodical/prefer-method! #'t2.before-delete/before-delete :hook/dependencies :hook/remote-synced)
+(doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
+  (methodical/prefer-method! #'t2.before-update/before-update hook :hook/remote-synced))
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

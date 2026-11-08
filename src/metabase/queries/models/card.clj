@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -40,6 +39,7 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -133,6 +133,7 @@
 
 (doto :model/Card
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
@@ -1295,11 +1296,9 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (u/prog1 (queries.db/insert-card! (cond-> card-data
-                                                                                  metadata
-                                                                                  (assoc :result_metadata metadata)))
-                                                (when (collections/remote-synced-collection? (:collection_id <>))
-                                                  (collections/check-non-remote-synced-dependencies <>))))]
+                                              (queries.db/insert-card! (cond-> card-data
+                                                                         metadata
+                                                                         (assoc :result_metadata metadata))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
@@ -1535,7 +1534,7 @@
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
-    (collection/check-for-remote-sync-update card-before-update)))
+    (queries.db/card (:id card-before-update))))
 
 (defn- changed-action-events
   "The `[topic action]` pairs that announce how an update to a card changed its actions: `:event/action-delete` with
@@ -1929,3 +1928,9 @@
 
 (defmethod serialization/before-load :model/Card [_ items]
   (mapv (comp with-model-metadata keep-local-metadata) items))
+
+(defmethod remote-sync/synced-where :model/Card
+  [_model alias ctx]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   [:in (u/qualified-key alias :collection_id) (remote-sync/synced-ids :model/Collection ctx)]])

@@ -1,9 +1,11 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -11,6 +13,7 @@
 
 (doto :model/TimelineEvent
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
@@ -109,3 +112,7 @@
                :creator_id serialization/user-transform
                :timestamp  serialization/date-transform}
    :defaults  {:archived false}})
+
+(defmethod remote-sync/synced-where :model/TimelineEvent
+  [_model alias ctx]
+  [:in (u/qualified-key alias :timeline_id) (remote-sync/synced-ids :model/Timeline ctx)])

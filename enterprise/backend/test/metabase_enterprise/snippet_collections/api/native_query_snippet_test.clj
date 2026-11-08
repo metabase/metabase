@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -184,20 +185,19 @@
                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))
 
 (deftest snippet-folder-read-only-remote-sync-test
-  (testing "A snippet folder (Collection in the snippets namespace) in a remote-synced collection cannot be edited under read-only remote sync"
+  (testing "A snippet folder synced with the Library cannot be edited under read-only remote sync"
     (mt/with-premium-features #{:snippet-collections}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Collection folder {:name             "Snippet Folder"
-                                                 :namespace        "snippets"
-                                                 :is_remote_synced true}]
-          (testing "read-only remote sync blocks writes to the snippet folder"
-            (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-type :read-only]
-              (is (false? (mi/can-write? (t2/select-one :model/Collection :id (:id folder))))
-                  "snippet folder in a remote-synced collection should not be writable when remote-sync-type is read-only")))
-          (testing "read-write remote sync allows writes to the snippet folder"
-            (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-type :read-write]
-              (is (true? (mi/can-write? (t2/select-one :model/Collection :id (:id folder))))
-                  "snippet folder should be writable when remote-sync-type is read-write"))))))))
+        (collections.tu/with-library-synced
+          (mt/with-temp [:model/Collection folder {:name "Snippet Folder" :namespace "snippets"}]
+            (testing "read-only remote sync blocks writes to the snippet folder"
+              (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-url  "https://github.com/test/repo.git"
+                                                 remote-sync.settings/remote-sync-type :read-only]
+                (is (false? (mi/can-write? (t2/select-one :model/Collection :id (:id folder)))))))
+            (testing "read-write remote sync allows writes to the snippet folder"
+              (mt/with-temporary-setting-values [remote-sync.settings/remote-sync-url  "https://github.com/test/repo.git"
+                                                 remote-sync.settings/remote-sync-type :read-write]
+                (is (true? (mi/can-write? (t2/select-one :model/Collection :id (:id folder)))))))))))))
 
 (deftest ee-disabled-snippets-graph-test
   (testing "GET /api/collection/root/items?namespace=snippets"

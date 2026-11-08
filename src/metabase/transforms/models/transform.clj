@@ -36,9 +36,12 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/create-transform :metabase/event)
+(events/derive! :event/delete-transform :metabase/event)
+
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/dependencies]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/dependencies :hook/remote-synced]]
   (derive :model/Transform trait))
 
 (mr/def ::instance
@@ -77,7 +80,7 @@
    (transform-writable? instance nil))
   ([instance     :- ::instance
     models-cache :- [:maybe ::transforms.u/source-models]]
-   (and (remote-sync/transforms-editable?)
+   (and (remote-sync/editable? :model/Transform (:id instance))
         (transforms.u/check-feature-enabled (transforms.u/->definition instance))
         (or api/*is-superuser?*
             (and (transform-readable? instance models-cache)
@@ -115,7 +118,7 @@
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
   ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
-  (and (remote-sync/transforms-editable?)
+  (and (remote-sync/editable? :model/Transform (:id instance))
        (transforms.u/check-feature-enabled (transforms.u/->definition instance))
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
@@ -610,3 +613,8 @@
       (log/warnf "Skipping transform %s, since an export from before 66 left it without its deleted source database"
                  entity_id))
     (vec resolved)))
+
+(defmethod remote-sync/synced-where :model/Transform
+  [_model _alias {:keys [transforms?]}]
+  (when transforms?
+    [:= 1 1]))

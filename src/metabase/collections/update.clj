@@ -65,9 +65,7 @@
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
                                                   (collection/perms-for-moving collection-before-update new-parent)))
         ;; ok, we're good to move!
-        (collection/move-collection! collection-before-update new-location
-                                     (collection/moving-into-remote-synced? (collection/location-path->parent-id orig-location)
-                                                                            new-parent-id))))))
+        (collection/move-collection! collection-before-update new-location)))))
 
 (defn- archive-collection!
   "If `collection-updates` specifies that we should archive a collection, do the appropriate permissions checks and

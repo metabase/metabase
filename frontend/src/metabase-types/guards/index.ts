@@ -4,7 +4,6 @@ export * from "./common";
 export * from "./dom";
 export * from "./notification-channels";
 export * from "./parameters";
-export * from "./remote-sync";
 export * from "./settings";
 export * from "./table";
 export * from "./visualization";

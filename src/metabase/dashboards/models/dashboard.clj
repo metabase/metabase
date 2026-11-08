@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -24,6 +23,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -47,6 +47,7 @@
 
 (doto :model/Dashboard
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
@@ -369,8 +370,7 @@
                                dashcard))]
       (check-dashcard-parameter-mapping-permissions dashcards-to-add)
       (add-dashcards! dashboard dashcards-to-add)
-      (cond-> dashboard
-        (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
+      dashboard)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
@@ -561,3 +561,9 @@
         loaded         (if (seq action-eids) (dashboards.db/action-entity-ids-in action-eids) #{})
         keep-dashcard? #(or (nil? (:action_id %)) (contains? loaded (:action_id %)))]
     (mapv #(m/update-existing-in % [:entity :dashcards] (partial filterv keep-dashcard?)) items)))
+
+(defmethod remote-sync/synced-where :model/Dashboard
+  [_model alias ctx]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   [:in (u/qualified-key alias :collection_id) (remote-sync/synced-ids :model/Collection ctx)]])

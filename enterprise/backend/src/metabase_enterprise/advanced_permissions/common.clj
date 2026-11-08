@@ -17,7 +17,7 @@
   [instance]
   (let [table (or (:table instance)
                   (advanced-permissions.db/table (:table_id instance)))]
-    (and (remote-sync/table-editable? table)
+    (and (remote-sync/editable? :model/TableUserSettings (:id table))
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]
            (perms/user-has-permission-for-table?
@@ -54,7 +54,7 @@
    that the table is editable (not in a remote-synced collection in read-only mode)."
   :feature :advanced-permissions
   [table]
-  (and (remote-sync/table-editable? table)
+  (and (remote-sync/editable? :model/TableUserSettings (:id table))
        (perms/user-has-permission-for-table?
         api/*current-user-id*
         :perms/manage-table-metadata

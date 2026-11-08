@@ -26,6 +26,7 @@
 
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
@@ -148,13 +149,13 @@
   [_model k snippets]
   (let [non-nil-snippets (remove nil? snippets)
         snippets-with-collections (t2/hydrate non-nil-snippets :collection)
-        editable-map (remote-sync/batch-model-editable? :model/NativeQuerySnippet non-nil-snippets)]
+        read-only (remote-sync/read-only-pks :model/NativeQuerySnippet (map :id non-nil-snippets))]
     (mi/instances-with-hydrated-data
      snippets k
      #(into {}
             (map (fn [snippet]
                    [(:id snippet)
-                    (and (get editable-map (:id snippet) true)
+                    (and (not (read-only (:id snippet)))
                          (mi/can-write? snippet))]))
             snippets-with-collections)
      :id
@@ -271,3 +272,8 @@
                  [(conj items (assoc-in item [:row :name] n)) (assoc taken n entity_id)]))
              [[] taken]
              items))))
+
+(defmethod remote-sync/synced-where :model/NativeQuerySnippet
+  [_model alias {:keys [library?]}]
+  (when library?
+    [:= (u/qualified-key alias :archived) false]))

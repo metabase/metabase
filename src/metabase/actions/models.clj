@@ -37,6 +37,7 @@
 
 (doto :model/Action
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
@@ -46,10 +47,12 @@
   (derive model :metabase/model))
 
 (doto :model/QueryAction
+  (derive :hook/remote-synced)
   (derive :hook/search-index)
   (derive :hook/dependencies))
 
 (derive :model/ImplicitAction :hook/dependencies)
+(derive :model/ImplicitAction :hook/remote-synced)
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
@@ -288,7 +291,7 @@
     ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
 
     (and (= read-or-write :write)
-         (not (remote-sync/model-editable? :model/Action (assoc action :model_id nil))))
+         (not (remote-sync/editable? :model/Action (:id action))))
     #{"___no-remote-sync-access"}
 
     (nil? collection-id)
@@ -378,7 +381,7 @@
                                     (not= (:collection_id updates) (:collection_id existing-action))
                                     (:collection_id updates))]
         (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
-      (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
+      (actions.db/action id))))
 
 (mu/defn update!
   "Updates an Action and the related type table.
@@ -759,3 +762,20 @@
 
 (defmethod serialization/before-load :model/Action [_ items]
   (filterv #(not= "http" (some-> % :entity :type name)) items))
+
+(defmethod remote-sync/synced-where :model/Action
+  [_model alias {:keys [library?] :as ctx}]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   [:or
+    [:in (u/qualified-key alias :collection_id) (remote-sync/synced-ids :model/Collection ctx)]
+    (when library?
+      [:and [:= (u/qualified-key alias :collection_id) nil] [:= (u/qualified-key alias :model_id) nil]])]])
+
+(defmethod remote-sync/synced-where :model/QueryAction
+  [_model alias ctx]
+  [:in (u/qualified-key alias :action_id) (remote-sync/synced-ids :model/Action ctx)])
+
+(defmethod remote-sync/synced-where :model/ImplicitAction
+  [_model alias ctx]
+  [:in (u/qualified-key alias :action_id) (remote-sync/synced-ids :model/Action ctx)])

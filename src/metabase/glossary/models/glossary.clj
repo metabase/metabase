@@ -2,6 +2,7 @@
   (:require
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -11,6 +12,7 @@
 
 (doto :model/Glossary
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
@@ -42,3 +44,8 @@
   (mapv (fn [item]
           [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
         entities))
+
+(defmethod remote-sync/synced-where :model/Glossary
+  [_model _alias {:keys [library?]}]
+  (when library?
+    [:= 1 1]))

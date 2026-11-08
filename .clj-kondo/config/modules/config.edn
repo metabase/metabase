@@ -813,6 +813,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            search
            serialization
            settings
@@ -947,6 +948,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            search
            serialization
            settings
@@ -1527,7 +1529,7 @@
            util
            warehouses.schema}
    :model-exports #{:model/Measure}
-   :model-imports #{:model/Collection :model/Table}}
+   :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
 
   metabot
   {:team    "Metabot"
@@ -1815,6 +1817,7 @@
            lib
            lib.legacy-mbql
            lib.schema
+           remote-sync
            util
            util.classloader}
    :model-imports #{:model/Action
@@ -2227,6 +2230,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            serialization
@@ -2443,18 +2447,15 @@
    :api #{metabase.pivot.core metabase.pivot.postprocess}
    :uses #{models util}}
 
+
   remote-sync
   {:team       "Data Apps"
    :codeowners true
    :api  #{metabase.remote-sync.core
-           metabase.remote-sync.init}
-   :uses #{api
-           events
-           lib.schema
-           models
-           premium-features
-           util}
-   :model-imports #{:model/Collection}}
+           metabase.remote-sync.hooks
+           metabase.remote-sync.schema}
+   :uses #{premium-features
+           util}}
 
   request
   {:team "UX West"
@@ -2635,7 +2636,7 @@
            util
            warehouses.schema}
    :model-exports #{:model/Segment}
-   :model-imports #{:model/Collection :model/Table}}
+   :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
 
   segments.rest
   {:team "Graphy"
@@ -3067,6 +3068,7 @@
            events
            lib.schema
            models
+           remote-sync
            serialization
            util}
    :model-exports #{:model/Timeline :model/TimelineEvent}
@@ -3185,6 +3187,7 @@
    :uses #{driver
            lib.schema
            models
+           remote-sync
            serialization
            util
            warehouses}
@@ -3931,6 +3934,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            search
            serialization
            settings
@@ -4283,7 +4287,8 @@
                     :model/Permissions
                     :model/PermissionsGroupMembership
                     :model/Sandbox
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   enterprise/permissions.debug
   {:team "Security Engineering"
@@ -4369,50 +4374,40 @@
    :ns-prefix "metabase-enterprise.dashboard-subscription-filters"
    :uses #{premium-features}}
 
+
   enterprise/remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{metabase-enterprise.remote-sync.api
-           metabase-enterprise.remote-sync.init}
-   :uses #{analytics.interface
-           api
+   :api  #{metabase-enterprise.remote-sync.api metabase-enterprise.remote-sync.init}
+   :uses #{api
            app-db
            collections
            events
            lib.schema
            models
            premium-features
-           search
+           remote-sync
            serialization
            settings
            startup
            task
-           task.history
            util
-           warehouses.schema
-           enterprise/serialization
-           enterprise/transforms.python}
+           enterprise/serialization}
    :model-exports #{:model/RemoteSyncTask}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
-                    :model/Dimension
                     :model/Document
-                    :model/Field
                     :model/FieldUserSettings
                     :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
-                    :model/PythonLibrary
                     :model/Segment
-                    :model/Table
                     :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
-                    :model/TransformTag
-                    :model/TransformTest
                     :model/User}}
 
   enterprise/search
@@ -4724,9 +4719,7 @@
   enterprise/transforms.python
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.transforms-python"
-   :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.core
-           metabase-enterprise.transforms-python.init}
+   :api  #{metabase-enterprise.transforms-python.api metabase-enterprise.transforms-python.init}
    :uses #{analytics.interface
            api
            app-db
@@ -4739,6 +4732,7 @@
            models
            permissions
            query-processor
+           remote-sync
            serialization
            settings
            tracing

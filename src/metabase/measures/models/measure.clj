@@ -57,6 +57,7 @@
 
 (doto :model/Measure
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/dependencies))
@@ -83,7 +84,7 @@
                     :unrestricted
                     (:db_id table)
                     (u/the-id table))))
-          (remote-sync/table-editable? table))))
+          (remote-sync/editable? :model/TableUserSettings (:id table)))))
   ([_model pk]
    (mi/can-write? (measures.db/measure pk))))
 
@@ -101,7 +102,7 @@
                    :unrestricted
                    (:db_id table)
                    (u/the-id table))))
-         (remote-sync/table-editable? table))))
+         (remote-sync/editable? :model/TableUserSettings (:id table)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Measure :can_write]
   "Batched hydration for :can_write on measures. First hydrates :table for all measures,
@@ -274,3 +275,9 @@
   (mapv (fn [{:keys [definition]}]
           (serialization/import-mbql-dependencies definition))
         entities))
+
+(defmethod remote-sync/synced-where :model/Measure
+  [_model alias ctx]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   [:in (u/qualified-key alias :table_id) (remote-sync/synced-ids :model/TableUserSettings ctx)]])

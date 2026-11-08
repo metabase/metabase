@@ -379,7 +379,7 @@
    collection in read-only mode)."
   metabase-enterprise.advanced-permissions.common
   [instance]
-  (and (remote-sync/table-editable? instance)
+  (and (remote-sync/editable? :model/TableUserSettings (:id instance))
        (mi/superuser?)))
 
 (defmethod mi/can-write? :model/Table

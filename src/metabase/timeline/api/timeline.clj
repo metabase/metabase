@@ -18,6 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/timeline-create :metabase/event)
+(events/derive! :event/timeline-update :metabase/event)
+(events/derive! :event/timeline-delete :metabase/event)
+
 (mr/def ::include
   [:enum :events])
 

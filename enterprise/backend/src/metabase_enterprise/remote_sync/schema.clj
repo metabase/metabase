@@ -38,36 +38,7 @@
    [:conflicts {:optional true} [:maybe [:sequential :string]]]
    [:status TaskStatus]])
 
-;;; ------------------------------------------- Conflict Schemas -------------------------------------------
-
-(def ConflictType
-  "Type of import conflict detected during pre-flight check."
-  [:enum
-   :entity-id-conflict    ; Local entity exists with same entity_id but not in RemoteSyncObject
-   :library-conflict      ; First import, local Library exists, import has Library
-   :transforms-conflict   ; Local has transforms AND import has transforms
-   :snippets-conflict     ; Local has snippets AND import has snippets
-   :dirty])               ; RemoteSyncObject has items with status != "synced"
-
-(def ConflictDetail
-  "Schema for detailed conflict information."
-  [:map
-   [:type ConflictType]
-   [:category {:optional true} :string]
-   [:count {:optional true} pos-int?]
-   [:entity-ids {:optional true} [:set :string]]
-   [:message {:optional true} :string]])
-
-(def ConflictResponse
-  "Schema for conflict error response from async-import!."
-  [:map
-   [:status-code [:= 400]]
-   [:conflicts [:= true]]
-   [:conflict-type {:optional true} ConflictType]
-   [:conflict-details {:optional true} [:sequential ConflictDetail]]
-   [:conflict-summary {:optional true} [:set :string]]])
-
-;;; ------------------------------------------- Dirty Item Schemas -------------------------------------------
+;;; ------------------------------------------- Dirty Schemas -------------------------------------------
 
 (def DirtyItem
   "Schema for a dirty sync item.
@@ -175,28 +146,6 @@
   "Schema for POST /test-connection response."
   [:map
    [:status [:= :success]]])
-
-(mr/def ::remote-sync-object
-  "A RemoteSyncObject as selected from the app DB: every column of `:remote_sync_object`."
-  [:merge
-   ::remote-sync-object.update
-   [:map {:closed true}
-    [:id                  ms/PositiveInt]]])
-
-(mr/def ::remote-sync-object.update
-  "What an update (or insert) of a RemoteSyncObject accepts: every column of `:remote_sync_object` except `id`, all optional."
-  [:map {:closed true}
-   [:model_type          {:optional true} [:maybe [:or :keyword :string]]]
-   [:model_id            {:optional true} [:maybe :int]]
-   [:status              {:optional true} [:maybe [:or :keyword :string]]]
-   [:status_changed_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:model_name          {:optional true} [:maybe :string]]
-   [:model_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:model_display       {:optional true} [:maybe [:or :keyword :string]]]
-   [:model_table_id      {:optional true} [:maybe ::lib.schema.id/table]]
-   [:model_table_name    {:optional true} [:maybe :string]]
-   [:file_path           {:optional true} [:maybe :string]]
-   [:content_hash        {:optional true} [:maybe :string]]])
 
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."

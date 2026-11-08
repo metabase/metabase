@@ -1,87 +1,48 @@
 (ns metabase.remote-sync.core
+  "Which rows of each model remote sync syncs, as a HoneySQL where-clause each model defines."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.db :as remote-sync.db]))
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
-(defenterprise collection-editable?
-  "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
+(set! *warn-on-reflection* true)
 
-  Always true on OSS."
-  metabase-enterprise.remote-sync.core
-  [_collection]
-  true)
+(defmulti synced-where
+  "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows remote sync syncs
+  under the remote sync context `ctx`, or nil when it syncs none."
+  {:arglists '([model alias ctx])}
+  (fn [model _alias _ctx] model))
 
-(defenterprise table-editable?
-  "Returns if a table's metadata can be edited. Takes a table to check.
+(defmethod synced-where :default
+  [_model _alias _ctx]
+  nil)
 
-  Returns false if the table is published, in a remote-synced collection, and remote-sync-type is :read-only.
-  Always true on OSS."
-  metabase-enterprise.remote-sync.core
-  [_table]
-  true)
-
-(defenterprise transforms-editable?
-  "Returns if transforms can be edited.
-
-  Returns false if remote-sync is enabled and remote-sync-type is :read-only.
-  Always true on OSS."
-  metabase-enterprise.remote-sync.core
+(defn synced-models
+  "The models that define which of their rows remote sync syncs."
   []
+  (sort (remove #{:default} (keys (methods synced-where)))))
+
+(mu/defn synced-ids :- [:fn map?]
+  "The HoneySQL query selecting the primary keys of the rows of `model` remote sync syncs under `ctx`."
+  [model :- :keyword
+   ctx   :- ::remote-sync.schema/context]
+  (let [table (t2/table-name model)
+        alias (keyword (str "synced_" (name table)))]
+    ^:allow-subquery {:select [(u/qualified-key alias (first (t2/primary-keys model)))]
+                      :from   [[table alias]]
+                      :where  (or (synced-where model alias ctx) [:= 1 0])}))
+
+(defenterprise editable?
+  "Whether the row of `model` with the primary key `pk` can be changed, which a synced row can't on a read-only
+  instance; a nil `pk`, of a row not saved yet, is left to the read-only hook."
+  metabase-enterprise.remote-sync.core
+  [_model _pk]
   true)
 
-(defenterprise model-editable?
-  "Determines if a model instance is editable based on remote sync configuration.
-
-   Returns false if the instance is eligible for remote sync AND remote-sync-type
-   is :read-only. Always returns true on OSS.
-
-   For models with global eligibility (e.g., :setting, :library-synced), the instance
-   can be nil or empty map."
+(defenterprise read-only-pks
+  "The set of those of `pks` whose rows of `model` can't be changed (see [[editable?]])."
   metabase-enterprise.remote-sync.core
-  [_model-key _instance]
-  true)
-
-(defenterprise batch-model-editable?
-  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean.
-
-   OSS always returns true for all instances."
-  metabase-enterprise.remote-sync.core
-  [_model-key instances]
-  (into {} (map (fn [inst] [(:id inst) true])) instances))
-
-(defenterprise batch-model-eligible?
-  "Batch check if model instances are eligible for remote sync based on spec rules.
-   Returns a map of instance-id -> eligible? boolean.
-
-   This checks if instances would be synced when remote sync is active, accounting
-   for special eligibility types like :library-synced for snippets.
-
-   OSS uses collection-based eligibility: an instance is eligible if it's in a collection
-   with is_remote_synced=true. Collections are eligible if they have is_remote_synced=true.
-   EE extends this with spec-based eligibility rules for special models like snippets
-   (Library-synced) and transforms (setting-based)."
-  metabase-enterprise.remote-sync.core
-  [model-key instances]
-  (if (= model-key :model/Collection)
-    ;; For Collections, check their own is_remote_synced flag
-    (into {}
-          (map (fn [inst]
-                 [(:id inst) (boolean (:is_remote_synced inst))]))
-          instances)
-    ;; For other models, check if they're in a remote-synced collection
-    (let [collection-ids (into #{} (keep :collection_id) instances)
-          remote-synced-coll-ids (when (seq collection-ids)
-                                   (remote-sync.db/remote-synced-collection-ids collection-ids))]
-      (into {}
-            (map (fn [inst]
-                   [(:id inst)
-                    (boolean (contains? remote-synced-coll-ids (:collection_id inst)))]))
-            instances))))
-
-(defenterprise dangling-dependencies
-  "The `[from to]` pairs of `[model-name id]` of what remote sync exports and the remote-sync content it depends on
-  that remote sync does not export: those from the `:from` entities, or on the `:to` entities, given as maps of
-  model-name to ids, a Collection standing for everything in it. None on OSS, which has no remote sync."
-  metabase-enterprise.remote-sync.core
-  [_opts]
-  [])
+  [_model _pks]
+  #{})

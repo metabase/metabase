@@ -5,6 +5,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -17,6 +18,7 @@
 
 (doto :model/DashboardTab
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
@@ -120,3 +122,7 @@
      :created-tab-ids (vals old->new-tab-id)
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))
+
+(defmethod remote-sync/synced-where :model/DashboardTab
+  [_model alias ctx]
+  [:in (u/qualified-key alias :dashboard_id) (remote-sync/synced-ids :model/Dashboard ctx)])

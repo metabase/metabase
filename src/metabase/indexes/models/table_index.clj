@@ -11,7 +11,9 @@
    [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -22,6 +24,7 @@
 
 (doto :model/TableIndex
   (derive :metabase/model)
+  (derive :hook/remote-synced)
   (derive :hook/timestamped?))
 
 (def ^:private transform-structured
@@ -152,3 +155,7 @@
    :skip      [:status :error_message :last_executed_at :created_by]
    :parent    {:model :model/Transform :key :transform_id :order :index_name}
    :transform {:transform_id serialization/import-only-transform}})
+
+(defmethod remote-sync/synced-where :model/TableIndex
+  [_model alias ctx]
+  [:in (u/qualified-key alias :transform_id) (remote-sync/synced-ids :model/Transform ctx)])

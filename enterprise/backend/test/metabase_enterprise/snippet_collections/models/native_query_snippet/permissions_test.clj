@@ -101,12 +101,12 @@
   (testing "Snippets are NOT writable when library is synced and mode is read-only"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
-                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+          (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                         :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-test-user :rasta
                 (is (false? (mi/can-write? snippet))
                     "Snippet should NOT be writable in read-only mode when library is synced")))))))))
@@ -115,25 +115,24 @@
   (testing "Snippets cannot be created when library is synced and mode is read-only"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}]
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-              (mt/with-test-user :rasta
-                (is (false? (mi/can-create? :model/NativeQuerySnippet {:collection_id (:id collection)}))
-                    "Snippet should NOT be creatable in read-only mode when library is synced")))))))))
+        (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"managed by remote sync"
+                                  (t2/insert! :model/NativeQuerySnippet {:name          "Read-only snippet"
+                                                                         :content       "SELECT 1"
+                                                                         :creator_id    (mt/user->id :rasta)
+                                                                         :collection_id (:id collection)})))))))))
 
 (deftest remote-sync-read-only-update-perms-test
   (testing "Snippets cannot be updated when library is synced and mode is read-only"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
-                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+          (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                         :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-test-user :rasta
                 (is (false? (mi/can-update? snippet {:name "New Name"}))
                     "Snippet should NOT be updatable in read-only mode when library is synced")))))))))
@@ -142,12 +141,12 @@
   (testing "Snippets are still readable when library is synced and mode is read-only"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
-                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
-              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+          (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                         :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-test-user :rasta
                 (is (true? (mi/can-read? snippet))
                     "Snippet should still be readable in read-only mode")))))))))
@@ -170,12 +169,12 @@
   (testing "Snippets ARE writable in read-only mode when library is NOT synced"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-not-synced
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
-                           :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+          (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                         :model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-test-user :rasta
                 (is (true? (mi/can-write? snippet))
                     "Snippet should be writable when library is NOT synced")))))))))
@@ -186,14 +185,14 @@
   (testing "batched-hydrate :can_write respects remote-sync read-only mode"
     (mt/with-premium-features #{:snippet-collections}
       (collections.tu/with-library-synced
-        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-            (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
-                           :model/NativeQuerySnippet snippet1 {:name "snippet1" :content "SELECT 1" :collection_id (:id collection)}
-                           :model/NativeQuerySnippet snippet2 {:name "snippet2" :content "SELECT 2" :collection_id (:id collection)}
-                           :model/NativeQuerySnippet snippet3 {:name "snippet3" :content "SELECT 3" :collection_id (:id collection)}]
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+          (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
+                         :model/NativeQuerySnippet snippet1 {:name "snippet1" :content "SELECT 1" :collection_id (:id collection)}
+                         :model/NativeQuerySnippet snippet2 {:name "snippet2" :content "SELECT 2" :collection_id (:id collection)}
+                         :model/NativeQuerySnippet snippet3 {:name "snippet3" :content "SELECT 3" :collection_id (:id collection)}]
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-test-user :rasta
                 (let [snippets (mt/with-current-user nil
                                  (t2/select :model/NativeQuerySnippet :id [:in [(:id snippet1) (:id snippet2) (:id snippet3)]]))

@@ -255,6 +255,26 @@
    changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
   (t2/update! :model/Collection :id collection-id changes))
 
+(mu/defn collection-remote-synced-by-item-id
+  "The `:id` of each of the `model` rows with `ids` and the `:is_remote_synced` of its Collection, as stored."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (t2/select [model :id [:c.is_remote_synced :is_remote_synced]]
+             {:where [:in (keyword (str (name (t2/table-name model)) ".id")) ids]
+              :join  [[:collection :c] [:= :collection_id :c.id]]}))
+
+(mu/defn set-subtree-remote-synced-flags!
+  "Set `:is_remote_synced` to `remote-synced?` on the ::collections.schema/collection with `collection-id` and on the
+  Collections whose location starts with `children-location`, returning the number updated."
+  [collection-id     :- ::lib.schema.id/collection
+   children-location :- :string
+   remote-synced?    :- :boolean]
+  (t2/update! :model/Collection
+              {:where [:and
+                       [:not= :is_remote_synced remote-synced?]
+                       [:or [:= :id collection-id] [:like :location (str children-location "%")]]]}
+              {:is_remote_synced remote-synced?}))
+
 (mu/defn clear-remote-synced-flags!
   "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
   []
