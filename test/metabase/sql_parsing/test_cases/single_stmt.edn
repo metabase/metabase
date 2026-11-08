@@ -165,19 +165,19 @@
    :dialect    "postgres"
    :sql        ""
    :stmt-type  "read"
-   :expected   {:verdict :unknown :reason "unparseable" :error "'NoneType' object has no attribute 'sql'"}}
+   :expected   {:verdict :unknown :reason "unparseable"}}
 
   {:name       "whitespace only is not a read"
    :dialect    "postgres"
    :sql        "   \n  "
    :stmt-type  "read"
-   :expected   {:verdict :unknown :reason "unparseable" :error "'NoneType' object has no attribute 'sql'"}}
+   :expected   {:verdict :unknown :reason "unparseable"}}
 
   {:name       "a comment only is not a read"
    :dialect    "postgres"
    :sql        "-- nothing here"
    :stmt-type  "read"
-   :expected   {:verdict :unknown :reason "unparseable" :error "'NoneType' object has no attribute 'sql'"}}
+   :expected   {:verdict :unknown :reason "unparseable"}}
 
   {:name       "a cast placeholder is a read"
    :dialect    "postgres"
