@@ -1,5 +1,6 @@
 import { type ReactNode, forwardRef } from "react";
 
+import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
@@ -30,6 +31,16 @@ export const PublicComponentWrapper = forwardRef<
   const initStatus = useSdkSelector(getInitStatus);
   const usageProblem = useSdkSelector(getUsageProblem);
   const pluginsReady = useArePluginsReady();
+
+  const hasUsageProblemError = usageProblem?.severity === "error";
+
+  // Report config_error when a usage problem blocks all components from
+  // rendering. Without this the load would silently end as a timeout.
+  useReportComponentReady({
+    isReady: false,
+    isError: hasUsageProblemError,
+    errorType: hasUsageProblemError ? "config_error" : undefined,
+  });
 
   let content = children;
 

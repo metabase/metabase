@@ -3,7 +3,9 @@ import { isObject } from "underscore";
 
 import Settings from "metabase/utils/settings";
 
-const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
+// Exported so the SDK's direct-POST fallback can build the envelope without
+// importing the Track library (see sdk-ready-event.ts).
+export const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
 const anonymizedHostname = "anonymous.metabase.com";
 const anonymizedOrigin = `http://${anonymizedHostname}`;
 
