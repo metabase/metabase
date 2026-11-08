@@ -4,7 +4,6 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -33,6 +32,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.workspaces.core :as workspaces]
@@ -808,12 +808,9 @@
         (upload.db/set-card-result-metadata! id metadata)))))
 
 (defn- translate-type-keywords [m]
-  (walk/postwalk
-   (fn [x]
-     (if (and (keyword? x) (= "metabase.upload" (namespace x)))
-       (keyword "metabase.upload.types" (name x))
-       x))
-   m))
+  (match/replace-all m
+    (kw :guard (and (keyword? kw) (= "metabase.upload" (namespace kw))))
+    (keyword "metabase.upload.types" (name kw))))
 
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (driver.conn/with-write-connection
