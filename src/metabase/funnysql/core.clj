@@ -3,7 +3,7 @@
   function absent from [[clause-fns]]/[[fn-call!]] throws. Values bind as `?`; only integers, booleans, validated
   tokens, [[h2x/literal]] and `[:inline <number>]` are spliced. A map compiles as a query only at top level or when marked
   `^:allow-subquery`. No support at all for `:raw`."
-  (:refer-clojure :exclude [format])
+  (:refer-clojure :exclude [format first not-empty reduce some])
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
@@ -11,7 +11,8 @@
    [honey.sql.pg-ops]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf :refer [first not-empty reduce some]])
   (:import
    (java.time DateTimeException ZoneId)))
 
@@ -26,13 +27,17 @@
 
 (defn- default-context [engine options]
   (let [sb   (StringBuilder.)
-        args (volatile! (transient []))]
+        args (java.util.ArrayList.)]
     (reify Context
       (engine      [_this]     engine)
       (options     [_this]     options)
       (append-sql! [_this s]   (.append sb s))
-      (append-arg! [_this arg] (vswap! args conj! arg))
-      (result!     [_this]     (into [(str sb)] (persistent! @args))))))
+      (append-arg! [_this arg] (.add args arg))
+      (result!     [_this]     (as-> (perf/counted-transient (inc (count args)))
+                                     result
+                                 (conj! result (str sb))
+                                 (reduce conj! result args)
+                                 (persistent! result))))))
 
 (defprotocol ^:private Compile
   (^:private compile! [x context]))
@@ -69,7 +74,7 @@
     ;; don't trust `(str n)` blindly -- fail closed instead of splicing whatever it produces. This rejects
     ;; non-finite Doubles (`NaN`, `Infinity`) and guards against a hostile custom `Number` implementation whose
     ;; `toString` isn't numeric SQL syntax.
-    (when-not (re-matches #"-?\d+(\.\d+)?([eE][+-]?\d+)?" s)
+    (when-not (re-matches #"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?" s)
       (throw (ex-info "Invalid number" {:n n})))
     (append-sql! context s)))
 
@@ -87,14 +92,25 @@
 (defn- interpose-fn
   "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
   item in `xs`."
-  [xs x-fn separator-fn]
-  {:pre [(or (nil? xs) (coll? xs))]} ; maps are ok here, we can iterate over the pairs
-  (when (seq xs)
-    (loop [[x & more] xs]
-      (x-fn x)
-      (when (seq more)
-        (separator-fn)
-        (recur more)))))
+  ([xs x-fn separator-fn]
+   (interpose-fn xs x-fn separator-fn identity))
+  ([xs x-fn separator-fn xform]
+   (assert (or (nil? xs) (coll? xs)))   ; maps are ok here, we can iterate over the pairs
+   ;; Artistic usage of transduce + rf's 1-arity. Each step doesn't perform an action with the current element;
+   ;; instead, it remembers the current element, and calls `x-fn` on the previous element, and calls `separator-fn`.
+   ;; On transduce completion, it finishes off with the last remembered element.
+   (transduce xform
+              (fn
+                ([] ::nothing)
+                ([last-item]
+                 (when-not (identical? last-item ::nothing)
+                   (x-fn last-item)))
+                ([last-item x]
+                 (when-not (identical? last-item ::nothing)
+                   (x-fn last-item)
+                   (separator-fn))
+                 x))
+              xs)))
 
 (defn- ->sequence
   "Normalize a clause value that is allowed to be either a single item or a sequence of them. Honey SQL accepts
@@ -583,22 +599,24 @@
    :returning       returning!
    :nest            parens!))
 
-(def ^:private clause-rank
-  (into {}
-        (map-indexed (fn [i [k _f]] [k i]))
-        clause-fns))
+(def ^:private clause-order (vec (keys clause-fns)))
 
 (defn- map!
   "Compile a map. This is normally only allowed by [[format]] but not by [[compile!]] to avoid accidentally compiling
   subqueries where unintended."
   [m context]
-  (interpose-fn (sort-by clause-rank (keys m))
-                (fn [k]
-                  (let [f (or (clause-fns k)
-                              (throw (ex-info (clojure.core/format "Top-level map key %s is not currently supported" (pr-str k))
-                                              {:k k})))]
-                    (f (get m k) context)))
-                #(append-sql! context " ")))
+  (reduce-kv (fn [_ k _]
+               (when-not (get clause-fns k)
+                 (throw (ex-info (clojure.core/format "Top-level map key %s is not currently supported" (pr-str k))
+                                 {:k k}))))
+             nil m)
+  (interpose-fn
+   clause-order
+   (fn [k]
+     (let [f (get clause-fns k)]
+       (f (get m k) context)))
+   #(append-sql! context " ")
+   (filter (fn [k] (contains? m k)))))
 
 (defn- quoted-identifier!
   "Emit `s` as a single quoted identifier. `s` must already be validated -- it is not escaped."
@@ -625,8 +643,14 @@
 
 (defn- identifier!
   "Emit a (possibly qualified) identifier composed of multiple [[identifier-part!]]s."
-  [s context]
-  (interpose-fn (str/split s #"\.") #(identifier-part! % context) #(append-sql! context ".")))
+  [^String s context]
+  (loop [start 0]
+    (let [dot-idx (.indexOf s "." start)]
+      (if (= dot-idx -1)
+        (identifier-part! (if (= start 0) s (.substring s start)) context)
+        (do (identifier-part! (.substring s start dot-idx) context)
+            (append-sql! context ".")
+            (recur (inc dot-idx)))))))
 
 (defn- alias!
   "Emit the alias in `<x> AS <alias>`. An alias names a single thing, so like Honey SQL, an unqualified keyword alias is
@@ -763,11 +787,11 @@
   `[:and x (when y z)]` work -- and if nothing is left we compile `identity-value` (`TRUE` for AND, `FALSE` for OR)
   rather than emitting nothing at all."
   [sql identity-value xs context]
-  (let [xs (filter some? xs)]
-    (condp = (count xs)
+  (let [non-nil-cnt (reduce (fn [acc x] (cond-> acc (some? x) inc)) 0 xs)]
+    (condp = non-nil-cnt
       0 (compile! identity-value context)
-      1 (compile! (first xs) context)
-      (interpose-fn xs #(parens! % context) #(append-sql! context sql)))))
+      1 (compile! (some identity xs) context)
+      (interpose-fn xs #(parens! % context) #(append-sql! context sql) (filter some?)))))
 
 (defn- not! [[x] context]
   (append-sql! context "NOT ")
@@ -839,8 +863,10 @@
           (compile! vs context)
 
           ;; sequence of sequences
-          (and (sequential? (first vs))
-               (not (fn-call? (first vs))))
+          (and (sequential? vs)
+               (let [fvs (first vs)]
+                 (and (sequential? fvs)
+                      (not (fn-call? fvs)))))
           (do
             (append-sql! context "(")
             (interpose-fn vs #(list! % context) #(append-sql! context ", "))
@@ -1088,125 +1114,127 @@
   (append-sql! context " @@ ")
   (compile! rhs context))
 
-(defn- fn-call! [[f & args] context]
+(defn- fn-call! [call context]
   ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from an attacker-derived
   ;; `:%foo` keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the
   ;; SQL raw. All allowed functions need to be explicitly whitelisted here.
   ;;
   ;; ⚠⚠⚠ DO NOT ADD SUPPORT FOR `:raw` -- IT IS NOT SUPPORTED ON PURPOSE ⚠⚠⚠
   ;;
-  (case f
-    (:<> :!= :not=)    (equals! " <> " " IS NOT NULL" args context)
-    :=                 (equals! " = " " IS NULL" args context)
-    :and               (compound! " AND " true args context)
-    :between           (between! args context)
-    :case              (case! args context)
-    :cast              (cast! args context)
-    :composite         (list! args context)
-    :current-timestamp (current-timestamp! context)
-    :escape            (escape! args context)
-    :exists            (exists! "EXISTS " (first args) context)
-    :in                (in! f args context)
-    :inline            (inline! (first args) context)
-    :lift              (object! (first args) context)
-    :not               (not! args context)
-    :not-exists        (exists! "NOT EXISTS " (first args) context)
-    :not-in            (in! f args context)
-    :or                (compound! " OR " false args context)
-    :over              (over! (first args) context)
-    :param             (param! (first args) context)
-    :position          (position! args context)
-    :timestampdiff     (timestamp-diff! args context)
+  (let [f (nth call 0)
+        args (subvec call 1)]
+    (case f
+      (:<> :!= :not=)    (equals! " <> " " IS NOT NULL" args context)
+      :=                 (equals! " = " " IS NULL" args context)
+      :and               (compound! " AND " true args context)
+      :between           (between! args context)
+      :case              (case! args context)
+      :cast              (cast! args context)
+      :composite         (list! args context)
+      :current-timestamp (current-timestamp! context)
+      :escape            (escape! args context)
+      :exists            (exists! "EXISTS " (first args) context)
+      :in                (in! f args context)
+      :inline            (inline! (first args) context)
+      :lift              (object! (first args) context)
+      :not               (not! args context)
+      :not-exists        (exists! "NOT EXISTS " (first args) context)
+      :not-in            (in! f args context)
+      :or                (compound! " OR " false args context)
+      :over              (over! (first args) context)
+      :param             (param! (first args) context)
+      :position          (position! args context)
+      :timestampdiff     (timestamp-diff! args context)
 
-    (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
-    (binary-operator! f args context)
+      (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
+      (binary-operator! f args context)
 
-    ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
-    :call
-    (recur args context)
+      ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
+      :call
+      (recur args context)
 
-    ;; custom legacy `h2x/` operators
-    ::h2x/identifier        (h2x-identifier! args context)
-    ::h2x/literal           (h2x-literal! (first args) context)
-    ::h2x/extract           (h2x-extract! args context)
-    ::h2x/timestampdiff     (timestamp-diff! args context)
-    ::h2x/distinct-count    (h2x-distinct-count! (first args) context)
-    ::h2x/percentile-cont   (h2x-percentile-cont! args context)
-    ::h2x/collate           (h2x-collate! args context)
-    ::h2x/at-time-zone      (h2x-at-time-zone! args context)
-    ::h2x/typed             (compile! (first args) context)
-    ::h2x/raw-type-name     (raw-type-name! (first args) context)
-    ::h2x/postgres-interval (h2x-interval! :postgres args context)
-    ::h2x/mysql-interval    (h2x-interval! :mysql args context)
+      ;; custom legacy `h2x/` operators
+      ::h2x/identifier        (h2x-identifier! args context)
+      ::h2x/literal           (h2x-literal! (first args) context)
+      ::h2x/extract           (h2x-extract! args context)
+      ::h2x/timestampdiff     (timestamp-diff! args context)
+      ::h2x/distinct-count    (h2x-distinct-count! (first args) context)
+      ::h2x/percentile-cont   (h2x-percentile-cont! args context)
+      ::h2x/collate           (h2x-collate! args context)
+      ::h2x/at-time-zone      (h2x-at-time-zone! args context)
+      ::h2x/typed             (compile! (first args) context)
+      ::h2x/raw-type-name     (raw-type-name! (first args) context)
+      ::h2x/postgres-interval (h2x-interval! :postgres args context)
+      ::h2x/mysql-interval    (h2x-interval! :mysql args context)
 
-    ;; other custom operators
-    (:abs
-     :avg
-     :ceil
-     :coalesce
-     :concat
-     :concat_ws
-     :count
-     :current_database
-     :current_schema
-     :database
-     :date_part
-     :dateadd
-     :date_add
-     :datediff
-     :day
-     :distinct
-     :floor
-     :greatest
-     :least
-     :isnull
-     :json_contains_path
-     :json_search
-     :jsonb_build_object
-     :jsonb_path_exists
-     :left
-     :length
-     :locate
-     :lower
-     :max
-     :min
-     :month
-     :now
-     :rand
-     :random
-     :regexp_replace
-     :replace
-     :row_number
-     :round
-     :setweight
-     :split_part
-     :sum
-     :substring
-     :to_regclass
-     :to_tsquery
-     :to_tsvector
-     :trim
-     :ts_rank
-     :upper
-     :year)
-    (simple-fn! f args context)
-
-    #_else
-    (condp = f
-      ;; [[honey.sql.pg-ops/atat]] is just `:@@`, but that doesn't work as a keyword literal, and [[case]] treats the
-      ;; raw symbol as a compile-time constant instead of evaluating it to `:@@`, so unfortunately we just have to
-      ;; have this fallback [[condp]] here 😢
-      ;;
-      ;; TODO (Cam 2026-10-15) consider whether we should switch to a custom namespaced keyword called
-      ;; `:metabase.funnysql.core/postgres-full-text-search-match`, this was actually what I did originally but I
-      ;; changed it to the Honey SQL keyword for compatibility
-      honey.sql.pg-ops/atat
-      (postgres-full-text-search-match args context)
+      ;; other custom operators
+      (:abs
+       :avg
+       :ceil
+       :coalesce
+       :concat
+       :concat_ws
+       :count
+       :current_database
+       :current_schema
+       :database
+       :date_part
+       :dateadd
+       :date_add
+       :datediff
+       :day
+       :distinct
+       :floor
+       :greatest
+       :least
+       :isnull
+       :json_contains_path
+       :json_search
+       :jsonb_build_object
+       :jsonb_path_exists
+       :left
+       :length
+       :locate
+       :lower
+       :max
+       :min
+       :month
+       :now
+       :rand
+       :random
+       :regexp_replace
+       :replace
+       :row_number
+       :round
+       :setweight
+       :split_part
+       :sum
+       :substring
+       :to_regclass
+       :to_tsquery
+       :to_tsvector
+       :trim
+       :ts_rank
+       :upper
+       :year)
+      (simple-fn! f args context)
 
       #_else
-      (throw (ex-info (clojure.core/format "Function %s is not currently supported; add it to metabase.funnysql.core/fn-call! if it should be"
-                                           (pr-str f))
-                      {:f f, :args args})))))
+      (condp = f
+        ;; [[honey.sql.pg-ops/atat]] is just `:@@`, but that doesn't work as a keyword literal, and [[case]] treats the
+        ;; raw symbol as a compile-time constant instead of evaluating it to `:@@`, so unfortunately we just have to
+        ;; have this fallback [[condp]] here 😢
+        ;;
+        ;; TODO (Cam 2026-10-15) consider whether we should switch to a custom namespaced keyword called
+        ;; `:metabase.funnysql.core/postgres-full-text-search-match`, this was actually what I did originally but I
+        ;; changed it to the Honey SQL keyword for compatibility
+        honey.sql.pg-ops/atat
+        (postgres-full-text-search-match args context)
+
+        #_else
+        (throw (ex-info (clojure.core/format "Function %s is not currently supported; add it to metabase.funnysql.core/fn-call! if it should be"
+                                             (pr-str f))
+                        {:f f, :args args}))))))
 
 (defn- sequence! [xs context]
   (cond

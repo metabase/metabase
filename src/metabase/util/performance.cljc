@@ -174,6 +174,14 @@
   ;; Storing `f` in the transient itself is a hack to reduce lambda generation.
   (SmallTransientImpl. (object-array n) 0 f))
 
+(defn counted-transient
+  "Create a new empty transient when the total number of elements in the resulting vector is guaranteed to be `n`.
+  Dispatches to `small-transient` if n <= 32."
+  [n]
+  (if (<= n 32)
+    (small-transient n identity)
+    (transient [])))
+
 (defn- apply-and-small-conj!
   ([^SmallTransientImpl st a]
    #?(:clj (.conj st ((.-f st) a))
@@ -247,9 +255,7 @@
     #?(:clj
        (let [n (count coll)
              it1 (.iterator ^Iterable coll)]
-         (loop [i 0, res (if (<= n 32)
-                           (small-transient n identity)
-                           (transient []))]
+         (loop [i 0, res (counted-transient n)]
            (if (.hasNext it1)
              ;; Use .invokePrim directly to prevent index from autoboxing.
              (recur (inc i) (conj! res (.invokePrim ^clojure.lang.IFn$LOO f i (.next it1))))
@@ -257,11 +263,7 @@
        :cljs
        (let [n (count coll)]
          (persistent!
-          (reduce-kv #(conj! %1 (f %2 %3))
-                     (if (<= n 32)
-                       (small-transient n identity)
-                       (transient []))
-                     coll))))))
+          (reduce-kv #(conj! %1 (f %2 %3)) (counted-transient n) coll))))))
 
 (defn remove-by-index
   "Remove an item with the given `index` from vector `v`, returning a vector."
@@ -271,9 +273,7 @@
      (reduce #(if (= %2 index)
                 %1
                 (conj! %1 (nth v %2)))
-             (if (<= n 32)
-               (small-transient (dec n) identity)
-               (transient []))
+             (counted-transient (dec n))
              (range (count v))))))
 
 (defn run!
@@ -358,10 +358,7 @@
     (throw (ex-info "Position should be in the range [0; N] of vector." {})))
   (let [v (vec v)
         n (count v)]
-    (loop [i 0, acc #?(:clj (if (<= n 32)
-                              (small-transient (inc n) identity)
-                              (transient []))
-                       :cljs (transient []))]
+    (loop [i 0, acc (counted-transient (inc n))]
       (if (< i pos)
         (recur (inc i) (conj! acc (nth v i)))
         (loop [i pos, acc (conj! acc el)]
