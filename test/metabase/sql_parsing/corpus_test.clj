@@ -3,17 +3,15 @@
   variable names, and does nothing when the variable is not set.
 
   `MB_SQL_PARSING_DIFFERENTIAL_CASES`: an `.edn` or `.json` file of `{:cases [{:sql ... :dialect ...} ...]}`, the
-  same shape as the files in `test_cases/` (`:dialects` and `:sqls` are expanded the same way, other keys are
+  same shape as the files in `test_cases/` (see [[metabase.sql-parsing.case-files/expand]]; other keys are
   ignored). For each distinct query, both backends answer `referenced-tables`, `referenced-fields` and
   `field-references`, and the test fails for each answer on which they disagree. There are no expected answers.
   `MB_SQL_PARSING_DIFFERENTIAL_REPORT`, when set, is a file to write each disagreement to as JSON.
 
   The failures and the report hold the SQL, so do not run these tests where the logs are public."
   (:require
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.sql-parsing.case-files :as case-files]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
@@ -25,24 +23,12 @@
   [var-name]
   (not-empty (System/getenv var-name)))
 
-(defn- read-cases
-  "The cases in the `.edn` or `.json` file at `path`."
-  [path]
-  (let [text (slurp (io/file path))]
-    (:cases (if (str/ends-with? (str/lower-case path) ".json")
-              (json/decode+kw text)
-              (edn/read-string text)))))
-
 (defn- distinct-queries
-  "Each distinct `[sql dialect]` in `cases`, in file order. A case that lists `:dialects` or `:sqls` gives one query
-  for each dialect and SQL."
+  "Each distinct `[sql dialect]` in `cases`, in file order."
   [cases]
-  (distinct
-   (for [{:keys [sql sqls dialect dialects] :as case} cases
-         dialect (if (contains? case :dialects) dialects [dialect])
-         sql     (or sqls [sql])
-         :when   (string? sql)]
-     [sql dialect])))
+  (distinct (for [{:keys [sql dialect]} (case-files/expand cases)
+                  :when (string? sql)]
+              [sql dialect])))
 
 ;;; -------------------------------------------------- differential ------------------------------------------------
 
@@ -81,7 +67,7 @@
 
 (deftest differential-test
   (if-let [path (env-path "MB_SQL_PARSING_DIFFERENTIAL_CASES")]
-    (let [queries     (distinct-queries (read-cases path))
+    (let [queries     (distinct-queries (case-files/file-cases path))
           python      (sql-parsing/parser :sqlglot)
           java        (sql-parsing/parser :sqlglot-java)
           divergences (volatile! [])
