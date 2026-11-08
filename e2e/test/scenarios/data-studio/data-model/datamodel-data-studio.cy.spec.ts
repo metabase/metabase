@@ -747,7 +747,7 @@ describe("scenarios > data studio > datamodel", () => {
     H.main().findByText("Something’s gone wrong").should("not.exist");
   });
 
-  describe.skip("read-only remote sync", () => {
+  describe("read-only remote sync", () => {
     function verifyTableIsNotWritable(tableId: TableId) {
       cy.request("GET", `/api/table/${tableId}/query_metadata`)
         .its("body.can_write")

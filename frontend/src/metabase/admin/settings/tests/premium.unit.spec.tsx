@@ -29,7 +29,7 @@ const routes = routeObjtoArray({
   ...upsellRoutes,
   ...enterpriseRoutes, // includes the license route
   cloud: { path: "skip", testPattern: /nope/ },
-  remoteSync: { path: "skip", testPattern: /nope/ },
+  remoteSync: { path: "/remote-sync", testPattern: /Set up remote sync/i },
 }).filter(({ path }) => path !== "skip");
 
 describe("Admin Settings Routing - Enterprise with all features", () => {
