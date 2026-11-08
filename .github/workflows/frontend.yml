@@ -59,10 +59,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - run: bun run build-pure:cljs
-        name: Compile CLJS
+      - name: Build cljs
+        uses: ./.github/actions/build-cljs
       - run: bun run type-check-pure
         name: Check types
 
@@ -84,8 +82,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
+      - name: Build cljs
+        uses: ./.github/actions/build-cljs
       - name: Resolve current job id
         # Resolve JOB_ID before the long test step so the ci-conductor reporter
         # below can link failures to this exact job. Best-effort.
@@ -104,7 +102,7 @@ jobs:
         # Jest exits non-zero on a shard with no files unless --passWithNoTests is set.
         run: |
           rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
-          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
+          bun run test-unit-keep-cljs --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
         # Ordinary assertion failures can be quarantined, but runner failures cannot.
         continue-on-error: true
       - name: Check unit test results
