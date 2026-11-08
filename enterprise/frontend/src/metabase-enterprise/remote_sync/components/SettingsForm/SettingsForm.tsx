@@ -15,7 +15,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useSetting } from "metabase/settings";
-import { Button, Group, Radio, Stack } from "metabase/ui";
+import { Button, Group, Loader, Radio, Stack } from "metabase/ui";
 import {
   useCreateLibraryMutation,
   useTestRemoteSyncConnectionMutation,
@@ -30,6 +30,7 @@ import type { SettingsFormValues, SyncableCollection } from "../../types";
 
 import { CollectionsField } from "./CollectionsField";
 import {
+  useIsSettingsFormLoading,
   useLibraryCollection,
   useSettingsFormValues,
   useSyncableCollections,
@@ -42,7 +43,17 @@ type SettingsFormProps = {
   onCancel?: () => void;
 };
 
-export const SettingsForm = ({
+export const SettingsForm = (props: SettingsFormProps) => {
+  const isLoading = useIsSettingsFormLoading();
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  return <LoadedSettingsForm {...props} />;
+};
+
+const LoadedSettingsForm = ({
   triggeredFrom,
   onSaved,
   onCancel,
@@ -108,11 +119,7 @@ export const SettingsForm = ({
   };
 
   return (
-    <FormProvider
-      initialValues={initialValues}
-      enableReinitialize
-      onSubmit={handleSubmit}
-    >
+    <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
       <SettingsFormBody
         regularCollections={regularCollections}
         tenantCollections={tenantCollections}

@@ -39,6 +39,14 @@
   [model row]
   (check-row! model row))
 
+(defn- export-changes?
+  "Whether the changes of `row` of `model` change what an export of it holds."
+  [model row]
+  (let [original (t2/original row)
+        exported (serialization/export-batch model [original (merge original (t2/changes row))])]
+    (or (some #(instance? Exception %) exported)
+        (not= (first exported) (second exported)))))
+
 (defenterprise before-update
   "Throws when `row` of `model`, about to change what an export holds, is synced on a read-only instance, before the
   update or, with its changes, just before the update commits."
@@ -46,9 +54,10 @@
   [model row]
   (when (seq (select-keys (t2/changes row) (serialization/columns model)))
     (when-let [ctx (read-only-context)]
-      (let [pk (get row (first (t2/primary-keys model)))]
-        (check-not-synced! model pk ctx)
-        (app-db/do-before-commit #(check-not-synced! model pk ctx))))))
+      (when (export-changes? model row)
+        (let [pk (get row (first (t2/primary-keys model)))]
+          (check-not-synced! model pk ctx)
+          (app-db/do-before-commit #(check-not-synced! model pk ctx)))))))
 
 (defenterprise before-delete
   "Throws when `row` of `model`, about to be deleted, is synced on a read-only instance."

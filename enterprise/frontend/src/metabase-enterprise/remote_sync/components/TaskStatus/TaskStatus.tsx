@@ -63,16 +63,7 @@ const TaskStatusModal = () => {
     }
     if (task.status === "successful") {
       sendToast({ message: getOutcomeMessage(task.outcome), icon: "check" });
-      if (task.sync_task_type === "import") {
-        dispatch(EnterpriseApi.util.invalidateTags([...ENTERPRISE_TAG_TYPES]));
-      } else {
-        dispatch(
-          EnterpriseApi.util.invalidateTags([
-            "session-properties",
-            "remote-sync-dirty",
-          ]),
-        );
-      }
+      dispatch(EnterpriseApi.util.invalidateTags([...ENTERPRISE_TAG_TYPES]));
     } else {
       setFailedTask(task);
     }

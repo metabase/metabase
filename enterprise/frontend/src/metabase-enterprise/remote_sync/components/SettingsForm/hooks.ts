@@ -4,7 +4,12 @@ import {
   useListCollectionItemsQuery,
   useListCollectionsQuery,
 } from "metabase/api";
-import { useAdminSetting, useSetting } from "metabase/settings";
+import {
+  useAdminSetting,
+  useGetAdminSettingsDetailsQuery,
+  useSetting,
+} from "metabase/settings";
+import type { ListCollectionItemsRequest } from "metabase-types/api";
 
 import type { SettingsFormValues, SyncableCollection } from "../../types";
 
@@ -53,14 +58,31 @@ export const useLibraryCollection = (): SyncableCollection | null => {
   }, [collections]);
 };
 
+const TENANT_COLLECTIONS_REQUEST: ListCollectionItemsRequest = {
+  id: "root",
+  namespace: "shared-tenant-collection",
+  models: ["collection"],
+};
+
+export const useIsSettingsFormLoading = (): boolean => {
+  const isTenantsEnabled = useSetting("use-tenants");
+  const { isLoading: isLoadingSettings } = useGetAdminSettingsDetailsQuery();
+  const { isLoading: isLoadingCollections } = useListCollectionsQuery({
+    archived: false,
+  });
+  const { isLoading: isLoadingTenantCollections } = useListCollectionItemsQuery(
+    TENANT_COLLECTIONS_REQUEST,
+    { skip: !isTenantsEnabled },
+  );
+  return (
+    isLoadingSettings || isLoadingCollections || isLoadingTenantCollections
+  );
+};
+
 export const useSyncableTenantCollections = (): SyncableCollection[] => {
   const isTenantsEnabled = useSetting("use-tenants");
   const { data: items } = useListCollectionItemsQuery(
-    {
-      id: "root",
-      namespace: "shared-tenant-collection",
-      models: ["collection"],
-    },
+    TENANT_COLLECTIONS_REQUEST,
     { skip: !isTenantsEnabled },
   );
 
