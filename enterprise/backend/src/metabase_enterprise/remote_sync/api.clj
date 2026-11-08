@@ -166,9 +166,9 @@
   (api/check-superuser)
   (let [ctx (check-configured!)]
     (check-branch! branch)
-    (let [{:keys [base ours theirs remote-changed? history-rewritten?]}
+    (let [{:keys [base local-base ours theirs remote-changed? history-rewritten?]}
           (sync/state (remote-sync.settings/repository) branch ctx (tasks/base-version))
-          {:keys [conflicts summary casualties]} (remote-sync.merge/merge-documents base ours theirs)]
+          {:keys [conflicts summary casualties]} (remote-sync.merge/merge-documents base local-base ours theirs)]
       {:has_changes           remote-changed?
        :clean                 (empty? conflicts)
        :conflicts             conflicts

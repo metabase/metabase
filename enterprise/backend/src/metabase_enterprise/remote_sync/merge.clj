@@ -17,15 +17,16 @@
           (if (sequential? ref) (str (last ref)) (str (name (first key)) " " ref))))))
 
 (defn merge-documents
-  "The merge of `ours` and `theirs`, maps from key to document, since `base`: `:merged`, the documents to keep;
+  "The merge of `ours` and `theirs`, maps from key to document, since `base`, the documents of the tree the app DB last
+  synced with, and `local-base`, those documents as the app DB exports them: `:merged`, the documents to keep;
   `:conflicts`, the labels of the entities both sides changed differently; `:summary`, the counts of their changes
   merged in; and `:casualties`, the labels of their changes that taking ours instead would discard."
-  [base ours theirs]
+  [base local-base ours theirs]
   (reduce (fn [acc k]
             (let [b       (get base k)
                   o       (get ours k)
                   t       (get theirs k)
-                  ours?   (not (content/same? o b))
+                  ours?   (not (content/same? o (get local-base k)))
                   theirs? (not (content/same? t b))
                   kept    (cond
                             (not theirs?) o

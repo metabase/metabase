@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Api } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { useSetting } from "metabase/settings";
@@ -12,6 +11,7 @@ import {
   useCancelRemoteSyncCurrentTaskMutation,
   useGetRemoteSyncCurrentTaskQuery,
 } from "metabase-enterprise/api";
+import { ENTERPRISE_TAG_TYPES } from "metabase-enterprise/api/tags";
 import type { RemoteSyncOutcome, RemoteSyncTask } from "metabase-types/api";
 
 import { TASK_POLLING_INTERVAL_MS } from "../../constants";
@@ -64,7 +64,7 @@ const TaskStatusModal = () => {
     if (task.status === "successful") {
       sendToast({ message: getOutcomeMessage(task.outcome), icon: "check" });
       if (task.sync_task_type === "import") {
-        dispatch(Api.util.resetApiState());
+        dispatch(EnterpriseApi.util.invalidateTags([...ENTERPRISE_TAG_TYPES]));
       } else {
         dispatch(
           EnterpriseApi.util.invalidateTags([

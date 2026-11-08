@@ -5,29 +5,57 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.content :as content]
+   [metabase-enterprise.remote-sync.core :as ee.remote-sync]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.protocol :as protocol]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- canonical-contents
+  "The `{:yaml :resources}` that each of `docs`, documents of a tree, would export to once loaded into the app DB, by a
+  load that rolls back; none when it fails to load."
+  [docs]
+  (if (empty? docs)
+    {}
+    (try
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (serialization/load-all (vec (keys docs)) #(mapv (comp :entity docs) %))
+        (content/local-contents docs))
+      (catch Exception e
+        (log/warnf "Could not compare the synced tree with the app DB: %s" (ex-message e))
+        {}))))
+
+(defn local-base
+  "The `base` documents as the app DB, whose documents are `ours`, exports them, so that a change of format between
+  the version that wrote the tree and this one does not read as a local change."
+  [base ours]
+  (let [drifted (into {}
+                      (filter (fn [[k doc]] (and (contains? ours k) (not (content/same? doc (get ours k))))))
+                      base)]
+    (merge-with merge base (canonical-contents drifted))))
+
 (defn state
   "What a push or pull of `branch` of `repo` under `ctx` compares, with `base-version` the version of the tree the app
-  DB last synced with: the `:tip` version, and the `:base`, `:ours` and `:theirs` documents."
+  DB last synced with: the `:tip` version, and the `:base`, `:local-base` (see [[local-base]]), `:ours` and `:theirs`
+  documents."
   [repo branch ctx base-version]
   (protocol/fetch! repo)
   (let [tip    (or (protocol/version repo branch)
                    (throw (ex-info (format "The branch %s does not exist." branch) {:branch branch})))
         known? (and base-version (protocol/has-version? repo base-version))
         base   (content/tree-documents ctx repo (when known? base-version))
-        theirs (content/tree-documents ctx repo tip)]
+        theirs (content/tree-documents ctx repo tip)
+        ours   (content/local-documents ctx)]
     {:tip                tip
      :base               base
-     :ours               (content/local-documents ctx)
+     :local-base         (local-base base ours)
+     :ours               ours
      :theirs             theirs
      :remote-changed?    (not (content/same-documents? base theirs))
      :history-rewritten? (and (some? base-version) (not known?))}))
@@ -98,9 +126,9 @@
   changed since `base-version`, overwrites it when `force?`, merges it in, also into the app DB, when `merge?`, and
   stops otherwise."
   [repo branch ctx base-version {:keys [force? merge? message]}]
-  (let [{:keys [tip base ours theirs remote-changed?]} (state repo branch ctx base-version)
+  (let [{:keys [tip base local-base ours theirs remote-changed?]} (state repo branch ctx base-version)
         {:keys [merged conflicts]} (if (and merge? (not force?))
-                                     (remote-sync.merge/merge-documents base ours theirs)
+                                     (remote-sync.merge/merge-documents base local-base ours theirs)
                                      {:merged ours})
         missing                    (missing-dependencies merged)]
     (cond
@@ -126,27 +154,41 @@
                     {:kind "pushed" :count (count (changed-keys theirs merged))}
                     {:kind "push-skipped"})}))))
 
-(defn pull!
+(defn- pull-once!
   "Pulls the content synced under `ctx` from `branch` of `repo` into the app DB, keeping its changes since
   `base-version` unless `force?`."
   [repo branch ctx base-version {:keys [force?]}]
-  (let [{:keys [tip base ours theirs]} (state repo branch ctx base-version)
+  (let [{:keys [tip base local-base ours theirs]} (state repo branch ctx base-version)
         {:keys [merged conflicts]} (if force?
                                      {:merged theirs}
-                                     (remote-sync.merge/merge-documents base ours theirs))]
+                                     (remote-sync.merge/merge-documents base local-base ours theirs))]
     (if (seq conflicts)
       (conflict conflicts)
       {:status  :success
        :version tip
        :outcome {:kind "pulled" :count (apply! ours merged)}})))
 
+(defn pull!
+  "Pulls the content synced under `ctx` from `branch` of `repo` into the app DB, keeping its changes since
+  `base-version` unless `force?`, and pulls again while what it pulled changes what is synced, as a pulled Library
+  does."
+  [repo branch ctx base-version opts]
+  (let [result   (pull-once! repo branch ctx base-version opts)
+        next-ctx (ee.remote-sync/context)]
+    (if (and (= :success (:status result))
+             next-ctx
+             (not= (dissoc ctx :read-only?) (dissoc next-ctx :read-only?)))
+      (update-in (pull! repo branch next-ctx base-version opts) [:outcome :count] + (get-in result [:outcome :count]))
+      result)))
+
 (defn local-changes
-  "The `{:key :status :doc}` of each synced entity of the app DB that changed since the `base` documents: `create`,
-  `update`, or `delete` for one `ours` lacks, with the document of the side that has it."
+  "The `{:key :status :doc}` of each synced entity of the app DB that changed since the `base` documents of the tree it
+  last synced with: `create`, `update`, or `delete` for one `ours` lacks, with the document of the side that has it."
   [base ours]
-  (concat (for [[k doc] ours
-                :when (not (content/same? doc (get base k)))]
-            {:key k :status (if (contains? base k) "update" "create") :doc doc})
-          (for [[k doc] base
-                :when (not (contains? ours k))]
-            {:key k :status "delete" :doc doc})))
+  (let [local (local-base base ours)]
+    (concat (for [[k doc] ours
+                  :when (not (content/same? doc (get local k)))]
+              {:key k :status (if (contains? base k) "update" "create") :doc doc})
+            (for [[k doc] base
+                  :when (not (contains? ours k))]
+              {:key k :status "delete" :doc doc}))))

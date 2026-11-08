@@ -91,6 +91,22 @@
                              paths))))
             (exported-models ctx)))))
 
+(defn local-contents
+  "The `{:yaml :resources}` the rows of the app DB export to for each of `docs`, a map from key to document, leaving out
+  the documents with no row."
+  [docs]
+  (into {}
+        (mapcat (fn [[model pairs]]
+                  (let [ks       (mapv key pairs)
+                        rows     (serialization/local-rows model (mapv (comp :entity val) pairs))
+                        found    (into [] (filter second) (map vector ks rows))
+                        entities (serialization/export-batch model (mapv second found))]
+                    (keep (fn [[[k] entity]]
+                            (when-not (instance? Exception entity)
+                              [k (select-keys (document (:path (get docs k)) entity) [:yaml :resources])]))
+                          (map vector found entities)))))
+        (group-by (comp first key) docs)))
+
 (defn- tree-document
   "The document of the entity YAML file at `path` of the tree of `version` of `repo`, with the content as the tree
   holds it."

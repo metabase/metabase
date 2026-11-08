@@ -269,11 +269,13 @@
   [collection-id     :- ::lib.schema.id/collection
    children-location :- :string
    remote-synced?    :- :boolean]
-  (t2/update! :model/Collection
-              {:where [:and
-                       [:not= :is_remote_synced remote-synced?]
-                       [:or [:= :id collection-id] [:like :location (str children-location "%")]]]}
-              {:is_remote_synced remote-synced?}))
+  (let [ids (t2/select-pks-vec :model/Collection
+                               {:where [:and
+                                        [:not= :is_remote_synced remote-synced?]
+                                        [:or [:= :id collection-id] [:like :location (str children-location "%")]]]})]
+    (if (seq ids)
+      (t2/update! :model/Collection :id [:in ids] {:is_remote_synced remote-synced?})
+      0)))
 
 (mu/defn clear-remote-synced-flags!
   "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
