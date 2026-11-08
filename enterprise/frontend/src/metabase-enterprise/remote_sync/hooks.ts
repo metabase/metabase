@@ -1,22 +1,16 @@
 import { useMemo } from "react";
 
 import { useListCollectionsQuery } from "metabase/api";
-import { getUserIsAdmin } from "metabase/current-user";
 import type { RemoteSyncDirtyState } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { useSetting } from "metabase/settings";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import type { CollectionId } from "metabase-types/api";
 
+import { getIsRemoteSyncVisible } from "./selectors";
 import { getDirtyAreas, getDirtyCollectionIds } from "./utils";
 
-export const useIsRemoteSyncVisible = (): boolean => {
-  const isAdmin = useSelector(getUserIsAdmin);
-  const isEnabled = useSetting("remote-sync-enabled");
-  const syncType = useSetting("remote-sync-type");
-  const branch = useSetting("remote-sync-branch");
-  return Boolean(isAdmin && isEnabled && branch && syncType === "read-write");
-};
+export const useIsRemoteSyncVisible = (): boolean =>
+  useSelector(getIsRemoteSyncVisible);
 
 export const useRemoteSyncDirtyState = (): RemoteSyncDirtyState => {
   const isVisible = useIsRemoteSyncVisible();
