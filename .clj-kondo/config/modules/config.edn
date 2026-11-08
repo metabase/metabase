@@ -4370,8 +4370,14 @@
   enterprise/remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{}
-   :uses #{settings util}}
+   :api  #{metabase-enterprise.remote-sync.init}
+   :uses #{collections
+           lib.schema
+           premium-features
+           settings
+           startup
+           util}
+   :model-imports #{:model/Collection}}
 
   enterprise/search
   {:team "Metabot"
