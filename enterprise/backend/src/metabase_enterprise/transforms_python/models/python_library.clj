@@ -7,6 +7,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -111,3 +112,8 @@
   [library]
   (events/publish-event! :event/python-library-update {:object library})
   library)
+
+(defmethod remote-sync/spec :model/PythonLibrary
+  [_model]
+  {:label                :path
+   :synced-filter-clause transforms-python.db/synced-python-libraries-clause})

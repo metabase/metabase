@@ -132,6 +132,12 @@ src/metabase/dependencies.* @metabase/data-apps
 test/metabase/dependencies @metabase/data-apps
 test/metabase/dependencies_test.* @metabase/data-apps
 
+# remote-sync (Data Apps)
+src/metabase/remote_sync @metabase/data-apps
+src/metabase/remote_sync.* @metabase/data-apps
+test/metabase/remote_sync @metabase/data-apps
+test/metabase/remote_sync_test.* @metabase/data-apps
+
 # search (Metabot)
 src/metabase/search @metabase/metabot
 src/metabase/search.* @metabase/metabot

@@ -14,6 +14,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -208,12 +209,23 @@
     (assoc query-action :database_id database-id)
     query-action))
 
+(defn- check-query
+  "Throws a 400 unless the query of `query-action` is empty or native."
+  [{query :dataset_query}]
+  (when (and (map? query)
+             (seq query)
+             (not (lib/native-only-query? (lib-be/normalize-query query))))
+    (throw (ex-info (tru "An action''s query has to be a native query.") {:status-code 400}))))
+
 (t2/define-before-insert :model/QueryAction
   [query-action]
+  (check-query query-action)
   (set-query-database query-action))
 
 (t2/define-before-update :model/QueryAction
   [query-action]
+  (when (contains? (t2/changes query-action) :dataset_query)
+    (check-query query-action))
   (set-query-database query-action))
 
 (defn- check-implicit-action-table
@@ -285,6 +297,13 @@
   (cond
     model-id
     ((get-method mi/perms-objects-set :perms/use-parent-collection-perms) action read-or-write)
+
+    (and (= read-or-write :write)
+         (nil? collection-id)
+         (not (if-let [id (:id action)]
+                (remote-sync/can-write? :model/Action id)
+                (not (remote-sync/read-only?)))))
+    #{"___no-remote-sync-access"}
 
     (nil? collection-id)
     (perms/perms-objects-set-for-parent-collection collection/data-actions-ns nil read-or-write)
@@ -754,3 +773,15 @@
 
 (defmethod serialization/before-load :model/Action [_ items]
   (filterv #(not= "http" (some-> % :entity :type name)) items))
+
+(defmethod remote-sync/spec :model/Action
+  [_model]
+  {:synced-filter-clause actions.db/synced-actions-clause})
+
+(defmethod remote-sync/spec :model/QueryAction
+  [_model]
+  {:synced-filter-clause actions.db/synced-action-details-clause})
+
+(defmethod remote-sync/spec :model/ImplicitAction
+  [_model]
+  {:synced-filter-clause actions.db/synced-action-details-clause})

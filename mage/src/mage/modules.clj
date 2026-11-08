@@ -180,6 +180,7 @@
      premium-features
      public-sharing
      pulse
+     remote-sync
      request
      request.schema
      sample-data
