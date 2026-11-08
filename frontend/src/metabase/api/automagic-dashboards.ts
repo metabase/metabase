@@ -85,5 +85,6 @@ export const {
   useGetXrayDashboardQueryMetadataQuery,
   useListDatabaseXraysQuery,
   useLazyGetXrayDashboardForModelQuery,
+  useGetXrayDashboardQuery,
   useLazyGetXrayDashboardQuery,
 } = automagicDashboardsApi;
