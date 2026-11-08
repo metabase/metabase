@@ -91,11 +91,22 @@
 
 (deftest ^:parallel referenced-tables-test
   (testing "the tables a query reads, which is what Guard A of a transform test asks for"
-    (doseq [{:keys [name sql dialect tables]} (cases "referenced_tables")]
-      (testing name
-        (is (= (normalize-tables tables)
-               (normalize-tables (sql-parsing/referenced-tables (sql-tools/sqlglot-parser) dialect sql)))
-            (pr-str sql))))))
+    (doseq [{:keys [name sql dialect tables error]} (expanded-cases "referenced_tables")]
+      (testing (str name ", dialect " (pr-str dialect))
+        (if error
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                (re-pattern (str "^sqlglot call failed: " (java.util.regex.Pattern/quote error) "$"))
+                                (sql-parsing/referenced-tables (sql-tools/sqlglot-parser) dialect sql)))
+          (is (= (normalize-tables tables)
+                 (normalize-tables (sql-parsing/referenced-tables (sql-tools/sqlglot-parser) dialect sql)))
+              (pr-str sql)))))))
+
+(deftest ^:parallel referenced-tables-upstream-test
+  (testing "the tables in each statement of sqlglot's own identity tests, read with no dialect, exactly as sqlglot finds them"
+    (doseq [{:keys [sql tables]} (cases "referenced_tables_upstream")]
+      (is (= (sort tables)
+             (sort (sql-parsing/referenced-tables (sql-tools/sqlglot-parser) nil sql)))
+          (pr-str sql)))))
 
 ;;; ------------------------------------------------- replace-names ------------------------------------------------
 
