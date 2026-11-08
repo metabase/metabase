@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -24,7 +23,7 @@ import {
 import * as Errors from "metabase/utils/errors";
 import {
   useExportChangesMutation,
-  useLazyGetExportPreflightQuery,
+  useGetExportPreflightQuery,
 } from "metabase-enterprise/api";
 import type {
   ExportPreflightResponse,
@@ -65,13 +64,11 @@ type ModalBodyProps = {
 
 const ModalBody = ({ branch, onClose }: ModalBodyProps) => {
   const { dirty } = useRemoteSyncDirtyState();
-  const [getPreflight, { data: preflight, isFetching }] =
-    useLazyGetExportPreflightQuery();
+  const { data: preflight, isFetching } = useGetExportPreflightQuery(
+    { branch },
+    { refetchOnMountOrArgChange: true },
+  );
   const [exportChanges] = useExportChangesMutation();
-
-  useEffect(() => {
-    getPreflight({ branch });
-  }, [getPreflight, branch]);
 
   const handleSubmit = async ({ message, strategy }: PushFormValues) => {
     const isRemoteChanged = preflight?.has_changes ?? false;

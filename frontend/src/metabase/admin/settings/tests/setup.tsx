@@ -7,9 +7,9 @@ import {
 } from "__support__/enterprise";
 import {
   setupApiKeyEndpoints,
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupEmailEndpoints,
-  setupCollectionsEndpoints,
   setupGroupsEndpoint,
   setupLibraryEndpoints,
   setupNotificationChannelsEndpoints,
