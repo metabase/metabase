@@ -69,7 +69,8 @@
   load-error
   load-error?
   load-order
-  local-rows]
+  local-rows
+  with-import-transaction]
  [serialization.storage
   batch-storage-paths
   collection-namespace-folder
