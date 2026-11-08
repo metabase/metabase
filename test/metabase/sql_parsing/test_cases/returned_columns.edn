@@ -3,46 +3,112 @@
    :dialect        "postgres"
    :sql            "SELECT id, name FROM a"
    :default-schema "public"
-   :columns        ["id" "name"]}
+   :expected       [["id" true [[nil "public" "a" "id"]]]
+                    ["name" true [[nil "public" "a" "name"]]]]}
 
   {:name           "a union returns the columns both arms agree on"
    :dialect        "postgres"
    :sql            "SELECT id, name FROM a UNION SELECT id, name FROM b"
    :default-schema "public"
-   :columns        ["id" "name"]}
+   :expected       [["id" false [[nil "public" "a" "id"] [nil "public" "b" "id"]]]
+                    ["name" false [[nil "public" "a" "name"] [nil "public" "b" "name"]]]]}
 
   {:name           "union all, likewise"
    :dialect        "snowflake"
    :sql            "SELECT id, name FROM a UNION ALL SELECT id, name FROM b"
    :default-schema "public"
-   :columns        ["id" "name"]}
+   :expected       [["ID" false [[nil "PUBLIC" "A" "ID"] [nil "PUBLIC" "B" "ID"]]]
+                    ["NAME" false [[nil "PUBLIC" "A" "NAME"] [nil "PUBLIC" "B" "NAME"]]]]}
 
   {:name           "intersect returns the one column it selects"
    :dialect        "postgres"
    :sql            "SELECT id FROM a INTERSECT SELECT id FROM b"
    :default-schema "public"
-   :columns        ["id"]}
+   :expected       [["id" false [[nil "public" "a" "id"] [nil "public" "b" "id"]]]]}
 
   {:name           "except, likewise"
    :dialect        "postgres"
    :sql            "SELECT id FROM a EXCEPT SELECT id FROM b"
    :default-schema "public"
-   :columns        ["id"]}
+   :expected       [["id" false [[nil "public" "a" "id"] [nil "public" "b" "id"]]]]}
 
   {:name           "a union nested in a derived table"
    :dialect        "postgres"
    :sql            "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
    :default-schema "public"
-   :columns        ["id"]}
+   :expected       [["id" false [[nil "public" "a" "id"] [nil "public" "b" "id"]]]]}
 
   {:name           "a union inside a CTE"
    :dialect        "postgres"
    :sql            "WITH u AS (SELECT id FROM a UNION SELECT id FROM b) SELECT * FROM u"
    :default-schema "public"
-   :columns        ["id"]}
+   :expected       [["id" false [[nil "public" "a" "id"] [nil "public" "b" "id"]]]]}
 
   {:name           "an aliased expression is returned under its alias"
    :dialect        "postgres"
    :sql            "SELECT count(*) AS n, max(total) AS biggest FROM orders"
    :default-schema "public"
-   :columns        ["biggest" "n"]}]}
+   :expected       [["n" false []]
+                    ["biggest" false []]]}
+
+  {:name           "columns read straight from a table in the schema are pure"
+   :dialect        "postgres"
+   :sql            "SELECT id, name FROM users"
+   :default-schema "public"
+   :schema         {"public" {"users" {"id" "INT" "name" "VARCHAR" "email" "VARCHAR"}}}
+   :expected       [["id" true [[nil "public" "users" "id"]]]
+                    ["name" true [[nil "public" "users" "name"]]]]}
+
+  {:name           "a star is expanded from the schema"
+   :dialect        "postgres"
+   :sql            "SELECT * FROM users"
+   :default-schema "public"
+   :schema         {"public" {"users" {"id" "INT" "name" "VARCHAR"}}}
+   :expected       [["id" true [[nil "public" "users" "id"]]]
+                    ["name" true [[nil "public" "users" "name"]]]]}
+
+  {:name           "a computed column is not pure and has no dependencies"
+   :dialect        "postgres"
+   :sql            "SELECT UPPER(name) AS loud, total * 2 AS dbl FROM orders o JOIN users u ON o.user_id = u.id"
+   :default-schema "public"
+   :schema         {"public" {"orders" {"id" "INT" "user_id" "INT" "total" "DECIMAL"} "users" {"id" "INT" "name" "VARCHAR"}}}
+   :expected       [["loud" false []]
+                    ["dbl" false []]]}
+
+  {:name           "qualified columns of a join with the same name resolve to their own tables"
+   :dialect        "postgres"
+   :sql            "SELECT u.id AS user_id, o.id AS order_id FROM users u JOIN orders o ON o.user_id = u.id"
+   :default-schema "public"
+   :schema         {"public" {"orders" {"id" "INT" "user_id" "INT"} "users" {"id" "INT"}}}
+   :expected       [["user_id" true [[nil "public" "users" "id"]]]
+                    ["order_id" true [[nil "public" "orders" "id"]]]]}
+
+  {:name           "a column is traced through a chain of CTEs to its table"
+   :dialect        "postgres"
+   :sql            "WITH base AS (SELECT id, total FROM orders), top_n AS (SELECT id, total FROM base ORDER BY total DESC LIMIT 5) SELECT id, total AS amount FROM top_n"
+   :default-schema "public"
+   :schema         {"public" {"orders" {"id" "INT" "total" "DECIMAL"}}}
+   :expected       [["id" true [[nil "public" "orders" "id"]]]
+                    ["amount" true [[nil "public" "orders" "total"]]]]}
+
+  {:name           "a union all column depends on the column in each arm"
+   :dialect        "postgres"
+   :sql            "SELECT id FROM orders UNION ALL SELECT id FROM refunds"
+   :default-schema "public"
+   :schema         {"public" {"orders" {"id" "INT"} "refunds" {"id" "INT"}}}
+   :expected       [["id" false [[nil "public" "orders" "id"] [nil "public" "refunds" "id"]]]]}
+
+  {:name           "snowflake CASE output is not pure and has no dependencies"
+   :dialect        "snowflake"
+   :sql            "SELECT CASE WHEN TOTAL > 100 THEN NAME ELSE EMAIL END AS CONTACT FROM PUBLIC.USERS"
+   :default-schema "PUBLIC"
+   :schema         {"PUBLIC" {"USERS" {"TOTAL" "NUMBER" "NAME" "VARCHAR" "EMAIL" "VARCHAR"}}}
+   :expected       [["CONTACT" false []]]}
+
+  {:name           "bigquery derived table without an alias, with one pure and one computed column"
+   :dialect        "bigquery"
+   :sql            "SELECT id, cnt FROM (SELECT id, COUNT(*) AS cnt FROM events GROUP BY id)"
+   :default-schema "analytics"
+   :schema         {"analytics" {"events" {"id" "INT64" "kind" "STRING"}}}
+   :expected       [["id" true [[nil "analytics" "events" "id"]]]
+                    ["cnt" false []]]}]}
