@@ -131,7 +131,10 @@
                               :transforms/table                       true
                               :transforms/testing                     false
                               :stage-ctes                             true
-                              :workspace                              false}]
+                              :workspace                              false
+                              ;; "Unquoted object identifiers ... are stored and resolved as uppercase characters",
+                              ;; https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+                              :upper-case-unquoted-identifiers        true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
@@ -532,7 +535,7 @@
    jdbc-type     :- [:maybe int?]]
   (case database-type
     "BIGINT"           :type/BigInteger
-    "BINARY"           :type/*
+    "BINARY"           :type/Binary
     "BOOLEAN"          :type/Boolean
     "BYTEINT"          :type/Integer
     "CHAR"             :type/Text
@@ -555,7 +558,7 @@
     "STRING"           :type/Text
     "TEXT"             :type/Text
     "TINYINT"          :type/Integer
-    "VARBINARY"        :type/*
+    "VARBINARY"        :type/Binary
     "VARCHAR"          :type/Text
     "DATE"             :type/Date
     "DATETIME"         :type/DateTime

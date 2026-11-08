@@ -141,7 +141,8 @@
 
 (def ^:private other-aggregation-display-name-fns
   "Map of other aggregation tags to functions that take the column display name and return the full aggregation display name."
-  {:sum-where (fn [arg] (i18n/tru "Sum of {0} matching condition" arg))})
+  {:sum-where      (fn [arg] (i18n/tru "Sum of {0} matching condition" arg))
+   :distinct-where (fn [arg] (i18n/tru "Distinct values of {0} matching condition" arg))})
 
 (lib.hierarchy/derive ::count-aggregation ::aggregation)
 
@@ -309,6 +310,17 @@
   (str "sum_where_" (lib.metadata.calculation/column-name query stage-number x)))
 
 (lib.hierarchy/derive :sum-where ::aggregation)
+
+(defmethod lib.metadata.calculation/display-name-method :distinct-where
+  [query stage-number [_distinct-where _opts x _pred] style]
+  ((get other-aggregation-display-name-fns :distinct-where)
+   (lib.metadata.calculation/display-name query stage-number x style)))
+
+;; the column name a `:distinct-where` aggregation had before it got a display name: the default column name is derived
+;; from the display name, and changing it would orphan viz settings keyed by it in saved questions.
+(defmethod lib.metadata.calculation/column-name-method :distinct-where
+  [_query _stage-number _distinct-where]
+  "distinct_where")
 
 (defmethod lib.metadata.calculation/display-name-method :share
   [_query _stage-number _share _style]

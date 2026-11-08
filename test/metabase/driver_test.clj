@@ -84,6 +84,19 @@
               (format "Property(s) with duplicate name: %d total properties but only %d unique names in %s"
                       total-props (count props-by-name) d)))))))
 
+(deftest ^:parallel upper-case-unquoted-identifiers-test
+  (testing "the flag describes the warehouse, so it is read without a connection: false unless the driver says so"
+    (let [stub       (fn [driver] {:lib/type :metadata/database, :id 1, :name "stub", :engine driver})
+          upper-case? (fn [driver] (driver/database-supports? driver :upper-case-unquoted-identifiers (stub driver)))]
+      (is (not (upper-case? ::test-driver)))
+      (is (upper-case? :h2))
+      (is (not (upper-case? :postgres)))
+      (mt/test-drivers #{:h2 :oracle :snowflake}
+        (is (upper-case? driver/*driver*)))
+      (mt/test-drivers #{:postgres :mysql :sqlite :redshift :sqlserver :presto-jdbc :starburst :athena :sparksql
+                         :databricks :vertica :bigquery-cloud-sdk :mongo}
+        (is (not (upper-case? driver/*driver*)))))))
+
 (deftest ^:parallel supports-schemas-matches-describe-database-test
   (mt/test-drivers (mt/normal-drivers)
     (if (driver/database-supports? driver/*driver* :schemas (mt/db))

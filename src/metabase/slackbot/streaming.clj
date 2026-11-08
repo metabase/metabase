@@ -657,8 +657,7 @@
   "Generate deterministic conversation ID from Slack thread identifiers.
    Same thread always produces the same UUID (v3)."
   [team-id channel thread-ts]
-  (str (java.util.UUID/nameUUIDFromBytes
-        (.getBytes (str "slack:" team-id ":" channel ":" thread-ts)))))
+  (u/name-uuid (str "slack:" team-id ":" channel ":" thread-ts)))
 
 (defn- feedback-blocks
   "Build the feedback-button block appended to the final assistant reply.
