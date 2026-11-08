@@ -158,8 +158,19 @@
   "The recovery step for a query that references a table, card, measure or segment in another database."
   {:uses #{}
    :text (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a "
-              "notebook query or in SQL. Tell the user that you can't combine data from these two databases in one "
-              "query, and say what you can do instead.")})
+              "notebook query or in SQL. If you can't read the results of a query on each database, tell the user "
+              "that you can't combine data from these two databases, and say what you can do instead.")})
+
+(def ^:private query-per-database-step
+  ;; The text names no row count: the `row_limit` schema of `run_query` gives the model its maximum.
+  {:uses #{"run_query"}
+   :text (str "Build one query for each database, run each one with `run_query` at its largest `row_limit`, and "
+              "compare the rows in your answer. If a result is truncated, tell the user that the data is too large "
+              "to combine.")})
+
+(def ^:private cross-database-recovery
+  "The steps for a query that reads two databases. A profile without `run_query` reads only the first."
+  [cross-database-step query-per-database-step])
 
 (defn- card-fields-step
   "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
@@ -222,7 +233,7 @@
 
 (defpipeline-error cross-database-table!
   "A portable table FK names a different database than the query's."
-  [cross-database-step])
+  cross-database-recovery)
 
 ;;; Database resolution
 
@@ -328,7 +339,7 @@
 
 (defpipeline-error cross-database-card!
   "The referenced card belongs to a different database than the query."
-  [cross-database-step])
+  cross-database-recovery)
 
 (defpipeline-error unknown-measure!
   "A measure entity_id matched no measure."
@@ -345,7 +356,7 @@
 
 (defpipeline-error cross-database-measure!
   "The referenced measure belongs to a different database than the query."
-  [cross-database-step])
+  cross-database-recovery)
 
 (defpipeline-error unknown-segment!
   "A segment entity_id matched no segment."
@@ -362,7 +373,7 @@
 
 (defpipeline-error cross-database-segment!
   "The referenced segment belongs to a different database than the query."
-  [cross-database-step])
+  cross-database-recovery)
 
 (defpipeline-error incompatible-metric!
   "A metric was used with an incompatible stage source."

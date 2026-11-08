@@ -286,8 +286,12 @@
 
 (def ^:private cross-database-recovery
   (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a notebook "
-       "query or in SQL. Tell the user that you can't combine data from these two databases in one query, and say "
-       "what you can do instead."))
+       "query or in SQL. If you can't read the results of a query on each database, tell the user that you can't "
+       "combine data from these two databases, and say what you can do instead."))
+
+(def ^:private query-per-database-recovery
+  (str "Build one query for each database, run each one with `run_query` at its largest `row_limit`, and compare the "
+       "rows in your answer. If a result is truncated, tell the user that the data is too large to combine."))
 
 (deftest table-in-another-database-recovery-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -411,12 +415,15 @@
         (is (= #{} (set/difference (set codes) (declared-codes))))))))
 
 (defn- pipeline-error-text!
-  [error]
-  (let [code (keyword declaration-ns (name error))
-        e    (try
-               (tools.error/throw-recoverable! code {:message "Query failed."})
-               (catch clojure.lang.ExceptionInfo e e))]
-    (tools.error/recoverable-text (tools.error/classify e) #{})))
+  "The text that a profile with `tool-names` (default: none) reads for the pipeline error `error`."
+  ([error]
+   (pipeline-error-text! error #{}))
+  ([error tool-names]
+   (let [code (keyword declaration-ns (name error))
+         e    (try
+                (tools.error/throw-recoverable! code {:message "Query failed."})
+                (catch clojure.lang.ExceptionInfo e e))]
+     (tools.error/recoverable-text (tools.error/classify e) tool-names))))
 
 (deftest ^:parallel ambiguous-field-recovery-test
   (is (= (str "Query failed.\n"
@@ -427,8 +434,12 @@
 (deftest ^:parallel cross-database-recovery-test
   (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
-      (is (= (str "Query failed.\n" cross-database-recovery)
-             (pipeline-error-text! error))))))
+      (testing "a profile without `run_query` reads only the step that names no tool"
+        (is (= (str "Query failed.\n" cross-database-recovery)
+               (pipeline-error-text! error #{}))))
+      (testing "a profile with `run_query` is also told to run one query per database"
+        (is (= (str "Query failed.\n" cross-database-recovery "\n" query-per-database-recovery)
+               (pipeline-error-text! error #{"run_query"})))))))
 
 (deftest ^:parallel ambiguous-database-name-recovery-test
   (is (= "Query failed.\nAsk the user to rename one of the databases."

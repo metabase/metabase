@@ -406,6 +406,23 @@
              (some? (re-find #"(?i)cannot (see (the actual |query )?results|execute queries)"
                              (render-template template all-yes-perms tools))))))))
 
+(deftest ^:parallel every-query-template-gates-one-query-per-database-test
+  (doseq [template query-templates
+          [tools readable?] [[(conj active-sql-tool-names "run_query") true]
+                             [active-sql-tool-names false]]]
+    (testing (str template (if readable? " with run_query" " without run_query"))
+      (let [rendered (render-template template all-yes-perms tools)]
+        (testing "every profile is told that one query reads one database"
+          (is (re-find #"don't combine data from two databases in Metabase" rendered)))
+        (testing "a profile that can read rows runs one query per database, and refuses only when a result is truncated"
+          (is (= readable?
+                 (some? (re-find #"build one query for each database and run each one with `run_query`" rendered))))
+          (is (= readable?
+                 (some? (re-find #"If a result is truncated, don't answer from it" rendered)))))
+        (testing "a profile that can't read rows tells the user that it can't combine the data"
+          (is (= (not readable?)
+                 (some? (re-find #"tell the user that you can't combine it in one query" rendered)))))))))
+
 (deftest prompt-without-notebook-builder-test
   (testing "with NLQ permitted but no construct_notebook_query, as in :internal-sql, nothing names the builder"
     (let [tools ["create_sql_query" "run_query"]]
