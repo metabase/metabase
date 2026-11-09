@@ -71,15 +71,18 @@
      {:name "name" :cast_type text-type}]))
 
 (defn- orders-rows
-  "An input standing in for the orders table with `rows` over the columns `column-names`, all integers.
+  "An input standing in for the orders table with `rows` over its fields `field-keys`, all integers.
 
-  Rows rather than SQL: two rows of SQL need a `UNION`, and SQL Server cannot create a temp table from one."
-  [column-names rows]
-  (let [[int-type] (data-testing.test-util/cast-types)]
+  Rows rather than SQL: two rows of SQL need a `UNION`, and SQL Server cannot create a temp table from one. The columns
+  are named as the warehouse names the fields, since the card's SQL quotes those names."
+  [field-keys rows]
+  (let [[int-type] (data-testing.test-util/cast-types)
+        mp         (mt/metadata-provider)
+        names      (mapv #(:name (lib.metadata/field mp (mt/id :orders %))) field-keys)]
     {:table   (table-ref :orders)
      :format  :rows
-     :columns (mapv (fn [column-name] {:name column-name :cast_type int-type}) column-names)
-     :rows    (mapv #(zipmap column-names %) rows)}))
+     :columns (mapv (fn [column-name] {:name column-name :cast_type int-type}) names)
+     :rows    (mapv #(zipmap names %) rows)}))
 
 (defn- outcomes
   "Each expectation of the run `result` by name: `:passed`, or the whole result of one that did not pass, so a failure
@@ -176,7 +179,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [[int-type]  (data-testing.test-util/cast-types)
           orders      (table-query :orders)
-          two-orders  (orders-rows ["id" "user_id"] [[1 7] [2 8]])
+          two-orders  (orders-rows [:id :user_id] [[1 7] [2 8]])
           model       {:type          :model
                        :dataset_query (lib/with-fields orders [(column orders :orders :id)
                                                                (column orders :orders :user_id)])}
@@ -201,7 +204,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models :transforms/testing)
     (mt/with-persistence-enabled! [persist-models!]
       (let [orders     (table-query :orders)
-            two-orders (orders-rows ["id" "user_id"] [[1 7] [2 8]])
+            two-orders (orders-rows [:id :user_id] [[1 7] [2 8]])
             no-other   [{:type :empty :name "only the input rows" :sql "SELECT * FROM {{output}} WHERE id NOT IN (1, 2)"}]]
         (mt/with-temp [:model/Card {model-id :id} {:type          :model
                                                    :database_id   (mt/id)
@@ -227,7 +230,7 @@
 (defn- two-orders-of-product-1
   "An input standing in for the orders table with two orders of product 1."
   []
-  (orders-rows ["id" "product_id"] [[1 1] [2 1]]))
+  (orders-rows [:id :product_id] [[1 1] [2 1]]))
 
 (def ^:private every-product-column
   ;; An implicit join selects every column of the joined table.
