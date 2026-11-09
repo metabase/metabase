@@ -1066,7 +1066,8 @@
   "Change-report lines for one ratchets file's inline-ignore budgets, scoped to `occurrences`: seeding,
   lowered/dropped/over-budget counts, unused `:unlimited` policies, and ignores with no budget entry, for
   `:ignore-counts` and each [[discouraged-count-field]], then stale discouraged-var and discouraged-namespace ignores.
-  The `seeds` are [[resolve-seed]]'s, and `attribution` and `aliases` are [[fix!]]'s `:attribute` and `:aliases`.
+  The `seeds` are [[resolve-seed]]'s after [[follow-aliases]]. The `attribution` is what [[fix!]]'s `:attribute`
+  returns for `occurrences`, and `aliases` is what its `:aliases` returns.
   Seeded, over-budget and missing-budget lines name the keys that count under theirs.
   Its :comment-exempt is reported separately, via [[stale-exemptions-warning]].
   Shared by [[change-report]] (the prod ratchets file) and [[fix!]]'s pass over the test ratchets file."
@@ -1428,7 +1429,8 @@
   "Diagnostics for budget violations, unjustified ignores, unresolved discouraged-var and
   discouraged-namespace findings, and noncanonical ratchet text.
   Lower counts are valid; post-merge automation records them.
-  The `attribution` and `aliases` are the `:attribute` result for `occurrences` and the `:aliases` of [[fix!]]."
+  The `attribution` is what [[fix!]]'s `:attribute` returns for `occurrences`, and `aliases` is what its
+  `:aliases` returns."
   [{:keys [config-counts] :as ratchets}
    module-ratchets occurrences attribution config-actual module-actual ratchets-text module-ratchets-text aliases]
   (let [config-over (counts-over-budget config-counts config-actual)
