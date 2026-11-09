@@ -157,7 +157,6 @@
    :model/QueryTable
    :model/RecentViews
    :model/ReplacementRun
-   :model/RemoteSyncObject
    :model/RemoteSyncTask
    :model/ResultMetadataStatus
    :model/Revision
@@ -176,6 +175,7 @@
    :model/StoredResult
    :model/StoredResultUse
    :model/SupportAccessGrantLog
+   :model/TableRemapping
    :model/TaskHistory
    :model/TaskRun
    :model/Tenant
@@ -188,4 +188,6 @@
    :model/User
    :model/UserKeyValue
    :model/UserParameterValue
-   :model/ViewLog])
+   :model/ViewLog
+   :model/Workspace
+   :model/WorkspaceDatabase])

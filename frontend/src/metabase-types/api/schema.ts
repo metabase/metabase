@@ -40,8 +40,16 @@ export interface NormalizedSchema extends Omit<Schema, "database" | "tables"> {
 
 export interface NormalizedTable extends Omit<
   Table,
-  "db" | "fields" | "fks" | "segments" | "measures" | "metrics" | "schema"
+  | "id"
+  | "db"
+  | "fields"
+  | "fks"
+  | "segments"
+  | "measures"
+  | "metrics"
+  | "schema"
 > {
+  id: TableId;
   db?: DatabaseId;
   fields?: FieldId[];
   fks?: NormalizedForeignKey[];
@@ -70,13 +78,14 @@ export interface NormalizedFieldDimension extends Omit<
 
 export interface NormalizedField extends Omit<
   Field,
-  "target" | "table" | "name_field" | "dimensions"
+  "table_id" | "target" | "table" | "name_field" | "dimensions"
 > {
   uniqueId: string;
   target?: FieldId;
   table?: TableId;
   name_field?: FieldId;
   dimensions?: NormalizedFieldDimension[];
+  table_id: TableId;
 }
 
 export interface NormalizedSegment extends Omit<Segment, "table"> {

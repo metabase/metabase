@@ -16,6 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
@@ -35,7 +36,7 @@ import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
 
 import { useSaveMetabotEntityMutation } from "../../api";
@@ -77,16 +78,16 @@ export function MetabotInlineChart({
     (savedCard != null && savedCard.metabot_chart_id !== chartId);
   const savedCardId = isLinkSevered ? undefined : recordedCardId;
 
+  const buildQuestion = useQuestionFromOptsBuilder();
   const question = useMemo(() => {
-    const base = new Question({
+    const base = buildQuestion({
       dataset_query: datasetQuery,
       visualization_settings: {},
       name: title,
-      description,
-      ...(display != null ? { display, displayIsLocked: true } : {}),
-    });
-    return display != null ? base : base.setDefaultDisplay();
-  }, [datasetQuery, title, description, display]);
+      display: display ?? undefined,
+    }).setDescription(description ?? null);
+    return display != null ? base.lockDisplay() : base.setDefaultDisplay();
+  }, [buildQuestion, datasetQuery, title, description, display]);
 
   const card = useMemo(() => question.card(), [question]);
 

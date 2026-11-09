@@ -669,13 +669,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     "query builder + native query + field filters",
     { tags: "@external" },
     () => {
-      function setupQuestion({
-        tableName,
-        baseType,
-      }: {
-        tableName: string;
-        baseType: string;
-      }) {
+      function setupQuestion({ tableName }: { tableName: string }) {
         H.getTableId({ name: tableName }).then((tableId) => {
           H.getFieldId({ tableId, name: "id" }).then((fieldId) => {
             const parameterDetails: Parameter = {
@@ -698,7 +692,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
                     name: "id",
                     "display-name": "ID",
                     type: "dimension",
-                    dimension: ["field", fieldId, { "base-type": baseType }],
+                    "field-id": fieldId,
                     "widget-type": "id",
                   },
                 },
@@ -753,7 +747,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       cy.signInAsAdmin();
       setupQuestion({
         tableName: BIGINT_PK_TABLE_NAME,
-        baseType: "type/BigInteger",
       });
       H.visitQuestion("@questionId");
       testBitIntFilter({ withRunButton: true });
@@ -766,7 +759,6 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       cy.signInAsAdmin();
       setupQuestion({
         tableName: DECIMAL_PK_TABLE_NAME,
-        baseType: "type/Decimal",
       });
       H.visitQuestion("@questionId");
       testDecimalFilter({ withRunButton: true });

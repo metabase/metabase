@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
+import { BrowseCard } from "metabase/common/components/BrowseCard";
+import { BrowseGrid } from "metabase/common/components/BrowseGrid";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -14,10 +16,8 @@ import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { newDatabase } from "metabase/urls";
 
-import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
-import { BrowseGrid } from "../components/BrowseGrid";
 import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 import DB from "./BrowseDatabases.module.css";

@@ -25,7 +25,7 @@
           :title             "Test Advisory"
           :description       "A test advisory"
           :remediation       "Upgrade to latest"
-          :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+          :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
           :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
           :match_status      "not_affected"
           :published_at      #t "2026-03-24T00:00:00Z"
@@ -229,6 +229,25 @@
           (is (= 1 (count @published)))
           (is (= :event/security-advisory-match (:topic (first @published))))
           (is (= "SC-EVENT-001" (get-in (first @published) [:info :object :advisory_id]))))))))
+
+(deftest notify-advisory-audit-log-test
+  (testing "notify-advisory! records which advisory matched in the audit log"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-AUDIT-001"
+                                        :severity     "high"
+                                        :match_status "active"})]
+        (mt/with-dynamic-fn-redefs [channel.settings/email-configured?   (constantly true)
+                                    notification.send/send-notification! (constantly nil)]
+          (notification/notify-advisory! advisory)
+          (is (=? {:topic   :security-advisory-match
+                   :user_id nil
+                   :model   "SecurityAdvisory"
+                   :details {:advisory_id  "SC-AUDIT-001"
+                             :title        "Test Advisory"
+                             :severity     "high"
+                             :match_status "active"}}
+                  (mt/latest-audit-log-entry :security-advisory-match))))))))
 
 (deftest notify-advisory-updates-last-notified-at-test
   (testing "notify-advisory! sets last_notified_at on the advisory"

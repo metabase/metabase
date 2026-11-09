@@ -21,6 +21,7 @@
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
+   [metabase-enterprise.data-testing.api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
@@ -45,10 +46,10 @@
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
-   [metabase-enterprise.transform-testing.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
+   [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -85,7 +86,8 @@
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
    :transforms-python          (deferred-tru "Transforms Python")
-   :transforms-testing         (deferred-tru "Transforms Testing")})
+   :transforms-testing         (deferred-tru "Transforms Testing")
+   :workspaces                 (deferred-tru "Workspaces")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -157,7 +159,7 @@
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
-   "/transform-test"               (premium-handler metabase-enterprise.transform-testing.api/routes :transforms-testing)
+   "/transform-test"               (premium-handler metabase-enterprise.data-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
@@ -169,7 +171,9 @@
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
-   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
+   "/workspace-instance"           (premium-handler metabase-enterprise.workspaces.api/instance-routes :workspaces)
+   "/workspace-manager"            (premium-handler metabase-enterprise.workspaces.api/manager-routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

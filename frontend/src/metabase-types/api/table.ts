@@ -8,16 +8,10 @@ import type { Segment } from "./segment";
 import type { Transform, TransformId } from "./transform";
 import type { UserId, UserInfo } from "./user";
 
-export type ConcreteTableId = number;
-export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
-export type TableId = ConcreteTableId | VirtualTableId;
-export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
+export type TableEntityType = string;
 
-export function isConcreteTableId(
-  id: TableId | undefined,
-): id is ConcreteTableId {
-  return typeof id === "number";
-}
+export type TableId = number;
+export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 
 export type TableVisibilityType =
   | null
@@ -44,7 +38,7 @@ export type Table = {
   name: string;
   display_name: string;
   description: string | null;
-  entity_type?: string | null;
+  entity_type?: TableEntityType | null;
 
   db_id: DatabaseId;
   db?: Database;
@@ -164,7 +158,7 @@ export interface UpdateTableRequest {
 
   data_source?: TableDataSource | null;
   data_layer?: TableDataLayer | null;
-  entity_type?: string | null;
+  entity_type?: TableEntityType | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
   collection_id?: CollectionId | null;
@@ -181,7 +175,7 @@ export interface UpdateTableListRequest {
 
   data_source?: TableDataSource | null;
   data_layer?: TableDataLayer | null;
-  entity_type?: string | null;
+  entity_type?: TableEntityType | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
 }
@@ -201,7 +195,7 @@ export interface EditTablesRequest {
   data_layer?: TableDataLayer | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
-  entity_type?: string | null;
+  entity_type?: TableEntityType | null;
 }
 
 export interface SyncTablesSchemaRequest {

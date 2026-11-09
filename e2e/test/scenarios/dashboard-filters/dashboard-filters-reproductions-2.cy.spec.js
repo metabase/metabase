@@ -859,7 +859,7 @@ describe("issues 45670 and 14595", { tags: ["@external"] }, () => {
             name: "boolean",
             type: "dimension",
             "display-name": "Boolean",
-            dimension: ["field", fieldId, null],
+            "field-id": fieldId,
             "widget-type": "string/=",
           },
         },

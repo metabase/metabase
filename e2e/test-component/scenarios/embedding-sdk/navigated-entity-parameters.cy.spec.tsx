@@ -220,7 +220,7 @@ const SQL_TARGET_TEMPLATE_TAGS: TemplateTags = {
     "display-name": "Category",
     type: "dimension",
     "widget-type": "string/=",
-    dimension: ["field", PRODUCTS.CATEGORY, null],
+    "field-id": PRODUCTS.CATEGORY,
   },
 };
 

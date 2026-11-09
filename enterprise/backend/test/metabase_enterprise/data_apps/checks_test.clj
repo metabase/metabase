@@ -282,11 +282,9 @@
      (mt/with-temp [:model/Card {elsewhere-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
        (testing "the app's card and its metadata are readable"
          (is (=? {:id card-id} (mt/user-http-request :crowberto :get 200 (format "card/%d" card-id) as-data-app)))
-         (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" card-id) as-data-app)))
-         (is (=? {:id (str "card__" card-id)}
-                 (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" card-id) as-data-app))))
+         (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" card-id) as-data-app))))
        (testing "a card outside the app's collection is refused"
-         (doseq [url ["card/%d" "card/%d/query_metadata" "table/card__%d/query_metadata"]]
+         (doseq [url ["card/%d" "card/%d/query_metadata"]]
            (is (= (card-error elsewhere-id)
                   (mt/user-http-request :crowberto :get 400 (format url elsewhere-id) as-data-app))
                url)))
@@ -300,7 +298,7 @@
       (fn [{:keys [metric-id]}]
         (testing "a Library metric and its metadata are open to an app and its dev preview, as the SDK reads them"
           (doseq [options [as-data-app as-preview]
-                  url     ["card/%d" "card/%d/query_metadata" "table/card__%d/query_metadata"]]
+                  url     ["card/%d" "card/%d/query_metadata"]]
             (is (map? (mt/user-http-request :crowberto :get 200 (format url metric-id) options)) url)))
         (mt/with-temp [:model/Card {outside-id :id} {:name          "Venue count elsewhere"
                                                      :type          :metric

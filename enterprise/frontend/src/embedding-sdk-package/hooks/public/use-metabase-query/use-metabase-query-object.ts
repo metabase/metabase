@@ -74,7 +74,7 @@ function useMetabaseQueryObjectImpl(
         return {
           // The bundle returns the opaque `DatasetQuery`; the public API publishes
           // the structural `MetabaseQueryObject` instead (see its own docs for why).
-          query: result as MetabaseQueryObject,
+          query: result as unknown as MetabaseQueryObject,
           queryKey,
         };
       } catch (error) {

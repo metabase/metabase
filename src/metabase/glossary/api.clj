@@ -9,14 +9,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- editable?
-  "Glossary entries are locked on a read-only remote-sync instance whose Library is synced."
-  []
-  (remote-sync/model-editable? :model/Glossary nil))
-
-(defn- check-editable! []
-  (api/check-403 (editable?)))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -26,7 +18,7 @@
   [_route-params
    {:keys [search]} :- [:maybe [:map {:closed true} [:search {:optional true} [:maybe ms/NonBlankString]]]]]
   {:data      (t2/hydrate (glossary.db/glossary-entries search) :creator)
-   :can_write (boolean (and (api/entitled-data-analyst?) (editable?)))})
+   :can_write (boolean (and (api/entitled-data-analyst?) (not (remote-sync/read-only?))))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -40,7 +32,7 @@
             [:term ms/NonBlankString]
             [:definition ms/NonBlankString]]]
   (api/check-data-studio-access)
-  (check-editable!)
+  (api/check-403 (not (remote-sync/read-only?)))
   (t2/hydrate (glossary.core/create-entry! api/*current-user-id* body) :creator))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -55,7 +47,7 @@
             [:term ms/NonBlankString]
             [:definition ms/NonBlankString]]]
   (api/check-data-studio-access)
-  (check-editable!)
+  (api/check-403 (not (remote-sync/read-only?)))
   (t2/hydrate (api/check-404 (glossary.core/update-entry! api/*current-user-id* id body)) :creator))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -66,6 +58,6 @@
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-data-studio-access)
-  (check-editable!)
+  (api/check-403 (not (remote-sync/read-only?)))
   (api/check-404 (glossary.core/delete-entry! api/*current-user-id* id))
   api/generic-204-no-content)

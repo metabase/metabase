@@ -116,7 +116,7 @@
                                                                                                   :name         "str"
                                                                                                   :display-name "Str"
                                                                                                   :type         :dimension
-                                                                                                  :dimension    [:field field-id nil]
+                                                                                                  :field-id     field-id
                                                                                                   :widget-type  :string/=}}}}}]
               (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-data')")
               (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination-data')")

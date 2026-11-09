@@ -1,14 +1,12 @@
 import { assoc, dissoc } from "icepick";
 
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { newQuestion, question, table } from "./questions";
+import { askQuestion, newQuestion, question, table } from "./questions";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -20,13 +18,9 @@ const orders_raw_card = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.toLegacyQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
 };
 
 describe("urls > questions", () => {
@@ -80,12 +74,23 @@ describe("urls > questions", () => {
       const hash =
         "eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjpudWxsLCJsaWIvdHlwZSI6Im1icWwvcXVlcnkiLCJzdGFnZXMiOlt7ImxpYi90eXBlIjoibWJxbC5zdGFnZS9tYnFsIiwic291cmNlLXRhYmxlIjpudWxsfV19LCJkaXNwbGF5IjoidGFibGUiLCJwYXJhbWV0ZXJWYWx1ZXMiOnt9LCJ2aXN1YWxpemF0aW9uX3NldHRpbmdzIjp7fX0=";
 
-      expect(newQuestion({ mode: "query" })).toBe(`/question/query#${hash}`);
-      expect(newQuestion({ mode: "notebook" })).toBe(
+      const draft = Question.create({ metadata: createMockMetadata() });
+
+      expect(newQuestion(draft, { mode: "query" })).toBe(
+        `/question/query#${hash}`,
+      );
+      expect(newQuestion(draft, { mode: "notebook" })).toBe(
         `/question/notebook#${hash}`,
       );
-      expect(newQuestion({ mode: "view" })).toBe(`/question/view#${hash}`);
-      expect(newQuestion({ mode: "ask" })).toBe("/question/ask");
+      expect(newQuestion(draft, { mode: "view" })).toBe(
+        `/question/view#${hash}`,
+      );
+    });
+  });
+
+  describe("askQuestion", () => {
+    it("should return ask url", () => {
+      expect(askQuestion()).toBe("/question/ask");
     });
   });
 });

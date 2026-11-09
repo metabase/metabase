@@ -13,7 +13,12 @@ import {
   getShallowTables,
 } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
-import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  FieldId,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
 
 import type {
   DataSelectorDatabase,
@@ -33,7 +38,7 @@ export type EntityLookups = {
   ) => DataSelectorDatabase | undefined;
   schema: (id: SchemaId | null | undefined) => DataSelectorSchema | undefined;
   table: (id: TableId | null | undefined) => DataSelectorTable | undefined;
-  field: DataSelectorFieldLookup;
+  field: (fieldId: FieldId) => DataSelectorField | undefined;
   databaseSchemas: (databaseId: DatabaseId) => DataSelectorSchema[];
   databaseTables: (databaseId: DatabaseId) => DataSelectorTable[];
   schemaTables: (schemaId: SchemaId) => DataSelectorTable[];
@@ -41,8 +46,6 @@ export type EntityLookups = {
   tableFields: (tableId: TableId) => DataSelectorField[];
   fieldName: (field: DataSelectorField) => string;
 };
-
-type DataSelectorFieldLookup = ReturnType<typeof getShallowFieldById>;
 
 export const selectEntityLookups = createSelector(
   [

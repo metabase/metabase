@@ -1,0 +1,6 @@
+name: Stub Database Collection
+entity_id: StubDbCollection12345
+slug: stub_database_collection
+serdes/meta:
+- model: Collection
+is_remote_synced: true

@@ -11,11 +11,13 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail/ObjectDetail";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
 
@@ -25,18 +27,14 @@ registerVisualizations();
 // renders in one pass and can be run on its own.
 beforeAll(() => loadVisualizationComponents(["object"]));
 
-const DATABASE_ID = 1;
-
 const MOCK_TABLE = createProductsTable();
 
 const MOCK_CARD = createMockCard({
-  dataset_query: {
-    type: "query",
-    database: DATABASE_ID,
-    query: {
-      "source-table": MOCK_TABLE.id,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: MOCK_TABLE.id } }],
+    }),
+  ),
 });
 
 async function setup(options?: Partial<ObjectDetailProps>) {
@@ -51,17 +49,16 @@ async function setup(options?: Partial<ObjectDetailProps>) {
   });
   const metadata = createMockMetadataFromState(state);
 
-  const question = checkNotNull(metadata.question(MOCK_CARD.id));
-  const table = checkNotNull(metadata.table(MOCK_TABLE.id));
+  const question = new Question(MOCK_CARD, metadata);
 
   renderWithProviders(
     <ObjectDetail
       data={testDataset}
       question={question}
-      table={table}
+      table={MOCK_TABLE}
       zoomedRow={testDataset.rows[0]}
       zoomedRowID={0}
-      tableForeignKeys={table.fks}
+      tableForeignKeys={MOCK_TABLE.fks}
       settings={{
         column: () => null,
       }}

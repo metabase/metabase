@@ -85,7 +85,7 @@
 (def column-has-field-values-options
   "Possible options for column metadata `:has-field-values`. This is used to determine whether we keep FieldValues for a
   Field (during sync), and which type of widget should be used to pick values of this Field when filtering by it in
-  the Query Builder. Not otherwise used by Lib (except for [[metabase.lib.field/field-values-search-info]], which is
+  the Query Builder. Not otherwise used by Lib (except for [[metabase.lib.field/field-search-info]], which is
   a frontend convenience) or QP at the time of this writing. For column remapping purposes in the Query Processor and
   Lib we just ignore `has_field_values` and only look for FieldValues/Dimension."
   ;; AUTOMATICALLY-SET VALUES, SET DURING SYNC
@@ -102,7 +102,7 @@
     ;; during sync. Store a FieldValues object; use the List Widget. If this Field goes over the distinct value
     ;; threshold in a future sync, the Field will get switched back to `has_field_values = nil`.
     ;;
-    ;; Note that when this comes back from the REST API or [[metabase.lib.field/field-values-search-info]] we always
+    ;; Note that when this comes back from the REST API or [[metabase.lib.field/field-search-info]] we always
     ;; return this as `:list` instead of `:auto-list`; this is done by [[metabase.lib.field/infer-has-field-values]].
     ;; I guess this is because the FE isn't supposed to need to care about whether this is `:auto-list` vs `:list`;
     ;; those distinctions are only important for sync I guess.
@@ -128,7 +128,7 @@
   "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
   external` associated with a `Field` in the application database.
   See [[metabase.query-processor.middleware.add-remaps]] for what this means."
-  [:map {:closed true}
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
    ;; from `dimension.name`
@@ -141,7 +141,7 @@
   "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =
   internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
   database. See [[metabase.query-processor.middleware.add-remaps]] for what this means."
-  [:map {:closed true}
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map}
    [:lib/type              [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
    ;; from `dimension.name`
@@ -537,7 +537,7 @@
    ;;
    ;; See notes above for more info. `:has-field-values` comes from the application database and is used to decide
    ;; whether to sync FieldValues when running sync, and what certain FE QB widgets should
-   ;; do. (See [[metabase.lib.field/field-values-search-info]]). Note that all metadata providers may not return this
+   ;; do. (See [[metabase.lib.field/field-search-info]]). Note that all metadata providers may not return this
    ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
    [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
    ;;
@@ -1108,6 +1108,7 @@
    [:timezone                    {:optional true} [:maybe :string]]
    [:default-schema              {:optional true} [:maybe :string]]
    [:write-data-details          {:optional true} [:maybe ::lib.schema.common/database-details]]
+   [:admin-details               {:optional true} [:maybe ::lib.schema.common/database-details]]
    [:router-database-id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:auto-run-queries            {:optional true} [:maybe :boolean]]
    [:cache-field-values-schedule {:optional true} [:maybe :string]]

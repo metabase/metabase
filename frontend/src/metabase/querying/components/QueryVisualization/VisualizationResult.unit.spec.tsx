@@ -11,14 +11,14 @@ import {
 } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
   createOrdersIdDatasetColumn,
   createOrdersTotalDatasetColumn,
   createSampleDatabase,
@@ -50,13 +50,7 @@ const metadata = createMockMetadataFromState(state);
 const setup = (props: Partial<QueryVisualizationProps> = {}) => {
   const question = new Question(
     {
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-        },
-        database: SAMPLE_DB_ID,
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       display: "table",
       visualization_settings: {},
     },

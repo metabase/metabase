@@ -1,5 +1,4 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -7,9 +6,6 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getParameterColumns,
   getParameterTargetField,
@@ -17,18 +13,12 @@ import {
   getTextTagFromTarget,
   isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
-import type {
-  Card,
-  ParameterDimensionTarget,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
+import type { Card, ParameterDimensionTarget } from "metabase-types/api";
 import {
   createMockCard,
-  createMockField,
+  createMockColumn,
   createMockParameter,
   createMockSavedQuestionsDatabase,
-  createMockTable,
-  createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -37,15 +27,19 @@ import {
   PRODUCTS_ID,
   REVIEWS_ID,
   SAMPLE_DB_ID,
-  createOrdersCreatedAtField,
-  createOrdersQuantityField,
-  createOrdersTable,
-  createProductsCreatedAtField,
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersDiscountDatasetColumn,
+  createOrdersIdDatasetColumn,
+  createOrdersProductIdDatasetColumn,
+  createOrdersQuantityDatasetColumn,
+  createOrdersSubtotalDatasetColumn,
+  createOrdersTaxDatasetColumn,
+  createOrdersTotalDatasetColumn,
+  createOrdersUserIdDatasetColumn,
+  createProductsCreatedAtDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
-
-type StructuredCard = Card<StructuredDatasetQuery>;
 
 const sampleDb = createSampleDatabase();
 const savedQuestionsDb = createMockSavedQuestionsDatabase();
@@ -54,14 +48,22 @@ const metadata = createMockMetadata({
   databases: [sampleDb, savedQuestionsDb],
 });
 
-// Unjustified type cast. FIXME
-const db = metadata.database(SAMPLE_DB_ID) as Database;
-// Unjustified type cast. FIXME
-const productsTable = metadata.table(PRODUCTS_ID) as Table;
 const provider = createMetadataProvider({
-  databaseId: db.id,
+  databaseId: SAMPLE_DB_ID,
   metadata,
 });
+
+const ORDERS_COLUMNS = [
+  createOrdersIdDatasetColumn(),
+  createOrdersUserIdDatasetColumn(),
+  createOrdersProductIdDatasetColumn(),
+  createOrdersSubtotalDatasetColumn(),
+  createOrdersTaxDatasetColumn(),
+  createOrdersTotalDatasetColumn(),
+  createOrdersDiscountDatasetColumn(),
+  createOrdersCreatedAtDatasetColumn(),
+  createOrdersQuantityDatasetColumn(),
+];
 
 const queryOrders = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 
@@ -256,14 +258,12 @@ describe("parameters/utils/targets", () => {
 
   describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
-      const question = db.nativeQuestion({
-        query: "select * from PRODUCTS where CATEGORY = {{foo}}",
-        "template-tags": {
-          foo: createMockTemplateTag({
-            type: "text",
-          }),
-        },
-      });
+      const question = createQuestion(
+        Lib.createTestNativeQuery(provider, {
+          query: "select * from PRODUCTS where CATEGORY = {{foo}}",
+          templateTags: { foo: { type: "text" } },
+        }),
+      );
       const parameter = createMockParameter();
 
       expect(
@@ -279,15 +279,14 @@ describe("parameters/utils/targets", () => {
         "dimension",
         ["template-tag", "foo"],
       ];
-      const question = db.nativeQuestion({
-        query: "select * from PRODUCTS where {{foo}}",
-        "template-tags": {
-          foo: createMockTemplateTag({
-            type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
-          }),
-        },
-      });
+      const question = createQuestion(
+        Lib.createTestNativeQuery(provider, {
+          query: "select * from PRODUCTS where {{foo}}",
+          templateTags: {
+            foo: { type: "dimension", "field-id": PRODUCTS.CATEGORY },
+          },
+        }),
+      );
       const parameter = createMockParameter();
 
       expect(getParameterTargetField(question, parameter, target)).toEqual(
@@ -298,7 +297,11 @@ describe("parameters/utils/targets", () => {
     });
 
     it("should return the target field", () => {
-      const question = productsTable.question();
+      const question = createQuestion(
+        Lib.createTestQuery(provider, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      );
       const parameter = createMockParameter();
       const target: ParameterDimensionTarget = [
         "dimension",
@@ -392,10 +395,7 @@ describe("parameters/utils/targets", () => {
 
       describe("model", () => {
         it("returns columns from source table and implicitly joinable tables", () => {
-          const question = createModel(
-            queryOrders,
-            checkNotNull(createOrdersTable().fields),
-          );
+          const question = createModel(queryOrders, ORDERS_COLUMNS);
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
@@ -418,12 +418,14 @@ describe("parameters/utils/targets", () => {
 
         it("complex 1-stage query", () => {
           const question = createModel(createComplex1StageQuery(), [
-            createMockField({ display_name: "Created At" }),
-            createMockField({ display_name: "User's 18th birthday" }),
-            createMockField({ display_name: "Reviews - Product → Created At" }),
-            createMockField({ display_name: "Product → Created At" }),
-            createMockField({ display_name: "Count" }),
-            createMockField({ display_name: "Sum of Total" }),
+            createMockColumn({ display_name: "Created At" }),
+            createMockColumn({ display_name: "User's 18th birthday" }),
+            createMockColumn({
+              display_name: "Reviews - Product → Created At",
+            }),
+            createMockColumn({ display_name: "Product → Created At" }),
+            createMockColumn({ display_name: "Count" }),
+            createMockColumn({ display_name: "Sum of Total" }),
           ]);
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
@@ -442,8 +444,8 @@ describe("parameters/utils/targets", () => {
 
         it("complex 2-stage query", () => {
           const question = createModel(createComplex2StageQuery(), [
-            createMockField({ display_name: "User's 18th birthday" }),
-            createMockField({ display_name: "Count" }),
+            createMockColumn({ display_name: "User's 18th birthday" }),
+            createMockColumn({ display_name: "Count" }),
           ]);
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
@@ -511,10 +513,7 @@ describe("parameters/utils/targets", () => {
 
       describe("model", () => {
         it("no breakouts - returns no columns", () => {
-          const question = createModel(
-            queryOrders,
-            checkNotNull(createOrdersTable().fields),
-          );
+          const question = createModel(queryOrders, ORDERS_COLUMNS);
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
@@ -522,8 +521,8 @@ describe("parameters/utils/targets", () => {
 
         it("non-date breakout - returns no columns", () => {
           const question = createModel(queryNonDateBreakout, [
-            createOrdersQuantityField(),
-            createMockField({ display_name: "Count" }),
+            createOrdersQuantityDatasetColumn(),
+            createMockColumn({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -532,8 +531,8 @@ describe("parameters/utils/targets", () => {
 
         it("1 date breakout - returns 1 date column", () => {
           const question = createModel(query1DateBreakout, [
-            createOrdersCreatedAtField(),
-            createMockField({ display_name: "Count" }),
+            createOrdersCreatedAtDatasetColumn(),
+            createMockColumn({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -542,9 +541,9 @@ describe("parameters/utils/targets", () => {
 
         it("2 date breakouts - returns 2 date columns", () => {
           const question = createModel(query2DateBreakouts, [
-            createOrdersCreatedAtField(),
-            createProductsCreatedAtField(),
-            createMockField({ display_name: "Count" }),
+            createOrdersCreatedAtDatasetColumn(),
+            createProductsCreatedAtDatasetColumn(),
+            createMockColumn({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -553,8 +552,8 @@ describe("parameters/utils/targets", () => {
 
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
           const question = createModel(queryDateBreakoutsMultiStage, [
-            createOrdersCreatedAtField(),
-            createMockField({ display_name: "Count" }),
+            createOrdersCreatedAtDatasetColumn(),
+            createMockColumn({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -585,10 +584,7 @@ describe("parameters/utils/targets", () => {
 
       describe("model", () => {
         it("returns date columns from source table and implicitly joinable tables", () => {
-          const question = createModel(
-            queryOrders,
-            checkNotNull(createOrdersTable().fields),
-          );
+          const question = createModel(queryOrders, ORDERS_COLUMNS);
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
@@ -837,26 +833,15 @@ function createQuestion(query: Lib.Query) {
 function createModel(
   query: Lib.Query,
   /* result_metadata needs to be passed, otherwise test setup would be incorrect */
-  result_metadata: StructuredCard["result_metadata"],
+  result_metadata: Card["result_metadata"],
 ) {
   const card = createMockCard({ type: "model", result_metadata });
   const metadata = createMockMetadata({
     databases: [sampleDb, savedQuestionsDb],
-    tables: [getModelVirtualTable(card)],
     questions: [card],
   });
 
   return new Question(card, metadata).setQuery(query);
-}
-
-function getModelVirtualTable(card: Card) {
-  return createMockTable({
-    id: getQuestionVirtualTableId(card.id),
-    db_id: savedQuestionsDb.id,
-    name: card.name,
-    display_name: card.name,
-    fields: card.result_metadata ?? [],
-  });
 }
 
 function getColumnsInfos(

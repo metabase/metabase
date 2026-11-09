@@ -1,10 +1,23 @@
 ---
 title: API changelog
+summary: Breaking changes to the Metabase API, listed by release.
 ---
 
 # Breaking changes to the API interface
 
 ## Metabase 0.66.0
+
+- Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
+  they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
+  Queries sent with `dimension` are still accepted and converted to `field-id`.
+
+- `GET /api/table/card__:id/query_metadata` and `GET /api/table/card__:id/fks` have been removed. Use
+  `GET /api/card/:id` and `GET /api/card/:id/query_metadata` for a card's columns and dependent metadata.
+
+- `GET /api/card/:id/query_metadata`, `GET /api/dashboard/:id/query_metadata`, `POST /api/dataset/query_metadata`
+  and the x-ray `query_metadata` endpoints no longer return a `card__<id>` "virtual" table in `tables` for each source
+  card. They return the source cards themselves in a new `cards` list instead, and in `tables` the tables of the
+  cards' columns and the tables their foreign keys point to, as they do for a source table.
 
 - The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
   `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
@@ -31,6 +44,22 @@ title: API changelog
   ones. In 0.65, `POST` asked for write access to a non-nil `collection_id` and answered `403` without it. With that
   access, it saved the subscription in that collection. It stored a `collection_position` for any caller who passed
   these checks. `PUT` accepted a new `collection_position`.
+
+- The `collection_preview` card property has been removed.
+  - The following endpoints no longer return `collection_preview` in response objects:
+    - `GET /api/card`
+    - `GET /api/card/:id`
+    - `GET /api/collection/:id/items`
+    - `GET /api/collection/root/items`
+    - `GET /api/dashboard/:id/items`
+    - `GET /api/ee/library`
+    - `GET /api/ee/stale/:id`
+  - The following endpoints ignore `collection_preview` in request bodies:
+    - `POST /api/card`
+    - `PUT /api/card/:id`
+    - `POST /api/card/:id/query`
+  - A metric requested from `POST /api/card/:id/query` with `collection_preview: true` now runs with its saved
+    breakouts, as it does without the flag, instead of returning a single aggregated value.
 
 ## Metabase 0.65.0
 

@@ -59,6 +59,8 @@ export type DatabaseFeature =
   | "transforms/python"
   | "transforms/table";
 
+export type DatabaseNativePermissions = "write" | "none";
+
 export interface Database extends DatabaseData {
   id: DatabaseId;
   is_saved_questions: boolean;
@@ -66,7 +68,7 @@ export interface Database extends DatabaseData {
   creator_id?: number;
   timezone?: string;
   default_schema?: string | null;
-  native_permissions: "write" | "none";
+  native_permissions: DatabaseNativePermissions;
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
   initial_sync_error?: string | null;
@@ -194,11 +196,6 @@ export interface ListDatabaseSchemaTablesRequest {
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
   include_measures?: boolean;
-}
-
-export interface ListVirtualDatabaseTablesRequest {
-  id: DatabaseId;
-  schema: string;
 }
 
 export interface GetDatabaseMetadataRequest {

@@ -1,6 +1,8 @@
 import { isValidElement } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
@@ -8,7 +10,10 @@ import {
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  PRODUCTS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { getDataSourceParts } from "./utils";
 
@@ -39,8 +44,19 @@ function getMetadata() {
   });
 }
 
-const createMockQuestion = (opts?: Partial<Card>) =>
-  new Question(createMockCard(opts), getMetadata());
+const createMockQuestion = (opts?: Partial<Card>) => {
+  const metadata = getMetadata();
+  return new Question(
+    createMockCard({
+      dataset_query: Lib.createTestJsQuery(
+        createMetadataProvider({ metadata }),
+        { stages: [{ source: { type: "table", id: PRODUCTS_ID } }] },
+      ),
+      ...opts,
+    }),
+    metadata,
+  );
+};
 
 /** These tests cover new logic in the getDataSourceParts utility that is not covered in QuestionDataSource.unit.spec.js */
 describe("getDataSourceParts", () => {

@@ -124,7 +124,6 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
@@ -141,6 +140,7 @@
     :model/StoredResultUse                   metabase.queries.models.stored-result-use
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
+    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
@@ -154,8 +154,8 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
-    :model/TransformTest                     metabase-enterprise.transform-testing.models
-    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
+    :model/TransformTest                     metabase-enterprise.data-testing.models
+    :model/TransformTestRun                  metabase-enterprise.data-testing.models.transform-test-run
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
@@ -166,7 +166,9 @@
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
-    :model/ViewLog                           metabase.view-log.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
+    :model/WorkspaceDatabase                 metabase-enterprise.workspaces.models.workspace-database})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

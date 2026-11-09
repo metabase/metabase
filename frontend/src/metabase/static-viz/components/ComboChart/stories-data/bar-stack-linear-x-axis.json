@@ -14,7 +14,6 @@
         "graph.dimensions": ["TAX", "SOURCE"],
         "graph.metrics": ["count"]
       },
-      "collection_preview": true,
       "entity_id": "HubSfkHvZwCrCWQYM8adq",
       "display": "bar",
       "parameter_mappings": [],

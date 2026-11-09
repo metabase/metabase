@@ -23,7 +23,9 @@ import { modalRoute } from "metabase/common/components/ModalRoute";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Card,
@@ -37,23 +39,16 @@ import type {
 } from "metabase-types/api";
 import {
   createMockQueryAction as _createMockQueryAction,
+  createMockCard,
   createMockCardQueryMetadata,
+  createMockColumn,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
   createMockImplicitQueryAction,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createNativeModelCard as _createNativeModelCard,
-  createStructuredModelCard as _createStructuredModelCard,
-  createSavedStructuredCard,
-} from "metabase-types/api/mocks/presets";
 
 import ActionCreatorModal from "../ActionCreatorModal";
 
@@ -96,6 +91,27 @@ const TEST_FIELDS = [
   }),
 ];
 
+const TEST_COLUMNS = [
+  createMockColumn({
+    id: 1,
+    display_name: "Field 1",
+    semantic_type: TYPE.PK,
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 2,
+    display_name: "Field 2",
+    table_id: TEST_TABLE_ID,
+  }),
+  createMockColumn({
+    id: 3,
+    display_name: "Field 3",
+    table_id: TEST_TABLE_ID,
+    semantic_type: TYPE.FK,
+    fk_target_field_id: TEST_FK_FIELD_ID,
+  }),
+];
+
 const TEST_TABLE = createMockTable({
   id: TEST_TABLE_ID,
   name: "TEST_TABLE",
@@ -116,6 +132,11 @@ const TEST_DATABASE = createMockDatabase({
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
 });
 
+const TEST_PROVIDER = createMetadataProvider({
+  databaseId: TEST_DATABASE_ID,
+  metadata: createMockMetadata({ databases: [TEST_DATABASE] }),
+});
+
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   ...TEST_DATABASE,
   settings: { "database-enable-actions": true },
@@ -132,28 +153,32 @@ const TEST_DATABASE_WITH_ACTIONS_LIST_ITEM = createMockDatabase({
 });
 
 function createStructuredModelCard(card?: Partial<Card>) {
-  return _createStructuredModelCard({
+  return createMockCard({
+    type: "model",
+    display: "table",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
-    dataset_query: createMockStructuredDatasetQuery({
-      database: TEST_DATABASE_ID,
-      query: createMockStructuredQuery({ "source-table": TEST_TABLE_ID }),
-    }),
+    result_metadata: TEST_COLUMNS,
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(TEST_PROVIDER, {
+        stages: [{ source: { type: "table", id: TEST_TABLE_ID } }],
+      }),
+    ),
   });
 }
 
 function createNativeModelCard(card?: Partial<Card>) {
-  return _createNativeModelCard({
+  return createMockCard({
+    type: "model",
+    display: "table",
     can_write: true,
     ...card,
-    result_metadata: TEST_FIELDS,
-    dataset_query: createMockNativeDatasetQuery({
-      database: TEST_DATABASE_ID,
-      native: createMockNativeQuery({
+    result_metadata: TEST_COLUMNS,
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestNativeQuery(TEST_PROVIDER, {
         query: `SELECT * FROM ${TEST_TABLE.name}`,
       }),
-    }),
+    ),
   });
 }
 
@@ -165,9 +190,9 @@ function createMockQueryAction(
   return _createMockQueryAction({
     can_write: true,
     ...opts,
-    dataset_query: createMockNativeDatasetQuery({
-      native: createMockNativeQuery({ query: TEST_QUERY }),
-    }),
+    dataset_query: Lib.toLegacyQuery(
+      Lib.createTestNativeQuery(TEST_PROVIDER, { query: TEST_QUERY }),
+    ),
   });
 }
 
@@ -204,10 +229,8 @@ async function setup({
     questions: [card, ...usedBy],
   });
 
-  const model = checkNotNull(metadata.question(card.id));
-  const usedByQuestions = usedBy.map((q) =>
-    checkNotNull(metadata.question(q.id)),
-  );
+  const model = new Question(card, metadata);
+  const usedByQuestions = usedBy.map((q) => new Question(q, metadata));
 
   const databaseList = defer<ListDatabasesResponse>();
   const mainTable = defer<Table>();
@@ -231,16 +254,7 @@ async function setup({
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,
-    createMockCardQueryMetadata({
-      databases,
-      tables: [
-        createMockTable({
-          id: `card__${card.id}`,
-          name: card.name,
-          fields: card.result_metadata ?? [],
-        }),
-      ],
-    }),
+    createMockCardQueryMetadata({ databases }),
   );
   setupModelActionsEndpoints(actions, model.id());
   setupCollectionsEndpoints({ collections });
@@ -800,7 +814,7 @@ describe("ModelActions", () => {
   describe("navigation", () => {
     it("redirects to query builder when trying to open a question", async () => {
       const { model: question, router } = await setup({
-        model: createSavedStructuredCard(),
+        model: createStructuredModelCard({ type: "question" }),
       });
 
       expect(router?.location.pathname).toBe(Urls.question(question));

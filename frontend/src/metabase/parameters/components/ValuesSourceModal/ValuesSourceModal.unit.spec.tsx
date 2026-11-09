@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { createMockMetadata } from "__support__/metadata";
 import {
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -13,7 +13,6 @@ import {
   setupParameterValuesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
-  setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
@@ -30,18 +29,19 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type { Card, CollectionItem, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockCollectionItem,
+  createMockColumn,
   createMockDatabase,
   createMockField,
   createMockParameterValues,
-  createMockTable,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -50,25 +50,24 @@ import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
   describe("string parameter", () => {
-    const metadata = createMockMetadata({
-      fields: [
+    const [field1, field2] = [
+      getParameterFieldInfo(
         createMockField({
           id: 1,
           base_type: "type/Text",
           effective_type: "type/Text",
           semantic_type: "type/Category",
         }),
+      ),
+      getParameterFieldInfo(
         createMockField({
           id: 2,
           base_type: "type/Text",
           effective_type: "type/Text",
           semantic_type: "type/Category",
         }),
-      ],
-    });
-
-    const field1 = checkNotNull(metadata.field(1));
-    const field2 = checkNotNull(metadata.field(2));
+      ),
+    ];
 
     describe("fields source", () => {
       it("should show a message about missing field values", async () => {
@@ -220,7 +219,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 1,
                   name: "id",
                   display_name: "ID",
@@ -228,7 +227,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/BigInteger",
                   semantic_type: "type/PK",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -267,7 +266,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -304,7 +303,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 1,
                   name: "id",
                   display_name: "ID",
@@ -312,7 +311,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/BigInteger",
                   semantic_type: "type/PK",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -320,7 +319,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 3,
                   name: "title",
                   display_name: "Title",
@@ -368,7 +367,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   name: "category",
                   display_name: "Category",
@@ -376,7 +375,7 @@ describe("ValuesSourceModal", () => {
                   effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
-                createMockField({
+                createMockColumn({
                   id: 3,
                   name: "title",
                   display_name: "Title",
@@ -418,7 +417,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -551,7 +550,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -586,7 +585,7 @@ describe("ValuesSourceModal", () => {
               id: 1,
               name: "Products",
               result_metadata: [
-                createMockField({
+                createMockColumn({
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
@@ -617,7 +616,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 2,
                 display_name: "Category",
                 base_type: "type/Text",
@@ -629,7 +628,7 @@ describe("ValuesSourceModal", () => {
             id: 3,
             name: "People",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 4,
                 display_name: "Source",
                 base_type: "type/Text",
@@ -779,23 +778,22 @@ describe("ValuesSourceModal", () => {
   });
 
   describe("number parameter", () => {
-    const metadata = createMockMetadata({
-      fields: [
+    const [field1, field2] = [
+      getParameterFieldInfo(
         createMockField({
           id: 1,
           base_type: "type/Integer",
           effective_type: "type/Integer",
         }),
+      ),
+      getParameterFieldInfo(
         createMockField({
           id: 2,
           base_type: "type/Integer",
           effective_type: "type/Integer",
         }),
-      ],
-    });
-
-    const field1 = checkNotNull(metadata.field(1));
-    const field2 = checkNotNull(metadata.field(2));
+      ),
+    ];
 
     describe("fields source", () => {
       it("should show a message about missing field values", async () => {
@@ -1063,7 +1061,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 1,
                 name: "id",
                 display_name: "ID",
@@ -1071,7 +1069,7 @@ describe("ValuesSourceModal", () => {
                 effective_type: "type/BigInteger",
                 semantic_type: "type/PK",
               }),
-              createMockField({
+              createMockColumn({
                 id: 2,
                 name: "category",
                 display_name: "Category",
@@ -1112,7 +1110,7 @@ describe("ValuesSourceModal", () => {
             id: 1,
             name: "Products",
             result_metadata: [
-              createMockField({
+              createMockColumn({
                 id: 2,
                 name: "category",
                 display_name: "Category",
@@ -1179,11 +1177,9 @@ const setup = async ({
     });
     setupCardsEndpoints(cards);
     cards.forEach((card) =>
-      setupTableQueryMetadataEndpoint(
-        createMockTable({
-          id: `card__${card.id}`,
-          fields: card.result_metadata ?? [],
-        }),
+      setupCardQueryMetadataEndpoint(
+        card,
+        createMockCardQueryMetadata({ databases: [createMockDatabase()] }),
       ),
     );
   } else {

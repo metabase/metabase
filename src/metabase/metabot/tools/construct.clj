@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
-   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -26,6 +25,7 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -137,19 +137,9 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
-   [:show_chart {:optional true
-                 :description (str "Pass false for a query you build only to read its values with run_query: "
-                                   "the user is then shown no chart. Defaults to true.")}
-    [:maybe :boolean]]
+   shared/show-chart-arg
    [:title :string]
    [:description :string]])
-
-(defn without-show-chart
-  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
-   model is not told about the argument."
-  [tool]
-  (update tool :schema (fn [[arrow [cat args-schema] output]]
-                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -1439,16 +1429,6 @@
        (str "- To state any of its values, call `run_query` with `query_id` `" query-id
             "` first. Call it without telling the user you are doing so.")))))
 
-(defn- query-instructions
-  "What to tell the model to do with a query built without a chart."
-  [query-id]
-  (te/lines
-   "Your query has been created. The user has not been shown it."
-   ""
-   (str "- To read its values, call `run_query` with `query_id` `" query-id "`.")
-   (str "- To let the user open it, link it using: `" (te/link "Link text" "metabase://query/" query-id) "`")
-   instructions/not-saved-instruction))
-
 (defrecord ConstructNotebookQueryTool []
   tools/Tool
   (declaration [_]
@@ -1466,13 +1446,18 @@
           ;; Declared pipeline errors and refusals are recoverable; anything else is `:internal`.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))
-          ;; A query built only to be read needs run_query, so without it the chart is the one way
-          ;; the user sees anything and is always shown.
-          show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+          ;; A query built only to be read needs run_query to read it, so without that the chart is the one way
+          ;; the user sees anything and is always shown. Readability reads the app DB, so it is checked only when
+          ;; it can change the delivery.
+          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))]
       (if-not show-chart?
-        {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
-                                         (query-instructions (:query-id structured)))
-         :structured-output (assoc structured :result-type :query)}
+        (let [instruction-text (te/lines
+                                "Your query has been created."
+                                ""
+                                (instructions/query-hidden-instructions-for (:query-id structured)))]
+          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
+                                           instruction-text)
+           :structured-output (assoc structured :result-type :query)})
         (let [chart            (create-chart-tools/create-chart
                                 {:query-id      (:query-id structured)
                                  :chart-type    chart-type

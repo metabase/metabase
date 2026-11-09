@@ -138,7 +138,7 @@
                                                              :display-name (name field)
                                                              :type         :dimension
                                                              :widget-type  value-type
-                                                             :dimension    [:field (mt/id table field) nil]}
+                                                             :field-id     (mt/id table field)}
                                                       alias (assoc :alias alias))})
     :parameters [{:type   value-type
                   :name   (name field)
@@ -308,7 +308,7 @@
                                               {:name         "country"
                                                :display-name "Country"
                                                :type         :dimension
-                                               :dimension    [:field (mt/id :country :name) nil]
+                                               :field-id     (mt/id :country :name)
                                                :widget-type  :category}}}
                  :database   (mt/id)
                  :parameters [{:type   :location/country
@@ -328,7 +328,7 @@
                                             {:name         "country"
                                              :display-name "Country"
                                              :type         :dimension
-                                             :dimension    [:field (mt/id :country :name) nil]
+                                             :field-id     (mt/id :country :name)
                                              :options      {:case-sensitive false}
                                              :widget-type  :string/contains}}}
                :database   (mt/id)
@@ -349,7 +349,7 @@
                                             {:name         "country"
                                              :display-name "Country"
                                              :type         :dimension
-                                             :dimension    [:field (mt/id :country :name) nil]
+                                             :field-id     (mt/id :country :name)
                                              :options      {:case-sensitive false}
                                              :widget-type  :string/contains}}}
                :database   (mt/id)
@@ -370,7 +370,7 @@
                                             {:name         "price"
                                              :display-name "Price"
                                              :type         :dimension
-                                             :dimension    [:field (mt/id :venues :price) nil]
+                                             :field-id     (mt/id :venues :price)
                                              :widget-type  :category}}}
                :database   (mt/id)
                :parameters [{:type   :category
@@ -410,7 +410,7 @@
                                             {:name         "number_comma"
                                              :display-name "Number Comma"
                                              :type         :number
-                                             :dimension    [:field (mt/id :venues :price) nil]}}}
+                                             :field-id     (mt/id :venues :price)}}}
                :database   (mt/id)
                :parameters [{:type   "number/="
                              :value  ["1,2,"]
@@ -430,7 +430,7 @@
                                               {:name         "country"
                                                :display-name "Country"
                                                :type         :dimension
-                                               :dimension    [:field (mt/id :country :name) nil]
+                                               :field-id     (mt/id :country :name)
                                                :widget-type  :category}}}
                  :database   (mt/id)
                  :parameters [{:type   :location/country
@@ -450,7 +450,7 @@
                                             {:name         "price"
                                              :display-name "Price"
                                              :type         :dimension
-                                             :dimension    [:field (mt/id :venues :price) nil]
+                                             :field-id     (mt/id :venues :price)
                                              :widget-type  :category}}}
                :database   (mt/id)
                :parameters [{:type   :category
@@ -532,7 +532,7 @@
                                            :display-name "Cat"
                                            :type         :dimension
                                            :widget-type  :number
-                                           :dimension    [:field (mt/id :products :category) nil]}}})]
+                                           :field-id     (mt/id :products :category)}}})]
         (is (= [200]
                (mt/first-row (qp/process-query query))))))))
 
@@ -558,7 +558,7 @@
                                                       :name         param-name}
                                         "created_at" {:type         :dimension
                                                       :default      nil
-                                                      :dimension    [:field (mt/id :orders :created_at) nil]
+                                                      :field-id     (mt/id :orders :created_at)
                                                       :display-name "Created At"
                                                       :id           "__created_at__"
                                                       :name         "created_at"
@@ -594,7 +594,7 @@
                                                           :name         "created_at"
                                                           :display-name "Created At"
                                                           :type         :dimension
-                                                          :dimension    [:field (mt/id :orders :created_at) nil]
+                                                          :field-id     (mt/id :orders :created_at)
                                                           :widget-type  :date/quarter-year
                                                           :default      nil}
                                             "source"     {:id           "44038e73-f909-1bed-0974-2a42ce8979e8"
@@ -605,7 +605,7 @@
                                                           :name         "state"
                                                           :display-name "State"
                                                           :type         :dimension
-                                                          :dimension    [:field (mt/id :people :state) nil]
+                                                          :field-id     (mt/id :people :state)
                                                           :widget-type  :string/!=
                                                           :default      nil}}
                             :parameters    [{:type   :date/quarter-year

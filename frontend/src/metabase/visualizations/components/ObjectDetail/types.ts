@@ -1,11 +1,11 @@
 import type Question from "metabase-lib/v1/Question";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   Card,
   DashboardCard,
   DatasetData,
+  ForeignKey,
   RowValue,
+  Table,
 } from "metabase-types/api";
 
 export type ObjectId = number | string;

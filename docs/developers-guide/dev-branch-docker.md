@@ -1,5 +1,6 @@
 ---
 title: How to run a development branch of Metabase using Docker
+summary: Run a development branch of Metabase from a pre-built Docker image, without compiling it yourself.
 ---
 
 # How to run a development branch of Metabase using Docker

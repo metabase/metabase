@@ -17,6 +17,7 @@ import {
   Modal,
   type ModalOverlayProps,
   NO_ANIMATION_MODAL_PROPS,
+  SIDESHEET_TRANSITION_PROPS,
   Stack,
 } from "metabase/ui";
 
@@ -27,9 +28,6 @@ export type SidesheetSize = "xs" | "sm" | "md" | "lg" | "xl" | "auto";
 export type SidesheetTitleSize = "h3" | "h4";
 
 export const SIDESHEET_HORIZONTAL_PADDING = "xl";
-
-// Mantine's Drawer default; the enter animation is the CSS keyframe below.
-const EXIT_TRANSITION_DURATION_MS = 250;
 
 /**
  * Answers a user's attempt to close the Sidesheet. `false` keeps the sheet
@@ -93,9 +91,9 @@ const sizes: Record<SidesheetSize, string> = {
 // Enter stays a CSS keyframe (immediate, so the sheet's content is in the
 // DOM as soon as it opens); only the exit is a Mantine transition.
 const transitionProps = {
+  ...SIDESHEET_TRANSITION_PROPS,
   transition: "slide-left",
   duration: 0,
-  exitDuration: EXIT_TRANSITION_DURATION_MS,
 } as const;
 
 export function Sidesheet({

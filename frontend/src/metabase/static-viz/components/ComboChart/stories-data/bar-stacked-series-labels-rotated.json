@@ -28,7 +28,6 @@
         },
         "graph.metrics": ["count"]
       },
-      "collection_preview": true,
       "entity_id": "_ef4IRfnFTs3KarPBYBif",
       "display": "bar",
       "dataset_query_metrics_v2_migration_backup": null,

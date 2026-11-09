@@ -1,4 +1,7 @@
-import { createMockMetadataFromState } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -7,47 +10,28 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import * as questionActions from "metabase/questions/actions";
 import type { QueryBuilderMode } from "metabase/redux/store";
-import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type {
-  Card,
-  ConcreteFieldReference,
-  Join,
-  LegacyDatasetQuery,
-  NativeDatasetQuery,
-  StructuredDatasetQuery,
-  TemplateTag,
-  UnsavedCard,
-} from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import type { Card, TestTemplateTag, UnsavedCard } from "metabase-types/api";
+import {
+  createMockCard,
   createMockColumn,
   createMockDataset,
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
   createMockSavedQuestionsDatabase,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
-  createMockTable,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
-  PEOPLE,
-  PRODUCTS,
-  REVIEWS,
   REVIEWS_ID,
-  SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
-  createComposedModelCard,
-  createNativeModelCard,
   createOrdersTable,
   createSampleDatabase,
-  createSavedNativeCard,
-  createSavedStructuredCard,
-  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
 import { UPDATE_QUESTION } from "../../store/actions";
@@ -61,7 +45,7 @@ import { updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 
-type TestCard = Card<LegacyDatasetQuery> | UnsavedCard<LegacyDatasetQuery>;
+type TestCard = Card | UnsavedCard;
 
 type SetupOpts = {
   card: TestCard;
@@ -75,40 +59,149 @@ type SetupOpts = {
 
 const SAVED_QUESTIONS_DB = createMockSavedQuestionsDatabase();
 
-function getDefaultOriginalQuestion(card: TestCard) {
-  if (card.dataset_query.type === "native") {
-    return createSavedNativeCard({
-      ...card,
-      dataset_query: createMockNativeDatasetQuery({
-        ...card.dataset_query,
-        database: SAMPLE_DB_ID,
-        native: createMockNativeQuery({
-          ...card.dataset_query.native,
-          query: "select * from products limit 5",
-        }),
-      }),
-    });
-  }
-  return createSavedStructuredCard({
-    ...card,
-    dataset_query: createMockStructuredDatasetQuery({
-      database: SAMPLE_DB_ID,
-      query: createMockStructuredQuery({
-        "source-table": ORDERS_ID,
-        filter: ["=", ["field", ORDERS.TAX, null], 5],
-      }),
-    }),
+function createNativeJsQuery(
+  templateTags: Record<string, TestTemplateTag> = {},
+  query = "select * from orders",
+) {
+  const tagsSql = Object.values(templateTags)
+    .map((tag) => `{{${tag.name}}}`)
+    .join(" ");
+  return Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+    query: `${query} ${tagsSql}`,
+    templateTags,
   });
 }
 
-function getModelVirtualTable(card: Card) {
-  return createMockTable({
-    id: getQuestionVirtualTableId(card.id),
-    db_id: SAVED_QUESTIONS_DB.id,
-    name: card.name,
-    display_name: card.name,
-    fields: card.result_metadata ?? [],
+function createAdHocCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
   });
+}
+
+function createAdHocNativeCard(opts?: Partial<UnsavedCard>): UnsavedCard {
+  return createMockUnsavedCard({
+    dataset_query: createNativeJsQuery(),
+    ...opts,
+  });
+}
+
+function createSavedStructuredCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    ...opts,
+  });
+}
+
+function createSavedNativeCard(opts?: Partial<Card>): Card {
+  return createMockCard({
+    query_type: "native",
+    dataset_query: createNativeJsQuery(),
+    ...opts,
+  });
+}
+
+function createStructuredModelCard(opts?: Partial<Card>): Card {
+  return createSavedStructuredCard({ type: "model", ...opts });
+}
+
+function createNativeModelCard(opts?: Partial<Card>): Card {
+  return createSavedNativeCard({ type: "model", ...opts });
+}
+
+function getDefaultOriginalQuestion(card: TestCard) {
+  const query = Lib.fromJsQuery(SAMPLE_PROVIDER, card.dataset_query);
+  if (Lib.queryDisplayInfo(query).isNative) {
+    return createSavedNativeCard({
+      ...card,
+      dataset_query: Lib.toJsQuery(
+        Lib.withNativeQuery(query, "select * from products limit 5"),
+      ),
+    });
+  }
+  return createMockCard({
+    ...card,
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            filters: [
+              {
+                type: "operator",
+                operator: "=",
+                args: [
+                  { type: "column", name: "TAX" },
+                  { type: "literal", value: 5 },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ),
+  });
+}
+
+function createComposedModelCard({ id = 1, ...opts }: Partial<Card> = {}) {
+  const sourceCard = createStructuredModelCard({ id });
+  const provider = createMetadataProvider({
+    metadata: createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [sourceCard],
+    }),
+  });
+  return createMockCard({
+    type: "model",
+    display: "table",
+    visualization_settings: {},
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(provider, {
+        stages: [{ source: { type: "card", id } }],
+      }),
+    ),
+    ...opts,
+    id,
+  });
+}
+
+function addReviewsJoin<T extends TestCard>(card: T): T {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    questions: "id" in card ? [createStructuredModelCard({ id: card.id })] : [],
+  });
+  const query = new Question(card, metadata).query();
+  const sourceCardId = Lib.primarySourceCardId(query);
+  const provider = createMetadataProvider({ metadata });
+  return {
+    ...card,
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source:
+              sourceCardId != null
+                ? { type: "card", id: sourceCardId }
+                : { type: "table", id: ORDERS_ID },
+            joins: [
+              {
+                source: { type: "table", id: REVIEWS_ID },
+                strategy: "left-join",
+                alias: "Products",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: { type: "column", name: "ID" },
+                    right: { type: "column", name: "ID" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ),
+  };
 }
 
 async function setup({
@@ -121,9 +214,6 @@ async function setup({
   shouldStartAdHocQuestion,
 }: SetupOpts) {
   const isSavedCard = "id" in card;
-  // Unjustified type cast. FIXME
-  const isModel = (card as Card).type === "model";
-
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
   const cards = originalCard ? [originalCard] : [];
@@ -134,7 +224,6 @@ async function setup({
   const entitiesState = createMockEntitiesState({
     databases: [createSampleDatabase(), SAVED_QUESTIONS_DB],
     // Unjustified type cast. FIXME
-    tables: isModel ? [getModelVirtualTable(card as Card)] : [],
     questions: cards,
   });
 
@@ -143,9 +232,7 @@ async function setup({
   );
   const ordersTable = createOrdersTable();
   const ordersFields = ordersTable.fields ?? [];
-  const question = isSavedCard
-    ? checkNotNull(metadata.question(card.id))
-    : new Question(card, metadata);
+  const question = new Question(card, metadata);
 
   const queryResult = createMockDataset({
     data: {
@@ -190,49 +277,31 @@ async function setup({
   return { question, dispatch, result };
 }
 
-const REVIEW_JOIN_CLAUSE: Join = {
-  alias: "Products",
-  condition: [
-    "=",
-    ["field", ORDERS.ID, null],
-    ["field", REVIEWS.ID, { "join-alias": "Reviews" }],
-  ],
-  "source-table": REVIEWS_ID,
-};
-
-const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteFieldReference = [
-  "field",
-  ORDERS.CREATED_AT,
-  { "temporal-unit": "year" },
-];
-
-const PIVOT_TABLE_PEOPLE_SOURCE_FIELD: ConcreteFieldReference = [
-  "field",
-  PEOPLE.SOURCE,
-  { "source-field": ORDERS.USER_ID },
-];
-
-const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteFieldReference = [
-  "field",
-  PRODUCTS.CATEGORY,
-  { "source-field": ORDERS.PRODUCT_ID },
-];
-
-const PIVOT_TABLE_QUESTION: UnsavedCard<StructuredDatasetQuery> = {
+const PIVOT_TABLE_QUESTION: UnsavedCard = {
   display: "pivot",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        PIVOT_TABLE_ORDER_CREATED_AT_FIELD,
-        PIVOT_TABLE_PEOPLE_SOURCE_FIELD,
-        PIVOT_TABLE_PRODUCT_CATEGORY_FIELD,
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit: "year" },
+            {
+              type: "column",
+              name: "SOURCE",
+              sourceFieldId: ORDERS.USER_ID,
+            },
+            {
+              type: "column",
+              name: "CATEGORY",
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
+          ],
+        },
       ],
-    },
-  },
+    }),
+  ),
   visualization_settings: {
     "pivot_table.column_split": {
       columns: ["CATEGORY"],
@@ -401,28 +470,6 @@ describe("QB Actions > updateQuestion", () => {
       );
     });
 
-    describe("structured questions and models", () => {
-      [TEST_CASE.SAVED_STRUCTURED_QUESTION, TEST_CASE.STRUCTURED_MODEL].forEach(
-        (testCase) => {
-          const { getCard, questionType } = testCase;
-
-          describe(questionType, () => {
-            it("doesn't turn read-only questions into ad-hoc", async () => {
-              const card = getCard({
-                dataset_query: createMockStructuredDatasetQuery({
-                  database: null,
-                }),
-              });
-
-              const { result } = await setup({ card });
-
-              expect(result.card).toEqual(card);
-            });
-          });
-        },
-      );
-    });
-
     describe("native questions and models", () => {
       [TEST_CASE.SAVED_NATIVE_QUESTION, TEST_CASE.NATIVE_MODEL].forEach(
         (testCase) => {
@@ -431,9 +478,10 @@ describe("QB Actions > updateQuestion", () => {
           describe(questionType, () => {
             it("doesn't turn read-only questions into ad-hoc", async () => {
               const card = getCard({
-                dataset_query: createMockNativeDatasetQuery({
+                dataset_query: {
+                  ...createNativeJsQuery(),
                   database: null,
-                }),
+                },
               });
 
               const { result } = await setup({ card });
@@ -537,18 +585,7 @@ describe("QB Actions > updateQuestion", () => {
           );
 
           const originalCard = getCard();
-          const originalQuery = originalCard.dataset_query;
-
-          const cardWithJoin = {
-            ...originalCard,
-            dataset_query: createMockStructuredDatasetQuery({
-              ...originalQuery,
-              query: createMockStructuredQuery({
-                ...originalQuery.query,
-                joins: [REVIEW_JOIN_CLAUSE],
-              }),
-            }),
-          };
+          const cardWithJoin = addReviewsJoin(originalCard);
 
           await setup({
             card: cardWithJoin,
@@ -584,18 +621,7 @@ describe("QB Actions > updateQuestion", () => {
             "loadMetadataForCard",
           );
           const originalCard = getCard();
-          const originalQuery = originalCard.dataset_query;
-
-          const cardWithJoin = {
-            ...originalCard,
-            dataset_query: createMockStructuredDatasetQuery({
-              ...originalQuery,
-              query: createMockStructuredQuery({
-                ...originalQuery.query,
-                joins: [REVIEW_JOIN_CLAUSE],
-              }),
-            }),
-          };
+          const cardWithJoin = addReviewsJoin(originalCard);
 
           await setup({
             card: cardWithJoin,
@@ -614,32 +640,33 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("template tags editor visibility", () => {
-    const VARIABLE_TAG_1: TemplateTag = {
+    const VARIABLE_TAG_1: TestTemplateTag = {
       id: "id_1",
-      name: "tag",
+      name: "foo",
       type: "text",
       "display-name": "Variable Tag 1",
     };
 
-    const VARIABLE_TAG_2: TemplateTag = {
+    const VARIABLE_TAG_2: TestTemplateTag = {
       id: "id_2",
-      name: "tag",
+      name: "bar",
       type: "number",
       "display-name": "Variable Tag 2",
     };
 
-    const CARD_TAG: TemplateTag = {
+    const CARD_TAG: TestTemplateTag = {
       id: "id_3",
-      name: "tag_3",
+      name: "#1-card",
+      "card-id": 1,
       type: "card",
       "display-name": "Card Tag 3",
     };
 
-    const SNIPPET_TAG: TemplateTag = {
+    const SNIPPET_TAG: TestTemplateTag = {
       id: "id_4",
       "snippet-id": 1,
       "display-name": "foo",
-      name: "foo",
+      name: "snippet: foo",
       "snippet-name": "foo",
       type: "snippet",
     };
@@ -650,35 +677,26 @@ describe("QB Actions > updateQuestion", () => {
       tagsAfter,
       ...opts
     }: Omit<SetupOpts, "card"> & {
-      card: Card<NativeDatasetQuery> | UnsavedCard<NativeDatasetQuery>;
-      tagsBefore: Record<string, TemplateTag>;
-      tagsAfter: Record<string, TemplateTag>;
+      card: TestCard;
+      tagsBefore: Record<string, TestTemplateTag>;
+      tagsAfter: Record<string, TestTemplateTag>;
     }) {
       const setTemplateTagEditorVisibleSpy = jest.spyOn(
         native,
         "setIsShowingTemplateTagsEditor",
       );
 
-      const originalCard = getDefaultOriginalQuestion({
+      const originalCard = createSavedNativeCard({
         ...card,
-        dataset_query: {
-          ...card.dataset_query,
-          native: {
-            ...card.dataset_query.native,
-            "template-tags": tagsBefore,
-          },
-        },
+        dataset_query: createNativeJsQuery(
+          tagsBefore,
+          "select * from products limit 5",
+        ),
       });
 
       const cardWithTags = {
         ...card,
-        dataset_query: {
-          ...card.dataset_query,
-          native: {
-            ...card.dataset_query.native,
-            "template-tags": tagsAfter,
-          },
-        },
+        dataset_query: createNativeJsQuery(tagsAfter),
       };
 
       const result = await setup({
@@ -740,7 +758,7 @@ describe("QB Actions > updateQuestion", () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             card: getCard(),
             tagsBefore: {},
-            tagsAfter: { snippet: SNIPPET_TAG },
+            tagsAfter: { "snippet: foo": SNIPPET_TAG },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -751,7 +769,7 @@ describe("QB Actions > updateQuestion", () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             card: getCard(),
             tagsBefore: {},
-            tagsAfter: { foo: CARD_TAG },
+            tagsAfter: { "#1-card": CARD_TAG },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -784,7 +802,7 @@ describe("QB Actions > updateQuestion", () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             card: getCard(),
             tagsBefore: {},
-            tagsAfter: { snippet: SNIPPET_TAG },
+            tagsAfter: { "snippet: foo": SNIPPET_TAG },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -817,7 +835,7 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("pivot tables", () => {
-    const card = createSavedStructuredCard(PIVOT_TABLE_QUESTION);
+    const card = createMockCard(PIVOT_TABLE_QUESTION);
 
     it("forces query rerun after recomputing pivot table viz settings", async () => {
       jest.spyOn(Question.prototype, "canAutoRun").mockReturnValue(true);

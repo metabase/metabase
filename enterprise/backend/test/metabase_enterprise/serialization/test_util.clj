@@ -320,7 +320,7 @@
                                                                                                     :name         "category-id"
                                                                                                     :display-name "Category ID"
                                                                                                     :type         "dimension"
-                                                                                                    :dimension    [:field category-field-id nil]
+                                                                                                    :field-id     category-field-id
                                                                                                     :widget-type  "id"
                                                                                                     :required     true
                                                                                                     :default      40}}}}}

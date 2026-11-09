@@ -181,7 +181,6 @@
       "include_csv": false,
       "display": "line",
       "entity_id": "MRdpgMlUlkhSDU8dgS7gu",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["CREATED_AT"],
         "graph.metrics": ["count", "avg", "sum", "count_2", "avg_2"]

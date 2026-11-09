@@ -27,9 +27,19 @@ driver:
         default: m2m
         required: true
         options:
-          - {name: "OAuth M2M (service principal)",      value: "m2m"}
-          - {name: "Personal Access Token",              value: "pat"}
-          - {name: "Workload Identity Federation (JWT)", value: "wif"}
+          - {name: "OAuth M2M (service principal)", value: "m2m"}
+          - {name: "Personal Access Token",         value: "pat"}
+          - {name: "Workload Identity Federation",  value: "wif"}
+      - name: wif-provider
+        display-name: Workload identity provider
+        type: select
+        required: true
+        options:
+          - {name: "OpenID Connect (JWT)", value: "OIDC"}
+          - {name: "AWS",                  value: "AWS",   hidden-when-hosted: true}
+          - {name: "Azure",                value: "AZURE", hidden-when-hosted: true}
+        visible-if:
+          auth-mode: wif
       - merge:
         - password
         - name: token
@@ -62,13 +72,13 @@ driver:
           helper-text: Paste a JWT for a one-off test. Use a token file in production.
           placeholder: "eyJhbGciOi..."
           visible-if:
-            auth-mode: wif
+            wif-provider: OIDC
       - name: wif-token-file-path
         display-name: OIDC token file path
         helper-text: Path to a file containing an OIDC JWT.
         placeholder: "/var/run/secrets/tokens/oidc-token"
         visible-if:
-          auth-mode: wif
+          wif-provider: OIDC
       - merge:
         - multi-level-schema
         - display-name: Enable multiple catalogs
