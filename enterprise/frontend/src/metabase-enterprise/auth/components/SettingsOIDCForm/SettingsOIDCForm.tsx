@@ -56,25 +56,6 @@ const DEFAULT_SCOPES = ["openid", "email", "profile"];
 const DEFAULT_FIRST_NAME_ATTRIBUTE = "given_name";
 const DEFAULT_LAST_NAME_ATTRIBUTE = "family_name";
 
-// "*" or a dotted hostname; leading "@" and case are normalized away first.
-// Only "*" is a wildcard: matching is exact, so reject strings like "*.mycompany.com"
-const TRUSTED_EMAIL_DOMAIN_REGEX =
-  /^(\*|([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,})$/;
-
-export function parseTrustedEmailDomains(value: string | null): string[] {
-  if (!value) {
-    return [];
-  }
-  return Array.from(
-    new Set(
-      value
-        .split(/[\s,]+/)
-        .map((domain) => domain.trim().replace(/^@/, "").toLowerCase())
-        .filter(Boolean),
-    ),
-  );
-}
-
 // the API keeps an existing provider's secret when none is sent, but a new provider needs one
 function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
   return Yup.object({
@@ -94,17 +75,7 @@ function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
     "attribute-firstname": Yup.string().nullable().default(null),
     "attribute-lastname": Yup.string().nullable().default(null),
     "auto-link-verified-email": Yup.boolean().default(true),
-    "trusted-email-domains": Yup.string()
-      .nullable()
-      .default(null)
-      .test(
-        "trusted-email-domains",
-        t`Enter domains like mycompany.com, separated by commas`,
-        (value) =>
-          parseTrustedEmailDomains(value ?? null).every((domain) =>
-            TRUSTED_EMAIL_DOMAIN_REGEX.test(domain),
-          ),
-      ),
+    "trusted-email-domains": Yup.string().nullable().default(null),
     "group-attribute": Yup.string().nullable().default(null),
   });
 }
@@ -200,10 +171,6 @@ function formValuesToProvider(
     attributeMap["last_name"] = values["attribute-lastname"];
   }
 
-  const trustedEmailDomains = parseTrustedEmailDomains(
-    values["trusted-email-domains"],
-  );
-
   const provider: Partial<CustomOidcConfig> = {
     key: values.key,
     "login-prompt": values["login-prompt"],
@@ -213,7 +180,8 @@ function formValuesToProvider(
     enabled: true,
     "attribute-map": attributeMap,
     "auto-link-verified-email": values["auto-link-verified-email"],
-    "trusted-email-domains": trustedEmailDomains,
+    "trusted-email-domains":
+      values["trusted-email-domains"]?.split(/[\s,]+/).filter(Boolean) ?? [],
     "group-sync": toGroupSync(groupSync, {
       "group-attribute": values["group-attribute"] ?? DEFAULT_GROUP_ATTRIBUTE,
     }),
@@ -265,9 +233,6 @@ export function SettingsOIDCForm() {
     initialValues["attribute-firstname"],
     initialValues["attribute-lastname"],
   ].some((value) => value != null);
-  const hasCustomAccountLinking =
-    !initialValues["auto-link-verified-email"] ||
-    initialValues["trusted-email-domains"] != null;
 
   const runCheck = useCallback(
     async (values: OIDCFormValues) => {
@@ -461,7 +426,6 @@ export function SettingsOIDCForm() {
               <CollapsibleSettingsSection
                 title={t`Account linking`}
                 description={t`${applicationName} links each account to the identity your provider asserts for it, and checks the link on every sign-in. These settings control how a link gets established for an existing account.`}
-                defaultOpened={hasCustomAccountLinking}
               >
                 <Stack gap="lg">
                   <FormSwitch

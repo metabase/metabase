@@ -24,21 +24,13 @@
   idle-timeout predicate uses, so filtering and sorting agree with expiry."
   [:coalesce :session.last_active_at :session.created_at])
 
-(def ^:private custom-oidc-provider-pattern
-  "Custom OIDC identities are stored per IdP as `oidc-<key>` (see `metabase-enterprise.sso.providers.oidc`); callers see
-  them, like the pre-per-IdP `custom-oidc` rows, as `custom-oidc`."
-  "oidc-%")
-
 (def provider-expr
   "The provider as callers see it: a session with no auth identity row reads as `unknown` rather than null, and one
-  with a per-IdP custom OIDC identity as `custom-oidc`."
+  with a per-IdP custom OIDC identity (`oidc-<key>`) as `custom-oidc`."
   [:case
-   [:= :auth_identity.provider nil]
-   (h2x/literal "unknown")
-   [:like :auth_identity.provider (h2x/literal custom-oidc-provider-pattern)]
-   (h2x/literal "custom-oidc")
-   :else
-   :auth_identity.provider])
+   [:= :auth_identity.provider nil] (h2x/literal "unknown")
+   [:like :auth_identity.provider (h2x/literal "oidc-%")] (h2x/literal "custom-oidc")
+   :else :auth_identity.provider])
 
 (def type-expr
   "The session type as callers see it. Derived from whether the row carries an anti-CSRF token, so that
@@ -53,10 +45,9 @@
   [providers]
   (let [named (remove #{"unknown"} providers)
         terms (cond-> []
-                (some #{"unknown"} providers)     (conj [:= :auth_identity.provider nil])
-                (seq named)                       (conj [:in :auth_identity.provider named])
-                (some #{"custom-oidc"} providers) (conj [:like :auth_identity.provider
-                                                         (h2x/literal custom-oidc-provider-pattern)]))]
+                (some #{"unknown"} providers) (conj [:= :auth_identity.provider nil])
+                (seq named)                   (conj [:in :auth_identity.provider named])
+                (some #{"custom-oidc"} providers) (conj [:like :auth_identity.provider (h2x/literal "oidc-%")]))]
     (case (count terms)
       0 [:inline false]
       1 (first terms)

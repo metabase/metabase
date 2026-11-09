@@ -35,16 +35,6 @@
    provider :- :string]
   (t2/select-one :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider [:auto/param provider]))
 
-(mu/defn auth-identity-with-provider-id
-  "The AuthIdentity of the User with `user-id` at `provider` whose `provider_id` is `provider-id`, or nil."
-  [user-id     :- ::lib.schema.id/user
-   provider    :- :string
-   provider-id :- :string]
-  (t2/select-one :model/AuthIdentity
-                 :user_id     [:auto/param (long user-id)]
-                 :provider    [:auto/param provider]
-                 :provider_id [:auto/param provider-id]))
-
 (mu/defn auth-identities-with-provider-id
   "The AuthIdentities at any of `providers` whose `provider_id` is `provider-id`."
   [providers   :- [:sequential :string]
@@ -61,6 +51,14 @@
   "Delete the user's Slack identity, returning the number deleted."
   [user-id :- ::lib.schema.id/user]
   (t2/delete! :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider "slack-connect"))
+
+(mu/defn update-auth-identity!
+  "Update `auth-identity` with `columns`, merging `metadata` into its existing `:metadata`."
+  [auth-identity :- [:map [:id pos-int?]]
+   columns       :- [:maybe :map]
+   metadata      :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
+  (t2/update! :model/AuthIdentity :id (:id auth-identity)
+              (assoc columns :metadata (merge (:metadata auth-identity) metadata))))
 
 (mu/defn insert-auth-identity!
   "Insert an AuthIdentity linking the User with `user-id` to `provider-id` at `provider`, with `metadata`."

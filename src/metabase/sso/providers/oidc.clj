@@ -118,19 +118,12 @@
 
 ;;; -------------------------------------------------- Identity Linking --------------------------------------------------
 
-(defn- normalize-domain
-  [domain]
-  (-> domain str/trim (str/replace #"^@" "") u/lower-case-en))
-
 (defn- trusted-email-domain?
   "True if `email`'s domain is listed in the provider's `:trusted-email-domains` (\"*\" trusts every domain)."
   [email domains]
-  (boolean
-   (when-let [email-domain (some-> email u/email->domain u/lower-case-en)]
-     (some (fn [domain]
-             (let [domain (normalize-domain domain)]
-               (or (= domain "*") (= domain email-domain))))
-           domains))))
+  (let [email-domain (some-> email u/email->domain u/lower-case-en)]
+    (boolean (some #(contains? #{"*" email-domain} (-> % str/trim (str/replace #"^@" "") u/lower-case-en))
+                   domains))))
 
 (defn- may-auto-link?
   "Whether this token may establish a new link between the email-resolved user and its (iss, sub) identity."
@@ -145,87 +138,44 @@
 (def ^:private linking-config-keys
   "The keys of the OIDC config `login!` reads, which [[auth-identity/authenticate]] passes on as `:oidc-config`."
   [:identity-provider-name :legacy-provider-name :auto-link-verified-email :trusted-email-domains
-   :assume-email-verified :assumed-issuer])
-
-(def ^:private identity-already-linked-failure
-  {:success? false
-   :error :identity-already-linked
-   :message "This identity provider account is already linked to a different Metabase account. Please contact your administrator."})
-
-(def ^:private identity-mismatch-failure
-  {:success? false
-   :error :identity-mismatch
-   :message (str "This identity provider account doesn't match the one linked to your Metabase account. To use it instead, "
-                 "sign in to Metabase another way and link it from your account settings, or contact your administrator.")})
-
-(def ^:private account-linking-required-failure
-  {:success? false
-   :error :account-linking-required
-   :message (str "Your identity provider account is not linked to this Metabase account. Sign in to Metabase another "
-                 "way and link it from your account settings, or contact your administrator.")})
+   :assume-email-verified])
 
 (defn- provider-names
   "AuthIdentity provider names that may hold identities for this login: the per-IdP name plus, when
    configured, the shared legacy name that pre-migration rows still live under."
   [pname config]
-  (if-let [legacy (:legacy-provider-name config)]
-    [pname legacy]
-    [pname]))
+  (cond-> [pname] (:legacy-provider-name config) (conj (:legacy-provider-name config))))
 
-(defn- stored-issuer
-  "The issuer `row`'s identity belongs to: its stored `:iss`, else the config's `:assumed-issuer` for providers
-   with a single fixed issuer (rows written before iss tracking), else nil (unknown)."
-  [row config]
-  (or (get-in row [:metadata :iss]) (:assumed-issuer config)))
-
-(defn linked-to-other-user?
-  "True if (iss, sub) is already linked to a user other than `user-id` (nil: linked to anyone) under any
-   of the AuthIdentity `provider-names`. A row whose issuer is unknown counts, unless `ignore-unknown-issuer?`
-   (for a user who already holds `sub` themselves, so has as good a claim to it)."
-  [provider-names user-id sub iss {:keys [ignore-unknown-issuer?] :as config}]
+(defn- linked-to-other-user?
+  "True if (iss, sub) is linked to a user other than `user-id` (nil: to anyone) under any of `provider-names`. A row
+  without a stored issuer may be that issuer's, so it counts."
+  [provider-names user-id sub iss]
   (boolean
-   (some (fn [row]
-           (and (not= (:user_id row) user-id)
-                (let [row-iss (stored-issuer row config)]
-                  (if (nil? row-iss)
-                    (not ignore-unknown-issuer?)
-                    (= row-iss iss)))))
+   (some (fn [{row-user :user_id {row-iss :iss} :metadata}]
+           (and (not= row-user user-id) (contains? #{nil iss} row-iss)))
          (sso.db/auth-identities-with-provider-id provider-names sub))))
 
-(def ^:private link-identity-lock-shards
-  "Bounded: metabase_cluster_lock rows are never deleted, so lock names must not grow per identity."
-  32)
-
-(defn- link-identity-lock
-  "Cluster-lock keyword for (iss, sub), sharded so unrelated logins don't all serialize on one lock."
-  [sub iss]
-  (keyword "metabase.sso.providers.oidc"
-           (str "link-identity-" (mod (hash [sub iss]) link-identity-lock-shards))))
-
 (defn- with-identity-link-check*
-  "Serialize the ownership check for (iss, sub) across `provider-names` with the write `f` performs; the
-   uniqueness is check-then-write only (iss lives in metadata JSON, so no DB constraint can enforce it).
-   Returns [[identity-already-linked-failure]] when the identity belongs to a user other than `user-id`; `opts`
-   are those of [[linked-to-other-user?]]."
-  [provider-names user-id sub iss opts f]
-  (cluster-lock/with-cluster-lock (link-identity-lock sub iss)
-    (if (linked-to-other-user? provider-names user-id sub iss opts)
-      (do (log/warnf "OIDC login rejected: token identity is already linked to a different user%s"
-                     (if user-id (str " than " user-id) ""))
-          identity-already-linked-failure)
+  "Run the write `f` unless (iss, sub) is linked to a user other than `user-id`, serializing check and write: iss lives
+  in metadata JSON, so no DB constraint can enforce the uniqueness."
+  [provider-names user-id sub iss f]
+  (cluster-lock/with-cluster-lock ::link-identity
+    (if (linked-to-other-user? provider-names user-id sub iss)
+      (do (log/warnf "OIDC login rejected: token identity is already linked to a different user than %s" user-id)
+          {:success? false
+           :error :identity-already-linked
+           :message "This identity provider account is already linked to a different Metabase account. Please contact your administrator."})
       (f))))
 
 (defn link-identity!
-  "Point `user-id`'s single AuthIdentity row for `provider` (a keyword or provider-name string, unique per
-   user+provider) at (iss, sub); `auth-identity` is the row to repoint (nil inserts one). Returns
-   {:success? true}, or a failure map when that identity is already linked to another user under any of
-   `:check-names` (default: just `provider`'s); the other `opts` are those of [[linked-to-other-user?]]."
-  [provider user-id auth-identity sub iss & {:keys [check-names] :as opts}]
-  (with-identity-link-check* (or check-names [(name provider)]) user-id sub iss opts
+  "Point `user-id`'s AuthIdentity row for `provider` (`auth-identity`, or a new row when nil) at (iss, sub). Returns
+  {:success? true}, or a failure map when that identity is linked to another user under any of `check-names`
+  (default: just `provider`'s)."
+  [provider user-id auth-identity sub iss & {:keys [check-names]}]
+  (with-identity-link-check* (or check-names [(name provider)]) user-id sub iss
     (fn []
       (if auth-identity
-        (auth-identity/merge-metadata! auth-identity {:iss iss} {:provider    (name provider)
-                                                                 :provider_id sub})
+        (sso.db/update-auth-identity! auth-identity {:provider (name provider) :provider_id sub} {:iss iss})
         (sso.db/insert-auth-identity! user-id (name provider) sub {:iss iss}))
       {:success? true})))
 
@@ -233,55 +183,45 @@
   "Enforce that the token's (iss, sub) matches the AuthIdentity linked to the email-resolved user, linking it
    first when the provider's linking policy allows. Returns {:success? true} or a failure map."
   [provider user claims config email]
-  (let [pname (auth-identity/identity-provider-name provider config)
-        sub   (subject claims)
-        iss   (:iss claims)]
-    (if (str/blank? sub)
+  (let [pname         (auth-identity/identity-provider-name provider config)
+        names         (provider-names pname config)
+        sub           (subject claims)
+        iss           (:iss claims)
+        auth-identity (sso.db/auth-identity (:id user) pname)
+        stored-sub    (:provider_id auth-identity)
+        stored-iss    (get-in auth-identity [:metadata :iss])
+        ;; rows written before per-IdP provider names live under the shared :legacy-provider-name; this user's row
+        ;; with the same sub is the same identity, so it is migrated in place
+        legacy-identity (when-let [legacy-name (and (not auth-identity) (:legacy-provider-name config))]
+                          (let [row (sso.db/auth-identity (:id user) legacy-name)]
+                            (when (= (:provider_id row) sub) row)))]
+    (cond
+      (and (= stored-sub sub) (= stored-iss iss))
+      {:success? true}
+
+      ;; rows created before iss tracking have no :iss in metadata; a matching sub backfills it
+      (and (= stored-sub sub) (nil? stored-iss))
+      (link-identity! pname (:id user) auth-identity sub iss :check-names names)
+
+      legacy-identity
+      (link-identity! pname (:id user) legacy-identity sub iss :check-names names)
+
+      ;; linked to another identity (another sub, or another issuer): only the explicit linking flow replaces a link
+      stored-sub
       {:success? false
-       :error :invalid-token
-       :message "ID token is missing the sub claim"}
-      (let [names (provider-names pname config)
-            auth-identity (sso.db/auth-identity (:id user) pname)
-            ;; rows written before per-IdP provider names live under the shared :legacy-provider-name; this
-            ;; user's row with the same sub (and no conflicting iss) is the same identity — migrate it in place
-            legacy-identity (when-not auth-identity
-                              (when-let [legacy-name (:legacy-provider-name config)]
-                                (when-let [row (sso.db/auth-identity-with-provider-id (:id user) legacy-name sub)]
-                                  (let [legacy-iss (get-in row [:metadata :iss])]
-                                    (when (or (nil? legacy-iss) (= legacy-iss iss))
-                                      row)))))
-            stored-sub    (:provider_id auth-identity)
-            stored-iss    (get-in auth-identity [:metadata :iss])
-            same-sub?     (= stored-sub sub)
-            link-opts     {:check-names    names
-                           :assumed-issuer (:assumed-issuer config)}]
-        (cond
-          (and same-sub? (= stored-iss iss))
-          {:success? true}
+       :error :identity-mismatch
+       :message (str "This identity provider account doesn't match the one linked to your Metabase account. To use it "
+                     "instead, sign in to Metabase another way and link it from your account settings, or contact your "
+                     "administrator.")}
 
-          ;; rows created before iss tracking have no :iss in metadata; a matching sub backfills it
-          (and same-sub? (nil? stored-iss))
-          (link-identity! pname (:id user) auth-identity sub iss
-                          (assoc link-opts :ignore-unknown-issuer? true))
+      (may-auto-link? claims config email)
+      (link-identity! pname (:id user) nil sub iss :check-names names)
 
-          legacy-identity
-          (do (log/infof "OIDC login: migrating user %d's legacy identity to provider %s" (:id user) pname)
-              (link-identity! pname (:id user) legacy-identity sub iss
-                              (assoc link-opts :ignore-unknown-issuer? true)))
-
-          ;; linked to a different identity (another sub, or another issuer after the provider's issuer changed):
-          ;; a login never replaces a link, only the user's explicit linking flow does
-          stored-sub
-          (do (log/warnf "OIDC login rejected: token identity does not match the identity linked to user %d" (:id user))
-              identity-mismatch-failure)
-
-          ;; no link yet: establishing one is governed by the provider's linking policy
-          (may-auto-link? claims config email)
-          (link-identity! pname (:id user) nil sub iss link-opts)
-
-          :else
-          (do (log/warnf "OIDC login rejected: no linked identity for user %d and the token cannot establish one" (:id user))
-              account-linking-required-failure))))))
+      :else
+      {:success? false
+       :error :account-linking-required
+       :message (str "Your identity provider account is not linked to this Metabase account. Sign in to Metabase "
+                     "another way and link it from your account settings, or contact your administrator.")})))
 
 (defn- link-account!
   "Explicit account linking: link the token's (iss, sub) to the signed-in user who started this flow (`link-user-id`
@@ -293,25 +233,20 @@
         current-id (:id (some-> authenticated-user deref))]
     (cond
       (not= current-id oidc-link-user-id)
-      (do (log/warnf "OIDC account linking rejected: started by user %d, finished by %s" oidc-link-user-id current-id)
-          {:success? false
-           :error :authentication-required
-           :message "Account linking must be finished in the session that started it. Please sign in and try again."})
+      {:success? false
+       :error :authentication-required
+       :message "Account linking must be finished in the session that started it. Please sign in and try again."}
 
       (not= (:id user) current-id)
-      (do (log/warnf "OIDC account linking rejected: token email does not belong to user %d" current-id)
-          {:success? false
-           :error :email-mismatch
-           :message "This identity provider account's email doesn't match your Metabase account's email."})
+      {:success? false
+       :error :email-mismatch
+       :message "This identity provider account's email doesn't match your Metabase account's email."}
 
       :else
-      (let [sub    (subject claims)
-            result (link-identity! pname current-id (sso.db/auth-identity current-id pname) sub (:iss claims)
-                                   :check-names    (provider-names pname config)
-                                   :assumed-issuer (:assumed-issuer config))]
+      (let [result (link-identity! pname current-id (sso.db/auth-identity current-id pname) (subject claims) (:iss claims)
+                                   :check-names (provider-names pname config))]
         (if (:success? result)
-          (do (log/infof "OIDC account linking: user %d linked their identity at provider %s" current-id pname)
-              (assoc request :success? true :session/skip? true))
+          (assoc request :session/skip? true)
           result)))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
@@ -426,12 +361,6 @@
     (not (true? (:success? request)))
     (next-method provider request)
 
-    ;; never fall through to email-only handling without the token's claims
-    (not claims)
-    {:success? false
-     :error :invalid-token
-     :message "ID token claims are missing"}
-
     ;; a signed-in user's explicit linking flow, bound to them by the state cookie
     (:oidc-link-user-id request)
     (link-account! provider request)
@@ -447,17 +376,7 @@
              :error :account-linking-required
              :message "Metabase couldn't verify your email address, so an account can't be created for it. Please contact your administrator."})
         (with-identity-link-check* (provider-names pname config) nil (subject claims) (:iss claims)
-          {:assumed-issuer (:assumed-issuer config)}
           #(attribute-session pname (next-method provider request)))))
-
-    ;; a disabled account must not (re)link an identity; the session layer would only refuse the login
-    ;; after the link had already been rewritten. One that provisioning reactivates still goes through the
-    ;; identity check below.
-    (and (false? (:is_active user))
-         (not (true? (get-in request [:user-data :is_active]))))
-    {:success? false
-     :error :account-disabled
-     :message "Your account is disabled. Please contact your administrator."}
 
     :else
     (let [result (verify-or-link-identity! provider user claims (:oidc-config request)
@@ -487,8 +406,8 @@
         (next-method provider (cond-> (-> request
                                           (dissoc :oidc-link-user-id)
                                           (assoc :oidc-nonce (:nonce validation)))
-                                (:link-user-id validation)
-                                (assoc :oidc-link-user-id (:link-user-id validation))
+                                (get-in validation [:state-data :link-user-id])
+                                (assoc :oidc-link-user-id (get-in validation [:state-data :link-user-id]))
                                 ;; Use redirect from state cookie if not already set in request
                                 (and (:redirect validation)
                                      (not (:redirect-url request)))

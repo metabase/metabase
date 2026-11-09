@@ -5,8 +5,7 @@
    - GET /auth/sso/:key          - Initiate OIDC flow
    - GET /auth/sso/:key/callback - Handle OIDC callback
 
-   With `?link=true`, a signed-in user links their identity at the provider to their account instead: the flow is the
-   same, but the state cookie records the user's id and the callback creates no session.
+   With `?link=true`, a signed-in user links their identity at the provider to their account instead of signing in.
 
    Flow:
    1. User accesses GET /auth/sso/:key
@@ -51,7 +50,7 @@
 
   ;; Validate the redirect here with the same predicate `create-oidc-state` uses when it builds the state cookie, so
   ;; an unacceptable value is rejected before we contact the identity provider.
-  (let [link?        (contains? #{true "true"} (get-in request [:params :link]))
+  (let [link?        (= "true" (get-in request [:params :link]))
         _            (when (and link? (not api/*current-user-id*))
                        (throw (ex-info (tru "Account linking requires an authenticated session")
                                        {:status-code 401})))

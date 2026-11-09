@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sso.api.routes
   (:require
    [metabase-enterprise.sso.api.oidc]
-   [metabase-enterprise.sso.api.oidc-identities]
    [metabase-enterprise.sso.api.saml]
    [metabase-enterprise.sso.api.sso]
    [metabase.api.util.handlers :as handlers]))
@@ -24,5 +23,4 @@
   (handlers/route-map-handler
    {"/auth" {"/sso"  'metabase-enterprise.sso.api.sso}
     "/api"  {"/saml" 'metabase-enterprise.sso.api.saml
-             "/ee"   {"/sso" {"/oidc"            metabase-enterprise.sso.api.oidc/routes
-                              "/oidc-identities" metabase-enterprise.sso.api.oidc-identities/routes}}}}))
+             "/ee"   {"/sso" {"/oidc" metabase-enterprise.sso.api.oidc/routes}}}}))

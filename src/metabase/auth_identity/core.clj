@@ -14,7 +14,6 @@
 (p/import-vars
  [auth-identity
   hash-password-credentials
-  merge-metadata!
   set-password!
   reset-token-hash])
 

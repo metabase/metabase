@@ -49,13 +49,3 @@
   "Delete the SsoRelayStates expired at or before `now`, returning the number deleted."
   [now :- ms/TemporalInstant]
   (t2/delete! :model/SsoRelayState :expires_at [:<= now]))
-
-(mu/defn auth-identity-providers
-  "The providers among `providers` at which the User with `user-id` has an AuthIdentity."
-  [user-id   :- ms/PositiveInt
-   providers :- [:sequential :string]]
-  (if (empty? providers)
-    #{}
-    (t2/select-fn-set :provider :model/AuthIdentity
-                      :user_id  [:auto/param (long user-id)]
-                      :provider [:in providers])))

@@ -336,81 +336,56 @@
                 (is (= slack-user-id (:provider_id auth-identity))
                     "AuthIdentity should have correct provider_id")))))))))
 
+(defn- slack-login!
+  "Run the Slack Connect `login!` callback in `mode` with the ID token mocked to carry `claims`."
+  [mode claims & {:as request}]
+  (mt/with-temporary-setting-values [slack-connect-enabled             true
+                                     slack-connect-client-id           "test-client-id"
+                                     slack-connect-client-secret       "test-secret"
+                                     slack-connect-authentication-mode mode]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration (fn [_issuer] slack-discovery-doc)
+                                oidc.state/validate-oidc-callback (fn [& _] {:valid? true :nonce "test-nonce" :redirect "/"})
+                                http/post (fn [_url _opts] {:status 200 :body {:id_token "t" :access_token "a"}})
+                                oidc.tokens/validate-id-token (fn [& _] {:valid? true
+                                                                         :claims (merge {:iss "https://slack.com"
+                                                                                         :aud "test-client-id"}
+                                                                                        claims)})]
+      (auth-identity/login! :provider/slack-connect
+                            (merge {:code         "test-code"
+                                    :state        "test-state"
+                                    :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
+                                    :device-info  {:device_id "test-device" :device_description "Test Device"
+                                                   :ip_address "127.0.0.1" :embedded false :token_exchange false}}
+                                   request)))))
+
 (deftest sso-mode-auto-links-without-email-verified-claim-test
   (testing "SSO mode auto-links an existing user even when Slack omits the email_verified claim"
-    (mt/with-temporary-setting-values
-      [slack-connect-enabled true
-       slack-connect-client-id "test-client-id"
-       slack-connect-client-secret "test-secret"
-       slack-connect-authentication-mode "sso"]
-      (mt/with-temp [:model/User user {:email "no-claim-slack@example.com"}]
-        (t2/delete! :model/AuthIdentity :user_id (:id user) :provider "slack-connect")
-        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
-                                    (fn [_issuer] slack-discovery-doc)
-                                    oidc.state/validate-oidc-callback
-                                    (fn [_request _state _provider & _opts]
-                                      {:valid? true :nonce "test-nonce" :redirect "/"})
-                                    http/post
-                                    (fn [_url _opts]
-                                      {:status 200
-                                       :body {:id_token "valid-token" :access_token "access-token-123"}})
-                                    oidc.tokens/validate-id-token
-                                    (fn [_token _config _nonce]
-                                      {:valid? true
-                                       :claims {:sub "U_NO_CLAIM"
-                                                :iss "https://slack.com"
-                                                :aud "test-client-id"
-                                                :email "no-claim-slack@example.com"}})]
-          (let [request {:code "test-code"
-                         :state "test-state"
-                         :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
-                         :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}}
-                result (auth-identity/login! :provider/slack-connect request)]
-            (is (true? (:success? result)))
-            (is (= "U_NO_CLAIM" (t2/select-one-fn :provider_id :model/AuthIdentity
-                                                  :user_id (:id user) :provider "slack-connect")))))))))
-
-(deftest link-only-mode-passes-through-auth-failures-test
-  (testing "Link-only mode surfaces the authenticate failure instead of a generic sub-claim error"
-    (mt/with-temporary-setting-values
-      [slack-connect-enabled true
-       slack-connect-client-id "test-client-id"
-       slack-connect-client-secret "test-secret"
-       slack-connect-authentication-mode "link-only"]
-      (let [result (auth-identity/login! :provider/slack-connect {:authenticated-user (delay nil)})]
-        (is (false? (:success? result)))
-        (is (= :authentication-required (:error result)))))))
+    (mt/with-temp [:model/User user {:email "no-claim-slack@example.com"}]
+      (is (true? (:success? (slack-login! "sso" {:sub "U_NO_CLAIM" :email "no-claim-slack@example.com"}))))
+      (is (= "U_NO_CLAIM" (t2/select-one-fn :provider_id :model/AuthIdentity
+                                            :user_id (:id user) :provider "slack-connect"))))))
 
 (deftest link-only-mode-callback-requires-session-test
   (testing "A link-only callback whose Metabase session expired reports :authentication-required"
-    (mt/with-temporary-setting-values
-      [slack-connect-enabled true
-       slack-connect-client-id "test-client-id"
-       slack-connect-client-secret "test-secret"
-       slack-connect-authentication-mode "link-only"]
-      (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
-                                  (fn [_issuer] slack-discovery-doc)
-                                  oidc.state/validate-oidc-callback
-                                  (fn [_request _state _provider & _opts]
-                                    {:valid? true :nonce "test-nonce" :redirect "/"})
-                                  http/post
-                                  (fn [_url _opts]
-                                    {:status 200
-                                     :body {:id_token "valid-token" :access_token "access-token-123"}})
-                                  oidc.tokens/validate-id-token
-                                  (fn [_token _config _nonce]
-                                    {:valid? true
-                                     :claims {:sub "U_EXPIRED"
-                                              :iss "https://slack.com"
-                                              :aud "test-client-id"
-                                              :email "expired-session@example.com"}})]
-        (let [result (auth-identity/login! :provider/slack-connect
-                                           {:code "test-code"
-                                            :state "test-state"
-                                            :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
-                                            :authenticated-user (delay nil)})]
-          (is (false? (:success? result)))
-          (is (= :authentication-required (:error result))))))))
+    (is (= :authentication-required
+           (:error (slack-login! "link-only" {:sub "U_EXPIRED" :email "expired-session@example.com"}
+                                 :authenticated-user (delay nil)))))))
+
+(deftest link-only-mode-relinks-auth-identity-test
+  (testing "Link-only mode relinks an already-linked user to the Slack identity they just authenticated with"
+    (mt/with-temp [:model/User user {:email "relink@example.com"}
+                   :model/AuthIdentity {ai-id :id} {:user_id (:id user) :provider "slack-connect" :provider_id "U_OLD"}]
+      (is (true? (:success? (slack-login! "link-only" {:sub "U_NEW" :email "relink@example.com"}
+                                          :authenticated-user (delay user)))))
+      (is (= ["U_NEW" "https://slack.com"]
+             ((juxt :provider_id (comp :iss :metadata)) (t2/select-one :model/AuthIdentity :id ai-id)))))))
+
+(deftest sso-mode-does-not-relink-pre-iss-link-test
+  (testing "An SSO login does not silently replace a Slack link made before iss tracking with another Slack account"
+    (mt/with-temp [:model/User user {:email "prelinked@example.com"}
+                   :model/AuthIdentity {ai-id :id} {:user_id (:id user) :provider "slack-connect" :provider_id "U_LINKED"}]
+      (is (= :identity-mismatch (:error (slack-login! "sso" {:sub "U_OTHER" :email "prelinked@example.com"}))))
+      (is (= "U_LINKED" (t2/select-one-fn :provider_id :model/AuthIdentity :id ai-id))))))
 
 (deftest link-only-mode-creates-auth-identity-test
   (testing "Link-only mode creates AuthIdentity for the authenticated user"
@@ -463,82 +438,6 @@
               ;; Verify no new session was created
               (is (= initial-session-count (t2/count :model/Session :user_id (:id user)))
                   "No new session should be created"))))))))
-
-(deftest link-only-mode-relinks-auth-identity-test
-  (testing "Link-only mode relinks an already-linked user to the Slack identity they just authenticated with"
-    (mt/with-temporary-setting-values
-      [slack-connect-enabled true
-       slack-connect-client-id "test-client-id"
-       slack-connect-client-secret "test-secret"
-       slack-connect-authentication-mode "link-only"]
-      (mt/with-temp [:model/User user {:email "relink@example.com"}
-                     :model/AuthIdentity {ai-id :id} {:user_id (:id user)
-                                                      :provider "slack-connect"
-                                                      :provider_id "U_OLD"}]
-        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
-                                    (fn [_issuer] slack-discovery-doc)
-                                    oidc.state/validate-oidc-callback
-                                    (fn [_request _state _provider & _opts]
-                                      {:valid? true :nonce "test-nonce" :redirect "/"})
-                                    http/post
-                                    (fn [_url _opts]
-                                      {:status 200
-                                       :body {:id_token "valid-token" :access_token "access-token-123"}})
-                                    oidc.tokens/validate-id-token
-                                    (fn [_token _config _nonce]
-                                      {:valid? true
-                                       :claims {:sub "U_NEW"
-                                                :iss "https://slack.com"
-                                                :aud "test-client-id"
-                                                :email "relink@example.com"}})]
-          (let [result (auth-identity/login! :provider/slack-connect
-                                             {:code "test-code"
-                                              :state "test-state"
-                                              :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
-                                              :authenticated-user (delay user)
-                                              :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}})
-                auth-identity (t2/select-one :model/AuthIdentity :id ai-id)]
-            (is (true? (:success? result)))
-            (is (= "U_NEW" (:provider_id auth-identity)))
-            (is (= "https://slack.com" (get-in auth-identity [:metadata :iss])))))))))
-
-(deftest sso-mode-does-not-relink-pre-iss-link-test
-  (testing "An SSO login does not silently replace a Slack link made before iss tracking with another Slack account"
-    (mt/with-temporary-setting-values
-      [slack-connect-enabled true
-       slack-connect-client-id "test-client-id"
-       slack-connect-client-secret "test-secret"
-       slack-connect-authentication-mode "sso"]
-      (mt/with-temp [:model/User user {:email "prelinked@example.com"}
-                     :model/AuthIdentity {ai-id :id} {:user_id (:id user)
-                                                      :provider "slack-connect"
-                                                      :provider_id "U_LINKED"}]
-        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
-                                    (fn [_issuer] slack-discovery-doc)
-                                    oidc.state/validate-oidc-callback
-                                    (fn [_request _state _provider & _opts]
-                                      {:valid? true :nonce "test-nonce" :redirect "/"})
-                                    http/post
-                                    (fn [_url _opts]
-                                      {:status 200
-                                       :body {:id_token "valid-token" :access_token "access-token-123"}})
-                                    oidc.tokens/validate-id-token
-                                    (fn [_token _config _nonce]
-                                      {:valid? true
-                                       :claims {:sub "U_OTHER"
-                                                :iss "https://slack.com"
-                                                :aud "test-client-id"
-                                                :email "prelinked@example.com"}})]
-          (let [result (auth-identity/login! :provider/slack-connect
-                                             {:code "test-code"
-                                              :state "test-state"
-                                              :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
-                                              :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}})]
-            (is (false? (:success? result)))
-            (is (= :identity-mismatch (:error result)))
-            (is (= "U_LINKED" (t2/select-one-fn :provider_id :model/AuthIdentity :id ai-id)))))))))
-
-;;; -------------------------------------------------- Settings Validation Tests --------------------------------------------------
 
 (deftest slack-connect-configured-test
   (testing "Returns true when client ID and secret are configured"

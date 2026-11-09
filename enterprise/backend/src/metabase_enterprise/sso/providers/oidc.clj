@@ -21,19 +21,14 @@
 
 ;;; -------------------------------------------------- Configuration --------------------------------------------------
 
-(def ^:private max-provider-name-length
-  "The width of `auth_identity.provider`."
-  50)
-
 (defn identity-provider-name
   "The AuthIdentity provider name for the custom OIDC provider with `provider-key`: `oidc-<key>`, or, when that would
-  not fit `auth_identity.provider`, the key truncated and suffixed with a hash of the whole key."
+  not fit `auth_identity.provider` (varchar 50), the key truncated and suffixed with a hash of the whole key."
   [provider-key]
   (let [full (str "oidc-" provider-key)]
-    (if (<= (count full) max-provider-name-length)
+    (if (<= (count full) 50)
       full
-      (let [digest (subs (codecs/bytes->hex (buddy-hash/sha256 ^String provider-key)) 0 12)]
-        (str (subs full 0 (- max-provider-name-length (count digest) 1)) "-" digest)))))
+      (str (subs full 0 37) "-" (subs (codecs/bytes->hex (buddy-hash/sha256 ^String provider-key)) 0 12)))))
 
 (defn- build-oidc-config
   "Build OIDC configuration map from provider settings."
@@ -61,11 +56,8 @@
         (get attribute-map "last_name")
         (assoc :attribute-lastname (get attribute-map "last_name"))
 
-        (some? (:auto-link-verified-email provider-config))
-        (assoc :auto-link-verified-email (:auto-link-verified-email provider-config))
-
-        (seq (:trusted-email-domains provider-config))
-        (assoc :trusted-email-domains (:trusted-email-domains provider-config))))))
+        true
+        (merge (select-keys provider-config [:auto-link-verified-email :trusted-email-domains]))))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
@@ -112,9 +104,7 @@
 
 (methodical/defmethod auth-identity/login! :provider/custom-oidc
   [provider {:keys [user] :as request}]
-  ;; only gate provisioning on successful authentications: a failure must surface its own error. An account-linking
-  ;; flow never provisions, and reports a token email without an account itself.
-  (when (and (true? (:success? request)) (not user) (not (:oidc-link-user-id request)))
+  (when-not user
     (sso-utils/check-user-provisioning :oidc))
   (let [provisioning-enabled? (sso-settings/oidc-user-provisioning-enabled?)
         user-was-deactivated? (and user (not (:is_active user)))

@@ -2,7 +2,6 @@
   "Slack Connect OIDC authentication provider. Derives from the base OIDC provider
    and adds Slack-specific configuration and claim extraction."
   (:require
-   [clojure.string :as str]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.server.settings :as server.settings]
    [metabase.sso.db :as sso.db]
@@ -71,8 +70,6 @@
      ;; Slack verifies account emails itself and may omit the email_verified claim; without this,
      ;; existing accounts could never auto-link (Slack has no linking-policy settings)
      :assume-email-verified true
-     ;; Slack's issuer is fixed, so identities linked before iss tracking are known to be Slack's
-     :assumed-issuer slack-issuer-uri
      :redirect-uri (get request :redirect-uri)}))
 
 ;;; -------------------------------------------------- Utilities --------------------------------------------------
@@ -133,30 +130,17 @@
   "Link (or relink) the authenticated user's Slack identity to the token's (iss, sub). Used in link-only mode,
    where the user is already signed in and linking is their explicit action."
   [provider user-id claims]
-  (let [sub (some-> (:sub claims) str)]
-    (cond
-      (not user-id)
-      {:success? false
-       :error :authentication-required
-       :message "Account linking requires an authenticated session"}
-
-      (str/blank? sub)
-      {:success? false
-       :error :invalid-token
-       :message "ID token is missing the sub claim"}
-
-      :else
-      (oidc/link-identity! provider user-id
-                           (sso.db/auth-identity user-id provider-name)
-                           sub (:iss claims)
-                           :assumed-issuer slack-issuer-uri))))
+  (if-not user-id
+    {:success? false
+     :error :authentication-required
+     :message "Account linking requires an authenticated session"}
+    (oidc/link-identity! provider user-id (sso.db/auth-identity user-id provider-name) (str (:sub claims)) (:iss claims))))
 
 (methodical/defmethod auth-identity/login! :provider/slack-connect
   [provider {:keys [user authenticated-user claims] :as request}]
   (condp = (sso-settings/slack-connect-authentication-mode)
     sso-settings/slack-connect-auth-mode-sso
-    ;; only gate provisioning on successful authentications: a failure must surface its own error
-    (do (when (and (true? (:success? request)) (not user))
+    (do (when-not user
           (maybe-throw-user-provisioning (sso-settings/slack-connect-user-provisioning-enabled)))
         (next-method provider request))
 
@@ -178,8 +162,8 @@
                            (some-> result :authenticated-user deref :id))]
       ;; merge into existing metadata so the :iss stored by OIDC identity linking survives
       (when-let [auth-identity (sso.db/auth-identity user-id provider-name)]
-        (auth-identity/merge-metadata! auth-identity
-                                       {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}))))
+        (sso.db/update-auth-identity! auth-identity nil
+                                      {:signing_secret_version (server.settings/slack-connect-signing-secret-version)}))))
   (if (= sso-settings/slack-connect-auth-mode-link-only (sso-settings/slack-connect-authentication-mode))
     (dissoc result :user)
     result))

@@ -136,7 +136,6 @@
    Optional:
    - :ttl-ms     - Time-to-live in milliseconds (default: 600000 = 10 min)
    - :browser-id - Browser identifier for request forgery protection
-   - :link-user-id - Id of the signed-in user who started an account-linking flow
 
    Returns a map suitable for encryption.
 
@@ -155,6 +154,7 @@
              :created-at now
              :expires-at (+ now ttl-ms)}
       browser-id   (assoc :browser-id browser-id)
+      ;; the signed-in user who started an account-linking flow
       link-user-id (assoc :link-user-id link-user-id))))
 
 ;;; -------------------------------------------------- Encryption --------------------------------------------------
@@ -255,15 +255,14 @@
    - response    - Ring response map
    - request     - Ring request (for determining secure/https)
    - state-data  - Map with :state, :nonce, :redirect, :provider keys
-   - options     - Optional map with :ttl-ms (default 600000), :browser-id, :link-user-id
+   - options     - Optional map with :ttl-ms (default 600000), :browser-id
 
    Returns updated response with cookie set."
   ([response request state-data]
    (set-oidc-state-cookie response request state-data {}))
   ([response request state-data {:keys [ttl-ms browser-id link-user-id] :or {ttl-ms default-ttl-ms}}]
-   (let [full-state  (create-oidc-state (cond-> (assoc state-data :ttl-ms ttl-ms)
-                                          browser-id   (assoc :browser-id browser-id)
-                                          link-user-id (assoc :link-user-id link-user-id)))
+   (let [full-state  (create-oidc-state (cond-> (assoc state-data :ttl-ms ttl-ms :link-user-id link-user-id)
+                                          browser-id (assoc :browser-id browser-id)))
          encrypted   (encrypt-state full-state)
          ttl-seconds (quot ttl-ms 1000)]
      (response/set-cookie response
@@ -316,7 +315,7 @@
    - request     - Ring request
    - provider    - Provider keyword (e.g., :slack-connect)
    - redirect    - Final redirect URL after auth completes
-   - options     - Optional: :ttl-ms, :browser-id, :link-user-id"
+   - options     - Optional: :ttl-ms, :browser-id"
   ([auth-result request provider redirect]
    (wrap-oidc-redirect auth-result request provider redirect {}))
   ([auth-result request provider redirect options]
@@ -361,8 +360,7 @@
         :message (tru "State parameter does not match - possible CSRF attack")}
 
        :else
-       {:valid?       true
-        :state-data   state-data
-        :nonce        (:nonce state-data)
-        :redirect     (:redirect state-data)
-        :link-user-id (:link-user-id state-data)}))))
+       {:valid?     true
+        :state-data state-data
+        :nonce      (:nonce state-data)
+        :redirect   (:redirect state-data)}))))

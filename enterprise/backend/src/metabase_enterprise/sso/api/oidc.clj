@@ -17,53 +17,59 @@
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
 (def ^:private trusted-email-domains-schema
-  "\"*\" or a hostname per [[u/domain?]], with optional whitespace/leading @ (normalized away at match
-   time). Only \"*\" is a wildcard: matching is exact, so reject strings like \"*.mycompany.com\" that
-   would otherwise be stored and silently never match."
+  "\"*\" or email domains; only \"*\" is a wildcard, so reject \"*.mycompany.com\", which would never match."
   [:sequential [:fn {:error/message "must be an email domain such as mycompany.com, or *"}
-                (fn [s]
-                  (and (string? s)
-                       (let [s (-> s str/trim (str/replace #"^@" ""))]
-                         (or (= s "*") (u/domain? s)))))]])
+                #(and (string? %) (let [s (-> % str/trim (str/replace #"^@" ""))] (or (= s "*") (u/domain? s))))]])
 
-(def ^:private group-sync-schema
+(def ^:private oidc-provider-create-schema
   [:map {:closed true}
-   [:enabled {:optional true} :boolean]
-   [:group-attribute {:optional true} :string]
-   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]])
-
-(def ^:private oidc-provider-fields
-  "Field schemas shared by the create/update/response provider schemas."
-  [[:login-prompt :string]
+   [:key :string]
+   [:login-prompt :string]
    [:issuer-uri :string]
    [:client-id :string]
    [:client-secret :string]
-   [:scopes [:sequential :string]]
-   [:enabled :boolean]
-   [:attribute-map [:map-of :string :string]]
-   [:auto-link-verified-email :boolean]
-   [:trusted-email-domains trusted-email-domains-schema]
-   [:group-sync group-sync-schema]])
-
-(defn- provider-schema
-  "Closed provider map schema over [[oidc-provider-fields]]; fields in `required` are mandatory, the
-   rest optional. `:with-key?` adds the (immutable, so create/response-only) `:key` field."
-  [& {:keys [required with-key?] :or {required #{}}}]
-  (into (cond-> [:map {:closed true}]
-          with-key? (conj [:key :string]))
-        (map (fn [[k s]]
-               (if (contains? required k) [k s] [k {:optional true} s])))
-        oidc-provider-fields))
-
-(def ^:private oidc-provider-create-schema
-  (provider-schema :with-key? true
-                   :required #{:login-prompt :issuer-uri :client-id :client-secret}))
+   [:scopes {:optional true} [:sequential :string]]
+   [:enabled {:optional true} :boolean]
+   [:attribute-map {:optional true} [:map-of :string :string]]
+   [:auto-link-verified-email {:optional true} :boolean]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
+   [:group-sync {:optional true} [:map {:closed true}
+                                  [:enabled {:optional true} :boolean]
+                                  [:group-attribute {:optional true} :string]
+                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 (def ^:private oidc-provider-update-schema
-  (provider-schema))
+  [:map {:closed true}
+   [:login-prompt {:optional true} :string]
+   [:issuer-uri {:optional true} :string]
+   [:client-id {:optional true} :string]
+   [:client-secret {:optional true} :string]
+   [:scopes {:optional true} [:sequential :string]]
+   [:enabled {:optional true} :boolean]
+   [:attribute-map {:optional true} [:map-of :string :string]]
+   [:auto-link-verified-email {:optional true} :boolean]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
+   [:group-sync {:optional true} [:map {:closed true}
+                                  [:enabled {:optional true} :boolean]
+                                  [:group-attribute {:optional true} :string]
+                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 (def ^:private oidc-provider-response-schema
-  oidc-provider-create-schema)
+  [:map {:closed true}
+   [:key :string]
+   [:login-prompt :string]
+   [:issuer-uri :string]
+   [:client-id :string]
+   [:client-secret :string]
+   [:scopes {:optional true} [:sequential :string]]
+   [:enabled {:optional true} :boolean]
+   [:attribute-map {:optional true} [:map-of :string :string]]
+   [:auto-link-verified-email {:optional true} :boolean]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
+   [:group-sync {:optional true} [:map {:closed true}
+                                  [:enabled {:optional true} :boolean]
+                                  [:group-attribute {:optional true} :string]
+                                  [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
