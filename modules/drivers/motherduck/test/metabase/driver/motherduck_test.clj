@@ -36,9 +36,10 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 ConnectionTester)
-   (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time LocalDateTime OffsetTime)
-   (metabase.driver.motherduck ResetDatabaseConnectionTester)))
+   (metabase.driver.motherduck ResetDatabaseConnectionTester)
+   (org.postgresql.util PSQLException PSQLState)))
 
 (set! *warn-on-reflection* true)
 
@@ -146,6 +147,93 @@
                 :hour    -8386
                 :minute  -503191}
                (diffs "2020-12-15T10:31:45" "2020-01-01T00:00:00")))))))
+
+(defn- stale-catalog-exception
+  "The error the endpoint raises when the catalog changed under a statement. Like every error it raises, it carries no
+  error code and the SQLState `XXUUU`."
+  []
+  (PSQLException. "ERROR: Catalog Error: Remote catalog has changed. Please rerun query." PSQLState/UNKNOWN_STATE))
+
+(defn- stand-in-connection
+  "A stand-in `Connection` with autoCommit set to `auto-commit?`. Counts every rollback in the `rollbacks` atom."
+  [auto-commit? rollbacks]
+  (reify Connection
+    (getAutoCommit [_] auto-commit?)
+    (rollback [_] (swap! rollbacks inc))))
+
+(defn- failing-statement
+  "A stand-in `PreparedStatement` on `conn` whose `executeQuery` throws each of `exceptions` in turn, then returns `rs`.
+  Counts every call in the `attempts` atom."
+  ([exceptions rs attempts]
+   (failing-statement exceptions rs attempts (stand-in-connection true (atom 0))))
+  ([exceptions rs attempts conn]
+   (let [remaining (atom exceptions)]
+     (reify PreparedStatement
+       (getConnection [_] conn)
+       (^ResultSet executeQuery [_]
+         (swap! attempts inc)
+         (let [[e & more] @remaining]
+           (reset! remaining more)
+           (if e
+             (throw e)
+             rs)))))))
+
+;; Not ^:parallel: kondo counts `execute-statement!` as destructive, though these statements are stand-ins.
+(deftest execute-reruns-on-stale-catalog-test
+  (let [rs (reify ResultSet)]
+    (testing "a statement rejected because the catalog changed runs again, and the rerun's result is returned"
+      (let [attempts (atom 0)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement [(stale-catalog-exception)] rs attempts))))
+        (is (= 2 @attempts))))
+    (testing "it keeps retrying while the catalog keeps changing, up to the limit"
+      (let [attempts (atom 0)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement (repeatedly 2 stale-catalog-exception) rs attempts))))
+        (is (= 3 @attempts))))
+    (testing "past the limit, the last error is thrown"
+      (let [attempts (atom 0)]
+        (is (thrown-with-msg? PSQLException #"Remote catalog has changed"
+                              (sql-jdbc.execute/execute-prepared-statement!
+                               :motherduck (failing-statement (repeatedly 3 stale-catalog-exception) rs attempts))))
+        (is (= 3 @attempts))))
+    (testing "with autoCommit off, the transaction the error aborted is rolled back before each rerun"
+      (let [attempts  (atom 0)
+            rollbacks (atom 0)
+            conn      (stand-in-connection false rollbacks)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement (repeatedly 2 stale-catalog-exception) rs attempts conn))))
+        (is (= 3 @attempts))
+        (is (= 2 @rollbacks))))
+    (testing "with autoCommit on, there is no transaction to roll back"
+      (let [attempts  (atom 0)
+            rollbacks (atom 0)
+            conn      (stand-in-connection true rollbacks)]
+        (is (identical? rs (sql-jdbc.execute/execute-prepared-statement!
+                            :motherduck (failing-statement [(stale-catalog-exception)] rs attempts conn))))
+        (is (= 2 @attempts))
+        (is (zero? @rollbacks))))
+    (testing "any other error is thrown at once, without a rerun"
+      (let [attempts (atom 0)
+            e        (PSQLException. "ERROR: Parser Error: syntax error at or near \"DISABLE\"" PSQLState/UNKNOWN_STATE)]
+        (is (thrown-with-msg? PSQLException #"Parser Error"
+                              (sql-jdbc.execute/execute-prepared-statement!
+                               :motherduck (failing-statement [e] rs attempts))))
+        (is (= 1 @attempts))))
+    (testing "a plain Statement, used for queries without parameters, reruns the same way"
+      (let [attempts  (atom 0)
+            remaining (atom [(stale-catalog-exception)])
+            conn      (stand-in-connection true (atom 0))
+            stmt      (reify Statement
+                        (getConnection [_] conn)
+                        (^boolean execute [_ ^String _sql]
+                          (swap! attempts inc)
+                          (let [[e & more] @remaining]
+                            (reset! remaining more)
+                            (if e (throw e) true)))
+                        (^ResultSet getResultSet [_] rs))]
+        (is (identical? rs (sql-jdbc.execute/execute-statement! :motherduck stmt "SELECT 1")))
+        (is (= 2 @attempts))))))
 
 (defn- read-unparseable
   "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects.

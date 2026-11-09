@@ -29,11 +29,12 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
    (com.mchange.v2.c3p0 ConnectionTester UnifiedConnectionTester)
    (com.mchange.v2.c3p0.impl DefaultConnectionTester)
-   (java.sql Connection ResultSet ResultSetMetaData SQLException Types)
+   (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
@@ -514,6 +515,75 @@
                (sql.qp/compiled (h2x/->pg-timestamp expr)))]
     ((get-method sql.qp/->honeysql [:postgres :convert-timezone])
      driver [tag opts arg (h2x/literal target-timezone) (some-> source-timezone h2x/literal)])))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Executing queries                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; A connection plans each query against its snapshot of the account's catalog. When another session changes the
+;;; catalog, by creating or dropping a database, table or view, a query planned on the stale snapshot fails with
+;;; "Catalog Error: Remote catalog has changed. Please rerun query.", and the endpoint refreshes the snapshot for the
+;;; next query on the connection. So the same statement succeeds when it's run again, as the message says to do.
+;;;
+;;; Only the two read-side execute methods retry. Write queries, actions and uploads use `executeUpdate` directly, so
+;;; a retry can never apply a write twice, and the sync helpers for fields, keys and foreign keys run their statements
+;;; directly, so they don't retry either.
+
+(def ^:private stale-catalog-message
+  ;; The endpoint reports every error with SQLState `XXUUU` and no error code, so the message is the only way to tell
+  ;; this one from the rest.
+  #"Remote catalog has changed")
+
+(def ^:private max-stale-catalog-retries
+  "How many times to rerun a statement that keeps failing because the catalog changed. Each rerun plans against a fresh
+  snapshot, so one is normally enough; the rest cover a catalog that is changing continuously, as it does in CI."
+  2)
+
+(defn- roll-back-aborted-transaction!
+  "Roll back the transaction a stale-catalog error aborted, so that the rerun isn't rejected with \"current transaction
+  is aborted\" instead. With autoCommit on there is no transaction to roll back. Reads turn autoCommit off to stream
+  their results through a cursor: downloads, `:table-rows-sample` and `describe-database-tables` do. Those transactions
+  only read, so rolling one back loses nothing that wasn't lost with the error. Should the rollback itself fail, the
+  original error is thrown, with the rollback's attached."
+  [^Statement stmt ^SQLException e]
+  (try
+    (let [conn (.getConnection stmt)]
+      (when-not (.getAutoCommit conn)
+        (.rollback conn)))
+    (catch Throwable rollback-error
+      (.addSuppressed e rollback-error)
+      (throw e))))
+
+(defn- execute-with-stale-catalog-retry
+  "Call `execute!`, a thunk that runs `stmt`, and return its result. If the endpoint rejects the statement because its
+  catalog snapshot is stale, roll back the transaction that aborted, if any, and call `execute!` again, up to
+  [[max-stale-catalog-retries]] times. Any other `SQLException`, and the last stale-catalog error, are thrown as they
+  are."
+  [^Statement stmt execute!]
+  (loop [retries-left max-stale-catalog-retries]
+    (let [result (try
+                   (execute!)
+                   (catch SQLException e
+                     (if (and (pos? retries-left)
+                              (some->> (ex-message e) (re-find stale-catalog-message)))
+                       (do (log/debugf "MotherDuck's catalog changed under a statement, rerunning it (%d retries left)"
+                                       (dec retries-left))
+                           (roll-back-aborted-transaction! stmt e)
+                           ::stale-catalog)
+                       (throw e))))]
+      (if (= result ::stale-catalog)
+        (recur (dec retries-left))
+        result))))
+
+(defmethod sql-jdbc.execute/execute-prepared-statement! :motherduck
+  [driver stmt]
+  (let [postgres-method (get-method sql-jdbc.execute/execute-prepared-statement! :postgres)]
+    (execute-with-stale-catalog-retry stmt #(postgres-method driver stmt))))
+
+(defmethod sql-jdbc.execute/execute-statement! :motherduck
+  [driver stmt sql]
+  (let [postgres-method (get-method sql-jdbc.execute/execute-statement! :postgres)]
+    (execute-with-stale-catalog-retry stmt #(postgres-method driver stmt sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Reading results                                                 |
