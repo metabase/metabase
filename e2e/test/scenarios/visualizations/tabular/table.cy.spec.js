@@ -458,19 +458,15 @@ describe("scenarios > visualizations > table", () => {
     cy.realPress(["Escape"]);
     cy.findByTestId("click-actions-view").should("not.exist");
 
-    // TODO (excel-mode): the summary sidebar's field list has no column info icon yet
-    // H.summarize();
-    //
-    // cy.findAllByTestId("dimension-list-item")
-    //   .contains("ID")
-    //   .parents("[data-testid='dimension-list-item']")
-    //   .within(() => {
-    //     cy.findByLabelText("More info").realHover();
-    //   });
-    //
-    // H.hovercard().within(() => {
-    //   cy.contains("Entity Key");
-    // });
+    H.summarize();
+
+    H.summaryField("ID", { section: "Orders" }).within(() => {
+      cy.findByLabelText("More info").realHover();
+    });
+
+    H.hovercard().within(() => {
+      cy.contains("Entity Key");
+    });
   });
 
   it("should show field metadata hovercards for native query tables", () => {
