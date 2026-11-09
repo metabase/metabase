@@ -4669,7 +4669,7 @@
         (is (not (contains? (t2/select-one :metabase_database :id db-id) :admin_details))
             "065 dropped the column")
         (migrate!)
-        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4"))))
+        (is (= "EXECUTED" (:exectype (liquibase/changelog-by-id (mdb.connection/current-application-db) "h8xlm4"))))
         (is (=? {:admin_details nil} (t2/select-one :metabase_database :id db-id))
             "existing rows get a null admin_details")
         (t2/update! :metabase_database :id db-id {:admin_details "{\"user\":\"admin\"}"})
@@ -4678,7 +4678,7 @@
     (impl/test-migrations ["h8xlm4"] [migrate!]
       (t2/query "ALTER TABLE metabase_database ADD COLUMN admin_details TEXT")
       (migrate!)
-      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id mdb.connection/*application-db* "h8xlm4")))))))
+      (is (= "MARK_RAN" (:exectype (liquibase/changelog-by-id (mdb.connection/current-application-db) "h8xlm4")))))))
 
 (deftest drop-report-card-collection-preview-test
   (testing "j38192: report_card.collection_preview is dropped, and a rollback restores it with previews enabled"
