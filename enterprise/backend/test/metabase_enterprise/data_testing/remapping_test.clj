@@ -183,7 +183,7 @@
      {:inputs              inputs
       :expectations        expectations
       :referenced-tables   (declared-refs sql)
-      :rewritten-transform (rewrite sql replacements)
+      :rewritten-query (rewrite sql replacements)
       :replacements        replacements
       :default-schema      "PUBLIC"})))
 

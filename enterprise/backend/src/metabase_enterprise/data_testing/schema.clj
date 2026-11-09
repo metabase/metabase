@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.schema
-  "The shapes a transform test is written in, and the only gate they pass: each schema explains its own
+  "The shapes a data test is written in, and the only gate they pass: each schema explains its own
   refusals, so a caller reads what to fix from the explanation rather than from a hand-written check."
   (:require
    [clojure.string :as str]
@@ -41,7 +41,7 @@
          (when (seq extra) (str "; not declared: " (str/join ", " (map pr-str extra)))))))
 
 (mr/def ::table
-  "A table read by the transform under test, by schema and name."
+  "A table read by the query under test, by schema and name."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:schema {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:name   ::lib.schema.common/non-blank-string]])
@@ -66,7 +66,7 @@
   (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
 
 (mr/def ::sql-data
-  "Test data returned by a SQL query run against the transform's source database."
+  "Test data returned by a SQL query run against the Database of the query under test."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:format {:decode/normalize lib.schema.common/normalize-keyword} [:= :sql]]
    [:sql    ::lib.schema.common/non-blank-string]])
@@ -85,7 +85,7 @@
    [:fn {:error/fn rows-match-columns-message} rows-match-columns?]])
 
 (mr/def ::input
-  "An input table of the transform under test, replaced with test data."
+  "An input table of the query under test, replaced with test data."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :format)
            :error/fn         (unknown-dispatch :format)}
@@ -93,12 +93,12 @@
    [:rows [:merge [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case} [:table ::table]] ::rows-data]]])
 
 (mr/def ::inputs
-  "Test data for the tables the transform reads. Every table it reads needs one, and an input for
+  "Test data for the tables the query under test reads. Every table it reads needs one, and an input for
   a table it does not read is refused."
   [:sequential ::input])
 
 (mr/def ::expectation.equals
-  "A check that the transform output holds exactly the declared rows, over exactly the declared columns."
+  "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :format)
            :error/fn         (unknown-dispatch :format)}
@@ -114,14 +114,14 @@
            ::rows-data]]])
 
 (mr/def ::expectation.empty
-  "A check that a SQL query over the transform output returns no rows."
+  "A check that a SQL query over the output of the query under test returns no rows."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :empty]]
    [:name ::lib.schema.common/non-blank-string]
    [:sql  ::lib.schema.common/non-blank-string]])
 
 (mr/def ::expectation
-  "A check on the output of the transform under test."
+  "A check on the output of the query under test."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)
            :error/fn         (unknown-dispatch :type)}
@@ -129,7 +129,7 @@
    [:empty  ::expectation.empty]])
 
 (mr/def ::expectations
-  "The checks run against the transform's output. Names must be unique within a test,
+  "The checks run against the output of the query under test. Names must be unique within a test,
   case-sensitively."
   [:and
    [:sequential ::expectation]
@@ -285,7 +285,7 @@
     [:last_run [:maybe ::data-test-run]]]])
 
 (mr/def ::status
-  "The outcome of a transform test run, or of one of its expectations.
+  "The outcome of a test run, or of one of its expectations.
 
   `:error` is an expectation outcome only: that expectation's own query could not be run, while
   the rest of the run completed and still reported."
@@ -313,7 +313,7 @@
    [:empty  :metabase-enterprise.data-testing.expectations.empty/result]])
 
 (mr/def ::run-result
-  "The outcome of a transform test run.
+  "The outcome of a test run.
 
   `:tables` maps each temp table the run created to the table it stood in for."
   [:map {:closed true}

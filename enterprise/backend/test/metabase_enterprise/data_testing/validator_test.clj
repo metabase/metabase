@@ -103,7 +103,7 @@
   "A test whose inputs cover what its query reads and whose query reads only temp tables."
   {:inputs              [(sql-input "PUBLIC" "PEOPLE")]
    :referenced-tables   #{{:schema "PUBLIC" :name "PEOPLE"}}
-   :rewritten-transform "SELECT ID FROM MB_T1"
+   :rewritten-query "SELECT ID FROM MB_T1"
    :replacements        {{:schema "PUBLIC" :table "PEOPLE"} {:db nil :schema nil :table "MB_T1"}
                          {:table "PEOPLE"}                  {:db nil :schema nil :table "MB_T1"}}
    :default-schema      "PUBLIC"})

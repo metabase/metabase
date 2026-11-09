@@ -34,7 +34,7 @@
 ;; The name may be blank, as a transform's target name may be: the validator then refuses the test for what it lacks,
 ;; rather than a schema error about the target.
 (mr/def ::output-table
-  "A table the subject writes, by schema and name. The name may be blank."
+  "A table that holds the output of the query under test, by schema and name. The name may be blank."
   [:map {:closed true}
    [:schema {:optional true} [:maybe :string]]
    [:name   :string]])

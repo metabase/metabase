@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.expectations.empty
-  "The `empty` expectation: a query over the transform output returns no rows.
+  "The `empty` expectation: a query over the output of the query under test returns no rows.
 
   The query is the author's own SQL, rewritten so the tables it names resolve to the run's temp
   tables rather than to the real ones."

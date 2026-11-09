@@ -264,7 +264,7 @@
      {:inputs              inputs
       :expectations        expectations
       :referenced-tables   source-tables
-      :rewritten-transform (:query rewritten)
+      :rewritten-query (:query rewritten)
       :replacements        replacements
       :output-token        output-token
       :default-schema      default-schema})
