@@ -45,6 +45,7 @@ docs/ai/mcp-tools.md # auto-generated
 docs/embedding/sdk/api # auto-generated
 docs/embedding/eajs/snippets # auto-generated
 docs/usage-and-performance-tools/usage-analytics-reference.md # auto-generated
+dev/bot/docrunner-*.md @metabase/tech-writers
 
 # @metabase/devex
 # Not enforced: uncomment these lines once the team agrees to review these paths.

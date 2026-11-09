@@ -118,10 +118,19 @@ jobs:
             jq -r '.body_html // ""' "$T/issue.json"
             jq -r '.[].body_html // ""' "$T/comments.json"
           } > "$T/body.html"
+          # A PR that says "Closes #N" shows only on the timeline. Use only PRs from people who contributed before:
+          # a person who writes a PR can put any text in it.
+          gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/timeline" \
+            | jq -s -r --arg repo "$GITHUB_REPOSITORY" 'add // [] | .[]
+                | select(.event == "cross-referenced") | .source.issue // empty
+                | select((.html_url // "" | startswith("https://github.com/\($repo)/pull/")) and .user.type != "Bot"
+                         and (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR")))
+                | .number' > "$T/timeline-refs.txt" || true
           # GitHub renders a full PR link, and a reference like `#12345` to a PR, as a link to `.../pull/<number>`.
           # A reference to an issue links to `.../issues/<number>`.
-          { grep -oE 'github\.com/metabase/metabase/pull/[0-9]+' "$T/body.html" \
-              | grep -oE '[0-9]+$' | awk '!seen[$0]++' | head -20 > "$T/refs.txt"; } || true
+          { { cat "$T/timeline-refs.txt"
+              grep -oE 'github\.com/metabase/metabase/pull/[0-9]+' "$T/body.html" | grep -oE '[0-9]+$'
+            } | awk '!seen[$0]++' | head -20 > "$T/refs.txt"; } || true
 
           prs=()
           while read -r n; do
@@ -365,7 +374,10 @@ jobs:
               fi
               ;;
             exists)
-              echo "Docrunner did not run, because this issue has an open docrunner PR: $EXISTING_URL" > "$f"
+              {
+                echo "Docrunner did not run, because this issue has an open docrunner PR: $EXISTING_URL"
+                printf '\nTo run Docrunner again, close that PR, then add the label `Docrunner` again.\n'
+              } > "$f"
               ;;
             no-change)
               {
