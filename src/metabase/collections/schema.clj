@@ -127,6 +127,14 @@
    [:can_restore         {:optional true} :boolean]
    [:can_delete          {:optional true} :boolean]])
 
+(mr/def ::effective-ancestor
+  "A collection that `:effective_ancestors` lists, other than the Root Collection placeholder."
+  [:map {:closed true}
+   [:id                ::lib.schema.id/collection]
+   [:name              :string]
+   [:type              [:maybe :string]]
+   [:personal_owner_id [:maybe ms/PositiveInt]]])
+
 (mr/def ::collection-or-root
   "A Collection row, or the Root Collection placeholder."
   [:multi {:dispatch (fn [x] (if (:metabase.collections.models.collection.root/is-root? x) :root :row))}
