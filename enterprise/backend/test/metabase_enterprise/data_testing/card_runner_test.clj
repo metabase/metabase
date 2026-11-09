@@ -126,6 +126,24 @@
                                       [(people-input one-person)]
                                       [{:type :empty :name "only the input row" :sql "SELECT * FROM {{output}} WHERE id <> 1"}])))))))
 
+(deftest card-with-a-repeated-column-name-is-refused-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (let [run!   (fn [sql]
+                   (refusal #(run-card-test! (native-card (str sql " FROM " (qualified :people)))
+                                             [(people-input one-person)]
+                                             [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))
+          names? (fn [message] (boolean (re-find #"(?i)named: id\." message)))]
+      (testing "a result with two columns of one name is refused, and the message names the column"
+        (let [{:keys [error-type message]} (run! "SELECT id, id")]
+          (is (= ::data-testing.errors/duplicate-output-columns error-type))
+          (is (names? message) message)))
+      (testing "names that differ only in case are the same name: expectations match columns regardless of case"
+        (let [{:keys [error-type message]} (run! "SELECT id, name AS \"ID\"")]
+          (is (= ::data-testing.errors/duplicate-output-columns error-type))
+          (is (names? message) message)))
+      (testing "control: distinct names run"
+        (is (nil? (run! "SELECT id, name")))))))
+
 (deftest model-and-metric-cards-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [[int-type]  (data-testing.test-util/cast-types)

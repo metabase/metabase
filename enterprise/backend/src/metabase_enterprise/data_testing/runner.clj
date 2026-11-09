@@ -21,6 +21,7 @@
   Only the app database is read before the connection, and no warehouse I/O happens; a bad test is rejected before any
   temp table exists."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
@@ -32,6 +33,7 @@
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card]
    [metabase-enterprise.data-testing.subject.transform]
+   [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -209,20 +211,43 @@
                                (data-testing.validator/table-label (:table input)))
                           labels)))))
 
+(mu/defn- check-output-columns! :- :nil
+  "Refuse the output `columns` of the query under test unless their names are distinct, case aside."
+  [columns :- [:sequential ::data-testing.schema/result-column]]
+  ;; A table cannot hold two columns of one name, and an `equals` expectation matches a column name regardless of
+  ;; case, so names that differ only in case are one name here.
+  (when-let [repeated (seq (for [[_folded [column-name & more]] (group-by data-testing.u/fold-identifier
+                                                                          (map :name columns))
+                                 :when (seq more)]
+                             column-name))]
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/duplicate-output-columns
+            (tru "The output of the query under test has more than one column named: {0}. A test stores the output in a table, which needs distinct column names, case aside."
+                 (str/join ", " repeated))
+            {:columns       (vec repeated)
+             :response/keys #{:columns}}))))
+
 (mu/defn- create-output! :- :nil
-  "Run the query under test on `conn`, materializing its output as the temp table `output-table`."
+  "Run the query under test on `conn`, materializing its output as the temp table `output-table`. Throws
+  `::duplicate-output-columns` when two columns of the output share a name, case aside."
   [driver       :- :keyword
    conn         :- ::data-testing.schema/connection
    output-table :- :string
    compiled     :- ::data-testing.compile/compiled-query
    labels       :- ::labels]
-  (try
-    (data-testing.executor/create-temp-table! driver conn output-table compiled)
-    nil
-    (catch Exception e
-      (rethrow-remapped e ::data-testing.errors/query-failed
-                        (tru "The query under test failed to run:")
-                        labels))))
+  (let [run-query! (fn [thunk]
+                     (try
+                       (thunk)
+                       (catch Exception e
+                         (rethrow-remapped e ::data-testing.errors/query-failed
+                                           (tru "The query under test failed to run:")
+                                           labels))))]
+    ;; The query reads only the inputs' temp tables, so running it once more to read its column names is cheap.
+    (check-output-columns!
+     (:columns (run-query! #(data-testing.executor/run-query driver conn
+                                                             [(:query compiled) (vec (:params compiled))] 1))))
+    (run-query! #(data-testing.executor/create-temp-table! driver conn output-table compiled))
+    nil))
 
 (mu/defn- check-expectations :- [:sequential ::data-testing.schema/expectation-result]
   "The result of every expectation against the output temp table, passing ones included."
