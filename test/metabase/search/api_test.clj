@@ -1676,7 +1676,7 @@
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
                  ["collection" coll-sub-public]}
-               (search :rasta "exclude"))))
+               (search :crowberto "exclude"))))
       (testing "non-admin exclude"
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
