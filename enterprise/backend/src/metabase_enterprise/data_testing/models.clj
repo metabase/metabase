@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -59,33 +58,37 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(mu/defn- can-write-native-sql? :- :boolean
-  "Whether the current user may run native SQL against the Database `db-id`. False for a nil `db-id`, unless the user
-  is a superuser."
-  [db-id :- [:maybe ::lib.schema.id/database]]
-  (boolean
-   (or api/*is-superuser?*
-       (when db-id
-         (query-perms/can-run-query?
-          (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))))))
+(defn- can-run-native-query?
+  "Whether the current user may run native SQL against the Database with `db-id`."
+  [db-id]
+  (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
 
-(mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Transform `transform-id`: they may edit it, and write the
-  native SQL of a test against its source Database."
-  [transform-id :- ::lib.schema.id/transform]
+(defn- can-save-for-transform?
+  "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,
+  and run the native SQL of a test against its source Database, as `can-run-native-query?` says."
+  [transform transform-writable? can-run-native-query?]
   (boolean
-   (when-let [transform (data-testing.db/transform transform-id)]
-     (and (mi/can-write? transform)
-          (can-write-native-sql? (transforms-base.i/source-db-id transform))))))
+   (and transform
+        transform-writable?
+        (or (mi/superuser?)
+            (some-> (transforms-base.i/source-db-id transform) can-run-native-query?)))))
+
+(mu/defn- can-save? :- :boolean
+  "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-for-transform?]])."
+  [transform-id :- ::lib.schema.id/transform]
+  (let [transform (data-testing.db/transform transform-id)]
+    (can-save-for-transform? transform (some-> transform mi/can-write?) can-run-native-query?)))
 
 (mu/defn can-run-test? :- :boolean
   "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
   a test against its source Database."
   [transform-id :- ::lib.schema.id/transform]
-  (boolean
-   (when-let [transform (data-testing.db/transform transform-id)]
-     (and (mi/can-read? transform)
-          (can-write-native-sql? (transforms-base.i/source-db-id transform))))))
+  (let [transform (data-testing.db/transform transform-id)]
+    (boolean
+     (and transform
+          (mi/can-read? transform)
+          (or (mi/superuser?)
+              (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
 (defmethod mi/can-read? :model/TransformTest
   ([instance]
@@ -97,19 +100,38 @@
 (defmethod mi/can-write? :model/TransformTest
   ([instance]
    (and (remote-sync/can-write? :model/TransformTest (:id instance))
-        (can-save-test? (:transform_id instance))))
+        (can-save? (:transform_id instance))))
   ([_model pk]
    (when-let [transform-test (data-testing.db/transform-test pk)]
      (mi/can-write? transform-test))))
 
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
+  "Add whether the current user can write each transform test, loading their transforms at once and checking each
+  source Database once."
+  [_model k transform-tests]
+  (mi/instances-with-hydrated-data
+   transform-tests k
+   #(let [transforms (u/index-by :id (t2/hydrate (data-testing.db/transforms
+                                                  (into [] (comp (keep :transform_id) (distinct)) transform-tests))
+                                                 :can_write))
+          native?    (memoize can-run-native-query?)]
+      (into {}
+            (map (fn [{:keys [id transform_id]}]
+                   [id (and (remote-sync/can-write? :model/TransformTest id)
+                            (let [transform (get transforms transform_id)]
+                              (can-save-for-transform? transform (:can_write transform) native?)))]))
+            (remove nil? transform-tests)))
+   :id
+   {:default false}))
+
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]
-  (can-save-test? (:transform_id instance)))
+  (can-save? (:transform_id instance)))
 
 (defmethod mi/can-update? :model/TransformTest
   [instance changes]
-  (and (can-save-test? (:transform_id instance))
-       (can-save-test? (:transform_id changes (:transform_id instance)))
+  (and (can-save? (:transform_id instance))
+       (can-save? (:transform_id changes (:transform_id instance)))
        (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
            (remote-sync/can-write? :model/TransformTest (:id instance)))))
 

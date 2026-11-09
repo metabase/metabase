@@ -235,7 +235,7 @@ async function setup({
   waitForDatabase = true,
   waitForTable = true,
 }: SetupOpts = {}) {
-  setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
+  setupDatabasesEndpoints(databases);
   setupCardDataset();
   setupTablesBulkEndpoints();
   setupUsersEndpoints([createMockUserListResult()]);

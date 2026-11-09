@@ -24,7 +24,7 @@ const setup = ({
 }: { hasLibrary?: boolean; hasLibraryCollection?: boolean } = {}) => {
   const onItemClick = jest.fn();
 
-  setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
+  setupDatabasesEndpoints(databases);
 
   const state = createMockState({
     settings: mockSettings({

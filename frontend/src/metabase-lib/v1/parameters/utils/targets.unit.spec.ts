@@ -18,7 +18,6 @@ import {
   createMockCard,
   createMockColumn,
   createMockParameter,
-  createMockSavedQuestionsDatabase,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -42,10 +41,9 @@ import {
 import { isDimensionTarget } from "metabase-types/guards";
 
 const sampleDb = createSampleDatabase();
-const savedQuestionsDb = createMockSavedQuestionsDatabase();
 
 const metadata = createMockMetadata({
-  databases: [sampleDb, savedQuestionsDb],
+  databases: [sampleDb],
 });
 
 const provider = createMetadataProvider({
@@ -837,7 +835,7 @@ function createModel(
 ) {
   const card = createMockCard({ type: "model", result_metadata });
   const metadata = createMockMetadata({
-    databases: [sampleDb, savedQuestionsDb],
+    databases: [sampleDb],
     questions: [card],
   });
 

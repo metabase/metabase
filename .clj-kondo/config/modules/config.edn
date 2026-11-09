@@ -692,7 +692,6 @@
            api-scope
            api.eid-translation
            collections
-           data-apps
            documents
            events
            lib.schema
@@ -2476,6 +2475,7 @@
            lib.schema
            permissions
            premium-features
+           remote-sync
            request.schema
            session
            settings
@@ -3292,7 +3292,6 @@
            metabase.user-key-value.init}
    :uses #{api
            api-scope
-           data-apps
            lib.schema
            util
            util.config}}
@@ -3437,18 +3436,13 @@
            api
            api-scope
            app-db
-           collections
            database-routing
            driver
            events
-           lib
-           lib.be
-           lib.metadata
            lib.schema
            models
            permissions
            premium-features
-           queries
            request
            sample-data
            settings
@@ -3460,7 +3454,6 @@
            warehouses.schema
            warehouses.secrets}
    :model-imports #{:model/Card
-                    :model/Collection
                     :model/Database
                     :model/Field
                     :model/Table}}

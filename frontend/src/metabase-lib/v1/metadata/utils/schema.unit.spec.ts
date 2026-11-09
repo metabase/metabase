@@ -11,11 +11,6 @@ type SchemaTestCase = {
 const SCHEMA_TEST_CASES: SchemaTestCase[] = [
   { dbId: 1, schemaName: "2", schema: "1:2" },
   { dbId: 1, schema: "1:" },
-  {
-    dbId: -1337,
-    schemaName: "Collection",
-    schema: "-1337:Collection",
-  },
 ];
 
 describe("generateSchemaId", () => {
@@ -48,16 +43,16 @@ describe("parseSchemaId", () => {
   });
 
   it("handles colons inside schema name", () => {
-    const databaseId = -1337;
-    const collectionName = "test:collection";
+    const databaseId = 1;
+    const schemaName = "test:schema";
 
-    const schemaId = generateSchemaId(databaseId, collectionName);
-    const [decodedDatabaseId, decodedCollectionName] = parseSchemaId(schemaId);
+    const schemaId = generateSchemaId(databaseId, schemaName);
+    const [decodedDatabaseId, decodedSchemaName] = parseSchemaId(schemaId);
 
     expect({
       databaseId: decodedDatabaseId,
-      collectionName: decodedCollectionName,
-    }).toEqual({ databaseId, collectionName });
+      schemaName: decodedSchemaName,
+    }).toEqual({ databaseId, schemaName });
   });
 
   it("handles colons when the schema id is already decoded", () => {

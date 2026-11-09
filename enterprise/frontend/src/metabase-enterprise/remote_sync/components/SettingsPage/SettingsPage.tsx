@@ -6,6 +6,7 @@ import {
 } from "metabase/settings-components";
 
 import { SettingsForm } from "../SettingsForm";
+import { SyncActionsSection } from "../SyncActionsSection";
 
 export const SettingsPage = () => (
   <SettingsPageWrapper
@@ -15,5 +16,6 @@ export const SettingsPage = () => (
     <SettingsSection>
       <SettingsForm triggeredFrom="admin-settings" />
     </SettingsSection>
+    <SyncActionsSection />
   </SettingsPageWrapper>
 );

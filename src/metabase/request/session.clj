@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.db :as request.db]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
@@ -55,7 +56,7 @@
       (do-with-user-local-values
        (fn []
          (perms/with-relevant-permissions-for-user metabase-user-id
-           (thunk)))))))
+           (remote-sync/do-with-read-only-pks-cache thunk)))))))
 
 (defn with-current-user-fetch-user-for-id
   "Part of the impl for `with-current-user` -- don't use this directly."
