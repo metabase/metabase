@@ -36,7 +36,6 @@ import {
 } from "metabase/ui";
 import type { Table, UserId } from "metabase-types/api";
 
-import { HistoryListSummary } from "../../TableSection/TableHistory";
 import { useSelection } from "../../contexts/SelectionContext";
 import {
   type NodeSelection,
@@ -551,7 +550,6 @@ function TableRoleCell({ table }: { table: Table }) {
       ) : (
         <Text c="text-secondary">{t`No role`}</Text>
       )}
-      <HistoryListSummary table={{ ...table, fields }} />
     </Group>
   );
 }
