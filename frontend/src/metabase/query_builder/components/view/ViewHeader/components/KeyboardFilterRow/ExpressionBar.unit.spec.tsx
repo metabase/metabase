@@ -106,7 +106,6 @@ describe("ExpressionBar", () => {
       query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     }: { query?: Lib.Query } = {}) => {
       fetchMock.get("path:/api/prototype/filter-usage", []);
-      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       renderWithProviders(
         <ExpressionBar
           query={query}
@@ -219,7 +218,6 @@ describe("ExpressionBar", () => {
   describe("typing a space", () => {
     const setup = () => {
       fetchMock.get("path:/api/prototype/filter-usage", []);
-      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
       const onChange = jest.fn<void, [Lib.Query]>();
       renderWithProviders(
@@ -349,7 +347,6 @@ describe("ExpressionBar", () => {
 
     const setup = () => {
       fetchMock.get("path:/api/prototype/filter-usage", []);
-      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const onChange = jest.fn<void, [Lib.Query]>();
       renderWithProviders(<AutoApplyBar onChange={onChange} />);
       return { onChange };
@@ -523,7 +520,6 @@ describe("ExpressionBar", () => {
 
     const setup = () => {
       fetchMock.get("path:/api/prototype/filter-usage", []);
-      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const onChange = jest.fn<void, [Lib.Query]>();
       renderWithProviders(<AutoApplyBar onChange={onChange} />);
       return { onChange };
@@ -649,7 +645,6 @@ describe("ExpressionBar", () => {
 
     const setup = ({ query, openKey }: SetupOpts) => {
       fetchMock.get("path:/api/prototype/filter-usage", []);
-      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const onChange = jest.fn<void, [Lib.Query]>();
       const { store } = renderWithProviders(
         <ExpressionBar
@@ -837,7 +832,6 @@ describe("ExpressionBar", () => {
   describe("selection from a connector", () => {
     const setup = () => {
       fetchMock.get("path:/api/prototype/filter-usage", []);
-      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
       const findColumn = columnFinder(query, Lib.filterableColumns(query, 0));
       const numberFilter = (columnName: string, value: number) =>
@@ -937,9 +931,7 @@ describe("ExpressionBar", () => {
     type SetupOpts = { query?: Lib.Query };
 
     const setup = ({ query = createQueryWithFilters() }: SetupOpts = {}) => {
-      fetchMock.get("path:/api/prototype/field-categories", []);
       fetchMock.get("path:/api/prototype/filter-usage", []);
-      fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
       const onChange = jest.fn<void, [Lib.Query]>();
       renderWithProviders(
         <UndoBar

@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 
-import { skipToken, useGetPrototypeSamplesQuery } from "metabase/api";
-import { getPrimarySourceTableId, useIsSlowData } from "metabase/prototype";
+import { skipToken } from "metabase/api";
+import { useIsSlowData } from "metabase/prototype";
 import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
 
@@ -27,8 +27,6 @@ interface UseNumberColumnStatsProps {
 
 export interface NumberColumnStatsResult {
   stats: NumberColumnStats;
-  /** True when the stats come from a sample, on slow data. */
-  isEstimate: boolean;
   /** Row counts in equal buckets from `range.min` to `range.max`. */
   histogram: number[];
   /** Bounds of the slider and the histogram. */
@@ -41,75 +39,31 @@ interface UseNumberColumnStatsResult {
   hasStats: boolean;
   /** The stats and the histogram, when both are loaded. */
   result: NumberColumnStatsResult | null;
-  /** True when too few rows of the sample match the other filters. */
-  isUnavailable: boolean;
 }
 
-/** Rows of the sample below which an estimate is not reliable. */
-export const MIN_SAMPLE_ROWS = 100;
-
-export type StatsSource =
-  | { type: "none" }
-  | { type: "fast" }
-  | {
-      type: "sample";
-      rowCount: number;
-      sampleCount: number;
-      /** The exact min and max of the number columns of the sampled table. */
-      ranges: Map<number, { min: number; max: number }>;
-    };
+export type StatsSource = { type: "none" } | { type: "fast" };
 
 const NO_STATS: StatsSource = { type: "none" };
 
 /**
  * Prototype: on fast data, queries on the prototype dataset get their stats
- * from the data. On slow data, a query on one table gets them from the sample
- * of that table, which Metabase makes in the background. Other queries get no
- * stats, because on slow data each query waits for seconds.
+ * from the data. Slow data gets no stats, because each query waits for
+ * seconds.
  */
 export function useStatsSource(query: Lib.Query): StatsSource {
   const prototypeData = useSetting("prototype-data");
   const isSlow = useIsSlowData();
-  const { data: samples } = useGetPrototypeSamplesQuery();
   return useMemo(() => {
     if (
+      isSlow ||
       prototypeData == null ||
-      Lib.databaseID(query) !== prototypeData.database_id
+      Lib.databaseID(query) !== prototypeData.database_id ||
+      Lib.allSourceTableIds(query).length === 0
     ) {
       return NO_STATS;
     }
-    const tableIds = Lib.allSourceTableIds(query);
-    if (tableIds.length === 0) {
-      return NO_STATS;
-    }
-    if (!isSlow) {
-      return { type: "fast" };
-    }
-    // A sample joined to another sample has almost no matching rows, so only
-    // a query that reads one table can use its sample.
-    const sourceTableId = getPrimarySourceTableId(query);
-    const sample = samples?.tables.find(
-      (table) => table.table_id === sourceTableId,
-    );
-    if (
-      sample == null ||
-      tableIds.length !== 1 ||
-      tableIds[0] !== sourceTableId
-    ) {
-      return NO_STATS;
-    }
-    return {
-      type: "sample",
-      rowCount: sample.row_count,
-      sampleCount: sample.sample_count,
-      ranges: new Map(
-        samples?.columns.map(({ field_id, min, max }) => [
-          field_id,
-          { min, max },
-        ]),
-      ),
-    };
-  }, [query, prototypeData, isSlow, samples]);
+    return { type: "fast" };
+  }, [query, prototypeData, isSlow]);
 }
 
 /**
@@ -144,7 +98,6 @@ export function useNumberColumnStats({
 }: UseNumberColumnStatsProps): UseNumberColumnStatsResult {
   const source = useStatsSource(query);
   const hasStats = source.type !== "none";
-  const isSample = source.type === "sample";
 
   const base = useMemo(
     () => (hasStats ? getStatsBase(query, stageIndex, column, filter) : null),
@@ -156,7 +109,7 @@ export function useNumberColumnStats({
   );
   const summaryJsQuery = useStableJsQuery(summaryQuery);
   const { data: summaryDataset } = useGetPrototypeStatsQueryQuery(
-    summaryJsQuery != null ? { query: summaryJsQuery, isSample } : skipToken,
+    summaryJsQuery ?? skipToken,
   );
   const summaryRow = summaryDataset?.data?.rows?.[0];
   const stats = useMemo(
@@ -164,20 +117,8 @@ export function useNumberColumnStats({
     [summaryRow],
   );
 
-  // The min and the max of a sample miss the rarest values, so the slider uses
-  // the exact range of the column, unless other filters make it narrower.
-  const exactRange = useMemo(() => {
-    if (source.type !== "sample" || base == null) {
-      return undefined;
-    }
-    if (Lib.filters(base.query, base.stageIndex).length > 0) {
-      return undefined;
-    }
-    const { fieldId } = Lib.fieldValuesSearchInfo(query, column);
-    return fieldId != null ? source.ranges.get(fieldId) : undefined;
-  }, [source, base, query, column]);
-  const rangeMin = exactRange?.min ?? stats?.min;
-  const rangeMax = exactRange?.max ?? stats?.max;
+  const rangeMin = stats?.min;
+  const rangeMax = stats?.max;
 
   const hasRange = rangeMin != null && rangeMax != null && rangeMin < rangeMax;
   const isInteger = Lib.isInteger(column);
@@ -197,9 +138,7 @@ export function useNumberColumnStats({
   );
   const histogramJsQuery = useStableJsQuery(histogramQuery);
   const { data: histogramDataset } = useGetPrototypeStatsQueryQuery(
-    histogramJsQuery != null
-      ? { query: histogramJsQuery, isSample }
-      : skipToken,
+    histogramJsQuery ?? skipToken,
   );
 
   const histogram = useMemo(() => {
@@ -221,38 +160,13 @@ export function useNumberColumnStats({
     if (stats == null || histogram == null || sliderRange == null) {
       return null;
     }
-    const range = { min: sliderRange.min, max: sliderRange.max };
-    if (source.type !== "sample") {
-      return {
-        stats,
-        isEstimate: false,
-        histogram,
-        range,
-        step: sliderRange.step,
-      };
-    }
-    // Each row of the sample stands for this many rows of the table.
-    const scale = source.rowCount / source.sampleCount;
     return {
-      stats: {
-        ...stats,
-        count: Math.round(stats.count * scale),
-        min: exactRange?.min ?? stats.min,
-        max: exactRange?.max ?? stats.max,
-        sum: stats.sum != null ? stats.sum * scale : null,
-      },
-      isEstimate: true,
-      histogram: histogram.map((count) => count * scale),
-      range,
+      stats,
+      histogram,
+      range: { min: sliderRange.min, max: sliderRange.max },
       step: sliderRange.step,
     };
-  }, [source, stats, exactRange, histogram, sliderRange]);
-  const isUnavailable =
-    isSample && stats != null && stats.count < MIN_SAMPLE_ROWS;
+  }, [stats, histogram, sliderRange]);
 
-  return {
-    hasStats,
-    result: isUnavailable ? null : result,
-    isUnavailable,
-  };
+  return { hasStats, result };
 }

@@ -59,6 +59,7 @@
    [(str "SELECT e.running_time FROM query_execution e JOIN query q ON q.query_hash = e.hash
           WHERE coalesce(q.query::jsonb #>> '{stages,0,source-table}',
                          q.query::jsonb #>> '{query,source-table}') = ?
+            -- Older versions of the prototype ran the filter stats on table samples. Their fast runs must not count.
             AND coalesce(q.query::jsonb #>> '{middleware,prototype-sample?}', 'false') <> 'true'
             AND " run-filter
          " ORDER BY e.started_at DESC LIMIT 300")

@@ -60,7 +60,6 @@ function setup({
   isLastOpened = false,
 }: SetupOpts = {}) {
   fetchMock.get("path:/api/prototype/filter-usage", []);
-  fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
   const updateQuery = jest.fn((_query: Lib.Query) => Promise.resolve());
 
   renderWithProviders(

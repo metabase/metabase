@@ -8,25 +8,20 @@ import type { NumberColumnStats as Stats } from "./utils";
 
 interface NumberColumnStatsProps {
   stats: Stats;
-  isEstimate: boolean;
 }
 
-export function NumberColumnStats({
-  stats,
-  isEstimate,
-}: NumberColumnStatsProps) {
-  const prefix = isEstimate ? "≈ " : "";
+export function NumberColumnStats({ stats }: NumberColumnStatsProps) {
   const rows = [
-    { label: t`Count`, value: prefix + formatStat(stats.count) },
+    { label: t`Count`, value: formatStat(stats.count) },
     {
       label: t`Range`,
       value:
         stats.min != null && stats.max != null
-          ? `${prefix}${formatStat(stats.min)} – ${formatStat(stats.max)}`
+          ? `${formatStat(stats.min)} – ${formatStat(stats.max)}`
           : formatStat(null),
     },
-    { label: t`Average`, value: prefix + formatStat(stats.avg) },
-    { label: t`Sum`, value: prefix + formatStat(stats.sum) },
+    { label: t`Average`, value: formatStat(stats.avg) },
+    { label: t`Sum`, value: formatStat(stats.sum) },
   ];
 
   return (
@@ -37,27 +32,7 @@ export function NumberColumnStats({
           <span className={S.value}>{value}</span>
         </div>
       ))}
-      {isEstimate && <SampleNote />}
     </Box>
-  );
-}
-
-export function SampleNote() {
-  return (
-    <div className={S.sampleNote} data-testid="number-column-stats-sample">
-      {t`Estimated from a sample of the data.`}
-    </div>
-  );
-}
-
-export function UnavailableNote() {
-  return (
-    <div
-      className={S.unavailableNote}
-      data-testid="number-column-stats-unavailable"
-    >
-      {t`Preview is unavailable for these filters.`}
-    </div>
   );
 }
 

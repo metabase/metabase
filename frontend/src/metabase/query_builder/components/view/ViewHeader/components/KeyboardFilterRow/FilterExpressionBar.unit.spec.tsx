@@ -152,7 +152,6 @@ describe("FilterExpressionBar", () => {
   it("clears the filters of every stage and opens a new pill", async () => {
     // The new pill's column list loads these.
     fetchMock.get("path:/api/prototype/filter-usage", []);
-    fetchMock.get("path:/api/prototype/samples", { tables: [], columns: [] });
     let query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const addFilter = (stageIndex: number) => {
       query = Lib.filter(

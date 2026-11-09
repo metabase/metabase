@@ -114,9 +114,7 @@
        (cond-> info (update :info merge info)))))
 
 (def ^:private userland-query-middleware-options
-  ;; Prototype: `:prototype-sample?` runs the query on the samples of the slow prototype tables. See
-  ;; `metabase.prototype.samples`.
-  #{:js-int-to-string? :ignore-cached-results? :prototype-sample?})
+  #{:js-int-to-string? :ignore-cached-results?})
 
 (mu/defn userland-query-with-default-constraints :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same

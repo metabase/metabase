@@ -20,7 +20,6 @@ import {
   BUCKET_COUNT,
   NumberColumnStats,
   type NumberColumnStatsResult,
-  UnavailableNote,
   useNumberColumnStats,
 } from "./NumberColumnStats";
 import S from "./NumberFilterPicker.module.css";
@@ -67,11 +66,7 @@ export function NumberFilterPicker({
     isValid ? getFilterClause(operator, values) : undefined,
   );
 
-  const {
-    hasStats,
-    result: columnStats,
-    isUnavailable,
-  } = useNumberColumnStats({
+  const { hasStats, result: columnStats } = useNumberColumnStats({
     query,
     stageIndex,
     column,
@@ -133,17 +128,7 @@ export function NumberFilterPicker({
           columnStats={columnStats}
           onChange={setValues}
         />
-        {columnStats != null && (
-          <NumberColumnStats
-            stats={columnStats.stats}
-            isEstimate={columnStats.isEstimate}
-          />
-        )}
-        {isUnavailable && (
-          <Box px="xl" pt="md">
-            <UnavailableNote />
-          </Box>
-        )}
+        {columnStats != null && <NumberColumnStats stats={columnStats.stats} />}
         <FilterPickerFooter
           isNew={isNew}
           isValid={isValid}

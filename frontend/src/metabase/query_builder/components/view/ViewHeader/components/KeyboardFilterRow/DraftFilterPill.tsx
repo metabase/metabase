@@ -29,9 +29,6 @@ import {
 } from "metabase/querying/filters/components/FilterPicker/FilterValuePicker/utils";
 import { HistogramSlider } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/HistogramSlider";
 import {
-  SampleNote,
-  UnavailableNote,
-  type ValueCounts,
   useNumberColumnStats,
   useValueCounts,
 } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
@@ -1199,7 +1196,7 @@ function ValueInput({
                 ...option,
                 share: {
                   value: share,
-                  label: formatShare(share, valueCounts.isEstimate),
+                  label: formatShare(share),
                 },
               };
             }),
@@ -1240,7 +1237,6 @@ function ValueInput({
         groups={hasNoDropdown ? NO_GROUPS : groups}
         header={hasNoDropdown ? undefined : widget.header}
         aside={hasNoDropdown ? undefined : widget.aside}
-        footer={hasNoDropdown ? undefined : getValueCountsFooter(valueCounts)}
         isTiles={widget.isTiles}
         columns={widget.columns}
         dropdownWidth={widget.dropdownWidth}
@@ -1276,16 +1272,6 @@ function DraftValueText({
       <ValueText labels={valueLabels} isRange={isRange} />
     </ValueBox>
   );
-}
-
-/** The notes under the options, or null for none. */
-function getValueCountsFooter(valueCounts: ValueCounts) {
-  if (valueCounts.type === "unavailable") {
-    return <UnavailableNote />;
-  }
-  return valueCounts.type === "counts" && valueCounts.isEstimate ? (
-    <SampleNote />
-  ) : null;
 }
 
 /**
@@ -1507,8 +1493,7 @@ function DatePickerValueInput({
 
 /**
  * Prototype: the histogram and the slider from the filter widgets prototype,
- * under the number inputs. It shows on fast data, and on slow data for a query
- * on one table, from its sample.
+ * under the number inputs. It shows only on fast data.
  */
 function NumberHistogramPopover({
   query,
@@ -1525,7 +1510,7 @@ function NumberHistogramPopover({
     const number = parseNumber(value);
     return typeof number === "number" ? number : null;
   });
-  const { result, isUnavailable } = useNumberColumnStats({
+  const { result } = useNumberColumnStats({
     query,
     stageIndex,
     column,
@@ -1534,7 +1519,7 @@ function NumberHistogramPopover({
 
   return (
     <Popover
-      opened={(result != null || isUnavailable) && numberOperator != null}
+      opened={result != null && numberOperator != null}
       position="bottom-start"
       withinPortal={false}
       shadow="md"
@@ -1542,11 +1527,6 @@ function NumberHistogramPopover({
       <Popover.Target>
         <span className={S.fixedValues}>{children}</span>
       </Popover.Target>
-      {isUnavailable && numberOperator != null && (
-        <Popover.Dropdown className={cx(S.histogramDropdown, S.popover)}>
-          <UnavailableNote />
-        </Popover.Dropdown>
-      )}
       {result != null && numberOperator != null && (
         <Popover.Dropdown
           className={cx(S.histogramDropdown, S.popover)}
@@ -1562,7 +1542,6 @@ function NumberHistogramPopover({
             values={numberValues}
             onChange={(newValues) => onChange(newValues.map(String))}
           />
-          {result.isEstimate && <SampleNote />}
         </Popover.Dropdown>
       )}
     </Popover>

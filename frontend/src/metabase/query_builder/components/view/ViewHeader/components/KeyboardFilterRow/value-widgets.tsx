@@ -238,10 +238,8 @@ function getNamedValues(
     : null;
 }
 
-/** A share as a percent, like "34%", or "~34%" for an estimate. */
-export function formatShare(share: number, isEstimate: boolean) {
+/** A share as a percent, like "34%". */
+export function formatShare(share: number) {
   const percent = share * 100;
-  const label =
-    percent > 0 && percent < 0.5 ? "<1%" : `${Math.round(percent)}%`;
-  return isEstimate ? `~${label}` : label;
+  return percent > 0 && percent < 0.5 ? "<1%" : `${Math.round(percent)}%`;
 }

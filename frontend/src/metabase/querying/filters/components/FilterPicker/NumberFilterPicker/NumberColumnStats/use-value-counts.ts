@@ -4,11 +4,7 @@ import { skipToken } from "metabase/api";
 import type * as Lib from "metabase-lib";
 
 import { useGetPrototypeStatsQueryQuery } from "./api";
-import {
-  MIN_SAMPLE_ROWS,
-  useStableJsQuery,
-  useStatsSource,
-} from "./use-number-column-stats";
+import { useStableJsQuery, useStatsSource } from "./use-number-column-stats";
 import {
   getStatsBase,
   getValueCountsQuery,
@@ -26,21 +22,18 @@ interface UseValueCountsProps {
 
 export type ValueCounts =
   | { type: "none" }
-  | { type: "unavailable" }
   | {
       type: "counts";
       /** The share of the rows with each value, from 0 to 1. */
       getShare: (value: string) => number;
-      isEstimate: boolean;
     };
 
 const NO_COUNTS: ValueCounts = { type: "none" };
 
 /**
  * Prototype: the share of the rows of the query with each value of a column
- * with a few values. The other filters of the query apply. On fast data,
- * queries count the data. On slow data, a query counts the sample of its
- * table, and the shares are estimates.
+ * with a few values. The other filters of the query apply. Only on fast
+ * data, because on slow data each query waits for seconds.
  */
 export function useValueCounts({
   query,
@@ -50,7 +43,6 @@ export function useValueCounts({
   isEnabled,
 }: UseValueCountsProps): ValueCounts {
   const source = useStatsSource(query);
-  const isSample = source.type === "sample";
   const countsQuery = useMemo(() => {
     if (!isEnabled || source.type === "none") {
       return null;
@@ -60,7 +52,7 @@ export function useValueCounts({
   }, [isEnabled, source.type, query, stageIndex, column, filter]);
   const countsJsQuery = useStableJsQuery(countsQuery);
   const { currentData: dataset } = useGetPrototypeStatsQueryQuery(
-    countsJsQuery != null ? { query: countsJsQuery, isSample } : skipToken,
+    countsJsQuery ?? skipToken,
   );
   const rows = dataset?.data?.rows;
 
@@ -70,13 +62,9 @@ export function useValueCounts({
     }
     const counts = parseValueCountRows(rows);
     const total = Array.from(counts.values()).reduce((a, b) => a + b, 0);
-    if (isSample && total < MIN_SAMPLE_ROWS) {
-      return { type: "unavailable" };
-    }
     return {
       type: "counts",
       getShare: (value) => (total > 0 ? (counts.get(value) ?? 0) / total : 0),
-      isEstimate: isSample,
     };
-  }, [isSample, countsQuery, rows]);
+  }, [countsQuery, rows]);
 }

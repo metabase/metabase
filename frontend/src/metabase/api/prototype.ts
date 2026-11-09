@@ -63,12 +63,6 @@ export type PrototypeFiltersResponse =
     }
   | { status: "rejected"; reason: string };
 
-// Prototype: the response of GET /api/prototype/samples.
-export type PrototypeSamples = {
-  tables: { table_id: TableId; row_count: number; sample_count: number }[];
-  columns: { field_id: FieldId; min: number; max: number }[];
-};
-
 // Prototype: the request and the response of GET /api/prototype/runtime-estimate.
 export type PrototypeRuntimeEstimateRequest = {
   "card-id"?: CardId;
@@ -123,12 +117,6 @@ export const prototypeApi = Api.injectEndpoints({
         params,
       }),
     }),
-    getPrototypeSamples: builder.query<PrototypeSamples | null, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/prototype/samples",
-      }),
-    }),
   }),
 });
 
@@ -136,6 +124,5 @@ export const {
   useSuggestPrototypeFilterValuesMutation,
   useSuggestPrototypeFiltersMutation,
   useListPrototypeFilterUsageQuery,
-  useGetPrototypeSamplesQuery,
   useGetPrototypeRuntimeEstimateQuery,
 } = prototypeApi;
