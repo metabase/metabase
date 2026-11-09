@@ -24,8 +24,11 @@ export function CollectionRowMenu({
     <BaseCollectionRowMenu
       collection={collection}
       onOpenModal={onOpenModal}
-      onDelete={() => onOpenModal({ type: "delete", collection, transforms })}
-      canDelete={canDelete}
+      onDelete={
+        canDelete
+          ? () => onOpenModal({ type: "delete", collection, transforms })
+          : undefined
+      }
     />
   );
 }

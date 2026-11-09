@@ -103,7 +103,7 @@ describe("DeleteTransformsFolderModal", () => {
     await waitFor(() => expect(lastDeleteCall()).toBeDefined());
     expect(lastDeleteCall()?.url).not.toContain("delete-tables");
     expect(
-      await screen.findByText('"Folder" has been deleted'),
+      await screen.findByText('Deleted "Folder" and 2 transforms'),
     ).toBeInTheDocument();
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
@@ -132,7 +132,36 @@ describe("DeleteTransformsFolderModal", () => {
 
     await waitFor(() => expect(lastDeleteCall()).toBeDefined());
     expect(lastDeleteCall()?.url).toContain("delete-tables=true");
+    expect(
+      await screen.findByText(
+        'Deleted "Folder", 2 transforms and their tables',
+      ),
+    ).toBeInTheDocument();
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps the plain heading when no transform in the folder has a table yet", async () => {
+    setup({
+      transforms: [
+        { id: 3, name: "Never ran", can_write: true, target_table_id: null },
+      ],
+    });
+
+    await userEvent.click(
+      screen.getByRole("radio", {
+        name: "Delete the transforms and their tables",
+      }),
+    );
+
+    expect(
+      screen.getByText("These transforms will be deleted:"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("These transforms and tables will be deleted:"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete transforms and tables" }),
+    ).toBeInTheDocument();
   });
 
   it("offers no table choice for a folder without transforms", async () => {
@@ -150,6 +179,7 @@ describe("DeleteTransformsFolderModal", () => {
     );
 
     await waitFor(() => expect(lastDeleteCall()).toBeDefined());
+    expect(await screen.findByText('Deleted "Folder"')).toBeInTheDocument();
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
@@ -180,9 +210,7 @@ describe("DeleteTransformsFolderModal", () => {
         'You can’t delete "Folder": it holds a transform you can’t edit, or whose type is not enabled on this instance.',
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText('"Folder" has been deleted'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Deleted "Folder"/)).not.toBeInTheDocument();
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 

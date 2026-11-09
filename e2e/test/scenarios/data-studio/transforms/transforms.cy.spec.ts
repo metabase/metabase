@@ -2066,7 +2066,7 @@ LIMIT
         .should("not.contain", "delete-tables");
 
       H.undoToast()
-        .findByText('"Delete Me" has been deleted')
+        .findByText('Deleted "Delete Me" and 1 transform')
         .should("be.visible");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_folder_deleted",

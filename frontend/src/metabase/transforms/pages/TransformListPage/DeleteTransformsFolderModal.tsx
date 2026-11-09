@@ -52,7 +52,9 @@ export function DeleteTransformsFolderModal({
         collectionId: collection.id,
         deleteTables: shouldDeleteTables,
       });
-      sendSuccessToast(t`"${collection.name}" has been deleted`);
+      sendSuccessToast(
+        getSuccessMessage(collection, count, shouldDeleteTables),
+      );
     } catch (error) {
       sendErrorToast(getErrorMessage(collection, error));
     } finally {
@@ -124,10 +126,11 @@ function TransformsInFolder({
   transforms,
   showTables,
 }: TransformsInFolderProps) {
+  const showTableNames = showTables && transforms.some(hasTable);
   return (
     <Stack gap="sm">
       <Text>
-        {showTables
+        {showTableNames
           ? t`These transforms and tables will be deleted:`
           : t`These transforms will be deleted:`}
       </Text>
@@ -136,7 +139,7 @@ function TransformsInFolder({
           {transforms.map((transform) => (
             <List.Item key={transform.id}>
               <Text component="span">{transform.name}</Text>
-              {showTables && hasTable(transform) && (
+              {showTableNames && hasTable(transform) && (
                 <Text component="span" c="text-secondary">
                   {" "}
                   ({getTargetTableName(transform.target)})
@@ -158,6 +161,29 @@ function hasTable(
 
 function getTargetTableName({ schema, name }: TransformTarget) {
   return schema != null ? `${schema}.${name}` : name;
+}
+
+function getSuccessMessage(
+  collection: Collection,
+  count: number,
+  deletedTables: boolean,
+) {
+  const name = collection.name;
+  if (count === 0) {
+    return t`Deleted "${name}"`;
+  }
+  if (deletedTables) {
+    return ngettext(
+      msgid`Deleted "${name}", ${count} transform and its table`,
+      `Deleted "${name}", ${count} transforms and their tables`,
+      count,
+    );
+  }
+  return ngettext(
+    msgid`Deleted "${name}" and ${count} transform`,
+    `Deleted "${name}" and ${count} transforms`,
+    count,
+  );
 }
 
 function getErrorMessage(collection: Collection, error: unknown) {
