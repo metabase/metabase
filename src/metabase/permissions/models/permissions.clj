@@ -310,9 +310,9 @@
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
   (if (or (= read-or-write :read)
-          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
+          (nil? (:collection_id instance))
+          (remote-sync/can-write? :model/Collection (:collection_id instance)))
     (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
-    ;; a path no permissions set holds, not even an admin's `/`, so nobody writes what remote sync keeps read-only
     #{"___no-remote-sync-access"}))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]

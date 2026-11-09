@@ -4,9 +4,15 @@
   (:require
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn synced-transform-tests-clause :- [:fn vector?]
+  "The clause over the TransformTest table aliased `alias` selecting the tests of the transforms remote sync syncs."
+  [alias :- :keyword]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
 
 (mu/defn transform-tests :- [:sequential ::transform-testing.schema/transform-test]
   "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."

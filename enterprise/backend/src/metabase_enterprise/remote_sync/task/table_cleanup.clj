@@ -24,11 +24,12 @@
   30)
 
 (defn- trim-remote-sync-tasks!
-  "Delete remote_sync_task records older than retention-days based on started_at timestamp."
+  "Deletes the remote_sync_task records started more than `retention-days` ago but the one of the last sync."
   []
   (log/infof "Attempting to delete remote_sync_task records older than %d days." retention-days)
-  (let [cutoff-date (t/minus (t/offset-date-time) (t/days retention-days))
-        deleted-count (remote-sync.db/delete-tasks-started-before! cutoff-date)]
+  (let [cutoff-date   (t/minus (t/offset-date-time) (t/days retention-days))
+        deleted-count (remote-sync.db/delete-tasks-started-before! cutoff-date
+                                                                   (:id (remote-sync.db/last-synced-task)))]
     (log/infof "Deleted %d remote_sync_task records. Cleanup successful." deleted-count)
     deleted-count))
 
@@ -52,6 +53,5 @@
                  (triggers/with-identity cleanup-trigger-key)
                  (triggers/start-now)
                  (triggers/with-schedule
-                  ;; Run daily at 2:29 AM
                   (cron/cron-schedule "0 29 2 * * ?")))]
     (task/schedule-task! job trigger)))

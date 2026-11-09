@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -150,3 +151,7 @@
 (defmethod serialization/after-load :model/FieldUserSettings [_ items]
   (doseq [{{:keys [field_id] :as settings} :instance} items]
     (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
+
+(defmethod remote-sync/spec :model/FieldUserSettings
+  [_model]
+  {:synced-filter-clause warehouse-schema.db/synced-field-user-settings-clause})

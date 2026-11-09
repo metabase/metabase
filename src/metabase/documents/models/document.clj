@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -16,6 +15,7 @@
    [metabase.queries.core :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
@@ -369,9 +369,7 @@
                              ;; collection permissions *and* the content gate, and the gate adjudicates the
                              ;; warehouse data the body embeds, so a document the creator may not read must not
                              ;; come back rendered.
-                             (u/prog1 (get-document document-id)
-                               (when (collections/remote-synced-collection? (:collection_id <>))
-                                 (collections/check-non-remote-synced-dependencies <>)))))]
+                             (get-document document-id)))]
     ;; Publish event after successful creation
     (events/publish-event! :event/document-create
                            {:object created-document
@@ -431,8 +429,7 @@
                                               (contains? body :document))
                                          (assoc :is_placeholder false)))
         (when (seq pairings)
-          (card/carry-pairings-for-document! document-id pairings)))
-      (collections/check-for-remote-sync-update existing-document))
+          (card/carry-pairings-for-document! document-id pairings))))
     (let [updated-document (hydrate-document document-id)]
       ;; Publish appropriate events
       (if (:archived document-updates)
@@ -758,3 +755,7 @@
                        (for [[model-name id] (linked-entities document)]
                          [(keyword "model" model-name) id]))))
         documents))
+
+(defmethod remote-sync/spec :model/Document
+  [_model]
+  {:synced-filter-clause documents.db/synced-documents-clause})

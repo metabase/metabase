@@ -9,6 +9,7 @@
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -363,3 +364,7 @@
                                                                opts))))
                :parameter_mappings     serialization/parameter-mappings-transform
                :visualization_settings serialization/visualization-settings-transform}})
+
+(defmethod remote-sync/spec :model/DashboardCard
+  [_model]
+  {:synced-filter-clause dashboards.db/synced-dashcards-clause})

@@ -813,6 +813,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            search
            serialization
            settings
@@ -947,6 +948,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            search
            serialization
            settings
@@ -1189,7 +1191,7 @@
 
   glossary
   {:team "Gadget"
-   :api  #{metabase.glossary.api metabase.glossary.core}
+   :api  #{metabase.glossary.api metabase.glossary.core metabase.glossary.init}
    :uses #{api
            events
            lib.schema
@@ -1508,7 +1510,7 @@
 
   measures
   {:team "Graphy"
-   :api  #{metabase.measures.api metabase.measures.schema}
+   :api  #{metabase.measures.api metabase.measures.init metabase.measures.schema}
    :uses #{api
            collections
            events
@@ -1527,7 +1529,7 @@
            util
            warehouses.schema}
    :model-exports #{:model/Measure}
-   :model-imports #{:model/Collection :model/Table}}
+   :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
 
   metabot
   {:team    "Metabot"
@@ -2227,6 +2229,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            serialization
@@ -2446,15 +2449,8 @@
   remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{metabase.remote-sync.core
-           metabase.remote-sync.init}
-   :uses #{api
-           events
-           lib.schema
-           models
-           premium-features
-           util}
-   :model-imports #{:model/Collection}}
+   :api  #{metabase.remote-sync.core}
+   :uses #{premium-features serialization util}}
 
   request
   {:team "UX West"
@@ -2619,7 +2615,7 @@
   segments
   {:team "Graphy"
    :module-exports #{segments.rest}
-   :api  #{metabase.segments.schema}
+   :api  #{metabase.segments.init metabase.segments.schema}
    :uses #{api
            collections
            lib
@@ -2635,7 +2631,7 @@
            util
            warehouses.schema}
    :model-exports #{:model/Segment}
-   :model-imports #{:model/Collection :model/Table}}
+   :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
 
   segments.rest
   {:team "Graphy"
@@ -3067,6 +3063,7 @@
            events
            lib.schema
            models
+           remote-sync
            serialization
            util}
    :model-exports #{:model/Timeline :model/TimelineEvent}
@@ -3185,6 +3182,7 @@
    :uses #{driver
            lib.schema
            models
+           remote-sync
            serialization
            util
            warehouses}
@@ -3931,6 +3929,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            search
            serialization
            settings
@@ -4254,7 +4253,6 @@
            native-query-snippets
            permissions
            premium-features
-           remote-sync
            util}
    :model-imports #{:model/NativeQuerySnippet}}
 
@@ -4283,7 +4281,8 @@
                     :model/Permissions
                     :model/PermissionsGroupMembership
                     :model/Sandbox
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   enterprise/permissions.debug
   {:team "Security Engineering"
@@ -4372,48 +4371,37 @@
   enterprise/remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{metabase-enterprise.remote-sync.api
-           metabase-enterprise.remote-sync.init}
-   :uses #{analytics.interface
-           api
+   :api  #{metabase-enterprise.remote-sync.api metabase-enterprise.remote-sync.init}
+   :uses #{api
            app-db
            collections
            events
            lib.schema
            models
            premium-features
-           search
+           remote-sync
            serialization
            settings
            startup
            task
-           task.history
            util
-           warehouses.schema
-           enterprise/serialization
-           enterprise/transforms.python}
-   :model-exports #{:model/RemoteSyncTask}
+           enterprise/serialization}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DataApp
-                    :model/Dimension
                     :model/Document
-                    :model/Field
                     :model/FieldUserSettings
                     :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
-                    :model/PythonLibrary
                     :model/Segment
-                    :model/Table
                     :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
-                    :model/TransformTag
-                    :model/TransformTest
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/RemoteSyncTask}}
 
   enterprise/search
   {:team "Metabot"
@@ -4668,6 +4656,7 @@
            premium-features
            query-permissions
            query-processor
+           remote-sync
            request
            revisions
            run-tracking
@@ -4722,9 +4711,7 @@
   enterprise/transforms.python
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.transforms-python"
-   :api  #{metabase-enterprise.transforms-python.api
-           metabase-enterprise.transforms-python.core
-           metabase-enterprise.transforms-python.init}
+   :api  #{metabase-enterprise.transforms-python.api metabase-enterprise.transforms-python.init}
    :uses #{analytics.interface
            api
            app-db
@@ -4737,6 +4724,7 @@
            models
            permissions
            query-processor
+           remote-sync
            serialization
            settings
            tracing

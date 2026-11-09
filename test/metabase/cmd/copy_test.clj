@@ -165,7 +165,6 @@
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
-    :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/ReplacementRun
     :model/ResultMetadataStatus

@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -79,7 +80,8 @@
 
 (defmethod mi/can-write? :model/TransformTest
   ([instance]
-   (can-save-test? (:transform_id instance)))
+   (and (remote-sync/can-write? :model/TransformTest (:id instance))
+        (can-save-test? (:transform_id instance))))
   ([_model pk]
    (when-let [transform-test (transform-testing.db/transform-test pk)]
      (mi/can-write? transform-test))))
@@ -90,8 +92,10 @@
 
 (defmethod mi/can-update? :model/TransformTest
   [instance changes]
-  (and (mi/can-write? instance)
-       (mi/can-write? (merge instance changes))))
+  (and (can-save-test? (:transform_id instance))
+       (can-save-test? (:transform_id changes (:transform_id instance)))
+       (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
+           (remote-sync/can-write? :model/TransformTest (:id instance)))))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -167,3 +171,7 @@
   (mapv (fn [{:keys [transform_id]}]
           #{[:model/Transform transform_id]})
         entities))
+
+(defmethod remote-sync/spec :model/TransformTest
+  [_model]
+  {:synced-filter-clause transform-testing.db/synced-transform-tests-clause})

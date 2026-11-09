@@ -1,6 +1,7 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
@@ -109,3 +110,7 @@
                :creator_id serialization/user-transform
                :timestamp  serialization/date-transform}
    :defaults  {:archived false}})
+
+(defmethod remote-sync/spec :model/TimelineEvent
+  [_model]
+  {:synced-filter-clause timeline.db/synced-timeline-events-clause})
