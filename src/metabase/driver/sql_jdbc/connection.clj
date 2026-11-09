@@ -29,7 +29,7 @@
    (com.google.common.cache Cache CacheBuilder RemovalNotification)
    (com.mchange.v2.c3p0 C3P0ProxyConnection ConnectionCustomizer DataSources PooledDataSource)
    (java.sql Connection SQLException)
-   (java.util.concurrent TimeUnit)
+   (java.time Duration)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
 
@@ -382,7 +382,7 @@
   details for the same database get separate pools, while identical details share a pool."}
   swapped-connection-pools
   (.. (CacheBuilder/newBuilder)
-      (expireAfterAccess swapped-pool-ttl-minutes TimeUnit/MINUTES)
+      (expireAfterAccess (Duration/ofMinutes swapped-pool-ttl-minutes))
       (removalListener
        (reify com.google.common.cache.RemovalListener
          (^void onRemoval [_ ^RemovalNotification rn]
