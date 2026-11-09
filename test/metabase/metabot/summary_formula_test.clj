@@ -80,7 +80,7 @@
      {:expression "year([Created At])" :name "Year created"}
      (fn [calls]
        (is (= {:expression "year([Created At])" :name "Year created"}
-              (mt/user-http-request :rasta :post 200 endpoint (request-body {:mode "expression"}))))
+              (mt/user-http-request :rasta :post 200 endpoint (request-body {:mode "expression" :metrics nil}))))
        (is (str/starts-with? (:system (llm-prompts calls)) "You write one Metabase custom column expression"))))))
 
 (deftest summary-formula-cleans-llm-output-test
@@ -131,6 +131,21 @@
                          :metrics    nil
                          :table_name nil})))))
 
+(deftest summary-formula-expression-mode-empty-metrics-test
+  (testing "POST /api/metabot/summary-formula accepts empty metrics in expression mode"
+    (doseq [metrics [[] nil]]
+      (testing (str "with metrics " (pr-str metrics))
+        (is (= (str "<columns>\n"
+                    "Table: Orders\n"
+                    "[Total] (number)\n"
+                    "[Created At] (date)\n"
+                    "[User → Name] (text)\n"
+                    "</columns>\n"
+                    "<request>\n"
+                    "average total\n"
+                    "</request>")
+               (sent-to-llm {:mode "expression" :metrics metrics})))))))
+
 ;;; -------------------------------------------------- No match --------------------------------------------------
 
 (deftest summary-formula-no-match-test
@@ -149,8 +164,21 @@
         (check-error 400 "Provide at least one column or metric." {:columns [] :metrics metrics})))))
 
 (deftest summary-formula-metrics-only-test
-  (testing "POST /api/metabot/summary-formula calls the LLM when there are metrics but no columns"
+  (testing "POST /api/metabot/summary-formula calls the LLM in aggregation mode when there are metrics but no columns"
     (is (str/includes? (sent-to-llm {:columns []}) "[Revenue]"))))
+
+(deftest summary-formula-expression-mode-metrics-test
+  (testing "POST /api/metabot/summary-formula returns a 400 without calling the LLM for metrics in expression mode"
+    (doseq [columns [[{:name "Total"}] []]]
+      (testing (str "with columns " (pr-str columns))
+        (check-error 400 "Metrics can only be used in aggregation mode."
+                     {:mode "expression" :columns columns :metrics ["Revenue"]})))))
+
+(deftest summary-formula-expression-mode-no-columns-test
+  (testing "POST /api/metabot/summary-formula returns a 400 without calling the LLM in expression mode without columns"
+    (doseq [metrics [[] nil]]
+      (testing (str "with metrics " (pr-str metrics))
+        (check-error 400 "Provide at least one column." {:mode "expression" :columns [] :metrics metrics})))))
 
 ;;; --------------------------------------------------- Errors ---------------------------------------------------
 
