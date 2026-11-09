@@ -53,6 +53,10 @@ const CONTENT: DocumentContent["content"] = [
 describe("document block menus", () => {
   const { setAllIntersecting } = setupMockIntersectionObserver();
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   async function setup() {
     mockSettings({ "site-url": SITE_URL });
     setupBookmarksEndpoints([]);

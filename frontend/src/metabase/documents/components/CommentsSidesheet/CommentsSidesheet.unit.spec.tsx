@@ -124,6 +124,7 @@ function getSidebar() {
 
 describe("CommentsSidesheet comment links", () => {
   afterEach(() => {
+    jest.restoreAllMocks();
     // jsdom keeps the URL between tests
     openLink("/");
   });
