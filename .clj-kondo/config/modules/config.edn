@@ -2098,6 +2098,32 @@
                     :model/Database
                     :model/User}}
 
+  prototype
+  {:team "Gadget"
+   :api  #{metabase.prototype.init}
+   :uses #{app-db
+           events
+           lib
+           lib.be
+           lib.metadata
+           lib.schema
+           settings
+           startup
+           sync
+           util
+           util.config
+           warehouses}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/Glossary
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
+
   public-sharing
   {:team "UX West"
    :api  #{metabase.public-sharing.core
