@@ -116,7 +116,8 @@
                                                                 (run-of-its-test-clause test-type :newer)]}]]]}))
 
 (mu/defn clear-test-id-of-runs!
-  "Set the test id of the runs of the `test-type` test `test-id` to nil, so the runs outlive the test."
+  "Set the test id of the runs of the `test-type` test `test-id` to nil, so that no run names the test after it is
+  deleted."
   [test-type :- ::data-testing.schema/test-type
    test-id   :- ms/PositiveInt]
   (t2/update! :model/DataTestRun :test_type (name test-type) :test_id test-id {:test_id nil}))
