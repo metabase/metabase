@@ -8,6 +8,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -58,26 +59,31 @@
   [card]
   (lib/database-id (:dataset_query card)))
 
-(mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Card `card-id`: they may edit the card, and write the
-  native SQL of a test against the Database of its query."
-  [card-id :- ::lib.schema.id/card]
+(defn- card-allows?
+  "Whether `card-check` holds for the Card `card-id`, and the current user may run the card's query and write the native
+  SQL of a test against the Database of that query."
+  [card-check card-id]
   (boolean
    (when-let [card (data-testing.db/card card-id)]
-     (and (mi/can-write? card)
+     (and (card-check card)
+          ;; A run compiles the query with the cards and snippets it includes, and its errors can quote their SQL, so
+          ;; the user must be allowed to run the query itself, not only to read the card.
+          (query-perms/can-run-query? (:dataset_query card))
           (or (mi/superuser?)
               (some-> (query-database-id card) data-testing.models/can-run-native-query?))))))
 
+(mu/defn- can-save-test? :- :boolean
+  "Whether the current user may save or delete a test of the Card `card-id`: they may edit the card and run its query,
+  and write the native SQL of a test against the Database of its query."
+  [card-id :- ::lib.schema.id/card]
+  (card-allows? mi/can-write? card-id))
+
 (mu/defn can-run? :- :boolean
-  "Whether the current user may run the saved `card-test`: they may read it, and write the native SQL of a test against
-  the Database of its card's query."
+  "Whether the current user may run the saved `card-test`: they may read its card and run the card's query, and write
+  the native SQL of a test against the Database of the card's query."
   [card-test :- ::data-testing.schema/card-test]
   ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
-  (boolean
-   (when-let [card (data-testing.db/card (:card_id card-test))]
-     (and (mi/can-read? card)
-          (or (mi/superuser?)
-              (some-> (query-database-id card) data-testing.models/can-run-native-query?))))))
+  (card-allows? mi/can-read? (:card_id card-test)))
 
 (defmethod mi/can-read? :model/CardTest
   ([instance]

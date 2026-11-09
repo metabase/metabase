@@ -198,3 +198,45 @@
                   (is (= test-id (:id (mt/user-http-request :rasta :get 200 path))))))
               (finally
                 (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)))))))))
+
+(deftest tests-of-a-card-referencing-an-unreadable-card-are-refused-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (perms.tu/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Collection {coll-id :id}        {}
+                       :model/Collection {hidden-coll-id :id} {}
+                       :model/Card       {hidden-id :id}      (card hidden-coll-id)]
+          (let [tag     (str "#" hidden-id "-people")
+                query   (-> (lib/native-query (mt/metadata-provider) (str "SELECT * FROM {{" tag "}}"))
+                            (lib/with-template-tags {tag {:type         :card
+                                                          :name         tag
+                                                          :display-name tag
+                                                          :id           (str (random-uuid))
+                                                          :card-id      hidden-id}}))
+                created (atom [])]
+            (mt/with-temp [:model/Card     {card-id :id} {:name "Outer" :collection_id coll-id :dataset_query query}
+                           :model/CardTest {test-id :id} {:card_id      card-id
+                                                          :inputs       inputs
+                                                          :expectations expectations
+                                                          :created_at   #t "2025-01-01T00:00:00Z"}]
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+              (try
+                (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                              :perms/create-queries :query-builder-and-native}
+                  (testing "premise: the user cannot read the referenced card, so cannot run the card"
+                    (mt/user-http-request :rasta :get 403 (str "card/" hidden-id))
+                    (is (= "failed" (:status (mt/user-http-request :rasta :post 403 (str "card/" card-id "/query"))))))
+                  (testing "creating and running a test of the card are refused"
+                    (let [response (mt/user-http-request :rasta :post "ee/card-test" (body card-id))]
+                      (when-let [id (:id response)] (swap! created conj id))
+                      (is (= "You don't have permissions to do that." response)))
+                    (mt/user-http-request :rasta :post 403 (str "ee/card-test/" test-id "/run")))
+                  (perms/grant-collection-read-permissions! (perms-group/all-users) hidden-coll-id)
+                  (testing "once the referenced card is readable, the card runs, and its tests are created and run"
+                    (is (= "completed" (:status (mt/user-http-request :rasta :post 202 (str "card/" card-id "/query")))))
+                    (swap! created conj (:id (mt/user-http-request :rasta :post 200 "ee/card-test" (body card-id))))
+                    (is (= "passed" (:status (mt/user-http-request :rasta :post 200 (str "ee/card-test/" test-id "/run")))))))
+                (finally
+                  (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)
+                  (when (seq @created)
+                    (t2/delete! :model/CardTest :id [:in @created])))))))))))
