@@ -1,4 +1,5 @@
 import type {
+  RemoteSyncEntityParent,
   ExportChangesResponse,
   ExportPreflightResponse,
   ForcePushCasualties,
@@ -20,6 +21,15 @@ import type {
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncSettingsResponse,
 } from "../remote-sync";
+
+export const createMockRemoteSyncEntityParent = (
+  opts?: Partial<RemoteSyncEntityParent>,
+): RemoteSyncEntityParent => ({
+  model: "table",
+  id: 1,
+  name: "Orders",
+  ...opts,
+});
 
 export const createMockRemoteSyncEntity = (
   opts?: Partial<RemoteSyncEntity>,

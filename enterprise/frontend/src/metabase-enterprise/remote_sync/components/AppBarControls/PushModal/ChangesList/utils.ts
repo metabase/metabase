@@ -8,11 +8,19 @@ import type {
   RemoteSyncEntityStatus,
 } from "metabase-types/api";
 
+export type ChangesItem = {
+  key: string;
+  name: string;
+  entity: RemoteSyncEntity | null;
+  children: RemoteSyncEntity[];
+};
+
 export type ChangesGroup = {
   key: string;
   icon: IconName;
   path: string[];
-  entities: RemoteSyncEntity[];
+  collectionEntity: RemoteSyncEntity | null;
+  items: ChangesItem[];
 };
 
 type ModelGroup = {
@@ -81,48 +89,68 @@ const OTHER_GROUP: ModelGroup = {
 export const getModelIcon = (model: RemoteSyncEntityModel): IconName =>
   MODEL_ICONS[model];
 
-export const getStatusIcon = (status: RemoteSyncEntityStatus): IconName =>
-  status === "create" ? "add" : status === "update" ? "pencil" : "trash";
+export const getStatusIcon = (status: RemoteSyncEntityStatus): IconName => {
+  switch (status) {
+    case "create":
+      return "add";
+    case "update":
+      return "pencil";
+    case "delete":
+    case "removed":
+      return "trash";
+  }
+};
 
-export const getStatusColor = (status: RemoteSyncEntityStatus) =>
-  status === "create"
-    ? "feedback-positive"
-    : status === "update"
-      ? "core-blue-saturated"
-      : "feedback-negative";
+export const getStatusColor = (status: RemoteSyncEntityStatus) => {
+  switch (status) {
+    case "create":
+      return "feedback-positive";
+    case "update":
+      return "core-blue-saturated";
+    case "delete":
+    case "removed":
+      return "feedback-negative";
+  }
+};
 
-export const getEntityUrl = (entity: RemoteSyncEntity): string | null => {
-  switch (entity.model) {
+export const getEntityUrl = ({
+  id,
+  name,
+  model,
+  collection,
+  parent,
+}: RemoteSyncEntity): string | null => {
+  switch (model) {
     case "tableusersettings":
-      return Urls.dataStudioTable(entity.id);
+      return Urls.dataStudioTable(id);
     case "fieldusersettings":
-      return entity.table_id != null
-        ? Urls.dataStudioTableFields(entity.table_id, entity.id)
+      return parent?.model === "table"
+        ? Urls.dataStudioTableFields(parent.id, id)
         : null;
     case "segment":
-      return entity.table_id != null
-        ? Urls.dataStudioPublishedTableSegment(entity.table_id, entity.id)
+      return parent?.model === "table"
+        ? Urls.dataStudioPublishedTableSegment(parent.id, id)
         : null;
     case "measure":
-      return entity.table_id != null
-        ? Urls.dataStudioPublishedTableMeasure(entity.table_id, entity.id)
+      return parent?.model === "table"
+        ? Urls.dataStudioPublishedTableMeasure(parent.id, id)
         : null;
     case "transformtest":
-      return entity.transform_id != null
-        ? Urls.transformTest(entity.transform_id, entity.id)
+      return parent?.model === "transform"
+        ? Urls.transformTest(parent.id, id)
         : null;
     case "action":
-      return entity.model_id != null
-        ? Urls.action({ id: entity.model_id }, entity.id)
-        : Urls.dataStudioAction(entity.id);
+      return parent?.model === "card"
+        ? Urls.action({ id: parent.id }, id)
+        : Urls.dataStudioAction(id);
     case "dataapp":
-      return Urls.dataStudioDataApp(entity.name);
+      return Urls.dataStudioDataApp(name);
     case "nativequerysnippet":
-      return Urls.dataStudioSnippet(entity.id);
+      return Urls.dataStudioSnippet(id);
     case "glossary":
       return Urls.dataStudioGlossary();
     case "pythonlibrary":
-      return Urls.transformPythonLibrary({ path: entity.name });
+      return Urls.transformPythonLibrary({ path: name });
     case "transformtag":
       return Urls.transformList();
     case "card":
@@ -132,17 +160,17 @@ export const getEntityUrl = (entity: RemoteSyncEntity): string | null => {
     case "timeline":
     case "transform":
       return Urls.modelToUrl({
-        id: entity.id,
-        model: entity.model,
-        name: entity.name,
-        collection_id: entity.collection?.id ?? null,
+        id,
+        model,
+        name,
+        collection_id: collection?.id ?? null,
       });
-    default:
-      return null;
   }
 };
 
-const getGroup = (entity: RemoteSyncEntity): Omit<ChangesGroup, "entities"> => {
+type GroupHeader = Pick<ChangesGroup, "key" | "icon" | "path">;
+
+const getGroupHeader = (entity: RemoteSyncEntity): GroupHeader => {
   if (entity.collection) {
     return {
       key: `collection-${entity.collection.id}`,
@@ -157,16 +185,59 @@ const getGroup = (entity: RemoteSyncEntity): Omit<ChangesGroup, "entities"> => {
   return { key, icon, path: [getName()] };
 };
 
+const isCollectionOwnChange = (entity: RemoteSyncEntity) =>
+  entity.model === "collection" && entity.collection?.id === entity.id;
+
 export const groupChanges = (entities: RemoteSyncEntity[]): ChangesGroup[] => {
+  const tables = new Map(
+    entities
+      .filter((entity) => entity.model === "tableusersettings")
+      .map((entity) => [entity.id, entity]),
+  );
   const groups = new Map<string, ChangesGroup>();
-  entities.forEach((entity) => {
-    const group = getGroup(entity);
-    const existing = groups.get(group.key);
+
+  const getGroup = (entity: RemoteSyncEntity) => {
+    const header = getGroupHeader(entity);
+    const group = groups.get(header.key) ?? {
+      ...header,
+      collectionEntity: null,
+      items: [],
+    };
+    groups.set(header.key, group);
+    return group;
+  };
+
+  const getTableItem = (group: ChangesGroup, tableId: number, name: string) => {
+    const key = `table-${tableId}`;
+    const existing = group.items.find((item) => item.key === key);
     if (existing) {
-      existing.entities.push(entity);
+      return existing;
+    }
+    const item: ChangesItem = { key, name, entity: null, children: [] };
+    group.items.push(item);
+    return item;
+  };
+
+  entities.forEach((entity, index) => {
+    const { parent } = entity;
+    if (isCollectionOwnChange(entity)) {
+      getGroup(entity).collectionEntity = entity;
+    } else if (parent?.model === "table") {
+      const table = tables.get(parent.id);
+      const group = getGroup(table ?? entity);
+      const name = table?.name ?? parent.name ?? "";
+      getTableItem(group, parent.id, name).children.push(entity);
+    } else if (entity.model === "tableusersettings") {
+      getTableItem(getGroup(entity), entity.id, entity.name).entity = entity;
     } else {
-      groups.set(group.key, { ...group, entities: [entity] });
+      getGroup(entity).items.push({
+        key: `${entity.model}-${entity.id}-${index}`,
+        name: entity.name,
+        entity,
+        children: [],
+      });
     }
   });
+
   return [...groups.values()];
 };

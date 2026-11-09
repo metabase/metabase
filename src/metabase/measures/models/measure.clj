@@ -253,4 +253,5 @@
 
 (defmethod remote-sync/spec :model/Measure
   [_model]
-  {:synced-filter-clause measures.db/synced-measures-clause})
+  {:synced-filter-clause measures.db/synced-measures-clause
+   :parent               (fn [{:keys [table_id]}] [:model/Table table_id])})

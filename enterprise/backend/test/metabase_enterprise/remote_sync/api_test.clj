@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :each (fn [thunk] (mt/with-premium-features #{:remote-sync} (thunk))))
 
 (defn- card-path!
@@ -108,11 +110,11 @@
                       (remote-sync.tu/wait-for-task! task_id))))
             (is (= "Renamed remotely" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
 
-(deftest dirty-links-tables-test
+(deftest dirty-parents-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-temp [:model/Collection        synced  {:name "Synced" :is_remote_synced true :location "/"}
-                     :model/Table             table   {:db_id (mt/id) :name "synced_table"}
+                     :model/Table             table   {:db_id (mt/id) :name "synced_table" :display_name "Synced Table"}
                      :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
                      :model/FieldUserSettings _       {:field_id (:id field) :description "Synced"}
@@ -121,9 +123,9 @@
                                                        :definition (let [mp (mt/metadata-provider)]
                                                                      (-> (lib/query mp (lib.metadata/table mp (:id table)))
                                                                          (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]
-        (testing "the changes of a table's segments and fields carry the table"
-          (is (=? [{:model "fieldusersettings" :id (:id field) :table_id (:id table)}
-                   {:model "segment" :id (:id segment) :table_id (:id table)}]
+        (testing "the changes of a table's segments and fields carry the table as their parent"
+          (is (=? [{:model "fieldusersettings" :id (:id field) :parent {:model "table" :id (:id table) :name "Synced Table"}}
+                   {:model "segment" :id (:id segment) :parent {:model "table" :id (:id table) :name "Synced Table"}}]
                   (->> (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))
                        (filter (comp #{(:id field) (:id segment)} :id))
                        (filter (comp #{"fieldusersettings" "segment"} :model))

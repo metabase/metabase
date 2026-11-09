@@ -1,12 +1,9 @@
-import type { CardId } from "./card";
 import type {
   CollectionId,
   CollectionType,
   RegularCollectionId,
 } from "./collection";
 import type { RemoteSyncType } from "./settings";
-import type { TableId } from "./table";
-import type { TransformId } from "./transform";
 import type { UserId } from "./user";
 
 export type RemoteSyncTaskId = number;
@@ -48,15 +45,21 @@ export type RemoteSyncEntityCollection = {
   effective_ancestors: RemoteSyncEntityCollectionAncestor[];
 };
 
+export type RemoteSyncEntityParentModel = "card" | "table" | "transform";
+
+export type RemoteSyncEntityParent = {
+  model: RemoteSyncEntityParentModel;
+  id: number;
+  name: string | null;
+};
+
 export type RemoteSyncEntity = {
   id: RemoteSyncEntityId;
   name: string;
   model: RemoteSyncEntityModel;
   sync_status: RemoteSyncEntityStatus;
   collection?: RemoteSyncEntityCollection;
-  model_id?: CardId | null;
-  table_id?: TableId;
-  transform_id?: TransformId;
+  parent?: RemoteSyncEntityParent;
 };
 
 export type RemoteSyncEntityRef = {

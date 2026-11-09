@@ -17,10 +17,11 @@
    pk    :- [:or :int :string]]
   (t2/select-one model (first (t2/primary-keys model)) pk))
 
-(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
-  "The id of the table of the field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+(mu/defn display-name :- [:maybe :string]
+  "The display name of the row of `model` with the primary key `pk`, or its name, or nil."
+  [model :- :keyword
+   pk    :- [:or :int :string]]
+  (t2/select-one-fn #(or (:display_name %) (:name %)) model (first (t2/primary-keys model)) pk))
 
 (mu/defn synced-rows
   "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."
