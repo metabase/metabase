@@ -8,6 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
+;; A deftest that lists runs without a test id gives its runs a start date that no other deftest in this namespace
+;; uses, and filters the listing on that date, so that the runs of other deftests in the app DB do not match.
+
 (defn- listed-runs
   "The ids and the `total` of the transform test runs that `user` lists with the query parameters `params`."
   [user & params]
@@ -84,8 +87,6 @@
 
 (deftest list-runs-by-type-test
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
-    ;; Every run starts on a day no other test uses, and each listing filters on it, so other rows in the app DB do not
-    ;; match.
     (mt/with-temp [:model/Transform    {transform-id :id} {}
                    :model/TransformTest {test-id :id}     {:transform_id transform-id
                                                            :created_at   #t "2000-01-01T00:00:00Z"}
@@ -145,11 +146,16 @@
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform    {hidden-transform :id} (data-testing.test-util/id-transform :people)
                    :model/Transform    {open-transform :id}   (data-testing.test-util/id-transform :venues)
-                   :model/TransformTest {old-test-id :id}     {:transform_id hidden-transform}
+                   :model/TransformTest {old-test-id :id}     {:transform_id hidden-transform
+                                                               :created_at   #t "2000-01-01T00:00:00Z"}
+                   ;; An explicit start time before the reused test's creation. A default start time is the
+                   ;; transaction's now(), which on Postgres equals the default creation time of a test made in the same
+                   ;; transaction, and the guard lists a run that starts when its test is created.
                    :model/DataTestRun  {run-id :id}           {:test_type    :transform
                                                                :test_id      old-test-id
                                                                :status       :failed
-                                                               :initiated_by (mt/user->id :crowberto)}]
+                                                               :initiated_by (mt/user->id :crowberto)
+                                                               :start_time   #t "2001-01-04T10:00:00Z"}]
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                       :perms/view-data      :unrestricted
@@ -167,8 +173,8 @@
                                          :inputs       "[]"
                                          :expectations "[]"
                                          :creator_id   (mt/user->id :lucky)
-                                         :created_at   (java.time.OffsetDateTime/now)
-                                         :updated_at   (java.time.OffsetDateTime/now)})
+                                         :created_at   #t "2001-01-04T11:00:00Z"
+                                         :updated_at   #t "2001-01-04T11:00:00Z"})
             (try
               (testing "the data analyst can read the test that has the reused id"
                 (mt/user-http-request :lucky :get 200 (str "ee/transform-test/" old-test-id)))
