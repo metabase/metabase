@@ -76,7 +76,7 @@
   [model :- :keyword
    alias :- :keyword]
   (if (read-only?)
-    (remote-sync.db/not-read-only-filter-clause model alias)
+    (remote-sync.db/writable-filter-clause model alias)
     remote-sync.db/all-rows-filter-clause))
 
 (mu/defn synced-changes? :- :boolean

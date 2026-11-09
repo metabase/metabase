@@ -71,7 +71,7 @@
                                     (read-only-filter-clause model :row)]
                            :limit  1}))))
 
-(mu/defn not-read-only-filter-clause :- [:fn vector?]
+(mu/defn writable-filter-clause :- [:fn vector?]
   "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows that aren't
   read-only (see [[read-only-filter-clause]])."
   [model :- :keyword
