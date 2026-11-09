@@ -617,6 +617,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - notification-unsubscribe-ex
 - notification-unsubscribe-undo-ex
 - notification-update
+- password-changed
 - password-reset-initiated
 - password-reset-successful
 - remote-sync-create-branch
