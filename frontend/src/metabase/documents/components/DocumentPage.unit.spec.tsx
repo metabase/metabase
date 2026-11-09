@@ -33,6 +33,34 @@ import { DocumentPage } from "./DocumentPage";
 
 registerVisualizations();
 
+// The real updateDocument mutation leaves its `queryFulfilled` rejection
+// unhandled when the request fails, which fails any test that sends a failing
+// update through it. Tests that need a failed save set this flag instead, so
+// the mutation resolves with an error like RTK Query does for a failed request.
+const mockUpdateDocumentFailure = { current: false };
+
+jest.mock("metabase/api/document", () => {
+  const actual = jest.requireActual("metabase/api/document");
+  return {
+    ...actual,
+    useUpdateDocumentMutation: (
+      ...args: Parameters<typeof actual.useUpdateDocumentMutation>
+    ) => {
+      const [updateDocument, result] = actual.useUpdateDocumentMutation(
+        ...args,
+      );
+      const failingUpdateDocument = () =>
+        Promise.resolve({ error: { status: 500, data: "" } });
+      return [
+        mockUpdateDocumentFailure.current
+          ? failingUpdateDocument
+          : updateDocument,
+        result,
+      ];
+    },
+  };
+});
+
 const CARD = createMockCard({ id: 42, name: "Orders", display: "table" });
 
 const PARAGRAPH_CONTENT: DocumentContent["content"] = [
@@ -126,6 +154,10 @@ const getDocumentTitle = async () =>
   await screen.findByRole("textbox", { name: /document title/i });
 
 describe("Document Page", () => {
+  afterEach(() => {
+    mockUpdateDocumentFailure.current = false;
+  });
+
   it("should show a save button when title changes", async () => {
     setup();
     await waitFor(async () =>
@@ -151,6 +183,26 @@ describe("Document Page", () => {
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("shows an error toast and keeps the save button when saving fails", async () => {
+    mockUpdateDocumentFailure.current = true;
+    const { store } = setup();
+
+    await userEvent.type(await getDocumentTitle(), "edited");
+    await userEvent.click(await screen.findByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(store.getState().undo).toEqual([
+        expect.objectContaining({
+          message: "Error saving document",
+          variant: "negative",
+        }),
+      ]),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Save" }),
+    ).toBeInTheDocument();
   });
 
   it("warns about unsaved changes only once a navigation lands back on /document/new", async () => {
