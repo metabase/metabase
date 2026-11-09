@@ -69,6 +69,21 @@
                    :suppressed (mapv (fn [^Throwable s] {:message (ex-message s)})
                                      (.getSuppressed ^Throwable e))})))))))
 
+(deftest load-snapshot-keeps-the-first-failure-on-a-dead-connection-test
+  (testing "when the connection dies before autocommit is restored, the error that stopped the load is the one thrown"
+    (impl/with-temp-empty-app-db [conn :h2]
+      (mt/with-dynamic-fn-redefs [snapshot/session-guards (fn [_flavor]
+                                                            [["NOT VALID SQL"]
+                                                             ["SHUTDOWN IMMEDIATELY"]])]
+        (let [e (try
+                  (snapshot/load-snapshot! conn :h2)
+                  nil
+                  (catch Exception e e))]
+          (is (=? {:message    #"(?s).*NOT VALID SQL.*"
+                   :suppressed [#"(?s).*Database is already closed.*"]}
+                  {:message    (ex-message e)
+                   :suppressed (mapv ex-message (.getSuppressed ^Throwable e))})))))))
+
 (deftest usable-for-start?-test
   (impl/with-temp-empty-app-db [conn :h2]
     (let [ids             (map first (snapshot/changesets conn))

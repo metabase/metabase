@@ -270,12 +270,17 @@
             ;; rolls back before taking its changelog lock, which would undo the entire load.
             (.commit conn)
             (catch Throwable e
-              ;; without this, restoring autocommit below would commit however much of the load got through
+              ;; without this, restoring autocommit would commit however much of the load got through
               (try (.rollback conn) (catch Throwable _))
-              (throw e))
-            (finally
+              ;; not a `finally`: on a dead connection this fails as well, and must not hide the statement that failed
               (when autocommit?
-                (.setAutoCommit conn true)))))))
+                (try
+                  (.setAutoCommit conn true)
+                  (catch Throwable restore-error
+                    (.addSuppressed e restore-error))))
+              (throw e)))
+          (when autocommit?
+            (.setAutoCommit conn true)))))
     :done))
 
 (defn changesets
