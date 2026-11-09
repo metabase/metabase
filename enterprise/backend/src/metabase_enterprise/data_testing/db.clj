@@ -159,6 +159,16 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/delete! :model/TransformTest :transform_id transform-id))
 
+(mu/defn card
+  "The Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id))
+
+(mu/defn card-test :- [:maybe ::data-testing.schema/card-test]
+  "The CardTest with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/CardTest :id id))
+
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]

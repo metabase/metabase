@@ -4,6 +4,9 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -38,3 +41,49 @@
   ;; delete's transaction. Toucan 2 has no after-delete hook.
   (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
   card-test)
+
+;;; ------------------------------------------------- Permissions --------------------------------------------------
+
+(mu/defn- can-save-test? :- :boolean
+  "Whether the current user may save or delete a test of the Card `card-id`: they may edit the card, and write the
+  native SQL of a test against its Database."
+  [card-id :- ::lib.schema.id/card]
+  (boolean
+   (when-let [card (data-testing.db/card card-id)]
+     (and (mi/can-write? card)
+          (or (mi/superuser?)
+              (some-> (:database_id card) data-testing.models/can-run-native-query?))))))
+
+(mu/defn can-run? :- :boolean
+  "Whether the current user may run the saved `card-test`: they may read it, and write the native SQL of a test against
+  its card's Database."
+  [card-test :- ::data-testing.schema/card-test]
+  ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
+  (boolean
+   (when-let [card (data-testing.db/card (:card_id card-test))]
+     (and (mi/can-read? card)
+          (or (mi/superuser?)
+              (some-> (:database_id card) data-testing.models/can-run-native-query?))))))
+
+(defmethod mi/can-read? :model/CardTest
+  ([instance]
+   (mi/can-read? :model/Card (:card_id instance)))
+  ([_model pk]
+   (when-let [card-test (data-testing.db/card-test pk)]
+     (mi/can-read? card-test))))
+
+(defmethod mi/can-write? :model/CardTest
+  ([instance]
+   (can-save-test? (:card_id instance)))
+  ([_model pk]
+   (when-let [card-test (data-testing.db/card-test pk)]
+     (mi/can-write? card-test))))
+
+(defmethod mi/can-create? :model/CardTest
+  [_model instance]
+  (can-save-test? (:card_id instance)))
+
+(defmethod mi/can-update? :model/CardTest
+  [instance changes]
+  (and (can-save-test? (:card_id instance))
+       (can-save-test? (:card_id changes (:card_id instance)))))

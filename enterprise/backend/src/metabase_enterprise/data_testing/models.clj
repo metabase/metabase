@@ -58,8 +58,9 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(defn- can-run-native-query?
-  "Whether the current user may run native SQL against the Database with `db-id`."
+(defn can-run-native-query?
+  "Whether the current user may run native SQL against the Database with `db-id`, as the input and expectation SQL of a
+  test does."
   [db-id]
   (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
 
