@@ -123,8 +123,9 @@
   (let [coordinate (coordinate)
         first-claim (lease/try-acquire! coordinate)
         ran?        (promise)
-        waiter      (binding [lease/*acquire-retry-interval-ms* 5]
-                      (future (lease/do-with-lease coordinate (fn [] (deliver ran? true) true))))]
+        waiter      (future (lease/do-with-lease coordinate
+                                                 (fn [] (deliver ran? true) true)
+                                                 {:acquire-retry-interval-ms 5}))]
     (try
       (is (= ::waiting (deref ran? 50 ::waiting)))
       (lease/release! first-claim)
@@ -137,10 +138,11 @@
   (let [coordinate  (coordinate)
         first-claim (lease/try-acquire! coordinate)]
     (try
-      (binding [lease/*acquire-retry-interval-ms* 5
-                lease/*acquire-timeout-ms*        50]
-        (is (= {:acquired? false}
-               (lease/do-with-lease coordinate (fn [] (throw (ex-info "should not run" {})))))))
+      (is (= {:acquired? false}
+             (lease/do-with-lease coordinate
+                                  (fn [] (throw (ex-info "should not run" {})))
+                                  {:acquire-retry-interval-ms 5
+                                   :acquire-timeout-ms        50})))
       (finally
         (lease/release! first-claim)
         (delete-coordinate! coordinate)))))
@@ -148,17 +150,17 @@
 (deftest persistent-heartbeat-errors-eventually-stop-local-work-test
   (let [coordinate (coordinate)]
     (try
-      (binding [lease/*lease-duration* (t/millis 40)
-                lease/*heartbeat-interval-ms* 5]
-        (mt/with-dynamic-fn-redefs [lease/renew! (fn [_claim] (throw (Exception. "db unavailable")))]
-          (is (thrown-with-msg?
-               Exception
-               #"lease was lost"
-               (lease/do-with-lease
-                coordinate
-                (fn []
-                  (tu/poll-until 5000 @(:lost? lease/*lease-context*))
-                  (lease/throw-if-lost!)))))))
+      (mt/with-dynamic-fn-redefs [lease/renew! (fn [_claim] (throw (Exception. "db unavailable")))]
+        (is (thrown-with-msg?
+             Exception
+             #"lease was lost"
+             (lease/do-with-lease
+              coordinate
+              (fn []
+                (tu/poll-until 5000 @(:lost? lease/*lease-context*))
+                (lease/throw-if-lost!))
+              {:lease-duration        (t/millis 40)
+               :heartbeat-interval-ms 5}))))
       (finally
         (delete-coordinate! coordinate)))))
 
@@ -298,42 +300,41 @@
         writer      (atom nil)
         contender   (atom nil)]
     (try
-      (binding [lease/*lease-duration* (t/millis 200)]
-        (let [claim      (lease/try-acquire! coordinate)
-              context    {:claim claim, :lost? (atom false)}
-              fence-held (promise)]
-          (reset! writer
-                  (binding [lease/*lease-context* context]
-                    (future
-                      (t2/with-connection [conn (mdb/app-db)]
-                        (lease/do-in-fenced-transaction!
-                         conn
-                         #(do
-                            (deliver fence-held true)
-                            @allow-write
-                            (t2/insert! :conn % :model/SearchIndexMetadata
-                                        {:engine :appdb, :version version
-                                         :lang_code (:lang_code coordinate), :status :pending
-                                         :index_name index-name})))))))
-          (is (true? (deref fence-held 5000 false)))
-          ;; Let the database lease expire while the fenced transaction still owns the row lock.
-          (let [db-now      #(:now (t2/query-one ["SELECT CURRENT_TIMESTAMP AS now"]))
-                fence-taken (db-now)]
-            (tu/poll-until 5000 (t/after? (db-now) (t/plus fence-taken lease/*lease-duration*))))
-          ;; Only the original owner needs to expire quickly. The contender must survive its lock wait.
-          (reset! contender (binding [lease/*lease-duration* (t/minutes 1)]
-                              (future (lease/try-acquire! coordinate))))
-          (is (= ::blocked (deref @contender 50 ::blocked))
-              "takeover waits for the transaction containing the protected mutation")
-          (deliver allow-write true)
-          (is (= 1 (deref @writer 5000 ::timed-out)))
-          (let [replacement (deref @contender 5000 ::timed-out)]
-            (is (map? replacement))
-            (is (= index-name
-                   (t2/select-one-fn :index_name :model/SearchIndexMetadata
-                                     :engine :appdb :version version :status :pending)))
-            (when (map? replacement)
-              (lease/release! replacement)))))
+      (let [lease-duration (t/millis 200)
+            claim          (lease/try-acquire! coordinate {:lease-duration lease-duration})
+            context        {:claim claim, :lost? (atom false)}
+            fence-held     (promise)]
+        (reset! writer
+                (binding [lease/*lease-context* context]
+                  (future
+                    (t2/with-connection [conn (mdb/app-db)]
+                      (lease/do-in-fenced-transaction!
+                       conn
+                       #(do
+                          (deliver fence-held true)
+                          @allow-write
+                          (t2/insert! :conn % :model/SearchIndexMetadata
+                                      {:engine :appdb, :version version
+                                       :lang_code (:lang_code coordinate), :status :pending
+                                       :index_name index-name})))))))
+        (is (true? (deref fence-held 5000 false)))
+        ;; Let the database lease expire while the fenced transaction still owns the row lock.
+        (let [db-now      #(:now (t2/query-one ["SELECT CURRENT_TIMESTAMP AS now"]))
+              fence-taken (db-now)]
+          (tu/poll-until 5000 (t/after? (db-now) (t/plus fence-taken lease-duration))))
+        ;; Only the original owner needs to expire quickly. The contender must survive its lock wait.
+        (reset! contender (future (lease/try-acquire! coordinate {:lease-duration (t/minutes 1)})))
+        (is (= ::blocked (deref @contender 50 ::blocked))
+            "takeover waits for the transaction containing the protected mutation")
+        (deliver allow-write true)
+        (is (= 1 (deref @writer 5000 ::timed-out)))
+        (let [replacement (deref @contender 5000 ::timed-out)]
+          (is (map? replacement))
+          (is (= index-name
+                 (t2/select-one-fn :index_name :model/SearchIndexMetadata
+                                   :engine :appdb :version version :status :pending)))
+          (when (map? replacement)
+            (lease/release! replacement))))
       (finally
         (deliver allow-write true)
         (some-> @writer future-cancel)

@@ -27,22 +27,20 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *lease-duration*
-  "How long a lease remains valid without a successful heartbeat."
-  (t/minutes 10))
+(def ^:private default-timings
+  "Lease timings; tests pass shorter ones through [[try-acquire!]] and [[do-with-lease]]."
+  {;; How long a lease remains valid without a successful renewal.
+   :lease-duration            (t/minutes 10)
+   ;; How often an acquired lease is renewed while its reindex is running.
+   :heartbeat-interval-ms     60000
+   ;; How often a waiting caller retries a busy lease.
+   :acquire-retry-interval-ms 1000
+   ;; How long a waiting caller keeps retrying a busy lease before giving up.
+   :acquire-timeout-ms        5000})
 
-(def ^:dynamic *heartbeat-interval-ms*
-  "How often an acquired lease is renewed while its reindex is running."
-  60000)
-
-(def ^:dynamic *acquire-retry-interval-ms*
-  "How often a waiting caller retries a busy lease."
-  1000)
-
-(def ^:dynamic *acquire-timeout-ms*
-  "How long a waiting caller keeps retrying a busy lease before giving up."
-  5000)
-
+;; The leased reindex's dynamic extent, as `*transaction-state*` is a transaction's: the fences in index and
+;; semantic-search code consult it without the lease being passed down every call path between them.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *lease-context*
   "The claim and local lost state for the reindex running on this thread.
   Nil outside a leased reindex."
@@ -118,8 +116,8 @@
        (finally
          (.unlock read-lock))))))
 
-(defn- lease-duration-millis []
-  (.toMillis ^java.time.Duration *lease-duration*))
+(defn- lease-duration-millis [claim]
+  (.toMillis ^java.time.Duration (:lease-duration claim)))
 
 (defn- duplicate-key-violation?
   [error]
@@ -154,40 +152,45 @@
 
   The expired-owner update and absent-row insert are individually atomic autocommit statements.
   A conditional update elects one expired-row taker; the coordinate primary key elects one concurrent
-  inserter."
-  [coordinate]
-  (do-with-lifecycle-connection
-   (fn [conn]
-     (let [attempt-start-ns (System/nanoTime)
-           owner            (str (random-uuid))
-           input-coordinate coordinate
-           coordinate       (where-coordinate input-coordinate)
-           {:keys [now expires_at]} (search.db/lease-times conn (lease-duration-millis))
-           claim            (assoc coordinate
-                                   :owner owner
-                                   :site-locale (or (:site-locale input-coordinate) (configured-site-locale))
-                                   :acquired_at now
-                                   :last_renewed_at now
-                                   :expires_at expires_at
-                                   :last-renewal-start-ns attempt-start-ns)
-           stolen?          (pos? (search.db/take-over-expired-lease!
-                                   conn coordinate now
-                                   (select-keys claim [:owner :acquired_at :last_renewed_at :expires_at])))]
-       (when (or stolen? (try-insert-claim! conn claim))
-         ;; A claim statement can wait behind a fenced writer longer than the timestamps sampled above remain valid.
-         (if (search.db/live-lease? conn coordinate owner)
-           (cond-> claim stolen? (assoc :taken-over? true))
-           (do
-             (search.db/delete-lease! conn (:engine claim) (:version claim) (:lang_code claim) owner)
-             nil)))))))
+  inserter.
+
+  The claim keeps its `:lease-duration` (default ten minutes), which every renewal of it extends by."
+  ([coordinate]
+   (try-acquire! coordinate {}))
+  ([coordinate {:keys [lease-duration] :or {lease-duration (:lease-duration default-timings)}}]
+   (do-with-lifecycle-connection
+    (fn [conn]
+      (let [attempt-start-ns (System/nanoTime)
+            owner            (str (random-uuid))
+            input-coordinate coordinate
+            coordinate       (where-coordinate input-coordinate)
+            {:keys [now expires_at]} (search.db/lease-times conn (.toMillis ^java.time.Duration lease-duration))
+            claim            (assoc coordinate
+                                    :owner owner
+                                    :site-locale (or (:site-locale input-coordinate) (configured-site-locale))
+                                    :lease-duration lease-duration
+                                    :acquired_at now
+                                    :last_renewed_at now
+                                    :expires_at expires_at
+                                    :last-renewal-start-ns attempt-start-ns)
+            stolen?          (pos? (search.db/take-over-expired-lease!
+                                    conn coordinate now
+                                    (select-keys claim [:owner :acquired_at :last_renewed_at :expires_at])))]
+        (when (or stolen? (try-insert-claim! conn claim))
+          ;; A claim statement can wait behind a fenced writer longer than the timestamps sampled above remain valid.
+          (if (search.db/live-lease? conn coordinate owner)
+            (cond-> claim stolen? (assoc :taken-over? true))
+            (do
+              (search.db/delete-lease! conn (:engine claim) (:version claim) (:lang_code claim) owner)
+              nil))))))))
 
 (defn renew!
-  "Renew `claim` with a short autocommit operation, or on `conn` when given.
+  "Renew `claim` by its `:lease-duration` with a short autocommit operation, or on `conn` when given.
   Returns false if it expired or changed owner."
   ([claim]
    (do-with-lifecycle-connection (fn [conn] (renew! conn claim))))
   ([conn {:keys [owner] :as claim}]
-   (pos? (search.db/renew-lease! conn (where-coordinate claim) owner (lease-duration-millis)))))
+   (pos? (search.db/renew-lease! conn (where-coordinate claim) owner (lease-duration-millis claim)))))
 
 (defn release!
   "Release `claim` only if it still belongs to this owner, preserving interruption.
@@ -347,13 +350,13 @@
     (do-with-lifecycle-connection (fn [conn] (assert-current-in-transaction! conn)))
     true))
 
-(defn- lease-duration-nanos []
-  (.toNanos ^java.time.Duration *lease-duration*))
+(defn- lease-duration-nanos [claim]
+  (.toNanos ^java.time.Duration (:lease-duration claim)))
 
 (defn- heartbeat-loop!
-  [{:keys [claim last-renewal-start-ns] :as context} stopped]
+  [{:keys [claim last-renewal-start-ns] :as context} stopped heartbeat-interval-ms]
   (loop []
-    (when-not (deref stopped *heartbeat-interval-ms* false)
+    (when-not (deref stopped heartbeat-interval-ms false)
       (let [attempt-start-ns (System/nanoTime)
             continue?
             (try
@@ -370,7 +373,7 @@
                   false))
               (catch Throwable e
                 (record-event! claim :heartbeat-error)
-                (if (>= (- (System/nanoTime) @last-renewal-start-ns) (lease-duration-nanos))
+                (if (>= (- (System/nanoTime) @last-renewal-start-ns) (lease-duration-nanos claim))
                   (do
                     ;; Database time remains authoritative. This monotonic deadline only stops local work once we can
                     ;; no longer prove that the last successful database renewal could still be live.
@@ -387,17 +390,17 @@
           (recur))))))
 
 (defn- wait-for-claim
-  [coordinate wait?]
-  (let [deadline-ns (+ (System/nanoTime) (* 1000000 (long *acquire-timeout-ms*)))]
+  [coordinate {:keys [wait? acquire-timeout-ms acquire-retry-interval-ms] :as opts}]
+  (let [deadline-ns (+ (System/nanoTime) (* 1000000 (long acquire-timeout-ms)))]
     (loop [reported-busy? false]
-      (if-let [claim (try-acquire! coordinate)]
+      (if-let [claim (try-acquire! coordinate (select-keys opts [:lease-duration]))]
         claim
         (do
           (when-not reported-busy?
             (record-event! (where-coordinate coordinate) :busy))
           (when (and wait? (< (System/nanoTime) deadline-ns))
             (try
-              (Thread/sleep (long *acquire-retry-interval-ms*))
+              (Thread/sleep (long acquire-retry-interval-ms))
               (catch InterruptedException e
                 (.interrupt (Thread/currentThread))
                 (throw e)))
@@ -406,54 +409,57 @@
 (defn do-with-lease
   "Acquire `coordinate`, run `thunk` with a heartbeat, and release afterward.
 
-  By default a busy caller retries without holding a connection for up to [[*acquire-timeout-ms*]], then
+  By default a busy caller retries every second without holding a connection, for up to five seconds, then
   gives up with `{:acquired? false}`.
-  Pass `{:wait? false}` for a single non-blocking attempt."
+  Pass `{:wait? false}` for a single non-blocking attempt. Options also override the timings in
+  [[default-timings]]: `:lease-duration`, `:heartbeat-interval-ms`, `:acquire-retry-interval-ms` and
+  `:acquire-timeout-ms`."
   ([coordinate thunk]
    (do-with-lease coordinate thunk {}))
-  ([coordinate thunk {:keys [wait?] :or {wait? true}}]
-   (when (mdb/in-transaction?)
-     (record-event! (where-coordinate coordinate) :refused-in-transaction)
-     (throw (ex-info (str "Search reindex leases cannot be acquired inside an app-db transaction."
-                          " Schedule the reindex with mdb/do-after-commit, or move it outside the transaction.")
-                     {:type ::ambient-transaction, :coordinate (where-coordinate coordinate)})))
-   (try
-     (do-with-lifecycle-connection #(search.db/collect-expired-leases! % (where-coordinate coordinate)))
-     (catch InterruptedException e
-       (.interrupt (Thread/currentThread))
-       (throw e))
-     (catch Exception e
-       (record-event! coordinate :cleanup-error)
-       (log/warnf "Failed to collect expired search leases: %s" (ex-message e))))
-   (if-let [claim (wait-for-claim coordinate wait?)]
-     (let [stopped               (promise)
-           heartbeat             (volatile! nil)
-           last-renewal-start-ns (atom (:last-renewal-start-ns claim))
-           context               {:claim                 claim
-                                  :lost?                 (atom false)
-                                  :last-renewal-start-ns last-renewal-start-ns}
-           timer                 (u/start-timer)]
-       (try
-         (record-event! claim (if (:taken-over? claim) :taken-over :acquired))
-         ;; Never convey a caller-owned connection to the heartbeat thread. Acquisition is refused inside a
-         ;; transaction, so the heartbeat never inherits transaction state either.
-         (vreset! heartbeat (binding [t2.conn/*current-connectable* nil]
-                              (future (heartbeat-loop! context stopped))))
-         {:acquired? true
-          :result    (binding [*lease-context* context
-                               i18n/*site-locale-override* (when (seq (:lang_code claim)) (:lang_code claim))]
-                       (thunk))}
-         (finally
-           (deliver stopped true)
-           (when-let [heartbeat @heartbeat]
-             (future-cancel heartbeat))
-           (try
-             (release! claim)
-             (catch Throwable e
-               (record-event! claim :release-error)
-               (log/warnf "Failed to release search reindex lease for %s; it expires within %s of its last renewal: %s"
-                          (select-keys claim [:engine :version :lang_code])
-                          *lease-duration*
-                          (ex-message e))))
-           (observe-held-duration! claim timer))))
-     {:acquired? false})))
+  ([coordinate thunk opts]
+   (let [{:keys [heartbeat-interval-ms] :as opts} (merge {:wait? true} default-timings opts)]
+     (when (mdb/in-transaction?)
+       (record-event! (where-coordinate coordinate) :refused-in-transaction)
+       (throw (ex-info (str "Search reindex leases cannot be acquired inside an app-db transaction."
+                            " Schedule the reindex with mdb/do-after-commit, or move it outside the transaction.")
+                       {:type ::ambient-transaction, :coordinate (where-coordinate coordinate)})))
+     (try
+       (do-with-lifecycle-connection #(search.db/collect-expired-leases! % (where-coordinate coordinate)))
+       (catch InterruptedException e
+         (.interrupt (Thread/currentThread))
+         (throw e))
+       (catch Exception e
+         (record-event! coordinate :cleanup-error)
+         (log/warnf "Failed to collect expired search leases: %s" (ex-message e))))
+     (if-let [claim (wait-for-claim coordinate opts)]
+       (let [stopped               (promise)
+             heartbeat             (volatile! nil)
+             last-renewal-start-ns (atom (:last-renewal-start-ns claim))
+             context               {:claim                 claim
+                                    :lost?                 (atom false)
+                                    :last-renewal-start-ns last-renewal-start-ns}
+             timer                 (u/start-timer)]
+         (try
+           (record-event! claim (if (:taken-over? claim) :taken-over :acquired))
+           ;; Never convey a caller-owned connection to the heartbeat thread. Acquisition is refused inside a
+           ;; transaction, so the heartbeat never inherits transaction state either.
+           (vreset! heartbeat (binding [t2.conn/*current-connectable* nil]
+                                (future (heartbeat-loop! context stopped heartbeat-interval-ms))))
+           {:acquired? true
+            :result    (binding [*lease-context* context
+                                 i18n/*site-locale-override* (when (seq (:lang_code claim)) (:lang_code claim))]
+                         (thunk))}
+           (finally
+             (deliver stopped true)
+             (when-let [heartbeat @heartbeat]
+               (future-cancel heartbeat))
+             (try
+               (release! claim)
+               (catch Throwable e
+                 (record-event! claim :release-error)
+                 (log/warnf "Failed to release search reindex lease for %s; it expires within %s of its last renewal: %s"
+                            (select-keys claim [:engine :version :lang_code])
+                            (:lease-duration claim)
+                            (ex-message e))))
+             (observe-held-duration! claim timer))))
+       {:acquired? false}))))

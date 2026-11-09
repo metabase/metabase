@@ -22,6 +22,9 @@
 
 (set! *warn-on-reflection* true)
 
+;; A rebuild's failure policy, which holds for its whole dynamic extent like `*force-sync*` below: it is read inside
+;; the lazy reducible [[searchable-documents]] returns, in attribute evaluation, and in the index's batch writes.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *fail-on-error*
   "Whether population must abort instead of skipping failed documents or attributes."
   false)
