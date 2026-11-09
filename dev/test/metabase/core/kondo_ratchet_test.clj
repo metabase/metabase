@@ -655,6 +655,36 @@
                                                                    :aliases (constantly {:b/y :a/x})}))))
             "a seed that follows an alias names the alias on its warning, in both files")))))
 
+(deftest ^:synchronized fix-names-aliases-in-the-test-ratchets-file-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (doto (io/file dir "ratchets-test.edn")
+                       (spit (kondo-ratchet/render-test {:ignore-counts          {}
+                                                         :discouraged-var-counts {:a/x 1}
+                                                         :comment-exempt         #{}})))
+        occurrences  [{:file "test/g.clj", :line 1, :linters [:discouraged-var]}
+                      {:file "test/g.clj", :line 2, :linters [:discouraged-var]}]
+        attribution  (assoc no-findings :actual {:discouraged-var {:a/x 2}})]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:discouraged-var})
+                                  kondo-ratchet/discouraged-symbols   (constantly '#{a/x b/y})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (is (= [(str "WARNING: :a/x (also counts :b/y) is over budget (1 recorded, 2 actual) -- remove ignores,"
+                     " or accept them all with `--seed :discouraged-var/a/x`")
+                "unchanged"]
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:attribute (constantly [no-findings attribution])
+                                                                   :aliases   (constantly {:b/y :a/x})}))))
+            "fix!'s pass over the test ratchets file names the keys that count under an over-budget key")))))
+
 (deftest ^:synchronized fix-refuses-colliding-symbols-test
   (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
                                "kondo-ratchet-test"
