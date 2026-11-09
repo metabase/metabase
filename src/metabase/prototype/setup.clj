@@ -25,21 +25,24 @@
 
 (defn- connection-uri-details [connection-uri]
   (let [uri    (URI. (str/replace-first connection-uri #"^jdbc:" ""))
-        params (query-params uri)
-        ssl    (get params "sslmode")]
+        params (query-params uri)]
     {:host     (.getHost uri)
      :port     (when (pos? (.getPort uri)) (.getPort uri))
      :dbname   (subs (.getPath uri) 1)
      :user     (get params "user")
      :password (get params "password")
-     :ssl      (or (= (get params "ssl") "true")
-                   (contains? #{"require" "verify-ca" "verify-full"} ssl))}))
+     :ssl-mode (or (get params "sslmode")
+                   (when (= (get params "ssl") "true") "require"))}))
 
 (defn- app-db-details
   "Connection details of the Postgres app DB in the form of Postgres Database `details`, limited to the prototype
   schema."
   []
-  (let [uri-details (some-> (config/config-str :mb-db-connection-uri) connection-uri-details)]
+  (let [uri-details (some-> (config/config-str :mb-db-connection-uri) connection-uri-details)
+        ;; The JDBC driver connects the app DB with "prefer" when the URI does not set a mode, but the Postgres
+        ;; driver disables SSL when `:ssl` is not set. Some hosts reject connections without SSL.
+        ssl-mode    (or (:ssl-mode uri-details) "prefer")
+        ssl?        (not= ssl-mode "disable")]
     (into {:schema-filters-type     "inclusion"
            :schema-filters-patterns dataset/schema-name}
           (remove (comp nil? val))
@@ -48,7 +51,8 @@
            :dbname   (or (config/config-str :mb-db-dbname) (:dbname uri-details))
            :user     (or (config/config-str :mb-db-user) (:user uri-details))
            :password (or (config/config-str :mb-db-pass) (:password uri-details))
-           :ssl      (:ssl uri-details)})))
+           :ssl      ssl?
+           :ssl-mode (when ssl? ssl-mode)})))
 
 (defn- apply-semantic-types!
   "Set the semantic types from the dataset definition as user values, so that they are the same everywhere and
