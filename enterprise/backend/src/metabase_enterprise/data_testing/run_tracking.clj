@@ -87,10 +87,10 @@
         (log/warnf "Timed out run %s of test type %s, which has no timeout event" (:id run) (:test_type run))))
     reaped))
 
-(defmethod task/init! ::TransformTestRunHeartbeat [_]
+(defmethod task/init! ::DataTestRunHeartbeat [_]
   (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
 
-(defmethod task/init! ::TransformTestRunReaper [_]
+(defmethod task/init! ::DataTestRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transform-testing.reaper"
                         :label   "test run"
                         :reap-fn #(reap-orphaned-runs! heartbeat-stale-minutes)}))
