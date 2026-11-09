@@ -20,14 +20,17 @@ import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
 import SavedEntityPickerS from "../saved-entity-picker/SavedEntityPicker.module.css";
 import { COLLECTION_TREE_REQUEST } from "../saved-entity-picker/constants";
 import { findCollectionById } from "../saved-entity-picker/utils";
-import type { DataTypeInfoItem } from "../types";
 
 interface LibraryPickerProps {
   libraryCollection: LibraryCollection;
   canSelectMetric: boolean;
   databaseId?: DatabaseId | null;
   selectedSource?: DataSource;
-  /** Opens the Data or Metrics collection holding this collection, and lists it. */
+  /**
+   * The collection of a reopened published table. The picker opens on Data or
+   * Metrics, whichever lists it, and `SavedEntityPicker` starts on it with the
+   * table selected.
+   */
   collectionId?: CollectionId | null;
   onSelect: (source: DataSource) => void;
   /** Without it, there's no link back to the bucket step. */
@@ -51,10 +54,6 @@ export function LibraryPicker({
   const { data: collections } = useListCollectionsTreeQuery(
     COLLECTION_TREE_REQUEST,
   );
-  // `null` once the user went back from the collection opened for `collectionId`
-  const [selectedCollectionKindId, setSelectedCollectionKindId] = useState<
-    DataTypeInfoItem["id"] | null
-  >();
 
   if (!collections) {
     return null;
@@ -65,21 +64,51 @@ export function LibraryPicker({
     libraryNode?.children ?? [],
     { canSelectMetric },
   );
-  const selectedCollectionKind =
-    collectionKinds.length === 1
-      ? collectionKinds[0]
-      : collectionKinds.find((collectionKind) =>
-          selectedCollectionKindId === undefined
-            ? collectionId != null &&
-              findCollectionById(collectionKind.collections, collectionId)
-            : collectionKind.infoItem.id === selectedCollectionKindId,
-        );
 
-  if (selectedCollectionKind) {
+  return (
+    <LibraryCollectionKindPicker
+      libraryCollection={libraryCollection}
+      collectionKinds={collectionKinds}
+      databaseId={databaseId}
+      selectedSource={selectedSource}
+      collectionId={collectionId}
+      onSelect={onSelect}
+      onBack={onBack}
+    />
+  );
+}
+
+type CollectionKind = ReturnType<typeof getLibraryCollectionKinds>[number];
+
+interface LibraryCollectionKindPickerProps extends Omit<
+  LibraryPickerProps,
+  "canSelectMetric"
+> {
+  collectionKinds: CollectionKind[];
+}
+
+function LibraryCollectionKindPicker({
+  libraryCollection,
+  collectionKinds,
+  databaseId,
+  selectedSource,
+  collectionId,
+  onSelect,
+  onBack,
+}: LibraryCollectionKindPickerProps) {
+  // `null` shows the Data and Metrics choice
+  const [openCollectionKindId, setOpenCollectionKindId] = useState(() =>
+    getInitialCollectionKindId(collectionKinds, collectionId),
+  );
+  const openCollectionKind = collectionKinds.find(
+    (collectionKind) => collectionKind.infoItem.id === openCollectionKindId,
+  );
+
+  if (openCollectionKind) {
     return (
       <SavedEntityPicker
-        type={selectedCollectionKind.type}
-        libraryCollections={selectedCollectionKind.collections}
+        type={openCollectionKind.type}
+        libraryCollections={openCollectionKind.collections}
         selectedSource={selectedSource}
         collectionId={collectionId}
         databaseId={databaseId}
@@ -87,7 +116,7 @@ export function LibraryPicker({
         onBack={
           collectionKinds.length === 1
             ? onBack
-            : () => setSelectedCollectionKindId(null)
+            : () => setOpenCollectionKindId(null)
         }
       />
     );
@@ -110,11 +139,28 @@ export function LibraryPicker({
           dataTypes={collectionKinds.map(
             (collectionKind) => collectionKind.infoItem,
           )}
-          onChangeDataBucket={setSelectedCollectionKindId}
+          onChangeDataBucket={setOpenCollectionKindId}
         />
       </Box>
     </Box>
   );
+}
+
+// The only one offered opens straight away; otherwise the one listing a
+// reopened table's collection opens, or the choice shows
+function getInitialCollectionKindId(
+  collectionKinds: CollectionKind[],
+  collectionId: CollectionId | null | undefined,
+) {
+  if (collectionKinds.length === 1) {
+    return collectionKinds[0].infoItem.id;
+  }
+  const collectionKind = collectionKinds.find(
+    (collectionKind) =>
+      collectionId != null &&
+      findCollectionById(collectionKind.collections, collectionId),
+  );
+  return collectionKind?.infoItem.id ?? null;
 }
 
 // Only Data and Metrics hold data sources. Empty subcollections inside them are
