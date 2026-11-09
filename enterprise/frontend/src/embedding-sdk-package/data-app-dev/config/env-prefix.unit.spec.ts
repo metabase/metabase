@@ -1,19 +1,19 @@
-import { dataAppEnvPrefix } from "./env-prefix";
+import { DATA_APP_PUBLIC_ENV_PREFIX } from "./env-prefix";
 
-const exposes = (prefixes: string[] | undefined, name: string) =>
-  (prefixes ?? ["VITE_"]).some((prefix) => name.startsWith(prefix));
+// Vite exposes an env var to the bundle when its name starts with the prefix.
+const isExposed = (name: string) => name.startsWith(DATA_APP_PUBLIC_ENV_PREFIX);
 
-describe("dataAppEnvPrefix", () => {
-  it("keeps the instance URL, the API key and other .env.local secrets out of the dev preview page (serve)", () => {
-    const prefixes = dataAppEnvPrefix("serve");
-
-    expect(exposes(prefixes, "DATA_APP_MB_URL")).toBe(false);
-    expect(exposes(prefixes, "DATA_APP_MB_API_KEY")).toBe(false);
-    // Vite's default prefix, which a repo-root .env.local may use for its own secrets.
-    expect(exposes(prefixes, "VITE_MB_API_KEY")).toBe(false);
+describe("DATA_APP_PUBLIC_ENV_PREFIX", () => {
+  it("keeps the instance URL and the API key out of the bundle", () => {
+    expect(isExposed("DATA_APP_MB_URL")).toBe(false);
+    expect(isExposed("DATA_APP_MB_API_KEY")).toBe(false);
   });
 
-  it("exposes no DATA_APP_ env vars in a production build", () => {
-    expect(dataAppEnvPrefix("build")).toBeUndefined();
+  it("keeps vars with Vite's default prefix out of the bundle", () => {
+    expect(isExposed("VITE_MB_API_KEY")).toBe(false);
+  });
+
+  it("exposes the vars an app marks as public", () => {
+    expect(isExposed("DATA_APP_PUBLIC_REGION")).toBe(true);
   });
 });

@@ -19,7 +19,7 @@ import {
   buildDevInstanceRelay,
   dropInstanceOrigin,
 } from "./config/dev-instance-relay";
-import { dataAppEnvPrefix } from "./config/env-prefix";
+import { DATA_APP_PUBLIC_ENV_PREFIX } from "./config/env-prefix";
 import { findEnvRoot } from "./config/find-env-root";
 import { readManifest } from "./config/read-manifest";
 import { DATA_APP_MB_API_KEY_ENV, DATA_APP_MB_URL_ENV } from "./constants/env";
@@ -47,7 +47,7 @@ function dataAppVitePlugin(): PluginOption[] {
         return {
           define: getDataAppDefine(env.mode),
           envDir,
-          envPrefix: dataAppEnvPrefix(env.command),
+          envPrefix: DATA_APP_PUBLIC_ENV_PREFIX,
           // The dev plugin serves a synthetic index.html; there's no file on disk.
           appType: "custom",
           build: {
