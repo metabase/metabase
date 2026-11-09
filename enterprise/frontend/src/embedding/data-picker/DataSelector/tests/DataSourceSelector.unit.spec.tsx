@@ -12,13 +12,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { reinitialize } from "metabase/plugins";
@@ -1078,10 +1072,10 @@ describe("DataSourceSelector", () => {
       });
 
       await userEvent.click(await screen.findByText("Library"));
-      const backLink = await screen.findByTestId(
-        "library-picker-back-navigation",
-      );
-      act(() => backLink.focus());
+      await screen.findByTestId("library-picker-back-navigation");
+      // focus the "‹ Library" back link
+      await userEvent.tab();
+      expect(screen.getByRole("button", { name: "Library" })).toHaveFocus();
       await userEvent.keyboard("{Enter}");
 
       expect(await screen.findByText("Raw Data")).toBeInTheDocument();

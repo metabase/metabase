@@ -1360,6 +1360,7 @@ describe("scenarios > embedding > full app", () => {
 
         H.popover().within(() => {
           cy.findByText("Library").click();
+          // Client A and Client B share one "Data" entry, not one each
           cy.findAllByText("Data").should("have.length", 1);
           cy.findByText("Client A").should("be.visible");
           cy.findByText("Client B").click();
