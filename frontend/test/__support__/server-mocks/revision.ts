@@ -17,3 +17,14 @@ export function setupEntityRevisionsEndpoint(
 export function setupRevertRevisionEndpoint(revision: Revision) {
   fetchMock.post("path:/api/revision/revert", revision);
 }
+
+export function setupRevertRevisionErrorEndpoint({
+  message,
+}: {
+  message: string;
+}) {
+  fetchMock.post("path:/api/revision/revert", {
+    status: 500,
+    body: { message },
+  });
+}

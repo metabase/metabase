@@ -141,6 +141,25 @@ export function setupForbiddenCardEndpoints(cardId: CardId) {
   });
 }
 
+/**
+ * Makes the card's own endpoints return 404, i.e. a card that was permanently
+ * deleted.
+ */
+export function setupNotFoundCardEndpoints(cardId: CardId) {
+  fetchMock.get(`path:/api/card/${cardId}`, {
+    status: 404,
+    body: "Not found.",
+  });
+  fetchMock.get(`path:/api/card/${cardId}/query_metadata`, {
+    status: 404,
+    body: "Not found.",
+  });
+  fetchMock.post(`path:/api/card/${cardId}/query`, {
+    status: 404,
+    body: "Not found.",
+  });
+}
+
 type SetupCardQueryEndpointsOpts = {
   /**
    * Return the request's parameters in `json_query.parameters`, as the real

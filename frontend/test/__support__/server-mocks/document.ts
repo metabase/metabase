@@ -18,6 +18,25 @@ export function setupDocumentEndpoints(doc: Document) {
   fetchMock.delete(`path:/api/document/${doc.id}`, {});
 }
 
+/**
+ * Like `setupDocumentEndpoints`, but a PUT updates what later GETs return, as
+ * the real API does. The returned function changes the stored document, for
+ * changes made by other endpoints, such as reverting a revision.
+ */
+export function setupPersistentDocumentEndpoints(doc: Document) {
+  let current = doc;
+  fetchMock.get(`path:/api/document/${doc.id}`, () => current);
+  fetchMock.put(`path:/api/document/${doc.id}`, async (call) => {
+    // the body is the typed update request the app sent
+    const body: Partial<Document> = await call?.request?.json();
+    current = { ...current, ...body };
+    return current;
+  });
+  return (changes: Partial<Document>) => {
+    current = { ...current, ...changes };
+  };
+}
+
 export function setupCreateDocumentEndpoint(doc: Document) {
   fetchMock.post("path:/api/document", doc);
 }
@@ -52,4 +71,8 @@ export function setupPublicDocumentErrorEndpoint(
   { status }: { status: number },
 ) {
   fetchMock.get(`path:/api/public/document/${uuid}`, { status });
+}
+
+export function setupCopyDocumentEndpoint(id: DocumentId, copy: Document) {
+  fetchMock.post(`path:/api/document/${id}/copy`, copy);
 }
