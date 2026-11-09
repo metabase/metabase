@@ -110,6 +110,11 @@
          :args [:map {:closed true}] :scope "agent:sql:create"}
         (fn [_ _] {:output "ok"})))
 
+(def ^:private object-tool
+  (tool {:name "build" :description "Takes an object argument."
+         :args [:map {:closed true} [:query :map]]}
+        (fn [{:keys [query]} _] {:output (str "keys: " (pr-str (keys query)))})))
+
 (def ^:private memory-tool
   (tool {:name "memory" :description "Reads the memory atom out of ctx."
          :args [:map {:closed true}]}
@@ -136,7 +141,7 @@
 
 (def ^:private entries
   (tools/entries [happy-tool recoverable-tool unrecoverable-tool silent-unrecoverable-tool
-                  crashing-tool jvm-failing-tool writing-tool bad-shape-tool scoped-tool memory-tool
+                  crashing-tool jvm-failing-tool writing-tool bad-shape-tool scoped-tool memory-tool object-tool
                   multi-item-tool]))
 
 (def ^:private all-tool-names
@@ -195,6 +200,21 @@
     (is (= {:class :validation :code :invalid-arguments} (:error outcome)))
     (is (= "Invalid tool arguments: `m` is not a supported argument. `n` is required."
            (:output outcome)))))
+
+(deftest ^:parallel malformed-json-text-argument-test
+  (testing "quoted JSON text that does not parse: the message says it was quoted and where it breaks"
+    (is (= (str "Invalid tool arguments: `query` was sent as a string of JSON text, and the text is not valid "
+                "JSON: unexpected \"]\" at line 1, column 26. Fix the JSON and send the value itself, not a quoted "
+                "string.")
+           (:output (invoke "build" {:query "{\"stages\": [{\"limit\": 1}]]}"})))))
+  (testing "text that ends early"
+    (is (= (str "Invalid tool arguments: `query` was sent as a string of JSON text, and the text is not valid "
+                "JSON: the text ends before the JSON is complete. Fix the JSON and send the value itself, not a "
+                "quoted string.")
+           (:output (invoke "build" {:query "{\"stages\": [1"})))))
+  (testing "a plain string keeps the type message"
+    (is (= "Invalid tool arguments: `query` invalid type; received a string."
+           (:output (invoke "build" {:query "orders"}))))))
 
 ;;; ------------------------------------------------ Recoverable ---------------------------------------------------
 
