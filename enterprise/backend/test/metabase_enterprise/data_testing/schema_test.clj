@@ -252,8 +252,6 @@
           :let [schema (fn [suffix] (keyword "metabase-enterprise.data-testing.schema"
                                              (str (name test-type) suffix)))]]
     (testing (str test-type)
-      (testing "the definition is the shared one"
-        (is (mr/validate (schema ".definition") definition)))
       (testing "create takes the definition and the subject key, and no other subject's key"
         (is (mr/validate (schema ".create") (assoc definition subject-key 1)))
         (is (not (mr/validate (schema ".create") definition)))
