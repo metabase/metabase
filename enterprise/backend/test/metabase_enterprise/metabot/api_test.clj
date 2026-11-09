@@ -9,8 +9,10 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -57,6 +59,53 @@
               ;; doesn't leak a stale "exceeded" verdict into other tests
               (finally
                 (ee.metabot.usage/clear-limit-cache!)))))))))
+
+(defn- sse-events
+  "The decoded events of the SSE `response` of the agent-streaming endpoint."
+  [response]
+  (->> (str/split-lines response)
+       (filter #(str/starts-with? % "data: "))
+       (remove #(= "data: [DONE]" %))
+       (map #(json/decode+kw (subs % 6)))))
+
+(deftest agent-streaming-group-and-tenant-quota-exceeded-test
+  (testing "POST /api/metabot/agent-streaming short-circuits with the quota message for a user over a group or tenant limit"
+    (mt/with-premium-features #{:ai-controls :tenants}
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider
+                                         use-tenants                           true]
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+          (with-redefs [config/is-dev? true]
+            (mt/with-temp [:model/User              {internal-user-id :id} {}
+                           :model/MetabotGroupLimit _                      {:group_id  (u/the-id (perms/all-users-group))
+                                                                            :max_usage 0}
+                           :model/Tenant            {tenant-id :id}        {}
+                           :model/User              {tenant-user-id :id}   {:tenant_id tenant-id}
+                           :model/MetabotInstanceLimit _                   {:tenant_id tenant-id :max_usage 0}]
+              (try
+                (doseq [[limit user-id] [["group" internal-user-id] ["tenant" tenant-user-id]]]
+                  (testing (str limit " limit")
+                    (ee.metabot.usage/clear-limit-cache!)
+                    (let [llm-called? (atom false)]
+                      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                                          (reset! llm-called? true)
+                                                                          (mut/mock-llm-response
+                                                                           [{:type :text :text "should not be reached"}]))]
+                        (mt/with-model-cleanup [:model/MetabotMessage
+                                                [:model/MetabotConversation :created_at]]
+                          (let [response (mt/user-http-request user-id :post 202 "metabot/agent-streaming"
+                                                               {:message         "Hi"
+                                                                :context         {}
+                                                                :conversation_id (str (random-uuid))
+                                                                :history         []
+                                                                :state           {}})
+                                error-event (first (filter #(= "error" (:type %)) (sse-events response)))]
+                            (is (false? @llm-called?))
+                            (is (= (ee.metabot.settings/metabot-quota-reached-message)
+                                   (:errorText error-event)))
+                            (is (str/includes? response "ai_usage_limit_reached"))))))))
+                (finally
+                  ;; Do not leak a cached "exceeded" result into other tests.
+                  (ee.metabot.usage/clear-limit-cache!))))))))))
 
 (deftest usage-get-returns-token-status-usage-test
   (mt/with-premium-features #{:metabot-v3}
