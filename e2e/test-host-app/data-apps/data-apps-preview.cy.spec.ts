@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   DATA_APP_DEV_DIAGNOSTICS_PATH,
@@ -78,60 +79,176 @@ describe("Embedding SDK: data-app dev preview", () => {
         return apiKey;
       });
 
-    it("keeps the API key and the instance out of the page", () => {
-      const mbOrigin = new URL(String(Cypress.config("baseUrl"))).origin;
+    describe("against app code that escaped the sandbox", () => {
+      const INSTANCE_ORIGIN = new URL(String(Cypress.config("baseUrl"))).origin;
 
-      readApiKey().then((apiKey) => {
-        cy.request({ url: CLIENT_HOST, headers: { Accept: "text/html" } }).then(
-          ({ body, headers }) => {
-            expect(
-              String(headers["content-security-policy"]).includes(mbOrigin),
-              "the CSP lets the page reach the instance",
-            ).to.equal(false);
+      const FORGED_CREDENTIALS = {
+        "Content-Type": "application/json",
+        "X-Metabase-Client": "embedding-sdk-react",
+        "X-Metabase-Session": "forged",
+        "X-Api-Key": "mb_forged",
+        Authorization: "Bearer forged",
+      };
 
-            const entry = String(body).match(
-              /src="([^"]*data-app-dev-entry[^"]*)"/,
-            )?.[1];
-            expect(entry, "the dev entry module").to.be.a("string");
+      // The query strings of past Vite CVEs that read files Vite refuses to serve.
+      const ENV_FILE_REQUESTS = [
+        "/.env.local",
+        "/.env.local?raw",
+        "/.env.local?raw??",
+        "/.env.local?import&raw??",
+        "/.env.local?inline&import",
+        "/.env.local?url",
+      ];
 
-            cy.request(`${CLIENT_HOST}${entry}`).then((module) => {
-              expect(
-                String(module.body).includes(apiKey),
-                "the dev entry module holds the API key",
-              ).to.equal(false);
-            });
-          },
+      const MAX_MODULES = 200;
+
+      const escapedAdmin = (email: string) => ({
+        first_name: "Escaped",
+        last_name: "Admin",
+        email,
+        password: "Escaped-admin-1234!",
+        user_group_memberships: [
+          { id: USER_GROUPS.ALL_USERS_GROUP, is_group_manager: false },
+          { id: USER_GROUPS.ADMIN_GROUP, is_group_manager: false },
+        ],
+      });
+
+      // The preview page's own window is outside the sandbox's membrane, with the page's origin, cookies and CSP: what
+      // app code that escaped the membrane runs with. The guards the sandbox puts on that window still apply.
+      const inPreviewPage = <T>(
+        attack: (win: Cypress.AUTWindow) => Promise<T>,
+      ) => cy.window().then({ timeout: TIMEOUT_MS }, attack);
+
+      const importedPaths = (source: string) =>
+        Array.from(
+          source.matchAll(
+            /(?:\bsrc=|\bfrom\s*|\bimport\s*\(?\s*)["'](\/[^"']+)["']/g,
+          ),
+          (match) => match[1],
         );
+
+      /** The page and every module it imports from the dev server, as the page can read them. */
+      const readServedModules = async (win: Cypress.AUTWindow) => {
+        const page = await (
+          await win.fetch("/", { headers: { Accept: "text/html" } })
+        ).text();
+        const sources = [page];
+        const queue = importedPaths(page);
+        const seen = new Set<string>();
+
+        while (queue.length > 0 && seen.size < MAX_MODULES) {
+          const path = queue.shift();
+
+          if (path !== undefined && !seen.has(path)) {
+            seen.add(path);
+            const source = await (await win.fetch(path)).text();
+            sources.push(source);
+            queue.push(...importedPaths(source));
+          }
+        }
+
+        return sources;
+      };
+
+      it("finds no API key in the page, the modules the dev server serves it, or .env.local", () => {
+        visitDataAppDevApp(CLIENT_HOST);
+
+        readApiKey().then((apiKey) => {
+          inPreviewPage(async (win) => {
+            const modules = await readServedModules(win);
+            const envFiles = await Promise.all(
+              ENV_FILE_REQUESTS.map((path) =>
+                win.fetch(path).then((response) => response.text()),
+              ),
+            );
+
+            return {
+              moduleCount: modules.length,
+              holdsKey: [...modules, ...envFiles].some((text) =>
+                text.includes(apiKey),
+              ),
+            };
+          }).then(({ moduleCount, holdsKey }) => {
+            expect(moduleCount, "modules read").to.be.greaterThan(3);
+            expect(
+              holdsKey,
+              "something the page can read holds the key",
+            ).to.equal(false);
+          });
+        });
+      });
+
+      it("gets only the data-app endpoints through the dev server, whatever credentials it claims", () => {
+        visitDataAppDevApp(CLIENT_HOST);
+
+        inPreviewPage(async (win) => {
+          const send = (method: string, path: string, body?: object) =>
+            win.fetch(path, {
+              method,
+              headers: FORGED_CREDENTIALS,
+              body: body && JSON.stringify(body),
+            });
+
+          const currentUser: unknown = await (
+            await send("GET", "/api/user/current")
+          ).json();
+          const createAdmin = await send(
+            "POST",
+            "/api/user",
+            escapedAdmin(`escaped-relay-${Date.now()}@example.com`),
+          );
+          const createApiKey = await send("POST", "/api/api-key", {
+            name: "escaped",
+            group_id: USER_GROUPS.ADMIN_GROUP,
+          });
+
+          return {
+            currentUser,
+            createAdmin: createAdmin.status,
+            createApiKey: createApiKey.status,
+          };
+        }).then(({ currentUser, createAdmin, createApiKey }) => {
+          // The key's user, named after the key: neither the forged credentials nor a session counted.
+          expect(currentUser)
+            .to.have.property("first_name")
+            .that.matches(/^data-app-dev-e2e-/);
+          expect(createAdmin, "POST /api/user").to.equal(403);
+          expect(createApiKey, "POST /api/api-key").to.equal(403);
+        });
+      });
+
+      it("can't call the instance directly, which would send the developer's session", () => {
+        // Cypress strips `connect-src` from every page it tests, so the browser can't refuse such a call here: the
+        // policy it refuses it by is checked instead.
+        cy.request({ url: CLIENT_HOST, headers: { Accept: "text/html" } })
+          .its("headers.content-security-policy")
+          .then((header) => {
+            const csp = String(header);
+
+            expect(
+              csp.match(/connect-src([^;]*)/)?.[1],
+              "connect-src",
+            ).not.to.include(INSTANCE_ORIGIN);
+            expect(csp, "the page's CSP")
+              .to.include("form-action 'none'")
+              .and.include("frame-src 'none'");
+          });
       });
     });
 
-    it("signs the page's API requests with the key, confined to the data-app endpoints", () => {
-      // The browser's Metabase session cookie also goes to the dev server: cookies
-      // ignore ports. The key's user, named after the key, shows which one counted.
-      cy.request(`${CLIENT_HOST}/api/user/current`)
-        .its("body.first_name")
-        .should("match", /^data-app-dev-e2e-/);
-
-      // Not a data-app endpoint, whichever client the caller claims to be.
-      cy.request({
-        method: "POST",
-        url: `${CLIENT_HOST}/api/user`,
-        headers: { "X-Metabase-Client": "embedding-sdk-react" },
-        body: { first_name: "Relayed", email: "relayed@example.com" },
-        failOnStatusCode: false,
-      })
-        .its("status")
-        .should("eq", 403);
-    });
-
     it("refuses requests from other pages, which it would otherwise sign with the key", () => {
-      cy.request({
-        url: `${CLIENT_HOST}/api/user/current`,
-        headers: { Origin: "https://attacker.example" },
-        failOnStatusCode: false,
-      })
-        .its("status")
-        .should("eq", 404);
+      for (const headers of [
+        { Origin: "https://attacker.example" },
+        { "Sec-Fetch-Site": "cross-site" },
+      ]) {
+        cy.request({
+          url: `${CLIENT_HOST}/api/user/current`,
+          headers,
+          failOnStatusCode: false,
+        })
+          .its("status")
+          .should("eq", 404);
+      }
     });
   });
 
