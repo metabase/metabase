@@ -15,6 +15,8 @@ import type {
   CardType,
   CollectionId,
   PythonTransformTableAliases,
+  Transform,
+  TransformId,
   TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
@@ -1992,8 +1994,21 @@ LIMIT
           name: "Transform In Collection",
           targetTable: "deleted_transform_table",
           collectionId: collection.body.id,
+        }).then(({ body: transform }) => {
+          runAndWaitForOutputTable(transform.id);
         });
       });
+      H.createTransformCollection({ name: "Delete Tables Too" }).then(
+        (collection) => {
+          createMbqlTransform({
+            name: "Transform With Table",
+            targetTable: TARGET_TABLE_2,
+            collectionId: collection.body.id,
+          }).then(({ body: transform }) => {
+            runAndWaitForOutputTable(transform.id);
+          });
+        },
+      );
 
       visitTransformListPage();
 
@@ -2071,6 +2086,7 @@ LIMIT
       H.expectUnstructuredSnowplowEvent({
         event: "transform_folder_deleted",
         event_detail: "transforms_only",
+        triggered_from: "transform_list_page",
         result: "success",
       });
 
@@ -2080,6 +2096,56 @@ LIMIT
         cy.findByText("Delete Me").should("not.exist");
         cy.findByText("Transform In Collection").should("not.exist");
       });
+
+      cy.log(
+        "make sure the output table of the deleted transform still exists",
+      );
+      visitTableQuestion({ targetTable: "deleted_transform_table" });
+      H.assertQueryBuilderRowCount(3);
+
+      cy.log("delete the other collection together with the output tables");
+      visitTransformListPage();
+      getTransformsList()
+        .findByText("Delete Tables Too")
+        .closest('[role="row"]')
+        .findByRole("button", { name: "Collection options" })
+        .click();
+      H.popover().findByText("Delete").click();
+
+      H.modal().within(() => {
+        cy.findByText('Delete "Delete Tables Too"?').should("be.visible");
+        cy.findByLabelText("Delete the transforms and their tables").click();
+        cy.findByText("These transforms and tables will be deleted:").should(
+          "be.visible",
+        );
+        cy.findByText("Transform With Table").should("be.visible");
+        cy.findByText(`(${TARGET_SCHEMA}.${TARGET_TABLE_2})`).should(
+          "be.visible",
+        );
+        cy.button("Delete transforms and tables").click();
+      });
+
+      cy.wait("@deleteTransformsFolder")
+        .its("request.url")
+        .should("contain", "delete-tables=true");
+
+      H.undoToast()
+        .findByText('Deleted "Delete Tables Too", 1 transform and its table')
+        .should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_folder_deleted",
+        event_detail: "transforms_and_tables",
+        triggered_from: "transform_list_page",
+        result: "success",
+      });
+      getTransformsList().within(() => {
+        cy.findByText("Delete Tables Too").should("not.exist");
+        cy.findByText("Transform With Table").should("not.exist");
+      });
+
+      cy.log("make sure the output table is deleted");
+      visitTableQuestion({ targetTable: TARGET_TABLE_2 });
+      assertTableDoesNotExistError({ targetTable: TARGET_TABLE_2 });
     });
   });
 
@@ -3496,6 +3562,18 @@ function pythonSourceTables(
       schema: TARGET_SCHEMA,
     },
   ];
+}
+
+/**
+ * Runs the transform and waits until its output table is synced: the run reports "succeeded" before the sync
+ * sets `target_table_id`, which the folder delete dialog reads.
+ */
+function runAndWaitForOutputTable(transformId: TransformId) {
+  H.runTransformAndWaitForSuccess(transformId);
+  H.retryRequest(
+    () => cy.request<Transform>("GET", `/api/transform/${transformId}`),
+    ({ body }) => body.target_table_id != null,
+  );
 }
 
 function visitTableQuestion({
