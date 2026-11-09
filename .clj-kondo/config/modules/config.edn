@@ -692,7 +692,6 @@
            api-scope
            api.eid-translation
            collections
-           data-apps
            documents
            events
            lib.schema
@@ -3292,7 +3291,6 @@
            metabase.user-key-value.init}
    :uses #{api
            api-scope
-           data-apps
            lib.schema
            util
            util.config}}

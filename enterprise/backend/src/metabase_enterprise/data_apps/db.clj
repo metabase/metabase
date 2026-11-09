@@ -181,16 +181,6 @@
   (set/difference card-ids (when collection-id
                              (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
 
-(mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
-  "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."
-  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
-  (set/difference card-ids (t2/select-fn-set :id [:model/Card :report_card.id]
-                                             {:join  [:collection [:= :collection.id :report_card.collection_id]]
-                                              :where [:and
-                                                      [:in :report_card.id card-ids]
-                                                      [:= :report_card.type "metric"]
-                                                      [:= :collection.type collection/library-metrics-collection-type]]})))
-
 (defn destination-database-ids
   "The IDs among `database-ids` of the databases that are routing destinations."
   [database-ids]
