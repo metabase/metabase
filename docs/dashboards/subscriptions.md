@@ -1,5 +1,6 @@
 ---
 title: Dashboard subscriptions
+summary: Email or Slack a dashboard's results on a schedule, even to people without a Metabase account.
 redirect_from:
   - /docs/latest/users-guide/dashboard-subscriptions
   - /docs/latest/enterprise-guide/dashboards-subscriptions

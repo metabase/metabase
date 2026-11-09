@@ -11,10 +11,8 @@ const DEFAULT_MODAL_SPACING = "xl";
 import Styles from "./Modal.module.css";
 
 export const modalOverrides = {
+  // `Modal` is built from the `Root` parts, so its defaults go on `ModalRoot`
   Modal: Modal.extend({
-    defaultProps: {
-      padding: DEFAULT_MODAL_SPACING,
-    },
     classNames: {
       root: Styles.root,
       title: Styles.title,

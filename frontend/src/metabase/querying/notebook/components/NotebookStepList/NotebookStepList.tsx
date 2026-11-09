@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
+import { hasPrimarySource } from "metabase/querying/common/utils";
 import { getQuestionSteps } from "metabase/querying/notebook/utils/steps";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
@@ -19,7 +20,7 @@ interface NotebookStepListProps {
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   const query = question.query();
-  const isNew = !readOnly && !Lib.sourceTableOrCardId(query);
+  const isNew = !readOnly && !hasPrimarySource(query);
 
   if (isNew) {
     return {

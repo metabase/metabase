@@ -1,5 +1,6 @@
 ---
 title: How to read the server logs
+summary: How to read a Metabase server log, field by field.
 ---
 
 # How to read the server logs

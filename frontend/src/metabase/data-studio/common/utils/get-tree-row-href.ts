@@ -21,8 +21,6 @@ export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
       return Urls.dataStudioSnippet(data.id);
     case "action":
       return Urls.dataStudioAction(data.id);
-    case "dashboard":
-      return Urls.dataStudioDashboard(data.id);
     default:
       return null;
   }

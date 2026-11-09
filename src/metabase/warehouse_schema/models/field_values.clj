@@ -32,9 +32,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -691,55 +691,31 @@
 ;;; |                                              Serialization                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod serdes/entity-id "FieldValues" [_ _] nil)
-
-(defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
-  (conj (serdes/generate-path "Field" {:id field_id})
-        {:model "FieldValues" :id "0"}))
-
-(defmethod serdes/load-find-local "FieldValues" [path]
-  ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
-  (let [field (serdes/load-find-local (pop path))]
-    ;; We only serialize the full values, see [[metabase.warehouse-schema.models.field/with-values]]
-    (get-latest-full-field-values (:id field))))
-
-(defn- field-path->field-ref [field-values-path]
-  (let [[db schema table field :as field-ref] (map :id (pop field-values-path))]
-    (if field
-      field-ref
-      ;; It's too short, so no schema. Shift them over and add a nil schema.
-      [db nil schema table])))
-
-(defmethod serdes/make-spec "FieldValues" [_model-name _opts]
-  {:schema    ::warehouse-schema.schema/external-field-values
-   :copy      [:values :human_readable_values :has_more_values :hash_key]
-   :skip [:last_used_at]
-   :transform {:type         (serdes/kw)
-               :field_id     {::serdes/fk true
-                              :export     #(serdes/*export-field-fk* %)
-                              :import-with-context (fn [current _ _]
-                                                     (let [field-ref (field-path->field-ref (serdes/path current))]
-                                                       (serdes/*import-field-fk* field-ref)))}}
-   :defaults {:has_more_values false}})
-
-(defmethod serdes/load-update! "FieldValues" [_ ingested local]
-  ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
-  ;; This drops those keys from the incoming FieldValues iff they match the local one. If they are actually different,
-  ;; this preserves the new value so the normal error is produced.
-  (let [ingested (cond-> ingested
-                   (= (:type ingested)     (:type local))     (dissoc :type)
-                   (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
-    ((get-method serdes/load-update! "") "FieldValues" ingested local)))
-
-(defmethod serdes/ingested-path "FieldValues" [_ {:keys [field_id]}]
-  (conj (serdes/field->path field_id) {:model "FieldValues" :id "0"}))
-
 (def ^:private field-values-slug "___fieldvalues")
 
-(defmethod serdes/storage-path "FieldValues" [fv _]
-  ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
-  ;; don't have their own directories.
-  (let [hierarchy    (serdes/path fv)
-        field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
-    (update field-path (dec (count field-path))
-            (fn [segment] (assoc segment :suffix field-values-slug)))))
+(defmethod serialization/spec :model/FieldValues [_]
+  {:schema    ::warehouse-schema.schema/external-field-values
+   :identity  [:field_id :type]
+   :copy      [:values :human_readable_values :has_more_values :hash_key]
+   :skip      [:last_used_at]
+   :transform {:type     serialization/keyword-transform
+               :field_id serialization/field-transform}
+   :defaults  {:has_more_values false}})
+
+(defmethod serialization/storage-paths :model/FieldValues [_ entities _]
+  (mapv (fn [fv]
+          ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
+          ;; don't have their own directories.
+          (let [field-path (serialization/storage-path-prefixes (:field_id fv))]
+            (update field-path (dec (count field-path))
+                    (fn [segment] (assoc segment :suffix field-values-slug)))))
+        entities))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/FieldValues [_ items]
+  (mapv (fn [{:keys [local] :as item}]
+          (cond-> item
+            (and local (= (get-in item [:row :type]) (:type local)))         (update :row dissoc :type)
+            (and local (= (get-in item [:row :hash_key]) (:hash_key local))) (update :row dissoc :hash_key)))
+        items))

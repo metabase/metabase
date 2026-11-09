@@ -90,6 +90,30 @@
           (finally
             (t2/delete! :model/TransformTest :id (:id created))))))))
 
+(deftest rows-cells-keep-request-values-test
+  (with-transforms-enabled
+    (mt/with-temp [:model/Transform {transform-id :id} (transform)]
+      (let [cells   {"ID" 1 "CODE" "0001" "FLAG" "true" "AMOUNT" "1.50" "RATE" 1.5 "ACTIVE" false "NOTE" nil}
+            columns (mapv (fn [column] {:name column :cast_type "VARCHAR"}) (keys cells))
+            created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
+                                          {:transform_id transform-id
+                                           :name         "Cell values"
+                                           :inputs       [(assoc (first inputs) :columns columns :rows [cells])]
+                                           :expectations [{:type    "equals"
+                                                           :name    "cells as written"
+                                                           :format  "rows"
+                                                           :columns columns
+                                                           :rows    [cells]}]})]
+        (try
+          (testing "strings that read as numbers or booleans stay strings, and other values keep their type"
+            (let [expected (update-keys cells keyword)]
+              (is (= [expected] (-> created :inputs first :rows)))
+              (is (= [expected] (-> created :expectations first :rows)))
+              (is (= [expected] (-> (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" (:id created)))
+                                    :inputs first :rows)))))
+          (finally
+            (t2/delete! :model/TransformTest :id (:id created))))))))
+
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (with-transforms-enabled
     (mt/with-temp [:model/Transform {transform-id :id} (transform)]
@@ -124,6 +148,68 @@
             (is (=? {:name "Renamed"}
                     (mt/user-http-request :crowberto :put 200 (str "ee/transform-test/" test-id)
                                           {:name "Renamed"})))))))))
+
+(deftest no-expectations-test
+  (mt/test-driver :h2
+    (with-transforms-enabled
+      (mt/with-temp [:model/Transform     {transform-id :id} (transform)
+                     :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                              :inputs       inputs
+                                                              :expectations expectations}
+                     :model/TransformTest {empty-id :id}     {:transform_id transform-id
+                                                              :inputs       inputs
+                                                              :expectations []}]
+        (let [refused (fn [response]
+                        (is (= "transform-test.no-expectations" (:error-code response))))]
+          (testing "create refuses a test with no expectations"
+            (refused (mt/user-http-request :crowberto :post 400 "ee/transform-test"
+                                           {:transform_id transform-id :name "t" :inputs inputs :expectations []})))
+          (testing "update refuses to remove every expectation"
+            (refused (mt/user-http-request :crowberto :put 400 (str "ee/transform-test/" test-id)
+                                           {:expectations []})))
+          (testing "an unsaved run refuses a test with no expectations"
+            (refused (mt/user-http-request :crowberto :post 400 "ee/transform-test/run"
+                                           {:transform (assoc (transform) :name "t")
+                                            :test      {:name "t" :inputs inputs :expectations []}})))
+          (testing "a saved test with no expectations can still be read"
+            (is (=? {:id empty-id :expectations []}
+                    (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" empty-id)))))
+          (testing "a saved test with no expectations is refused when it runs"
+            (refused (mt/user-http-request :crowberto :post 400 (format "ee/transform-test/%d/run" empty-id)))))))))
+
+(deftest no-expectations-refusal-writes-nothing-test
+  (mt/test-driver :h2
+    (with-transforms-enabled
+      (mt/with-temp [:model/Transform     {transform-id :id} {:source {:type  :query
+                                                                       :query (lib/native-query (mt/metadata-provider)
+                                                                                                "SELECT ID FROM PUBLIC.PEOPLE")}
+                                                              :target {:type     "table"
+                                                                       :schema   "PUBLIC"
+                                                                       :name     "PEOPLE_SUMMARY"
+                                                                       :database (mt/id)}}
+                     :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                              :inputs       inputs
+                                                              :expectations expectations}
+                     :model/TransformTest {empty-id :id}     {:transform_id transform-id
+                                                              :inputs       inputs
+                                                              :expectations []}]
+        (try
+          (testing "a test of the same transform with an expectation runs and passes"
+            (is (= "passed" (:status (mt/user-http-request :crowberto :post 200 (format "ee/transform-test/%d/run" test-id))))))
+          (testing "a refused create stores no test"
+            (let [before (t2/count :model/TransformTest :transform_id transform-id)]
+              (mt/user-http-request :crowberto :post "ee/transform-test"
+                                    {:transform_id transform-id :name "no expectations" :inputs inputs :expectations []})
+              (is (= before (t2/count :model/TransformTest :transform_id transform-id)))))
+          (testing "a refused update keeps the stored expectations"
+            (mt/user-http-request :crowberto :put (str "ee/transform-test/" test-id) {:expectations []})
+            (is (= ["no rows"] (mapv :name (t2/select-one-fn :expectations :model/TransformTest :id test-id)))))
+          (testing "a refused saved run records no run"
+            (let [before (t2/count :model/TransformTestRun :transform_test_id empty-id)]
+              (mt/user-http-request :crowberto :post (format "ee/transform-test/%d/run" empty-id))
+              (is (= before (t2/count :model/TransformTestRun :transform_test_id empty-id)))))
+          (finally
+            (t2/delete! :model/TransformTest :transform_id transform-id :id [:not-in [test-id empty-id]])))))))
 
 (deftest validation-test
   (with-transforms-enabled

@@ -17,6 +17,8 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   DatabaseFeature,
   GroupTableAccessPolicy,
@@ -31,7 +33,6 @@ import {
 import {
   PEOPLE,
   PEOPLE_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -53,13 +54,11 @@ const TEST_CARD = createMockCard({
   name: "sandbox question",
   can_write: true,
   collection_id: null,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-  },
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+    }),
+  ),
 });
 
 const setup = async ({
@@ -136,10 +135,6 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup();
 
         expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
-
-        expect(
           screen.getByText("Filter by a column in the table"),
         ).toBeInTheDocument();
 
@@ -181,10 +176,6 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup({ features: [] });
 
         expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
-
-        expect(
           screen.queryByText("Filter by a column in the table"),
         ).not.toBeInTheDocument();
 
@@ -224,10 +215,6 @@ describe("EditSandboxingModal", () => {
 
       it("should allow creating a new policy based on a card", async () => {
         const { onSave } = await setup({ shouldMockQuestions: true });
-
-        expect(
-          screen.getByText("Configure row and column security for this table"),
-        ).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
@@ -279,10 +266,6 @@ describe("EditSandboxingModal", () => {
           },
         },
       });
-
-      expect(
-        screen.getByText("Configure row and column security for this table"),
-      ).toBeInTheDocument();
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 

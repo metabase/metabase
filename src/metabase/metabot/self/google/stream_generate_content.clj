@@ -204,7 +204,8 @@
       (and fdecls tool_choice)
       (assoc :toolConfig {:functionCallingConfig {:mode (case (name tool_choice)
                                                           "auto"     "AUTO"
-                                                          "required" "ANY")}})
+                                                          "required" "ANY"
+                                                          "none"     "NONE")}})
 
       ;; Structured output: force a call to one tool that carries the schema. The Claude and Chat Completions adapters
       ;; do the same, thus the shared :tool-input extraction in call-llm-structured works.

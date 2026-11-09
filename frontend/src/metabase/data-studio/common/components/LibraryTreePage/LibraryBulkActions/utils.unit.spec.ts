@@ -41,9 +41,6 @@ describe("selectedItemToMovable", () => {
       model: "snippet",
       id: 3,
     });
-    expect(
-      selectedItemToMovable(item("dashboard", 6, 10, "dashboards")),
-    ).toEqual({ model: "dashboard", id: 6 });
   });
 
   it("distinguishes snippet folders from data/metrics collections", () => {
@@ -69,9 +66,6 @@ describe("selectedItemToArchivable", () => {
       id: 3,
       can_write: true,
     });
-    expect(
-      selectedItemToArchivable(item("dashboard", 6, 10, "dashboards")),
-    ).toEqual({ model: "dashboard", id: 6, can_write: true });
     expect(
       selectedItemToArchivable(item("collection", 4, 10, "metrics")),
     ).toEqual({ model: "collection", id: 4, can_write: true });

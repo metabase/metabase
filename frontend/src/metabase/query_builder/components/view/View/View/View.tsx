@@ -19,6 +19,7 @@ import {
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
+import { hasPrimarySource } from "metabase/querying/common/utils";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { connect, useDispatch } from "metabase/redux";
 import { updateQuestionCard } from "metabase/redux/cards";
@@ -181,7 +182,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     const query = question.query();
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
-    const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
+    const isNewQuestion = !isNative && !hasPrimarySource(query);
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
 

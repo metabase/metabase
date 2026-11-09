@@ -1,12 +1,10 @@
 import { assoc, dissoc } from "icepick";
 
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { newQuestion, question, table } from "./questions";
 
@@ -20,13 +18,9 @@ const orders_raw_card = {
   display: "table",
   visualization_settings: {},
   can_write: true,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
+  dataset_query: Lib.toLegacyQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
 };
 
 describe("urls > questions", () => {

@@ -1,5 +1,6 @@
 ---
 title: "Limitations of Metabase Cloud"
+summary: What Metabase Cloud doesn't support, from community database drivers and custom certificates to application database access and query timeouts.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

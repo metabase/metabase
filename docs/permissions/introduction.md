@@ -1,5 +1,6 @@
 ---
 title: Permissions introduction
+summary: How Metabase permissions work, and which tools to use to make sure people only see the data they're supposed to.
 redirect_from:
   - /docs/latest/administration-guide/05-setting-permissions
 ---

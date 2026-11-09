@@ -1,5 +1,6 @@
 ---
 title: Driver interface changelog
+summary: Changes to the Metabase driver interface, listed by release.
 ---
 
 # Driver Interface Changelog
@@ -13,6 +14,11 @@ title: Driver interface changelog
 
 - `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
   whitespace as well as case.
+
+- The admin connection removed in 0.65.0 is back, for workspace provisioning:
+  `metabase.driver.connection/with-admin-connection`, `metabase.driver.connection/database-admin-details`, the
+  `:admin` connection type, `metabase.driver.common/admin-connection-option` and
+  `metabase.driver.util/fields-hidden-for-admin-connection`, and a Database's `:admin_details`.
 
 ## Metabase 0.65.3
 

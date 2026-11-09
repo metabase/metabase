@@ -35,6 +35,7 @@ import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   type DashCardDataMap,
@@ -51,19 +52,15 @@ import {
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
-  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockDatetimeColumn,
   createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
-  createMockNativeCard,
   createMockNumericColumn,
   createMockParameter,
   createMockPlaceholderDashboardCard,
-  createMockStructuredDatasetQuery,
-  createMockTable,
   createMockTextDashboardCard,
   createMockTimeline,
   createMockTimelineEvent,
@@ -82,8 +79,16 @@ import { DashCard } from "./DashCard";
 registerVisualizations();
 registerDashboardVisualizations();
 
-const TEST_DATABASE_ID = 1;
-const TEST_TABLE_ID = 2;
+const ORDERS_QUERY = Lib.toJsQuery(
+  Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+);
+
+const NATIVE_QUERY = Lib.toJsQuery(
+  Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+    query: "SELECT * FROM ORDERS WHERE STATE = {{state}}",
+    templateTags: { state: { type: "text" } },
+  }),
+);
 
 const testDashboard = createMockDashboard();
 
@@ -179,14 +184,7 @@ function setup({
     }),
     ...(withMetadata && {
       entities: createMockEntitiesState({
-        databases: [
-          createMockDatabase({
-            id: TEST_DATABASE_ID,
-            tables: [
-              createMockTable({ id: TEST_TABLE_ID, db_id: TEST_DATABASE_ID }),
-            ],
-          }),
-        ],
+        databases: [createSampleDatabase()],
       }),
     }),
   });
@@ -751,7 +749,7 @@ describe("DashCard", () => {
           [firstCard.id]: createMockDataset({
             data: datasetData,
             json_query: {
-              ...createMockStructuredDatasetQuery(),
+              ...ORDERS_QUERY,
               parameters: [dashboardParameter],
             },
             status: "completed",
@@ -788,10 +786,8 @@ describe("DashCard", () => {
       createMockMetadata({ databases: [database] }),
     );
     const productsQuery = Lib.toJsQuery(
-      Lib.fromJsQuery(metadataProvider, {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: { "source-table": PRODUCTS_ID },
+      Lib.createTestQuery(metadataProvider, {
+        stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
       }),
     );
     const firstCard = createMockCard({
@@ -863,13 +859,7 @@ describe("DashCard", () => {
       id: 42,
       name: "Products by Category",
       display: "table",
-      dataset_query: {
-        type: "query",
-        database: TEST_DATABASE_ID,
-        query: {
-          "source-table": TEST_TABLE_ID,
-        },
-      },
+      dataset_query: ORDERS_QUERY,
     });
     const visualizerDashcard = createMockDashboardCard({
       card_id: sourceCard.id,
@@ -1166,13 +1156,7 @@ describe("DashCard", () => {
       it("should be visible for question cards", () => {
         const dashcard = createMockDashboardCard({
           card: createMockCard({
-            dataset_query: {
-              type: "query",
-              database: TEST_DATABASE_ID,
-              query: {
-                "source-table": TEST_TABLE_ID,
-              },
-            },
+            dataset_query: ORDERS_QUERY,
           }),
         });
         setup({
@@ -1192,13 +1176,7 @@ describe("DashCard", () => {
         const dashcard = createMockDashboardCard({
           card: createMockCard({
             can_write: false,
-            dataset_query: {
-              type: "query",
-              database: TEST_DATABASE_ID,
-              query: {
-                "source-table": TEST_TABLE_ID,
-              },
-            },
+            dataset_query: ORDERS_QUERY,
           }),
         });
         setup({
@@ -1244,8 +1222,10 @@ describe("DashCard", () => {
         slug: "state",
       });
 
-      const nativeCard = createMockNativeCard({
+      const nativeCard = createMockCard({
         name: "SQL Card",
+        query_type: "native",
+        dataset_query: NATIVE_QUERY,
         can_write: false,
       });
 
@@ -1303,8 +1283,10 @@ describe("DashCard", () => {
         slug: "state",
       });
 
-      const nativeCard = createMockNativeCard({
+      const nativeCard = createMockCard({
         name: "SQL Card",
+        query_type: "native",
+        dataset_query: NATIVE_QUERY,
         can_write: false,
       });
 

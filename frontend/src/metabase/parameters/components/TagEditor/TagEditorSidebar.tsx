@@ -10,8 +10,8 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatabaseId,
+  DatasetQuery,
   EmbeddingParameterVisibility,
-  NativeDatasetQuery,
   Parameter,
   ParameterId,
   ParameterValuesConfig,
@@ -35,7 +35,7 @@ interface TagEditorSidebarProps {
   question: Question;
   originalQuestion?: Question;
   sampleDatabaseId?: DatabaseId;
-  setDatasetQuery: (query: NativeDatasetQuery) => void;
+  setDatasetQuery: (query: DatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig: (
     tag: TemplateTag,

@@ -38,8 +38,10 @@
    ::errors/duplicate-input-table      400
    ::errors/unparseable-source         400
    ::errors/unremapped-reference       400
+   ::errors/no-expectations            400
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
+   ::errors/uncompilable-subject       422
    ::errors/transform-failed           422
    ::errors/setup-failed               422
    ::errors/expectation-failed         422
@@ -65,11 +67,13 @@
              ::errors/unused-inputs
              ::errors/duplicate-input-table
              ::errors/unparseable-source
-             ::errors/unremapped-reference}
+             ::errors/unremapped-reference
+             ::errors/no-expectations}
            (types-with-status 400))))
-  (testing "environment errors — the transform or its database prevents a run here — are 422"
+  (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
              ::errors/unsupported-driver
+             ::errors/uncompilable-subject
              ::errors/transform-failed
              ::errors/setup-failed
              ::errors/expectation-failed}
@@ -90,10 +94,10 @@
 
 ;;; --------------------------------------------- code ----------------------------------------------
 
+;; Written out rather than derived: a test that recomputed the spelling would agree with any rename, so a client's
+;; vocabulary could change silently.
 (def ^:private expected-code
-  "The wire spelling every declared error type must publish. Exhaustive over `all` by assertion
-  below. Written out rather than derived: a test that recomputed the prefix would agree with any
-  rename, and the point of this one is that a client's vocabulary cannot change silently."
+  "The wire spelling of every declared error type under the `transform-test` prefix."
   {::errors/unknown-column             "transform-test.unknown-column"
    ::errors/ambiguous-column           "transform-test.ambiguous-column"
    ::errors/missing-inputs             "transform-test.missing-inputs"
@@ -101,8 +105,10 @@
    ::errors/duplicate-input-table      "transform-test.duplicate-input-table"
    ::errors/unparseable-source         "transform-test.unparseable-source"
    ::errors/unremapped-reference       "transform-test.unremapped-reference"
+   ::errors/no-expectations            "transform-test.no-expectations"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
+   ::errors/uncompilable-subject       "transform-test.uncompilable-subject"
    ::errors/transform-failed           "transform-test.transform-failed"
    ::errors/setup-failed               "transform-test.setup-failed"
    ::errors/expectation-failed         "transform-test.expectation-failed"
@@ -113,12 +119,17 @@
     (is (= errors/all (set (keys expected-code)))))
   (doseq [[error-type expected] expected-code]
     (testing (str error-type)
-      (is (= expected (errors/code error-type))))))
+      (is (= expected (errors/code "transform-test" error-type))))))
+
+(deftest code-takes-the-endpoint-prefix-test
+  (testing "the same error type is published under the prefix of the endpoint that refused"
+    (is (= "card-test.missing-inputs" (errors/code "card-test" ::errors/missing-inputs)))
+    (is (= "transform-test.missing-inputs" (errors/code "transform-test" ::errors/missing-inputs)))))
 
 (deftest code-carries-no-clojure-namespace-test
   (testing "a code is the published vocabulary, not a var's source location"
     (doseq [error-type errors/all]
-      (let [c (errors/code error-type)]
+      (let [c (errors/code "transform-test" error-type)]
         (testing (str error-type)
           (is (string? c))
           (is (not (re-find #"/" c)))
@@ -128,11 +139,11 @@
   (testing "an undeclared type still yields a well-formed code"
     ;; Deliberately not routed through `checked`: this runs on the refusal path, where a throw
     ;; would turn a typed refusal into a 500 and lose the very code it was raised to carry.
-    (is (= "transform-test.not-a-real-error" (errors/code ::not-a-real-error)))))
+    (is (= "transform-test.not-a-real-error" (errors/code "transform-test" ::not-a-real-error)))))
 
 (deftest code-is-injective-test
   (testing "two error types cannot share a code"
-    (is (= (count errors/all) (count (into #{} (map errors/code) errors/all))))))
+    (is (= (count errors/all) (count (into #{} (map #(errors/code "transform-test" %)) errors/all))))))
 
 ;;; ----------------------------------------------- ex ----------------------------------------------
 

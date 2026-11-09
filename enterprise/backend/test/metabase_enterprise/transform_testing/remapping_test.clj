@@ -47,13 +47,10 @@
         (map (fn [{:keys [schema table]}] {:schema schema :name table}))
         (sql-tools/referenced-tables-raw :h2 sql)))
 
-(defn- transform-under-test
-  "A transform whose target name appears in none of the SQL below, so its own replacement entry
-  never interferes with an input's."
-  []
-  {:source {:type  :query
-            :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
-   :target {:type "table" :schema nil :name "UNREFERENCED_TARGET"}})
+(def ^:private output-tables
+  "An output whose name appears in none of the SQL below, so its own replacement entry never interferes with an
+  input's."
+  [{:schema nil :name "UNREFERENCED_TARGET"}])
 
 (defn- declared-input
   "A declared input of `:format :sql` standing in for the table `schema`.`table-name`."
@@ -67,7 +64,7 @@
   transform output is TMP_OUT."
   [inputs]
   (transform-testing.compile/table-replacements
-   (transform-under-test)
+   output-tables
    (into {} (map-indexed (fn [i input] [input (str "TMP_IN_" (inc i))])) inputs)
    "TMP_OUT" "PUBLIC"))
 
