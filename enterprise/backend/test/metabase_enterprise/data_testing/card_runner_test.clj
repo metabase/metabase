@@ -70,6 +70,34 @@
     [{:name "id" :cast_type int-type}
      {:name "name" :cast_type text-type}]))
 
+(defn- orders-rows
+  "An input standing in for the orders table with `rows` over the columns `column-names`, all integers.
+
+  Rows rather than SQL: two rows of SQL need a `UNION`, and SQL Server cannot create a temp table from one."
+  [column-names rows]
+  (let [[int-type] (data-testing.test-util/cast-types)]
+    {:table   (table-ref :orders)
+     :format  :rows
+     :columns (mapv (fn [column-name] {:name column-name :cast_type int-type}) column-names)
+     :rows    (mapv #(zipmap column-names %) rows)}))
+
+(defn- outcomes
+  "Each expectation of the run `result` by name: `:passed`, or the whole result of one that did not pass, so a failure
+  shows what the expectation found."
+  [result]
+  (into {}
+        (map (fn [{:keys [name status] :as expectation}]
+               [name (if (= :passed status) status (dissoc expectation :name))]))
+        (:expectations result)))
+
+(defn- count-type
+  "The `cast_type` of an expected `COUNT(*)` value: ClickHouse counts as `UInt64`, which shares no type with a signed
+  integer, so comparing it to one fails."
+  []
+  (if (= :clickhouse driver/*driver*)
+    "UInt64"
+    (first (data-testing.test-util/cast-types))))
+
 (defn- run-card-test!
   "Save `card`, a map of Card columns, and a CardTest of it with `inputs` and `expectations`, and run the test, started
   by crowberto."
@@ -148,34 +176,32 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [[int-type]  (data-testing.test-util/cast-types)
           orders      (table-query :orders)
-          two-orders  {:table (table-ref :orders) :format :sql
-                       :sql   "SELECT 1 AS id, 7 AS user_id UNION ALL SELECT 2 AS id, 8 AS user_id"}
+          two-orders  (orders-rows ["id" "user_id"] [[1 7] [2 8]])
           model       {:type          :model
                        :dataset_query (lib/with-fields orders [(column orders :orders :id)
                                                                (column orders :orders :user_id)])}
           metric      {:type          :metric
                        :dataset_query (lib/aggregate orders (lib/count))}]
       (testing "a model is the subject: its result set is the rows of its query"
-        (is (= :passed
-               (:status (run-card-test! model
-                                        [two-orders]
-                                        [{:type :equals :name "the input rows" :format :rows
-                                          :columns [{:name "id" :cast_type int-type} {:name "user_id" :cast_type int-type}]
-                                          :rows    [{"id" 1 "user_id" 7} {"id" 2 "user_id" 8}]}])))))
+        (is (= {"the input rows" :passed}
+               (outcomes (run-card-test! model
+                                         [two-orders]
+                                         [{:type :equals :name "the input rows" :format :rows
+                                           :columns [{:name "id" :cast_type int-type} {:name "user_id" :cast_type int-type}]
+                                           :rows    [{"id" 1 "user_id" 7} {"id" 2 "user_id" 8}]}])))))
       (testing "a metric is the subject: its result set is its aggregation"
-        (is (= :passed
-               (:status (run-card-test! metric
-                                        [two-orders]
-                                        [{:type :equals :name "two orders" :format :rows
-                                          :columns [{:name "count" :cast_type int-type}]
-                                          :rows    [{"count" 2}]}]))))))))
+        (is (= {"two orders" :passed}
+               (outcomes (run-card-test! metric
+                                         [two-orders]
+                                         [{:type :equals :name "two orders" :format :rows
+                                           :columns [{:name "count" :cast_type (count-type)}]
+                                           :rows    [{"count" 2}]}]))))))))
 
 (deftest card-on-a-persisted-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models :transforms/testing)
     (mt/with-persistence-enabled! [persist-models!]
       (let [orders     (table-query :orders)
-            two-orders {:table (table-ref :orders) :format :sql
-                        :sql   "SELECT 1 AS id, 7 AS user_id UNION ALL SELECT 2 AS id, 8 AS user_id"}
+            two-orders (orders-rows ["id" "user_id"] [[1 7] [2 8]])
             no-other   [{:type :empty :name "only the input rows" :sql "SELECT * FROM {{output}} WHERE id NOT IN (1, 2)"}]]
         (mt/with-temp [:model/Card {model-id :id} {:type          :model
                                                    :database_id   (mt/id)
@@ -198,8 +224,10 @@
                         (lib/aggregate (lib/count))
                         (lib/breakout (column orders :products :category)))}))
 
-(def ^:private two-orders-of-product-1
-  {:format :sql :sql "SELECT 1 AS id, 1 AS product_id UNION ALL SELECT 2 AS id, 1 AS product_id"})
+(defn- two-orders-of-product-1
+  "An input standing in for the orders table with two orders of product 1."
+  []
+  (orders-rows ["id" "product_id"] [[1 1] [2 1]]))
 
 (def ^:private every-product-column
   ;; An implicit join selects every column of the joined table.
@@ -208,17 +236,17 @@
 
 (deftest implicit-join-card-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-    (let [[int-type text-type] (data-testing.test-util/cast-types)
-          orders-input         (assoc two-orders-of-product-1 :table (table-ref :orders))
-          by-category          {:type :equals :name "two widgets" :format :rows
-                                :columns [{:name "PRODUCTS__via__PRODUCT_ID__CATEGORY" :cast_type text-type}
-                                          {:name "count" :cast_type int-type}]
-                                :rows    [{"PRODUCTS__via__PRODUCT_ID__CATEGORY" "Widget" "count" 2}]}]
+    (let [[_ text-type] (data-testing.test-util/cast-types)
+          orders-input  (two-orders-of-product-1)
+          by-category   {:type :equals :name "two widgets" :format :rows
+                         :columns [{:name "PRODUCTS__via__PRODUCT_ID__CATEGORY" :cast_type text-type}
+                                   {:name "count" :cast_type (count-type)}]
+                         :rows    [{"PRODUCTS__via__PRODUCT_ID__CATEGORY" "Widget" "count" 2}]}]
       (testing "passes with every column of the joined table in its input"
-        (is (= :passed
-               (:status (run-card-test! (category-count-card)
-                                        [orders-input {:table (table-ref :products) :format :sql :sql every-product-column}]
-                                        [by-category])))))
+        (is (= {"two widgets" :passed}
+               (outcomes (run-card-test! (category-count-card)
+                                         [orders-input {:table (table-ref :products) :format :sql :sql every-product-column}]
+                                         [by-category])))))
       (testing "an input with only the columns the card names cannot stand in for the joined table"
         (let [{:keys [error-type message]}
               (refusal #(run-card-test! (category-count-card)
@@ -234,7 +262,7 @@
                                              [orders-input {:table (table-ref :products) :format :sql :sql every-product-column}]
                                              [{:type :equals :name "by display name" :format :rows
                                                :columns [{:name "Category" :cast_type text-type}
-                                                         {:name "count" :cast_type int-type}]
+                                                         {:name "count" :cast_type (count-type)}]
                                                :rows    [{"Category" "Widget" "count" 2}]}]))]
           (is (= :error (:status expectation)))
           (is (= ::data-testing.errors/unknown-column (get-in expectation [:error :type])))
@@ -246,7 +274,7 @@
     (testing "Guard A: a card reading a table with no input is refused, naming that table, and no run is recorded"
       (let [runs-before                  (card-run-ids)
             {:keys [error-type message]} (refusal #(run-card-test! (category-count-card)
-                                                                   [(assoc two-orders-of-product-1 :table (table-ref :orders))]
+                                                                   [(two-orders-of-product-1)]
                                                                    [{:type :empty :name "e" :sql "SELECT * FROM {{output}}"}]))]
         (is (= ::data-testing.errors/missing-inputs error-type))
         (is (re-find (re-pattern (str "(?i)" (:name (table-ref :products)))) message))
