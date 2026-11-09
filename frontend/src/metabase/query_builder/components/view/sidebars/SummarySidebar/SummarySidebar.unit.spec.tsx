@@ -1,7 +1,6 @@
 import type * as DndKit from "@dnd-kit/core";
 import type { Active, ClientRect, DndContextProps, Over } from "@dnd-kit/core";
 import userEvent from "@testing-library/user-event";
-import type * as React from "react";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -31,31 +30,24 @@ import { getDimensionItems, getFieldSections, getValueItems } from "./utils";
 
 const STAGE_INDEX = -1;
 
-const mockDnd: Pick<DndContextProps, "onDragEnd"> & {
-  setActive?: (active: Active | null) => void;
-} = {};
+const mockDnd: Pick<
+  DndContextProps,
+  "onDragStart" | "onDragEnd" | "onDragCancel"
+> = {};
 
 jest.mock("@dnd-kit/core", () => {
   const actual = jest.requireActual<typeof DndKit>("@dnd-kit/core");
-  const { createContext, useContext, useState } =
-    jest.requireActual<typeof React>("react");
-  const ActiveContext = createContext<Active | null>(null);
   return {
     ...actual,
-    DndContext: ({ children, onDragEnd }: DndContextProps) => {
-      const [active, setActive] = useState<Active | null>(null);
-      mockDnd.onDragEnd = onDragEnd;
-      mockDnd.setActive = setActive;
-      return (
-        <ActiveContext.Provider value={active}>
-          {children}
-        </ActiveContext.Provider>
-      );
+    DndContext: ({
+      children,
+      onDragStart,
+      onDragEnd,
+      onDragCancel,
+    }: DndContextProps) => {
+      Object.assign(mockDnd, { onDragStart, onDragEnd, onDragCancel });
+      return children;
     },
-    useDndContext: () => ({
-      ...actual.useDndContext(),
-      active: useContext(ActiveContext),
-    }),
     DragOverlay: ({ children }: DndKit.DragOverlayProps) => children,
   };
 });
@@ -91,7 +83,7 @@ let dragged: Active | null = null;
 function startDrag(item: SummaryDragItem) {
   dragged = createActive(item);
   const active = dragged;
-  act(() => mockDnd.setActive?.(active));
+  act(() => mockDnd.onDragStart?.({ active }));
 }
 
 function endDrag(wellId: SummaryWellId | null) {
@@ -100,16 +92,15 @@ function endDrag(wellId: SummaryWellId | null) {
   }
   const active = dragged;
   dragged = null;
-  act(() => {
+  act(() =>
     mockDnd.onDragEnd?.({
       active,
       activatorEvent: new Event("pointerup"),
       collisions: null,
       delta: { x: 0, y: 0 },
       over: wellId && createOver(wellId),
-    });
-    mockDnd.setActive?.(null);
-  });
+    }),
+  );
 }
 
 function drop(item: SummaryDragItem, wellId: SummaryWellId | null) {

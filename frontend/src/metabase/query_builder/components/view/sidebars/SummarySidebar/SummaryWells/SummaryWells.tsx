@@ -1,4 +1,3 @@
-import { useDndContext } from "@dnd-kit/core";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -7,6 +6,7 @@ import * as Lib from "metabase-lib";
 
 import S from "../SummarySidebar.module.css";
 import type {
+  SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
   SummaryWellId,
@@ -14,7 +14,6 @@ import type {
 import {
   canDropOnWell,
   getDimensionItems,
-  getDragItem,
   getValueItems,
   getWellFieldSections,
 } from "../utils";
@@ -28,6 +27,7 @@ type SummaryWellsProps = {
   query: Lib.Query;
   stageIndex: number;
   sections: SummaryFieldSection[];
+  draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query) => void;
 };
@@ -36,11 +36,10 @@ export function SummaryWells({
   query,
   stageIndex,
   sections,
+  draggedItem,
   onPick,
   onChange,
 }: SummaryWellsProps) {
-  const { active } = useDndContext();
-  const draggedItem = getDragItem(active?.data.current);
   const valueItems = useMemo(
     () => getValueItems(query, stageIndex),
     [query, stageIndex],
@@ -61,21 +60,23 @@ export function SummaryWells({
   const handleRemove = (clause: Lib.AggregationClause | Lib.BreakoutClause) =>
     onChange(Lib.removeClause(query, stageIndex, clause));
 
-  const getDropState = (wellId: SummaryWellId): WellDropState | null => {
+  const dropStates = useMemo(() => {
     if (draggedItem == null) {
       return null;
     }
-    return canDropOnWell(query, stageIndex, draggedItem, wellId)
-      ? "accepts"
-      : "rejects";
-  };
+    const getDropState = (wellId: SummaryWellId): WellDropState =>
+      canDropOnWell(query, stageIndex, draggedItem, wellId)
+        ? "accepts"
+        : "rejects";
+    return { values: getDropState("values"), columns: getDropState("columns") };
+  }, [query, stageIndex, draggedItem]);
 
   return (
     <Box className={S.wells} data-testid="summary-wells">
       <SummaryWell
         wellId="values"
         title={t`Summarize by`}
-        dropState={getDropState("values")}
+        dropState={dropStates?.values ?? null}
       >
         <SummaryWellInput
           wellId="values"
@@ -105,7 +106,7 @@ export function SummaryWells({
       <SummaryWell
         wellId="columns"
         title={t`Group by`}
-        dropState={getDropState("columns")}
+        dropState={dropStates?.columns ?? null}
       >
         <SummaryWellInput
           wellId="columns"

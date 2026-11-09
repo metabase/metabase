@@ -1,13 +1,13 @@
 import {
   DndContext,
   type DragEndEvent,
-  PointerSensor,
+  type DragStartEvent,
   pointerWithin,
-  useSensor,
 } from "@dnd-kit/core";
 import { useId, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useDndSensors } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
@@ -19,7 +19,12 @@ import { SummaryDragPreview } from "./SummaryDragPreview";
 import { SummaryFieldList } from "./SummaryFieldList";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
-import type { SummaryField, SummaryFieldSection, SummaryWellId } from "./types";
+import type {
+  SummaryDragItem,
+  SummaryField,
+  SummaryFieldSection,
+  SummaryWellId,
+} from "./types";
 import {
   addField,
   areQueriesEqual,
@@ -100,11 +105,14 @@ export function SummarySidebar({
       clearWell(clearWell(query, stageIndex, "columns"), stageIndex, "values"),
     );
 
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE_PX },
-  });
+  const sensors = useDndSensors({ distance: DRAG_ACTIVATION_DISTANCE_PX });
+  const [draggedItem, setDraggedItem] = useState<SummaryDragItem | null>(null);
+
+  const handleDragStart = ({ active }: DragStartEvent) =>
+    setDraggedItem(getDragItem(active.data.current));
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setDraggedItem(null);
     const drag = getDragItem(active.data.current);
     const wellId = getDropWellId(over?.data.current);
     if (drag != null && wellId != null) {
@@ -120,9 +128,11 @@ export function SummarySidebar({
 
   return (
     <DndContext
-      sensors={[pointerSensor]}
+      sensors={sensors}
       collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => setDraggedItem(null)}
     >
       <Box className={S.sidebar} data-testid="summary-sidebar">
         <Box className={S.wellsColumn}>
@@ -130,6 +140,7 @@ export function SummarySidebar({
             query={query}
             stageIndex={stageIndex}
             sections={sections}
+            draggedItem={draggedItem}
             onPick={handleAdd}
             onChange={onQueryChange}
           />
@@ -176,7 +187,7 @@ export function SummarySidebar({
           />
         </Box>
       </Box>
-      <SummaryDragPreview />
+      <SummaryDragPreview draggedItem={draggedItem} />
     </DndContext>
   );
 }
