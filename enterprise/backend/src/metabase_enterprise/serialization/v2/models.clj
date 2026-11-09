@@ -74,8 +74,6 @@
   "List of models which are not going to be serialized ever."
   [:model/AgentApiCallLog
    :model/AiUsageLog
-   ;; Not serialized yet; card tests become exported content with their serialization spec.
-   :model/CardTest
    :model/AnalysisFinding
    :model/AnalysisFindingError
    :model/AnalysisFindingStatus
@@ -87,6 +85,8 @@
    :model/BookmarkOrdering
    :model/CacheConfig
    :model/CardBookmark
+   ;; Until card tests have a serialization spec.
+   :model/CardTest
    :model/ChannelTemplate
    :model/CloudMigration
    :model/CollectionBookmark
