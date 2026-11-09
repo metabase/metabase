@@ -35,7 +35,7 @@ import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEdito
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockDatabase,
@@ -127,18 +127,13 @@ function TestEditor({ question }: { question: Question }) {
     handleAcceptProposed,
     handleRejectProposed,
   } = useInlineSQLPrompt(currentQuestion, "qb");
-  const query = checkNotNull(currentQuestion.legacyNativeQuery());
-
   return (
     <>
       <NativeQueryEditor
         question={currentQuestion}
-        query={query}
         proposedQuestion={proposedQuestion}
-        setDatasetQuery={(nextQuery) =>
-          setCurrentQuestion(
-            currentQuestion.setDatasetQuery(nextQuery.datasetQuery()),
-          )
+        setQuery={(nextQuery) =>
+          setCurrentQuestion(currentQuestion.setQuery(nextQuery))
         }
         onAcceptProposed={handleAcceptProposed}
         onRejectProposed={handleRejectProposed}
@@ -159,7 +154,7 @@ function TestEditor({ question }: { question: Question }) {
       </NativeQueryEditor>
       {portalElement}
       <output data-testid="proposed-sql">
-        {proposedQuestion?.legacyNativeQuery()?.queryText()}
+        {proposedQuestion && Lib.rawNativeQuery(proposedQuestion.query())}
       </output>
     </>
   );
@@ -203,7 +198,7 @@ function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
     }),
   });
   const metadata = createMockMetadataFromState(state);
-  const question = checkNotNull(metadata.question(TEST_CARD.id));
+  const question = new Question(TEST_CARD, metadata);
 
   renderWithProviders(
     <MetabotProvider>

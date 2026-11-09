@@ -7,6 +7,7 @@ import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarBu
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId, SearchResult } from "metabase-types/api";
@@ -65,8 +66,9 @@ export const AppBarLarge = ({
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
   const isInfoVisible = !isNavBarVisible || isQuestionLineageVisible;
-  const { isVisible: isGitSyncVisible } =
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+  const isGitSyncVisible = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncVisible,
+  );
 
   const { hasMetabotAccess: isMetabotVisibleToUser } =
     useUserMetabotPermissions();
@@ -99,7 +101,7 @@ export const AppBarLarge = ({
           isGitSyncVisible={isGitSyncVisible}
           onLogoClick={onOpenNavbar}
         />
-        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
+        <PLUGIN_REMOTE_SYNC.AppBarControls />
         <Flex
           className={cx(S.fade, { [S.hidden]: !isInfoVisible })}
           opacity={isInfoVisible ? 1 : 0}

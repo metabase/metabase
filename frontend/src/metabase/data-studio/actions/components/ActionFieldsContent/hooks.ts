@@ -60,7 +60,7 @@ export function useQueryActionFields(
   );
 
   const fields = useMemo(() => {
-    const tags = Object.values(Lib.templateTags(query));
+    const tags = Lib.templateTags(query);
     return [...getQueryParameters(query)]
       .sort(sortActionParams(formSettings))
       .flatMap((parameter) => {

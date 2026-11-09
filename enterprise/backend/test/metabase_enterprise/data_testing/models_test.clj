@@ -275,16 +275,6 @@
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
 
-(deftest run-of-unsaved-test-records-type-without-id-test
-  (let [{run-id :id :as started} (data-testing.run-tracking/start-run! :transform nil)]
-    (try
-      (is (= :transform (:test_type started)))
-      (is (nil? (:test_id started)))
-      (is (=? {:test_type :transform, :test_id nil} (t2/select-one :model/DataTestRun :id run-id)))
-      (finally
-        (data-testing.run-tracking/finish-run! run-id :error)
-        (t2/delete! :model/DataTestRun :id run-id)))))
-
 (deftest last-run-hydration-finds-only-transform-runs-test
   (mt/with-temp [:model/Transform   {transform-id :id} {}
                  :model/TransformTest {test-id :id :as transform-test} {:transform_id transform-id}

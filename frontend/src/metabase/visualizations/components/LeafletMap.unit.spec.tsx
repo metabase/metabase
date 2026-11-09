@@ -2,6 +2,7 @@ import { render } from "@testing-library/react";
 import L from "leaflet";
 import { createRef } from "react";
 
+import { createMockMetadata } from "__support__/metadata";
 import MetabaseSettings from "metabase/utils/settings";
 import Question from "metabase-lib/v1/Question";
 import type { UnsavedCard } from "metabase-types/api";
@@ -51,7 +52,8 @@ describe("LeafletMap", () => {
     onRenderError: jest.fn(),
     onFiltering: jest.fn(),
     onChangeCardAndRun: jest.fn(),
-    buildQuestion: (card: UnsavedCard) => new Question(card),
+    buildQuestion: (card: UnsavedCard) =>
+      new Question(card, createMockMetadata()),
     ...overrides,
   });
 

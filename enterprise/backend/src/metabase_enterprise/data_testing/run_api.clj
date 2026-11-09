@@ -41,9 +41,8 @@
       [(some-> start u.date/parse) (some-> end u.date/parse)])))
 
 (api.macros/defendpoint :get "/" :- ::data-testing.schema/data-test-runs.response
-  "List the runs of the saved tests of `test-type` that the caller can read, newest first. With `test-id`, only the runs
-  of that test. Without it, the caller needs Data Studio access. The runs of a test that is not saved, or was deleted,
-  are not listed."
+  "List the runs of the tests of `test-type` that the caller can read, newest first. With `test-id`, only the runs of
+  that test. Without it, the caller needs Data Studio access. The runs of a test that was deleted are not listed."
   [_route-params
    {:keys [test-type test-id statuses start-time end-time]}
    :- [:map {:closed true}

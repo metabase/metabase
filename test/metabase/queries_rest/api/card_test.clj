@@ -345,7 +345,7 @@
                          {:database (mt/id)
                           :type     :native
                           :native   {:query         "SELECT id FROM venues where {{venue_id}}"
-                                     :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                     :template-tags {"venue_id" {:field-id (mt/id :venues :id),
                                                                  :display-name "Venue ID",
                                                                  :id           "_VENUE_ID_",
                                                                  :name         "venue_id",
@@ -958,8 +958,7 @@
                                                                :parameters             "abc"})))))
 
 (defn- malformed-native-dataset-query
-  "Payload from #74615: legacy-envelope native query whose template-tag :dimension uses an
-  MBQL 5 field reference shape ([:field {opts} id] instead of legacy [:field id opts])."
+  "Legacy-envelope native query whose template-tag `:field-id` is not a Field ID (#74615)."
   []
   {:type     :native
    :database (mt/id)
@@ -969,9 +968,7 @@
                                     :display-name "DF"
                                     :type         :dimension
                                     :widget-type  :date/range
-                                    :dimension    [:field
-                                                   {:base-type :type/DateTime}
-                                                   (mt/id :orders :created_at)]}}}})
+                                    :field-id     "created_at"}}}})
 
 (deftest ^:parallel post-card-with-malformed-dataset-query-returns-400-test
   (testing "POST /api/card with structurally malformed :dataset_query returns 400 with the specific error, not 500 (#74615)"
@@ -3907,7 +3904,7 @@
                                                                          :name         "NAME"
                                                                          :display_name "Name"
                                                                          :type         :dimension
-                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :field-id     (mt/id :venues :name)
                                                                          :required     true}}}}
                                      :name       "native card with field filter"
                                      :parameters [{:id     "name_param_id"
@@ -3923,7 +3920,7 @@
                                                                        :name         "ID"
                                                                        :display_name "Id"
                                                                        :type         :dimension
-                                                                       :dimension    [:field (mt/id :people :id) nil]
+                                                                       :field-id     (mt/id :people :id)
                                                                        :required     true}}}}
                                      :name       "native card with named field filter"
                                      :parameters [{:id     "id"
@@ -4276,7 +4273,7 @@
                                                            :name         "ID"
                                                            :display_name "ID"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                           :field-id     (mt/id :venues :id)
                                                            :required     true}}}}
                          :name       "native card with ID field filter"
                          :parameters [{:id     param-key,
@@ -4494,7 +4491,7 @@
                                                                                              :name         "FILTER"
                                                                                              :display-name "Filter"
                                                                                              :type         :dimension
-                                                                                             :dimension    [:field (mt/id :venues :name) nil]
+                                                                                             :field-id     (mt/id :venues :name)
                                                                                              :widget-type  :string/=
                                                                                              :default      nil}}}}
                                :name                   "Bad Card"
@@ -4628,28 +4625,28 @@
                            :display-name "Id"
                            :id           "_id_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :id) nil]
+                           :field-id     (mt/id :people :id)
                            :widget-type  :id
                            :default      nil}
                 "name"    {:name         "name"
                            :display-name "Name"
                            :id           "_name_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :name) nil]
+                           :field-id     (mt/id :people :name)
                            :widget-type  :category
                            :default      nil}
                 "source"  {:name         "source"
                            :display-name "Source"
                            :id           "_soure_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :source) nil]
+                           :field-id     (mt/id :people :source)
                            :widget-type  :category
                            :default      nil}
                 "user_id" {:name         "user_id"
                            :display-name "User"
                            :id           "_user_id_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :orders :user_id) nil]
+                           :field-id     (mt/id :orders :user_id)
                            :widget-type  :id
                            :default      nil}}}
     :database (mt/id)}
@@ -4678,8 +4675,8 @@
                               {:id (mt/id :orders :user_id)}
                               {:id (mt/id :people :source)}
                               {:id (mt/id :people :name)}])
-            :tables (sort-by :id
-                             [{:id (str "card__" card-id-2)}])
+            :tables empty?
+            :cards [{:id card-id-2}]
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
@@ -4697,13 +4694,18 @@
         (api.test-util/before-and-after-deleted-card
          card-id-1
          #(testing "Before delete"
-            (doseq [[card-id table-id] [[card-id-1 (mt/id :products)]
-                                        [card-id-2 (str "card__" card-id-1)]]]
-              (is (=?
-                   {:fields empty?
-                    :tables [{:id table-id}]
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id)))))
+            (is (=?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
+                  :cards empty?
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-1)))
+            (is (=?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
+                  :cards [{:id card-id-1}]
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-2))))
          #(testing "After delete"
             ;; card-id-1 is deleted, so it should return 404
             (is (= "Not found."
@@ -4711,6 +4713,7 @@
             ;; card-id-2 still exists but its source is gone, so it should return empty metadata
             (is (=? {:fields empty?
                      :tables empty?
+                     :cards empty?
                      :databases [{:id (mt/id) :engine string?}]}
                     (query-metadata 200 card-id-2)))))))))
 
@@ -5728,7 +5731,10 @@
                                 {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                   "select 1 as A, 2 as B, 3 as C, 4 as D")})
           (let [cols (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" tgt))
-                          :tables first :fields (map :name))]
+                          :cards
+                          (m/find-first #(= (:id %) src))
+                          :result_metadata
+                          (map :name))]
             (is (some #{"D"} cols))))))))
 
 (deftest copy-card-preserves-non-default-display-test

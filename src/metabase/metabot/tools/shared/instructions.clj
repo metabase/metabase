@@ -95,39 +95,59 @@ Reference items using: [name](metabase://type/id)")
        "reject — do not offer a link, the query is already in front of them\n"
        "- Present what the query does in a way that matches the user's intent and follow up if they need clarification"))
 
+(def client-query-shown-instruction
+  "Added to the instructions for an edit of the user's own query that the model asked to hide, which is shown anyway."
+  "This is the user's own query, so the change was shown to them although you passed `show_chart: false`.")
+
+(def client-query-variant-instruction
+  "Follows [[client-query-shown-instruction]] when run_query can read SQL results, to say how to read a variant."
+  (str "To read a variant of their query without showing it, write the SQL with `create_sql_query` (pass "
+       "`show_chart: false`) and run that query with `run_query`."))
+
+(defn query-hidden-instructions-for
+  "Instructions for a query, SQL or notebook, that the model asked not to show the user."
+  [query-id]
+  (str "The user has not been shown this query.\n"
+       "- To read its values, call `run_query` with `query_id` `" query-id "`, then give the user the values in "
+       "your answer.\n"
+       "- If the user wants to open the query, link it using `[Link text](metabase://query/" query-id ")`.\n"
+       not-saved-instruction))
+
 (defn- delivery-instruction
-  "The delivery line for an updated query: proposed in the user's open editor buffer for them to
-   accept or reject, or handed back as a query they open themselves."
-  [query-id loaded-in-editor?]
-  (if loaded-in-editor?
-    (str "- The updated query is proposed in the user's SQL editor for them to accept or reject — "
-         "tell them it's waiting there, do not offer a link")
-    (str "- Always provide a direct link using: "
-         "`[Updated Query](metabase://query/" query-id ")` "
-         "where Updated Query is a meaningful link text\n"
-         not-saved-instruction)))
+  "The delivery line for an updated query, by how it reached the user.
+   That is `:editor` when it is proposed in their open editor buffer for them to accept or reject.
+   It is `:link` when it is handed back as a query they open themselves, and `:hidden` when it is not shown at all."
+  [query-id delivery]
+  (case delivery
+    :editor (str "- The updated query is proposed in the user's SQL editor for them to accept or reject — "
+                 "tell them it's waiting there, do not offer a link")
+    :link   (str "- Always provide a direct link using: "
+                 "`[Updated Query](metabase://query/" query-id ")` "
+                 "where Updated Query is a meaningful link text\n"
+                 not-saved-instruction)
+    :hidden (query-hidden-instructions-for query-id)))
 
 (defn edit-sql-query-instructions-for
-  "Generate instructions for an edited SQL query. `loaded-in-editor?` reflects how the result was
-   delivered: as a proposed change in an open SQL editor buffer, or as a query the user opens via a link."
-  [query-id loaded-in-editor?]
+  "Generate instructions for an edited SQL query.
+   The `delivery` argument is how the result reached the user, as [[delivery-instruction]] takes it."
+  [query-id delivery]
   (str "The updated query is shown in the result data above.\n\n"
        "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool again\n\n"
        "**If the returned SQL query is correct:**\n\n"
-       (delivery-instruction query-id loaded-in-editor?)))
+       (delivery-instruction query-id delivery)))
 
 (defn replace-sql-query-instructions-for
-  "Generate instructions for a replaced SQL query. `loaded-in-editor?` reflects how the result was
-   delivered: as a proposed change in an open SQL editor buffer, or as a query the user opens via a link."
-  [query-id loaded-in-editor?]
+  "Generate instructions for a replaced SQL query.
+   The `delivery` argument is how the result reached the user, as [[delivery-instruction]] takes it."
+  [query-id delivery]
   (str "The updated query is shown in the result data above.\n\n"
        "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"
        "**If the returned SQL query is NOT correct:**\n\n"
        "- Make further refinements using this tool or edit_sql_query again\n\n"
        "**If the returned SQL query is correct:**\n\n"
-       (delivery-instruction query-id loaded-in-editor?)))
+       (delivery-instruction query-id delivery)))
 
 (def sql-dialect-checklist
   "Dialect differences to check after SQL syntax validation fails."

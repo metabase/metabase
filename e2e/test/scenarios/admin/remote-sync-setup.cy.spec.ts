@@ -35,11 +35,10 @@ describe("Remote Sync first-time setup", () => {
     cy.findByTestId("admin-layout-content").findByText("Read-write").click();
     cy.findByTestId("admin-layout-content").within(() => {
       cy.findByLabelText("Sync Library").should("be.checked");
-      cy.findByLabelText("Sync Transforms").should("be.checked");
     });
     cy.button("Set up remote sync").click();
     cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
-    assertLibraryAndTransformsSynced();
+    assertLibrarySynced();
 
     cy.log("Publish a table to the Library");
     H.DataModel.visitDataStudio();
@@ -66,10 +65,9 @@ describe("Remote Sync first-time setup", () => {
     H.clickPushOption();
     H.modal().within(() => {
       cy.findAllByText("PRODUCTS").should("have.length.at.least", 1);
-      cy.findByText(FIRST_SETUP_TRANSFORM_NAME)
-        .scrollIntoView()
-        .should("be.visible");
-      cy.button(/Push changes/).click();
+      cy.findByText(FIRST_SETUP_TRANSFORM_NAME).should("exist");
+      cy.findByLabelText("Commit message").type("First push");
+      cy.button("Push").click();
     });
     H.waitForTask({ taskName: "export" });
 
@@ -83,28 +81,26 @@ describe("Remote Sync first-time setup", () => {
     });
   });
 
-  it("opens branch picker after push", () => {
+  it("pushes to new branch and switches to it", () => {
     H.createLibrary().then(({ libraryCollectionId }) => {
       H.configureGit("read-write", LOCAL_GIT_URL, {
         [libraryCollectionId]: true,
       });
     });
-    H.createBranchViaSettings("first-branch");
 
     H.publishTables({ table_ids: [SAMPLE_DATABASE.PRODUCTS_ID] });
     cy.visit("/collection/root");
-    H.clickPushOption();
-    H.modal()
-      .button(/Push changes/)
-      .click();
+    H.pushChanges("Publish products");
     H.waitForTask({ taskName: "export" });
 
-    cy.log("Branch picker opens with both branches listed");
-    H.createBranchViaSettings("second-branch");
-    H.getSettingsBranchSwitcher().should("contain.text", "second-branch");
+    H.pushToNewBranch("second-branch");
+    H.waitForTask({ taskName: "export" });
+    H.getGitSyncControls()
+      .findByRole("textbox", { name: "Branch" })
+      .should("have.value", "second-branch");
   });
 
-  it("sets up git sync from the Data Studio modal, creating Library and syncing it with transforms", () => {
+  it("sets up git sync from Data Studio modal, creating Library and syncing it with transforms", () => {
     H.DataModel.visitDataStudio();
     cy.findByRole("button", { name: "Set up remote sync" }).click();
     H.modal().within(() => {
@@ -113,20 +109,18 @@ describe("Remote Sync first-time setup", () => {
       });
       cy.findByText("Read-write").click();
       cy.findByLabelText("Sync Library").should("be.checked");
-      cy.findByLabelText("Sync Transforms").should("be.checked");
       cy.button("Set up remote sync").click();
     });
     cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
     H.modal().should("not.exist");
-    assertLibraryAndTransformsSynced();
+    assertLibrarySynced();
   });
 });
 
-function assertLibraryAndTransformsSynced() {
+function assertLibrarySynced() {
   cy.visit("/admin/settings/remote-sync");
   cy.findByTestId("admin-layout-content").within(() => {
     cy.findByRole("button", { name: "Save changes" }).should("exist");
     cy.findByLabelText("Sync Library").should("be.checked");
-    cy.findByLabelText("Sync Transforms").should("be.checked");
   });
 }

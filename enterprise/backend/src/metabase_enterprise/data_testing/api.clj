@@ -2,14 +2,12 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
-   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -86,17 +84,6 @@
   (data-testing.db/delete-transform-test! id)
   nil)
 
-(api.macros/defendpoint :post "/run" :- ::data-testing.schema/run-result
-  "Run a transform test that is not saved, of a transform that need not be saved either, as `POST /:id/run` runs a
-  saved one. Needs what saving the test needs, apart from remote sync."
-  [_route-params
-   _query-params
-   {:keys [transform test]} :- [:map {:closed true}
-                                [:transform ::transforms.schema/transform.definition]
-                                [:test      ::data-testing.schema/transform-test.definition]]]
-  (api/check-403 (data-testing.models/can-run-test? transform))
-  (refusing #(data-testing.runner/run-test! transform test nil)))
-
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
   "Run a transform test, which reading it is enough to do.
 
@@ -110,7 +97,7 @@
                     [:id ms/PositiveInt]]]
   (let [transform-test (api/read-check :model/TransformTest id)
         transform      (api/read-check :model/Transform (:transform_id transform-test))]
-    (refusing #(data-testing.runner/run-saved-test! transform transform-test))))
+    (refusing #(data-testing.runner/run-test! transform transform-test))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-test` routes."

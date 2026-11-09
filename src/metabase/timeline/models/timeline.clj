@@ -2,6 +2,7 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -65,3 +66,7 @@
           (when collection_id
             #{[:model/Collection collection_id]}))
         timelines))
+
+(defmethod remote-sync/spec :model/Timeline
+  [_model]
+  {:synced-filter-clause timeline.db/synced-timelines-clause})

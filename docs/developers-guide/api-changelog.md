@@ -10,9 +10,21 @@ summary: Breaking changes to the Metabase API, listed by release.
 - `GET /api/ee/transform-test/:id/run` has been removed. List the runs of a transform test with
   `GET /api/ee/data-test-run?test-type=transform&test-id=:id`, which takes the same `statuses`, `start-time`,
   `end-time`, `limit` and `offset` parameters. Without `test-id`, it needs Data Studio access and lists the runs of
-  every test of the type that the caller can read. Runs of a test that is not saved, or was deleted, are not listed. A
-  run, and `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`.
-  `test_id` is `null` for a run of a test that is not saved and for a run of a test that was deleted.
+  every test of the type that the caller can read. Runs of a test that was deleted are not listed. A run, and
+  `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`. `test_id`
+  is `null` for a run of a test that was deleted.
+
+- Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
+  they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
+  Queries sent with `dimension` are still accepted and converted to `field-id`.
+
+- `GET /api/table/card__:id/query_metadata` and `GET /api/table/card__:id/fks` have been removed. Use
+  `GET /api/card/:id` and `GET /api/card/:id/query_metadata` for a card's columns and dependent metadata.
+
+- `GET /api/card/:id/query_metadata`, `GET /api/dashboard/:id/query_metadata`, `POST /api/dataset/query_metadata`
+  and the x-ray `query_metadata` endpoints no longer return a `card__<id>` "virtual" table in `tables` for each source
+  card. They return the source cards themselves in a new `cards` list instead, and in `tables` the tables of the
+  cards' columns and the tables their foreign keys point to, as they do for a source table.
 
 - The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
   `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of

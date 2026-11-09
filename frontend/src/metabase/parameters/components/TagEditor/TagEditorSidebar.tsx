@@ -4,13 +4,12 @@ import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { getVariableTemplateTags } from "metabase/querying/native";
 import { Box, Tabs } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatabaseId,
-  DatasetQuery,
   EmbeddingParameterVisibility,
   Parameter,
   ParameterId,
@@ -30,12 +29,10 @@ type GetEmbeddedParamVisibility = (
 ) => EmbeddingParameterVisibility;
 
 interface TagEditorSidebarProps {
-  query: NativeQuery;
-  databases?: Database[];
   question: Question;
   originalQuestion?: Question;
   sampleDatabaseId?: DatabaseId;
-  setDatasetQuery: (query: DatasetQuery) => void;
+  setQuery: (query: Lib.Query) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig: (
     tag: TemplateTag,
@@ -48,12 +45,10 @@ interface TagEditorSidebarProps {
 }
 
 export function TagEditorSidebar({
-  query,
-  databases,
   question,
   originalQuestion,
   sampleDatabaseId,
-  setDatasetQuery,
+  setQuery,
   setTemplateTag,
   setTemplateTagConfig,
   setParameterValue,
@@ -63,8 +58,10 @@ export function TagEditorSidebar({
 }: TagEditorSidebarProps) {
   const [section, setSection] = useState<TabId>("settings");
 
-  const tags = query.variableTemplateTags();
-  const database = question.database();
+  const tags = getVariableTemplateTags(question.query());
+  const query = question.query();
+  const databaseId = Lib.databaseID(query);
+  const databaseInfo = Lib.databaseDisplayInfo(query);
   const parameters = question.parameters();
   const parametersById = _.indexBy(parameters, "id");
 
@@ -88,9 +85,7 @@ export function TagEditorSidebar({
           <SettingsPane
             tags={tags}
             parametersById={parametersById}
-            database={database}
-            // Unjustified type cast. FIXME
-            databases={databases as Database[]}
+            databaseId={databaseId}
             originalQuestion={originalQuestion}
             setTemplateTag={setTemplateTag}
             setTemplateTagConfig={setTemplateTagConfig}
@@ -101,9 +96,10 @@ export function TagEditorSidebar({
         ) : (
           <Box p="xl">
             <TagEditorHelp
-              database={database}
+              databaseId={databaseId}
+              databaseEngine={databaseInfo?.engine}
               sampleDatabaseId={sampleDatabaseId}
-              setDatasetQuery={setDatasetQuery}
+              setQuery={setQuery}
               switchToSettings={() => setSection("settings")}
             />
           </Box>
@@ -115,8 +111,7 @@ export function TagEditorSidebar({
 
 interface SettingsPaneProps {
   tags: TemplateTag[];
-  database?: Database | null;
-  databases: Database[];
+  databaseId: DatabaseId | null;
   parametersById: Record<ParameterId, Parameter>;
   originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
@@ -132,8 +127,7 @@ interface SettingsPaneProps {
 const SettingsPane = ({
   tags,
   parametersById,
-  database,
-  databases,
+  databaseId,
   originalQuestion,
   setTemplateTag,
   setTemplateTagConfig,
@@ -162,8 +156,7 @@ const SettingsPane = ({
             ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
             : null
         }
-        database={database}
-        databases={databases}
+        databaseId={databaseId}
         originalQuestion={originalQuestion}
         setTemplateTag={setTemplateTag}
         setTemplateTagConfig={setTemplateTagConfig}

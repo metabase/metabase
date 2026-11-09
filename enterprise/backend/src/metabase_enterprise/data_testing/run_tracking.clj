@@ -25,13 +25,13 @@
                :timeout :event/transform-test-run-timeout}})
 
 (mu/defn start-run! :- ::data-testing.schema/data-test-run
-  "Create a started run of a `test-type` test with `test-id`, nil for a test that is not saved, publish the start event
-  of `test-type`, and register the run as owned by this process."
+  "Create a started run of the `test-type` test `test-id`, publish the start event of `test-type`, and register the run
+  as owned by this process."
   ([test-type :- ::data-testing.schema/test-type
-    test-id   :- [:maybe ms/PositiveInt]]
+    test-id   :- ms/PositiveInt]
    (start-run! test-type test-id nil))
   ([test-type    :- ::data-testing.schema/test-type
-    test-id      :- [:maybe ms/PositiveInt]
+    test-id      :- ms/PositiveInt
     initiated-by :- [:maybe ::lib.schema.id/user]]
    (let [run (data-testing.db/insert-test-run! test-type test-id initiated-by)]
      (events/publish-event! (get-in run-topics [test-type :start])

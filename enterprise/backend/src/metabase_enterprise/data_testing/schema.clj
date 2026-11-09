@@ -187,8 +187,7 @@
    :transform])
 
 (mr/def ::data-test-run
-  "A persisted execution of a test of any type. `:test_id` is nil for a run of a test that is not saved and for a run
-  of a test that was deleted."
+  "A persisted execution of a test of any type. `:test_id` is nil for a run of a test that was deleted."
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:test_type      ::test-type]

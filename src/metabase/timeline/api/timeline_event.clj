@@ -13,6 +13,10 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
+(events/derive! :event/timeline-create :metabase/event)
+(events/derive! :event/timeline-update :metabase/event)
+(events/derive! :event/timeline-delete :metabase/event)
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;

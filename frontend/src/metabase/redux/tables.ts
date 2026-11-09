@@ -9,7 +9,6 @@ import {
 import type { Dispatch, GetState, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
 import type { FieldId, NormalizedField, TableId } from "metabase-types/api";
-import { isRealTableField } from "metabase-types/guards";
 
 // Matches `getMetadataUnfiltered`, which this module read before: a table is
 // worth loading whether or not it is hidden.
@@ -119,7 +118,6 @@ function getForeignKeyTableIds(
   const tableIds = fields
     .map((field) => targetField(field, storeFields))
     .filter(isNotNull)
-    .filter(isRealTableField)
     .map((field) => field.table_id);
   return Array.from(new Set(tableIds));
 }

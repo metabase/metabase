@@ -12,6 +12,7 @@ import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
@@ -27,6 +28,7 @@ const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
 const NewModelOptions = () => {
   const location = useLocation();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
@@ -71,12 +73,10 @@ const NewModelOptions = () => {
               title={t`Use the notebook editor`}
               description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
               width={180}
-              to={Urls.newQuestion({
-                mode: "query",
-                creationType: "custom_question",
-                cardType: "model",
-                collectionId,
-              })}
+              to={Urls.newQuestion(
+                buildQuestion({ cardType: "model", collectionId }),
+                { mode: "query", creationType: "custom_question" },
+              )}
             />
           </div>
         )}
@@ -89,14 +89,16 @@ const NewModelOptions = () => {
               }}
               title={t`Use a native query`}
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
-              to={Urls.newQuestion({
-                mode: "query",
-                DEPRECATED_RAW_MBQL_type: "native",
-                creationType: "native_question",
-                cardType: "model",
-                collectionId,
-                DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
-              })}
+              to={Urls.newQuestion(
+                buildQuestion({
+                  DEPRECATED_RAW_MBQL_type: "native",
+                  cardType: "model",
+                  collectionId,
+                  DEPRECATED_RAW_MBQL_databaseId:
+                    lastUsedDatabaseId || undefined,
+                }),
+                { mode: "query", creationType: "native_question" },
+              )}
               width={180}
             />
           </div>

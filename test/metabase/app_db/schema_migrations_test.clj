@@ -4743,13 +4743,15 @@
             deleted-id   (insert-test)
             run-row      (fn [id] {:transform_test_id id, :initiated_by user-id, :status "passed"})
             kept-run     (t2/insert-returning-pk! :transform_test_run (run-row test-id))
-            unsaved-run  (t2/insert-returning-pk! :transform_test_run (run-row nil))
+            deleted-run  (t2/insert-returning-pk! :transform_test_run (run-row deleted-id))
             ;; Read the boundary before the changesets run: on MySQL the marker row that a run writes can share a
             ;; changeset's position, so a deployment id read after the run can be the changeset's own.
             boundary     (with-open [conn (.getConnection (mdb/data-source))]
                            (liquibase/with-liquibase [liquibase conn]
                              (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
         (t2/delete! :transform_test :id deleted-id)
+        (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id deleted-run))
+            "before the migration, deleting a test nulls the test id of its runs")
         (is (thrown? Exception (t2/insert! :transform_test_run (run-row Integer/MAX_VALUE)))
             "before the migration a run must name a test that exists")
         (migrate!)
@@ -4758,7 +4760,7 @@
             (is (=? {:test_id test-id, :test_type "transform", :status "passed", :initiated_by user-id}
                     (t2/select-one :data_test_run :id kept-run)))
             (is (=? {:test_id nil, :test_type "transform"}
-                    (t2/select-one :data_test_run :id unsaved-run))))
+                    (t2/select-one :data_test_run :id deleted-run))))
           (testing "the old table is gone"
             (is (thrown? Exception (t2/select :transform_test_run))))
           (testing "test_id has no foreign key any more"
@@ -4784,7 +4786,7 @@
               (is (=? {:transform_test_id test-id, :status "passed", :initiated_by user-id}
                       (t2/select-one :transform_test_run :id kept-run)))
               (is (not (contains? (t2/select-one :transform_test_run :id kept-run) :test_type)))
-              (is (=? {:transform_test_id nil} (t2/select-one :transform_test_run :id unsaved-run)))
+              (is (=? {:transform_test_id nil} (t2/select-one :transform_test_run :id deleted-run)))
               (when (= :postgres (mdb/db-type))
                 (is (= "transform_test_run_id_seq"
                        (:seq (t2/query-one ["SELECT to_regclass('transform_test_run_id_seq')::text AS seq"]))))))

@@ -95,7 +95,7 @@
                                                            :start_time #t "2001-01-01T11:00:00Z"}
                    :model/DataTestRun  _                  {:test_type :card, :test_id test-id, :status :failed
                                                            :start_time #t "2001-01-01T12:00:00Z"}]
-      (testing "without a test id, the runs of the saved tests of the type are listed, and no run of an unsaved test"
+      (testing "without a test id, the runs of the tests of the type are listed, and no run of a deleted test"
         (is (= {:ids #{saved-id} :total 1}
                (listed-runs :crowberto :start-time "2001-01-01"))))
       (testing "without a test id, the caller needs data studio access"

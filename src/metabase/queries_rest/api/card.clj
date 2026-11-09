@@ -748,10 +748,7 @@
         ;; through the model, so that each card's checks run and its hooks move what moves with it
         (doseq [card  cards
                 :when (not (:collection_position card))]
-          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))
-        (doseq [card cards]
-          (collection/check-for-remote-sync-update card)))
-      ;; what a single card's update publishes too: remote sync listens to learn what entered or left its scope
+          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil})))
       (doseq [card cards]
         (events/publish-event! :event/card-update {:object          (queries-rest.db/card (u/the-id card))
                                                    :previous-object (get before (u/the-id card))

@@ -3301,7 +3301,7 @@
       },
       "metabase-enterprise.data-testing.schema.data-test-run" : {
         "additionalProperties" : false,
-        "description" : "A persisted execution of a test of any type. `:test_id` is nil for a run of a test that is not saved and for a run\n  of a test that was deleted.",
+        "description" : "A persisted execution of a test of any type. `:test_id` is nil for a run of a test that was deleted.",
         "properties" : {
           "end_time" : {
             "anyOf" : [ {
@@ -49804,7 +49804,7 @@
     },
     "/api/ee/data-test-run" : {
       "get" : {
-        "description" : "List the runs of the saved tests of `test-type` that the caller can read, newest first. With `test-id`, only the runs\n  of that test. Without it, the caller needs Data Studio access. The runs of a test that is not saved, or was deleted,\n  are not listed.",
+        "description" : "List the runs of the tests of `test-type` that the caller can read, newest first. With `test-id`, only the runs of\n  that test. Without it, the caller needs Data Studio access. The runs of a test that was deleted are not listed.",
         "operationId" : "get-api-ee-data-test-run",
         "parameters" : [ {
           "in" : "query",
@@ -56092,52 +56092,6 @@
           }
         },
         "summary" : "POST /api/ee/transform-test",
-        "tags" : [ "/api/ee/transform-test" ]
-      }
-    },
-    "/api/ee/transform-test/run" : {
-      "post" : {
-        "description" : "Run a transform test that is not saved, of a transform that need not be saved either, as `POST /:id/run` runs a\n  saved one. Needs what saving the test needs, apart from remote sync.",
-        "operationId" : "post-api-ee-transform-test-run",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "additionalProperties" : false,
-                "properties" : {
-                  "test" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..transform-test.definition"
-                  },
-                  "transform" : {
-                    "$ref" : "#/components/schemas/metabase.transforms.schema..transform.definition"
-                  }
-                },
-                "required" : [ "transform", "test" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/ee/transform-test/run",
         "tags" : [ "/api/ee/transform-test" ]
       }
     },
@@ -73602,75 +73556,6 @@
           }
         },
         "summary" : "PUT /api/table",
-        "tags" : [ "/api/table" ]
-      }
-    },
-    "/api/table/card__:id/fks" : {
-      "get" : {
-        "description" : "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint\n   serves mainly as a placeholder to avoid having to change anything on the frontend.",
-        "operationId" : "get-api-table-card__:id-fks",
-        "parameters" : [ {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/table/card__:id/fks",
-        "tags" : [ "/api/table" ]
-      }
-    },
-    "/api/table/card__:id/query_metadata" : {
-      "get" : {
-        "description" : "Return metadata for the 'virtual' table for a Card.",
-        "operationId" : "get-api-table-card__:id-query_metadata",
-        "parameters" : [ {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "additionalProperties" : false,
-                "properties" : { },
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/table/card__:id/query_metadata",
         "tags" : [ "/api/table" ]
       }
     },

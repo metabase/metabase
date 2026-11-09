@@ -807,7 +807,6 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-branch"?: string | null;
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
-  "remote-sync-transforms"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
