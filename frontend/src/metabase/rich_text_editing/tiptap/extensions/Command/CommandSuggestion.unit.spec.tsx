@@ -485,6 +485,17 @@ describe("CommandSuggestion", () => {
         await expectStandardCommandsToBePresent();
       });
 
+      it("should ask for a Metabot block when Ask Metabot is clicked", async () => {
+        const { command } = setup({ metabotCommand: { name: "Metabot" } });
+
+        await userEvent.click(
+          await screen.findByRole("option", { name: "Ask Metabot" }),
+        );
+
+        expect(command).toHaveBeenCalledTimes(1);
+        expect(command).toHaveBeenCalledWith({ command: "metabot" });
+      });
+
       it("should use the provided metabot name", async () => {
         setup({ metabotCommand: { name: "Ada" } });
 
