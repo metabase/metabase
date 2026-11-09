@@ -2,6 +2,7 @@
   "Notebook query construction tool wrappers."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.error :as me]
    [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
@@ -64,7 +65,8 @@
   {:type        "object"
    :description (str "An MBQL 5 query as a JSON **object** (never a quoted string) matching "
                      "`metabase.lib.schema/external-query`. The FIRST stage MUST contain exactly one of `source-table` "
-                     "(a portable FK `[\"<db-name>\", \"<schema-or-null>\", \"<table-name>\"]`) or `source-card` "
+                     "(a portable FK `[\"<db-name>\", \"<schema>\", \"<table-name>\"]`, with `null` as the schema "
+                     "only in a database without schemas) or `source-card` "
                      "(an entity_id string) — the target database is inferred from it; there is no top-level "
                      "`database` field. Every clause is `[\"<op>\", {<options>}, ...args]` with a mandatory "
                      "(possibly empty) options map at position 1, and every field reference is `[\"field\", {}, "
@@ -91,7 +93,8 @@
                                                            :minItems    3
                                                            :maxItems    3
                                                            :items       {}
-                                                           :description "Portable FK `[<db-name>, <schema-or-null>, <table-name>]`."}
+                                                           :description (str "Portable FK `[<db-name>, <schema>, <table-name>]`. "
+                                                                             "Use `null` as the schema only in a database without schemas.")}
                                            "source-card"  {:type        "string"
                                                            :description "entity_id of a saved question/model used as the source."}
                                            ;; Each clause is itself a `["<op>", {opts}, ...args]` array; the inner
@@ -305,6 +308,61 @@
   (into []
         (comp (mapcat node-table-fks) (distinct))
         (tree-seq coll? seq parsed-query)))
+
+(defn- null-schema-table-names
+  "The names of the tables in the database named `db-name` that `parsed-query` references with a null schema."
+  [db-name parsed-query]
+  (into #{}
+        (keep (fn [table-fk]
+                (when (and (vector? table-fk)
+                           (= db-name (nth table-fk 0 nil))
+                           (nil? (nth table-fk 1 nil))
+                           (string? (nth table-fk 2 nil)))
+                  (nth table-fk 2))))
+        (referenced-table-fks parsed-query)))
+
+(defn- inferred-schemas
+  "A map from each of `table-names` to the schema of the one table by that name that the current user can query in the
+  database with `database-id`, for the names with exactly one such table, which lives in a schema.
+
+  Only tables the user can query count, so a filled-in schema never names a table the permission sweep would reject,
+  and whether a name gets one says nothing about tables the user cannot use."
+  [database-id table-names]
+  (into {}
+        (for [[table-name tables] (->> (metabot.db/active-tables-named database-id (vec table-names))
+                                       ;; A MySQL app DB compares names without case.
+                                       (filter #(contains? table-names (:name %)))
+                                       (filter #(not (contains? #{:hidden :technical :cruft} (:visibility_type %))))
+                                       (filter mi/can-query?)
+                                       (group-by :name))
+              :let  [[table & more] tables]
+              :when (and (empty? more) (some? (:schema table)))]
+          [table-name (:schema table)])))
+
+(defn- fill-in-null-schemas
+  "`parsed-query` with a schema in place of the null in each portable table or field FK that names a table living in a
+  schema.
+
+  Models read the null in `[db schema table]` as \"schema unknown\" and write it for a table that has one, and an
+  exact lookup then finds nothing. A null schema is left alone when the name is ambiguous or names a table without a
+  schema, so the exact lookup still decides those."
+  [metadata-provider database-id parsed-query]
+  (let [db-name (:name (lib.metadata/database metadata-provider))
+        schemas (some->> (not-empty (null-schema-table-names db-name parsed-query))
+                         (inferred-schemas database-id))]
+    (if (empty? schemas)
+      parsed-query
+      (walk/postwalk (fn [x]
+                       (if (and (vector? x)
+                                (not (map-entry? x))
+                                (>= (count x) 3)
+                                (= db-name (nth x 0))
+                                (nil? (nth x 1))
+                                (every? string? (subvec x 2))
+                                (contains? schemas (nth x 2)))
+                         (assoc x 1 (get schemas (nth x 2)))
+                         x))
+                     parsed-query))))
 
 (def ^:private unresolved-table-fk-errors
   #{:unknown-table :ambiguous-table :unknown-database :cross-database-table})
@@ -1227,6 +1285,7 @@
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
         mp          (lib-be/application-database-metadata-provider database-id)
+        parsed      (fill-in-null-schemas mp database-id parsed)
         ;; Numeric ids are LLM-authored integers rather than resolved names, so establish that
         ;; each one actually denotes something this query may reference before the permission
         ;; sweep runs against it. No-op on the portable-only surface.

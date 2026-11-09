@@ -245,6 +245,39 @@
             (is (true? (:agent-error? d)))
             (is (= :unknown-table (:error d)))))))))
 
+(deftest null-schema-names-the-one-queryable-table-test
+  (testing "a null schema finds the one table by that name the user can query, and is left alone otherwise"
+    (mt/with-temp [:model/Database db         {:name (str "Analytics " (random-uuid)) :engine :h2}
+                   :model/Table    user-table {:name "user" :schema "lever_data" :db_id (:id db)}
+                   :model/Field    _          {:name "email" :table_id (:id user-table) :base_type :type/Text}
+                   :model/Table    _          {:name "orders" :schema "raw" :db_id (:id db)}
+                   :model/Table    _          {:name "orders" :schema "clean" :db_id (:id db)}]
+      (let [construct (fn [table-name]
+                        (try
+                          (-> (construct/execute-representations-query
+                               (query-data
+                                {"lib/type" "mbql/query"
+                                 "stages"   [(cond-> {"lib/type"     "mbql.stage/mbql"
+                                                      "source-table" [(:name db) nil table-name]
+                                                      "aggregation"  [["count" {}]]}
+                                               (= "user" table-name)
+                                               (assoc "breakout" [["field" {} [(:name db) nil "user" "email"]]]))]}))
+                              (get-in [:structured-output :query-json "stages" 0])
+                              (select-keys ["source-table" "breakout"]))
+                          (catch clojure.lang.ExceptionInfo e
+                            (:error (ex-data e)))))]
+        (is (=? {:admin     {"source-table" [(:name db) "lever_data" "user"]
+                             "breakout"     [["field" {} [(:name db) "lever_data" "user" "email"]]]}
+                 :ambiguous :unknown-table
+                 :no-perms  :unknown-table}
+                {:admin     (mt/with-current-user (mt/user->id :crowberto)
+                              (construct "user"))
+                 :ambiguous (mt/with-current-user (mt/user->id :crowberto)
+                              (construct "orders"))
+                 :no-perms  (mt/with-no-data-perms-for-all-users!
+                              (mt/with-current-user (mt/user->id :rasta)
+                                (construct "user")))}))))))
+
 (defn- metadata-lookup-failures []
   (let [message    "SELECT private_metadata failed: connection unavailable"
         root-cause (RuntimeException. message)]
