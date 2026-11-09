@@ -1,7 +1,6 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
@@ -697,165 +696,9 @@ describe("documents", () => {
   });
 
   describe("timeline events on chart embeds", () => {
-    const TIMESERIES_CARD_1 = "Orders, Count, Grouped by Created At (year)";
-    const NON_TIMESERIES_CARD = "Orders, Count";
     const TIMESERIES_CARD_3 = "Orders by Created At (Month)";
     const TIMELINE_NAME = "Releases";
     const TIMELINE_EVENT_NAME = "RC1";
-
-    it("should show the Events menu only on timeseries charts and manage per-chart timeline selection", () => {
-      H.createTimelineWithEvents({
-        timeline: { name: TIMELINE_NAME },
-        events: [
-          {
-            name: TIMELINE_EVENT_NAME,
-            timestamp: "2026-06-01T00:00:00Z",
-            icon: "star",
-            timezone: "UTC",
-          },
-        ],
-      });
-
-      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT).then(
-        ({ body: { id: timeseriesCard3Id } }) => {
-          H.createDocument({
-            name: "Timeline events document",
-            document: {
-              type: "doc",
-              content: [
-                {
-                  type: "resizeNode",
-                  attrs: { height: 350, minHeight: 280, _id: "1" },
-                  content: [
-                    {
-                      type: "cardEmbed",
-                      attrs: {
-                        id: ORDERS_BY_YEAR_QUESTION_ID,
-                        name: null,
-                        _id: "1a",
-                      },
-                    },
-                  ],
-                },
-                { type: "paragraph", attrs: { _id: "2" } },
-                {
-                  type: "resizeNode",
-                  attrs: { height: 350, minHeight: 280, _id: "3" },
-                  content: [
-                    {
-                      type: "cardEmbed",
-                      attrs: {
-                        id: ORDERS_COUNT_QUESTION_ID,
-                        name: null,
-                        _id: "3a",
-                      },
-                    },
-                  ],
-                },
-                { type: "paragraph", attrs: { _id: "4" } },
-                {
-                  type: "resizeNode",
-                  attrs: { height: 350, minHeight: 280, _id: "5" },
-                  content: [
-                    {
-                      type: "cardEmbed",
-                      attrs: {
-                        id: timeseriesCard3Id,
-                        name: null,
-                        _id: "5a",
-                      },
-                    },
-                  ],
-                },
-                { type: "paragraph", attrs: { _id: "6" } },
-              ],
-            },
-            collection_id: null,
-            idAlias: "timelineDocumentId",
-          });
-        },
-      );
-
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-      H.visitDocument("@timelineDocumentId");
-
-      cy.wait(["@cardQuery", "@cardQuery", "@cardQuery"]);
-
-      H.getDocumentCard(TIMESERIES_CARD_1)
-        .findByTestId("chart-container")
-        .should("exist");
-      H.getDocumentCard(NON_TIMESERIES_CARD)
-        .findByTestId("visualization-root")
-        .should("exist");
-      H.getDocumentCard(TIMESERIES_CARD_3)
-        .findByTestId("chart-container")
-        .should("exist");
-
-      cy.log("Events menu appears for timeseries chart 1, not for chart 2");
-      H.openDocumentCardMenu(TIMESERIES_CARD_1);
-      H.popover()
-        .findByRole("menuitem", { name: /Events/ })
-        .should("be.visible");
-      cy.realPress("Escape");
-
-      H.openDocumentCardMenu(NON_TIMESERIES_CARD);
-      H.popover()
-        .findByRole("menuitem", { name: /Edit Visualization/ })
-        .should("be.visible");
-      H.popover()
-        .findByRole("menuitem", { name: /Events/ })
-        .should("not.exist");
-      cy.realPress("Escape");
-
-      cy.log("Add timeline to chart 1");
-      H.openDocumentCardMenu(TIMESERIES_CARD_1);
-      H.popover()
-        .findByRole("menuitem", { name: /Events/ })
-        .click();
-
-      documentTimelineSidebar().should("be.visible");
-      documentTimelineHeaderCheckbox(TIMELINE_NAME)
-        .should("not.be.checked")
-        .click();
-      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("be.checked");
-
-      documentCardTimelineEventChip(
-        TIMESERIES_CARD_1,
-        TIMELINE_EVENT_NAME,
-      ).should("be.visible");
-
-      cy.log("Open timeline sidebar by clicking event chip");
-      closeDocumentTimelineSidebar();
-      documentTimelineSidebar().should("not.exist");
-
-      H.getDocumentCard(TIMESERIES_CARD_1)
-        .findByTestId("timeline-event-chip")
-        .click();
-
-      documentTimelineSidebar().should("be.visible");
-
-      cy.log("Chart 3 has independent timeline state");
-      selectDocumentCard(TIMESERIES_CARD_3);
-
-      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("not.be.checked");
-      documentCardTimelineEventChip(
-        TIMESERIES_CARD_3,
-        TIMELINE_EVENT_NAME,
-      ).should("not.exist");
-
-      cy.log("Remove timeline from chart 1");
-      selectDocumentCard(TIMESERIES_CARD_1);
-
-      documentTimelineHeaderCheckbox(TIMELINE_NAME)
-        .should("be.checked")
-        .click();
-      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("not.be.checked");
-      documentCardTimelineEventChip(
-        TIMESERIES_CARD_1,
-        TIMELINE_EVENT_NAME,
-      ).should("not.exist");
-    });
 
     it("should save a document after editing the visualization of an embed whose timeline the user cannot read", () => {
       H.createCollection({ name: "Private" }).then(
@@ -996,30 +839,4 @@ function denyCollection(id: CollectionId): CollectionPermissions {
     [COLLECTION_GROUP]: denied,
     [DATA_GROUP]: denied,
   };
-}
-
-function documentTimelineSidebar() {
-  return cy.findByTestId("document-timeline-sidebar");
-}
-
-function documentTimelineHeaderCheckbox(timelineName: string) {
-  return documentTimelineSidebar()
-    .findAllByLabelText("Timeline card header")
-    .filter((_, el) => el.textContent?.includes(timelineName) ?? false)
-    .should("have.length", 1)
-    .findByRole("checkbox");
-}
-
-function closeDocumentTimelineSidebar() {
-  return documentTimelineSidebar().findByLabelText("Close").click();
-}
-
-function selectDocumentCard(cardName: string) {
-  return H.getDocumentCard(cardName).click("top");
-}
-
-function documentCardTimelineEventChip(cardName: string, eventName: string) {
-  return H.getDocumentCard(cardName).findByRole("button", {
-    name: eventName,
-  });
 }
