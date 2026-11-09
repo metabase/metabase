@@ -88,7 +88,8 @@
 
 (defmethod mi/can-write? :model/TransformTest
   ([instance]
-   (:can_write (first (t2/hydrate [(t2/instance :model/TransformTest instance)] :can_write))))
+   (and (remote-sync/can-write? :model/TransformTest (:id instance))
+        (can-save? (:transform_id instance))))
   ([_model pk]
    (when-let [transform-test (data-testing.db/transform-test pk)]
      (mi/can-write? transform-test))))
