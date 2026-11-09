@@ -4,7 +4,8 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -431,11 +432,14 @@ describe("scenarios > visualizations > column header combination", () => {
       .last()
       .should("have.text", "Combined Email, Name, ID");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "column_combine_via_column_header",
-      custom_expressions_used: ["concat"],
-      database_id: SAMPLE_DB_ID,
-    });
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "column_combine_via_column_header",
+        custom_expressions_used: ["concat"],
+        database_id: SAMPLE_DB_ID,
+      },
+      2,
+    );
 
     cy.log("Duplicate column names");
     H.tableHeaderClick("Email");
@@ -457,12 +461,10 @@ describe("scenarios > visualizations > column header combination", () => {
     H.createQuestion(
       {
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": PRODUCTS_ID,
           limit: 1,
           aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-          ],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
         },
       },
       {
@@ -470,12 +472,12 @@ describe("scenarios > visualizations > column header combination", () => {
       },
     );
 
-    H.tableInteractive().should("exist");
+    H.tableInteractive().should("be.visible");
     combineColumns({
-      columns: ["Created At: Hour of day", "Count"],
-      newColumn: "Combined Created At: Hour of day, Count",
-      example: "2042-01-01 12:34:56.789 123",
-      newValue: "0 766",
+      columns: ["Category", "Count"],
+      newColumn: "Combined Category, Count",
+      example: "text 123",
+      newValue: "Doohickey 42",
     });
   });
 
@@ -500,12 +502,12 @@ describe("scenarios > visualizations > column header combination", () => {
       },
     );
 
-    H.tableInteractive().should("exist");
+    H.tableInteractive().should("be.visible");
     combineColumns({
-      columns: ["Created At: Hour of day", "Product → Category"],
-      newColumn: "Combined Created At: Hour of day, Product → Category",
-      example: "2042-01-01 12:34:56.789 text",
-      newValue: "0 Doohickey",
+      columns: ["Product → Category", "Created At: Hour of day"],
+      newColumn: "Combined Product → Category, Created At: Hour of day",
+      example: "text 2042-01-01 12:34:56.789",
+      newValue: "Doohickey 0",
     });
   });
 });

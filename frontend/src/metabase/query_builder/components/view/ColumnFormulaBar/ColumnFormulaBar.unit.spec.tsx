@@ -18,19 +18,18 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
+  createMockCard,
   createMockNumericColumn,
   createMockSingleSeries,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
-  createAdHocCard,
-  createAdHocNativeCard,
   createSampleDatabase,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { FormulaBarSlotProvider, FormulaBarSlotTarget } from "../FormulaBar";
@@ -48,7 +47,14 @@ beforeAll(async () => {
 
 const database = createSampleDatabase();
 const metadata = createMockMetadata({ databases: [database] });
-const defaultQuestion = new Question(createAdHocCard(), metadata);
+const defaultQuestion = new Question(
+  createMockUnsavedCard({
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    }),
+  }),
+  metadata,
+);
 
 type HarnessProps = {
   question: Question;
@@ -202,16 +208,16 @@ describe("column formula bar", () => {
 
   it("adds the custom column after an aggregation stage", async () => {
     const question = new Question(
-      createAdHocCard({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          },
-        },
+      createMockUnsavedCard({
+        dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [{ type: "column", name: "PRODUCT_ID" }],
+            },
+          ],
+        }),
       }),
       metadata,
     );
@@ -262,7 +268,16 @@ describe("column formula bar", () => {
   });
 
   it("does not offer the formula bar for native queries", () => {
-    setup({ question: new Question(createAdHocNativeCard(), metadata) });
+    setup({
+      question: new Question(
+        createMockUnsavedCard({
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "select * from orders",
+          }),
+        }),
+        metadata,
+      ),
+    });
     expect(
       screen.queryByRole("button", { name: "Add column" }),
     ).not.toBeInTheDocument();
@@ -345,7 +360,10 @@ describe("column formula bar", () => {
   it("does not offer the formula bar for archived questions", () => {
     setup({
       question: new Question(
-        createSavedStructuredCard({ archived: true }),
+        createMockCard({
+          dataset_query: defaultQuestion.datasetQuery(),
+          archived: true,
+        }),
         metadata,
       ),
     });

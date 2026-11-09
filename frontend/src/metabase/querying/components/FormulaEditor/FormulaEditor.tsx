@@ -48,7 +48,7 @@ export function FormulaEditor(props: FormulaEditorProps) {
             : t`concat([Category], " - ", [Vendor])`
         }
         autoCorrect="off"
-        indentWithTab={false}
+        tabMovesFocus
         onCreateEditor={handleCreate}
         onChange={handleChange}
       />

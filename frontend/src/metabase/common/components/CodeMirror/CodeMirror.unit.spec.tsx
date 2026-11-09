@@ -15,18 +15,20 @@ import { useMemo, useState } from "react";
 
 import { defer } from "metabase/utils/promise";
 
-import { CodeMirror } from "./CodeMirror";
+import { CodeMirror, type CodeMirrorProps } from "./CodeMirror";
 
-type SetupOpts = { indentWithTab?: boolean };
+type SetupOpts = Pick<CodeMirrorProps, "indentWithTab" | "tabMovesFocus">;
 
-async function setup({ indentWithTab }: SetupOpts = {}) {
+async function setup({ indentWithTab, tabMovesFocus }: SetupOpts = {}) {
   const created = defer<EditorView>();
   render(
     <>
+      <button>Previous</button>
       <CodeMirror
         value="value"
         autoFocus
         indentWithTab={indentWithTab}
+        tabMovesFocus={tabMovesFocus}
         onCreateEditor={created.resolve}
       />
       <button>Next</button>
@@ -64,15 +66,17 @@ function SearchReplaceHarness({
 }
 
 describe("CodeMirror", () => {
-  it("indents with Tab by default", async () => {
-    const { view } = await setup();
+  it("keeps custom Tab indentation and backward focus when built-in bindings are disabled", async () => {
+    const { view } = await setup({ indentWithTab: false });
     await userEvent.tab();
     expect(view.state.doc.toString()).toBe("  value");
     expect(view.hasFocus).toBe(true);
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Previous" })).toHaveFocus();
   });
 
-  it("moves focus with Tab when indentation is disabled", async () => {
-    const { view } = await setup({ indentWithTab: false });
+  it("moves focus with Tab when navigation is enabled", async () => {
+    const { view } = await setup({ tabMovesFocus: true });
     await userEvent.tab();
     expect(screen.getByRole("button", { name: "Next" })).toHaveFocus();
     expect(view.state.doc.toString()).toBe("value");

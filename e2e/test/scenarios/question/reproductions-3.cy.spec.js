@@ -834,10 +834,12 @@ describe("issue 43294", () => {
     H.popover().findByText("Year").click();
     cy.wait("@dataset");
 
-    cy.log("combine action");
-    H.tableHeaderClick("Created At: Month");
-    H.popover().findByText("Combine columns").click();
-    H.popover().button("Done").click();
+    cy.log("combine columns with a formula");
+    cy.button("Add column").click();
+    H.codeMirrorHelpers("formula-editor", {}).type(
+      'concat([Created At: Month], " ", [Count])',
+    );
+    cy.findByTestId("formula-editor").button("Add column").click();
     cy.wait("@dataset");
 
     cy.log("check visualization");

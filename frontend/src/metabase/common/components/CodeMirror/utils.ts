@@ -48,7 +48,7 @@ export type ExtensionOptions = {
   autoFocus?: boolean;
   autoCorrect?: string;
   tabIndex?: number;
-  indentWithTab?: boolean;
+  tabMovesFocus?: boolean;
   extensions?: (Extension | null)[];
 };
 
@@ -84,7 +84,7 @@ function useBaseExtensions({
   autoFocus,
   autoCorrect,
   tabIndex,
-  indentWithTab = true,
+  tabMovesFocus = false,
 }: Omit<ExtensionOptions, "extensions">) {
   return useMemo(
     () => [
@@ -98,7 +98,7 @@ function useBaseExtensions({
         brackets: "()",
       }),
       search(),
-      keyboardShortcuts({ onFormat, indentWithTab }),
+      keyboardShortcuts({ onFormat, tabMovesFocus }),
       closeSearchPanelAfterLastReplace(),
       EditorView.lineWrapping,
       highlighting(),
@@ -110,7 +110,7 @@ function useBaseExtensions({
         tabIndex,
       }),
     ],
-    [onFormat, tabIndex, autoFocus, autoCorrect, indentWithTab],
+    [onFormat, tabIndex, autoFocus, autoCorrect, tabMovesFocus],
   );
 }
 
@@ -168,10 +168,10 @@ function closeSearchPanelAfterLastReplace() {
 
 function keyboardShortcuts({
   onFormat,
-  indentWithTab,
+  tabMovesFocus,
 }: {
   onFormat?: () => void;
-  indentWithTab: boolean;
+  tabMovesFocus: boolean;
 }) {
   // Stop Cmd+Enter in CodeMirror from inserting a newline
   // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
@@ -191,7 +191,7 @@ function keyboardShortcuts({
       },
       {
         key: "Tab",
-        run: (view) => indentWithTab && insertIndent(view),
+        run: (view) => !tabMovesFocus && insertIndent(view),
       },
       {
         key: "Mod-j",

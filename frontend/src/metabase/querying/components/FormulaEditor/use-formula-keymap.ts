@@ -7,10 +7,6 @@ import { t } from "ttag";
 
 import { hasActiveSnippet } from "metabase/querying/components/expressions/Editor/utils";
 
-const SINGLE_LINE = EditorState.transactionFilter.of((transaction) =>
-  transaction.newDoc.lines > 1 ? [] : transaction,
-);
-
 type Handlers = {
   onSubmit: () => void;
   onCancel: () => void;
@@ -23,7 +19,9 @@ export function useFormulaKeymap(handlers: Handlers) {
     const isCompleting = (view: EditorView) =>
       completionStatus(view.state) === "active";
     return [
-      SINGLE_LINE,
+      EditorState.transactionFilter.of((transaction) =>
+        transaction.newDoc.lines > 1 ? [] : transaction,
+      ),
       EditorView.contentAttributes.of({ "aria-label": t`Formula` }),
       // DOM handlers give formula navigation priority over the editor's Tab keymaps.
       Prec.highest(
