@@ -114,8 +114,9 @@ Reference items using: [name](metabase://type/id)")
        not-saved-instruction))
 
 (defn- delivery-instruction
-  "The delivery line for an updated query, by how it reached the user: `:editor`, proposed in their open editor buffer
-   for them to accept or reject; `:link`, handed back as a query they open themselves; `:hidden`, not shown at all."
+  "The delivery line for an updated query, by how it reached the user.
+   That is `:editor` when it is proposed in their open editor buffer for them to accept or reject.
+   It is `:link` when it is handed back as a query they open themselves, and `:hidden` when it is not shown at all."
   [query-id delivery]
   (case delivery
     :editor (str "- The updated query is proposed in the user's SQL editor for them to accept or reject — "
@@ -127,8 +128,8 @@ Reference items using: [name](metabase://type/id)")
     :hidden (query-hidden-instructions-for query-id)))
 
 (defn edit-sql-query-instructions-for
-  "Generate instructions for an edited SQL query. `delivery` is how the result reached the user, as
-   [[delivery-instruction]] takes it."
+  "Generate instructions for an edited SQL query.
+   The `delivery` argument is how the result reached the user, as [[delivery-instruction]] takes it."
   [query-id delivery]
   (str "The updated query is shown in the result data above.\n\n"
        "After you have edited the query, do a thorough analysis of the query to find any potential errors.\n\n"
@@ -138,8 +139,8 @@ Reference items using: [name](metabase://type/id)")
        (delivery-instruction query-id delivery)))
 
 (defn replace-sql-query-instructions-for
-  "Generate instructions for a replaced SQL query. `delivery` is how the result reached the user, as
-   [[delivery-instruction]] takes it."
+  "Generate instructions for a replaced SQL query.
+   The `delivery` argument is how the result reached the user, as [[delivery-instruction]] takes it."
   [query-id delivery]
   (str "The updated query is shown in the result data above.\n\n"
        "After you have replaced the query, do a thorough analysis of the query to find any potential errors.\n\n"
