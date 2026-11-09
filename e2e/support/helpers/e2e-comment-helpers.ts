@@ -14,7 +14,6 @@ export const Comments = {
   resolveCommentByText,
   reopenCommentByText,
   openAllComments,
-  reactToComment,
   getSidebar,
   closeSidebar,
 };
@@ -96,20 +95,6 @@ function reopenCommentByText(text: string | RegExp) {
         .should("be.visible")
         .click();
     });
-}
-
-function reactToComment(comment: string | RegExp, emoji: string) {
-  getSidebar().within(() => {
-    getCommentByText(comment)
-      .realHover()
-      .within(() => {
-        cy.findByTestId("comment-action-panel").should("be.visible");
-        cy.findByRole("button", { name: "Add reaction" }).click();
-      });
-  });
-  getEmojiPicker().within(() => {
-    cy.findByText(emoji).click();
-  });
 }
 
 function getSidebar() {
