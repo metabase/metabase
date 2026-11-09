@@ -10,6 +10,8 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -217,20 +219,19 @@
                                                                  " r ON o.id = r.id")}]))))))))
 
 (deftest date-column-under-a-report-timezone-test
-  ;; The literal timestamp casts below are not portable to every driver.
-  (mt/test-drivers (set/intersection #{:h2 :postgres} (mt/normal-drivers-with-feature :transforms/testing))
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (mt/with-report-timezone-id! "Asia/Tokyo"
-      (let [orders (table-query :orders)
-            card   {:dataset_query (lib/with-fields orders [(column orders :orders :id)
-                                                            (column orders :orders :created_at)])}
-            result (run-card-test! card
-                                   [{:table  (table-ref :orders) :format :sql
-                                     :sql    "SELECT 1 AS id, CAST('2024-01-02 23:30:00' AS TIMESTAMP) AS created_at"}]
-                                   [{:type :empty :name "the input timestamp is unchanged"
-                                     :sql  (str "SELECT * FROM {{output}}"
-                                                " WHERE created_at <> CAST('2024-01-02 23:30:00' AS TIMESTAMP)")}
-                                    {:type :empty :name "control: the row is there"
-                                     :sql  "SELECT * FROM {{output}} WHERE id = 1"}])]
+      (let [orders    (table-query :orders)
+            card      {:dataset_query (lib/with-fields orders [(column orders :orders :id)
+                                                               (column orders :orders :created_at)])}
+            timestamp (sql.qp/inline-value driver/*driver* (t/local-date-time 2024 1 2 23 30))
+            result    (run-card-test! card
+                                      [{:table  (table-ref :orders) :format :sql
+                                        :sql    (str "SELECT 1 AS id, " timestamp " AS created_at")}]
+                                      [{:type :empty :name "the input timestamp is unchanged"
+                                        :sql  (str "SELECT * FROM {{output}} WHERE created_at <> " timestamp)}
+                                       {:type :empty :name "control: the row is there"
+                                        :sql  "SELECT * FROM {{output}} WHERE id = 1"}])]
         (testing "a timestamp in a card's output is the one in its input, whatever the report timezone"
           (is (= {"the input timestamp is unchanged" :passed "control: the row is there" :failed}
                  (into {} (map (juxt :name :status)) (:expectations result)))))))))
