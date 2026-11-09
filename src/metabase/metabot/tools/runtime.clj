@@ -156,8 +156,17 @@
     (sequential? v) "an array"
     :else           "an unsupported value"))
 
+(defn json-text?
+  "Whether `v` is a string that looks like a JSON object or array, ignoring surrounding whitespace."
+  [v]
+  (and (string? v)
+       (let [trimmed (str/trim v)]
+         (or (str/starts-with? trimmed "{")
+             (str/starts-with? trimmed "[")))))
+
 (defn- json-text-error
-  "Where the JSON text `s` stops parsing, e.g. `unexpected \"]\" at line 1, column 72`, or nil when it parses."
+  "What is wrong with the JSON text `s`, such as `the text is not valid JSON near line 1, column 72`, or nil when it
+  parses."
   [^String s]
   (try
     (json/decode s)
@@ -165,27 +174,15 @@
     (catch JsonEOFException _
       "the text ends before the JSON is complete")
     (catch JsonProcessingException e
-      (let [location (.getLocation e)
-            offset   (.getCharOffset location)]
-        (str "unexpected "
-             (when (< -1 offset (count s))
-               (str (pr-str (str (.charAt s (int offset)))) " "))
-             "at line " (.getLineNr location) ", column " (.getColumnNr location))))
+      ;; The location is missing for some failures, such as a number too long to read. It can also sit just after
+      ;; the bad token (`NaN` is reported at the following character), so it is given as "near".
+      (if-let [location (.getLocation e)]
+        (str "the text is not valid JSON near line " (.getLineNr location) ", column " (.getColumnNr location))
+        "the text is not valid JSON"))
+    ;; Parse failures arrive as JsonProcessingException, so this is only a backstop that keeps a surprise from
+    ;; turning a type error into an internal failure.
     (catch Exception _
-      "the text does not parse")))
-
-(defn- malformed-json-text
-  "Why `v` is quoted JSON text that does not parse, or nil when it is not.
-
-  A string that parses was already decoded before the tool ran, so the model sees only a type error for one that
-  does not. Saying the text was quoted, and where it breaks, gives the model something to fix; a type error alone
-  gets the same call sent again."
-  [v]
-  (when (and (string? v)
-             (let [trimmed (str/trim v)]
-               (or (str/starts-with? trimmed "{")
-                   (str/starts-with? trimmed "["))))
-    (json-text-error v)))
+      "the text is not valid JSON")))
 
 (defn- argument-path
   "The path `in` into a tool's arguments, written the way the model would name it, such as `ops[1].card_id`."
@@ -237,8 +234,10 @@
   (let [about-value? (every? #(= in (:in %)) errors)
         texts        (distinct (map :text errors))
         value        (get-in arguments in)
-        json-error   (when (and about-value? (= texts ["invalid type"]))
-                       (malformed-json-text value))]
+        ;; Quoted JSON text that parses was decoded before the tool ran, so the type error here is for text that does
+        ;; not. Saying where it breaks gives the model something to fix; a type error alone gets the same call again.
+        json-error   (when (and about-value? (= texts ["invalid type"]) (json-text? value))
+                       (json-text-error value))]
     (cond
       (and about-value? (= texts ["disallowed key"]))
       {:one "is not a supported argument.", :many "are not supported arguments."}
@@ -247,9 +246,9 @@
       {:one "is required.", :many "are required."}
 
       json-error
-      {:one  (str "was sent as a string of JSON text, and the text is not valid JSON: " json-error
+      {:one  (str "was sent as a string of JSON text, and " json-error
                   ". Fix the JSON and send the value itself, not a quoted string.")
-       :many (str "were sent as strings of JSON text, and the text is not valid JSON: " json-error
+       :many (str "were sent as strings of JSON text, and " json-error
                   ". Fix the JSON and send the values themselves, not quoted strings.")}
 
       about-value?

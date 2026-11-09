@@ -202,19 +202,21 @@
            (:output outcome)))))
 
 (deftest ^:parallel malformed-json-text-argument-test
-  (testing "quoted JSON text that does not parse: the message says it was quoted and where it breaks"
-    (is (= (str "Invalid tool arguments: `query` was sent as a string of JSON text, and the text is not valid "
-                "JSON: unexpected \"]\" at line 1, column 26. Fix the JSON and send the value itself, not a quoted "
-                "string.")
-           (:output (invoke "build" {:query "{\"stages\": [{\"limit\": 1}]]}"})))))
-  (testing "text that ends early"
-    (is (= (str "Invalid tool arguments: `query` was sent as a string of JSON text, and the text is not valid "
-                "JSON: the text ends before the JSON is complete. Fix the JSON and send the value itself, not a "
-                "quoted string.")
-           (:output (invoke "build" {:query "{\"stages\": [1"})))))
-  (testing "a plain string keeps the type message"
-    (is (= "Invalid tool arguments: `query` invalid type; received a string."
-           (:output (invoke "build" {:query "orders"}))))))
+  (let [message (fn [problem]
+                  (str "Invalid tool arguments: `query` was sent as a string of JSON text, and " problem
+                       ". Fix the JSON and send the value itself, not a quoted string."))]
+    (testing "quoted JSON text that does not parse: the message says it was quoted and where it breaks"
+      (is (= (message "the text is not valid JSON near line 1, column 26")
+             (:output (invoke "build" {:query "{\"stages\": [{\"limit\": 1}]]}"})))))
+    (testing "text that ends early"
+      (is (= (message "the text ends before the JSON is complete")
+             (:output (invoke "build" {:query "{\"stages\": [1"})))))
+    (testing "a parse failure without a location, such as a number too long to read"
+      (is (= (message "the text is not valid JSON")
+             (:output (invoke "build" {:query (str "{\"limit\": " (apply str (repeat 1200 "1")) "}")})))))
+    (testing "a plain string keeps the type message"
+      (is (= "Invalid tool arguments: `query` invalid type; received a string."
+             (:output (invoke "build" {:query "orders"})))))))
 
 ;;; ------------------------------------------------ Recoverable ---------------------------------------------------
 

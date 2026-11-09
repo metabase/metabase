@@ -480,10 +480,7 @@
   "If `v` is a string that looks like a JSON object or array, decode it.
   Returns the decoded value on success, or the original value on failure."
   [v]
-  (if (and (string? v)
-           (let [trimmed (str/trim v)]
-             (or (str/starts-with? trimmed "{")
-                 (str/starts-with? trimmed "["))))
+  (if (tools.runtime/json-text? v)
     (try
       (json/decode+kw v)
       (catch Exception _ v))
