@@ -233,7 +233,6 @@ describe("scenarios > setup", () => {
     cy.findByTestId("step-number").should("have.text", "4");
   });
 
-  // There are only one step in the setup flow, so there is no need to show step numbers.
   it("should update the site locale setting when changing language in setup", () => {
     cy.intercept("PUT", "/api/setting/site-locale").as("updateSiteLocale");
 
