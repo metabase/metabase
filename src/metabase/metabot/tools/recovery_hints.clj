@@ -107,8 +107,12 @@
     (:unknown-segment :unknown-segment-id)
     "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
 
+    ;; Not `recoverable.pipeline/cross-database-step`: v1 reads rows through `/v1/execute`, which has no truncated
+    ;; flag, so it can't tell when two results fit.
     (:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table)
-    (:text recoverable.pipeline/cross-database-step)
+    (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a "
+         "notebook query or in SQL. Tell the user that you can't combine data from these two databases in one query, "
+         "and say what you can do instead.")
 
     :unknown-database
     "Use the exact database name as reported by search / `read_resource` (it appears as the first element of every portable FK, e.g. `source-table: [<db-name>, <schema>, <table>]`)."

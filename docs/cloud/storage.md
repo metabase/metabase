@@ -1,5 +1,6 @@
 ---
 title: Metabase Cloud Storage
+summary: Store spreadsheet data in Metabase Cloud Storage and query it with the query builder or SQL, even if you don't have a data warehouse.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

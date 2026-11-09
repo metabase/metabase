@@ -88,7 +88,7 @@ describe("QuestionInfoSidebar > premium", () => {
   describe("tabs", () => {
     describe("for non-admins", () => {
       it("should show tabs for Overview, History, and Relationships, and no Insights link", async () => {
-        setupEnterprise({});
+        await setupEnterprise({});
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(3);
         expect(tabs.map((tab) => tab.textContent)).toEqual([
@@ -112,7 +112,7 @@ describe("QuestionInfoSidebar > premium", () => {
       });
 
       it("should show tabs for Overview, History, and Relationships, and a link for Insights", async () => {
-        setupEnterprise({ user: { is_superuser: true } });
+        await setupEnterprise({ user: { is_superuser: true } });
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(3);
         expect(tabs.map((tab) => tab.textContent)).toEqual([

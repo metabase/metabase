@@ -1,5 +1,6 @@
 ---
 title: Line charts, bar charts, and area charts
+summary: Pick between line, bar, area, and combo charts to show change over time or compare values across categories, and learn the settings for each.
 redirect_from:
   - /docs/latest/questions/visualizations/line-bar-and-area-charts
   - /docs/latest/questions/sharing/visualizations/combo-chart
