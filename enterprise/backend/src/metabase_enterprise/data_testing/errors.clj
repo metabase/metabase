@@ -25,6 +25,7 @@
    ::unparseable-source         400  ; The SQL of the query under test could not be parsed to find what it reads.
    ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
    ::no-expectations            400  ; The test checks nothing.
+   ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).

@@ -47,7 +47,8 @@
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/card-test
   "Create a card test. Its expectations read the result of the card's query without remapped columns and without the
-  default row limit.
+  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other
+  `{{...}}` is refused.
 
   A card with a parameter that has no default value cannot be tested: a test cannot set parameter values.
   A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table."

@@ -128,3 +128,26 @@
     (testing "without the output token, the same expectation's SQL cannot be parsed"
       (is (= ::errors/unparseable-source
              (refusal test-reading-output))))))
+
+(deftest unknown-placeholder-test
+  (let [card-test (-> complete-test
+                      (assoc-in [:replacements {:table data-testing.compile/output-name}]
+                                {:db nil :schema nil :table "MB_OUT"})
+                      (assoc :output-token "{{output}}"))
+        with-sql  (fn [args sql] (assoc args :expectations [{:type :empty :name "check" :sql sql}]))
+        refused   (fn [args]
+                    (try
+                      (validator/validate :h2 args)
+                      nil
+                      (catch ExceptionInfo e
+                        {:error-type (:error-type (ex-data e)) :message (ex-message e)})))]
+    (driver/the-initialized-driver :h2)
+    (testing "control: the output token, with or without spaces inside its braces, is accepted"
+      (is (nil? (refused (with-sql card-test "SELECT * FROM {{output}} JOIN {{ output }} o2 ON 1 = 1")))))
+    (testing "any other placeholder is refused, naming it and the expectation"
+      (is (= {:error-type ::errors/unknown-placeholder
+              :message    (str "Expectation \"check\" uses placeholders a test does not know: {{OUTPUT}}, {{ other }}. "
+                               "Write {{output}} for the output of the query under test.")}
+             (refused (with-sql card-test "SELECT * FROM {{OUTPUT}} WHERE x = '{{ other }}'")))))
+    (testing "a transform test has no placeholders: braces in a string literal are its SQL's own"
+      (is (nil? (refused (with-sql complete-test "SELECT '{{x}}' AS a FROM PEOPLE")))))))

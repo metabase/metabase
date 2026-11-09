@@ -169,6 +169,29 @@
                 {:expectation expectation-name}))
         (throw e)))))
 
+(def ^:private placeholder
+  "A `{{...}}` placeholder, with the name inside its braces as the group, whitespace around it excluded."
+  #"\{\{\s*([^{}]*?)\s*\}\}")
+
+(mu/defn- check-placeholders :- :nil
+  "Throw unless every placeholder in the SQL of expectation `expectation-name` is `output-token`. Whitespace inside
+  the braces does not matter and case does, as in [[data-testing.compile/replace-tables]]."
+  [expectation-name :- :string
+   sql              :- :string
+   output-token     :- ::data-testing.compile/output-token]
+  (let [token-name (second (re-find placeholder output-token))]
+    (when-let [unknown (seq (into []
+                                  (comp (remove (fn [[_ placeholder-name]] (= token-name placeholder-name)))
+                                        (map first)
+                                        (distinct))
+                                  (re-seq placeholder sql)))]
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/unknown-placeholder
+              (tru "Expectation \"{0}\" uses placeholders a test does not know: {1}. Write {2} for the output of the query under test."
+                   expectation-name (str/join ", " unknown) output-token)
+              {:placeholders  (vec unknown)
+               :response/keys #{:placeholders}})))))
+
 (mu/defn validate :- :nil
   "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
   temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a
@@ -213,6 +236,8 @@
     (check-rewrite driver rewritten-query temp-tables nil)
     (doseq [{:keys [name sql]} expectations
             :when              sql]
+      (when output-token
+        (check-placeholders name sql output-token))
       (check-expectation-sql driver name sql replacements output-token temp-tables)))
   (when (empty? expectations)
     (throw (data-testing.errors/ex
