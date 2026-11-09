@@ -1,5 +1,6 @@
 ---
 title: Country codes
+summary: The 250 ISO 3166-1 alpha-2 country codes and names Metabase's default world map uses.
 ---
 
 # Country codes

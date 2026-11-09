@@ -1,5 +1,6 @@
 ---
 title: Snowflake
+summary: Connect Metabase to Snowflake, including key-pair and other authentication methods and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/snowflake
 ---

@@ -1,5 +1,6 @@
 ---
 title: SQLite
+summary: Connect Metabase to a SQLite file, with every connection and sync setting explained.
 ---
 
 # SQLite

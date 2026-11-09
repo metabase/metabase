@@ -1,5 +1,6 @@
 ---
 title: Submitting a PR for a new driver
+summary: Add test extensions to your driver and run it against Metabase's core test suite before submitting a pull request.
 ---
 
 # Submitting a PR for a new driver
