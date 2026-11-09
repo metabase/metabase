@@ -57,23 +57,23 @@
 (defn walk-in-bulk
   "Each of `forms` rewritten by `walk`, a fn of a visitor and a form that replaces every database id or reference `x`
   of a row of `model` in the form with what `(visit model x)` returns, with `opts` the options the walk reads with
-  [[options]]. A first walk collects the inputs, returning each unresolved; `resolve`, a fn of a model and the set of
-  its inputs returning a map from input to result, resolves each model's at once; and a second walk replaces each
-  input with its result. An input the first walk misses, because it threw or took a path that depends on resolved
+  [[options]]. A first walk collects the inputs, returning each unresolved; `resolve-inputs`, a fn of a model and the
+  set of its inputs returning a map from input to result, resolves each model's at once; and a second walk replaces
+  each input with its result. An input the first walk misses, because it threw or took a path that depends on resolved
   values, is resolved when the second walk meets it."
-  ([forms walk resolve]
-   (walk-in-bulk forms {} walk resolve))
-  ([forms opts walk resolve]
+  ([forms walk resolve-inputs]
+   (walk-in-bulk forms {} walk resolve-inputs))
+  ([forms opts walk resolve-inputs]
    (let [collected (volatile! {})
          collect   (with-meta (fn [model x] (vswap! collected add-input model x) x)
                               {::collecting true ::options opts})
          _         (run! #(try (walk collect %) (catch Exception _ nil)) forms)
-         resolved  (volatile! (into {} (map (fn [[model xs]] [model (resolve model xs)])) @collected))
+         resolved  (volatile! (into {} (map (fn [[model xs]] [model (resolve-inputs model xs)])) @collected))
          tried     (volatile! @collected)
          visit     (with-meta (fn [model x]
                                 (when-not (contains? (get @tried model) x)
                                   (vswap! tried add-input model x)
-                                  (vswap! resolved update model merge (resolve model #{x})))
+                                  (vswap! resolved update model merge (resolve-inputs model #{x})))
                                 (resolved-value (get @resolved model) model x))
                               {::options opts})]
      (mapv #(walk visit %) forms))))

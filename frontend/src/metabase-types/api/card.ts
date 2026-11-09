@@ -17,7 +17,11 @@ import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
-import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
+import type {
+  CurrencyPosition,
+  CurrencyStyle,
+  TimeOnlyOptions,
+} from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -298,6 +302,7 @@ export type ColumnSettings = TimeOnlyOptions & {
   compact?: boolean;
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   date_abbreviate?: boolean;
   date_format?: string;
   date_separator?: string;
@@ -651,8 +656,6 @@ export type ListCardsRequest = {
 
 export interface GetCardRequest {
   id: CardId | EntityToken;
-  context?: "collection";
-  ignore_view?: boolean;
   ignore_error?: boolean;
 }
 
@@ -700,7 +703,6 @@ export interface UpdateCardRequest {
   collection_position?: number | null;
   result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number;
-  collection_preview?: boolean;
   delete_old_dashcards?: boolean;
 }
 
@@ -726,7 +728,6 @@ export type InvalidCard = Pick<
   | "creator"
 > & {
   collection: CollectionEssentials;
-  collection_preview: boolean;
   entity_id: string;
   errors: CardError[];
   display: CardDisplayType;
@@ -751,7 +752,6 @@ export type StoredResultSort =
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
-  collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
   stored_result_id?: number;

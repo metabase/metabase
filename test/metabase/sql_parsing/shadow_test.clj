@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.shadow :as shadow]
    [metabase.test :as mt]))
@@ -91,7 +90,7 @@
 
 (deftest primary-exception-is-rethrown-unchanged-test
   (mt/with-prometheus-system! [_ system]
-    (let [error  (common/call-failed-ex "ParseError: Invalid expression")
+    (let [error  (protocol/call-failed-ex "ParseError: Invalid expression")
           parser (shadow-parser (stub-parser (fn [_ _] (throw error)))
                                 (stub-parser (fn [_ _] [])))]
       (is (identical? error (try (protocol/referenced-tables parser "postgres" "sql")
@@ -153,7 +152,7 @@
         (is (not-any? #(re-find #"secret" %) @messages))))))
 
 (defn- outcome [value] {:value value})
-(defn- thrown [error] {:thrown (common/call-failed-ex error)})
+(defn- thrown [error] {:thrown (protocol/call-failed-ex error)})
 
 (deftest classify-test
   (testing "values"
@@ -233,7 +232,7 @@
 
 (deftest sampling-failure-answers-with-the-primary-test
   (mt/with-prometheus-system! [_ system]
-    (let [error  (common/call-failed-ex "ParseError: x")
+    (let [error  (protocol/call-failed-ex "ParseError: x")
           parser (fn [primary]
                    (shadow-parser (stub-parser primary)
                                   (stub-parser (fn [_ _] []))
@@ -246,7 +245,7 @@
 
 (deftest metric-failure-answers-with-the-primary-test
   (testing "a metric that cannot be written does not replace the primary's value or exception"
-    (let [error  (common/call-failed-ex "ParseError: x")
+    (let [error  (protocol/call-failed-ex "ParseError: x")
           parser (fn [primary shadow]
                    (shadow-parser (stub-parser primary) (stub-parser shadow)))]
       (mt/with-dynamic-fn-redefs [analytics/inc!       (fn [& _] (throw (RuntimeException. "error when updating metric")))

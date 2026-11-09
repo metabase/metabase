@@ -6,13 +6,12 @@
   and maps, never a node: code that read the port's AST elsewhere would tie Metabase to its shape.
   `metabase.sql-parsing.sqlglot-java-test` checks both.
 
-  Every failure is a [[metabase.sql-parsing.common/call-failed-ex]]. Port errors keep their sqlglot name (`ParseError`,
+  Every failure is a [[metabase.sql-parsing.protocol/call-failed-ex]]. Port errors keep their sqlglot name (`ParseError`,
   `OptimizeError`, ...), the errors `sql_tools.py` raises itself carry the Python name (`ValueError`, `KeyError`,
   `AssertionError`, `AttributeError`, `RecursionError`, `TypeError` for nil SQL), and any other JVM exception carries
   its Java class name."
   (:require
    [metabase.analytics-interface.core :as analytics]
-   [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.settings :as sql-parsing.settings]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
@@ -68,7 +67,7 @@
   the same way. SQL nested too deeply for the stack is a RecursionError, with GraalPy's message."
   [f]
   (let [fail (fn [error cause]
-               (throw (common/call-failed-ex error (ex-info error {} cause))))]
+               (throw (protocol/call-failed-ex error (ex-info error {} cause))))]
     (try
       (f)
       (catch StackOverflowError e

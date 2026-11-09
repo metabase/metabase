@@ -74,7 +74,7 @@
       (is (= cleared (select-keys (import-one {} settings) (keys settings)))))))
 
 (deftest ^:parallel import-viz-settings-test
-  (let [import (partial import-one {:field (constantly 3)})]
+  (let [import-settings (partial import-one {:field (constantly 3)})]
     (is (= {:column_settings
             {"[\"ref\",[\"field\",3,null]]"
              {:click_behavior
@@ -84,7 +84,7 @@
                  :target {:type      "dimension"
                           :dimension [:dimension [:field 3 {:source-field 3}]]
                           :id        "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"}}}}}}}
-           (import
+           (import-settings
             {:column_settings
              {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]"
               {:click_behavior

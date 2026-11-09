@@ -282,7 +282,7 @@ describe("DataSourceSelector", () => {
       ).toBeTruthy();
       expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("Raw Data"));
+      await userEvent.click(rawData);
       expect(await screen.findByText("Models")).toBeInTheDocument();
       expect(screen.getByText("Raw Data")).toBeInTheDocument();
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();

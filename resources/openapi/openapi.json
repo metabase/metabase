@@ -9593,13 +9593,6 @@
               "type" : "null"
             } ]
           },
-          "collection_preview" : {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "copy" : {
             "type" : "boolean"
           },
@@ -16311,7 +16304,7 @@
       },
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
-        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ],
+        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ],
         "type" : "string"
       },
       "metabase.lib.schema.info.hash" : {
@@ -27025,13 +27018,6 @@
                     "type" : "null"
                   } ]
                 },
-                "collection_preview" : {
-                  "anyOf" : [ {
-                    "type" : "boolean"
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
                 "created_at" : {
                   "anyOf" : [ {
                     "anyOf" : [ {
@@ -28656,13 +28642,6 @@
                       } ],
                       "type" : "array"
                     } ]
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
-                "collection_preview" : {
-                  "anyOf" : [ {
-                    "type" : "boolean"
                   }, {
                     "type" : "null"
                   } ]
@@ -30736,13 +30715,6 @@
                 } ],
                 "type" : "array"
               } ]
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "collection_preview" : {
-            "anyOf" : [ {
-              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -36175,13 +36147,6 @@
               "schema" : {
                 "additionalProperties" : false,
                 "properties" : {
-                  "collection_preview" : {
-                    "anyOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
                   "dashboard_id" : {
                     "anyOf" : [ {
                       "description" : "value must be an integer greater than zero.",
@@ -36459,13 +36424,6 @@
                       "description" : "value must be an integer greater than zero.",
                       "minimum" : 1,
                       "type" : "integer"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "collection_preview" : {
-                    "anyOf" : [ {
-                      "type" : "boolean"
                     }, {
                       "type" : "null"
                     } ]
@@ -75023,111 +74981,6 @@
           }
         },
         "summary" : "POST /api/testing/mcp/seed-tool-call",
-        "tags" : [ "/api/testing" ]
-      }
-    },
-    "/api/testing/metabot/seed-ai-usage" : {
-      "delete" : {
-        "description" : "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then\n  clear the metabot limit cache.  Intended only for E2E tests.",
-        "operationId" : "delete-api-testing-metabot-seed-ai-usage",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "additionalProperties" : false,
-                "properties" : {
-                  "user_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
-                  }
-                },
-                "required" : [ "user_id" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "deleted" : {
-                      "type" : "integer"
-                    }
-                  },
-                  "required" : [ "deleted" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "DELETE /api/testing/metabot/seed-ai-usage",
-        "tags" : [ "/api/testing" ]
-      },
-      "post" : {
-        "description" : "Insert `count` messages of AI usage for the given `user_id`: one `ai_usage_log` row each, from the chat source and\n  under its own `request_id`, so a message limit counts each row as one message. Then clear the metabot limit cache\n  so limit checks re-evaluate immediately. Intended only for E2E tests.",
-        "operationId" : "post-api-testing-metabot-seed-ai-usage",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "additionalProperties" : false,
-                "properties" : {
-                  "count" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
-                  },
-                  "user_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
-                  }
-                },
-                "required" : [ "user_id", "count" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "inserted" : {
-                      "type" : "integer"
-                    }
-                  },
-                  "required" : [ "inserted" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/testing/metabot/seed-ai-usage",
         "tags" : [ "/api/testing" ]
       }
     },

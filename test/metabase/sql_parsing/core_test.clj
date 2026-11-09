@@ -97,6 +97,14 @@
                  (sort (keep :column (:returned-fields result))))
               (pr-str sql)))))))
 
+(deftest ^:parallel field-references-alias-per-select-item-test
+  (testing "a column selected with and without an alias keeps the alias of each select item"
+    (is (= ["b" "a"]
+           (mapv :alias (:returned-fields (sql-parsing/field-references
+                                           (sql-tools/sqlglot-parser)
+                                           "postgres"
+                                           "SELECT u.a AS b, u.a FROM (SELECT a FROM x UNION SELECT a FROM y) u")))))))
+
 ;;; ------------------------------------------ single-stmt classification ------------------------------------------
 
 (deftest ^:parallel single-stmt-classification-test

@@ -136,7 +136,8 @@
            settings
            users.schema
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1005,7 +1006,8 @@
            util.classloader
            util.config
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   embedding
@@ -1793,7 +1795,8 @@
            task.history
            tracing
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 
@@ -2327,6 +2330,7 @@
               metabase.query-processor.middleware.add-remaps
               metabase.query-processor.middleware.catch-exceptions
               metabase.query-processor.middleware.constraints
+              metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
@@ -2387,7 +2391,8 @@
            tracing
            users
            util
-           util.config}
+           util.config
+           workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2938,7 +2943,8 @@
            util
            util.config
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
@@ -3164,7 +3170,8 @@
            query-processor
            sync
            transforms.indexes
-           util}}
+           util
+           workspaces}}
 
   transforms.feature-gating
   {:team "Graphy"
@@ -3245,7 +3252,8 @@
            settings
            sync
            util
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -3552,6 +3560,13 @@
            system
            util}}
 
+  workspaces
+  {:team "Graphy"
+   :api #{metabase.workspaces.core
+          metabase.workspaces.table-remapping}
+   :uses #{premium-features
+           util}}
+
   xrays
   {:team "Graphy"
    :api  #{metabase.xrays.api
@@ -3633,7 +3648,8 @@
            users
            users.schema
            util
-           warehouses}
+           warehouses
+           enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/analytics
@@ -3647,7 +3663,7 @@
            enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}
-   :model-imports #{:model/Database :model/Sandbox}}
+   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
 
   enterprise/analytics.internal-stats
   {:team "UX West"
@@ -3968,7 +3984,8 @@
            settings
            util
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -4758,7 +4775,33 @@
            permissions
            util
            warehouses.schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
+
+  enterprise/workspaces
+  {:team "Graphy"
+   :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.core
+           metabase-enterprise.workspaces.init}
+   :uses #{api
+           app-db
+           cache
+           database-routing
+           driver
+           lib.metadata
+           lib.schema
+           models
+           permissions
+           premium-features
+           query-processor
+           sample-data
+           settings
+           sql-tools
+           util
+           workspaces}
+   :model-exports #{:model/Workspace}
+   :model-imports #{:model/Database
+                    :model/Table
+                    :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

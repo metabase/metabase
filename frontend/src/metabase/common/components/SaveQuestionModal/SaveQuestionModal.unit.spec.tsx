@@ -629,9 +629,9 @@ describe("SaveQuestionModal", () => {
       expect(
         await screen.findByLabelText(/Which tab should this go on/),
       ).toBeInTheDocument();
-      await waitFor(async () => {
+      await waitFor(() => {
         expect(
-          await screen.findByLabelText(/Which tab should this go on/),
+          screen.getByLabelText(/Which tab should this go on/),
         ).toHaveValue("Foo Tab 1");
       });
     });
@@ -1060,9 +1060,9 @@ describe("SaveQuestionModal", () => {
           await userEvent.click(saveLocDropdown());
           await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
           await userEvent.click(newCollBtn());
-          await waitFor(async () => {
+          await waitFor(() => {
             expect(
-              await screen.findByRole("heading", {
+              screen.getByRole("heading", {
                 name: "Create a new collection",
               }),
             ).toBeInTheDocument();

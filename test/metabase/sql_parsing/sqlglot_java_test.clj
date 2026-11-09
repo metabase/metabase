@@ -127,15 +127,6 @@
             :let    [verdict #(sql-parsing/validate-executable-stmt (sql-parsing/parser %) dialect sql "read-only")]]
       (is (= (verdict :sqlglot) (verdict :sqlglot-java)) [dialect sql]))))
 
-(deftest aliased-and-plain-select-of-one-column-test
-  (testing "a column selected with and without an alias keeps each its own alias (QUE-992)"
-    (doseq [backend [:sqlglot :sqlglot-java]]
-      (is (= ["b" "a"]
-             (mapv :alias (:returned-fields (sql-parsing/field-references
-                                             (sql-parsing/parser backend) "postgres"
-                                             "SELECT u.a AS b, u.a FROM (SELECT a FROM x UNION SELECT a FROM y) u"))))
-          backend))))
-
 (deftest group-by-and-order-by-all-name-no-column-test
   (testing "GROUP BY ALL and ORDER BY ALL use every selected column and no column named ALL, as on GraalPy (QUE-1050)"
     (doseq [[sql dialects] [["SELECT a, SUM(b) FROM t GROUP BY ALL" ["duckdb" "databricks" "snowflake"]]

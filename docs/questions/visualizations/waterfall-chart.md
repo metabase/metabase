@@ -1,5 +1,6 @@
 ---
 title: Waterfall charts
+summary: Show how a starting value changes through a series of increases and decreases to arrive at a final total.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/waterfall-chart
 ---

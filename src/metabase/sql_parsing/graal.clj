@@ -11,16 +11,22 @@
   them.
 
   GraalPy can occasionally hang (DEV-1393), so every call runs under a timeout; a timed-out context is
-  interrupted and disposed from the pool instead of released."
+  interrupted and disposed from the pool instead of released.
+
+  In dev, sqlglot is installed into `resources/python-sources` on first use."
   (:require
+   [clojure.java.io :as io]
+   [clojure.java.shell :as shell]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.sql-parsing.common :as common]
+   [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.settings :as sql-parsing.settings]
    [metabase.util.files :as u.files]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.pool :as u.pool])
   (:import
    (io.aleph.dirigiste Pool)
+   (java.io File)
    (java.net URI)
    (java.nio.channels SeekableByteChannel)
    (java.nio.file AccessMode DirectoryStream DirectoryStream$Filter Files FileSystems Path)
@@ -31,6 +37,100 @@
    (org.graalvm.polyglot.io FileSystem IOAccess)))
 
 (set! *warn-on-reflection* true)
+
+;;; ---------------------------------------- Python path resolution ---------------------------------------
+
+(def ^:private python-sources-resource
+  "Resource path for Python sources (sql_tools.py and sqlglot)."
+  "python-sources")
+
+(defn- jar-resource?
+  "True if the given resource is inside a JAR (production), false if from filesystem (dev)."
+  [resource]
+  (boolean
+   (when-let [url (io/resource resource)]
+     (.contains (.getFile ^java.net.URL url) ".jar!/"))))
+
+;;; ---------------------------------------- Dev lazy installation ----------------------------------------
+
+(def ^:private dev-python-sources-dir
+  "Directory where sqlglot is installed in dev mode."
+  "resources/python-sources")
+
+(defn- delete-recursive!
+  "Recursively delete a directory and all its contents."
+  [^File f]
+  (when (.isDirectory f)
+    (doseq [child (.listFiles f)]
+      (delete-recursive! child)))
+  (.delete f))
+
+(defn expected-sqlglot-version
+  "Read the expected sqlglot version from pyproject.toml resource file."
+  []
+  (some->> (io/resource "python-sources/pyproject.toml")
+           slurp
+           (re-find #"\"sqlglot==([^\"]+)\"")
+           second))
+
+(defn- package-installer-available?
+  "Check if uv or pip is available for installing Python packages."
+  []
+  (or (zero? (:exit (shell/sh "which" "uv")))
+      (zero? (:exit (shell/sh "which" "pip")))))
+
+(defn- version-installed?
+  "Check if sqlglot is installed with the expected version. Verifies both the dist-info metadata
+  (needed by uv/pip) and the actual module (needed by Python import)."
+  [target-dir expected-version]
+  (and (.exists (io/file target-dir (str "sqlglot-" expected-version ".dist-info") "METADATA"))
+       (.exists (io/file target-dir "sqlglot" "__init__.py"))))
+
+(defn- install-sqlglot!
+  "Install sqlglot via uv (preferred) or pip (fallback).
+  Deletes any existing sqlglot directories first to handle version upgrades."
+  [target-dir version]
+  ;; Delete old versions first (sqlglot/ and any sqlglot-*.dist-info/)
+  (doseq [^File f (.listFiles (io/file target-dir))]
+    (when (or (= "sqlglot" (.getName f))
+              (.startsWith (.getName f) "sqlglot-"))
+      (log/info "Removing old sqlglot:" (.getName f))
+      (delete-recursive! f)))
+  ;; Try uv first (fast), fall back to pip
+  (let [pyproject-file (str target-dir "/pyproject.toml")
+        uv-result      (shell/sh "uv" "pip" "install" "-r" pyproject-file "--target" target-dir "--no-compile" "--reinstall")]
+    (if (zero? (:exit uv-result))
+      (log/info "sqlglot" version "installed via uv")
+      (do
+        (log/info "uv not available, trying pip...")
+        (let [pkg        (str "sqlglot==" version)
+              pip-result (shell/sh "pip" "install" pkg "--target" target-dir "--no-compile" "--force-reinstall")]
+          (when-not (zero? (:exit pip-result))
+            (throw (ex-info (str "Failed to install sqlglot. Please install uv (recommended) or pip.\n"
+                                 "Manual install: uv pip install -r " pyproject-file " --target " target-dir "\n"
+                                 "Install uv: https://docs.astral.sh/uv/getting-started/installation/")
+                            {:uv-error   (:err uv-result)
+                             :pip-error  (:err pip-result)
+                             :version    version
+                             :target-dir target-dir})))
+          (log/info "sqlglot" version "installed via pip"))))))
+
+(defn- ensure-sqlglot-installed!
+  "Ensure sqlglot is installed with correct version. Called lazily on first use in dev.
+  If version mismatch or missing, automatically installs the correct version."
+  []
+  (let [expected-ver (expected-sqlglot-version)]
+    (when-not expected-ver
+      (throw (ex-info "Missing pyproject.toml or unable to parse sqlglot entry in resources/python-sources/"
+                      {:resource "python-sources/pyproject.toml"})))
+    (when-not (version-installed? dev-python-sources-dir expected-ver)
+      (if (package-installer-available?)
+        (do
+          (log/info "Installing sqlglot" expected-ver "(first use in dev)...")
+          (install-sqlglot! dev-python-sources-dir expected-ver))
+        (log/warn "sqlglot not installed and no package installer (uv or pip) found."
+                  "SQL parsing features will fail until sqlglot is installed."
+                  "Install uv: https://docs.astral.sh/uv/getting-started/installation/")))))
 
 ;;; ------------------------------------------ Python filesystem ------------------------------------------
 
@@ -80,7 +180,7 @@
           Either way, the filesystem is read-only so extracted sources cannot be tampered with."}
   python-fs-and-path
   (delay
-    (if (common/jar-resource? common/python-sources-resource)
+    (if (jar-resource? python-sources-resource)
       ;; In the jar: use the jar's zip filesystem directly. Python sources and GraalPy's stdlib are both inside the
       ;; jar, so nothing is extracted to disk and there's nothing to tamper with. The filesystem lives for the
       ;; duration of the process (via defonce + delay) and is shared by all pooled Python contexts.
@@ -90,9 +190,9 @@
        :core-home    "/META-INF/resources/libgraalpy"}
       ;; In dev: use the real filesystem (read-only wrapper). sqlglot is installed locally.
       (do
-        (common/ensure-sqlglot-installed!)
+        (ensure-sqlglot-installed!)
         {:fs          (read-only-polyglot-fs (FileSystems/getDefault))
-         :python-path common/dev-python-sources-dir}))))
+         :python-path dev-python-sources-dir}))))
 
 ;;; ---------------------------------------- shared engine + contexts -------------------------------------
 
@@ -254,7 +354,7 @@
 (defn- call-python
   "Execute `sql_tools.<fn-name>` with `args` on a pooled context and return the result as a string.
   Python-side failures are rethrown as the transport-agnostic
-  [[metabase.sql-parsing.common/call-failed-ex]]."
+  [[metabase.sql-parsing.protocol/call-failed-ex]]."
   ^String [fn-name & args]
   (do-with-python-context
    (fn [^Context context]
@@ -262,10 +362,44 @@
        (let [^Value fn-ref (.eval context "python" (str "sql_tools." fn-name))]
          (.asString ^Value (.execute fn-ref (object-array args))))
        (catch PolyglotException e
-         (throw (common/call-failed-ex (.getMessage e) e)))))))
+         (throw (protocol/call-failed-ex (.getMessage e) e)))))))
+
+(defn- make-parser
+  "Build a [[metabase.sql-parsing.protocol/SqlParser]] over `call`, a transport function
+  `(call fn-name & args) → string` that executes `sql_tools.<fn-name>` with `args`. JSON results are
+  decoded into Clojure data; schema and replacement arguments are passed to Python as JSON strings (the
+  `sql_tools` functions take them that way — GraalVM polyglot map conversion is unreliable)."
+  [call]
+  (reify protocol/SqlParser
+    (referenced-tables [_ dialect sql]
+      (vec (json/decode (call "referenced_tables" sql dialect))))
+    (referenced-fields [_ dialect sql]
+      (vec (json/decode (call "referenced_fields" sql dialect))))
+    (returned-columns-lineage [_ dialect sql default-table-schema sqlglot-schema]
+      (vec (json/decode (call "returned_columns_lineage"
+                              dialect sql default-table-schema (json/encode sqlglot-schema)))))
+    (validate-query [_ dialect sql default-table-schema sqlglot-schema]
+      ;; nil → "{}" (an empty JSON object), which sql_tools reads as permissive mode; encoding the
+      ;; *string* "{}" here would double-encode and make Python treat a string as the schema
+      (json/decode+kw (call "validate_query"
+                            dialect sql default-table-schema (json/encode (or sqlglot-schema {})))))
+    (simple-query [_ dialect sql]
+      (json/decode+kw (call "simple_query" sql dialect)))
+    (add-into-clause [_ dialect sql table-name]
+      (call "add_into_clause" sql table-name dialect))
+    (add-insert-clause [_ dialect sql table-name]
+      (call "add_insert_clause" sql table-name dialect))
+    (field-references [_ dialect sql]
+      (json/decode+kw (call "field_references" sql dialect)))
+    (replace-names [_ dialect sql replacements]
+      (call "replace_names" sql (json/encode replacements) dialect))
+    (single-stmt-of-type [_ dialect sql stmt-type]
+      (json/decode+kw (call "is_single_stmt_of_type" sql stmt-type dialect)))
+    (transpile-sql [_ sql from-dialect to-dialect]
+      (json/decode+kw (call "transpile_sql" sql from-dialect to-dialect)))))
 
 (defn parser
   "The `:sqlglot` [[metabase.sql-parsing.protocol/SqlParser]] — runs sqlglot on GraalPy on the pooled
   contexts."
   []
-  (common/make-parser call-python))
+  (make-parser call-python))

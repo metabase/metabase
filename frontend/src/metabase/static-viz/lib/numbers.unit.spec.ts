@@ -39,6 +39,18 @@ describe("formatNumber", () => {
     expect(text).toEqual("86.7%");
   });
 
+  it("keeps a currency suffix inside custom number affixes", () => {
+    expect(
+      formatNumber(-1500, {
+        number_style: "currency",
+        currency: "EUR",
+        currency_position: "after",
+        prefix: "[",
+        suffix: "]",
+      }),
+    ).toBe("[-1,500.00\u00a0€]");
+  });
+
   it("should format a number in scientific notation", () => {
     const number = 1200;
 

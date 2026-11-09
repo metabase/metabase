@@ -78,3 +78,9 @@
           (is (thrown-with-msg? TimeoutException #"after 1234ms"
                                 (sql-parsing/referenced-tables (sql-parsing/parser :sqlglot) "postgres" "SELECT 1")))))
       (is (= 1234 @timeout-ms)))))
+
+(deftest expected-sqlglot-version-test
+  (testing "Sqlglot version is properly parsed from pyproject.toml"
+    (let [version (graal/expected-sqlglot-version)]
+      (is (string? version))
+      (is (re-matches #"\d+\.\d+\.\d+" version)))))

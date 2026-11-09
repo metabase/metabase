@@ -1,5 +1,6 @@
 ---
 title: API changelog
+summary: Breaking changes to the Metabase API, listed by release.
 ---
 
 # Breaking changes to the API interface
@@ -31,6 +32,22 @@ title: API changelog
   ones. In 0.65, `POST` asked for write access to a non-nil `collection_id` and answered `403` without it. With that
   access, it saved the subscription in that collection. It stored a `collection_position` for any caller who passed
   these checks. `PUT` accepted a new `collection_position`.
+
+- The `collection_preview` card property has been removed.
+  - The following endpoints no longer return `collection_preview` in response objects:
+    - `GET /api/card`
+    - `GET /api/card/:id`
+    - `GET /api/collection/:id/items`
+    - `GET /api/collection/root/items`
+    - `GET /api/dashboard/:id/items`
+    - `GET /api/ee/library`
+    - `GET /api/ee/stale/:id`
+  - The following endpoints ignore `collection_preview` in request bodies:
+    - `POST /api/card`
+    - `PUT /api/card/:id`
+    - `POST /api/card/:id/query`
+  - A metric requested from `POST /api/card/:id/query` with `collection_preview: true` now runs with its saved
+    breakouts, as it does without the flag, instead of returning a single aggregated value.
 
 ## Metabase 0.65.0
 
