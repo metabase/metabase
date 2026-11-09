@@ -5067,16 +5067,16 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.transform-testing.schema.row" : {
-        "description" : "A row of inline test data, keyed by column name.",
+        "description" : "A row of inline test data, keyed by column name, with `:string` first so request decoding keeps every cell as sent.",
         "type" : "object",
         "additionalProperties" : {
           "anyOf" : [ {
             "anyOf" : [ {
+              "type" : "string"
+            }, {
               "type" : "boolean"
             }, {
               "type" : "number"
-            }, {
-              "type" : "string"
             } ]
           }, {
             "type" : "null"
@@ -31841,6 +31841,9 @@
           "has_invited_second_user" : {
             "type" : "boolean"
           },
+          "has_used_password" : {
+            "type" : "boolean"
+          },
           "personal_collection_id" : {
             "anyOf" : [ {
               "description" : "value must be an integer greater than zero.",
@@ -31864,7 +31867,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "can_write_any_collection", "sso_source", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
+        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "can_write_any_collection", "sso_source", "has_used_password", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
       },
       "metabase.users-rest.api.user-permissions" : {
         "description" : "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,\n  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled.",
