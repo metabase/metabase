@@ -1,0 +1,447 @@
+/* Prototype: the filter expression bar, flush inside the filter row. */
+.barRoot {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.bar {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  row-gap: 0.375rem;
+  min-height: 2rem;
+  cursor: text;
+}
+
+/* The bar's own wrapper around a filter pill: the focus ring of the arrow keys. */
+.filterToken {
+  display: inline-flex;
+  /* Prototype: 6px between two pills, not 4px. */
+  margin-inline: 1px;
+  border-radius: 1rem;
+}
+
+/* A pill the arrow keys landed on: Enter opens its editor. The same ring as
+   the draft pill, so every ring sits at one place. */
+.filterToken:focus {
+  outline: none;
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+}
+
+/* AND, OR and parentheses, as in the Figma: a small grey pill in monospace. */
+.connector {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 var(--mantine-spacing-xxs);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-xs);
+  border-radius: var(--mantine-radius-md);
+  outline: none;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-weight: 500;
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.15;
+  white-space: nowrap;
+  user-select: none;
+  transition: background-color 120ms;
+}
+
+.connectorParen {
+  padding: var(--mantine-spacing-xxs);
+}
+
+/* Hovered, the whole connector is a close button: the label gives way to the icon. */
+.connectorRemovable {
+  cursor: pointer;
+}
+
+.connectorRemovable:hover {
+  background-color: var(--mb-color-background_surface-secondary-hover);
+}
+
+.connectorRemovable:hover .connectorLabel {
+  visibility: hidden;
+}
+
+.connectorIcon {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.connectorRemovable:hover .connectorIcon {
+  display: inline-flex;
+}
+
+/* Landed on from the keyboard: the same ring as the draft pill. The reset
+   draws its own outline on [role="button"]:focus-visible; this ring replaces it. */
+.connector:focus-visible,
+.connector[role="button"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+}
+
+/* In error: the ring of the draft and focus states, in the error colour, at
+   the same place. A pill being edited in place carries the draft ring on the
+   draft pill inside its wrapper: the error ring replaces it there. */
+/* Prototype: the tokens that a drag or Shift + an arrow key selected. Figma
+   "Pill" and "Connector" Selected: the filter-color ring. */
+.filterToken.tokenSelected {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+}
+
+.connector.tokenSelected {
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+}
+
+.filterToken.tokenError,
+.filterToken.tokenError > [data-testid="draft-filter-pill"],
+.connector.tokenError {
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-feedback-negative);
+}
+
+/* Click targets between tokens: clicking one puts the caret there. */
+.gap {
+  align-self: stretch;
+  width: 0.125rem;
+  cursor: text;
+}
+
+/* Stands in for a gap, so moving the caret never shifts the tokens around it. */
+.caretSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 0.125rem;
+}
+
+/* The draft pill needs the same room around it as a pill beside a pill. */
+.caretSlot:has(> :not(.typingIdle)),
+.caretSlot:has(> .typingIdle:focus-within) {
+  padding: 0 0.375rem;
+}
+
+/* An empty bar's placeholder and focused input start at the same position. */
+.bar[data-empty][data-variant="header"] > .caretSlot {
+  min-width: 0;
+  padding: 0;
+}
+
+/* Between pills, the empty draft is only a caret: no room is made until there is text. */
+.caretSlotMid:has([data-testid="draft-filter-pill"] input[data-empty]) {
+  padding: 0;
+
+  /* The caret takes no room and draws over the gap, so the pills on either side stay put. */
+  & [data-testid="draft-filter-pill"] {
+    width: 0;
+    min-width: 0;
+    min-height: 0;
+    border-width: 0;
+    justify-content: center;
+  }
+
+  & input[data-empty] {
+    flex: none;
+    width: 2px;
+    min-width: 0;
+  }
+}
+
+/* The same for the closed caret: an empty one between pills only draws over the gap. */
+.caretSlotMid:has(> .typingIdle:not(.typingText)) {
+  padding: 0;
+
+  & .typingIdle {
+    width: 0;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  & .input {
+    flex: none;
+  }
+}
+
+/* Two operands with no connector between them: the slot keeps the room a pill
+   has beside a connector (gap plus connector margin), so the pills never touch.
+   Wins over the zero-width caret rules. */
+.gap.slotWide,
+.caretSlot.slotWide,
+.caretSlotMid.slotWide:has([data-testid="draft-filter-pill"] input[data-empty]),
+.caretSlotMid.slotWide:has(> .typingIdle:not(.typingText)) {
+  width: auto;
+  min-width: var(--mantine-spacing-xs);
+  padding: 0;
+}
+
+/* The caret's input: bare text while it could be `or` or a paren. */
+.typing {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Only typed text needs room beside the neighbouring tokens. */
+.typingText {
+  padding: 0 0.125rem;
+}
+
+/* Unfocused and empty: keeps the input focusable without taking space. */
+.typingIdle:not(:focus-within) {
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.input {
+  min-width: 2px;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  caret-color: var(--mb-color-core-filter);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.input::placeholder {
+  color: var(--mb-color-text-secondary);
+  font-weight: normal;
+}
+
+@keyframes flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px var(--mb-color-core-filter);
+  }
+
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+/* Filters a drill just appended pulse once, to show where they landed. */
+.flash {
+  animation: flash 1.6s ease-out;
+}
+
+/* A connector or parenthesis the last edit added fades in where the pills
+   around it glide apart to make room. */
+.tokenFresh {
+  animation: token-fresh 300ms ease-out both;
+}
+
+@keyframes token-fresh {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tokenFresh {
+    animation: none;
+  }
+}
+
+/* Clicks fall through to the bar, which puts the caret at the end. */
+.placeholder {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  pointer-events: none;
+}
+
+/* "Add a filter..." after the last pill, while the bar isn't focused. With the
+   collapsed caret slot before it, the text starts where the focused input's
+   placeholder does: the slot's padding. */
+.trailingPlaceholder {
+  margin-left: 0.25rem;
+  white-space: nowrap;
+}
+
+/* Each parenthesized group gets its own indented row. */
+.barRows {
+  /* Same as the folded bar: placing the caret never changes the bar's height. */
+  row-gap: 0.375rem;
+}
+
+.rowBreak {
+  flex-basis: 100%;
+  height: 0;
+}
+
+/* The summary's bar after the rows', spaced like pills joined by an implicit AND. */
+.trailing {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+
+  &:not(:first-child) {
+    margin-left: 0.25rem;
+  }
+}
+
+/* After the separator, its own margins do the spacing: the same on both sides of it. */
+.bar .stageSeparator + .trailing:not(:first-child) {
+  margin-left: 0;
+}
+
+/* "then" between the filters on the rows and the filters on the summary: spelled like the
+   connectors but never clickable and never uppercase. Not a token. */
+.stageSeparator {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  margin: 0 0.5rem;
+  color: var(--mb-color-text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 400;
+  font-style: italic;
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The summary's own bar, flush inside the rows bar's trailing slot. */
+.barNestedRoot {
+  /* Avoid an inline baseline changing the wrapper's height as the caret moves. */
+  display: flex;
+  flex: none;
+}
+
+.barNested {
+  display: inline-flex;
+  flex: none;
+  min-height: 0;
+  padding: 0;
+  border: none;
+}
+
+/* Prototype: the notebook variant, inside the step's cell. Everything scales to
+   the cell items: 6px corners, larger connectors, the rings on the cell's
+   background and the placeholder in the step colour. */
+[data-variant="notebook"] {
+  &.bar {
+    row-gap: 0.5rem;
+    min-height: var(--expression-pill-height);
+  }
+
+  & .filterToken {
+    border-radius: 6px;
+  }
+
+  & .filterToken:focus,
+  & .connector:focus-visible,
+  & .connector[role="button"]:focus-visible {
+    box-shadow:
+      0 0 0 1px var(--mb-color-background_page-primary),
+      0 0 0 2px var(--expression-pill-color);
+  }
+
+  & .filterToken.tokenError,
+  & .filterToken.tokenError > [data-testid="draft-filter-pill"],
+  & .connector.tokenError {
+    box-shadow:
+      0 0 0 1px var(--mb-color-background_page-primary),
+      0 0 0 2px var(--mb-color-feedback-negative);
+  }
+
+  /* Figma "Connector" Notebook: the step colour as a light button, as tall as
+     a pill, 10px at the sides, 6px corners, 14px monospace in the strong step
+     colour. The same mixes as the button-light-filter tokens, on the cell's colour. */
+  & .connector,
+  & .connectorParen {
+    min-height: var(--expression-pill-height);
+    padding: 0 10px;
+    border-radius: 6px;
+    background-color: color-mix(
+      in srgb,
+      var(--expression-pill-color) 15%,
+      transparent
+    );
+    color: color-mix(in srgb, var(--expression-pill-color), black 12%);
+    font-size: var(--mantine-font-size-md);
+    line-height: 1.22;
+  }
+
+  & .connectorRemovable:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--expression-pill-color) 30%,
+      transparent
+    );
+  }
+
+  & .caretSlot:has(> :not(.typingIdle)),
+  & .caretSlot:has(> .typingIdle:focus-within) {
+    padding: 0 0.5rem;
+  }
+
+  & .input {
+    height: var(--expression-pill-height);
+    color: var(--expression-pill-color);
+    caret-color: var(--expression-pill-color);
+    font-size: inherit;
+  }
+
+  & .input::placeholder,
+  & .placeholder {
+    color: var(--expression-pill-color);
+    font-weight: bold;
+    font-size: inherit;
+    line-height: var(--expression-pill-height);
+  }
+
+  & .placeholder {
+    opacity: 0.8;
+  }
+}
+
+/* Prototype: the buttons at the right end of the bar, at the top however tall
+   the bar gets. */
+.barActions {
+  flex-shrink: 0;
+  align-self: flex-start;
+
+  /* Centered on the first row, whose pills are taller in the notebook. */
+  &[data-variant="notebook"] {
+    min-height: var(--expression-pill-height);
+  }
+}
+
+/* The icon colour of the Refresh button above the bar. The class is repeated
+   to win over the colors of the ActionIcon theme. */
+.barActionButton.barActionButton {
+  color: var(--mb-color-text-primary);
+}

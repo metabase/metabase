@@ -39,7 +39,8 @@ export type SharedAccordionProps<
   renderItemExtra?: (item: TItem, isSelected: boolean) => ReactNode;
   renderItemIcon?: (item: TItem) => ReactNode;
   renderItemLabel?: (item: TItem) => string | undefined;
-  renderItemName?: (item: TItem) => string | undefined;
+  // Prototype: a name can be a node, so the "Frequently used" filter columns can show their table.
+  renderItemName?: (item: TItem) => ReactNode;
   renderItemWrapper?: (content: ReactNode, item: TItem) => ReactNode;
   renderSectionIcon?: (section: TSection) => ReactNode;
   searchInputProps?: TextInputProps;
@@ -331,7 +332,11 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     const name = renderItemName(item);
     const description = renderItemDescription(item);
     const extra = renderItemExtra(item, isSelected ?? false);
-    const label = renderItemLabel ? renderItemLabel(item) : name;
+    const label = renderItemLabel
+      ? renderItemLabel(item)
+      : typeof name === "string"
+        ? name
+        : undefined;
 
     content = (
       <div

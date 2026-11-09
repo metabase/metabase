@@ -1,9 +1,10 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
@@ -19,8 +20,8 @@ import { ViewSection } from "../ViewSection";
 import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
 import {
   AdHocQuestionLeftSide,
+  KeyboardFilterRow,
   QueryBuilderBackButton,
-  QuestionFiltersHeader,
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
 } from "./components";
@@ -72,7 +73,10 @@ interface ViewTitleHeaderProps {
   isShowingQuestionInfoSidebar: boolean;
   onCloseQuestionInfo: () => void;
 
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 
   className?: string;
   style?: React.CSSProperties;
@@ -113,12 +117,30 @@ export function ViewTitleHeader({
     areFiltersExpanded,
     { turnOn: expandFilters, turnOff: collapseFilters },
   ] = useToggle(!question?.isSaved());
+  const [draftFilterKey, setDraftFilterKey] = useState<number | null>(null);
+
+  const addDraftFilter = useCallback(() => {
+    expandFilters();
+    setDraftFilterKey((key) => (key ?? 0) + 1);
+  }, [expandFilters]);
+
+  const removeDraftFilter = useCallback(() => setDraftFilterKey(null), []);
+
+  const hideFilters = useCallback(() => {
+    collapseFilters();
+    setDraftFilterKey(null);
+  }, [collapseFilters]);
 
   const previousQuestion = usePrevious(question);
 
   const query = question.query();
   const previousQuery = usePrevious(query);
   const { isNative } = Lib.queryDisplayInfo(query);
+  // Prototype: as on master, a question with no filters shows no filter bar.
+  // The bar opens for a draft, and goes away with it if no filter was added.
+  const hasFilters = useMemo(() => getFilterItems(query).length > 0, [query]);
+  const areFiltersShown =
+    areFiltersExpanded && (hasFilters || draftFilterKey != null);
 
   useEffect(() => {
     const isPreviousQuestionNative =
@@ -204,19 +226,22 @@ export function ViewTitleHeader({
           isObjectDetail={isObjectDetail}
           isSaved={isSaved}
           isModelOrMetric={isModelOrMetric}
-          areFiltersExpanded={areFiltersExpanded}
+          areFiltersExpanded={areFiltersShown}
           onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
+          onCollapseFilters={hideFilters}
+          onAddFilter={addDraftFilter}
         />
       </ViewSection>
 
-      {QuestionFiltersHeader.shouldRender({
+      {KeyboardFilterRow.shouldRender({
         question,
         queryBuilderMode,
       }) && (
-        <QuestionFiltersHeader
-          expanded={areFiltersExpanded}
+        <KeyboardFilterRow
+          expanded={areFiltersShown}
           question={question}
+          draftKey={draftFilterKey}
+          onRemoveDraft={removeDraftFilter}
           updateQuestion={updateQuestion}
         />
       )}

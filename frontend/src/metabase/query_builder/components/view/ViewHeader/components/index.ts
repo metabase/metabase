@@ -4,6 +4,7 @@ export * from "./QuestionActions";
 export * from "./QuestionDataSource";
 export * from "./QuestionDescription";
 export * from "./QuestionFiltersHeader";
+export * from "./KeyboardFilterRow";
 export * from "./QuestionNotebookButton";
 export * from "./ExploreResultsLink";
 export * from "./FilterHeaderButton";

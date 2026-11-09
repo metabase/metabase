@@ -16,9 +16,16 @@ import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import S from "./QueryVisualization.module.css";
 import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
+import { useRuntimeEstimateHint } from "./RuntimeEstimate";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
 import type { QueryVisualizationProps } from "./types";
+
+/**
+ * Prototype: how long a query runs before the question shows the loading
+ * spinner. Faster queries show no spinner.
+ */
+const LOADING_SPINNER_DELAY_MS = 500;
 
 export function QueryVisualization(props: QueryVisualizationProps) {
   const {
@@ -36,6 +43,11 @@ export function QueryVisualization(props: QueryVisualizationProps) {
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
+  const isSpinnerShown = useIsRunningLong(
+    Boolean(isRunning),
+    LOADING_SPINNER_DELAY_MS,
+  );
+  const estimateHint = useRuntimeEstimateHint(question, Boolean(isRunning));
   const [warnings, setWarnings] = useState<string[]>([]);
 
   // The result is not rendered until the query returns, so the chart chunk
@@ -57,7 +69,12 @@ export function QueryVisualization(props: QueryVisualizationProps) {
 
   return (
     <Box pos="relative" h="100%" className={cx(className, S.root)}>
-      {isRunning ? <VisualizationRunningState className={S.overlay} /> : null}
+      {isSpinnerShown ? (
+        <VisualizationRunningState
+          className={cx(S.overlay, S.fadeIn)}
+          hint={estimateHint}
+        />
+      ) : null}
       <VisualizationDirtyState
         {...props}
         hidden={!isDirtyStateShown}
@@ -68,7 +85,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
       )}
       <Box
         className={cx(S.visualization, QueryBuilderS.Visualization, {
-          [QueryBuilderS.VisualizationLoading]: isRunning,
+          [QueryBuilderS.VisualizationLoading]: isSpinnerShown,
         })}
         data-testid="query-visualization-root"
       >
@@ -96,6 +113,22 @@ export function QueryVisualization(props: QueryVisualizationProps) {
       </Box>
     </Box>
   );
+}
+
+// Prototype: fast queries show no spinner, so that it does not flash.
+function useIsRunningLong(isRunning: boolean, delayMs: number): boolean {
+  const [isLong, setIsLong] = useState(false);
+
+  useEffect(() => {
+    if (!isRunning) {
+      setIsLong(false);
+      return;
+    }
+    const timeoutId = setTimeout(() => setIsLong(true), delayMs);
+    return () => clearTimeout(timeoutId);
+  }, [isRunning, delayMs]);
+
+  return isRunning && isLong;
 }
 
 const VisualizationEmptyState = ({ children }: { children: ReactNode }) => {

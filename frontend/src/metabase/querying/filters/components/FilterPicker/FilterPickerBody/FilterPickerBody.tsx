@@ -11,6 +11,7 @@ import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
 import type { FilterChangeOpts } from "../types";
+import { useFilterAutoApply } from "../use-filter-auto-apply";
 
 import S from "./FilterPickerBody.module.css";
 
@@ -25,6 +26,8 @@ interface FilterPickerBodyProps {
   withSubmitButton?: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
+  /** Prototype: closes the picker after an explicit submit, when filters apply as the user changes them. */
+  onClose?: () => void;
   readOnly?: boolean;
 }
 
@@ -39,15 +42,28 @@ export function FilterPickerBody({
   withSubmitButton = true,
   onChange,
   onBack,
+  onClose,
   readOnly,
 }: FilterPickerBodyProps) {
+  const autoApply = useFilterAutoApply({
+    query,
+    stageIndex,
+    filter,
+    onChange,
+    onClose,
+  });
+  const isAutoApply = autoApply.isActive && !readOnly;
+
   const FilterWidget = getFilterWidget(column);
   if (!FilterWidget) {
     return null;
   }
 
   return (
-    <Box className={cx({ [S.readOnly]: readOnly })}>
+    <Box
+      {...(isAutoApply ? autoApply.containerProps : undefined)}
+      className={cx({ [S.readOnly]: readOnly })}
+    >
       <FilterWidget
         autoFocus={autoFocus}
         query={query}
@@ -56,8 +72,9 @@ export function FilterPickerBody({
         filter={filter}
         isNew={isNew}
         withAddButton={withAddButton}
-        withSubmitButton={withSubmitButton && !readOnly}
-        onChange={onChange}
+        withSubmitButton={withSubmitButton && !readOnly && !isAutoApply}
+        onChange={isAutoApply ? autoApply.onChange : onChange}
+        onDraftChange={isAutoApply ? autoApply.onDraftChange : undefined}
         onBack={onBack}
         readOnly={readOnly}
       />
