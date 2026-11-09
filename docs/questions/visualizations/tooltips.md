@@ -1,5 +1,6 @@
 ---
 title: Tooltips
+summary: Control what people see when they hover over a data point, including values from multiple metrics.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/tooltips
 ---

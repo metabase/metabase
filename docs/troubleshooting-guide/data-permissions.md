@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting data permissions
+summary: Work through each level of data permissions to find out why a group has the wrong access to your data.
 ---
 
 # Troubleshooting data permissions

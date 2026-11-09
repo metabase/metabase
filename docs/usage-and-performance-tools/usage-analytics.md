@@ -1,5 +1,6 @@
 ---
 title: Usage analytics
+summary: See how people use your Metabase with a ready-made collection of dashboards, questions, and models, and build your own reports from them.
 redirect-from:
     - /docs/latest/enterprise-guide/audit
     - /docs/latest/usage-and-performance-tools/audit

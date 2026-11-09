@@ -1,5 +1,6 @@
 ---
 title: "Migrating from Heroku to Metabase Cloud"
+summary: The extra steps for running the Metabase Cloud migration script on Heroku.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

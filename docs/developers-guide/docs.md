@@ -1,5 +1,6 @@
 ---
 title: Developing Metabase documentation
+summary: Preview docs as you write them, check for broken links, and regenerate the pages that are built from source.
 ---
 
 # Developing Metabase documentation

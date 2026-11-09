@@ -1,5 +1,6 @@
 ---
 title: "Metabase config file template"
+summary: A commented example config file you can copy and adapt to configure Metabase on launch.
 ---
 
 # Metabase config file template

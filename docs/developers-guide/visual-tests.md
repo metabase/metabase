@@ -1,5 +1,6 @@
 ---
 title: Visual Tests
+summary: Catch unintended visual changes in Metabase components with Loki and Storybook snapshots.
 ---
 
 # Visual Tests
