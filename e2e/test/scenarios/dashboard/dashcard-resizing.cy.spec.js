@@ -871,6 +871,34 @@ describe("issue 31628", () => {
   });
 });
 
+describe("issue 85061", () => {
+  const LONG_STRING = "This is a long string returned by a SQL query";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should shrink a long string value to fit the scalar card (metabase#85061)", () => {
+    cy.viewport(1440, 800);
+    H.createNativeQuestionAndDashboard({
+      questionDetails: {
+        name: "Long string",
+        display: "scalar",
+        native: { query: `SELECT '${LONG_STRING}' AS long_string` },
+      },
+      cardDetails: { size_x: 12, size_y: 4 },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.getDashboardCard(0)
+      .findByTestId("scalar-value")
+      .should("have.text", LONG_STRING)
+      .and(($element) => H.assertIsNotEllipsified($element[0]));
+  });
+});
+
 describe("dashcard actions panel", () => {
   beforeEach(() => {
     H.restore();
