@@ -1,4 +1,11 @@
 .toggle {
+  display: flex;
+  align-items: center;
+  color: var(--mb-color-core-brand);
   cursor: pointer;
-  vertical-align: middle;
+}
+
+[data-combobox-option]:hover .toggle,
+[data-combobox-option][data-combobox-selected] .toggle {
+  color: inherit;
 }

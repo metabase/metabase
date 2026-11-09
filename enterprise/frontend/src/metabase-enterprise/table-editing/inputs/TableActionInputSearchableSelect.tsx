@@ -204,11 +204,11 @@ export const TableActionInputSearchableSelect = ({
           />
         </Box>
 
-        <Combobox.Options p="0.5rem">
+        <Combobox.Options>
           {options.length > 0 ? (
             options.map((item) => (
               <Combobox.Option
-                selected={value === item.value}
+                active={value === item.value}
                 value={item.value}
                 key={item.value}
               >

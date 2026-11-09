@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -60,12 +59,7 @@ export const DisplayValuesPicker = ({
         const disableReason = getDisableReason(option, isLoadingFieldValues);
 
         return (
-          <SelectItem
-            className={cx({
-              [S.disabledItem]: option.disabled,
-            })}
-            selected={checked}
-          >
+          <SelectItem selected={checked}>
             <Flex align="center" justify="space-between" w="100%">
               <Text c="inherit" component="span" lh="1rem">
                 {option.label}

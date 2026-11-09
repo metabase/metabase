@@ -1,21 +1,17 @@
-.option[data-combobox-disabled] {
+/* Disabled options ignore the mouse; the lock icon opts back in for its tooltip */
+.lockIcon {
   pointer-events: all;
-  cursor: not-allowed;
+}
 
-  &:hover {
-    background-color: transparent;
-  }
-
-  .selectItem {
-    color: inherit;
-    background-color: inherit;
-  }
+/* Without search text the message isn't a search result */
+.emptyWithoutIcon {
+  --empty-icon-display: none;
 }
 
 .actionIcon {
   visibility: hidden;
 }
 
-.selectItem.editable:hover .actionIcon {
+[data-combobox-option]:hover .selectItem.editable .actionIcon {
   visibility: visible;
 }

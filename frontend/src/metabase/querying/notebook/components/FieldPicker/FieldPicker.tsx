@@ -181,7 +181,6 @@ export const FieldPicker = ({
           search: S.Search,
           options: S.Options,
           option: S.Option,
-          empty: S.Empty,
         }}
       >
         {isSearchable && (
