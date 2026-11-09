@@ -133,8 +133,8 @@ describe("TransformTestRunsPage", () => {
 
     await screen.findByText("26 - 26");
     const url = getLastRunsRequestUrl();
-    expect(url.searchParams.get("test_type")).toBe("transform");
-    expect(url.searchParams.get("test_id")).toBe("2");
+    expect(url.searchParams.get("test-type")).toBe("transform");
+    expect(url.searchParams.get("test-id")).toBe("2");
     expect(url.searchParams.get("offset")).toBe("25");
 
     await userEvent.click(screen.getByLabelText("Next page"));

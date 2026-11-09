@@ -49804,18 +49804,18 @@
     },
     "/api/ee/data-test-run" : {
       "get" : {
-        "description" : "List the runs of the tests of `test_type`, newest first. With `test_id`, only the runs of that test, which the caller\n  must be able to read. Without it, the runs of every test of the type, runs of tests that are not saved included, for\n  a caller with Data Studio access.",
+        "description" : "List the runs of the saved tests of `test-type` that the caller can read, newest first. With `test-id`, only the runs\n  of that test. Without it, the caller needs Data Studio access. The runs of a test that is not saved, or was deleted,\n  are not listed.",
         "operationId" : "get-api-ee-data-test-run",
         "parameters" : [ {
           "in" : "query",
-          "name" : "test_type",
+          "name" : "test-type",
           "required" : true,
           "schema" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.test-type"
           }
         }, {
           "in" : "query",
-          "name" : "test_id",
+          "name" : "test-id",
           "required" : false,
           "schema" : {
             "anyOf" : [ {

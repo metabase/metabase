@@ -30,7 +30,7 @@
                                 :metabase/modules                                          16
                                 :metabase/namespace-name                                   3
                                 :metabase/validate-defendpoint-has-response-schema         424
-                                :metabase/validate-defendpoint-query-params-use-kebab-case 49
+                                :metabase/validate-defendpoint-query-params-use-kebab-case 48
                                 :metabase/validate-defendpoint-route-uses-kebab-case       44
                                 :missing-docstring                                         4
                                 :non-arg-vec-return-type-hint                              1

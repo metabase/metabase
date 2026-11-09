@@ -42,7 +42,7 @@
 (def ^:private RunFilters
   [:map {:closed true}
    [:test-type        ::data-testing.schema/test-type]
-   [:test-id          {:optional true} [:maybe ms/PositiveInt]]
+   [:test-ids         [:set ms/PositiveInt]]
    [:statuses         {:optional true} [:maybe [:sequential ::data-testing.schema/run-status]]]
    [:started-at-start {:optional true} [:maybe ms/TemporalInstant]]
    [:started-at-end   {:optional true} [:maybe ms/TemporalInstant]]
@@ -50,9 +50,12 @@
    [:ended-at-end     {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mu/defn- run-filter-clause :- vector?
-  [{:keys [test-type test-id statuses started-at-start started-at-end ended-at-start ended-at-end]} :- RunFilters]
-  (cond-> [:and [:= :test_type (name test-type)]]
-    test-id          (conj [:= :test_id test-id])
+  [{:keys [test-type test-ids statuses started-at-start started-at-end ended-at-start ended-at-end]} :- RunFilters]
+  (cond-> [:and
+           [:= :test_type (name test-type)]
+           (if (seq test-ids)
+             [:in :test_id test-ids]
+             [:= [:inline 1] [:inline 0]])]
     (seq statuses)   (conj [:in :status (map name statuses)])
     started-at-start (conj [:>= :start_time started-at-start])
     started-at-end   (conj [:< :start_time started-at-end])
@@ -60,8 +63,7 @@
     ended-at-end     (conj [:< :end_time ended-at-end])))
 
 (mu/defn test-runs :- [:sequential ::data-testing.schema/data-test-run]
-  "A page of the DataTestRuns matching `filters`, newest first. Without a `:test-id` filter, every run of the type
-  matches, runs of tests that are not saved included."
+  "A page of the DataTestRuns matching `filters`, newest first. Only the runs of the tests in `:test-ids` match."
   [filters :- RunFilters
    limit   :- ms/PositiveInt
    offset  :- ms/IntGreaterThanOrEqualToZero]
