@@ -64,21 +64,21 @@
   [db-id]
   (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
 
-(defn- can-save-test-of?
-  "Whether the current user may save or delete a test of `transform`: they may edit it, as its hydrated `:can_write`
-  says when it has one, and run the native SQL of a test against its source Database, as `can-run-native-query?`
-  says."
-  [transform can-run-native-query?]
+(defn- can-save-for-transform?
+  "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,
+  and run the native SQL of a test against its source Database, as `can-run-native-query?` says."
+  [transform transform-writable? can-run-native-query?]
   (boolean
    (and transform
-        (if (contains? transform :can_write) (:can_write transform) (mi/can-write? transform))
+        transform-writable?
         (or api/*is-superuser?*
             (some-> (transforms-base.i/source-db-id transform) can-run-native-query?)))))
 
-(mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-test-of?]])."
+(mu/defn- can-save? :- :boolean
+  "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-for-transform?]])."
   [transform-id :- ::lib.schema.id/transform]
-  (can-save-test-of? (data-testing.db/transform transform-id) can-run-native-query?))
+  (let [transform (data-testing.db/transform transform-id)]
+    (can-save-for-transform? transform (some-> transform mi/can-write?) can-run-native-query?)))
 
 (defmethod mi/can-read? :model/TransformTest
   ([instance]
@@ -90,7 +90,7 @@
 (defmethod mi/can-write? :model/TransformTest
   ([instance]
    (and (remote-sync/can-write? :model/TransformTest (:id instance))
-        (can-save-test? (:transform_id instance))))
+        (can-save? (:transform_id instance))))
   ([_model pk]
    (when-let [transform-test (data-testing.db/transform-test pk)]
      (mi/can-write? transform-test))))
@@ -108,19 +108,20 @@
       (into {}
             (map (fn [{:keys [id transform_id]}]
                    [id (and (remote-sync/can-write? :model/TransformTest id)
-                            (can-save-test-of? (get transforms transform_id) native?))]))
+                            (let [transform (get transforms transform_id)]
+                              (can-save-for-transform? transform (:can_write transform) native?)))]))
             (remove nil? transform-tests)))
    :id
    {:default false}))
 
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]
-  (can-save-test? (:transform_id instance)))
+  (can-save? (:transform_id instance)))
 
 (defmethod mi/can-update? :model/TransformTest
   [instance changes]
-  (and (can-save-test? (:transform_id instance))
-       (can-save-test? (:transform_id changes (:transform_id instance)))
+  (and (can-save? (:transform_id instance))
+       (can-save? (:transform_id changes (:transform_id instance)))
        (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
            (remote-sync/can-write? :model/TransformTest (:id instance)))))
 
