@@ -83,8 +83,9 @@
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
 
-  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`
-  naming which refusal it was."
+  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the
+  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
+  carries none."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card-test (api/read-check :model/CardTest id)]
