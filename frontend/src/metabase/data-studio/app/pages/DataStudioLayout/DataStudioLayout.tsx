@@ -84,6 +84,11 @@ export function DataStudioLayout() {
             to={Urls.transformList()}
             isSelected={currentTab === "transforms"}
             showLabel={isNavbarOpened}
+            rightSection={
+              <PLUGIN_REMOTE_SYNC.ChangesBadge
+                target={{ type: "area", area: "transforms" }}
+              />
+            }
           />
         )}
       </AreaTabGroup>
@@ -95,6 +100,13 @@ export function DataStudioLayout() {
           to={Urls.dataStudioLibrary()}
           isSelected={currentTab === "library"}
           showLabel={isNavbarOpened}
+          rightSection={
+            hasLibraryFeature ? (
+              <PLUGIN_REMOTE_SYNC.ChangesBadge
+                target={{ type: "area", area: "library" }}
+              />
+            ) : undefined
+          }
           isGated={!hasLibraryFeature}
         />
         <AreaTab
@@ -103,6 +115,11 @@ export function DataStudioLayout() {
           to={Urls.dataStudioSnippets()}
           isSelected={currentTab === "snippets"}
           showLabel={isNavbarOpened}
+          rightSection={
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "snippets" }}
+            />
+          }
         />
         <AreaTab
           label={t`Data actions`}
@@ -110,6 +127,11 @@ export function DataStudioLayout() {
           to={Urls.dataStudioActions()}
           isSelected={currentTab === "actions"}
           showLabel={isNavbarOpened}
+          rightSection={
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "data-actions" }}
+            />
+          }
         />
         {isAdmin && (
           <AreaTab
@@ -132,6 +154,11 @@ export function DataStudioLayout() {
           to={Urls.dataStudioGlossary()}
           isSelected={currentTab === "glossary"}
           showLabel={isNavbarOpened}
+          rightSection={
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "glossary" }}
+            />
+          }
         />
       </AreaTabGroup>
 
@@ -206,6 +233,7 @@ export function DataStudioLayout() {
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
+      headerControls={<PLUGIN_REMOTE_SYNC.AppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
     >

@@ -1,7 +1,9 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
+import { createMockRemoteSyncEntity } from "metabase-types/api/mocks";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
@@ -14,6 +16,64 @@ describe("DataStudioLayout", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe("remote sync", () => {
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("offers remote sync setup in modal", async () => {
+      setup(DEFAULT_EE_SETTINGS);
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Set up remote sync" }),
+      );
+
+      expect(
+        await screen.findByText("Set up remote sync for your Library"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows remote sync controls once set up", async () => {
+      setup({ ...DEFAULT_EE_SETTINGS, remoteSyncBranch: "main" });
+
+      expect(
+        await screen.findByTestId("git-sync-controls"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Set up remote sync" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it.each([
+      {
+        entity: createMockRemoteSyncEntity({ model: "nativequerysnippet" }),
+        tab: "SQL snippets",
+      },
+      {
+        entity: createMockRemoteSyncEntity({ model: "action", model_id: null }),
+        tab: "Data actions",
+      },
+      {
+        entity: createMockRemoteSyncEntity({ model: "glossary" }),
+        tab: "Glossary",
+      },
+    ])("marks only $tab tab for its changes", async ({ entity, tab }) => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        remoteSyncBranch: "main",
+        dirty: [entity],
+      });
+
+      const tabElement = await screen.findByRole("link", { name: tab });
+      await waitFor(() =>
+        expect(
+          within(tabElement).getByTestId("remote-sync-status"),
+        ).toBeInTheDocument(),
+      );
+      expect(screen.getAllByTestId("remote-sync-status")).toHaveLength(1);
+    });
   });
 
   describe("sidebar rendering", () => {

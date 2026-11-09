@@ -20,7 +20,11 @@ import { UpsellGem } from "metabase/common/components/upsells/components/UpsellG
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -54,6 +58,7 @@ import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import {
   buildTreeData,
   getDefaultExpandedIds,
+  getRemoteSyncChangesTarget,
   useGetTransformWarnings,
 } from "./utils";
 
@@ -415,6 +420,7 @@ function getNameCell({
   const iconColor = hasWarning
     ? "feedback-warning"
     : getNodeIconColor(row.original);
+  const changesTarget = getRemoteSyncChangesTarget(row.original);
 
   return (
     <Group gap="sm" wrap="nowrap" miw={0}>
@@ -425,6 +431,9 @@ function getNameCell({
         name={row.original.name}
         ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
       />
+      {changesTarget && (
+        <PLUGIN_REMOTE_SYNC.ChangesBadge target={changesTarget} />
+      )}
       {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
     </Group>
   );
