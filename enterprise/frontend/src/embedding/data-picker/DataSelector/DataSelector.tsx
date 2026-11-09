@@ -587,8 +587,7 @@ export class UnconnectedDataSelector extends Component<
 
   // As the core pickers do (`use-get-path-from-value.ts`), a published table
   // reopens in the Library, whichever path it was picked from. A table whose
-  // collection the user can't read comes back without one, or fails to load,
-  // and reopens in Raw Data.
+  // collection the user can't read, or that fails to load, reopens in Raw Data.
   async getLibraryCollectionIdOfTable(
     tableId: TableId,
   ): Promise<CollectionId | null> {
