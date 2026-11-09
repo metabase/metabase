@@ -1,0 +1,1 @@
+export { SuggestedTablesPage } from "./SuggestedTablesPage";

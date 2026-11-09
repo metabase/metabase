@@ -1,1 +1,1 @@
-export { LibraryPage } from "./LibraryPage";
+export { MetricsPage, PublishedDataPage } from "./LibraryPage";

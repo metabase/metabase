@@ -15,7 +15,7 @@ export function DataStudioNewMetricPage() {
       triggeredFrom="data_studio"
       renderBreadcrumbs={() => (
         <DataStudioBreadcrumbs>
-          <Link to={Urls.dataStudioLibrary()}>{t`Semantic layer`}</Link>
+          <Link to={Urls.dataStudioMetrics()}>{t`Metrics`}</Link>
           {t`New Metric`}
         </DataStudioBreadcrumbs>
       )}

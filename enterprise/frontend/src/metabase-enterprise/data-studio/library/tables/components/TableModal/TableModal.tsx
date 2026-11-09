@@ -98,7 +98,7 @@ function UnpublishTableModal({ table, onClose }: TableModalContentProps) {
 
   const handleUnpublish = () => {
     onClose();
-    navigate(Urls.dataStudioLibrary());
+    navigate(Urls.dataStudioPublishedData());
   };
 
   return (

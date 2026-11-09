@@ -5,10 +5,7 @@ import type {
   LibrarySectionType,
   TreeItem,
 } from "metabase/data-studio/common/types";
-import { createEmptyStateItem } from "metabase/data-studio/common/utils";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useSelector } from "metabase/redux";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
   Collection,
   CollectionId,
@@ -30,21 +27,20 @@ const SECTION_ITEM_MODELS: Record<LibrarySectionType, CollectionItemModel[]> = {
 };
 
 /**
- * A Semantic layer section: the section's collection as a root row holding its
- * folders and items, or the section's empty-state row when it has none.
+ * A Library section: the section's collection as a root row holding its
+ * folders and items, or no rows when it has none so the page shows its
+ * empty state.
  */
 export function useLibraryCollectionTree(
   collection: Collection | undefined,
   sectionType: LibrarySectionType,
-  metricCollectionId?: CollectionId,
 ) {
   const getIcon = useGetIcon();
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const { items, isLoading, error, watchRows, isChildrenLoading } =
     useCollectionItemsTree(collection, SECTION_ITEM_MODELS[sectionType]);
 
   const tree = useMemo((): TreeItem[] => {
-    if (!collection || !items) {
+    if (!collection || !items || items.length === 0) {
       return [];
     }
 
@@ -55,26 +51,10 @@ export function useLibraryCollectionTree(
         icon: getIcon({ ...collection, model: "collection" }).name,
         data: { ...collection, model: "collection" as const },
         model: "collection",
-        children:
-          items.length > 0
-            ? items
-            : [
-                createEmptyStateItem(
-                  sectionType,
-                  metricCollectionId,
-                  isRemoteSyncReadOnly,
-                ),
-              ],
+        children: items,
       },
     ];
-  }, [
-    collection,
-    items,
-    getIcon,
-    sectionType,
-    metricCollectionId,
-    isRemoteSyncReadOnly,
-  ]);
+  }, [collection, items, getIcon]);
 
   return {
     tree,

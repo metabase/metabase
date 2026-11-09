@@ -1,11 +1,14 @@
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 
 type TabName =
   | "guide"
   | "data"
-  | "library"
+  | "published-data"
+  | "metrics"
   | "dashboards"
   | "snippets"
+  | "python-snippets"
   | "actions"
   | "data-apps"
   | "transforms"
@@ -33,10 +36,14 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "actions";
     case pathname.startsWith(Urls.dataStudioDataApps()):
       return "data-apps";
+    case pathname.startsWith(Urls.dataStudioMetrics()):
+      return "metrics";
     case pathname.startsWith(Urls.dataStudioLibrary()):
-      return "library";
+      return "published-data";
     case pathname.startsWith(Urls.dataStudioDashboards()):
       return "dashboards";
+    case pathname.startsWith(getPythonSnippetsUrl()):
+      return "python-snippets";
     case pathname.startsWith(Urls.transformList()):
       return "transforms";
     case pathname.startsWith(Urls.dataStudioData()):
@@ -47,3 +54,12 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "guide";
   }
 };
+
+/**
+ * PROTOTYPE: "Python snippets" is the shared Python library that transforms
+ * import, which lives under the transforms section
+ */
+export const getPythonSnippetsUrl = () =>
+  Urls.transformPythonLibrary({
+    path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
+  });

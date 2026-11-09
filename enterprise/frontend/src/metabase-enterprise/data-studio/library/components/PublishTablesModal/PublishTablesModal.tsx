@@ -126,7 +126,7 @@ function ModalBody({
     if (collection != null) {
       sendSuccessToast(
         t`Published`,
-        () => navigate(Urls.dataStudioLibrary()),
+        () => navigate(Urls.dataStudioPublishedData()),
         t`Go to ${collection.name}`,
       );
     } else {
