@@ -389,20 +389,20 @@
     (mt/test-driver :h2
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
-            transform                     (fn [target-name]
-                                            {:name   "t"
-                                             :source {:type  :query
-                                                      :query (lib/native-query mp (str "SELECT id FROM " schema "." table))}
-                                             :target {:type "table" :schema schema :name target-name :database (mt/id)}})
             refusal                       (fn [target-name]
-                                            (try (data-testing.runner/validate-test
-                                                  :transform
-                                                  (transform target-name)
-                                                  []
-                                                  [{:type :empty :name "e" :sql (str "SELECT * FROM " schema ".people_summary")}])
-                                                 nil
-                                                 (catch ExceptionInfo e
-                                                   (select-keys (ex-data e) [:error-type :type]))))]
+                                            (mt/with-temp [:model/Transform transform
+                                                           {:name   "t"
+                                                            :source {:type  :query
+                                                                     :query (lib/native-query mp (str "SELECT id FROM " schema "." table))}
+                                                            :target {:type "table" :schema schema :name target-name :database (mt/id)}}]
+                                              (try (data-testing.runner/validate-test
+                                                    :transform
+                                                    transform
+                                                    []
+                                                    [{:type :empty :name "e" :sql (str "SELECT * FROM " schema ".people_summary")}])
+                                                   nil
+                                                   (catch ExceptionInfo e
+                                                     (select-keys (ex-data e) [:error-type :type])))))]
         (testing "with a named target"
           (is (= {:error-type ::data-testing.errors/missing-inputs}
                  (refusal "people_summary"))))

@@ -32,7 +32,7 @@
 
 (mr/def ::subject
   "An entity a test can run, of one of the [[::subject-type]]s."
-  [:or ::transforms.schema/transform ::transforms.schema/transform.definition ::card])
+  [:or ::transforms.schema/transform ::card])
 
 (mr/def ::subject-plan
   "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,

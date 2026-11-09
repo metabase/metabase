@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
-   [metabase.transforms.util :as transforms.u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -44,7 +43,7 @@
    {:keys [transform_id inputs expectations] :as body} :- ::data-testing.schema/transform-test.create]
   (api/create-check :model/TransformTest body)
   (refusing #(data-testing.runner/validate-test :transform
-                                                (transforms.u/->definition (data-testing.db/transform transform_id))
+                                                (data-testing.db/transform transform_id)
                                                 inputs
                                                 expectations))
   (data-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
@@ -60,7 +59,7 @@
     (when (some #(contains? body %) [:transform_id :inputs :expectations])
       (let [{:keys [transform_id inputs expectations]} (merge transform-test body)]
         (refusing #(data-testing.runner/validate-test :transform
-                                                      (transforms.u/->definition (data-testing.db/transform transform_id))
+                                                      (data-testing.db/transform transform_id)
                                                       inputs
                                                       expectations))))
     (when (seq body)

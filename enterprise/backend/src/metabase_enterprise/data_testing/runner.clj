@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.runner
-  "Orchestrates a test run over the module's separated concerns. Callers hand the runner the definitions of the
-  subject and the test; the runner owns the connection lifecycle, hands ordinary arguments to each concern (no
-  marshaled plan object), and owns the HTTP decisions.
+  "Orchestrates a test run over the module's separated concerns. Callers hand the runner the saved subject and the
+  saved test; the runner owns the connection lifecycle, hands ordinary arguments to each concern (no marshaled plan
+  object), and owns the HTTP decisions.
 
     subject      — app-db: the subject's database and its query compiled to SQL, one method per subject type
     compile      — pure: referenced tables (once), then rewrites to temp tables
