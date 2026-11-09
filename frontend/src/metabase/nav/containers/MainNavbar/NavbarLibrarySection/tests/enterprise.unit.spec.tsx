@@ -1,7 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
+import { reinitialize } from "metabase/plugins";
+import {
+  createMockCollection,
+  createMockRemoteSyncEntity,
+  createMockRemoteSyncEntityCollection,
+} from "metabase-types/api/mocks";
 
 import { createChildCollection, createLibraryCollection, setup } from "./setup";
 
@@ -61,6 +66,65 @@ describe("NavbarLibrarySection", () => {
       setup({ collections: [regularCollection] });
 
       expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("unpushed changes", () => {
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("marks collections with unpushed changes", async () => {
+      const libraryCollection = createLibraryCollection({
+        children: [
+          createChildCollection({
+            id: 10,
+            name: "Dirty Collection",
+            type: "library-metrics",
+          }),
+          createChildCollection({
+            id: 11,
+            name: "Clean Collection",
+            type: "library-data",
+          }),
+        ],
+      });
+
+      setup({
+        isEnterprise: true,
+        collections: [libraryCollection],
+        dirty: [
+          createMockRemoteSyncEntity({
+            collection: createMockRemoteSyncEntityCollection({ id: 10 }),
+          }),
+        ],
+      });
+
+      expect(await screen.findByText("Dirty Collection")).toBeInTheDocument();
+      expect(screen.getByText("Clean Collection")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getAllByTestId("remote-sync-status")).toHaveLength(1),
+      );
+    });
+
+    it("marks nothing without remote sync", async () => {
+      setup({
+        collections: [
+          createLibraryCollection({
+            children: [createChildCollection({ id: 10, name: "Metrics" })],
+          }),
+        ],
+        dirty: [
+          createMockRemoteSyncEntity({
+            collection: createMockRemoteSyncEntityCollection({ id: 10 }),
+          }),
+        ],
+      });
+
+      expect(await screen.findByText("Metrics")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("remote-sync-status"),
+      ).not.toBeInTheDocument();
     });
   });
 });

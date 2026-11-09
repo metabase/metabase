@@ -5,11 +5,25 @@
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn synced-timeline-events-clause :- [:fn vector?]
+  "The clause over the TimelineEvent table aliased `alias` selecting the events of the timelines remote sync syncs."
+  [alias :- :keyword]
+  (remote-sync/synced-fk-clause alias :timeline_id :model/Timeline))
+
+(mu/defn synced-timelines-clause :- [:fn vector?]
+  "The clause over the Timeline table aliased `alias` selecting the timelines remote sync syncs."
+  [alias :- :keyword]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
 
 (mu/defn insert-timeline!
   "Insert the Timeline `row` and return the inserted instance."

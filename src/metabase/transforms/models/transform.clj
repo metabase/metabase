@@ -12,6 +12,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
@@ -85,6 +86,14 @@
                  (transform-database-permissions? instance)
                  (native-transform-write-allowed? instance (:source_database_id instance)))))))
 
+(defn- transform-deletable?
+  "Whether the current user can write `instance` as a whole, which nobody can when a read-only instance syncs it."
+  ([instance]
+   (transform-deletable? instance nil))
+  ([instance models-cache]
+   (and (remote-sync/can-write? :model/Transform (:id instance))
+        (transform-writable? instance models-cache))))
+
 (defmethod mi/can-read? :model/Transform
   ([instance]
    (transform-readable? instance))
@@ -94,7 +103,7 @@
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (transform-writable? instance))
+   (transform-deletable? instance))
   ([_model pk]
    (when-let [transform (transforms.db/transform pk)]
      (mi/can-write? transform))))
@@ -108,15 +117,18 @@
 
 (defmethod mi/can-update? :model/Transform
   [instance changes]
-  (and (mi/can-write? instance)
-       (mi/can-write? (merge instance changes))))
+  (and (transform-writable? instance)
+       (transform-writable? (merge instance changes))
+       (or (not (remote-sync/synced-changes? :model/Transform instance changes))
+           (remote-sync/can-write? :model/Transform (:id instance)))))
 
 (defmethod mi/can-create? :model/Transform
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read? and has-db-transforms-permission?
   ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
-  (and (transforms.u/check-feature-enabled (transforms.u/->definition instance))
+  (and (not (remote-sync/read-only?))
+       (transforms.u/check-feature-enabled (transforms.u/->definition instance))
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and (api/entitled-data-analyst?)
@@ -251,7 +263,7 @@
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_write]
   "Add can_write to transforms."
   [_model k transforms]
-  (hydrate-permission k transforms transform-writable?))
+  (hydrate-permission k transforms transform-deletable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
   "Add can_execute to transforms. Executing a transform requires write permission."
@@ -610,3 +622,7 @@
       (log/warnf "Skipping transform %s, since an export from before 66 left it without its deleted source database"
                  entity_id))
     (vec resolved)))
+
+(defmethod remote-sync/spec :model/Transform
+  [_model]
+  {})

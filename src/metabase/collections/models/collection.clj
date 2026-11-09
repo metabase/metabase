@@ -18,6 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.serialization.core :as serialization]
@@ -354,7 +355,8 @@
   ([instance]
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
-        (mi/current-user-has-full-permissions? :write instance)))
+        (mi/current-user-has-full-permissions? :write instance)
+        (remote-sync/can-write? :model/Collection (:id instance))))
   ([_model pk]
    (mi/can-write? (collections.db/collection pk))))
 
@@ -2298,3 +2300,9 @@
           (cond-> item
             (and local (system-collection-name local)) (update :row dissoc :name)))
         items))
+
+(defmethod remote-sync/spec :model/Collection
+  [_model]
+  {:collection-id        :id
+   :synced-filter-clause (partial collections.db/synced-collections-clause
+                                  [data-apps-ns transforms-ns snippets-ns data-actions-ns])})

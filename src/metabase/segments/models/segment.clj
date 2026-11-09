@@ -12,6 +12,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
@@ -96,14 +97,15 @@
   ([instance]
    (let [table (or (:table instance)
                    (segments.db/table (:table_id instance)))]
-     (or (mi/superuser?)
-         (and (api/entitled-data-analyst?)
-              (perms/user-has-permission-for-table?
-               api/*current-user-id*
-               :perms/view-data
-               :unrestricted
-               (:db_id table)
-               (u/the-id table))))))
+     (and (or (mi/superuser?)
+              (and (api/entitled-data-analyst?)
+                   (perms/user-has-permission-for-table?
+                    api/*current-user-id*
+                    :perms/view-data
+                    :unrestricted
+                    (:db_id table)
+                    (u/the-id table))))
+          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
   ([_model pk]
    (mi/can-write? (segments.db/segment pk))))
 
@@ -114,45 +116,24 @@
   [_model instance]
   (let [table (or (:table instance)
                   (segments.db/table (:table_id instance)))]
-    (or (mi/superuser?)
-        (and (api/entitled-data-analyst?)
-             (perms/user-has-permission-for-table?
-              api/*current-user-id*
-              :perms/view-data
-              :unrestricted
-              (:db_id table)
-              (u/the-id table))))))
+    (and (or (mi/superuser?)
+             (and (api/entitled-data-analyst?)
+                  (perms/user-has-permission-for-table?
+                   api/*current-user-id*
+                   :perms/view-data
+                   :unrestricted
+                   (:db_id table)
+                   (u/the-id table))))
+         (remote-sync/can-write? :model/TableUserSettings (:id table)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
-  "Batched hydration for :can_write on segments. First hydrates :table for all segments,
-   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
-   on each segment. This avoids N+1 queries when checking permissions for multiple segments."
+  "Batched hydration for :can_write on segments, hydrating their tables first."
   [_model k segments]
-  (let [segments-with-tables (t2/hydrate (remove nil? segments) :table)
-        ;; Get all unique collection IDs from the hydrated tables
-        collection-ids (->> segments-with-tables
-                            (keep (comp :collection_id :table))
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (segments.db/collections collection-ids))
-                                {})
-        ;; Associate collection info with each segment's table
-        segments-with-collection (for [segment segments-with-tables
-                                       :let [table (:table segment)
-                                             coll-id (:collection_id table)]]
-                                   (if (and table coll-id)
-                                     (assoc-in segment [:table :collection]
-                                               {:id coll-id
-                                                :is_remote_synced (get collection-synced-map coll-id false)})
-                                     segment))]
-    (mi/instances-with-hydrated-data
-     segments k
-     #(u/index-by :id mi/can-write? segments-with-collection)
-     :id
-     {:default false})))
+  (mi/instances-with-hydrated-data
+   segments k
+   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? segments) :table))
+   :id
+   {:default false}))
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
@@ -287,3 +268,7 @@
   (mapv (fn [{:keys [definition]}]
           (serialization/import-mbql-dependencies definition))
         entities))
+
+(defmethod remote-sync/spec :model/Segment
+  [_model]
+  {:synced-filter-clause segments.db/synced-segments-clause})
