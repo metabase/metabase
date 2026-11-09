@@ -423,6 +423,15 @@
           (is (= (not readable?)
                  (some? (re-find #"tell the user that you can't combine it in one query" rendered)))))))))
 
+(deftest sql-only-profile-gates-one-query-per-database-on-sql-execution-test
+  (testing "with SQL tools but no notebook builder, as in :internal-sql, the rule follows the SQL execution setting"
+    (doseq [[sql-on? expected] [[true #"build one query for each database and run each one with `run_query`"]
+                                [false #"tell the user that you can't combine it in one query"]]]
+      (testing (str "SQL execution " (if sql-on? "on" "off"))
+        (mt/with-temporary-setting-values [metabot-sql-execution-enabled? sql-on?]
+          (is (re-find expected
+                       (render-template "internal.selmer" all-yes-perms ["create_sql_query" "run_query"]))))))))
+
 (deftest prompt-without-notebook-builder-test
   (testing "with NLQ permitted but no construct_notebook_query, as in :internal-sql, nothing names the builder"
     (let [tools ["create_sql_query" "run_query"]]
