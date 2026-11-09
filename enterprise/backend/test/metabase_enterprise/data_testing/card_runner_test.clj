@@ -17,7 +17,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
 
@@ -241,10 +242,16 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (let [[_ text-type] (data-testing.test-util/cast-types)
           orders-input  (two-orders-of-product-1)
+          ;; The alias of the joined column comes from the joined table's name, which some test datasets prefix
+          ;; (Redshift's is `test_data_products`).
+          category      (:lib/desired-column-alias
+                         (first (lib/returned-columns (:dataset_query (category-count-card)))))
           by-category   {:type :equals :name "two widgets" :format :rows
-                         :columns [{:name "PRODUCTS__via__PRODUCT_ID__CATEGORY" :cast_type text-type}
+                         :columns [{:name category :cast_type text-type}
                                    {:name "count" :cast_type (count-type)}]
-                         :rows    [{"PRODUCTS__via__PRODUCT_ID__CATEGORY" "Widget" "count" 2}]}]
+                         :rows    [{category "Widget" "count" 2}]}]
+      (testing "premise: the first column of the card's result is the joined category"
+        (is (re-find #"(?i)__via__.*category$" category) category))
       (testing "passes with every column of the joined table in its input"
         (is (= {"two widgets" :passed}
                (outcomes (run-card-test! (category-count-card)
@@ -269,7 +276,8 @@
                                                :rows    [{"Category" "Widget" "count" 2}]}]))]
           (is (= :error (:status expectation)))
           (is (= ::data-testing.errors/unknown-column (get-in expectation [:error :type])))
-          (is (re-find #"(?i)PRODUCTS__via__PRODUCT_ID__CATEGORY" (get-in expectation [:error :message])))
+          (is (re-find (re-pattern (str "(?i)" (Pattern/quote category)))
+                       (get-in expectation [:error :message])))
           (is (re-find #"(?i)\bcount\b" (get-in expectation [:error :message]))))))))
 
 (deftest card-guards-test
