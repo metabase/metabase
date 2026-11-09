@@ -30,7 +30,9 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
   "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio
-  access."
+  access.
+
+  A card test, with its inputs and expectations, is readable by every user who can read its card."
   [_route-params
    {:keys [card-id]} :- [:map {:closed true}
                          [:card-id {:optional true} [:maybe ms/PositiveInt]]]]
@@ -39,7 +41,9 @@
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/card-test.response
-  "Get a card test with its newest run."
+  "Get a card test with its newest run.
+
+  A card test, with its inputs and expectations, is readable by every user who can read its card."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (api/read-check :model/CardTest id)
