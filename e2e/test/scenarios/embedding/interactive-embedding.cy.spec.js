@@ -890,7 +890,7 @@ describe("scenarios > embedding > full app", () => {
             cy.findByText("Raw Data").click();
 
             cy.log("the databases are listed under the Raw Data back link");
-            cy.findByText("Raw Data").should("be.visible");
+            cy.findByRole("button", { name: "Raw Data" }).should("be.visible");
             cy.findByText("Sample Database").should("be.visible");
             cy.findByText("Writable Postgres12").should("be.visible");
             cy.findByText("Writable Postgres12").click();
@@ -907,13 +907,13 @@ describe("scenarios > embedding > full app", () => {
             cy.findByText("Domestic").should("not.exist");
 
             cy.log("going back from the tables lands on the schemas");
-            cy.findByTestId("source-database").click();
+            cy.findByRole("button", { name: "Writable Postgres12" }).click();
             cy.findByText("Domestic").should("be.visible");
             cy.findByText("Wild").should("be.visible");
             cy.findByText("Birds").should("not.exist");
 
             cy.log("going back from the schemas lands on the databases");
-            cy.findByText("Writable Postgres12").click();
+            cy.findByRole("button", { name: "Writable Postgres12" }).click();
             cy.findByText("Sample Database").should("be.visible");
             cy.findByText("Writable Postgres12").should("be.visible");
             cy.findByText("Domestic").should("not.exist");
