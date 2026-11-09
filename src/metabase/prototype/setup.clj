@@ -35,23 +35,34 @@
      :dbname   (subs (.getPath uri) 1)
      :user     (get params "user")
      :password (get params "password")
-     :ssl      (or (= (get params "ssl") "true")
-                   (contains? #{"require" "verify-ca" "verify-full"} ssl))}))
+     :ssl      (cond
+                 (= (get params "ssl") "true")                         true
+                 (contains? #{"require" "verify-ca" "verify-full"} ssl) true
+                 (or (some? ssl) (some? (get params "ssl")))            false)}))
+
+(defn- local-host? [host]
+  (contains? #{"localhost" "127.0.0.1" "::1"} host))
 
 (defn- app-db-details
   "Connection details of the Postgres app DB in the form of Postgres Database `details`, limited to the prototype
   schema."
   []
-  (let [uri-details (some-> (config/config-str :mb-db-connection-uri) connection-uri-details)]
+  (let [uri-details (some-> (config/config-str :mb-db-connection-uri) connection-uri-details)
+        host        (or (config/config-str :mb-db-host) (:host uri-details) "localhost")]
     (into {:schema-filters-type     "inclusion"
            :schema-filters-patterns dataset/schema-name}
           (remove (comp nil? val))
-          {:host     (or (config/config-str :mb-db-host) (:host uri-details) "localhost")
+          {:host     host
            :port     (or (config/config-int :mb-db-port) (:port uri-details) 5432)
            :dbname   (or (config/config-str :mb-db-dbname) (:dbname uri-details))
            :user     (or (config/config-str :mb-db-user) (:user uri-details))
            :password (or (config/config-str :mb-db-pass) (:password uri-details))
-           :ssl      (:ssl uri-details)})))
+           ;; The JDBC driver of the app DB uses `sslmode=prefer`, but the Postgres driver of Metabase uses
+           ;; `sslmode=disable` when `:ssl` is false. Remote servers, like the ones of preview envs, can refuse
+           ;; connections without SSL, so use SSL for them when the URI does not say otherwise.
+           :ssl      (if (some? (:ssl uri-details))
+                       (:ssl uri-details)
+                       (not (local-host? host)))})))
 
 (defn- apply-semantic-types!
   "Set the semantic types from the dataset definition as user values, so that they are the same everywhere and
