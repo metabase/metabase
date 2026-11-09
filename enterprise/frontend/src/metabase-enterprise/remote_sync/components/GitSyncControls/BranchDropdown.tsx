@@ -107,7 +107,7 @@ export const BranchDropdown = ({
       <Box p="sm">
         <TextInput
           autoFocus
-          leftSection={<Icon name="search" size={16} />}
+          leftSection={<Icon name="search" />}
           onChange={(e) => setSearchValue(e.currentTarget.value)}
           placeholder={t`Find or create a branch...`}
           value={searchValue}

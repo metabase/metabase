@@ -19,7 +19,6 @@ export const useGetEnvVarDocsUrl = (envName: string | undefined) => {
 export const SETTINGS_FIELD_DESCRIPTION_PROPS = {
   c: "text-secondary",
   fz: "md",
-  lh: "xl",
   maw: "38rem",
 } as const;
 

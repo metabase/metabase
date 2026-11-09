@@ -306,9 +306,6 @@ function DatasetFieldMetadataSidebarInner({
                         maxWidth: "90%",
                       },
                     },
-                    input: {
-                      fontWeight: "bold",
-                    },
                   }}
                 />
                 <FormTextarea
@@ -321,7 +318,6 @@ function DatasetFieldMetadataSidebarInner({
                 {isNative && (
                   <Box mb="1.5rem">
                     <MappedFieldPicker
-                      className={DatasetFieldMetadataSidebarS.SelectButton}
                       name="id"
                       label={t`Database column this maps to`}
                       tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
@@ -332,7 +328,6 @@ function DatasetFieldMetadataSidebarInner({
                 )}
                 <Stack gap="sm" mb="1.5rem">
                   <DatasetFieldMetadataSemanticTypePicker
-                    className={DatasetFieldMetadataSidebarS.SelectButton}
                     field={field}
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                     onChange={handleSemanticTypeChange}

@@ -39,9 +39,6 @@ export const BranchNameInput = (props: BranchNameInputProps) => {
       onChange={(event) => setValue(event.target.value.trim())}
       placeholder={t`your-branch-name`}
       value={value}
-      labelProps={{
-        mb: "sm",
-      }}
       maw="20rem"
     />
   );

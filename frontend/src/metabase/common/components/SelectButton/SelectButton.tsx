@@ -2,26 +2,25 @@ import cx from "classnames";
 import type { ButtonHTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import * as React from "react";
+import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
+import { Icon, Input, InputBase } from "metabase/ui";
 
 import S from "./SelectButton.module.css";
 
 export interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  left?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
   hasValue?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
-  highlighted?: boolean;
   onClick?: () => void;
   onClear?: () => void;
   dataTestId?: string;
   classNames?: {
-    root?: string;
-    icon?: string;
+    input?: string;
+    section?: string;
   };
 }
 
@@ -30,11 +29,9 @@ const SelectButtonInner = forwardRef(function SelectButton(
     className,
     style,
     children,
-    left,
     hasValue = true,
     disabled = false,
     fullWidth = true,
-    highlighted = false,
     onClick,
     onClear,
     dataTestId,
@@ -45,58 +42,50 @@ const SelectButtonInner = forwardRef(function SelectButton(
 ) {
   const handleClear = useCallback(
     (event: React.MouseEvent) => {
-      if (onClear) {
-        // Required not to trigger the usual SelectButton's onClick handler
-        event.stopPropagation();
-        onClear();
-      }
+      // Required not to trigger the usual SelectButton's onClick handler
+      event.stopPropagation();
+      onClear?.();
     },
     [onClear],
   );
 
-  const showClear = hasValue && !!onClear;
-
-  const iconClassName = cx(
-    S.icon,
-    {
-      [S.iconHighlighted]: hasValue && highlighted,
-      [S.iconDisabled]: disabled,
-    },
-    classNames.icon,
-  );
+  const showClear = hasValue && onClear !== undefined && !disabled;
 
   return (
-    <button
+    <InputBase
+      component="button"
       type="button"
+      size="md"
+      pointer
       data-testid={`${dataTestId ? `${dataTestId}-` : ""}select-button`}
       ref={ref}
-      className={cx(
-        S.root,
-        {
-          [S.fullWidth]: fullWidth,
-          [S.noValue]: !hasValue,
-          [S.highlighted]: hasValue && highlighted,
-        },
-        classNames.root,
-        className,
-      )}
-      style={style}
       disabled={disabled}
       onClick={onClick}
+      className={cx(S.root, { [S.fullWidth]: fullWidth }, className)}
+      style={style}
+      rightSection={
+        showClear ? (
+          <Input.ClearButton
+            aria-label={t`Clear`}
+            className={S.clear}
+            onClick={handleClear}
+          />
+        ) : (
+          <Icon name="chevrondown" />
+        )
+      }
+      rightSectionPointerEvents="none"
+      classNames={{
+        wrapper: S.wrapper,
+        section: cx(S.section, classNames.section),
+        input: cx(S.input, { [S.noValue]: !hasValue }, classNames.input),
+      }}
       {...rest}
     >
-      {React.isValidElement(left) && left}
-      <span
-        className={cx(S.content, { [S.contentClearable]: showClear })}
-        data-testid="select-button-content"
-      >
+      <span className={S.content} data-testid="select-button-content">
         {children}
       </span>
-      {showClear && (
-        <Icon className={iconClassName} name="close" onClick={handleClear} />
-      )}
-      <Icon className={iconClassName} name="chevrondown" />
-    </button>
+    </InputBase>
   );
 });
 

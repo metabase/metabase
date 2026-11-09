@@ -41,7 +41,6 @@ export const FormNumberInputWidget = forwardRef(function FormNumberInputWidget(
         nullable={nullable}
         disabled={disabled}
         placeholder={placeholder}
-        size="sm"
       />
     </FormField>
   );

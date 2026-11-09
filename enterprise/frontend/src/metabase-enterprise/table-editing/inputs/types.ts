@@ -1,4 +1,4 @@
-import type { MantineSize, TextInputProps } from "metabase/ui";
+import type { NumberInputProps, TextInputProps } from "metabase/ui";
 
 export type TableActionInputSharedProps = {
   autoFocus?: boolean;
@@ -13,7 +13,7 @@ export type TableActionInputSharedProps = {
 };
 
 type InputProps = {
-  size?: MantineSize;
+  size?: NumberInputProps["size"];
   variant?: TextInputProps["variant"];
   placeholder?: string;
   disabled?: boolean;

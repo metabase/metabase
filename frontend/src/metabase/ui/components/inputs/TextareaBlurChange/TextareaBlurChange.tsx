@@ -1,10 +1,10 @@
-import type { TextareaProps } from "@mantine/core";
 import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { useUnmountLayout } from "metabase/ui/hooks/use-unmount-layout";
 
+import type { TextareaProps } from "../Textarea";
 import { Textarea } from "../Textarea";
 
 type TextareaRestProps = Omit<TextareaProps, "onBlur" | "ref">;

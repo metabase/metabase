@@ -103,7 +103,7 @@ export function PeriodsAgoMenuOption({
             onChange={(value) => handleInputChange(value)}
             onKeyPress={handleInputEnter}
             onClick={handleInputClick}
-            size="xs"
+            size="md"
             w={rem(56)}
             required
             ref={inputRef}
