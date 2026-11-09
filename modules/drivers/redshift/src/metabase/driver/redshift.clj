@@ -573,6 +573,12 @@
            (log/debugf "Error setting default holdability for connection: %s" (ex-message e)))))
      (f conn))))
 
+;; Not the Postgres impl, which unwraps a pgjdbc connection and sets autosave. Autosave issues SAVEPOINT, which Redshift
+;; rejects. A failed statement in a transform test therefore still aborts the transaction for every statement after it.
+(defmethod driver/do-with-test-connection :redshift
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc) driver database f))
+
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
   (.prepareStatement conn
                      sql
