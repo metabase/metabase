@@ -62,6 +62,18 @@
                                         [:= :the_test.id (run-column :test_id)]
                                         [:>= (run-column :start_time) :the_test.created_at]]}]))
 
+(mu/defn- runs-of-tests-clause :- vector?
+  "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
+  was created."
+  [test-type :- ::data-testing.schema/test-type
+   test-ids  :- [:set ms/PositiveInt]]
+  (if (empty? test-ids)
+    [:= [:inline 1] [:inline 0]]
+    [:and
+     [:= :data_test_run.test_type (name test-type)]
+     [:in :data_test_run.test_id test-ids]
+     (run-of-its-test-clause test-type :data_test_run)]))
+
 (def ^:private RunFilters
   [:map {:closed true}
    [:test-type        ::data-testing.schema/test-type]
@@ -74,13 +86,7 @@
 
 (mu/defn- run-filter-clause :- vector?
   [{:keys [test-type test-ids statuses started-at-start started-at-end ended-at-start ended-at-end]} :- RunFilters]
-  (cond-> [:and
-           [:= :test_type (name test-type)]
-           (if (seq test-ids)
-             [:and
-              [:in :data_test_run.test_id test-ids]
-              (run-of-its-test-clause test-type :data_test_run)]
-             [:= [:inline 1] [:inline 0]])]
+  (cond-> [:and (runs-of-tests-clause test-type test-ids)]
     (seq statuses)   (conj [:in :status (map name statuses)])
     started-at-start (conj [:>= :start_time started-at-start])
     started-at-end   (conj [:< :start_time started-at-end])
@@ -110,9 +116,7 @@
    test-ids  :- [:set ms/PositiveInt]]
   (t2/select :model/DataTestRun
              {:where [:and
-                      [:= :data_test_run.test_type (name test-type)]
-                      [:in :data_test_run.test_id test-ids]
-                      (run-of-its-test-clause test-type :data_test_run)
+                      (runs-of-tests-clause test-type test-ids)
                       [:not [:exists ^:allow-subquery {:select [1]
                                                        :from   [[:data_test_run :newer]]
                                                        :where  [:and
