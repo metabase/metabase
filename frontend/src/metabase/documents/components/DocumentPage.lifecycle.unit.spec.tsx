@@ -122,24 +122,30 @@ const setup = ({
   return { ...view, updateStoredDocument };
 };
 
-const getTitleInput = () =>
+const findTitleInput = () =>
   screen.findByRole("textbox", { name: "Document Title" });
 
-const getDocumentContent = () => screen.findByTestId("document-content");
+const findDocumentContent = () => screen.findByTestId("document-content");
 
-const getEditor = async () =>
-  within(await getDocumentContent()).findByRole("textbox");
+const findEditor = async () =>
+  within(await findDocumentContent()).findByRole("textbox");
+
+// Synchronous queries for use inside `waitFor` callbacks
+const getTitleInput = () =>
+  screen.getByRole("textbox", { name: "Document Title" });
+
+const getDocumentContent = () => screen.getByTestId("document-content");
+
+const getEditor = () => within(getDocumentContent()).getByRole("textbox");
 
 // Where the caret lands in jsdom is not reliable, so assertions only check
 // that the typed text is present
 const typeInEditor = async (text: string) => {
-  await userEvent.type(await getEditor(), text);
+  await userEvent.type(await findEditor(), text);
 };
 
 const waitForContent = async (text: string | RegExp) => {
-  await waitFor(async () =>
-    expect(await getDocumentContent()).toHaveTextContent(text),
-  );
+  await waitFor(() => expect(getDocumentContent()).toHaveTextContent(text));
 };
 
 const openMoreOptions = async () => {
@@ -186,7 +192,7 @@ describe("DocumentPage lifecycle", () => {
       setupCopyDocumentEndpoint(DOCUMENT_ID, COPY);
       setup({ documents: [createDocument(), COPY] });
 
-      const titleInput = await getTitleInput();
+      const titleInput = await findTitleInput();
       await waitFor(() => expect(titleInput).toHaveValue("Test Document"));
       await userEvent.clear(titleInput);
       await userEvent.type(titleInput, "Saved title");
@@ -240,8 +246,8 @@ describe("DocumentPage lifecycle", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Duplicate" }));
 
-      await waitFor(async () =>
-        expect(await getTitleInput()).toHaveValue("Saved title - Duplicate"),
+      await waitFor(() =>
+        expect(getTitleInput()).toHaveValue("Saved title - Duplicate"),
       );
       expect(
         getLastRequestBody(`/api/document/${DOCUMENT_ID}/copy`, "POST"),
@@ -252,9 +258,7 @@ describe("DocumentPage lifecycle", () => {
       setupCopyDocumentEndpoint(DOCUMENT_ID, COPY);
       const { router } = setup({ documents: [createDocument(), COPY] });
 
-      await waitFor(async () =>
-        expect(await getTitleInput()).toHaveValue("Test Document"),
-      );
+      await waitFor(() => expect(getTitleInput()).toHaveValue("Test Document"));
       expectNoSaveButton();
 
       await openMoreOptions();
@@ -293,7 +297,7 @@ describe("DocumentPage lifecycle", () => {
       });
 
       await waitFor(() => expect(document.title).toMatch(/^New document/));
-      const titleInput = await getTitleInput();
+      const titleInput = await findTitleInput();
       expect(titleInput).toHaveFocus();
       await userEvent.type(titleInput, "Test Document");
       await typeInEditor("This is a paragraph");
@@ -337,7 +341,7 @@ describe("DocumentPage lifecycle", () => {
         documents: [],
       });
 
-      await getTitleInput();
+      await findTitleInput();
       expectNoSaveButton();
       await typeInEditor("This is some content");
       await expectSaveButton();
@@ -356,7 +360,7 @@ describe("DocumentPage lifecycle", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument(),
       );
-      expect(await getDocumentContent()).toHaveTextContent(
+      expect(await findDocumentContent()).toHaveTextContent(
         /^This is some content$/,
       );
 
@@ -367,28 +371,26 @@ describe("DocumentPage lifecycle", () => {
         within(secondWarning).getByRole("button", { name: "Discard changes" }),
       );
 
-      await waitFor(async () =>
-        expect(await getDocumentContent()).toHaveTextContent(/^$/),
-      );
+      await waitFor(() => expect(getDocumentContent()).toHaveTextContent(/^$/));
       await waitFor(() => expectNoSaveButton());
     });
 
     it("focuses the start of the body when Enter is pressed in the title", async () => {
       setup({ initialRoute: "/document/new", documents: [] });
 
-      const titleInput = await getTitleInput();
+      const titleInput = await findTitleInput();
       expect(titleInput).toHaveFocus();
       await userEvent.keyboard("Doc Title{Enter}");
-      await waitFor(async () => expect(await getEditor()).toHaveFocus());
+      await waitFor(() => expect(getEditor()).toHaveFocus());
       await userEvent.keyboard("One{Enter}Two");
 
       await userEvent.click(titleInput);
       await userEvent.keyboard("{Enter}");
-      await waitFor(async () => expect(await getEditor()).toHaveFocus());
+      await waitFor(() => expect(getEditor()).toHaveFocus());
       await userEvent.keyboard("NEW: ");
 
       expect(titleInput).toHaveValue("Doc Title");
-      expect(await getDocumentContent()).toHaveTextContent(/^NEW: OneTwo$/);
+      expect(await findDocumentContent()).toHaveTextContent(/^NEW: OneTwo$/);
     });
   });
 
@@ -397,8 +399,8 @@ describe("DocumentPage lifecycle", () => {
       setup({ documents: [createDocument({ archived: true })] });
 
       await waitForContent(ORIGINAL_TEXT);
-      expect(await getTitleInput()).toHaveAttribute("readonly");
-      expect(await getEditor()).toHaveAttribute("contenteditable", "false");
+      expect(await findTitleInput()).toHaveAttribute("readonly");
+      expect(await findEditor()).toHaveAttribute("contenteditable", "false");
     });
 
     // The page itself is rendered by the app layout, see AppComponent.unit.spec.tsx
@@ -439,10 +441,11 @@ describe("DocumentPage lifecycle", () => {
         ],
       });
 
-      await waitFor(async () =>
-        expect(
-          await screen.findByTestId("document-card-embed"),
-        ).toHaveTextContent(/^Couldn't find this chart\.$/),
+      expect(
+        await screen.findByText("Couldn't find this chart."),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("document-card-embed")).toHaveTextContent(
+        /^Couldn't find this chart\.$/,
       );
     });
 
@@ -494,7 +497,7 @@ describe("DocumentPage lifecycle", () => {
       const { router } = setup();
 
       await waitForContent(ORIGINAL);
-      await userEvent.click(await getEditor());
+      await userEvent.click(await findEditor());
       await pressUndo();
       await waitForContent(ORIGINAL);
 
@@ -509,9 +512,9 @@ describe("DocumentPage lifecycle", () => {
 
       act(() => router?.navigate("/document/new"));
       await waitForContent(/^$/);
-      await userEvent.click(await getEditor());
+      await userEvent.click(await findEditor());
       await pressUndo();
-      expect(await getDocumentContent()).toHaveTextContent(/^$/);
+      expect(await findDocumentContent()).toHaveTextContent(/^$/);
     });
 
     it("keeps the undo history after saving", async () => {
@@ -556,9 +559,7 @@ describe("DocumentPage lifecycle", () => {
     ];
 
     const openHistory = async () => {
-      await waitFor(async () =>
-        expect(await getTitleInput()).toHaveValue("Updated"),
-      );
+      await waitFor(() => expect(getTitleInput()).toHaveValue("Updated"));
       await openMoreOptions();
       await clickMenuItem(/History/);
       return await screen.findByTestId("document-history-list");
@@ -617,9 +618,7 @@ describe("DocumentPage lifecycle", () => {
 
       await revertToCreation(historyList);
 
-      await waitFor(async () =>
-        expect(await getTitleInput()).toHaveValue("Test Document"),
-      );
+      await waitFor(() => expect(getTitleInput()).toHaveValue("Test Document"));
       await waitForContent(new RegExp(`^${ORIGINAL_TEXT}$`));
       expect(
         await within(screen.getByTestId("document-history-list")).findByText(
@@ -649,7 +648,7 @@ describe("DocumentPage lifecycle", () => {
           { message: "Cannot revert: missing document", variant: "negative" },
         ]),
       );
-      expect(await getTitleInput()).toHaveValue("Updated");
+      expect(await findTitleInput()).toHaveValue("Updated");
     });
   });
 });
