@@ -5,6 +5,7 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -16,11 +17,21 @@
    pk    :- [:or :int :string]]
   (t2/select-one model (first (t2/primary-keys model)) pk))
 
+(mu/defn exported-rows
+  "The rows of `model` with the primary keys `pks`, with the columns its export takes."
+  [model :- :keyword
+   pks   :- [:sequential [:or :int :string]]]
+  (if (seq pks)
+    (t2/select (into [model] (serialization/columns model)) (first (t2/primary-keys model)) [:in pks])
+    []))
+
 (mu/defn synced-rows
-  "The rows of `model` remote sync syncs, ordered by primary key."
+  "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."
   [model :- :keyword]
   (let [pk (first (t2/primary-keys model))]
-    (t2/select model pk [:in (remote-sync/synced-ids-clause model)] {:order-by [[pk :asc]]})))
+    (t2/select (into [model] (serialization/columns model))
+               pk [:in (remote-sync/synced-ids-clause model)]
+               {:order-by [[pk :asc]]})))
 
 (mu/defn synced-count :- :int
   "The number of rows of `model` remote sync syncs."

@@ -329,9 +329,9 @@ describe("scenarios > question > settings", () => {
           cy.icon("ellipsis").click({ force: true });
         });
 
-      cy.findByDisplayValue("Normal").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Currency").click();
+      cy.findByTestId("chart-settings-widget-number_style")
+        .findByText("$1.23")
+        .click();
 
       cy.findByDisplayValue("US Dollar").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

@@ -177,4 +177,5 @@
 
 (defmethod remote-sync/spec :model/TransformTest
   [_model]
-  {:synced-filter-clause data-testing.db/synced-transform-tests-clause})
+  {:parent               (fn [{:keys [transform_id]}] [:model/Transform transform_id])
+   :synced-filter-clause data-testing.db/synced-transform-tests-clause})

@@ -1,13 +1,16 @@
 import { useMemo } from "react";
 
 import { useListCollectionItemsQuery } from "metabase/api";
-import { useAdminSetting, useSetting } from "metabase/settings";
+import { useSelector } from "metabase/redux";
+import { getSettings, useSetting } from "metabase/settings";
 import type {
   CollectionId,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import type { SettingsFormValues, SyncableCollection } from "../../types";
+
+import { getInitialValues } from "./utils";
 
 const ROOT_COLLECTIONS_REQUEST: ListCollectionItemsRequest = {
   id: "root",
@@ -77,30 +80,11 @@ export const useSyncableCollections = (): SyncableCollections => {
 
 export const useSettingsFormValues = (
   collections: SyncableCollection[],
-  library: SyncableCollection | null,
 ): SettingsFormValues => {
-  const isEnabled = useSetting("remote-sync-enabled");
-  const { value: url } = useAdminSetting("remote-sync-url");
-  const { value: token } = useAdminSetting("remote-sync-token");
-  const { value: syncType } = useAdminSetting("remote-sync-type");
-  const { value: branch } = useAdminSetting("remote-sync-branch");
-  const { value: autoImport } = useAdminSetting("remote-sync-auto-import");
+  const settings = useSelector(getSettings);
 
   return useMemo(
-    () => ({
-      "remote-sync-url": url ?? "",
-      "remote-sync-token": token ?? "",
-      "remote-sync-type": syncType ?? "read-write",
-      "remote-sync-branch": branch ?? "",
-      "remote-sync-auto-import": Boolean(autoImport),
-      library: isEnabled ? Boolean(library?.isRemoteSynced) : true,
-      collections: Object.fromEntries(
-        collections.map((collection) => [
-          collection.id,
-          collection.isRemoteSynced,
-        ]),
-      ),
-    }),
-    [isEnabled, url, token, syncType, branch, autoImport, library, collections],
+    () => getInitialValues(settings, collections),
+    [settings, collections],
   );
 };

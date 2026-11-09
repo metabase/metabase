@@ -20,4 +20,5 @@
   synced-changes?
   synced-collection-id
   synced-label
-  synced-models])
+  synced-models
+  synced-parent])

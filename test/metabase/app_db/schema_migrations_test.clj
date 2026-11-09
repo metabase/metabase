@@ -4798,3 +4798,33 @@
               (t2/delete! :transform_test :id test-id)
               (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id kept-run))))
             (is (nil? (t2/select-one :transform_test_run :id card-run)))))))))
+
+(deftest sync-library-collection-test
+  (doseq [[label settings synced?] [["read-write instance syncing a repository syncs the Library"
+                                     {"remote-sync-url" "https://example.com/repo.git" "remote-sync-type" "read-write"}
+                                     true]
+                                    ["read-only instance leaves the Library"
+                                     {"remote-sync-url" "https://example.com/repo.git" "remote-sync-type" "read-only"}
+                                     false]
+                                    ["instance without remote sync leaves the Library"
+                                     {"remote-sync-type" "read-write"}
+                                     false]]]
+    (testing (str "tlmp7c: " label)
+      (impl/test-migrations ["tlmp7c"] [migrate!]
+        (doseq [[k v] settings]
+          (t2/insert! :setting {:key k :value v}))
+        (let [insert!    (fn [location entity-id]
+                           (t2/insert-returning-pk! :collection {:name       (mt/random-name)
+                                                                 :slug       "c"
+                                                                 :location   location
+                                                                 :entity_id  entity-id
+                                                                 :created_at :%now}))
+              library-id (or (t2/select-one-pk :collection :entity_id "librarylibrarylibrary")
+                             (insert! "/" "librarylibrarylibrary"))
+              child-id   (insert! (format "/%d/" library-id) (u/generate-nano-id))
+              other-id   (insert! "/" (u/generate-nano-id))
+              synced?*   #(t2/select-one-fn :is_remote_synced :collection :id %)]
+          (migrate!)
+          (is (= synced? (synced?* library-id)))
+          (is (= synced? (synced?* child-id)))
+          (is (false? (synced?* other-id))))))))
