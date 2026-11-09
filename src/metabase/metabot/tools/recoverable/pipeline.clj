@@ -154,7 +154,7 @@
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
 
-(def cross-database-step
+(def ^:private cross-database-step
   "The recovery step for a query that references a table, card, measure or segment in another database."
   {:uses #{}
    :text (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a "

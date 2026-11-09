@@ -418,7 +418,7 @@
           (is (= readable?
                  (some? (re-find #"build one query for each database and run each one with `run_query`" rendered))))
           (is (= readable?
-                 (some? (re-find #"If a result is truncated, don't answer from it" rendered)))))
+                 (some? (re-find #"If a result is truncated, the rows you can't see can change the answer" rendered)))))
         (testing "a profile that can't read rows tells the user that it can't combine the data"
           (is (= (not readable?)
                  (some? (re-find #"tell the user that you can't combine it in one query" rendered)))))))))
