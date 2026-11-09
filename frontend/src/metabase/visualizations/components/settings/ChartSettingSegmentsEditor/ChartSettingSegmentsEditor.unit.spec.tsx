@@ -606,7 +606,7 @@ describe("ChartSettingSegmentsEditor", () => {
         name: "Change value source",
       });
       await userEvent.hover(cardPill);
-      expect(await screen.findByText("Orders → total")).toBeInTheDocument();
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
 
       await userEvent.click(
         screen.getByRole("button", { name: "Remove range 1" }),

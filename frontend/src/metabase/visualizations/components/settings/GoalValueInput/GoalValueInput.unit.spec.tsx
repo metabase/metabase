@@ -956,6 +956,57 @@ describe("GoalValueInput", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("opens the root menu when clicking the pill of a metric with a breakout (UIT-156)", async () => {
+    setupMetricWithNumericBreakout();
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "sum",
+          value: 250,
+        }),
+      }),
+      value: { type: "card", id: 9, column: "sum" },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Rating/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names only the metric in the pill tooltip, without its sole column", async () => {
+    setupMetricWithNumericBreakout();
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "sum",
+          value: 250,
+        }),
+      }),
+      value: { type: "card", id: 9, column: "sum" },
+    });
+
+    await userEvent.hover(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(await screen.findByText("Revenue")).toBeInTheDocument();
+    expect(screen.queryByText(/Sum of Total/)).not.toBeInTheDocument();
+  });
+
   it("resolves a measure reference and treats it as a single-column source", async () => {
     setupMeasureEndpoint(
       createMockMeasure({
@@ -1137,20 +1188,11 @@ describe("GoalValueInput", () => {
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
-  it("commits the sole column of a metric picked from search as a card reference", async () => {
+  it("commits the aggregation column of a metric picked from search, ignoring its breakouts (UIT-156)", async () => {
     setupEntityPicker([
       createMockSearchResult({ id: 9, model: "metric", name: "Revenue" }),
     ]);
-    setupCardEndpoints(
-      createMockCard({
-        id: 9,
-        name: "Revenue",
-        type: "metric",
-        result_metadata: [
-          createMockField({ name: "sum", base_type: "type/Integer" }),
-        ],
-      }),
-    );
+    setupMetricWithNumericBreakout();
     const { onChange } = setup();
 
     await openMenu();
@@ -1163,6 +1205,8 @@ describe("GoalValueInput", () => {
         column: "sum",
       }),
     );
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
   it("commits the only numeric column of a source that also has non-numeric columns", async () => {
@@ -1866,7 +1910,7 @@ describe("GoalValueInput", () => {
         createMockCard({
           id: 9,
           name: "Orders",
-          type: "metric",
+          type: "model",
           result_metadata: [
             createMockField({ name: "total", base_type: "type/Integer" }),
             createMockField({
@@ -1896,7 +1940,7 @@ describe("GoalValueInput", () => {
       expect(trackSimpleEvent).toHaveBeenCalledWith({
         event: "dynamic_goal_set",
         triggered_from: "progress",
-        event_detail: "metric",
+        event_detail: "model",
       });
     });
 
@@ -2060,7 +2104,7 @@ describe("GoalValueInput", () => {
       await userEvent.hover(
         screen.getByRole("button", { name: "Change value source" }),
       );
-      expect(await screen.findByText("Orders → total")).toBeInTheDocument();
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
       fireEvent.keyDown(pill, { key: "Backspace" });
 
       expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
@@ -2177,6 +2221,30 @@ function setupMultiColumnSourceCard() {
       result_metadata: [
         createMockField({ name: "LOW", base_type: "type/Integer" }),
         createMockField({ name: "HIGH", base_type: "type/Integer" }),
+      ],
+    }),
+  );
+}
+
+function setupMetricWithNumericBreakout() {
+  setupCardEndpoints(
+    createMockCard({
+      id: 9,
+      name: "Revenue",
+      type: "metric",
+      result_metadata: [
+        createMockField({
+          name: "rating",
+          display_name: "Rating",
+          base_type: "type/Integer",
+          field_ref: ["field", 1, null],
+        }),
+        createMockField({
+          name: "sum",
+          display_name: "Sum of Total",
+          base_type: "type/Integer",
+          field_ref: ["aggregation", 0],
+        }),
       ],
     }),
   );
