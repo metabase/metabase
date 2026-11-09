@@ -26,6 +26,7 @@ import { QuestionMoreActionsMenu } from "./QuestionMoreActionsMenu";
 
 interface Props {
   isBookmarked: boolean;
+  isShowingQuestionInfoSidebar: boolean;
   onToggleBookmark: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
   question: Question;
@@ -41,6 +42,7 @@ interface Props {
 
 export const QuestionActions = ({
   isBookmarked,
+  isShowingQuestionInfoSidebar,
   onToggleBookmark,
   onOpenModal,
   question,

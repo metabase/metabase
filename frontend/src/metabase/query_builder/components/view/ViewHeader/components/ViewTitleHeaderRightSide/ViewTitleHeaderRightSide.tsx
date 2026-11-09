@@ -233,6 +233,7 @@ export function ViewTitleHeaderRightSide({
         <QuestionActions
           question={question}
           isBookmarked={isBookmarked}
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
           onOpenModal={onOpenModal}
           onToggleBookmark={toggleBookmark}
           onSetQueryBuilderMode={setQueryBuilderMode}
