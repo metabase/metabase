@@ -10,7 +10,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
-      actions: read
+      # `actions: write` is passed down to uberjar.yml, which deletes an uploaded JAR that turns out not to start.
+      actions: write
     uses: ./.github/workflows/build-private-ee-docker-image.yml
     secrets:
       PR_ENV_IAM_ROLE: ${{ secrets.PR_ENV_IAM_ROLE }}

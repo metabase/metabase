@@ -179,7 +179,11 @@
          ;; AOT compilation doesn't need the frontend, so it starts with the frontend step and `:uberjar` waits for it.
          ;; Not any earlier: `:translations` rewrites `resources/locales.clj`, which the compile reads while it looks for
          ;; namespaces, and a half-written file fails the build.
-         background-compile (when (every? (set (map u/parse-as-keyword steps)) [:frontend :uberjar])
+         ;; Not when interactive: a failing step prompts on stdin, and from the background thread that prompt would go
+         ;; to the hidden buffer, so the build would hang waiting for an answer nobody can see. Set `INTERACTIVE=false`
+         ;; to get the background compile locally.
+         background-compile (when (and (not (u/interactive?))
+                                       (every? (set (map u/parse-as-keyword steps)) [:frontend :uberjar]))
                               (delay (start-background-compile! edition)))]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
