@@ -6,6 +6,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- listed-runs
   "The ids and the `total` of the transform test runs that `user` lists with the query parameters `params`."
   [user & params]
