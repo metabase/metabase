@@ -202,7 +202,12 @@
           (is (contains? models verified-model))
           (is (not (contains? models plain-model))))
         (is (= #{verified-model}
-               (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items"))))))))))
+               (item-ids (first (read-uris metabot :internal (str "metabase://collection/" coll-id "/items")))))))
+      (testing "lists an uncurated metric once what it's defined on is curated, agreeing with metric/{id}"
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (is (contains? (item-ids (first (read-uris metabot :internal
+                                                     (str "metabase://collection/" coll-id "/items"))))
+                         plain-metric)))))))
 
 (deftest read-resource-curated-only-dashboards-test
   (mt/with-current-user (mt/user->id :crowberto)
