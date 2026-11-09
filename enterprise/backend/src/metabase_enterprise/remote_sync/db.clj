@@ -17,11 +17,13 @@
    pk    :- [:or :int :string]]
   (t2/select-one model (first (t2/primary-keys model)) pk))
 
-(mu/defn display-name :- [:maybe :string]
-  "The display name of the row of `model` with the primary key `pk`, or its name, or nil."
+(mu/defn exported-rows
+  "The rows of `model` with the primary keys `pks`, with the columns its export takes."
   [model :- :keyword
-   pk    :- [:or :int :string]]
-  (t2/select-one-fn #(or (:display_name %) (:name %)) model (first (t2/primary-keys model)) pk))
+   pks   :- [:sequential [:or :int :string]]]
+  (if (seq pks)
+    (t2/select (into [model] (serialization/columns model)) (first (t2/primary-keys model)) [:in pks])
+    []))
 
 (mu/defn synced-rows
   "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."

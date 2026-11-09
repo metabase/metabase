@@ -72,15 +72,31 @@
         removed-row  (when-not row (first (serialization/local-rows model [(:entity doc)])))
         current      (or row removed-row)
         collection-id (some->> current (remote-sync/synced-collection-id model))
-        [parent-model parent-id] (some->> current (remote-sync/synced-parent model))]
+        parent        (some->> current (remote-sync/synced-parent model))]
     (cond-> {:id          (or (some-> current (get (first (t2/primary-keys model)))) 0)
              :name        (remote-sync.merge/label key doc)
              :model       (u/lower-case-en (name model))
              :sync_status (if (and (= "delete" status) removed-row) "removed" status)}
       collection-id                 (assoc :collection_id collection-id)
-      parent-id                     (assoc :parent {:model (u/lower-case-en (name parent-model))
-                                                    :id    parent-id
-                                                    :name  (remote-sync.db/display-name parent-model parent-id)}))))
+      parent                        (assoc :parent parent))))
+
+(defn- with-parents
+  "The `items` with the `[model pk]` of their parent replaced by the parent as the client names it, by the label the
+  spec of its model gives its exported entity."
+  [items]
+  (let [names (into {}
+                    (for [[model parents] (group-by first (into [] (comp (keep :parent) (distinct)) items))
+                          :let [pk   (first (t2/primary-keys model))
+                                rows (remote-sync.db/exported-rows model (mapv second parents))]
+                          [row entity] (map vector rows (serialization/export-batch model rows))
+                          :when (not (instance? Exception entity))]
+                      [[model (get row pk)] (remote-sync/synced-label model entity)]))]
+    (mapv (fn [{[model id :as parent] :parent :as item}]
+            (cond-> item
+              parent (assoc :parent {:model (u/lower-case-en (name model))
+                                     :id    id
+                                     :name  (get names parent)})))
+          items)))
 
 (defn- with-collections
   "The `items` with the collection each change belongs to, the entity itself for a collection, with its effective
@@ -133,7 +149,7 @@
         (throw (ex-info (tru "You have changes that aren''t pushed yet. Pull again to keep or discard them.")
                         {:status-code   400
                          :conflicts     true
-                         :dirty_objects (with-collections (map dirty-item changes))
+                         :dirty_objects (with-collections (with-parents (map dirty-item changes)))
                          :response/keys #{:conflicts :dirty_objects}}))))
     (let [task (started (tasks/start! {:type "import" :branch branch :user-id user :event :event/remote-sync-import}
                                       (fn [report]
@@ -151,7 +167,9 @@
   "The synced content of this instance that changed since the last sync."
   []
   (api/check-superuser)
-  {:dirty (if (remote-sync.settings/remote-sync-enabled) (with-collections (map dirty-item (local-changes))) [])})
+  {:dirty (if (remote-sync.settings/remote-sync-enabled)
+            (with-collections (with-parents (map dirty-item (local-changes))))
+            [])})
 
 (api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
   "Whether the remote branch moved on since the last sync."

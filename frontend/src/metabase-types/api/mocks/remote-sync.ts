@@ -25,7 +25,7 @@ import type {
 export const createMockRemoteSyncEntityParent = (
   opts?: Partial<RemoteSyncEntityParent>,
 ): RemoteSyncEntityParent => ({
-  model: "table",
+  model: "tableusersettings",
   id: 1,
   name: "Orders",
   ...opts,

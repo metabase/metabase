@@ -45,6 +45,13 @@
    [:type                [:maybe :string]]
    [:effective_ancestors [:sequential ::collections.schema/effective-ancestor]]])
 
+(mr/def ::dirty-item-parent
+  "The entity a change shows within, such as the table of a segment."
+  [:map {:closed true}
+   [:model :string]
+   [:id    pos-int?]
+   [:name  [:maybe :string]]])
+
 (def DirtyItem
   "A synced entity changed since the last sync, with id 0 when its row no longer exists."
   [:map {:closed true}
@@ -53,10 +60,7 @@
    [:model       :string]
    [:sync_status :string]
    [:collection  {:optional true} ::dirty-item-collection]
-   [:parent      {:optional true} [:map {:closed true}
-                                   [:model :string]
-                                   [:id    pos-int?]
-                                   [:name  [:maybe :string]]]]])
+   [:parent      {:optional true} ::dirty-item-parent]])
 
 (def ImportResponse
   "Schema for POST /import response."

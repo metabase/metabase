@@ -124,8 +124,8 @@
                                                                      (-> (lib/query mp (lib.metadata/table mp (:id table)))
                                                                          (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]
         (testing "the changes of a table's segments and fields carry the table as their parent"
-          (is (=? [{:model "fieldusersettings" :id (:id field) :parent {:model "table" :id (:id table) :name "Synced Table"}}
-                   {:model "segment" :id (:id segment) :parent {:model "table" :id (:id table) :name "Synced Table"}}]
+          (is (=? [{:model "fieldusersettings" :id (:id field) :parent {:model "tableusersettings" :id (:id table) :name "Synced Table"}}
+                   {:model "segment" :id (:id segment) :parent {:model "tableusersettings" :id (:id table) :name "Synced Table"}}]
                   (->> (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))
                        (filter (comp #{(:id field) (:id segment)} :id))
                        (filter (comp #{"fieldusersettings" "segment"} :model))

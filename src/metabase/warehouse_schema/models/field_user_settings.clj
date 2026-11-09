@@ -156,4 +156,4 @@
   [_model]
   {:synced-filter-clause warehouse-schema.db/synced-field-user-settings-clause
    :parent               (fn [{:keys [field_id]}]
-                           (some->> (warehouse-schema.db/field field_id) :table_id (vector :model/Table)))})
+                           (some->> (warehouse-schema.db/field field_id) :table_id (vector :model/TableUserSettings)))})

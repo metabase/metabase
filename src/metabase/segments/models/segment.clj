@@ -272,4 +272,4 @@
 (defmethod remote-sync/spec :model/Segment
   [_model]
   {:synced-filter-clause segments.db/synced-segments-clause
-   :parent               (fn [{:keys [table_id]}] [:model/Table table_id])})
+   :parent               (fn [{:keys [table_id]}] [:model/TableUserSettings table_id])})

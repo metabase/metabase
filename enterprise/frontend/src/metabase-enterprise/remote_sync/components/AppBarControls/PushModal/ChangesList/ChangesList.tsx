@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/router";
@@ -10,6 +10,7 @@ import {
   Icon,
   Paper,
   Stack,
+  type StackProps,
   Text,
 } from "metabase/ui";
 import type { RemoteSyncEntity } from "metabase-types/api";
@@ -23,10 +24,6 @@ import {
   getStatusIcon,
   groupChanges,
 } from "./utils";
-
-const NESTED_STYLE = {
-  borderLeft: "2px solid var(--mb-color-border-neutral)",
-};
 
 type ChangesListProps = {
   entities: RemoteSyncEntity[];
@@ -67,11 +64,11 @@ const GroupSection = ({ group }: GroupSectionProps) => (
       {group.collectionEntity && <StatusIcon entity={group.collectionEntity} />}
     </Group>
     {group.items.length > 0 && (
-      <Stack gap="sm" ml="lg" pl="sm" style={NESTED_STYLE}>
+      <NestedList>
         {group.items.map((item) => (
           <ItemSection key={item.key} item={item} />
         ))}
-      </Stack>
+      </NestedList>
     )}
   </Box>
 );
@@ -93,14 +90,14 @@ const ItemSection = ({ item }: ItemSectionProps) => (
       </Group>
     )}
     {item.children.length > 0 && (
-      <Stack gap="sm" mt="sm" ml="lg" pl="sm" style={NESTED_STYLE}>
+      <NestedList mt="sm">
         {item.children.map((child, index) => (
           <EntityRow
             key={`${child.model}-${child.id}-${index}`}
             entity={child}
           />
         ))}
-      </Stack>
+      </NestedList>
     )}
   </Box>
 );
@@ -136,4 +133,21 @@ const StatusIcon = ({ entity }: EntityProps) => (
     ml="auto"
     aria-label={entity.sync_status}
   />
+);
+
+type NestedListProps = {
+  mt?: StackProps["mt"];
+  children: ReactNode;
+};
+
+const NestedList = ({ mt, children }: NestedListProps) => (
+  <Stack
+    gap="sm"
+    mt={mt}
+    ml="lg"
+    pl="sm"
+    style={{ borderLeft: "2px solid var(--mb-color-border-neutral)" }}
+  >
+    {children}
+  </Stack>
 );

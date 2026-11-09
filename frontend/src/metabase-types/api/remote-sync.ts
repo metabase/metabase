@@ -45,7 +45,10 @@ export type RemoteSyncEntityCollection = {
   effective_ancestors: RemoteSyncEntityCollectionAncestor[];
 };
 
-export type RemoteSyncEntityParentModel = "card" | "table" | "transform";
+export type RemoteSyncEntityParentModel = Extract<
+  RemoteSyncEntityModel,
+  "card" | "tableusersettings" | "transform"
+>;
 
 export type RemoteSyncEntityParent = {
   model: RemoteSyncEntityParentModel;

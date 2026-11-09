@@ -124,15 +124,15 @@ export const getEntityUrl = ({
     case "tableusersettings":
       return Urls.dataStudioTable(id);
     case "fieldusersettings":
-      return parent?.model === "table"
+      return parent?.model === "tableusersettings"
         ? Urls.dataStudioTableFields(parent.id, id)
         : null;
     case "segment":
-      return parent?.model === "table"
+      return parent?.model === "tableusersettings"
         ? Urls.dataStudioPublishedTableSegment(parent.id, id)
         : null;
     case "measure":
-      return parent?.model === "table"
+      return parent?.model === "tableusersettings"
         ? Urls.dataStudioPublishedTableMeasure(parent.id, id)
         : null;
     case "transformtest":
@@ -222,7 +222,7 @@ export const groupChanges = (entities: RemoteSyncEntity[]): ChangesGroup[] => {
     const { parent } = entity;
     if (isCollectionOwnChange(entity)) {
       getGroup(entity).collectionEntity = entity;
-    } else if (parent?.model === "table") {
+    } else if (parent?.model === "tableusersettings") {
       const table = tables.get(parent.id);
       const group = getGroup(table ?? entity);
       const name = table?.name ?? parent.name ?? "";
