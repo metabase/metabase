@@ -10,7 +10,6 @@ import { type DispatchFn, connect } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getDefaultParameterOptions,
@@ -18,6 +17,7 @@ import {
   getParameterOptionsForField,
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
 import type {
+  DatabaseId,
   EmbeddingParameterVisibility,
   Field,
   FieldId,
@@ -70,8 +70,7 @@ interface OwnProps {
    */
   parameter: Parameter | undefined;
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
-  database?: Database | null;
-  databases: Database[];
+  databaseId: DatabaseId | null;
   /**
    * The originally saved question, used to restore a tag's value-source config
    * when its type is switched back to the original. Optional: contexts without a
@@ -155,7 +154,9 @@ class TagEditorParamInner extends Component<
       return newConfig;
     }
 
-    const originalTag = Lib.templateTags(originalQuery)[tag.name];
+    const originalTag = Lib.templateTags(originalQuery).find(
+      ({ name }) => name === tag.name,
+    );
     const originalParameter = originalQuestion
       .parameters()
       .find(({ id }) => id === parameter.id);
@@ -329,8 +330,7 @@ class TagEditorParamInner extends Component<
   render() {
     const {
       tag,
-      database,
-      databases,
+      databaseId,
       field,
       parameter,
       embeddedParameterVisibility,
@@ -359,8 +359,7 @@ class TagEditorParamInner extends Component<
           <FieldMappingSelect
             tag={tag}
             field={field}
-            database={database}
-            databases={databases}
+            databaseId={databaseId}
             setFieldFn={this.setDimension}
           />
         )}
@@ -368,8 +367,7 @@ class TagEditorParamInner extends Component<
         {isTable && (
           <TableMappingSelect
             tag={tag}
-            database={database}
-            databases={databases}
+            databaseId={databaseId}
             onChange={this.setTableId}
             onChangeEmitAlias={this.setEmitAlias}
           />

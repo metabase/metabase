@@ -1,6 +1,5 @@
-import { createMockMetadata } from "__support__/metadata";
 import type { FieldReference } from "metabase-types/api";
-import { createMockField, createMockTable } from "metabase-types/api/mocks";
+import { createMockField } from "metabase-types/api/mocks";
 
 import { getUniqueFieldId } from "./fields";
 
@@ -15,22 +14,11 @@ const DB_FIELD = createMockField({
   display_name: "foo",
 });
 
-const DB_TABLE = createMockTable({
-  id: DB_TABLE_ID,
-  fields: [DB_FIELD],
-});
-
-const setup = () => {
-  return createMockMetadata({ tables: [DB_TABLE] });
-};
-
 describe("metabase-lib/v1/metadata/utils", () => {
   describe("getUniqueFieldId", () => {
     describe("when the given field is from a concrete table", () => {
       it("should return the field's id", () => {
-        const metadata = setup();
-        const field = metadata.field(DB_FIELD_ID);
-        expect(field && getUniqueFieldId(field)).toEqual(DB_FIELD_ID);
+        expect(getUniqueFieldId(DB_FIELD)).toEqual(DB_FIELD_ID);
       });
     });
 

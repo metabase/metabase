@@ -288,13 +288,13 @@ describe("getIncrementalWarning", () => {
 
   it("should warn when native query has no table variables", () => {
     mockGetLibQuery.mockReturnValue(query);
-    mockTemplateTags.mockReturnValue({
-      snippet1: createMockTemplateTag({
+    mockTemplateTags.mockReturnValue([
+      createMockTemplateTag({
         id: "1",
         name: "snippet1",
         type: "snippet",
       }),
-    });
+    ]);
 
     const transform = createMockTransform({
       source_type: "native",
@@ -319,14 +319,14 @@ describe("getIncrementalWarning", () => {
 
   it("should warn when incremental transform has no checkpoint field", () => {
     mockGetLibQuery.mockReturnValue(query);
-    mockTemplateTags.mockReturnValue({
-      my_table: createMockTemplateTag({
+    mockTemplateTags.mockReturnValue([
+      createMockTemplateTag({
         id: "1",
         name: "my_table",
         type: "table",
         "table-id": 42,
       }),
-    });
+    ]);
 
     const transform = createMockTransform({
       source_type: "native",
@@ -343,14 +343,14 @@ describe("getIncrementalWarning", () => {
 
   it("should return undefined for properly configured native incremental transform", () => {
     mockGetLibQuery.mockReturnValue(query);
-    mockTemplateTags.mockReturnValue({
-      my_table: createMockTemplateTag({
+    mockTemplateTags.mockReturnValue([
+      createMockTemplateTag({
         id: "1",
         name: "my_table",
         type: "table",
         "table-id": 42,
       }),
-    });
+    ]);
 
     const transform = createMockTransform({
       source_type: "native",

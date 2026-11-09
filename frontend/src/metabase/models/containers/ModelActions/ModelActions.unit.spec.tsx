@@ -23,9 +23,9 @@ import { modalRoute } from "metabase/common/components/ModalRoute";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Card,
@@ -229,10 +229,8 @@ async function setup({
     questions: [card, ...usedBy],
   });
 
-  const model = checkNotNull(metadata.question(card.id));
-  const usedByQuestions = usedBy.map((q) =>
-    checkNotNull(metadata.question(q.id)),
-  );
+  const model = new Question(card, metadata);
+  const usedByQuestions = usedBy.map((q) => new Question(q, metadata));
 
   const databaseList = defer<ListDatabasesResponse>();
   const mainTable = defer<Table>();
