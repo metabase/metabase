@@ -18,7 +18,7 @@
   ;; (modules/drivers/snowflake/deps.edn): the full reactor-netty + Netty 4.1.x chain is ~20 MB
   ;; and only exists to serve azure-core's HTTP pipeline. MI's only HTTP call is a single POST to
   ;; the IMDS endpoint, which azure-core can serve via the JDK HttpClient transport instead.
-  com.azure/azure-identity          {:mvn/version "1.18.2"
+  com.azure/azure-identity          {:mvn/version "1.19.0"
                                      :exclusions [com.azure/azure-core-http-netty
                                                   ;; pinned in and resolved from /deps.edn
                                                   com.fasterxml.jackson.core/jackson-core
