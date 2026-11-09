@@ -8,6 +8,8 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { TableBrowser } from "metabase/browse/tables/TableBrowser";
+import { BrowseCard } from "metabase/common/components/BrowseCard";
+import { BrowseGrid } from "metabase/common/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -18,10 +20,8 @@ import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";
 
-import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
-import { BrowseGrid } from "../components/BrowseGrid";
 import { DatabaseQuickLinksMenu } from "../components/DatabaseQuickLinksMenu";
 
 type Schema = { id: string; name: string };

@@ -146,7 +146,9 @@
                         :inputs       [{:table  {:schema schema :name table}
                                         :format :sql
                                         :sql    "SELECT * FROM transform_test_input_that_does_not_exist"}]
-                        :expectations []}]
+                        :expectations [{:type :empty
+                                        :name "never reached"
+                                        :sql  (str "SELECT * FROM " schema ".people_summary")}]}]
           (is (thrown? ExceptionInfo
                        (transform-testing.runner/run-saved-test! transform transform-test)))
           (let [run (t2/select-one :model/TransformTestRun :transform_test_id transform-test-id)]
@@ -340,7 +342,7 @@
                          (catch ExceptionInfo e e))]
               (is (= ::transform-testing.errors/unparseable-source (:error-type (ex-data e))))
               (testing "and the refusal reads as the parser's own diagnostic, less its internals"
-                (is (= (str "The transform source SQL could not be parsed for test input validation: "
+                (is (= (str "The SQL of the query under test could not be parsed for test input validation: "
                             "ParseError: Expected table name but got 'WHERE'. Line 1, Col: 19.\n"
                             "  SELECT * FROM WHERE (\n"
                             "                ^^^^^")
@@ -363,3 +365,28 @@
                                         :sql (str "SELECT * FROM " schema ".people_qualified WHERE id <> 1")}]}]
           (is (=? {:status :passed}
                   (transform-testing.runner/run-saved-test! transform transform-test))))))))
+
+(deftest validate-test-blank-target-name-gets-typed-refusal-test
+  (testing "a test missing an input is refused missing-inputs whatever the target is named"
+    (mt/test-driver :h2
+      (let [mp                            (mt/metadata-provider)
+            {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
+            transform                     (fn [target-name]
+                                            {:name   "t"
+                                             :source {:type  :query
+                                                      :query (lib/native-query mp (str "SELECT id FROM " schema "." table))}
+                                             :target {:type "table" :schema schema :name target-name :database (mt/id)}})
+            refusal                       (fn [target-name]
+                                            (try (transform-testing.runner/validate-test
+                                                  (transform target-name)
+                                                  []
+                                                  [{:type :empty :name "e" :sql (str "SELECT * FROM " schema ".people_summary")}])
+                                                 nil
+                                                 (catch ExceptionInfo e
+                                                   (select-keys (ex-data e) [:error-type :type]))))]
+        (testing "with a named target"
+          (is (= {:error-type ::transform-testing.errors/missing-inputs}
+                 (refusal "people_summary"))))
+        (testing "with a blank target name"
+          (is (= {:error-type ::transform-testing.errors/missing-inputs}
+                 (refusal ""))))))))

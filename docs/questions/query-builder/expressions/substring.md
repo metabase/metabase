@@ -1,5 +1,6 @@
 ---
 title: Substring
+summary: Pull part of a string out of consistently formatted text like SKU numbers, ISO codes, or email addresses.
 ---
 
 # Substring

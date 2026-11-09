@@ -15,11 +15,11 @@
    [metabase-enterprise.audit-app.audit :as audit-ee]
    [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
-   [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
+   [metabase.serialization.core :as serialization]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
@@ -37,7 +37,7 @@
   audit-ee/default-db-name)
 
 (def ^:private canonical-db-filename
-  (serialization/slugify-name canonical-db-name))
+  (ee.serialization/slugify-name canonical-db-name))
 
 (def ^:private legacy-canonical-db-filename
   canonical-db-name)
@@ -178,7 +178,7 @@
         temp-dir (copy-and-transform-yamls! plugins-dir user-email)]
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
-      (let [report (serdes/with-cache (serialization/load-metabase! (serialization/ingest-yaml temp-dir) {}))]
+      (let [report (ee.serialization/load-metabase! (ee.serialization/ingest-yaml temp-dir) {})]
         (log/info "Import complete:" (count (:seen report)) "entities loaded")
         (when (seq (:errors report))
           (log/warn "Import had errors:" (mapv ex-message (:errors report))))
@@ -201,11 +201,11 @@
         temp-path (.toFile temp-dir)]
     (log/info "Exporting dev collection" collection-id "to" temp-path)
     (try
-      (let [opts {:targets (serialization/make-targets-of-type "Collection" [collection-id])
+      (let [opts {:targets (ee.serialization/make-targets-of-type :model/Collection [collection-id])
                   :no-settings true :no-transforms true
                   :include-field-values true}
-            report (serdes/with-cache (serialization/store! (serialization/extract opts)
-                                                            (serialization/file-writer (.getPath temp-path))))]
+            report (serialization/with-export-transaction (ee.serialization/store! (ee.serialization/extract opts)
+                                                                                   (ee.serialization/file-writer (.getPath temp-path))))]
         (log/info "Export complete:" (reduce + 0 (vals (:entity-counts report))) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (mapv ex-message (:errors report))))

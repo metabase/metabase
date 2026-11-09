@@ -37,6 +37,8 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { BaseEntityId, CardId, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -104,6 +106,7 @@ const TEST_ENTITY_ID = createMockEntityId();
 const TEST_CARD = createMockCard({
   name: "My Question",
   parameters: [TEST_PARAM],
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 });
 
 function makeMockNavigation(

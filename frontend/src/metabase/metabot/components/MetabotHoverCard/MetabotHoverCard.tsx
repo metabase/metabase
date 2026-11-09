@@ -14,7 +14,6 @@ import { Breadcrumbs, Center, Divider, Group, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 import type { LibraryCollection, TableId } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api";
 
 import S from "./MetabotHoverCard.module.css";
 
@@ -68,9 +67,7 @@ const getLocationCrumbs = (
   };
   const tableCrumb = parentTable && {
     name: parentTable.display_name,
-    href: isConcreteTableId(parentTable.id)
-      ? Urls.table({ id: parentTable.id, name: parentTable.display_name })
-      : undefined,
+    href: Urls.table({ id: parentTable.id, name: parentTable.display_name }),
   };
 
   return [libraryCrumb, collectionCrumb, tableCrumb].filter(isNotNull);

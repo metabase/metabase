@@ -1,5 +1,6 @@
 ---
 title: Numbers
+summary: Display a single number nice and big, with formatting options and conditional colors.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/numbers
 ---

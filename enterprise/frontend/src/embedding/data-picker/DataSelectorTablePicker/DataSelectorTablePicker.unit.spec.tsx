@@ -110,9 +110,7 @@ describe("DataSelectorTablePicker", () => {
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
     // focus the database's back link
     await userEvent.tab();
-    expect(
-      screen.getByRole("button", { name: `chevronleft icon ${database.name}` }),
-    ).toHaveFocus();
+    expect(screen.getByRole("button", { name: database.name })).toHaveFocus();
     await userEvent.keyboard("{Enter}");
 
     expect(onBack).toHaveBeenCalledTimes(1);
@@ -126,9 +124,7 @@ describe("DataSelectorTablePicker", () => {
 
     // focus the database's back link
     await userEvent.tab();
-    expect(
-      screen.getByRole("button", { name: `chevronleft icon ${database.name}` }),
-    ).toHaveFocus();
+    expect(screen.getByRole("button", { name: database.name })).toHaveFocus();
     await userEvent.keyboard(" ");
 
     expect(onBack).toHaveBeenCalledTimes(1);

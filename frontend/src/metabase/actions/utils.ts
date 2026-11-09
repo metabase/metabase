@@ -6,6 +6,7 @@ import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasActionsEnabled } from "metabase/common/utils/database";
 import type { ButtonProps } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+import * as Lib from "metabase-lib";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
@@ -422,4 +423,16 @@ export const getActionItems = ({
   }
 
   return actionItems;
+};
+
+export const supportsImplicitActions = (query: Lib.Query): boolean => {
+  const { isNative } = Lib.queryDisplayInfo(query);
+  if (isNative || Lib.hasClauses(query, -1)) {
+    return false;
+  }
+
+  const pkColumns = Lib.returnedColumns(query, -1).filter((column) =>
+    Lib.isPrimaryKey(column),
+  );
+  return pkColumns.length === 1;
 };

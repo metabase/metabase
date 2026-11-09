@@ -1,5 +1,6 @@
 ---
 title: Introduction to model actions
+summary: Build custom forms and business logic that write back to your database, and attach them to dashboard buttons or share them as public forms.
 redirect_from:
   - /docs/latest/actions/introduction
 ---

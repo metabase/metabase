@@ -94,7 +94,6 @@
       "include_csv": false,
       "display": "scatter",
       "entity_id": "9wQGiMybMjNFU_l01FwKd",
-      "collection_preview": true,
       "visualization_settings": {
         "series_settings": { "total_accident": { "color": "#69C8C8" } },
         "table.cell_column": "total_accident",

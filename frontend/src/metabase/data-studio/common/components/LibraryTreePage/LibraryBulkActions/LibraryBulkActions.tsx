@@ -263,7 +263,6 @@ function LibraryMoveModal({
       entityType={match(section)
         .with("data", () => "table" as const)
         .with("metrics", () => "metric" as const)
-        .with("dashboards", () => "dashboard" as const)
         .exhaustive()}
     />
   );

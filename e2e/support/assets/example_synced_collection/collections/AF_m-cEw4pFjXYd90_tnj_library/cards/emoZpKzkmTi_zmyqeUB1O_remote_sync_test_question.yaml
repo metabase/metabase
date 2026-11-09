@@ -217,7 +217,6 @@ serdes/meta:
 display: table
 archived_directly: false
 entity_id: emoZpKzkmTi_zmyqeUB1O
-collection_preview: true
 visualization_settings:
   column_settings: null
 metabase_version: "v1.57.1-SNAPSHOT (fb3e96f)"

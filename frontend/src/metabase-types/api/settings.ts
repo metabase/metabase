@@ -4,11 +4,11 @@ import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
-import type { CurrencyStyle } from "./formatting";
+import type { CurrencyPosition, CurrencyStyle } from "./formatting";
 import type { GroupMappings } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
-import type { ConcreteTableId } from "./table";
+import type { TableId } from "./table";
 import type { UserId } from "./user";
 
 export interface OidcAuthProvider {
@@ -38,6 +38,7 @@ export interface NumberFormattingSettings {
 export interface CurrencyFormattingSettings {
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   currency_in_header?: boolean;
 }
 
@@ -462,7 +463,7 @@ export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
  */
 export interface PrototypeDataInfo {
   database_id: DatabaseId;
-  table_ids: ConcreteTableId[];
+  table_ids: TableId[];
 }
 
 interface InstanceSettings {

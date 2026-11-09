@@ -1,5 +1,6 @@
 ---
 title: Metabase release versioning
+summary: How Metabase version numbers work, including the license, major, point, and hotfix parts, and release terms like beta and gold.
 ---
 
 # Metabase release versioning

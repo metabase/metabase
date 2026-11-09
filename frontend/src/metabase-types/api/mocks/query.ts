@@ -1,38 +1,20 @@
-import type {
-  NativeDatasetQuery,
-  NativeQuery,
-  StructuredDatasetQuery,
-  StructuredQuery,
-} from "metabase-types/api";
+import type { LegacyDatasetQuery } from "metabase-types/api";
 
-export const createMockStructuredQuery = (
-  opts?: Partial<StructuredQuery>,
-): StructuredQuery => ({
-  "source-table": 1,
-  ...opts,
-});
-
-export const createMockNativeQuery = (
-  opts?: Partial<NativeQuery>,
-): NativeQuery => ({
-  query: "SELECT 1",
-  ...opts,
-});
-
-export const createMockStructuredDatasetQuery = (
-  opts?: Partial<StructuredDatasetQuery>,
-): StructuredDatasetQuery => ({
+// LegacyDatasetQuery is opaque; mocks start from the same empty queries the FE builds by hand
+export const EMPTY_STRUCTURED_QUERY = {
+  database: null,
   type: "query",
-  database: 1,
-  query: createMockStructuredQuery(),
-  ...opts,
-});
+  query: {
+    "source-table": null,
+  },
+} as unknown as LegacyDatasetQuery;
 
-export const createMockNativeDatasetQuery = (
-  opts?: Partial<NativeDatasetQuery>,
-): NativeDatasetQuery => ({
+// LegacyDatasetQuery is opaque; mocks start from the same empty queries the FE builds by hand
+export const EMPTY_NATIVE_QUERY = {
+  database: null,
   type: "native",
-  database: 1,
-  native: createMockNativeQuery(),
-  ...opts,
-});
+  native: {
+    query: "",
+    "template-tags": {},
+  },
+} as unknown as LegacyDatasetQuery;

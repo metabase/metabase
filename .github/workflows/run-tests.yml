@@ -114,9 +114,24 @@ jobs:
           # replace it rather than fail on a re-run.
           overwrite: true
 
-  backend-tests:
+  # Built once and downloaded by every backend job that renders charts (backend and app-db suites).
+  static-viz:
     needs: gate
-    if: ${{ needs.gate.outputs.verdict != 'force-skip' }}
+    if: >-
+      ${{ needs.gate.outputs.verdict != 'force-skip'
+      && needs.gate.outputs.verdict != 'stack-skip' }}
+    uses: ./.github/workflows/static-viz.yml
+
+  # Same rule as e2e-tests: a `skipped` build still enters the suite, whose own gate decides. A failed
+  # one keeps the suite out, so its required check stays pending instead of failing on a missing artifact.
+  backend-tests:
+    needs: [gate, static-viz]
+    if: |
+      !cancelled() &&
+      needs.gate.result == 'success' &&
+      needs.gate.outputs.verdict != 'force-skip' &&
+      needs.static-viz.result != 'failure' &&
+      needs.static-viz.result != 'cancelled'
     uses: ./.github/workflows/backend.yml
     secrets: inherit
 
@@ -128,8 +143,14 @@ jobs:
     secrets: inherit
 
   app-db-tests:
-    needs: gate
-    if: ${{ needs.gate.outputs.verdict != 'force-skip' }}
+    needs: [gate, static-viz]
+    # Same rule as backend-tests.
+    if: |
+      !cancelled() &&
+      needs.gate.result == 'success' &&
+      needs.gate.outputs.verdict != 'force-skip' &&
+      needs.static-viz.result != 'failure' &&
+      needs.static-viz.result != 'cancelled'
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
 

@@ -1,13 +1,16 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import Field from "metabase-lib/v1/metadata/Field";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { NormalizedField } from "metabase-types/api";
+import type { NormalizedRealTableField } from "metabase-types/api";
 import {
-  createMockNativeCard,
+  createMockCard,
   createMockNormalizedField,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { dimensionFilterForParameter } from "./filters";
 
@@ -20,7 +23,7 @@ describe("parameters/utils/field-filters", () => {
 
     const CASES: [
       { type: string },
-      { name: string; field: Partial<NormalizedField> },
+      { name: string; field: Partial<NormalizedRealTableField> },
     ][] = [
       [
         { type: "date/single" },
@@ -105,10 +108,18 @@ describe("parameters/utils/field-filters", () => {
 });
 
 function createMockDimension(
-  field: Partial<NormalizedField>,
+  field: Partial<NormalizedRealTableField>,
 ): TemplateTagDimension {
-  const card = createMockNativeCard();
-  const metadata = createMockMetadata({ questions: [card] });
+  const card = createMockCard({
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT 1",
+    }),
+    query_type: "native",
+  });
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    questions: [card],
+  });
   const question = metadata.question(card.id);
   if (!question) {
     throw new TypeError();

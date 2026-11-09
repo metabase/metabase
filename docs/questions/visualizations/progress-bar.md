@@ -1,5 +1,6 @@
 ---
 title: Progress bars
+summary: Compare a single number to a goal you set, and get an alert when the metric reaches it.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/progress-bar
 ---

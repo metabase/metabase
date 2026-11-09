@@ -128,6 +128,7 @@ describe("MetabotAsk", () => {
   it("renders a streamed chart inline without leaving the conversation", async () => {
     const TABLE_ID = 2;
     const conversationRoute = `/metabot/conversation/${ASK_CONVERSATION_ID}`;
+    const cardPart = createMockMetabotGeneratedCardPart({ tableId: TABLE_ID });
     setupCardDataset();
     setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
     setupTableEndpoints(createMockTable({ id: TABLE_ID }));
@@ -136,7 +137,7 @@ describe("MetabotAsk", () => {
       initialRoute: conversationRoute,
     });
     mockAgentEndpoint({
-      events: [createMockMetabotGeneratedCardPart({ tableId: TABLE_ID }).part],
+      events: [cardPart.part],
     });
 
     await enterChatMessage("Show me all orders");
