@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
@@ -17,12 +16,11 @@ import {
   setupNotFoundCardEndpoints,
   setupPersistentDocumentEndpoints,
   setupRecentViewsEndpoints,
-  setupRevertRevisionEndpoint,
   setupRevertRevisionErrorEndpoint,
+  setupRevertableRevisionsEndpoints,
   setupTimelinesEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
   act,
@@ -31,7 +29,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import type { SimpleEventSchema } from "metabase-types/analytics";
 import type { Document, DocumentContent, Revision } from "metabase-types/api";
@@ -40,7 +37,6 @@ import {
   createMockDocument,
   createMockDocumentContent,
   createMockRevision,
-  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -84,18 +80,13 @@ const createDocument = (opts?: Partial<Document>) =>
 interface SetupOpts {
   initialRoute?: string;
   documents?: Document[];
-  hasLibrary?: boolean;
 }
 
 const setup = ({
   initialRoute = `/document/${DOCUMENT_ID}`,
   documents = [createDocument()],
-  hasLibrary = false,
 }: SetupOpts = {}) => {
-  if (hasLibrary) {
-    setupEnterpriseOnlyPlugin("library");
-  }
-  setupLibraryEndpoints(hasLibrary);
+  setupLibraryEndpoints();
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   setupUsersEndpoints([CURRENT_USER]);
@@ -124,12 +115,7 @@ const setup = ({
     {
       withRouter: true,
       initialRoute,
-      storeInitialState: createMockState({
-        currentUser: CURRENT_USER,
-        settings: mockSettings({
-          "token-features": createMockTokenFeatures({ library: hasLibrary }),
-        }),
-      }),
+      storeInitialState: createMockState({ currentUser: CURRENT_USER }),
     },
   );
 
@@ -191,10 +177,6 @@ const expectNoSaveButton = () =>
 describe("DocumentPage lifecycle", () => {
   beforeEach(() => {
     trackSimpleEvent.mockClear();
-  });
-
-  afterEach(() => {
-    reinitialize();
   });
 
   describe("duplicating", () => {
@@ -303,7 +285,7 @@ describe("DocumentPage lifecycle", () => {
   describe("creating", () => {
     const CREATED = createDocument({ name: "Test Document" });
 
-    it("creates a document in the default collection without reloading it", async () => {
+    it("creates a document in the selectable default collection without reloading it (metabase#73538)", async () => {
       setupCreateDocumentEndpoint(CREATED);
       const { router, store } = setup({
         initialRoute: "/document/new",
@@ -347,32 +329,6 @@ describe("DocumentPage lifecycle", () => {
           method: "GET",
         }),
       ).toHaveLength(0);
-    });
-
-    it("saves to a selectable default collection when the Library is enabled (metabase#73538)", async () => {
-      setupCreateDocumentEndpoint(createDocument({ name: "Library Document" }));
-      const { router } = setup({
-        initialRoute: "/document/new",
-        documents: [createDocument({ name: "Library Document" })],
-        hasLibrary: true,
-      });
-
-      await userEvent.type(await getTitleInput(), "Library Document");
-      await userEvent.click(
-        await screen.findByRole("button", { name: "Save" }),
-      );
-      const selectButton = await screen.findByTestId(
-        "entity-picker-select-button",
-      );
-      await waitFor(() => expect(selectButton).toBeEnabled());
-      await userEvent.click(selectButton);
-
-      await waitFor(() =>
-        expect(router?.location.pathname).toMatch(/^\/document\/1(-|$)/),
-      );
-      const body = getLastRequestBody("/api/document", "POST");
-      expect(body).toMatchObject({ name: "Library Document" });
-      expect(body).not.toHaveProperty("collection_id");
     });
 
     it("resets the editor when navigating from /new to /new and the changes are discarded", async () => {
@@ -424,7 +380,7 @@ describe("DocumentPage lifecycle", () => {
       expect(titleInput).toHaveFocus();
       await userEvent.keyboard("Doc Title{Enter}");
       await waitFor(async () => expect(await getEditor()).toHaveFocus());
-      await userEvent.keyboard("One");
+      await userEvent.keyboard("One{Enter}Two");
 
       await userEvent.click(titleInput);
       await userEvent.keyboard("{Enter}");
@@ -432,7 +388,7 @@ describe("DocumentPage lifecycle", () => {
       await userEvent.keyboard("NEW: ");
 
       expect(titleInput).toHaveValue("Doc Title");
-      expect(await getDocumentContent()).toHaveTextContent(/^NEW: One$/);
+      expect(await getDocumentContent()).toHaveTextContent(/^NEW: OneTwo$/);
     });
   });
 
@@ -445,7 +401,8 @@ describe("DocumentPage lifecycle", () => {
       expect(await getEditor()).toHaveAttribute("contenteditable", "false");
     });
 
-    it("shows the not found page for a nonexistent document", async () => {
+    // The page itself is rendered by the app layout, see AppComponent.unit.spec.tsx
+    it("reports a nonexistent document as a not found error", async () => {
       setupDocumentErrorEndpoint(9999, { status: 404 });
       const { store } = setup({
         initialRoute: "/document/9999",
@@ -616,34 +573,64 @@ describe("DocumentPage lifecycle", () => {
     };
 
     it("lists the revisions and reverts the document to one of them", async () => {
-      setupEntityRevisionsEndpoint("document", DOCUMENT_ID, REVISIONS);
-      setupRevertRevisionEndpoint(createMockRevision({ id: 3 }));
       const { updateStoredDocument } = setup({
-        documents: [createDocument({ name: "Updated" })],
+        documents: [
+          createDocument({
+            name: "Updated",
+            document: createMockDocumentContent({
+              content: [
+                {
+                  type: "paragraph",
+                  attrs: { _id: "1" },
+                  content: [{ type: "text", text: "Updated content" }],
+                },
+              ],
+            }),
+          }),
+        ],
+      });
+      setupRevertableRevisionsEndpoints({
+        entity: "document",
+        id: DOCUMENT_ID,
+        revisions: REVISIONS,
+        revertRevision: createMockRevision({
+          id: 3,
+          description: "reverted to an earlier version.",
+          timestamp: "2024-01-03T10:00:00Z",
+          is_reversion: true,
+          user: REVISION_USER,
+        }),
+        onRevert: () =>
+          updateStoredDocument.get(DOCUMENT_ID)?.({
+            name: "Test Document",
+            document: createMockDocumentContent({
+              content: PARAGRAPH_CONTENT,
+            }),
+          }),
       });
 
       const historyList = await openHistory();
+      await waitForContent(/^Updated content$/);
       expect(
         await within(historyList).findByText(/renamed this Document/),
       ).toBeInTheDocument();
 
-      // the server restores the old version when the revert request succeeds
-      updateStoredDocument.get(DOCUMENT_ID)?.({ name: "Test Document" });
       await revertToCreation(historyList);
 
       await waitFor(async () =>
         expect(await getTitleInput()).toHaveValue("Test Document"),
       );
+      await waitForContent(new RegExp(`^${ORIGINAL_TEXT}$`));
+      expect(
+        await within(screen.getByTestId("document-history-list")).findByText(
+          /reverted to an earlier version/,
+        ),
+      ).toBeInTheDocument();
       expect(getLastRequestBody("/api/revision/revert", "POST")).toEqual({
         entity: "document",
         id: DOCUMENT_ID,
         revision_id: 1,
       });
-      await waitFor(() =>
-        expect(
-          fetchMock.callHistory.calls("path:/api/revision", { method: "GET" }),
-        ).toHaveLength(2),
-      );
     });
 
     it("shows the server error when reverting fails", async () => {
