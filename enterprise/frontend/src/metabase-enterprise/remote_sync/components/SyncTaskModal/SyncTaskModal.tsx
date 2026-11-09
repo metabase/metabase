@@ -4,7 +4,16 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { Button, Group, List, Modal, Progress, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  FocusTrap,
+  Group,
+  List,
+  Modal,
+  Progress,
+  Stack,
+  Text,
+} from "metabase/ui";
 import {
   EnterpriseApi,
   useCancelRemoteSyncCurrentTaskMutation,
@@ -34,6 +43,7 @@ export const SyncTaskModal = ({
     withCloseButton={false}
     onClose={onClose}
   >
+    <FocusTrap.InitialFocus />
     {taskId != null && <SyncTaskModalBody taskId={taskId} onClose={onClose} />}
   </Modal>
 );

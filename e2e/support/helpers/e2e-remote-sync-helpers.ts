@@ -239,8 +239,7 @@ export const goToSyncedCollection = (
 
 export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
 
-const openGitSyncMenu = () =>
-  getGitSyncControls().findByRole("button", { name: /Sync/ }).click();
+const openGitSyncMenu = () => getGitSyncControls().click();
 
 const MENU_STATUS_TIMEOUT = 20000;
 
@@ -264,23 +263,6 @@ export const clickPushOption = () => getPushOption().click();
 
 export const visitRemoteSyncSettings = () =>
   cy.visit("/admin/settings/remote-sync");
-
-export const switchBranch = (branch: string) => {
-  getGitSyncControls().findByRole("textbox", { name: "Branch" }).click();
-  popover().findByRole("option", { name: branch }).click();
-};
-
-export const pushToNewBranch = (branch: string, message = "New branch") => {
-  openGitSyncMenu();
-  popover()
-    .findByRole("menuitem", { name: /Push to a new branch/ })
-    .click();
-  modal().within(() => {
-    cy.findByLabelText("Branch name").type(branch);
-    cy.findByLabelText("Commit message").type(message);
-    cy.button("Push").click();
-  });
-};
 
 export const pushChanges = (message = "Local changes") => {
   clickPushOption();
