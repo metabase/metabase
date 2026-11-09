@@ -35,19 +35,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ## Tools for managing multi-tenant setups
 
-At a high-level, Metabase provides several approaches to managing permissions for different multi-tenant setups, depending on how you've segregated your data.
-
-### Your customers share a single database
-
-The [row and column security](./row-and-column-security.md) permission setting lets you restrict rows and columns based on who's logged in.
-
-### Each customer has their own database
-
-With [Database routing](./database-routing.md), you can build a question once, and have Metabase send a query to a different database depending on the customer.
-
-### You'd prefer to manage permissions via the database itself
-
-With [Connection impersonation](./impersonation.md), you can manage permissions with roles you define in your database.
+To compare [row and column security](./row-and-column-security.md), [impersonation](./impersonation.md), [database routing](./database-routing.md), and locked parameters, see [Data isolation methods](./data-isolation-methods.md).
 
 [collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

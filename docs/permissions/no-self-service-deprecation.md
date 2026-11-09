@@ -8,11 +8,11 @@ title: Migrating from legacy permissions
 
 In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
 
-**The TL;DR: we split the old Data access setting into two settings: [View data](./data.md#view-data-permissions) and [Create queries](./data.md#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
+**The TL;DR: we split the old Data access setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
 
 ## How Metabase migrated your permissions
 
-If you're migrating from Metabase 49 or earlier, Metabase will (with [one exception](#the-no-self-service-deprecated-view-access-level)) automatically update your permissions to the new system. While group permissions will be slightly different (and we hope easier to reason about), your groups will have the same levels of access as before.
+If you're migrating from Metabase 50 or earlier, Metabase will (with [one exception](#the-no-self-service-deprecated-view-access-level)) automatically update your permissions to the new system. While group permissions will be slightly different (and we hope easier to reason about), your groups will have the same levels of access as before.
 
 ## Why we updated our permissions system
 
@@ -34,30 +34,30 @@ This table is just if you're interested in Metabase archeologically. Metabase ha
 
 Before, Metabase had **Data access** and **Native query editing**. Now, Metabase has [View data](./data.md#view-data-permissions) and [Create queries](./data.md#create-queries-permissions). Here's how Metabase migrated each pairing to the new system.
 
-| **Data access**            | **Native query editing** | **>** | **View data**                      | **Create queries**       |
-| -------------------------- | ------------------------ | ----- | ---------------------------------- | ------------------------ |
-| Unrestricted               | Yes                      | **>** | Can view                           | Query builder and native |
-| Unrestricted               | No                       | **>** | Can view                           | Query builder only       |
-| No self-service            | No                       | **>** | Can view                           | No                       |
-| Blocked                    | No                       | **>** | Blocked                            | No                       |
-| Impersonated               | Yes                      | **>** | Impersonated                       | Query builder and native |
-| Impersonated               | No                       | **>** | Impersonated                       | Query builder only       |
-| Unrestricted (granular)    | No                       | **>** | Can view                           | Query builder (granular) |
-| Sandboxed (granular)       | No                       | **>** | Row and column security (granular) | Query builder (granular) |
-| No self-service (granular) | No                       | **>** | Can view                           | No (granular)            |
+| **Data access**            | **Native query editing** | **>** | **View data**                      | **Create queries**            |
+| -------------------------- | ------------------------ | ----- | ---------------------------------- | ----------------------------- |
+| Unrestricted               | Yes                      | **>** | Can view                           | Query builder and native code |
+| Unrestricted               | No                       | **>** | Can view                           | Query builder                 |
+| No self-service            | No                       | **>** | Can view                           | No                            |
+| Blocked                    | No                       | **>** | Blocked                            | No                            |
+| Impersonated               | Yes                      | **>** | Impersonated                       | Query builder and native code |
+| Impersonated               | No                       | **>** | Impersonated                       | Query builder                 |
+| Unrestricted (granular)    | No                       | **>** | Can view                           | Query builder (granular)      |
+| Sandboxed (granular)       | No                       | **>** | Row and column security (granular) | Query builder (granular)      |
+| No self-service (granular) | No                       | **>** | Can view                           | No (granular)                 |
 
-## The No self-service (Deprecated) View access level
+## The `No self-service (deprecated)` View access level
 
-If you see the **No self-service (Deprecated)** permission setting in **View data** for any group, you should manually change it at some point.
+If you see the `No self-service (deprecated)` permission setting in **View data** for any group, you should manually change it at some point.
 
-For any group that has their **View data** access set to **No self-service (Deprecated)**, you'll need to change the **View data** permission to one of the new options:
+For any group that has their **View data** access set to `No self-service (deprecated)`, you'll need to change the **View data** permission to one of the new options:
 
 - [Can view](./data.md#can-view-data-permission)
 - [Impersonated](./data.md#impersonated-view-data-permission)
 - [Row and column security](./data.md#row-and-column-security)
 - [Blocked](./data.md#blocked-view-data-permission)
 
-If you take no action, Metabase will change any groups with View data access set to **No self-service (Deprecated)** to **Blocked** in a future release. We're defaulting to "Blocked", the least permissive View data access, to prevent any unintended access to data. But this change to Blocked could cause people to lose access to data they previously had access to.
+If you take no action, Metabase will change any groups with View data access set to `No self-service (deprecated)` to `Blocked` in a future release. We're defaulting to "Blocked", the least permissive View data access, to prevent any unintended access to data. But this change to Blocked could cause people to lose access to data they previously had access to.
 
 ### Why we couldn't migrate this setting manually
 
@@ -81,9 +81,9 @@ We could migrate the permissions like so:
 |                    | **Group A**        | **Group B** | **Group C** | **Group D**             | **Group E**        |
 | ------------------ | ------------------ | ----------- | ----------- | ----------------------- | ------------------ |
 | **View data**      | Can view           | ?           | Blocked     | Row and column security | Impersonated       |
-| **Create queries** | Query builder only | No          | No          | Query builder only      | Query builder only |
+| **Create queries** | Query Builder only | No          | No          | Query Builder only      | Query Builder only |
 
-We can't make a call on what Group B's View data should be. If we switch it to **Can view**, the person won't be affected by the Blocked, Row and column security, or Impersonated settings in their other group. If we set it to **Blocked**, they could lose access to data that you think they should have access to. So we created an interim setting, **No self-service (Deprecated)**, to manage this (temporarily) awkward transition.
+We can't make a call on what Group B's View data should be. If we switch it to **Can view**, the person won't be affected by the Blocked, Row and column security, or Impersonated settings in their other group. If we set it to **Blocked**, they could lose access to data that you think they should have access to. So we created an interim setting, `No self-service (legacy)` to manage this (temporarily) awkward transition.
 
 ### For some permission setups with groups that have "No self-service" and "Sandboxed" data access, you may need to create a new group to replicate the setup in 50 or higher
 

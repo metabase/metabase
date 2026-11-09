@@ -54,7 +54,7 @@ For example, you can filter the Accounts table for a group so that the user attr
 - "Basic" will see rows where `Plan = "Basic"` (rows where the Plan column matches the value "Basic").
 - "Premium" will see the rows where `Plan = "Premium"` (rows where the Plan column matches the value "Premium").
 
-To filter on more than one column, click **Add a filter** and map another column to a user attribute. People will only see rows that match all of the filters.
+To filter on more than one column, click **Add a filter** and map another column to a user attribute. Each filter must use a different user attribute. People will only see rows that match all of the filters.
 
 ### Custom row and column security: use a SQL question to create a custom "view" of a table
 
@@ -342,7 +342,7 @@ If row and column security applies to a person on any table, that person can't:
 
 - [Upload CSVs](../databases/uploads.md).
 - See or use [SQL snippets](../questions/native-editor/snippets.md).
-- See other people when they pick recipients for an alert or subscription. They'll only see themselves.
+- Create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md), or see other people in the list of recipients. Email alerts and subscriptions to themselves still work. See [Notification permissions](./notifications.md).
 - Find individual records from [models with indexed values](../data-modeling/models/models.md#surface-individual-records-in-search-by-matching-against-this-column) in search results.
 
 If your Metabase can't confirm that your plan includes row and column security (for example, if your license token is no longer valid), people with row and column security get an error instead of unfiltered data.

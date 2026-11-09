@@ -62,7 +62,7 @@ In general, it's easier to manage permissions when keeping all of a dashboard's 
 
 ## Setting permissions for collections
 
-You can set permissions on a collection by clicking on the three-dot menu (**...**) in the top-right of the screen while viewing the collection, and selecting **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
+Admins can set permissions on a collection by clicking on the three-dot menu (**...**) in the top-right of the screen while viewing the collection, and selecting **Edit permissions**. For the Usage analytics collection, click the lock icon instead. Each [group](./introduction.md) can have either View, Curate, or No access to a collection:
 
 ![Permissions](./images/collection-permissions.png)
 

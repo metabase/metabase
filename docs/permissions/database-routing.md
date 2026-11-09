@@ -14,9 +14,6 @@ With database routing, an admin can build a question once using one database, an
 Database routing is useful for:
 
 - Managing modular and full app embedding setups where each customer has their own database with identical schemas.
-
-  With guest embedding, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
-
 - Switching between dev and prod data warehouses.
 - Changing the target data warehouse for certain teams.
 - Managing separate connections to the same data warehouse, with each connection having separate privileges. This connection management is akin to [connection impersonation](./impersonation.md) for databases that prevent the same connection from changing roles.
@@ -50,8 +47,8 @@ Database routing **can't be used** on databases with:
 
 Some other features don't work with routed data:
 
-- [Automatic cache refresh](../configuring-metabase/caching.md#some-permissions-setups-are-incompatible-with-automatic-cache-refreshing) isn't available. Caching still works for the queries people run.
-- People whose queries are routed to a destination database won't see [individual records from models](../data-modeling/models/models.md#surface-individual-records-in-search-by-matching-against-this-column) in search results. Metabase indexes those values without routing, so it hides them to keep each person's data separate.
+- Metabase doesn't [refresh caches automatically](../configuring-metabase/caching.md#some-permissions-setups-are-incompatible-with-automatic-cache-refreshing) for questions on a router database, even if you turn the setting on. Caching still works for the queries people run.
+- If routing applies to a person on any router database, that person won't see [individual records from indexed models](../data-modeling/models/models.md#surface-individual-records-in-search-by-matching-against-this-column) in search results, including models on other databases.
 
 With **guest embedding**, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
 
@@ -142,4 +139,4 @@ The `details` object will have a different set of keys depending on the database
 
 Metabase copies the engine from the router database, so each destination only needs a `name` and `details`. Metabase ignores any other keys, like `engine` or sync schedules.
 
-With `check_connection_details=true`, Metabase tests each connection before it adds the destination databases. If a connection fails, Metabase adds none of them, and returns the errors for each failed destination by name. Leave the parameter off if you want to add a destination database that isn't reachable yet.
+With `check_connection_details=true`, Metabase tests each connection before it adds the destination databases. If a connection fails, Metabase adds none of them, and returns the errors for each failed destination by name. Leave the parameter off if you want to add a destination database that isn't reachable yet. Metabase still checks that each `details` object is valid, but it doesn't try to connect.

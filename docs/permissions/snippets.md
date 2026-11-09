@@ -38,7 +38,7 @@ On [some plans](https://www.metabase.com/pricing), when creating a Snippet, you'
 
 ![Add a snippet enterprise modal](./images/enterprise-add-snippet.png)
 
-The default location is **SQL snippets**, which is the root folder for all snippets and folders. You can add a snippet to a folder at any time (or relocate a snippet to another folder, provided you have Edit permission to both folders).
+The default location is **SQL snippets**, which is the root folder for all snippets and folders. You can add a snippet to a folder at any time (or relocate a snippet to another folder, provided you have Curate access to both folders).
 
 Note that snippet names must be unique; folders do not affect this requirement.
 
@@ -74,11 +74,11 @@ If you [sync your Library with Git](../data-modeling/semantic-layer/remote-sync.
 
 ### Archiving does not affect permissions
 
-Archiving or unarchiving snippets does not affect a snippet's permissions. If, for example, only one group, say the Accounting group, has edit permissions on a folder, only people in the Accounting group (and admins) would be able to archive and unarchive snippets in that folder, as archiving and unarchiving is considered editing the snippet.
+Archiving or unarchiving snippets does not affect a snippet's permissions. If, for example, only one group, say the Accounting group, has Curate access to a folder, only people in the Accounting group (and admins) would be able to archive and unarchive snippets in that folder, as archiving and unarchiving is considered editing the snippet.
 
 ### How folder permissions work
 
-As with collection permissions, folder permissions are additive, meaning that the more permissive access overrules less permissive access. See [Setting permissions](./start.md) for a more detailed discussion.
+As with collection permissions, folder permissions are additive, meaning that the more permissive access overrules less permissive access. See [Permissions](./introduction.md).
 
 But snippet folder permissions require some more effort to unpack, as permissions for snippet folders must work in conjunction with permissions for data and collections.
 

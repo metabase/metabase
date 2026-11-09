@@ -55,7 +55,7 @@ When you create a group, Metabase gives it these permissions for each database:
 - **Create queries** and **Download results**: the All Users group's lowest level for that database.
 - **Manage table metadata** and **Manage database**: **No**.
 
-When you add a database, each group gets its lowest **Create queries** and **Download results** levels from your other databases. On Pro and Enterprise plans, a group with Blocked, Impersonated, or Row and column security on any database gets **Blocked** View data on the new database. **Manage table metadata** and **Manage database** start at **No**.
+When you add a database, each group gets its lowest **Create queries** and **Download results** levels from your other databases. On Pro and Enterprise plans, a group with Blocked, Impersonated, or Row and column security on any database gets **Blocked** View data on the new database. **Manage table metadata** and **Manage database** start at **No**, but the [Data Analysts](../people-and-groups/managing.md#data-analysts) group can always manage table metadata.
 
 [Tenant groups](../embedding/tenants.md#group-types), including the **All tenant users** group, always get the least access to a new database: View data is Blocked, and every other data permission is No. You also can't give tenant groups the Manage table metadata or Manage database permissions.
 
@@ -94,8 +94,6 @@ For _which_ questions, models, and dashboards a group can view, instead see [col
 {% include plans-blockquote.html feature="Can view data permission" %}
 
 Setting to **Can view** means the group can view all the data for the data source, provided they have [collection permissions](./collections.md) to view questions, models, and dashboards.
-
-In order to view the data in the [Browse databases](../exploration-and-organization/exploration.md#browse-your-databases) section, the group would additionally need to be able to [Create queries](#create-queries-permissions).
 
 ### Granular view data permission
 
@@ -157,7 +155,7 @@ People can create new questions and drill-through existing questions using Metab
 
 ### Granular
 
-The granular option lets you define Create queries permissions for each schema and/or table in the database. For each schema or table, you can choose **Query builder only** or **No**.
+The granular option lets you define Create queries permissions for each schema and/or table in the database. For each table, you can choose **Query builder only** or **No**.
 
 Native query access can only be set for a whole database, so when you switch a database from **Query builder and native** to **Granular**, the group loses native access to that database.
 

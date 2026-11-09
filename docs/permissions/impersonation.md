@@ -175,7 +175,7 @@ Once any group has impersonated access to a database, Metabase checks every nati
 
 Metabase rejects anything that isn't a single `SELECT` statement. Common table expressions (`WITH`) and set operations (`UNION`, `INTERSECT`, `EXCEPT`) count as a single `SELECT` statement, so those queries will run. Admins can also run a single statement that isn't a `SELECT`, like `SHOW TIMEZONE`, but not multiple statements. For [data actions written in SQL](../data-modeling/data-actions.md#create-a-data-action-with-sql), the rule is a single `INSERT`, `UPDATE`, or `DELETE` statement instead.
 
-Examples of queries Metabase will reject:
+Examples of queries Metabase rejects for people who aren't admins:
 
 - Multiple statements separated by semicolons, like `SET ROLE analyst; SELECT * FROM people;`
 - Statements that create or change tables, including temporary tables (`CREATE`, `ALTER`, `DROP`)
@@ -185,7 +185,7 @@ Examples of queries Metabase will reject:
 
 ### Very large hand-written value lists are rejected
 
-To validate a native query safely, Metabase must parse the whole statement first. A query with a very large literal list written directly in the SQL—a `VALUES` clause, `IN` list, or `ARRAY` literal with more than 2,000 rows or items—can't be validated, so Metabase rejects it rather than run something it can't check. You'll see a message asking you to reduce the size of the list.
+To validate a native query safely, Metabase must parse the whole statement first. A query with a very large literal list written directly in the SQL—a `VALUES` clause, `IN` list, or `ARRAY` literal with more than 2,000 rows or items—can't be validated, so Metabase rejects it rather than run something it can't check. You'll see a message asking you to reduce the size of the list. This limit doesn't apply to admins.
 
 This limit only applies to values you type into the SQL itself. [Filter widgets and field filters](../questions/native-editor/sql-parameters.md) pass their values to the database separately, so dashboard and question filters with long lists of values keep working. If you need to match against a large set of hand-written values, load them into a table and join to it instead of listing them inline.
 
@@ -202,9 +202,7 @@ Blue group's more permissive access would override the impersonated access.
 
 Admins won't ever see the data restrictions of impersonation, because their privileges will override those of any other group they're a member of.
 
-Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multiple groups, so any admin will have "Can view" - not "Impersonated" - access to the database.
-
-To test impersonation, create a test user, assign them a user attribute with the database role, and add them to the impersonated group. Then, log in as the test user and verify the data access.
+Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multiple groups, so any admin will have "Can view" access to the database. See [Verify that impersonated permissions are working](#verify-that-impersonated-permissions-are-working).
 
 ## Metabase won't run queries for people whose impersonation can't be applied
 
