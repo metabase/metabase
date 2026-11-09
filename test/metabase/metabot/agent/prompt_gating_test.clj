@@ -423,15 +423,6 @@
           (is (= (not readable?)
                  (some? (re-find #"tell the user that you can't combine it in one query" rendered)))))))))
 
-(deftest sql-only-profile-gates-one-query-per-database-on-sql-execution-test
-  (testing "with SQL tools but no notebook builder, as in :internal-sql, the rule follows the SQL execution setting"
-    (doseq [[sql-on? expected] [[true #"build one query for each database and run each one with `run_query`"]
-                                [false #"tell the user that you can't combine it in one query"]]]
-      (testing (str "SQL execution " (if sql-on? "on" "off"))
-        (mt/with-temporary-setting-values [metabot-sql-execution-enabled? sql-on?]
-          (is (re-find expected
-                       (render-template "internal.selmer" all-yes-perms ["create_sql_query" "run_query"]))))))))
-
 (deftest prompt-without-notebook-builder-test
   (testing "with NLQ permitted but no construct_notebook_query, as in :internal-sql, nothing names the builder"
     (let [tools ["create_sql_query" "run_query"]]
@@ -448,10 +439,12 @@
             (is (not (re-find #"Prefer a notebook query" rendered)))
             (is (not (re-find #"notebook queries only" rendered)))
             (is (not (re-find #"MBQL shape rules" rendered)))
-            (is (not (re-find #"Natural-language querying is your default" rendered))))))
+            (is (not (re-find #"Natural-language querying is your default" rendered)))
+            (is (re-find #"build one query for each database and run each one with `run_query`" rendered)))))
       (testing "and with SQL execution off, run_query can read nothing, so the model is told it can't see results"
         (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
           (let [rendered (render-internal-template all-yes-perms tools)]
             (is (re-find #"# Hard constraint: you cannot see query results" rendered))
+            (is (re-find #"tell the user that you can't combine it in one query" rendered))
             (is (not (re-find #"construct_notebook_query" rendered)))
             (is (not (re-find #"run_query" rendered)))))))))

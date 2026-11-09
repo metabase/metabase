@@ -166,10 +166,11 @@
   {:uses #{"run_query"}
    :text (str "Build one query for each database, run each one with `run_query` at its largest `row_limit`, and "
               "match the rows on a column that both results have. If a result is truncated, make that query coarser "
-              "or filter it on the keys of the other result and run it again. A result filtered on the keys of a "
-              "truncated result is partial too. Combine partial rows only when they answer the question, and say that "
-              "the answer comes from partial data, for example that a count is a lower bound. Otherwise tell the user "
-              "that the data is too large to combine.")})
+              "or filter it on the keys of the other result and run it again. A result that is still truncated, or "
+              "filtered on the keys of a truncated result, is partial. Combine partial rows only when they answer the "
+              "question, and say that the answer comes from partial data: this is the one case where you may count "
+              "truncated rows, and the count is a lower bound, never the total. Otherwise tell the user that the data "
+              "is too large to combine.")})
 
 (def ^:private cross-database-recovery
   "The steps for a query that reads two databases. A profile without `run_query` reads only the first."
