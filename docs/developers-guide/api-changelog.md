@@ -7,9 +7,8 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
-- `POST /api/ee/transform-test/run` and `POST /api/ee/transform-test/:id/run` answer a query under test that fails to
-  run with the `error-code` `transform-test.query-failed` in place of `transform-test.transform-failed`. The status
-  stays `422`.
+- `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
+  `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
 
 - `GET /api/ee/transform-test/:id/run` has been removed. List the runs of a transform test with
   `GET /api/ee/data-test-run?test-type=transform&test-id=:id`, which takes the same `statuses`, `start-time`,
