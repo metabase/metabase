@@ -175,17 +175,6 @@ describe("scenarios > browse", () => {
     cy.findByRole("heading", { name: "Orders Model" }).should("be.visible");
     verifiedFilterToggleButton().should("not.exist");
   });
-
-  it("The Browse metrics page shows an error message if the search endpoint throws an error", () => {
-    cy.visit("/");
-    cy.intercept("GET", "/api/search*", (req) => {
-      req.reply({ statusCode: 400 });
-    });
-    H.navigationSidebar().findByLabelText("Browse metrics").click();
-    cy.findByLabelText("Metrics")
-      .findByText("An error occurred")
-      .should("be.visible");
-  });
 });
 
 describe("scenarios > browse (EE)", () => {

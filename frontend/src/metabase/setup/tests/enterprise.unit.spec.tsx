@@ -52,6 +52,29 @@ describe("setup (EE build, but no token)", () => {
     expectSectionsToHaveLabelsInOrder();
   });
 
+  it("should not show step numbers in cloud embedding use case", async () => {
+    await setupEnterprise({
+      step: "user_info",
+      isEmbeddingUseCase: true,
+      tokenFeatures: createMockTokenFeatures({ hosting: true }),
+      settings: { "is-hosted?": true },
+    });
+
+    expect(
+      await screen.findByText("What should we call you?"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("step-number")).not.toBeInTheDocument();
+  });
+
+  it("should show step numbers in the embedding use case without hosting (positive control)", async () => {
+    await setupEnterprise({ step: "user_info", isEmbeddingUseCase: true });
+
+    expect(
+      await screen.findByText("What should we call you?"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("step-number")).toBeInTheDocument();
+  });
+
   describe("License activation step", () => {
     async function setupForLicenseStep() {
       await setupEnterprise();
