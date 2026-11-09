@@ -152,6 +152,18 @@
    :error :identity-already-linked
    :message "This identity provider account is already linked to a different Metabase account. Please contact your administrator."})
 
+(def ^:private identity-mismatch-failure
+  {:success? false
+   :error :identity-mismatch
+   :message (str "This identity provider account doesn't match the one linked to your Metabase account. To use it instead, "
+                 "sign in to Metabase another way and link it from your account settings, or contact your administrator.")})
+
+(def ^:private account-linking-required-failure
+  {:success? false
+   :error :account-linking-required
+   :message (str "Your identity provider account is not linked to this Metabase account. Sign in to Metabase another "
+                 "way and link it from your account settings, or contact your administrator.")})
+
 (defn- provider-names
   "AuthIdentity provider names that may hold identities for this login: the per-IdP name plus, when
    configured, the shared legacy name that pre-migration rows still live under."
@@ -257,26 +269,50 @@
               (link-identity! pname (:id user) legacy-identity sub iss
                               (assoc link-opts :ignore-unknown-issuer? true)))
 
-          ;; a link-only Slack row written before iss tracking is still known to be a Slack identity
-          (and stored-sub (= (stored-issuer auth-identity config) iss))
-          (do (log/warnf "OIDC login rejected: token subject does not match the identity linked to user %d" (:id user))
-              {:success? false
-               :error :identity-mismatch
-               :message "This identity provider account is linked to a different identity for this Metabase account. Please contact your administrator."})
+          ;; linked to a different identity (another sub, or another issuer after the provider's issuer changed):
+          ;; a login never replaces a link, only the user's explicit linking flow does
+          stored-sub
+          (do (log/warnf "OIDC login rejected: token identity does not match the identity linked to user %d" (:id user))
+              identity-mismatch-failure)
 
-          ;; no link yet, a link to a different issuer, or a legacy link (no iss, so possibly another issuer's):
-          ;; establishing/replacing the link is governed by the provider's linking policy
+          ;; no link yet: establishing one is governed by the provider's linking policy
           (may-auto-link? claims config email)
-          (do (when stored-sub
-                (log/infof "OIDC login: relinking user %d from %s to the token's identity" (:id user)
-                           (if stored-iss (str "issuer " stored-iss) "a legacy identity without issuer")))
-              (link-identity! pname (:id user) auth-identity sub iss link-opts))
+          (link-identity! pname (:id user) nil sub iss link-opts)
 
           :else
           (do (log/warnf "OIDC login rejected: no linked identity for user %d and the token cannot establish one" (:id user))
-              {:success? false
-               :error :account-linking-required
-               :message "Your identity provider account is not linked to this Metabase account. Please contact your administrator."}))))))
+              account-linking-required-failure))))))
+
+(defn- link-account!
+  "Explicit account linking: link the token's (iss, sub) to the signed-in user who started this flow (`link-user-id`
+  from the state cookie), establishing or replacing their link regardless of the auto-link policy. The token's email
+  must resolve to that same user. Creates no session."
+  [provider {:keys [user claims authenticated-user oidc-link-user-id] :as request}]
+  (let [config     (:oidc-config request)
+        pname      (auth-identity/identity-provider-name provider config)
+        current-id (:id (some-> authenticated-user deref))]
+    (cond
+      (not= current-id oidc-link-user-id)
+      (do (log/warnf "OIDC account linking rejected: started by user %d, finished by %s" oidc-link-user-id current-id)
+          {:success? false
+           :error :authentication-required
+           :message "Account linking must be finished in the session that started it. Please sign in and try again."})
+
+      (not= (:id user) current-id)
+      (do (log/warnf "OIDC account linking rejected: token email does not belong to user %d" current-id)
+          {:success? false
+           :error :email-mismatch
+           :message "This identity provider account's email doesn't match your Metabase account's email."})
+
+      :else
+      (let [sub    (subject claims)
+            result (link-identity! pname current-id (sso.db/auth-identity current-id pname) sub (:iss claims)
+                                   :check-names    (provider-names pname config)
+                                   :assumed-issuer (:assumed-issuer config))]
+        (if (:success? result)
+          (do (log/infof "OIDC account linking: user %d linked their identity at provider %s" current-id pname)
+              (assoc request :success? true :session/skip? true))
+          result)))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
@@ -396,6 +432,10 @@
      :error :invalid-token
      :message "ID token claims are missing"}
 
+    ;; a signed-in user's explicit linking flow, bound to them by the state cookie
+    (:oidc-link-user-id request)
+    (link-account! provider request)
+
     ;; JIT provisioning pins the new account's email to the token's (iss, sub), so it follows the same
     ;; linking policy as an existing account, and the identity must not already belong to another account
     (not user)
@@ -443,7 +483,12 @@
          :message (:message validation)}
         ;; Add nonce and redirect from validated state to request
         ;; Use :oidc-nonce to avoid collision with CSP :nonce from security middleware
-        (next-method provider (cond-> (assoc request :oidc-nonce (:nonce validation))
+        ;; :oidc-link-user-id comes only from the validated state cookie, never from the caller
+        (next-method provider (cond-> (-> request
+                                          (dissoc :oidc-link-user-id)
+                                          (assoc :oidc-nonce (:nonce validation)))
+                                (:link-user-id validation)
+                                (assoc :oidc-link-user-id (:link-user-id validation))
                                 ;; Use redirect from state cookie if not already set in request
                                 (and (:redirect validation)
                                      (not (:redirect-url request)))

@@ -4501,7 +4501,7 @@
            task
            util
            enterprise/sso.scim}
-   :model-imports #{:model/PermissionsGroup}}
+   :model-imports #{:model/AuthIdentity :model/PermissionsGroup}}
 
   enterprise/sso.auth-identity
   {:team "Security Engineering"

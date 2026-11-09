@@ -5,6 +5,9 @@
    - GET /auth/sso/:key          - Initiate OIDC flow
    - GET /auth/sso/:key/callback - Handle OIDC callback
 
+   With `?link=true`, a signed-in user links their identity at the provider to their account instead: the flow is the
+   same, but the state cookie records the user's id and the callback creates no session.
+
    Flow:
    1. User accesses GET /auth/sso/:key
    2. Metabase redirects to provider's authorization endpoint
@@ -48,7 +51,11 @@
 
   ;; Validate the redirect here with the same predicate `create-oidc-state` uses when it builds the state cookie, so
   ;; an unacceptable value is rejected before we contact the identity provider.
-  (let [redirect-url (let [redirect (get-in request [:params :redirect])]
+  (let [link?        (contains? #{true "true"} (get-in request [:params :link]))
+        _            (when (and link? (not api/*current-user-id*))
+                       (throw (ex-info (tru "Account linking requires an authenticated session")
+                                       {:status-code 401})))
+        redirect-url (let [redirect (get-in request [:params :redirect])]
                        (if redirect
                          (do (sso/validate-redirect-url! redirect)
                              redirect)
@@ -64,7 +71,8 @@
                               request
                               (keyword (str "oidc-" provider-key))
                               redirect-url
-                              {:browser-id (:browser-id request)})
+                              (cond-> {:browser-id (:browser-id request)}
+                                link? (assoc :link-user-id api/*current-user-id*)))
       (throw (ex-info (str (or (:message auth-result) (tru "Failed to initiate OIDC authentication")))
                       {:status-code 500})))))
 
@@ -77,6 +85,7 @@
                       :provider/custom-oidc
                       (assoc request
                              :oidc-provider-key provider-key
+                             :authenticated-user api/*current-user*
                              :code code
                              :state state
                              :oidc-provider (keyword (str "oidc-" provider-key))

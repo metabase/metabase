@@ -306,6 +306,8 @@
    [:jwt/require-exp-and-iat? {:optional true} [:maybe :boolean]]
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
    [:oidc-nonce {:optional true} [:maybe :string]]
+   ;; the signed-in user who started an OIDC account-linking flow, from the validated state cookie
+   [:oidc-link-user-id {:optional true} [:maybe ms/PositiveInt]]
    ;; the linking policy of an OIDC login; see metabase.sso.providers.oidc/linking-config-keys
    [:oidc-config {:optional true} [:maybe [:map {:closed true}
                                            [:identity-provider-name   {:optional true} [:maybe :string]]

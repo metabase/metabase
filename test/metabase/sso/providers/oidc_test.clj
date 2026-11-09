@@ -282,13 +282,15 @@
 ;;; -------------------------------------------------- Identity Linking Tests --------------------------------------------------
 
 (defn- login-with-claims!
-  "Run the full OIDC login! flow with mocked state validation and token exchange/validation returning `claims`."
-  [claims config]
+  "Run the full OIDC login! flow with mocked state validation and token exchange/validation returning `claims`.
+  `:link-user-id` is the state cookie's account-linking user; `:request` is merged into the login! request."
+  [claims config & {:keys [link-user-id request]}]
   (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                               (fn [_issuer] test-discovery-doc)
                               oidc.state/validate-oidc-callback
                               (fn [_request _state _provider & _opts]
-                                {:valid? true :nonce "test-nonce" :redirect "/"})
+                                (cond-> {:valid? true :nonce "test-nonce" :redirect "/"}
+                                  link-user-id (assoc :link-user-id link-user-id)))
                               http/post
                               (fn [_url _opts]
                                 {:status 200
@@ -298,14 +300,15 @@
                               (fn [_token _config _nonce]
                                 {:valid? true
                                  :claims claims})]
-    (provider/login! :provider/oidc {:oidc-config config
-                                     :code "auth-code-123"
-                                     :state "state-token-456"
-                                     :device-info {:device_id "test-device"
-                                                   :device_description "Test Device"
-                                                   :ip_address "127.0.0.1"
-                                                   :embedded false
-                                                   :token_exchange false}})))
+    (provider/login! :provider/oidc (merge {:oidc-config config
+                                            :code "auth-code-123"
+                                            :state "state-token-456"
+                                            :device-info {:device_id "test-device"
+                                                          :device_description "Test Device"
+                                                          :ip_address "127.0.0.1"
+                                                          :embedded false
+                                                          :token_exchange false}}
+                                           request))))
 
 (deftest login-auto-link-verified-email-test
   (testing "First OIDC login with a verified email links the (iss, sub) identity to the existing user"
@@ -404,7 +407,7 @@
                (get-in (t2/select-one :model/AuthIdentity :id ai-id) [:metadata :iss])))))))
 
 (deftest login-legacy-identity-different-sub-test
-  (testing "A legacy identity (no iss) with a different sub may have come from another issuer, so it is relinked per policy"
+  (testing "A legacy identity (no iss) with a different sub is not replaced by a login, even with a verified email"
     (mt/with-temp [:model/User user {:email "legacy2@example.com"}
                    :model/AuthIdentity {ai-id :id} {:user_id (:id user)
                                                     :provider "oidc"
@@ -414,18 +417,10 @@
                                               :email_verified true)
                                        test-config)
             auth-identity (t2/select-one :model/AuthIdentity :id ai-id)]
-        (is (true? (:success? result)))
-        (is (= "user123" (:provider_id auth-identity)))
-        (is (= "https://provider.example.com" (get-in auth-identity [:metadata :iss]))))))
-  (testing "...and is rejected when the policy does not allow linking"
-    (mt/with-temp [:model/User user {:email "legacy3@example.com"}
-                   :model/AuthIdentity {ai-id :id} {:user_id (:id user)
-                                                    :provider "oidc"
-                                                    :provider_id "old-sub"}]
-      (let [result (login-with-claims! (assoc base-claims :email "legacy3@example.com") test-config)]
         (is (false? (:success? result)))
-        (is (= :account-linking-required (:error result)))
-        (is (= "old-sub" (t2/select-one-fn :provider_id :model/AuthIdentity :id ai-id)))))))
+        (is (= :identity-mismatch (:error result)))
+        (is (= "old-sub" (:provider_id auth-identity)))
+        (is (nil? (get-in auth-identity [:metadata :iss])))))))
 
 (deftest login-identity-already-linked-test
   (testing "An (iss, sub) identity already linked to another user cannot be linked to a second account"
@@ -469,20 +464,98 @@
                                          :user_id (:id user) :provider "oidc")))))))
 
 (deftest login-second-issuer-test
-  (testing "A user linked to one issuer gets relinked to a new issuer per the linking policy"
-    (mt/with-temp [:model/User user {:email "multi@example.com"}
-                   :model/AuthIdentity {ai-id :id} {:user_id (:id user)
-                                                    :provider "oidc"
-                                                    :provider_id "other-sub"
-                                                    :metadata {:iss "https://other-idp.example.com"}}]
-      (let [result (login-with-claims! (assoc base-claims
-                                              :email "multi@example.com"
-                                              :email_verified true)
-                                       test-config)
-            auth-identity (t2/select-one :model/AuthIdentity :id ai-id)]
-        (is (true? (:success? result)))
-        (is (= "user123" (:provider_id auth-identity)))
-        (is (= "https://provider.example.com" (get-in auth-identity [:metadata :iss])))))))
+  (testing "A login never silently relinks a user linked to another issuer, even with a verified email"
+    (doseq [stored-sub ["other-sub" "user123"]]
+      (mt/with-temp [:model/User user {:email "multi@example.com"}
+                     :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                      :provider "oidc"
+                                                      :provider_id stored-sub
+                                                      :metadata {:iss "https://other-idp.example.com"}}]
+        (let [result (login-with-claims! (assoc base-claims
+                                                :email "multi@example.com"
+                                                :email_verified true)
+                                         test-config)
+              auth-identity (t2/select-one :model/AuthIdentity :id ai-id)]
+          (is (false? (:success? result)) stored-sub)
+          (is (= :identity-mismatch (:error result)) stored-sub)
+          (is (= stored-sub (:provider_id auth-identity)))
+          (is (= "https://other-idp.example.com" (get-in auth-identity [:metadata :iss]))))))))
+
+(deftest login-explicit-link-test
+  (let [strict-config (assoc test-config :auto-link-verified-email false)]
+    (testing "A signed-in user links their identity even when the policy would not auto-link it, without a new session"
+      (mt/with-temp [:model/User user {:email "manual@example.com"}]
+        (let [result (login-with-claims! (assoc base-claims :email "manual@example.com" :email_verified true)
+                                         strict-config
+                                         :link-user-id (:id user)
+                                         :request {:authenticated-user (delay user)})
+              auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "oidc")]
+          (is (true? (:success? result)))
+          (is (nil? (:session result)))
+          (is (= "user123" (:provider_id auth-identity)))
+          (is (= "https://provider.example.com" (get-in auth-identity [:metadata :iss])))
+          (testing "and can then sign in with it"
+            (let [login (login-with-claims! (assoc base-claims :email "manual@example.com") strict-config)]
+              (is (true? (:success? login)))
+              (is (some? (:session login))))))))
+    (testing "Explicit linking replaces an existing link to another identity or issuer"
+      (mt/with-temp [:model/User user {:email "relink@example.com"}
+                     :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                      :provider "oidc"
+                                                      :provider_id "other-sub"
+                                                      :metadata {:iss "https://other-idp.example.com"}}]
+        (let [result (login-with-claims! (assoc base-claims :email "relink@example.com")
+                                         strict-config
+                                         :link-user-id (:id user)
+                                         :request {:authenticated-user (delay user)})
+              auth-identity (t2/select-one :model/AuthIdentity :id ai-id)]
+          (is (true? (:success? result)))
+          (is (= "user123" (:provider_id auth-identity)))
+          (is (= "https://provider.example.com" (get-in auth-identity [:metadata :iss]))))))
+    (testing "Linking must finish in the session of the user who started it"
+      (mt/with-temp [:model/User user {:email "starter@example.com"}
+                     :model/User other {:email "finisher@example.com"}]
+        (doseq [authenticated [nil (delay other)]]
+          (let [result (login-with-claims! (assoc base-claims :email "starter@example.com")
+                                           strict-config
+                                           :link-user-id (:id user)
+                                           :request (when authenticated {:authenticated-user authenticated}))]
+            (is (false? (:success? result)))
+            (is (= :authentication-required (:error result)))
+            (is (not (t2/exists? :model/AuthIdentity :user_id (:id user) :provider "oidc")))))))
+    (testing "The token's email must be the signed-in user's"
+      (mt/with-temp [:model/User user {:email "mine@example.com"}
+                     :model/User _other {:email "someone-else@example.com"}]
+        (doseq [email ["someone-else@example.com" "nobody-has-this@example.com"]]
+          (let [result (login-with-claims! (assoc base-claims :email email :email_verified true)
+                                           strict-config
+                                           :link-user-id (:id user)
+                                           :request {:authenticated-user (delay user)})]
+            (is (false? (:success? result)) email)
+            (is (= :email-mismatch (:error result)) email)
+            (is (not (t2/exists? :model/AuthIdentity :provider "oidc" :provider_id "user123")) email)))))
+    (testing "An identity linked to another account cannot be linked"
+      (mt/with-temp [:model/User other {:email "holder@example.com"}
+                     :model/AuthIdentity _ {:user_id (:id other)
+                                            :provider "oidc"
+                                            :provider_id "user123"
+                                            :metadata {:iss "https://provider.example.com"}}
+                     :model/User user {:email "taker@example.com"}]
+        (let [result (login-with-claims! (assoc base-claims :email "taker@example.com")
+                                         strict-config
+                                         :link-user-id (:id user)
+                                         :request {:authenticated-user (delay user)})]
+          (is (false? (:success? result)))
+          (is (= :identity-already-linked (:error result)))
+          (is (not (t2/exists? :model/AuthIdentity :user_id (:id user) :provider "oidc"))))))
+    (testing "A caller cannot start linking itself: the linking user comes only from the validated state"
+      (mt/with-temp [:model/User user {:email "forged@example.com"}]
+        (let [result (login-with-claims! (assoc base-claims :email "forged@example.com" :email_verified true)
+                                         strict-config
+                                         :request {:oidc-link-user-id  (:id user)
+                                                   :authenticated-user (delay user)})]
+          (is (false? (:success? result)))
+          (is (= :account-linking-required (:error result))))))))
 
 (deftest login-new-user-provisioning-stores-iss-test
   (testing "JIT-provisioned users get an AuthIdentity linked to (iss, sub)"

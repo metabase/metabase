@@ -8,6 +8,8 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.sso.oidc.discovery :as oidc.discovery]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.oidc.tokens :as oidc.tokens]
@@ -220,6 +222,75 @@
                 (is (str/includes? (:body response) "Your account is disabled"))
                 (is (not (str/includes? (:body response) "ClassCastException"))))
               (is (false? (t2/select-one-fn :is_active :model/User :id user-id))))))))))
+
+;;; -------------------------------------------------- Account Linking Tests --------------------------------------------------
+
+(defn- cookie-header
+  "A Cookie header carrying the cookies a response set, plus the session cookie for `session-key` if given."
+  [response session-key]
+  (->> (get-in response [:headers "Set-Cookie"])
+       (map #(first (str/split % #";")))
+       (cons (when session-key (str request/metabase-session-cookie "=" session-key)))
+       (remove nil?)
+       (str/join "; ")))
+
+(defn- state-cookie-data
+  [response]
+  (some->> (get-in response [:headers "Set-Cookie"])
+           (some #(second (re-find #"metabase\.OIDC_STATE=([^;]+)" %)))
+           codec/url-decode
+           oidc.state/decrypt-state))
+
+(defn- initiate-link
+  [session-key expected-status]
+  (mt/client-real-response :get expected-status "/auth/sso/test-idp"
+                           {:request-options {:redirect-strategy :none
+                                              :headers (when session-key
+                                                         {"Cookie" (cookie-header nil session-key)})}}
+                           :redirect "/account/authentication"
+                           :link true))
+
+(deftest link-requires-authenticated-session-test
+  (testing "GET /auth/sso/:key?link=true without a session is rejected before contacting the IdP"
+    (with-oidc-default-setup!
+      (with-ensure-encryption!
+        (with-successful-oidc!
+          (let [response (initiate-link nil 401)]
+            (is (str/includes? (:body response) "Account linking requires an authenticated session"))
+            (is (nil? (state-cookie-data response)))))))))
+
+(deftest link-flow-test
+  (with-oidc-default-setup!
+    (with-ensure-encryption!
+      (with-successful-oidc!
+        ;; earlier callback tests may have provisioned the mock user already
+        (t2/delete! :model/User :email "oidcuser@example.com")
+        (let [session-key (session/generate-session-key)]
+          (mt/with-temp [:model/User {user-id :id} {:email "oidcuser@example.com"}
+                         :model/Session _ {:user_id    user-id
+                                           :id         (session/generate-session-id)
+                                           :key_hashed (session/hash-session-key session-key)}]
+            (let [init (initiate-link session-key 302)]
+              (testing "the state cookie binds the flow to the signed-in user"
+                (is (= user-id (:link-user-id (state-cookie-data init)))))
+              (testing "the callback must come from the same user's session"
+                (let [response (mt/client-real-response :get 401 "/auth/sso/test-idp/callback"
+                                                        {:request-options {:redirect-strategy :none
+                                                                           :headers {"Cookie" (cookie-header init nil)}}}
+                                                        :code "test-code"
+                                                        :state "test-state")]
+                  (is (str/includes? (:body response) "finished in the session that started it"))
+                  (is (not (t2/exists? :model/AuthIdentity :user_id user-id :provider_id "test-oidc-provider-id")))))
+              (testing "the callback links the identity and returns to the redirect without a new session"
+                (let [response (mt/client-real-response :get 302 "/auth/sso/test-idp/callback"
+                                                        {:request-options {:redirect-strategy :none
+                                                                           :headers {"Cookie" (cookie-header init session-key)}}}
+                                                        :code "test-code"
+                                                        :state "test-state")]
+                  (is (= "/account/authentication" (get-in response [:headers "Location"])))
+                  (is (not-any? #(str/starts-with? % (str request/metabase-session-cookie "="))
+                                (get-in response [:headers "Set-Cookie"])))
+                  (is (t2/exists? :model/AuthIdentity :user_id user-id :provider_id "test-oidc-provider-id")))))))))))
 
 ;;; -------------------------------------------------- Open Redirect Protection Tests --------------------------------------------------
 

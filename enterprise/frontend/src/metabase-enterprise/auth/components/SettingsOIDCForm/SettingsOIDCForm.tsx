@@ -467,7 +467,7 @@ export function SettingsOIDCForm() {
                   <FormSwitch
                     name="auto-link-verified-email"
                     label={t`Automatically link accounts with a verified email`}
-                    description={t`Link the identity to the existing account with the same email when the token asserts the email is verified (email_verified is true).`}
+                    description={t`Link the identity to the existing account with the same email, or create an account for it, when the token asserts the email is verified (email_verified is true). When off, people link their existing accounts themselves from their account settings, and accounts are only created for trusted email domains.`}
                     disabled={isLocked}
                   />
                   <FormTextInput

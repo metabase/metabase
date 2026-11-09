@@ -43,6 +43,14 @@ export interface CustomOidcConfig {
   };
 }
 
+/** The current user's link to the identity at one enabled OIDC provider. */
+export interface OidcIdentity {
+  key: string;
+  "login-prompt": string | null;
+  "sso-url": string;
+  linked: boolean;
+}
+
 export const customOidcApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     getCustomOidcProviders: builder.query<CustomOidcConfig[], void>({
@@ -88,6 +96,12 @@ export const customOidcApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
+    listOidcIdentities: builder.query<OidcIdentity[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/sso/oidc-identities",
+      }),
+    }),
     checkOidcConnection: builder.mutation<OidcCheckResponse, OidcCheckRequest>({
       query: (body) => ({
         method: "POST",
@@ -105,4 +119,5 @@ export const {
   useUpdateCustomOidcMutation,
   useDeleteCustomOidcMutation,
   useCheckOidcConnectionMutation,
+  useListOidcIdentitiesQuery,
 } = customOidcApi;

@@ -112,8 +112,9 @@
 
 (methodical/defmethod auth-identity/login! :provider/custom-oidc
   [provider {:keys [user] :as request}]
-  ;; only gate provisioning on successful authentications: a failure must surface its own error
-  (when (and (true? (:success? request)) (not user))
+  ;; only gate provisioning on successful authentications: a failure must surface its own error. An account-linking
+  ;; flow never provisions, and reports a token email without an account itself.
+  (when (and (true? (:success? request)) (not user) (not (:oidc-link-user-id request)))
     (sso-utils/check-user-provisioning :oidc))
   (let [provisioning-enabled? (sso-settings/oidc-user-provisioning-enabled?)
         user-was-deactivated? (and user (not (:is_active user)))
