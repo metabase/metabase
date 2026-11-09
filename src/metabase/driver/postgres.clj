@@ -851,7 +851,7 @@
 
         :else
         (perf/postwalk #(if (h2x/identifier? %)
-                          (sql.qp/json-query :postgres % stored-field)
+                          (sql.qp/json-query driver % stored-field)
                           %)
                        identifier))
 

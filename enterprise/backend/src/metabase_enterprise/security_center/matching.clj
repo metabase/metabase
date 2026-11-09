@@ -59,8 +59,7 @@
   (or (get matching-query (mdb/db-type))
       (get matching-query :default)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *query-timeout-seconds*
+(def ^:private query-timeout-seconds
   "Maximum execution time in seconds for advisory matching queries."
   120)
 
@@ -69,7 +68,7 @@
    1. setReadOnly(true) — driver-level write rejection
    2. Explicit transaction with unconditional rollback — guarantees no writes persist
       even if the driver doesn't enforce read-only
-   3. setQueryTimeout — kills the query if it exceeds [[*query-timeout-seconds*]]"
+   3. setQueryTimeout — kills the query if it exceeds [[query-timeout-seconds]]"
   [hsql-query]
   (let [[sql & params] (sql/format hsql-query {:quoted       true
                                                :dialect      :metabase.app-db.setup/application-db
@@ -80,7 +79,7 @@
       (.setAutoCommit conn false)
       (try
         (with-open [stmt (doto (sql-jdbc.execute/prepared-statement driver conn sql params)
-                           (u.connection/set-query-timeout! *query-timeout-seconds*))
+                           (u.connection/set-query-timeout! query-timeout-seconds))
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (rs/datafiable-result-set rs conn {}))
         (finally

@@ -88,6 +88,12 @@
    {:context "Brackets in a string literal should not fail validation"
     :dialect "postgres" :sql "SELECT '[[' AS a, '{{' AS b FROM products"
     :expected {:valid? true :dialect "postgres"}}
+   {:context "MotherDuck SQL is validated as DuckDB, including DuckDB-only syntax"
+    :dialect "motherduck" :sql "SELECT a, count(*) FROM t GROUP BY ALL QUALIFY row_number() OVER (ORDER BY a) <= 3"
+    :expected {:valid? true :dialect "motherduck"}}
+   {:context "MotherDuck SQL with syntax errors fails validation"
+    :dialect "motherduck" :sql "SELECT * FORM users"
+    :expected {:valid? false}}
    {:context "Validation should be skipped when no dialect is provided"
     :dialect nil :sql "SELECT * FROM users"
     :expected {:valid? true :dialect nil}}

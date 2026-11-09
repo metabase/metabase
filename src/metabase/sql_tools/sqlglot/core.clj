@@ -45,6 +45,7 @@
     :presto-jdbc         "presto"
     :starburst           "trino"
     :clickhouse          "clickhouse"
+    :motherduck          "duckdb"
     :druid-jdbc          "druid"
     :vertica             nil
     :h2                  nil
