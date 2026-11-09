@@ -65,22 +65,26 @@
                                 :heartbeat! heartbeat-runs!
                                 :on-gone    #(swap! active-runs disj %)}))
 
-(mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::data-testing.schema/data-test-run]]
-  "Time out started runs whose owning process has stopped heartbeating."
+(mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::data-testing.schema/stored-data-test-run]]
+  "Time out started runs of every test type whose owning process has stopped heartbeating, and return them. Publish
+  the timeout event of each run whose test type has one."
   [stale-minutes :- ms/PositiveInt]
   (let [reaped (rt/reap-orphaned! {:model    :model/DataTestRun
                                    :active   [:status "started"]
                                    :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
                                    :terminal {:status "timeout" :end_time :%now}})]
     (doseq [run reaped]
-      (try
-        (events/publish-event! (get-in run-topics [(:test_type run) :timeout])
-                               (-> {:object (assoc run :status :timeout)}
-                                   (m/assoc-some :user-id (:initiated_by run))))
-        (catch Throwable t
-          (log/warnf "Failed to publish test run timeout event for run %s: %s"
-                     (:id run)
-                     (ex-message t)))))
+      ;; A run of a test type this version does not know, written by a newer node, has no topic here.
+      (if-let [topic (get-in run-topics [(:test_type run) :timeout])]
+        (try
+          (events/publish-event! topic
+                                 (-> {:object (assoc run :status :timeout)}
+                                     (m/assoc-some :user-id (:initiated_by run))))
+          (catch Throwable t
+            (log/warnf "Failed to publish test run timeout event for run %s: %s"
+                       (:id run)
+                       (ex-message t))))
+        (log/warnf "Timed out run %s of test type %s, which has no timeout event" (:id run) (:test_type run))))
     reaped))
 
 (defmethod task/init! ::TransformTestRunHeartbeat [_]

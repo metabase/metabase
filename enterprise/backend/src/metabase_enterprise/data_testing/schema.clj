@@ -198,6 +198,13 @@
    [:status         ::run-status]
    [:last_heartbeat ms/TemporalInstant]])
 
+(mr/def ::stored-data-test-run
+  "A DataTestRun row of any test type, including a type that this version does not know."
+  [:merge
+   ::data-test-run
+   [:map {:closed true}
+    [:test_type :keyword]]])
+
 (mr/def ::user
   "The user who started a run."
   [:map {:closed true}
