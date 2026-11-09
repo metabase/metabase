@@ -585,9 +585,10 @@ export class UnconnectedDataSelector extends Component<
     return databases;
   };
 
-  // As the core pickers do, a published table reopens in the Library, whichever
-  // path it was picked from. A table whose collection the user can't read comes
-  // back without one and reopens in Raw Data.
+  // As the core pickers do (`use-get-path-from-value.ts`), a published table
+  // reopens in the Library, whichever path it was picked from. A table whose
+  // collection the user can't read comes back without one, or fails to load,
+  // and reopens in Raw Data.
   async getLibraryCollectionIdOfTable(
     tableId: TableId,
   ): Promise<CollectionId | null> {
