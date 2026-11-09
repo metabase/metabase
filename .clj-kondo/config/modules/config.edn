@@ -3984,6 +3984,7 @@
            lib
            lib.be
            lib.schema
+           model-persistence
            models
            premium-features
            queries

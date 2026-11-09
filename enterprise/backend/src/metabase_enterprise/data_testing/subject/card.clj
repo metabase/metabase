@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase.lib.core :as lib]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :refer [tru]]
@@ -22,8 +23,10 @@
         {sql :query params :params}
         (try
           ;; The same preparation a transform's query gets: remaps would add joins to tables the test does
-          ;; not declare, and the default row limit would cut the result set.
-          (qp.compile/compile (transforms-base.u/massage-sql-query query))
+          ;; not declare, and the default row limit would cut the result set. A persisted model in the query
+          ;; stays its query: its cache table is not a table the test can declare, and the test is of the query.
+          (model-persistence/with-persisted-substituion-disabled
+            (qp.compile/compile (transforms-base.u/massage-sql-query query)))
           (catch Exception e
             (throw (data-testing.errors/ex
                     ::data-testing.errors/uncompilable-subject

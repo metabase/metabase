@@ -93,6 +93,14 @@
       {:error-type (:error-type (ex-data e))
        :message    (ex-message e)})))
 
+(defn- outcome!
+  "The `:status` of the run of `card`'s test, or the `:error-type` of its refusal."
+  [card inputs expectations]
+  (try
+    (:status (run-card-test! card inputs expectations))
+    (catch ExceptionInfo e
+      (:error-type (ex-data e)))))
+
 (defn- card-run-ids
   "The ids of every persisted run of a card test."
   []
@@ -143,6 +151,26 @@
                                         [{:type :equals :name "two orders" :format :rows
                                           :columns [{:name "count" :cast_type int-type}]
                                           :rows    [{"count" 2}]}]))))))))
+
+(deftest card-on-a-persisted-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models :transforms/testing)
+    (mt/with-persistence-enabled! [persist-models!]
+      (let [orders     (table-query :orders)
+            two-orders {:table (table-ref :orders) :format :sql
+                        :sql   "SELECT 1 AS id, 7 AS user_id UNION ALL SELECT 2 AS id, 8 AS user_id"}
+            no-other   [{:type :empty :name "only the input rows" :sql "SELECT * FROM {{output}} WHERE id NOT IN (1, 2)"}]]
+        (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                                   :database_id   (mt/id)
+                                                   :dataset_query (lib/with-fields orders [(column orders :orders :id)
+                                                                                           (column orders :orders :user_id)])}]
+          (let [card-on-model {:dataset_query (let [mp (mt/metadata-provider)]
+                                                (lib/query mp (lib.metadata/card mp model-id)))}]
+            (testing "control: a card on a model that is not persisted runs the model's query on the inputs"
+              (is (= :passed (outcome! card-on-model [two-orders] no-other))))
+            (persist-models!)
+            (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :card_id model-id)))
+            (testing "a card on a persisted model runs the model's query on the inputs, not the model's cache table"
+              (is (= :passed (outcome! card-on-model [two-orders] no-other))))))))))
 
 (defn- category-count-card
   "An MBQL card counting orders by the category of their product, through an implicit join to products."
