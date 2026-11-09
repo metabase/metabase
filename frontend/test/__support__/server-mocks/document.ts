@@ -21,12 +21,17 @@ export function setupDocumentEndpoints(doc: Document) {
 /**
  * Like `setupDocumentEndpoints`, but a PUT updates what later GETs return, as
  * the real API does. The returned function changes the stored document, for
- * changes made by other endpoints, such as reverting a revision.
+ * changes made by other endpoints, such as reverting a revision. PUTs respond
+ * only after `holdUpdatesUntil` resolves, if it is given.
  */
-export function setupPersistentDocumentEndpoints(doc: Document) {
+export function setupPersistentDocumentEndpoints(
+  doc: Document,
+  { holdUpdatesUntil }: { holdUpdatesUntil?: Promise<void> } = {},
+) {
   let current = doc;
   fetchMock.get(`path:/api/document/${doc.id}`, () => current);
   fetchMock.put(`path:/api/document/${doc.id}`, async (call) => {
+    await holdUpdatesUntil;
     // the body is the typed update request the app sent
     const body: Partial<Document> = await call?.request?.json();
     current = { ...current, ...body };

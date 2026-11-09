@@ -30,6 +30,7 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import type { SimpleEventSchema } from "metabase-types/analytics";
 import type { Document, DocumentContent, Revision } from "metabase-types/api";
 import {
@@ -80,11 +81,13 @@ const createDocument = (opts?: Partial<Document>) =>
 interface SetupOpts {
   initialRoute?: string;
   documents?: Document[];
+  holdUpdatesUntil?: Promise<void>;
 }
 
 const setup = ({
   initialRoute = `/document/${DOCUMENT_ID}`,
   documents = [createDocument()],
+  holdUpdatesUntil,
 }: SetupOpts = {}) => {
   setupLibraryEndpoints();
   setupBookmarksEndpoints([]);
@@ -106,7 +109,10 @@ const setup = ({
         target_type: "document",
         target_id: document.id,
       });
-      return [document.id, setupPersistentDocumentEndpoints(document)];
+      return [
+        document.id,
+        setupPersistentDocumentEndpoints(document, { holdUpdatesUntil }),
+      ];
     }),
   );
 
@@ -163,6 +169,15 @@ const getLastRequestBody = (path: string, method: "POST" | "PUT"): unknown => {
   return JSON.parse(String(call?.options.body));
 };
 
+const getRequestIndex = (path: string, method: "POST" | "PUT") =>
+  fetchMock.callHistory
+    .calls()
+    .findIndex(
+      (call) =>
+        new URL(call.url).pathname === path &&
+        call.options.method?.toUpperCase() === method,
+    );
+
 const getToasts = (store: ReturnType<typeof setup>["store"]) =>
   store.getState().undo;
 
@@ -190,7 +205,11 @@ describe("DocumentPage lifecycle", () => {
 
     it("warns about unsaved changes, keeps them on cancel, and saves, copies and redirects on confirm", async () => {
       setupCopyDocumentEndpoint(DOCUMENT_ID, COPY);
-      setup({ documents: [createDocument(), COPY] });
+      const saveResponse = defer<void>();
+      setup({
+        documents: [createDocument(), COPY],
+        holdUpdatesUntil: saveResponse.promise,
+      });
 
       const titleInput = await findTitleInput();
       await waitFor(() => expect(titleInput).toHaveValue("Test Document"));
@@ -228,6 +247,19 @@ describe("DocumentPage lifecycle", () => {
         await screen.findByRole("button", { name: "Save changes" }),
       );
 
+      // the duplicate modal waits for the save to finish
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(`path:/api/document/${DOCUMENT_ID}`, {
+            method: "PUT",
+          }),
+        ).toHaveLength(1),
+      );
+      expect(
+        screen.queryByRole("heading", { name: /Duplicate "/ }),
+      ).not.toBeInTheDocument();
+      act(() => saveResponse.resolve());
+
       expect(
         await screen.findByRole("heading", { name: 'Duplicate "Saved title"' }),
       ).toBeInTheDocument();
@@ -252,6 +284,11 @@ describe("DocumentPage lifecycle", () => {
       expect(
         getLastRequestBody(`/api/document/${DOCUMENT_ID}/copy`, "POST"),
       ).toMatchObject({ name: "Saved title - Duplicate" });
+      const saveIndex = getRequestIndex(`/api/document/${DOCUMENT_ID}`, "PUT");
+      expect(saveIndex).toBeGreaterThanOrEqual(0);
+      expect(saveIndex).toBeLessThan(
+        getRequestIndex(`/api/document/${DOCUMENT_ID}/copy`, "POST"),
+      );
     });
 
     it("opens the duplicate modal directly when there are no changes", async () => {
