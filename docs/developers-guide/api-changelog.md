@@ -9,10 +9,10 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 - `GET /api/ee/transform-test/:id/run` has been removed. List the runs of a transform test with
   `GET /api/ee/data-test-run?test-type=transform&test-id=:id`, which takes the same `statuses`, `start-time`,
-  `end-time`, `limit` and `offset` parameters. Without `test-id`, it lists the runs of every test of the type that the
-  caller can read. Runs of a test that is not saved, or was deleted, are not listed. A run, and `last_run` in the
-  transform test responses, has `test_type` and `test_id` in place of `transform_test_id`. `test_id` is `null` for a run
-  of a test that is not saved and for a test that was deleted.
+  `end-time`, `limit` and `offset` parameters. Without `test-id`, it needs Data Studio access and lists the runs of
+  every test of the type that the caller can read. Runs of a test that is not saved, or was deleted, are not listed. A
+  run, and `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`.
+  `test_id` is `null` for a run of a test that is not saved and for a run of a test that was deleted.
 
 - The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
   `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
