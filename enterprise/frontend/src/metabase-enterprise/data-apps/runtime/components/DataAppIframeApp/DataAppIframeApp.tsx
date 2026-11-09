@@ -83,9 +83,9 @@ export class BundleErrorBoundary extends Component<
  */
 function BundleHost({ name }: { name: string }) {
   // The isolated origin serves this document without the app's hosts in its CSP, so the
-  // bundle's policy is installed here, as for an embedded app.
+  // bundle's policy is installed here.
   const { data, failed } = useDataAppBundle(name, {
-    embedded: isDataAppBrokerMode(),
+    installContentSecurityPolicy: isDataAppBrokerMode(),
   });
 
   useEffect(() => {

@@ -168,6 +168,13 @@ export function isSameOrSiteUrlOrigin(url: string): boolean {
   return isSameOrigin(url) || isSiteUrlOrigin(url);
 }
 
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Whether `hostname` names this machine, including any `*.localhost` subdomain. */
+export function isLoopbackHostname(hostname: string): boolean {
+  return LOOPBACK_HOSTNAMES.has(hostname) || hostname.endsWith(".localhost");
+}
+
 export function initializeIframeResizer(onReady = () => {}): void {
   if (!isWithinIframe()) {
     return;

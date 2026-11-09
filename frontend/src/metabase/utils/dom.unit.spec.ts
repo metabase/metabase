@@ -1,4 +1,4 @@
-import { getPathnameWithoutSubPath } from "./dom";
+import { getPathnameWithoutSubPath, isLoopbackHostname } from "./dom";
 
 describe("getPathnameWithoutSubPath", () => {
   it("should leave the pathname unchanged when the site url has no subpath", () => {
@@ -55,4 +55,20 @@ describe("getPathnameWithoutSubPath", () => {
   it("should leave the pathname unchanged when the site url is empty", () => {
     expect(getPathnameWithoutSubPath("/dashboard/1", "")).toBe("/dashboard/1");
   });
+});
+
+describe("isLoopbackHostname", () => {
+  it.each(["localhost", "127.0.0.1", "[::1]", "metabase.localhost"])(
+    "treats %s as this machine",
+    (hostname) => {
+      expect(isLoopbackHostname(hostname)).toBe(true);
+    },
+  );
+
+  it.each(["example.com", "localhost.example.com", "mylocalhost", "10.0.0.1"])(
+    "treats %s as another machine",
+    (hostname) => {
+      expect(isLoopbackHostname(hostname)).toBe(false);
+    },
+  );
 });

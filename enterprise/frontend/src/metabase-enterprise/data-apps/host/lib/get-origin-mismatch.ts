@@ -1,8 +1,4 @@
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-function isLoopbackHost(hostname: string): boolean {
-  return LOOPBACK_HOSTS.has(hostname) || hostname.endsWith(".localhost");
-}
+import { isLoopbackHostname } from "metabase/utils/dom";
 
 export type OriginMismatch =
   /** Move the page to `url`: a local instance answers on several loopback names. */
@@ -39,7 +35,7 @@ export function getOriginMismatch(
 
   const url = siteOrigin + location.pathname + location.search + location.hash;
 
-  return isLoopbackHost(location.hostname)
+  return isLoopbackHostname(location.hostname)
     ? { kind: "redirect", url }
     : { kind: "wrong-origin", url };
 }

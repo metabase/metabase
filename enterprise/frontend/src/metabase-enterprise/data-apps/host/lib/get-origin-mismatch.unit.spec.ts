@@ -35,6 +35,18 @@ describe("getOriginMismatch", () => {
     });
   });
 
+  it("moves a page on a *.localhost name too", () => {
+    expect(
+      getOriginMismatch(
+        "http://localhost:3000",
+        loc("http://metabase.localhost:3000"),
+      ),
+    ).toEqual({
+      kind: "redirect",
+      url: "http://localhost:3000/apps/sales",
+    });
+  });
+
   it("does nothing on the site-url origin", () => {
     expect(
       getOriginMismatch(

@@ -1,4 +1,5 @@
 import { act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -7,7 +8,7 @@ import type * as DomUtils from "metabase/utils/dom";
 import { replaceLocation } from "metabase/utils/dom";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import type { Settings } from "metabase-types/api";
-import { createMockDataApp } from "metabase-types/api/mocks";
+import { createMockDataApp, createMockUser } from "metabase-types/api/mocks";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
@@ -61,6 +62,7 @@ type SetupOpts = {
   enableDrafts?: boolean;
   enableUrlMirroring?: boolean;
   settings?: Partial<Settings>;
+  isAdmin?: boolean;
 };
 
 function setup({
@@ -71,6 +73,7 @@ function setup({
   enableDrafts,
   enableUrlMirroring,
   settings,
+  isAdmin = false,
 }: SetupOpts = {}) {
   // RTK Query's hook result is a wide discriminated union (refetch, status,
   // isFetching, …); the component reads only these three fields.
@@ -106,6 +109,7 @@ function setup({
       withRouter: true,
       initialRoute: `/${name}`,
       storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
         settings: createMockSettingsState(settings),
       }),
     },
@@ -194,18 +198,34 @@ describe("DataAppView", () => {
     expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
   });
 
-  it("says at once that data apps are off when MB_ISOLATED_ORIGIN can't be used, instead of waiting for the load timeout", () => {
-    setup({
-      data: createMockDataApp({ display_name: "Sales" }),
-      settings: {
-        "isolated-origin": null,
-        "isolated-origin-misconfigured?": true,
-      },
+  describe("when MB_ISOLATED_ORIGIN can't be used", () => {
+    const settings: Partial<Settings> = {
+      "isolated-origin": null,
+      "isolated-origin-misconfigured?": true,
+    };
+
+    it("tells an admin at once which setting turned data apps off, instead of waiting for the load timeout", () => {
+      setup({
+        data: createMockDataApp({ display_name: "Sales" }),
+        settings,
+        isAdmin: true,
+      });
+
+      expect(screen.getByText("Data apps are unavailable")).toBeInTheDocument();
+      expect(screen.getByText(/MB_ISOLATED_ORIGIN/)).toBeInTheDocument();
+      expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
     });
 
-    expect(screen.getByText("Data apps are unavailable")).toBeInTheDocument();
-    expect(screen.getByText(/MB_ISOLATED_ORIGIN/)).toBeInTheDocument();
-    expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
+    it("sends anyone else to an administrator, without naming the setting", () => {
+      setup({ data: createMockDataApp({ display_name: "Sales" }), settings });
+
+      expect(screen.getByText("Data apps are unavailable")).toBeInTheDocument();
+      expect(
+        screen.getByText("Ask an administrator for help."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/MB_ISOLATED_ORIGIN/)).not.toBeInTheDocument();
+      expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
+    });
   });
 
   it("renders the app inside an iframe once metadata resolves", () => {
@@ -369,7 +389,12 @@ describe("DataAppView", () => {
         expect(
           screen.getByText("Couldn’t load this data app"),
         ).toBeInTheDocument();
-        await screen.findByText("Show error details");
+        await userEvent.click(await screen.findByText("Show error details"));
+        expect(
+          screen.getByText(
+            "Frame https://apps.example.com/embed/apps/sales was blocked by the browser’s content security policy.",
+          ),
+        ).toBeVisible();
       });
 
       it("ignores a CSP violation for a frame on the page's own origin", () => {
@@ -508,6 +533,11 @@ describe("DataAppView", () => {
         settings,
       });
 
+      expect(
+        screen.getByText(
+          "Data apps don’t open at this address. Use the button below to open this one.",
+        ),
+      ).toBeInTheDocument();
       expect(
         screen.getByRole("link", { name: "Open data app" }),
       ).toHaveAttribute("href", "https://mb.example.com/apps/sales");

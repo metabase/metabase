@@ -17,6 +17,8 @@ import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon } from "metabase/ui";
@@ -123,6 +125,7 @@ export function DataAppView({
   const isIsolatedOriginMisconfigured = useSetting(
     "isolated-origin-misconfigured?",
   );
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
@@ -308,7 +311,11 @@ export function DataAppView({
     return (
       <CenteredEmptyState
         title={t`Data apps are unavailable`}
-        message={t`MB_ISOLATED_ORIGIN is set to a value that can’t be used, so data apps are turned off. The server log says why.`}
+        message={
+          isAdmin
+            ? t`MB_ISOLATED_ORIGIN is set to a value that can’t be used, so data apps are turned off. The server log says why.`
+            : t`Ask an administrator for help.`
+        }
         illustrationElement={<Icon name="warning" size={64} />}
       />
     );
@@ -322,7 +329,7 @@ export function DataAppView({
     return (
       <CenteredEmptyState
         title={t`Open this data app at the main address`}
-        message={t`Data apps load only from the main address, which an admin sets as the Site URL.`}
+        message={t`Data apps don’t open at this address. Use the button below to open this one.`}
       >
         <Button component="a" href={originMismatch.url} variant="filled">
           {t`Open data app`}
