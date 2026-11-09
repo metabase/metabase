@@ -246,12 +246,16 @@
             (is (= :unknown-table (:error d)))))))))
 
 (deftest null-schema-names-the-one-queryable-table-test
-  (testing "a null schema finds the one table by that name the user can query, and is left alone otherwise"
-    (mt/with-temp [:model/Database db         {:name (str "Analytics " (random-uuid)) :engine :h2}
+  (testing "a null schema finds the table by that name the user can query, preferring the default schema"
+    (mt/with-temp [:model/Database db         {:name           (str "Analytics " (random-uuid))
+                                               :engine         :h2
+                                               :default_schema "clean"}
                    :model/Table    user-table {:name "user" :schema "lever_data" :db_id (:id db)}
                    :model/Field    _          {:name "email" :table_id (:id user-table) :base_type :type/Text}
                    :model/Table    _          {:name "orders" :schema "raw" :db_id (:id db)}
-                   :model/Table    _          {:name "orders" :schema "clean" :db_id (:id db)}]
+                   :model/Table    _          {:name "orders" :schema "clean" :db_id (:id db)}
+                   :model/Table    _          {:name "events" :schema "raw" :db_id (:id db)}
+                   :model/Table    _          {:name "events" :schema "staging" :db_id (:id db)}]
       (let [construct (fn [table-name]
                         (try
                           (-> (construct/execute-representations-query
@@ -268,12 +272,15 @@
                             (:error (ex-data e)))))]
         (is (=? {:admin     {"source-table" [(:name db) "lever_data" "user"]
                              "breakout"     [["field" {} [(:name db) "lever_data" "user" "email"]]]}
+                 :default   {"source-table" [(:name db) "clean" "orders"]}
                  :ambiguous :unknown-table
                  :no-perms  :unknown-table}
                 {:admin     (mt/with-current-user (mt/user->id :crowberto)
                               (construct "user"))
-                 :ambiguous (mt/with-current-user (mt/user->id :crowberto)
+                 :default   (mt/with-current-user (mt/user->id :crowberto)
                               (construct "orders"))
+                 :ambiguous (mt/with-current-user (mt/user->id :crowberto)
+                              (construct "events"))
                  :no-perms  (mt/with-no-data-perms-for-all-users!
                               (mt/with-current-user (mt/user->id :rasta)
                                 (construct "user")))}))))))

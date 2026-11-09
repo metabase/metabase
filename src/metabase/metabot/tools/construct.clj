@@ -321,13 +321,26 @@
                   (nth table-fk 2))))
         (referenced-table-fks parsed-query)))
 
+(defn- inferred-schema
+  "The schema to put in a null-schema reference to one of `tables`, which share a name, or nil to leave the null.
+
+  A lone table decides it.
+  Among several, the one in `default-schema` wins, as it does for an unqualified name in SQL.
+  When a table without a schema is among them, the null already matches it exactly, so the null stays."
+  [default-schema tables]
+  (let [schemas (map :schema tables)]
+    (when (every? some? schemas)
+      (if (next schemas)
+        (some #{default-schema} schemas)
+        (first schemas)))))
+
 (defn- inferred-schemas
-  "A map from each of `table-names` to the schema of the one table by that name that the current user can query in the
-  database with `database-id`, for the names with exactly one such table, which lives in a schema.
+  "A map from each of `table-names` to the schema [[inferred-schema]] picks among the tables by that name that the
+  current user can query in the database with `database-id`, for the names it picks one for.
 
   Only tables the user can query count, so a filled-in schema never names a table the permission sweep would reject,
   and whether a name gets one says nothing about tables the user cannot use."
-  [database-id table-names]
+  [database-id default-schema table-names]
   (into {}
         (for [[table-name tables] (->> (metabot.db/active-tables-named database-id (vec table-names))
                                        ;; A MySQL app DB compares names without case.
@@ -335,21 +348,21 @@
                                        (filter #(not (contains? #{:hidden :technical :cruft} (:visibility_type %))))
                                        (filter mi/can-query?)
                                        (group-by :name))
-              :let  [[table & more] tables]
-              :when (and (empty? more) (some? (:schema table)))]
-          [table-name (:schema table)])))
+              :let  [schema (inferred-schema default-schema tables)]
+              :when schema]
+          [table-name schema])))
 
 (defn- fill-in-null-schemas
   "`parsed-query` with a schema in place of the null in each portable table or field FK that names a table living in a
   schema.
 
   Models read the null in `[db schema table]` as \"schema unknown\" and write it for a table that has one, and an
-  exact lookup then finds nothing. A null schema is left alone when the name is ambiguous or names a table without a
-  schema, so the exact lookup still decides those."
+  exact lookup then finds nothing.
+  A null schema is left alone when [[inferred-schema]] picks no schema, so the exact lookup still decides those."
   [metadata-provider database-id parsed-query]
-  (let [db-name (:name (lib.metadata/database metadata-provider))
+  (let [{db-name :name, :keys [default-schema]} (lib.metadata/database metadata-provider)
         schemas (some->> (not-empty (null-schema-table-names db-name parsed-query))
-                         (inferred-schemas database-id))]
+                         (inferred-schemas database-id default-schema))]
     (if (empty? schemas)
       parsed-query
       (walk/postwalk (fn [x]
