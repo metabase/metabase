@@ -365,7 +365,8 @@
 (deftest last-run-test
   (with-transforms-enabled
     (mt/with-temp [:model/Transform        {transform-id :id} {}
-                   :model/TransformTest    {test-id :id}      {:transform_id transform-id :name "a"}
+                   :model/TransformTest    {test-id :id}      {:transform_id transform-id :name "a"
+                                                               :created_at   #t "2025-01-01T00:00:00Z"}
                    :model/TransformTest    {never-id :id}     {:transform_id transform-id :name "b"}
                    :model/DataTestRun _                  {:test_type :transform
                                                           :test_id test-id

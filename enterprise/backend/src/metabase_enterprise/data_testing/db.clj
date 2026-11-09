@@ -39,6 +39,23 @@
                                   :initiated_by initiated-by
                                   :status       :started}))
 
+(def ^:private test-type->table
+  {:transform :transform_test})
+
+(mu/defn- run-of-its-test-clause :- vector?
+  "A clause that holds for a run, in the query alias `run`, iff its test exists and was created no later
+  than the run started."
+  [test-type :- ::data-testing.schema/test-type
+   run       :- :keyword]
+  ;; test_id has no foreign key, so a run can keep the id of a deleted test, and a later test can get the same id.
+  ;; The start time tells the runs of the later test from those of the deleted one.
+  (let [run-column #(keyword (str (name run) "." (name %)))]
+    [:exists ^:allow-subquery {:select [1]
+                               :from   [[(test-type->table test-type) :the_test]]
+                               :where  [:and
+                                        [:= :the_test.id (run-column :test_id)]
+                                        [:>= (run-column :start_time) :the_test.created_at]]}]))
+
 (def ^:private RunFilters
   [:map {:closed true}
    [:test-type        ::data-testing.schema/test-type]
@@ -54,7 +71,9 @@
   (cond-> [:and
            [:= :test_type (name test-type)]
            (if (seq test-ids)
-             [:in :test_id test-ids]
+             [:and
+              [:in :data_test_run.test_id test-ids]
+              (run-of-its-test-clause test-type :data_test_run)]
              [:= [:inline 1] [:inline 0]])]
     (seq statuses)   (conj [:in :status (map name statuses)])
     started-at-start (conj [:>= :start_time started-at-start])
@@ -63,7 +82,8 @@
     ended-at-end     (conj [:< :end_time ended-at-end])))
 
 (mu/defn test-runs :- [:sequential ::data-testing.schema/data-test-run]
-  "A page of the DataTestRuns matching `filters`, newest first. Only the runs of the tests in `:test-ids` match."
+  "A page of the DataTestRuns matching `filters`, newest first. Only the runs of the tests in `:test-ids` match, and
+  only those that started after their test was created."
   [filters :- RunFilters
    limit   :- ms/PositiveInt
    offset  :- ms/IntGreaterThanOrEqualToZero]
@@ -78,19 +98,22 @@
   (t2/count :model/DataTestRun {:where (run-filter-clause filters)}))
 
 (mu/defn latest-test-runs :- [:sequential ::data-testing.schema/data-test-run]
-  "The newest DataTestRun of each of the `test-type` tests with `test-ids`."
+  "The newest DataTestRun of each of the `test-type` tests with `test-ids`, among the runs that started after their test
+  was created."
   [test-type :- ::data-testing.schema/test-type
    test-ids  :- [:set ms/PositiveInt]]
   (t2/select :model/DataTestRun
              {:where [:and
                       [:= :data_test_run.test_type (name test-type)]
                       [:in :data_test_run.test_id test-ids]
+                      (run-of-its-test-clause test-type :data_test_run)
                       [:not [:exists ^:allow-subquery {:select [1]
                                                        :from   [[:data_test_run :newer]]
                                                        :where  [:and
                                                                 [:= :newer.test_type :data_test_run.test_type]
                                                                 [:= :newer.test_id :data_test_run.test_id]
-                                                                [:> :newer.id :data_test_run.id]]}]]]}))
+                                                                [:> :newer.id :data_test_run.id]
+                                                                (run-of-its-test-clause test-type :newer)]}]]]}))
 
 (mu/defn clear-test-id-of-runs!
   "Set the test id of the runs of the `test-type` test `test-id` to nil, so the runs outlive the test."

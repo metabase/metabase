@@ -24,7 +24,9 @@
 (deftest list-runs-test
   (with-transforms-enabled
     (mt/with-temp [:model/Transform    {transform-id :id} {}
-                   :model/TransformTest {test-id :id}     {:transform_id transform-id}
+                   ;; created when its oldest run starts: a run is listed when it starts no earlier than its test
+                   :model/TransformTest {test-id :id}     {:transform_id transform-id
+                                                           :created_at   #t "2026-01-01T10:00:00Z"}
                    :model/TransformTest {other-id :id}    {:transform_id transform-id}
                    :model/DataTestRun  {old-id :id}       {:test_type  :transform
                                                            :test_id    test-id
@@ -83,7 +85,8 @@
 (deftest list-runs-by-type-test
   (with-transforms-enabled
     (mt/with-temp [:model/Transform    {transform-id :id} {}
-                   :model/TransformTest {test-id :id}     {:transform_id transform-id}
+                   :model/TransformTest {test-id :id}     {:transform_id transform-id
+                                                           :created_at   #t "2025-01-01T00:00:00Z"}
                    :model/DataTestRun  {saved-id :id}     {:test_type :transform, :test_id test-id, :status :passed
                                                            :start_time #t "2026-01-01T10:00:00Z"}
                    :model/DataTestRun  {unsaved-id :id}   {:test_type :transform, :test_id nil, :status :failed
@@ -144,3 +147,55 @@
                 (testing "and cannot ask for them by test id"
                   (mt/user-http-request :lucky :get 403 "ee/data-test-run"
                                         :test-type "transform" :test-id test-id))))))))))
+
+(defn- table-transform [table]
+  (let [mp (mt/metadata-provider)]
+    {:source {:type  :query
+              :query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                         (lib/with-fields [(lib.metadata/field mp (mt/id table :id))]))}
+     :target {:type     "table"
+              :schema   "PUBLIC"
+              :name     (str (name table) "_SUMMARY")
+              :database (mt/id)}}))
+
+(deftest reused-test-id-lists-only-its-own-runs-test
+  (with-transforms-enabled
+    (mt/with-temp [:model/Transform    {hidden-transform :id} (table-transform :people)
+                   :model/Transform    {open-transform :id}   (table-transform :venues)
+                   :model/TransformTest {old-test-id :id}     {:transform_id hidden-transform}
+                   :model/DataTestRun  {run-id :id}           {:test_type    :transform
+                                                               :test_id      old-test-id
+                                                               :status       :failed
+                                                               :initiated_by (mt/user->id :crowberto)}]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
+                                                                      :perms/view-data      :unrestricted
+                                                                      :perms/create-queries :query-builder}
+          (mt/with-perm-for-group-and-table! (perms-group/all-users) (mt/id :people) :perms/create-queries :no
+            (testing "a data analyst who cannot read a test cannot list its runs"
+              (mt/user-http-request :lucky :get 403 "ee/data-test-run" :test-type "transform" :test-id old-test-id))
+            (t2/delete! :transform_test :id old-test-id)
+            (testing "a test row deleted without the model leaves its id on the run"
+              (is (= old-test-id (t2/select-one-fn :test_id :model/DataTestRun :id run-id))))
+            (t2/insert! :transform_test {:id           old-test-id
+                                         :transform_id open-transform
+                                         :name         "reused id"
+                                         :entity_id    "reused_test_id_entity"
+                                         :inputs       "[]"
+                                         :expectations "[]"
+                                         :creator_id   (mt/user->id :lucky)
+                                         :created_at   (java.time.OffsetDateTime/now)
+                                         :updated_at   (java.time.OffsetDateTime/now)})
+            (try
+              (testing "the data analyst can read the test that has the reused id"
+                (mt/user-http-request :lucky :get 200 (str "ee/transform-test/" old-test-id)))
+              (testing "a test with a reused id does not list the runs of the deleted test"
+                (is (not (contains? (into #{} (map :id)
+                                          (:data (mt/user-http-request :lucky :get 200 "ee/data-test-run"
+                                                                       :test-type "transform" :test-id old-test-id)))
+                                    run-id))))
+              (testing "a test with a reused id has no last run from the deleted test"
+                (is (nil? (get-in (mt/user-http-request :lucky :get 200 (str "ee/transform-test/" old-test-id))
+                                  [:last_run :id]))))
+              (finally
+                (t2/delete! :model/TransformTest :id old-test-id)))))))))
