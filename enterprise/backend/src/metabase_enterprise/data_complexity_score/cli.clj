@@ -41,6 +41,7 @@
    ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
    [metabase.search.embeddings.startup :as embeddings.startup]
+   [metabase.settings.core :as setting]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -129,12 +130,20 @@
                         {:cli-validation true})))
       (validate-dir! representation-dir))))
 
+(defn- setup-appdb!
+  "Connect to the appdb without migrating it, and read its settings as a migrated server would."
+  []
+  (mdb/setup-db-without-migrations!)
+  ;; Without migrations nothing fills in `value_with_aad` for the rows an older version wrote, so the Setting model reads
+  ;; them as unset: the synonym provider and model, the embedding service's URL and key, and so the fingerprint too.
+  (setting/restore-cache-accepting-legacy-values!))
+
 (defn- run-appdb-mode!
   "Score the live appdb, and insert one score row stamped `\"appdb\"` when `write?`. Return the score."
   [write?]
   ;; The appdb can be older than this jar, so Cards and Tables are read raw (see `appdb-source`). The only write is
   ;; one raw INSERT: no model hooks, no fingerprint setting, no Snowplow event.
-  (mdb/setup-db-without-migrations!)
+  (setup-appdb!)
   (appdb-source/verify-supported-appdb!)
   (when write?
     (appdb-source/verify-write-target-shape!))
@@ -155,7 +164,7 @@
   Return the score."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
-    (mdb/setup-db-without-migrations!)
+    (setup-appdb!)
     (appdb-source/verify-write-target-shape!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)

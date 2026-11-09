@@ -4,10 +4,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
+   [metabase-enterprise.data-complexity-score.cli :as cli]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
+   [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -91,3 +95,21 @@
         (testing "after it, metabase_table holds them and a later settings value no longer decides"
           (t2/update! :metabase_table_user_settings :table_id table-id {:is_published false})
           (is (= user-values (cli-table-row table-id))))))))
+
+(deftest cli-reads-settings-an-older-version-wrote-test
+  (testing "on an appdb from before `setting.value_with_aad`, the CLI reads a persisted setting from `setting.value`"
+    (impl/test-migrations ["v58.2026-09-01T00:00:00"] [_migrate!]
+      (t2/insert! :setting {:key "data-complexity-scoring-synonym-embedding-model", :value "custom-model"})
+      ;; Settings read the DB only once it is marked set up. The CLI's connect marks it, the migration harness does not.
+      (mdb/finish-db-setup!)
+      (testing "the Setting model reads it as unset"
+        (setting/restore-cache!)
+        (is (=? {:embedding-model {:model-name "sentence-transformers/all-MiniLM-L6-v2"}}
+                (synonym-source/fingerprint-fragment))))
+      (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations! (fn [])]
+        (#'cli/setup-appdb!))
+      (testing "the scoring options and the fingerprint both use it"
+        (is (=? {:embedding-model-meta {:model-name "custom-model"}}
+                (synonym-source/complexity-scores-opts)))
+        (is (=? {:embedding-model {:model-name "custom-model"}}
+                (synonym-source/fingerprint-fragment)))))))

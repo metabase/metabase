@@ -1849,6 +1849,33 @@
             (is (= before (raw-setting-value-with-aad :toucan-name)))
             (is (= "Sad Can" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name))))))))))
 
+(deftest restore-cache-accepting-legacy-values!-test
+  (testing "rows a version predating `value_with_aad` wrote are read from their legacy `value`, and nothing is written"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (t2/delete! :setting :key "toucan-name")
+        (t2/delete! :setting :key "test-never-encrypted-setting")
+        ;; `value` only, as that version writes it: encrypted for a setting that encrypts, plaintext for one that does not
+        (t2/insert! :setting [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
+                              {:key "test-never-encrypted-setting", :value "foobar"}])
+        (testing "the model's read sees neither"
+          (setting.cache/restore-cache!)
+          (is (nil? (toucan-name)))
+          (is (nil? (get (setting.cache/cache) "test-never-encrypted-setting"))))
+        (let [rows (t2/select :setting {:order-by [:key]})]
+          (setting/restore-cache-accepting-legacy-values!)
+          (testing "the legacy values are read, whether encrypted or not"
+            (is (= "Lenny" (toucan-name)))
+            (is (= "foobar" (get (setting.cache/cache) "test-never-encrypted-setting"))))
+          (testing "nothing is written"
+            (is (= rows (t2/select :setting {:order-by [:key]})))))
+        (testing "a row with a `value_with_aad` is read from it, whatever `value` says beside it"
+          (toucan-name! "Sad Can")
+          (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
+          (setting/restore-cache-accepting-legacy-values!)
+          (is (= "Sad Can" (toucan-name))))))))
+
 (deftest migrate-settings!-writes-past-the-read-only-mode-guard-test
   ;; The cloud-migration guard on Toucan DML (registered when `metabase.cloud-migration.models.cloud-migration`
   ;; loads -- required above so this holds in a targeted run too) reads `read-only-mode` through the model before

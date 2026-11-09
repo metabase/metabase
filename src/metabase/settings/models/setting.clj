@@ -1809,6 +1809,30 @@
                           e))))
       (assoc setting :value nil))))
 
+(defn- value-accepting-legacy
+  "The value of a raw setting row: [[read-setting-value]]'s when the row has a `value_with_aad`, otherwise the
+  [[mdb.setting/legacy-plaintext]] of its legacy `value`, for a key with a `defsetting`."
+  [{setting-key :key, :keys [value value_with_aad], :as row}]
+  (cond
+    (some? value_with_aad)              (:value (read-setting-value row))
+    (maybe-resolve-setting setting-key) (some-> value mdb.setting/legacy-plaintext)))
+
+(defn restore-cache-accepting-legacy-values!
+  "Populate the Settings cache from the `setting` table, taking a row's legacy `value` when it has no `value_with_aad`.
+  For a process that reads an app DB it does not migrate, such as a CLI scoring a copy of an older instance's app DB.
+  Server startup fills in `value_with_aad` from `value` (see [[mdb.setting/migrate-settings!]]), but nothing does that
+  without migrations, so the Setting model reads every value an older version wrote as unset.
+  Writes nothing.
+  Reads made with the setting cache disabled still go through the model, and so does the reload that follows another
+  instance changing a setting."
+  []
+  (setting.cache/restore-cache!
+   (into {}
+         (keep (fn [row]
+                 (when-some [v (value-accepting-legacy row)]
+                   [(:key row) v])))
+         (settings.db/raw-setting-rows))))
+
 (t2/define-before-update :model/Setting
   [setting]
   (write-setting-value setting))
