@@ -943,7 +943,7 @@
   Since pools are keyed by [db-id, details-hash], we need to iterate through
   all cache entries and count those matching the db-id."
   [db-id]
-  (let [cache ^Cache @#'sql-jdbc.conn/swapped-connection-pools]
+  (let [cache ^Cache (#'sql-jdbc.conn/swapped-connection-pools)]
     (count (filter (fn [[cached-db-id _details-hash]]
                      (= cached-db-id db-id))
                    (keys (.asMap cache))))))
@@ -1071,7 +1071,7 @@
               (is (some? pool-1))
               ;; Simulate password expiration by modifying the cached pool
               ;; Cache key is [db-id, jdbc-spec-hash-of-swapped-db]
-              (let [cache             ^Cache @#'sql-jdbc.conn/swapped-connection-pools
+              (let [cache             ^Cache (#'sql-jdbc.conn/swapped-connection-pools)
                     swapped-db        (update db :details merge swap-details)
                     cache-key         (swap-cache-key swapped-db)
                     ;; Use a fixed past timestamp (year 2020) to simulate expired password
@@ -1103,7 +1103,7 @@
               ;; Simulate closed tunnel by modifying the cached pool
               ;; We add a tunnel-session that reports as closed
               ;; Cache key is [db-id, jdbc-spec-hash-of-swapped-db]
-              (let [cache      ^Cache @#'sql-jdbc.conn/swapped-connection-pools
+              (let [cache      ^Cache (#'sql-jdbc.conn/swapped-connection-pools)
                     swapped-db (update db :details merge swap-details)
                     cache-key  (swap-cache-key swapped-db)]
                 (.put cache cache-key (assoc pool-1 :tunnel-session :mock-closed-session)))
@@ -1220,6 +1220,73 @@
              {:closed?     @closed
               :error       (ex-message (sql-jdbc.conn/take-checkout-error!))
               :pools-state @pools})))))
+
+(defn- recording-destroy-pool!
+  "A [[sql-jdbc.conn/destroy-pool!]] that records each pool spec in the atom `destroyed`, then destroys it."
+  [destroyed]
+  (let [original (dynamic-redefs/original-fn #'sql-jdbc.conn/destroy-pool!)]
+    (fn [id spec]
+      (swap! destroyed conj spec)
+      (original id spec))))
+
+(deftest ^:synchronized stopping-the-pools-destroys-swapped-pools-test
+  (mt/test-driver :h2
+    (testing "a stop closes the swapped pools along with the canonical ones"
+      (let [db        (mt/db)
+            destroyed (atom [])
+            pools     @#'sql-jdbc.conn/pools-component]
+        (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id db))
+        (let [pool-spec (driver.w/with-swapped-connection-details (u/the-id db) {:test-swap true}
+                          (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db)))
+              cache     ^Cache (#'sql-jdbc.conn/swapped-connection-pools)]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (recording-destroy-pool! destroyed)]
+            (system/stop! pools))
+          (is (= {:destroyed?  true
+                  :cache-size  0
+                  :pools-state nil}
+                 {:destroyed?  (boolean (some #(identical? pool-spec %) @destroyed))
+                  :cache-size  (.size cache)
+                  :pools-state @pools})))))))
+
+(deftest ^:synchronized restarted-pools-get-a-fresh-swapped-cache-test
+  (testing "the start after a stop makes a new, empty swapped-pool cache"
+    (let [old-cache (#'sql-jdbc.conn/swapped-connection-pools)]
+      (system/stop! @#'sql-jdbc.conn/pools-component)
+      (let [new-cache ^Cache (#'sql-jdbc.conn/swapped-connection-pools)]
+        (is (= {:same-cache? false, :size 0}
+               {:same-cache? (identical? old-cache new-cache)
+                :size        (.size new-cache)}))))))
+
+(deftest ^:synchronized swapped-pool-made-as-the-pools-stop-is-remade-test
+  (mt/test-driver :h2
+    (testing "a swapped pool made in a cache that a stop took out of the state is closed, and one made in the live cache"
+      (let [db        (mt/db)
+            db-id     (u/the-id db)
+            destroyed (atom [])
+            created   (atom [])
+            create    (dynamic-redefs/original-fn #'sql-jdbc.conn/create-pool!)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db-id)
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (recording-destroy-pool! destroyed)
+                                    sql-jdbc.conn/create-pool!  (fn [database]
+                                                                  ;; the first pool is made as a stop runs
+                                                                  (when (empty? @created)
+                                                                    (system/stop! @#'sql-jdbc.conn/pools-component))
+                                                                  (u/prog1 (create database)
+                                                                    (swap! created conj <>)))]
+          (let [pool-spec (driver.w/with-swapped-connection-details db-id {:test-swap true}
+                            (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db)))
+                [first-pool second-pool] @created]
+            (try
+              (is (= {:pools-made           2
+                      :returned-second?     true
+                      :first-destroyed?     true
+                      :second-in-live-cache 1}
+                     {:pools-made           (count @created)
+                      :returned-second?     (identical? second-pool pool-spec)
+                      :first-destroyed?     (boolean (some #(identical? first-pool %) @destroyed))
+                      :second-in-live-cache (count-swapped-pools-for-db db-id)}))
+              (finally
+                (sql-jdbc.conn/invalidate-pool-for-db! db-id)))))))))
 
 (deftest halting-closes-pools-test
   (testing "the stop the pools component registers for a halt destroys every open pool"
