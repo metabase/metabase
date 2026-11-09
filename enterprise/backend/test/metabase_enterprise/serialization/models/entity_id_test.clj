@@ -119,6 +119,7 @@
     :model/QueryTable
     :model/RecentViews
     :model/ReplacementRun
+    :model/RemoteSyncTask
     :model/ResultMetadataStatus
     :model/Revision
     :model/SemanticSearchTokenTracking
