@@ -3973,7 +3973,10 @@
 
   enterprise/data-testing
   {:team "Graphy"
-   :api #{metabase-enterprise.data-testing.api metabase-enterprise.data-testing.init metabase-enterprise.data-testing.run-api}
+   :api #{metabase-enterprise.data-testing.api
+          metabase-enterprise.data-testing.card-api
+          metabase-enterprise.data-testing.init
+          metabase-enterprise.data-testing.run-api}
    :uses #{api
            audit-app
            driver
@@ -3998,7 +4001,8 @@
            transforms.base
            util}
    :model-exports #{:model/TransformTest}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/Database
                     :model/Transform
                     :model/User}}
