@@ -1,0 +1,357 @@
+openapi: 3.1.0
+info:
+  title: Workspaces manager API (parent Metabase)
+  version: 2026-11-09
+  description: |
+    The API a caller (MB Code desktop, CI) uses to get an isolated warehouse login from the parent Metabase.
+
+    Every operation and field carries `x-status`:
+    - `master`: on metabase/metabase master (061dee78c2d).
+    - `hardening`: changed by an open hardening PR, named in `x-pr`. Not on master yet.
+    - `proposed`: needed by MB Code, not built. Shape is a sketch, not a commitment.
+
+    `x-source` points at the implementation, relative to the repo root.
+    `EE` below means `enterprise/backend/src/metabase_enterprise/workspaces/`.
+
+    Every route needs a session or API key, the `:workspaces` premium feature (402 otherwise), and a superuser
+    (403 otherwise).
+servers:
+  - url: "{parent}/api/ee/workspace-manager"
+    variables:
+      parent:
+        default: https://metabase.example.com
+
+security:
+  - session: []
+  - apiKey: []
+
+paths:
+  /:
+    get:
+      operationId: listWorkspaces
+      summary: List every workspace.
+      x-status: master
+      x-source: EE/api/workspace_manager.clj:86
+      responses:
+        "200":
+          description: Every workspace, each with its databases. No credentials.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Workspace" } }
+        "402": { $ref: "#/components/responses/FeatureMissing" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createWorkspace
+      summary: Create a workspace on one or more databases and provision it. Blocks until done.
+      description: |
+        For each database, the parent stores `input_schemas` (every schema that has an active synced table, at this
+        moment), then creates one scratch namespace and one warehouse user. The user reads the input schemas and
+        writes only to the scratch namespace.
+
+        The workspace and its rows are committed before provisioning, so a crash leaves a record. On a provisioning
+        failure the parent tears down every database. Names are not unique: a caller that needs idempotent create
+        must pick a unique name and look it up with `GET /` after a lost response.
+
+        `input_schemas` is fixed at create. A schema added to the warehouse later is not readable until the
+        workspace is recreated (or `POST /{id}/schemas`, proposed, exists).
+      x-status: master
+      x-source: EE/api/workspace_manager.clj:100, EE/core.clj:255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkspaceRequest" }
+      responses:
+        "200":
+          description: |
+            master: the workspace. Also returned when provisioning AND its cleanup failed: the workspace is kept,
+            with its databases `unprovisioned`. Callers must treat any database not `provisioned` as a failure and
+            delete the workspace.
+
+            hardening (#86601): only returned when every database is `provisioned`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workspace" }
+        "400":
+          description: |
+            Invalid body; or a database is not eligible (driver lacks `:workspace`, the database-local setting
+            `database-enable-workspaces` is off, or it is a router database).
+
+            hardening (#86612): also a database whose driver has schemas but which has no synced input schemas
+            ("sync it first").
+
+            hardening (#86589): only Postgres reports `:workspace`, so every other engine is ineligible.
+          content:
+            text/plain: { schema: { type: string } }
+            application/json: { schema: { $ref: "#/components/schemas/ValidationError" } }
+        "402": { $ref: "#/components/responses/FeatureMissing" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: |
+            hardening (#86587, via #86601): the warehouse already has the role the workspace would create, or a
+            lock is held. Nothing is left behind (`cleanup_required: false`).
+          x-status: hardening
+          x-pr: [86587, 86601]
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
+        "412":
+          description: |
+            hardening (#86588, via #86601): a warehouse precondition failed, named in `message`: the admin login
+            lacks a privilege or role membership, PUBLIC can write to an input schema, or PUBLIC lacks CONNECT.
+            Nothing is left behind (`cleanup_required: false`).
+          x-status: hardening
+          x-pr: [86588, 86601]
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
+        "500":
+          description: |
+            master: provisioning failed and cleanup succeeded; nothing is left behind.
+
+            hardening (#86601): also provisioning failed and cleanup failed, or the workspace row delete failed.
+            Then `cleanup_required` is true, the workspace is kept, and the caller must `DELETE` it.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
+
+  /{id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    get:
+      operationId: getWorkspace
+      summary: One workspace with its databases. No credentials.
+      x-status: master
+      x-source: EE/api/workspace_manager.clj:94
+      responses:
+        "200":
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/Workspace" } }
+          description: The workspace.
+        "402": { $ref: "#/components/responses/FeatureMissing" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: renameWorkspace
+      summary: Rename a workspace.
+      x-status: master
+      x-source: EE/api/workspace_manager.clj:109
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: { type: string, minLength: 1, description: Not unique. }
+      responses:
+        "200":
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/Workspace" } }
+          description: The renamed workspace.
+        "400": { $ref: "#/components/responses/Invalid" }
+        "402": { $ref: "#/components/responses/FeatureMissing" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteWorkspace
+      summary: Tear down every database's warehouse objects, then delete the workspace. Blocks. Safe to retry.
+      description: |
+        Works from any state. Each database is either fully torn down (row deleted) or kept. Remap rows for the
+        scratch namespace are always cleared. If any teardown fails, the workspace stays with the failed rows and
+        the combined error is returned.
+      x-status: master
+      x-source: EE/core.clj:303, EE/provisioning.clj:217
+      responses:
+        "204": { description: Gone from the parent and the warehouse. }
+        "402": { $ref: "#/components/responses/FeatureMissing" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500":
+          description: Teardown failed for at least one database. Retry the delete.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
+
+  /{id}/config:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    get:
+      operationId: getWorkspaceConfig
+      summary: The sidecar's config.yml. The only response that carries a warehouse password.
+      x-status: master
+      x-source: EE/api/workspace_manager.clj:132, EE/config.clj:112
+      responses:
+        "200":
+          description: A config.yml attachment. Format in `config.schema.json`.
+          headers:
+            Content-Disposition:
+              schema: { type: string, const: 'attachment; filename="config.yml"' }
+          content:
+            application/x-yaml:
+              schema: { $ref: "./config.schema.json" }
+        "402": { $ref: "#/components/responses/FeatureMissing" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: At least one database is not `provisioned`.
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
+
+  /{id}/schemas:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    post:
+      operationId: changeWorkspaceSchemas
+      summary: PROPOSED. Add or remove input schemas on a live workspace.
+      description: |
+        Lets an agent read a schema created after the workspace, or narrow what it reads. Adapted to master's
+        model (one scratch namespace per database), so it only changes read grants and `input_schemas`. Needs a
+        revoke driver method; master has only `grant-workspace-read-access!`. A running sidecar must re-fetch
+        `/{id}/config` to pick up the new sync filter. Linear: ENG-14446.
+      x-status: proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [database_id]
+              properties:
+                database_id: { type: integer }
+                add: { type: array, items: { type: string, minLength: 1 } }
+                remove: { type: array, items: { type: string, minLength: 1 } }
+      responses:
+        "200":
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/Workspace" } }
+          description: The workspace with its new `input_schemas`.
+
+components:
+  securitySchemes:
+    session: { type: apiKey, in: header, name: X-Metabase-Session }
+    apiKey: { type: apiKey, in: header, name: X-API-KEY }
+
+  parameters:
+    WorkspaceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+
+  responses:
+    FeatureMissing:
+      description: The instance's token lacks the `:workspaces` feature.
+      x-source: src/metabase/premium_features/token_check.clj:766
+      content:
+        application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
+    Forbidden:
+      description: Not a superuser. Body is the plain-text message.
+      content:
+        text/plain: { schema: { type: string } }
+    NotFound:
+      description: No such workspace or database. Body is the plain-text message.
+      content:
+        text/plain: { schema: { type: string } }
+    Invalid:
+      description: The body failed validation.
+      content:
+        application/json: { schema: { $ref: "#/components/schemas/ValidationError" } }
+
+  schemas:
+    CreateWorkspaceRequest:
+      type: object
+      additionalProperties: false
+      required: [name, database_ids]
+      properties:
+        name: { type: string, minLength: 1, description: Not unique. }
+        database_ids:
+          type: array
+          minItems: 1
+          items: { type: integer, minimum: 1 }
+
+    WorkspaceStatus:
+      type: string
+      enum: [unprovisioned, provisioning, provisioned, deprovisioning]
+      description: |
+        unprovisioned -> provisioning (create) -> provisioned, or back to unprovisioned on failure.
+        A failed teardown also leaves a row unprovisioned. No API moves a row to deprovisioning.
+      x-source: EE/provisioning.clj:96-280
+
+    WorkspaceDatabase:
+      type: object
+      additionalProperties: false
+      required: [database_id, input_schemas, output_namespace, status]
+      properties:
+        database_id: { type: integer }
+        input_schemas:
+          type: array
+          items: { type: string }
+          description: Every schema with an active synced table at create. Empty only on schemaless engines (MySQL).
+        output_namespace:
+          type: string
+          description: The scratch schema (a database on MySQL), `mb__isolation_<slug>_<id>`. Empty until provisioned.
+        status: { $ref: "#/components/schemas/WorkspaceStatus" }
+        database:
+          type: [object, "null"]
+          description: The parent's Database, with `details` removed.
+
+    Workspace:
+      type: object
+      additionalProperties: false
+      required: [id, name, creator, created_at, updated_at]
+      x-source: EE/api/workspace_manager.clj:55
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        creator:
+          type: [object, "null"]
+          description: Null if the user was deleted.
+          additionalProperties: false
+          required: [id, email]
+          properties:
+            id: { type: integer }
+            first_name: { type: [string, "null"] }
+            last_name: { type: [string, "null"] }
+            email: { type: string }
+            common_name: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        databases:
+          type: array
+          items: { $ref: "#/components/schemas/WorkspaceDatabase" }
+          description: Always present in practice; treat missing as empty.
+
+    ErrorBody:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          properties:
+            _error: { type: string }
+
+    CreateFailure:
+      description: |
+        master: a 500 with `message` (several failures joined by "; ").
+        hardening (#86601): the error keeps the driver's own status (409, 412) and adds `cleanup_required`.
+      allOf:
+        - $ref: "#/components/schemas/ErrorBody"
+        - type: object
+          properties:
+            cleanup_required:
+              type: boolean
+              x-status: hardening
+              x-pr: [86601]
+              description: True when the workspace was kept and the caller must DELETE it.
+            workspace_id:
+              type: integer
+              x-status: proposed
+              description: |
+                The kept workspace, when `cleanup_required` is true, so the caller can DELETE it without a name
+                lookup. Requested for MB Code's ledger.
+
+    ValidationError:
+      type: object
+      properties:
+        errors: { type: object }
+        specific-errors: { type: object }

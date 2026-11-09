@@ -1,0 +1,196 @@
+openapi: 3.1.0
+info:
+  title: Workspace instance API (sidecar Metabase)
+  version: 2026-11-09
+  description: |
+    The API the desktop app uses on a local Metabase (the sidecar) to put it in workspace mode, take it out, and
+    inspect its table remappings. Same `x-status` and `x-source` conventions as `parent.openapi.yaml`.
+
+    In workspace mode the sidecar redirects transform output into the scratch namespace and records a remap row
+    per redirected table. Queries that name a remapped table read the scratch copy; every other table is read
+    from production. Remap rows are written by the transform hook, not through this API.
+    (`EE/transform_hooks.clj:10`, `EE/query_processor/middleware.clj`.)
+
+    Every route needs a session or API key, the `:workspaces` premium feature (402 otherwise), and a superuser
+    on the sidecar (403 otherwise).
+servers:
+  - url: "{sidecar}/api/ee/workspace-instance"
+    variables:
+      sidecar:
+        default: http://localhost:3000
+
+security:
+  - session: []
+  - apiKey: []
+
+paths:
+  /current:
+    get:
+      operationId: getCurrentWorkspace
+      summary: The workspace this instance is in, or null.
+      x-status: master
+      x-source: EE/api/workspace_instance.clj:74
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    oneOf:
+                      - { $ref: "#/components/schemas/WorkspaceInstance" }
+                      - { type: "null" }
+          description: "`data` is null when the instance is not in workspace mode."
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: setCurrentWorkspace
+      summary: Enter workspace mode at runtime, without a restart. Persists across restarts.
+      description: |
+        Keyed by database id (config.yml keys by database name). The sidecar must already have the databases,
+        connected as the workspace user; this call does not carry credentials. The ids are not checked against
+        the instance's databases.
+      x-status: master
+      x-source: EE/api/workspace_instance.clj:91, src/metabase/workspaces/core.clj:68
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceInstanceConfig" }
+      responses:
+        "200":
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/WorkspaceInstance" } }
+          description: The stored workspace.
+        "400":
+          description: Invalid body, or the workspace is locked by deployment config (`config.yml` or `MB_INSTANCE_WORKSPACE`).
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: clearCurrentWorkspace
+      summary: Leave workspace mode and delete every remap row.
+      x-status: master
+      x-source: EE/api/workspace_instance.clj:107
+      responses:
+        "204": { description: Not in workspace mode. }
+        "400": { description: Locked by deployment config. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /table-remappings:
+    get:
+      operationId: listTableRemappings
+      summary: Every remap row, ordered by id.
+      x-status: master
+      x-source: EE/api/workspace_instance.clj:122
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/TableRemapping" } }
+          description: Remap rows.
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: shadowTable
+      summary: PROPOSED. Shadow a table so the agent's reads and writes of it go to the scratch namespace.
+      description: |
+        Today a table is shadowed only when a transform writes it. An agent may want to shadow a table up front
+        (empty, or as a copy) and stop shadowing it later. Open questions: copy the data or start empty; how the
+        copy is made without the agent holding credentials; whether this belongs on the sidecar or the parent.
+      x-status: proposed
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [database_id, from_table_name]
+              properties:
+                database_id: { type: integer }
+                from_db: { type: [string, "null"] }
+                from_schema: { type: [string, "null"] }
+                from_table_name: { type: string }
+      responses:
+        "200":
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/TableRemapping" } }
+          description: The new remap row.
+
+  /table-remappings/{id}:
+    delete:
+      operationId: unshadowTable
+      summary: PROPOSED. Stop shadowing a table; reads go back to production.
+      x-status: proposed
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204": { description: Remap row gone. }
+
+components:
+  securitySchemes:
+    session: { type: apiKey, in: header, name: X-Metabase-Session }
+    apiKey: { type: apiKey, in: header, name: X-API-KEY }
+
+  responses:
+    Forbidden:
+      description: Not a superuser on the sidecar. Plain-text body.
+      content:
+        text/plain: { schema: { type: string } }
+
+  schemas:
+    TableNamespace:
+      description: |
+        Where a table lives. Which keys are set depends on the engine: `schema` on Postgres, Redshift and
+        ClickHouse; `db` and `schema` on SQL Server, Snowflake and BigQuery; `db` on MySQL. At least one is set.
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        db: { type: [string, "null"] }
+        schema: { type: [string, "null"] }
+      x-source: src/metabase/workspaces/core.clj:46
+
+    WorkspaceDatabaseConfig:
+      type: object
+      additionalProperties: false
+      required: [input_schemas, output]
+      properties:
+        input_schemas: { type: array, items: { type: string } }
+        output: { $ref: "#/components/schemas/TableNamespace" }
+
+    WorkspaceInstanceConfig:
+      type: object
+      additionalProperties: false
+      required: [name, databases]
+      properties:
+        name: { type: string, minLength: 1 }
+        databases:
+          type: object
+          description: Keys are database ids, as strings.
+          propertyNames: { pattern: "^[0-9]+$" }
+          additionalProperties: { $ref: "#/components/schemas/WorkspaceDatabaseConfig" }
+
+    WorkspaceInstance:
+      type: object
+      additionalProperties: false
+      required: [name, databases, can_write]
+      properties:
+        name: { type: string, minLength: 1 }
+        databases: { $ref: "#/components/schemas/WorkspaceInstanceConfig/properties/databases" }
+        can_write:
+          type: boolean
+          description: False when deployment config set the workspace; POST and DELETE then return 400.
+
+    TableRemapping:
+      type: object
+      required: [id, database_id, from_table_name, to_table_name, created_at]
+      properties:
+        id: { type: integer }
+        database_id: { type: integer }
+        from_db: { type: [string, "null"] }
+        from_schema: { type: [string, "null"] }
+        from_table_name: { type: string }
+        to_db: { type: [string, "null"] }
+        to_schema: { type: [string, "null"] }
+        to_table_name:
+          type: string
+          description: "`<from_schema>__<from_table_name>`, shortened with a hash when too long (`EE/table_remapping.clj:138`)."
+        created_at: { type: string }

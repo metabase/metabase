@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "metabase/contracts/workspaces/config.schema.json",
+  "title": "Workspace config.yml (parent -> sidecar)",
+  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Built by EE/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
+  "x-status": "master",
+  "type": "object",
+  "required": ["version", "config"],
+  "properties": {
+    "version": { "const": 1 },
+    "config": {
+      "type": "object",
+      "required": ["databases", "workspace"],
+      "properties": {
+        "databases": {
+          "type": "array",
+          "description": "The workspace's databases with the workspace login, then every other database of the parent as a stub, then the sample database if the parent has one.",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/workspaceDatabase" },
+              { "$ref": "#/$defs/stubDatabase" },
+              { "$ref": "#/$defs/sampleDatabase" }
+            ]
+          }
+        },
+        "workspace": { "$ref": "#/$defs/workspaceSection" }
+      }
+    }
+  },
+  "$defs": {
+    "workspaceDatabase": {
+      "type": "object",
+      "required": ["name", "engine", "details"],
+      "not": { "anyOf": [ { "required": ["is_stub"] }, { "required": ["is_sample"] } ] },
+      "properties": {
+        "name": { "type": "string", "description": "The parent's database name. Key into workspace.databases." },
+        "engine": { "type": "string" },
+        "details": { "$ref": "#/$defs/workspaceDetails" }
+      }
+    },
+    "workspaceDetails": {
+      "type": "object",
+      "description": "master: the parent database's own details, overlaid with the workspace login and a sync filter (EE/config.clj:51). Any other parent field passes through. Engine-specific connection fields are open.",
+      "required": ["user", "let-user-control-scheduling"],
+      "properties": {
+        "user": { "type": "string", "description": "The workspace user, not the parent's login." },
+        "password": { "type": "string", "description": "Generated at provisioning. Absent on BigQuery, where user is the workspace service account and impersonate-service-account is set to it." },
+        "let-user-control-scheduling": { "const": false },
+        "schema-filters-type": { "const": "inclusion", "description": "Engines with schemas that sync through metabase.driver.sync (Postgres, Redshift, SQL Server)." },
+        "schema-filters-patterns": {
+          "type": "string",
+          "description": "Comma-separated input schemas. hardening (#86610): each name is escaped so it matches only itself (non-[A-Za-z0-9_] characters become \\x{HEX})."
+        },
+        "db-filters-type": { "const": "inclusion", "description": "ClickHouse." },
+        "db-filters-patterns": { "type": "string", "description": "ClickHouse: comma-separated input schemas, unescaped." },
+        "dataset-filters-type": { "const": "inclusion", "description": "BigQuery." },
+        "dataset-filters-patterns": { "type": "string", "description": "BigQuery: comma-separated input datasets, escaped like schema-filters-patterns (#86610)." }
+      },
+      "x-hardening": [
+        {
+          "x-pr": 86584,
+          "description": "Fields that select or carry the parent's own login are removed. A config containing any of them breaks the contract once #86584 merges. Unused SSH tunnel secrets are removed too: all of them when tunnel-enabled is false, else those of the tunnel-auth-option not chosen (tunnel-pass for ssh-key; tunnel-private-key and tunnel-private-key-passphrase for password).",
+          "not": {
+            "anyOf": [
+              { "required": ["use-auth-provider"] },
+              { "required": ["auth-provider"] },
+              { "required": ["azure-managed-identity-client-id"] },
+              { "required": ["oauth-token-url"] },
+              { "required": ["oauth-token-headers"] },
+              { "required": ["auth-mode"] },
+              { "required": ["ad-client-id"] },
+              { "required": ["ad-client-secret"] },
+              { "required": ["ad-managed-identity-client-id"] },
+              { "required": ["ad-client-certificate-value"] },
+              { "required": ["ad-client-key-value"] },
+              { "required": ["ad-client-key-password-value"] },
+              { "required": ["ad-client-certificate-password-value"] }
+            ]
+          }
+        },
+        {
+          "x-pr": 86585,
+          "description": "The SSL root certificate is sent as its value. On master the parent's Secret id is sent, which means nothing in the sidecar's app db."
+        }
+      ]
+    },
+    "stubDatabase": {
+      "type": "object",
+      "required": ["name", "engine", "details", "is_stub"],
+      "properties": {
+        "name": { "type": "string" },
+        "engine": { "type": "string" },
+        "details": { "type": "object", "maxProperties": 0 },
+        "is_stub": { "const": true }
+      },
+      "description": "A parent database that is not in the workspace. No credentials."
+    },
+    "sampleDatabase": {
+      "type": "object",
+      "required": ["name", "engine", "details", "is_sample"],
+      "properties": {
+        "name": { "type": "string" },
+        "engine": { "const": "h2" },
+        "details": { "type": "object", "maxProperties": 0 },
+        "is_sample": { "const": true }
+      }
+    },
+    "workspaceSection": {
+      "type": "object",
+      "required": ["name", "databases"],
+      "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400.",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "databases": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Keyed by database name (the sidecar resolves names to ids at boot).",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["input_schemas", "output"],
+            "properties": {
+              "input_schemas": { "type": "array", "items": { "type": "string" } },
+              "output": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": false,
+                "properties": {
+                  "db": { "type": ["string", "null"] },
+                  "schema": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
