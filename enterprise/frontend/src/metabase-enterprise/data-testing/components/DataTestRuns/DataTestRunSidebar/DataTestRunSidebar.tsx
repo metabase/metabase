@@ -1,12 +1,11 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { SidebarResizableBox } from "metabase/common/components/SidebarResizableBox";
 import { SidebarInfoRow } from "metabase/transforms/components/SidebarInfoRow";
 import {
   ActionIcon,
-  Anchor,
   Box,
   Card,
   FixedSizeIcon,
@@ -14,23 +13,18 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import type {
-  DataTestRunWithUser,
-  Transform,
-  TransformTest,
-} from "metabase-types/api";
+import type { DataTestRunWithUser } from "metabase-types/api";
 
 import {
   formatDataTestRunStatus,
   isFailedDataTestRunStatus,
 } from "../../../utils";
 
-import S from "./TransformTestRunSidebar.module.css";
+import S from "./DataTestRunSidebar.module.css";
 
-type TransformTestRunSidebarProps = {
-  transform: Transform;
-  test: TransformTest;
+type DataTestRunSidebarProps = {
+  testName: string;
+  subjectLink: ReactNode;
   run: DataTestRunWithUser;
   containerWidth: number;
   onResizeStart: () => void;
@@ -38,15 +32,15 @@ type TransformTestRunSidebarProps = {
   onClose: () => void;
 };
 
-export function TransformTestRunSidebar({
-  transform,
-  test,
+export function DataTestRunSidebar({
+  testName,
+  subjectLink,
   run,
   containerWidth,
   onResizeStart,
   onResizeStop,
   onClose,
-}: TransformTestRunSidebarProps) {
+}: DataTestRunSidebarProps) {
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}
@@ -58,27 +52,22 @@ export function TransformTestRunSidebar({
         p="xl"
         gap="xl"
         bg="background_page-primary"
-        data-testid="transform-test-run-sidebar"
+        data-testid="data-test-run-sidebar"
       >
         <Group gap="md" wrap="nowrap" align="start" justify="space-between">
-          <Title order={3}>{test.name}</Title>
+          <Title order={3}>{testName}</Title>
           <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
             <FixedSizeIcon name="close" />
           </ActionIcon>
         </Group>
-        <Group gap="sm" wrap="nowrap">
-          <FixedSizeIcon name="transform" c="core-brand" />
-          <Anchor component={ForwardRefLink} to={Urls.transform(transform.id)}>
-            {transform.name}
-          </Anchor>
-        </Group>
-        <TransformTestRunInfo run={run} />
+        {subjectLink}
+        <DataTestRunInfo run={run} />
       </Stack>
     </SidebarResizableBox>
   );
 }
 
-function TransformTestRunInfo({ run }: { run: DataTestRunWithUser }) {
+function DataTestRunInfo({ run }: { run: DataTestRunWithUser }) {
   return (
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
       <SidebarInfoRow label={t`Started at`}>

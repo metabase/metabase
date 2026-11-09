@@ -12,10 +12,10 @@ export const dataTestRunApi = EnterpriseApi.injectEndpoints({
       ListDataTestRunsResponse,
       ListDataTestRunsRequest
     >({
-      query: ({ id, ...params }) => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/ee/data-test-run",
-        params: { "test-type": "transform", "test-id": id, ...params },
+        params,
       }),
       providesTags: (response) =>
         provideDataTestRunListTags(response?.data ?? []),

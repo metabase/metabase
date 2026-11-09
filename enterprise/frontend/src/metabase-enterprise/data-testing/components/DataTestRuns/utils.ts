@@ -4,7 +4,7 @@ import { DATA_TEST_RUN_STATUSES } from "metabase-types/api";
 
 export function getParsedParams(
   location: Location,
-): Urls.TransformTestRunListParams {
+): Urls.DataTestRunListParams {
   const searchParams = new URLSearchParams(location.search);
 
   return {

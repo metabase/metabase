@@ -17,7 +17,7 @@ const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
   "current",
 ];
 
-type DataTestRunFilterOptions = Omit<Urls.TransformTestRunListParams, "page">;
+type DataTestRunFilterOptions = Omit<Urls.DataTestRunListParams, "page">;
 
 type DataTestRunFilterBarProps = {
   filterOptions: DataTestRunFilterOptions;

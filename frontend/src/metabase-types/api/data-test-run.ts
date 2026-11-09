@@ -1,7 +1,8 @@
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { TransformTestId } from "./transform-test";
 import type { UserId, UserInfo } from "./user";
 
+export type DataTestType = "transform";
+export type DataTestId = number;
 export type DataTestRunId = number;
 
 export const DATA_TEST_RUN_STATUSES = [
@@ -15,8 +16,8 @@ export type DataTestRunStatus = (typeof DATA_TEST_RUN_STATUSES)[number];
 
 export type DataTestRun = {
   id: DataTestRunId;
-  test_type: "transform";
-  test_id: TransformTestId | null;
+  test_type: DataTestType;
+  test_id: DataTestId | null;
   initiated_by: UserId | null;
   start_time: string;
   end_time: string | null;
@@ -34,7 +35,8 @@ export type DataTestRunWithUser = DataTestRun & {
 };
 
 export type ListDataTestRunsRequest = {
-  id: TransformTestId;
+  "test-type": DataTestType;
+  "test-id"?: DataTestId;
   statuses?: DataTestRunStatus[];
   "start-time"?: string;
   "end-time"?: string;

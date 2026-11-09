@@ -5,7 +5,7 @@ import {
   createMockTransformTest,
 } from "metabase-types/api/mocks";
 
-import { TransformTestRunSection } from "./TransformTestRunSection";
+import { TransformTestRunButton } from "./TransformTestRunButton";
 
 type SetupOpts = {
   test: TransformTest;
@@ -13,18 +13,28 @@ type SetupOpts = {
 
 function setup({ test }: SetupOpts) {
   return renderWithProviders(
-    <TransformTestRunSection test={test} readOnly={false} />,
+    <TransformTestRunButton
+      test={test}
+      readOnly={false}
+      triggeredFrom="test_overview"
+    />,
   );
 }
 
-describe("TransformTestRunSection", () => {
+describe("TransformTestRunButton", () => {
   it("offers to run a test again when it re-renders with the same last run", () => {
     const test = createMockTransformTest({
       last_run: createMockDataTestRun({ status: "passed" }),
     });
     const { rerender } = setup({ test });
 
-    rerender(<TransformTestRunSection test={test} readOnly={false} />);
+    rerender(
+      <TransformTestRunButton
+        test={test}
+        readOnly={false}
+        triggeredFrom="test_overview"
+      />,
+    );
 
     expect(screen.getByRole("button", { name: /Run now/ })).toBeEnabled();
     expect(

@@ -212,7 +212,7 @@ describe("TransformTestRunsPage", () => {
       await screen.findByRole("row", { name: /Ada Admin/ }),
     );
 
-    const sidebar = await screen.findByTestId("transform-test-run-sidebar");
+    const sidebar = await screen.findByTestId("data-test-run-sidebar");
     const info = within(sidebar).getByRole("region", { name: "Info" });
     expect(
       within(info).getByRole("group", { name: "Status" }),
@@ -226,7 +226,7 @@ describe("TransformTestRunsPage", () => {
 
     await userEvent.click(within(sidebar).getByLabelText("Close"));
     expect(
-      screen.queryByTestId("transform-test-run-sidebar"),
+      screen.queryByTestId("data-test-run-sidebar"),
     ).not.toBeInTheDocument();
   });
 });

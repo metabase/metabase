@@ -93,7 +93,7 @@ export function transformTest(
   return `${TRANSFORMS_ROOT_URL}/${transformId}/tests/${testId}`;
 }
 
-export type TransformTestRunListParams = {
+export type DataTestRunListParams = {
   page?: number;
   statuses?: DataTestRunStatus[];
   startTime?: string;
@@ -103,7 +103,7 @@ export type TransformTestRunListParams = {
 export function transformTestRuns(
   transformId: TransformId,
   testId: TransformTestId,
-  { page, statuses, startTime, endTime }: TransformTestRunListParams = {},
+  { page, statuses, startTime, endTime }: DataTestRunListParams = {},
 ) {
   const searchParams = new URLSearchParams();
   if (page != null) {
