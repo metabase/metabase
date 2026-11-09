@@ -46,7 +46,8 @@
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/card-test
-  "Create a card test."
+  "Create a card test. Its expectations read the result of the card's query without remapped columns and without the
+  default row limit."
   [_route-params
    _query-params
    {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]
