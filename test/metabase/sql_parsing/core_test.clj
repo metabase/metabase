@@ -33,6 +33,27 @@
        sort
        vec))
 
+(defn- built
+  "The case's SQL: written out, or built from `:build` when the point of the case is SQL too long to write. Each
+  item is formatted with its index three times and then the index plus one."
+  [{:keys [sql build]}]
+  (or sql
+      (let [{:keys [prefix item count extra separator suffix]} build
+            items (cond-> (mapv #(format item % % % (inc %)) (range count))
+                    extra (conj extra))]
+        (str prefix (str/join (or separator ", ") items) suffix))))
+
+(defn- expanded-cases
+  "The cases in `test_cases/<file-name>.edn`, with a case that lists `:dialects` or `:sqls` made into one case for
+  each dialect and SQL."
+  [file-name]
+  (for [{:keys [dialects sqls] :as case} (cases file-name)
+        dialect (if (contains? case :dialects) dialects [(:dialect case)])
+        sql     (or sqls [(built case)])]
+    (-> case
+        (dissoc :dialects :sqls :build)
+        (assoc :dialect dialect :sql sql))))
+
 ;;; --------------------------------------------- parse-error-message ----------------------------------------------
 
 (defn- parse-failure
@@ -70,11 +91,22 @@
 
 (deftest ^:parallel referenced-tables-test
   (testing "the tables a query reads, which is what Guard A of a transform test asks for"
-    (doseq [{:keys [name sql dialect tables]} (cases "referenced_tables")]
-      (testing name
-        (is (= (normalize-tables tables)
-               (normalize-tables (sql-parsing/referenced-tables (sql-tools/sqlglot-parser) dialect sql)))
-            (pr-str sql))))))
+    (doseq [{:keys [name sql dialect tables error]} (expanded-cases "referenced_tables")]
+      (testing (str name ", dialect " (pr-str dialect))
+        (if error
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                (re-pattern (str "^sqlglot call failed: " (java.util.regex.Pattern/quote error) "$"))
+                                (sql-parsing/referenced-tables (sql-tools/sqlglot-parser) dialect sql)))
+          (is (= (normalize-tables tables)
+                 (normalize-tables (sql-parsing/referenced-tables (sql-tools/sqlglot-parser) dialect sql)))
+              (pr-str sql)))))))
+
+(deftest ^:parallel referenced-tables-upstream-test
+  (testing "the tables in each statement of sqlglot's own identity tests, read with no dialect, exactly as sqlglot finds them"
+    (doseq [{:keys [sql tables]} (cases "referenced_tables_upstream")]
+      (is (= (sort tables)
+             (sort (sql-parsing/referenced-tables (sql-tools/sqlglot-parser) nil sql)))
+          (pr-str sql)))))
 
 ;;; ------------------------------------------------- replace-names ------------------------------------------------
 
@@ -85,17 +117,45 @@
         (is (= expected (sql-parsing/replace-names (sql-tools/sqlglot-parser) dialect sql replacements))
             (pr-str sql))))))
 
+;;; ------------------------------------------------ add-into-clause -----------------------------------------------
+
+(deftest ^:parallel add-into-clause-test
+  (testing "a SELECT rewritten as a SQL Server SELECT INTO, or the error when it is not a SELECT"
+    (doseq [{:keys [name sql dialect table-name expected error]} (cases "add_into_clause")]
+      (testing name
+        (if error
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                (re-pattern (str "^sqlglot call failed: " (java.util.regex.Pattern/quote error) "$"))
+                                (sql-parsing/add-into-clause (sql-tools/sqlglot-parser) dialect sql table-name)))
+          (is (= expected (sql-parsing/add-into-clause (sql-tools/sqlglot-parser) dialect sql table-name))
+              (pr-str sql)))))))
+
+;;; ------------------------------------------------ simple-query --------------------------------------------------
+
+(deftest ^:parallel simple-query-test
+  (testing "whether the query is a plain SELECT, and the reason when it is not"
+    (doseq [{:keys [name sql dialect expected]} (cases "simple_query")]
+      (testing name
+        (is (= expected (sql-parsing/simple-query? (sql-tools/sqlglot-parser) dialect sql))
+            (pr-str sql))))))
+
+;;; ------------------------------------------------ transpile-sql -------------------------------------------------
+
+(deftest ^:parallel transpile-sql-test
+  (testing "a query rewritten from one dialect to another, or skipped when it holds a template tag"
+    (doseq [{:keys [name sql from to expected]} (cases "transpile_sql")]
+      (testing name
+        (is (= expected (sql-parsing/transpile-sql (sql-tools/sqlglot-parser) sql from to))
+            (pr-str sql))))))
+
 ;;; ------------------------------------------------ field-references ----------------------------------------------
 
 (deftest ^:parallel field-references-test
   (testing "the fields a query reads and returns, and the qualifiers that resolve to nothing"
-    (doseq [{:keys [name sql dialect errors returned]} (cases "field_references")]
+    (doseq [{:keys [name sql dialect expected]} (cases "field_references")]
       (testing name
-        (let [result (sql-parsing/field-references (sql-tools/sqlglot-parser) dialect sql)]
-          (is (= (set errors) (set (:errors result))) (pr-str sql))
-          (is (= (sort returned)
-                 (sort (keep :column (:returned-fields result))))
-              (pr-str sql)))))))
+        (is (= expected (sql-parsing/field-references (sql-tools/sqlglot-parser) dialect sql))
+            (pr-str sql))))))
 
 (deftest ^:parallel field-references-alias-per-select-item-test
   (testing "a column selected with and without an alias keeps the alias of each select item"
@@ -109,23 +169,29 @@
 
 (deftest ^:parallel single-stmt-classification-test
   (testing "whether a query is one statement of the kind asked for, which is what tells a caller the rest is unread"
-    (doseq [{:keys [name sql dialect stmt-type expected]} (cases "single_stmt")]
-      (testing name
-        (is (=? expected (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type))
-            (pr-str sql))
-        (is (= (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)
-               (sql-parsing/classify-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type))
-            (pr-str sql))))))
+    (doseq [{:keys [name sql dialect stmt-type expected validate-expected]} (expanded-cases "single_stmt")]
+      (testing (str name ", dialect " (pr-str dialect))
+        (let [classified (sql-parsing/classify-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)
+              validated  (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)]
+          (is (=? expected classified) (pr-str sql))
+          (if validate-expected
+            (is (=? validate-expected validated) (pr-str sql))
+            (is (= classified validated) (pr-str sql))))))))
 
 ;;; ------------------------------------------- returned-columns-lineage -------------------------------------------
 
+(defn- unordered-dependencies
+  "Lineage with each column's dependencies as a set: their order is not stable from one run to the next."
+  [lineage]
+  (mapv (fn [[column pure? dependencies]] [column pure? (set dependencies)]) lineage))
+
 (deftest ^:parallel returned-columns-lineage-test
-  (testing "the columns a query returns, which is what an expectation compares against"
-    (doseq [{:keys [name sql dialect default-schema columns]} (cases "returned_columns")]
+  (testing "the columns a query returns, whether each is a table column passed through, and the columns it reads"
+    (doseq [{:keys [name sql dialect default-schema schema expected]} (cases "returned_columns")]
       (testing name
-        (is (= columns
-               (sort (map (comp u/lower-case-en first)
-                          (sql-parsing/returned-columns-lineage (sql-tools/sqlglot-parser) dialect sql default-schema {}))))
+        (is (= (unordered-dependencies expected)
+               (unordered-dependencies
+                (sql-parsing/returned-columns-lineage (sql-tools/sqlglot-parser) dialect sql default-schema (or schema {}))))
             (pr-str sql))))))
 
 ;;; ------------------------------------------------- validate-query -----------------------------------------------
@@ -150,15 +216,6 @@
               (pr-str sql)))))))
 
 ;;; ------------------------------------------- strip-large-literal-lists ------------------------------------------
-
-(defn- built
-  "The case's SQL: written out, or built from `:build` when the point of the case is a list too long to write."
-  [{:keys [sql build]}]
-  (or sql
-      (let [{:keys [prefix item count extra separator suffix]} build
-            items (cond-> (mapv #(format item % % %) (range count))
-                    extra (conj extra))]
-        (str prefix (str/join (or separator ", ") items) suffix))))
 
 (deftest ^:parallel strip-large-literal-lists-test
   (testing "the literal lists too big for the parser to hold, replaced by a single NULL before it sees them"

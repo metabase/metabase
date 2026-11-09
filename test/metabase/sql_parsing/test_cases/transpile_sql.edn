@@ -1,0 +1,50 @@
+{:cases
+ [{:name     "postgres to snowflake"
+   :sql      "SELECT date_trunc('month', created_at) AS m, COUNT(*) FROM orders GROUP BY 1"
+   :from     "postgres"
+   :to       "snowflake"
+   :expected {:status :success
+              :transpiled-sql "SELECT\n  DATE_TRUNC('MONTH', created_at) AS m,\n  COUNT(*)\nFROM orders\nGROUP BY\n  1"}}
+
+  {:name     "mysql to postgres"
+   :sql      "SELECT DATE_FORMAT(created_at, '%Y-%m') AS m, IFNULL(total, 0) FROM orders"
+   :from     "mysql"
+   :to       "postgres"
+   :expected {:status :success
+              :transpiled-sql "SELECT\n  TO_CHAR(CAST(created_at AS TIMESTAMP), 'YYYY-MM') AS m,\n  COALESCE(total, 0)\nFROM orders"}}
+
+  {:name     "sql server to postgres"
+   :sql      "SELECT TOP 5 id, ISNULL(name, 'n/a') FROM users"
+   :from     "tsql"
+   :to       "postgres"
+   :expected {:status :success
+              :transpiled-sql "SELECT\n  id,\n  COALESCE(name, 'n/a')\nFROM users\nLIMIT 5"}}
+
+  {:name     "snowflake to postgres"
+   :sql      "SELECT IFF(TOTAL > 100, 'big', 'small') AS SIZE, DATEADD(day, -7, CURRENT_DATE) FROM ORDERS"
+   :from     "snowflake"
+   :to       "postgres"
+   :expected {:status :success
+              :transpiled-sql "SELECT\n  CASE WHEN TOTAL > 100 THEN 'big' ELSE 'small' END AS SIZE,\n  CURRENT_DATE + INTERVAL '-7 DAY'\nFROM ORDERS"}}
+
+  {:name     "postgres to sql server"
+   :sql      "SELECT id FROM users ORDER BY id LIMIT 10"
+   :from     "postgres"
+   :to       "tsql"
+   :expected {:status :success
+              :transpiled-sql "SELECT\nTOP 10\n  id\nFROM users\nORDER BY\n  CASE WHEN id IS NULL THEN 1 ELSE 0 END, id"}}
+
+  {:name     "bigquery to snowflake"
+   :sql      "SELECT TIMESTAMP_TRUNC(created_at, MONTH) AS m, COUNTIF(status = 'paid') FROM `ds.orders` GROUP BY 1"
+   :from     "bigquery"
+   :to       "snowflake"
+   :expected {:status :success
+              :transpiled-sql "SELECT\n  DATE_TRUNC('MONTH', created_at) AS m,\n  COUNT_IF(status = 'paid')\nFROM \"ds\".\"orders\"\nGROUP BY\n  1"}}
+
+  {:name     "a query with a template tag is not transpiled"
+   :sql      "SELECT * FROM orders WHERE created_at > {{start_date}}"
+   :from     "mysql"
+   :to       "postgres"
+   :expected {:status :skipped
+              :reason :contains-templates
+              :transpiled-sql "SELECT * FROM orders WHERE created_at > {{start_date}}"}}]}

@@ -7,11 +7,18 @@
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.sqlglot-java :as sqlglot-java]
    [metabase.sql-parsing.sqlglot-java.ast :as sqlglot-java.ast]
+   [metabase.sql-parsing.sqlglot-java.field-references :as sqlglot-java.field-references]
+   [metabase.sql-parsing.sqlglot-java.qualify :as sqlglot-java.qualify]
+   [metabase.sql-parsing.sqlglot-java.references :as sqlglot-java.references]
+   [metabase.sql-parsing.sqlglot-java.rewrite :as sqlglot-java.rewrite]
+   [metabase.sql-parsing.sqlglot-java.statements :as sqlglot-java.statements]
+   [metabase.sql-parsing.sqlglot-java.transpile :as sqlglot-java.transpile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.settings :as settings]
    [metabase.test :as mt])
   (:import
+   (com.metabase.sqlglot SqlglotInterruptedException)
    (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
@@ -108,6 +115,94 @@
   (testing "a port error inside the deadline is reported as before"
     (is (thrown-with-msg? Exception #"ParseError"
                           (protocol/referenced-tables (sqlglot-java/parser) "postgres" "SELECT FROM WHERE (")))))
+
+(defn- wide-select
+  "A SELECT of `n` CASE columns. Its lineage takes seconds, because the port copies the projection list once for
+  each column."
+  [n]
+  (str "SELECT "
+       (str/join ", " (for [i (range n)] (str "CASE WHEN a > " i " THEN 'x' END AS col" i)))
+       " FROM t"))
+
+(def ^:private wide-select-schema
+  {"t" {"a" "INT"}})
+
+(defn- interrupted-error?
+  "Whether `e`, or an exception in its cause chain, is the port's interrupt."
+  [e]
+  (boolean (some #(instance? SqlglotInterruptedException %) (take-while some? (iterate ex-cause e)))))
+
+(deftest interrupt-stops-a-slow-port-call-test
+  (testing "an interrupt stops a slow lineage promptly, with the port's interrupt, and the thread keeps its flag"
+    (let [sql      (wide-select 2000)
+          started  (promise)
+          finished (promise)
+          worker   (Thread. ^Runnable
+                    (fn []
+                      (deliver started true)
+                      (try
+                        (sqlglot-java.qualify/returned-columns-lineage "postgres" sql nil wide-select-schema)
+                        (deliver finished {:at (System/nanoTime)})
+                        (catch Throwable e
+                          (deliver finished {:at           (System/nanoTime)
+                                             :error        e
+                                             :interrupted? (.isInterrupted (Thread/currentThread))})))))]
+      (.start worker)
+      (is (true? (deref started 10000 false)))
+      (Thread/sleep 300)
+      (is (not (realized? finished)) "the lineage finished before the interrupt")
+      (let [interrupted-at (System/nanoTime)
+            _              (.interrupt worker)
+            {:keys [at error interrupted?]} (deref finished 30000 nil)]
+        (is (interrupted-error? error) (pr-str error))
+        (is (true? interrupted?))
+        (is (<= (quot (- at interrupted-at) 1000000) 500))))))
+
+(deftest timed-out-calls-free-their-threads-test
+  (testing "slow calls that time out stop their threads, so all three threads are free for the next calls"
+    (mt/with-temp-env-var-value! [mb-sql-parsing-timeout-ms 100]
+      (let [java-parser (sqlglot-java/parser)
+            slow-sql    (wide-select 2000)]
+        (doseq [result (mapv deref (doall (repeatedly 3 #(future
+                                                           (try
+                                                             (protocol/returned-columns-lineage
+                                                              java-parser "postgres" slow-sql nil wide-select-schema)
+                                                             (catch Throwable e e))))))]
+          (is (instance? TimeoutException result) (pr-str result)))
+        (let [start   (System/nanoTime)
+              results (mapv deref (doall (repeatedly 3 #(future
+                                                          (protocol/referenced-tables
+                                                           java-parser "postgres" "SELECT a FROM t")))))]
+          (is (= (repeat 3 [[nil nil "t"]]) results))
+          (is (<= (quot (- (System/nanoTime) start) 1000000) 1000)))))))
+
+(deftest interrupted-calls-keep-the-flag-test
+  (testing (str "on an interrupted thread every operation ends without its normal result and keeps the flag set, "
+                "and runs normally once the flag is cleared")
+    (let [sql "SELECT a FROM t"]
+      (doseq [[op-name f]
+              {"referenced-tables"        #(sqlglot-java.references/referenced-tables "postgres" sql)
+               "referenced-fields"        #(sqlglot-java.references/referenced-fields "postgres" sql)
+               "returned-columns-lineage" #(sqlglot-java.qualify/returned-columns-lineage
+                                            "postgres" sql nil wide-select-schema)
+               "validate-query"           #(sqlglot-java.qualify/validate-query "postgres" sql nil wide-select-schema)
+               "simple-query"             #(sqlglot-java.statements/simple-query "postgres" sql)
+               "single-stmt-of-type"      #(sqlglot-java.statements/single-stmt-of-type "postgres" sql "read")
+               "field-references"         #(sqlglot-java.field-references/field-references "postgres" sql)
+               "add-into-clause"          #(sqlglot-java.rewrite/add-into-clause "postgres" sql "u")
+               "replace-names"            #(sqlglot-java.rewrite/replace-names
+                                            "postgres" sql {"tables" [[{"table" "t"} {"db" nil "schema" nil "table" "u"}]]})
+               "transpile-sql"            #(sqlglot-java.transpile/transpile-sql sql "postgres" "mysql")}]
+        (testing op-name
+          ;; Assert only after the flag is cleared: reporting an assertion can clear it (for example a JUnit
+          ;; reporter that writes to a file).
+          (let [expected    (f)
+                _           (.interrupt (Thread/currentThread))
+                interrupted (try (f) (catch Throwable _ ::thrown))
+                flag-kept?  (Thread/interrupted)]
+            (is (not= expected interrupted))
+            (is (true? flag-kept?) "the interrupt flag is still set")
+            (is (= expected (f)))))))))
 
 (deftest rename-keeps-comments-test
   (testing "a renamed column keeps its comment, as on GraalPy"
