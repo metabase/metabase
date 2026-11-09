@@ -126,8 +126,7 @@ interface DataSelectorStateProps {
   availableModels: SearchModel[];
   entityLookups: EntityLookups;
   databases: DataSelectorDatabase[];
-  hasLoadedDatabasesWithTablesSaved: boolean;
-  hasLoadedDatabasesWithSaved: boolean;
+  hasLoadedDatabases: boolean;
   hasLoadedDatabasesWithTables: boolean;
   hasDataAccess: boolean;
   hasNestedQueriesEnabled: boolean;
@@ -464,11 +463,8 @@ export class UnconnectedDataSelector extends Component<
   };
 
   hasSavedQuestions = (): boolean => {
-    const { canSelectQuestion } = this.props;
-    return (
-      this.state.databases.some((database) => database.is_saved_questions) &&
-      canSelectQuestion
-    );
+    const { availableModels, canSelectQuestion } = this.props;
+    return canSelectQuestion && availableModels.includes("card");
   };
 
   isJoinStep(): boolean {
@@ -480,12 +476,10 @@ export class UnconnectedDataSelector extends Component<
     const { selectedDatabaseId } = this.props;
 
     if (this.isJoinStep()) {
-      return databases
-        .filter((db) => !db.is_saved_questions)
-        .filter((db) => db.id === selectedDatabaseId);
+      return databases.filter((db) => db.id === selectedDatabaseId);
     }
 
-    return databases.filter((db) => !db.is_saved_questions);
+    return databases;
   };
 
   async hydrateActiveStep(): Promise<void> {
@@ -711,20 +705,11 @@ export class UnconnectedDataSelector extends Component<
   }
 
   hasPreloadedStepData(stepName: DataSelectorStep): boolean | undefined {
-    const {
-      hasLoadedDatabasesWithTables,
-      hasLoadedDatabasesWithTablesSaved,
-      hasLoadedDatabasesWithSaved,
-    } = this.props;
+    const { hasLoadedDatabases, hasLoadedDatabasesWithTables } = this.props;
     if (stepName === DATABASE_STEP) {
-      return hasLoadedDatabasesWithTablesSaved || hasLoadedDatabasesWithSaved;
+      return hasLoadedDatabases;
     } else if (stepName === SCHEMA_STEP || stepName === TABLE_STEP) {
-      // A missing selectedDatabase counts as preloaded, skipping the step load.
-      return (
-        hasLoadedDatabasesWithTablesSaved ||
-        (hasLoadedDatabasesWithTables &&
-          !this.state.selectedDatabase?.is_saved_questions)
-      );
+      return hasLoadedDatabasesWithTables;
     }
   }
 
@@ -765,18 +750,9 @@ export class UnconnectedDataSelector extends Component<
       },
       false,
     );
-    const database = this.props.databases.find((db) => db.is_saved_questions);
-    if (database) {
-      this.onChangeDatabase(database);
-    }
   };
 
   onChangeDatabase = async (database: DataSelectorDatabase): Promise<void> => {
-    if (database.is_saved_questions) {
-      this.showSavedEntityPicker({ entityType: "question" });
-      return;
-    }
-
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
@@ -1091,17 +1067,17 @@ function withAvailableModels(
   };
 }
 
-// Prefetches the saved-databases list and forwards its loading state as
+// Prefetches the databases list and forwards its loading state as
 // `allLoading` so the picker waits for the databases (not just the models
 // search) before hydrating its initial step. Without this the picker would
 // briefly show only models and stream the databases in afterwards.
-function withSavedDatabasesPrefetch(
+function withDatabasesPrefetch(
   WrappedComponent: ComponentType<PublicDataSelectorProps>,
 ): ComponentType<PublicDataSelectorProps> {
-  return function DataSelectorWithSavedDatabasesPrefetch(
+  return function DataSelectorWithDatabasesPrefetch(
     props: PublicDataSelectorProps,
   ) {
-    const { isLoading } = useListDatabasesQuery({ saved: true });
+    const { isLoading } = useListDatabasesQuery();
     return (
       <WrappedComponent
         {...props}
@@ -1113,18 +1089,17 @@ function withSavedDatabasesPrefetch(
 
 const isListDatabasesQuerySuccess = (
   state: State,
-  query: ListDatabasesRequest,
+  query?: ListDatabasesRequest,
 ): boolean =>
   databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
 
-const DataSelector = withSavedDatabasesPrefetch(
+const DataSelector = withDatabasesPrefetch(
   withAvailableModels(
     withSchemaFetchers(
       connect(
         (state: State, ownProps: ConnectOwnProps): DataSelectorStateProps => {
-          const response = databaseApi.endpoints.listDatabases.select({
-            saved: true,
-          })(state).data;
+          const response =
+            databaseApi.endpoints.listDatabases.select()(state).data;
           const entityLookups = getEntityLookups(state);
           const { selectedCardId } = ownProps;
           return {
@@ -1137,16 +1112,7 @@ const DataSelector = withSavedDatabasesPrefetch(
             databases: (response?.data ?? [])
               .map(({ id }) => entityLookups.database(id))
               .filter((database) => database != null),
-            hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(
-              state,
-              {
-                include: "tables",
-                saved: true,
-              },
-            ),
-            hasLoadedDatabasesWithSaved: isListDatabasesQuerySuccess(state, {
-              saved: true,
-            }),
+            hasLoadedDatabases: isListDatabasesQuerySuccess(state),
             hasLoadedDatabasesWithTables: isListDatabasesQuerySuccess(state, {
               include: "tables",
             }),
@@ -1161,7 +1127,7 @@ const DataSelector = withSavedDatabasesPrefetch(
         (dispatch: Dispatch): DataSelectorDispatchProps => ({
           fetchDatabases: () =>
             runRtkEndpoint(
-              { saved: true },
+              undefined,
               dispatch,
               databaseApi.endpoints.listDatabases,
               { forceRefetch: false },

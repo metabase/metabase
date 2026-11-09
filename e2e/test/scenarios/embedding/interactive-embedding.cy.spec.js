@@ -694,17 +694,8 @@ describe("scenarios > embedding > full app", () => {
         type: "metric",
         collection_id: null,
       });
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/database",
-        query: {
-          saved: "true",
-        },
-      }).as("getDatabases");
-
       cy.log("test not providing `entity_types`");
       startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-      cy.wait("@getDatabases");
       H.popover().within(() => {
         cy.findByText("Models").should("be.visible");
         cy.findByText("Raw Data").should("be.visible");

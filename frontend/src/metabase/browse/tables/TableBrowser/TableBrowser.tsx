@@ -10,7 +10,6 @@ import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId, Table } from "metabase-types/api";
 
 import { RELOAD_INTERVAL } from "../../constants";
@@ -42,8 +41,6 @@ const getDatabaseId = (
     Urls.extractEntityId(params?.slug);
 
   if (!Number.isSafeInteger(dbId)) {
-    return undefined;
-  } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
     return undefined;
   } else {
     return dbId;
