@@ -334,17 +334,18 @@
         k    (fk-slots node)]
     (get node k)))
 
-(defn- fk-table-name
-  "The table name in `x`, without surrounding double quotes, when `x` is a portable table or field FK into the database
-  named `db-name`, or nil."
+(defn- fk-schema-and-table
+  "The `[schema table-name]` of `x` when it is a portable table or field FK into the database named `db-name`, or nil.
+  Surrounding double quotes on each segment are ignored."
   [db-name x]
-  (when (and (vector? x)
-             (>= (count x) 3)
-             (= db-name (nth x 0))
-             (let [schema (nth x 1)] (or (nil? schema) (string? schema)))
-             (every? string? (subvec x 2)))
-    ;; Repair strips the quotes from field targets later, after the permission sweep this has to run before.
-    (repr.repair/dequote-identifier (nth x 2))))
+  (when (vector? x)
+    ;; Repair strips these quotes from field targets later, after the permission sweep this has to run before.
+    (let [[db schema table-name & more] (mapv repr.repair/dequote-identifier x)]
+      (when (and (= db-name db)
+                 (or (nil? schema) (string? schema))
+                 (string? table-name)
+                 (every? string? more))
+        [schema table-name]))))
 
 (defn- inferred-schema
   "The schema to fill in for a null-schema reference to one of `tables`, which share a name, or nil to keep the null.
@@ -392,14 +393,11 @@
   picks one for."
   [metadata-provider parsed-query]
   (let [{database-id :id, db-name :name, :keys [default-schema]} (lib.metadata/database metadata-provider)
-        refs    (for [x     (fk-slot-values parsed-query)
-                      :let  [table-name (fk-table-name db-name x)]
-                      :when table-name]
-                  [(nth x 1) table-name])
+        refs    (keep #(fk-schema-and-table db-name %) (fk-slot-values parsed-query))
         schemas (inferred-schemas database-id default-schema refs)
         fill-in (fn [x]
-                  (if-let [schema (when-let [table-name (fk-table-name db-name x)]
-                                    (when (nil? (nth x 1))
+                  (if-let [schema (when-let [[current table-name] (fk-schema-and-table db-name x)]
+                                    (when (nil? current)
                                       (get schemas table-name)))]
                     (assoc x 1 schema)
                     x))]

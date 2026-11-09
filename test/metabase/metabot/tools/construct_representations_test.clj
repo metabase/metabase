@@ -278,7 +278,9 @@
                             (:error (ex-data e)))))]
         (is (=? {:lone       {"source-table" [db-name "lever_data" "user"]
                               "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
-                 :quoted     {"source-table" [db-name "lever_data" "user"]
+                 :quoted-tbl {"source-table" [db-name "lever_data" "user"]
+                              "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
+                 :quoted-sch {"source-table" [db-name "lever_data" "user"]
                               "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
                  :default    {"source-table" [db-name "clean" "orders"]}
                  :named-only :unknown-table
@@ -289,7 +291,8 @@
                  :no-perms   :unknown-table}
                 (mt/with-current-user (mt/user->id :crowberto)
                   {:lone       (construct [nil "user"] [nil "user" "email"])
-                   :quoted     (construct [nil "user"] [nil "\"user\"" "email"])
+                   :quoted-tbl (construct [nil "user"] [nil "\"user\"" "email"])
+                   :quoted-sch (construct [nil "user"] ["\"lever_data\"" "\"user\"" "email"])
                    :default    (construct [nil "orders"])
                    :named-only (construct ["staging" "events"] [nil "events" "kind"])
                    :conflict   (construct ["raw" "orders"] [nil "orders" "status"])
@@ -301,22 +304,25 @@
                                    (construct [nil "user"])))})))))))
 
 (deftest null-schema-fill-in-covers-every-fk-slot-test
-  (testing "source-table, source-field and both field-ref slots are filled in, and other vectors are left alone"
+  (testing "every FK slot is filled in, quoted segments included, and other vectors are left alone"
     (mt/with-temp [:model/Database db {:name (str "Analytics " (random-uuid)) :engine :h2}
                    :model/Table    _  {:name "user" :schema "lever_data" :db_id (:id db)}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [db-name (:name db)
               null-fk [db-name nil "user"]
-              filled  [db-name "lever_data" "user"]]
+              filled  [db-name "lever_data" "user"]
+              quoted  (str "\"" db-name "\"")]
           (is (= {"stages" [{"source-table" filled
                              "breakout"     [["field" {"source-field" (conj filled "id")} (conj filled "email")]
-                                             ["field" (conj filled "email")]]
+                                             ["field" (conj filled "email")]
+                                             ["field" {} [quoted "lever_data" "user" "email"]]]
                              "filters"      [["=" {} ["field" {} "email"] null-fk]]}]}
                  (#'construct/fill-in-null-schemas
                   (lib-be/application-database-metadata-provider (:id db))
                   {"stages" [{"source-table" null-fk
                               "breakout"     [["field" {"source-field" (conj null-fk "id")} (conj null-fk "email")]
-                                              ["field" (conj null-fk "email")]]
+                                              ["field" (conj null-fk "email")]
+                                              ["field" {} [quoted nil "user" "email"]]]
                               "filters"      [["=" {} ["field" {} "email"] null-fk]]}]}))))))))
 
 (defn- metadata-lookup-failures []
