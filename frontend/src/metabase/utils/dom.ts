@@ -170,9 +170,9 @@ export function isSameOrSiteUrlOrigin(url: string): boolean {
 
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-/** Whether `hostname` names this machine, including any `*.localhost` subdomain. */
+/** Whether `hostname` is `localhost`, `127.0.0.1` or `[::1]`. */
 export function isLoopbackHostname(hostname: string): boolean {
-  return LOOPBACK_HOSTNAMES.has(hostname) || hostname.endsWith(".localhost");
+  return LOOPBACK_HOSTNAMES.has(hostname);
 }
 
 export function initializeIframeResizer(onReady = () => {}): void {

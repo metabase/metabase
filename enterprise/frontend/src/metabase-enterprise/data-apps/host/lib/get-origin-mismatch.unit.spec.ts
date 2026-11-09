@@ -35,14 +35,14 @@ describe("getOriginMismatch", () => {
     });
   });
 
-  it("moves a page on a *.localhost name too", () => {
+  it("does not move a page on a *.localhost name, and links to the site URL instead", () => {
     expect(
       getOriginMismatch(
         "http://localhost:3000",
         loc("http://metabase.localhost:3000"),
       ),
     ).toEqual({
-      kind: "redirect",
+      kind: "wrong-origin",
       url: "http://localhost:3000/apps/sales",
     });
   });

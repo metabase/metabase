@@ -58,17 +58,20 @@ describe("getPathnameWithoutSubPath", () => {
 });
 
 describe("isLoopbackHostname", () => {
-  it.each(["localhost", "127.0.0.1", "[::1]", "metabase.localhost"])(
+  it.each(["localhost", "127.0.0.1", "[::1]"])(
     "treats %s as this machine",
     (hostname) => {
       expect(isLoopbackHostname(hostname)).toBe(true);
     },
   );
 
-  it.each(["example.com", "localhost.example.com", "mylocalhost", "10.0.0.1"])(
-    "treats %s as another machine",
-    (hostname) => {
-      expect(isLoopbackHostname(hostname)).toBe(false);
-    },
-  );
+  it.each([
+    "metabase.localhost",
+    "example.com",
+    "localhost.example.com",
+    "mylocalhost",
+    "10.0.0.1",
+  ])("does not treat %s as this machine", (hostname) => {
+    expect(isLoopbackHostname(hostname)).toBe(false);
+  });
 });
