@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -46,6 +48,7 @@ describe("QuestionSettingsSidebar", () => {
   describe("model caching", () => {
     const model = createMockCard({
       type: "model",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
       persisted: true,
       description: "abc",
     });

@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting connection timeouts
+summary: Find where a hanging query is timing out, from your database connection to your load balancer or proxy.
 ---
 
 # Troubleshooting connection timeouts

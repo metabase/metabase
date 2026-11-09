@@ -8,16 +8,17 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
-  NativeDatasetQuery,
   NativeDatasetResponse,
   ParameterValuesMap,
   TokenFeatures,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockDatabase,
-  createMockNativeCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
@@ -27,7 +28,7 @@ export interface SetupOpts {
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
-  card?: Card<NativeDatasetQuery>;
+  card?: Card;
   parameterValues?: ParameterValuesMap;
   nativeQueryResponse?: NativeDatasetResponse;
 }
@@ -36,7 +37,12 @@ export const setup = ({
   showMetabaseLinks = true,
   tokenFeatures = {},
   enterprisePlugins = [],
-  card = createMockNativeCard(),
+  card = createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT 1",
+    }),
+  }),
   parameterValues = {},
   nativeQueryResponse,
 }: SetupOpts = {}) => {

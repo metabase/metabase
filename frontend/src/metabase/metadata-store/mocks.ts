@@ -7,6 +7,7 @@ import type {
   Field,
   Measure,
   NativeQuerySnippet,
+  NormalizedMetric,
   SavedQuestionDatabase,
   Schema,
   Segment,
@@ -33,6 +34,7 @@ export interface EntitiesStateOpts {
   fields?: Field[];
   segments?: Segment[];
   measures?: Measure[];
+  metrics?: NormalizedMetric[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];

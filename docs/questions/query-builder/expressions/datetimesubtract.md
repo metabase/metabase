@@ -1,5 +1,6 @@
 ---
 title: DatetimeSubtract
+summary: Subtract an interval from a datetime, handy for working out a start date from an end date.
 ---
 
 # DatetimeSubtract

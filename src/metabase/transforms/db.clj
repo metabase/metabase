@@ -9,7 +9,9 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -26,6 +28,21 @@
                    :wr.is_active]}]])
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
+
+(mu/defn synced-transform-tags-clause :- [:fn vector?]
+  "The clause over the TransformTag table aliased `alias` selecting the tags remote sync syncs, all but the built-in ones."
+  [alias :- :keyword]
+  [:= (u/qualified-key alias :built_in_type) nil])
+
+(mu/defn built-in-transform-tags-clause :- [:fn vector?]
+  "The clause over the TransformTag table aliased `alias` selecting the built-in tags every instance has."
+  [alias :- :keyword]
+  [:not= (u/qualified-key alias :built_in_type) nil])
+
+(mu/defn synced-transform-transform-tags-clause :- [:fn vector?]
+  "The clause over the TransformTransformTag table aliased `alias` selecting the tags of synced transforms."
+  [alias :- :keyword]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -70,11 +87,6 @@
   "The last checkpoint value of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id [:auto/param transform-id]))
-
-(mu/defn transform-collection-id
-  "The Collection ID of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :collection_id :model/Transform :id transform-id))
 
 (mu/defn insert-transform!
   "Insert `transform` and return the new instance."
@@ -883,11 +895,6 @@
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
-
-(mu/defn field-exists?
-  "Whether a Field with `field-id` exists."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Field :id field-id))
 
 (mu/defn active-field-ids-by-name
   "A map of name to ID for the active Fields of the Table with `table-id`."

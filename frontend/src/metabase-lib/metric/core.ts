@@ -2,14 +2,14 @@
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import type { Metadata } from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import type {
-  ConcreteTableId,
   JsMetricDefinition,
   MeasureId,
   MetricDimension,
   MetricId,
   SegmentId,
+  TableId,
 } from "metabase-types/api";
 
 import type {
@@ -48,7 +48,7 @@ import type {
   TimeFilterParts,
 } from "./types";
 
-export function metadataProvider(jsMetadata: Metadata): MetadataProvider {
+export function metadataProvider(jsMetadata: JsMetadata): MetadataProvider {
   return LibMetric.metadataProvider(jsMetadata) as MetadataProvider;
 }
 
@@ -127,8 +127,8 @@ export function sourceMeasureId(
 
 export function sourceMeasureTableId(
   definition: MetricDefinition,
-): ConcreteTableId | null {
-  return LibMetric.sourceMeasureTableId(definition) as ConcreteTableId | null;
+): TableId | null {
+  return LibMetric.sourceMeasureTableId(definition) as TableId | null;
 }
 
 export function sourceMeasureMetadata(

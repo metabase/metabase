@@ -1,9 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
-import { type Metadata, metadataProvider } from "metabase-lib";
+import { type JsMetadata, metadataProvider } from "metabase-lib";
 import type {
   CardId,
   CardType,
-  ConcreteTableId,
   DatasetQuery,
   FieldId,
   LegacyDatasetQuery,
@@ -32,14 +31,18 @@ import type {
  Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
  */
 export function queryFromTableOrCardMetadata(
-  metadataProvider: MetadataProvider,
+  queryOrMetadataProvider: Query | MetadataProvider,
   tableOrCardMetadata: TableMetadata | CardMetadata,
 ): Query {
-  return ML.query(metadataProvider, tableOrCardMetadata);
+  return ML.query(queryOrMetadataProvider, tableOrCardMetadata);
 }
 
 export function toLegacyQuery(query: Query): LegacyDatasetQuery {
   return ML.legacy_query(query);
+}
+
+export function xrayCellQuery(query: Query): unknown {
+  return ML.xray_cell_query(query);
 }
 
 export function suggestedName(query: Query): string {
@@ -109,11 +112,15 @@ export function swapClauses(
   return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
 }
 
-export function sourceTableOrCardId(query: Query): TableId | null {
-  return ML.source_table_or_card_id(query);
+export function primarySourceTableId(query: Query): TableId | null {
+  return ML.primary_source_table_id(query);
 }
 
-export function allSourceTableIds(query: Query): ConcreteTableId[] {
+export function primarySourceCardId(query: Query): CardId | null {
+  return ML.primary_source_card_id(query);
+}
+
+export function allSourceTableIds(query: Query): TableId[] {
   return ML.all_source_table_ids(query);
 }
 
@@ -158,7 +165,7 @@ export function fromJsQuery(
 }
 
 export function fromJsQueryAndMetadata(
-  metadata: Metadata,
+  metadata: JsMetadata,
   jsQuery: OpaqueDatasetQuery | DatasetQuery,
 ): Query {
   return fromJsQuery(metadataProvider(jsQuery.database, metadata), jsQuery);

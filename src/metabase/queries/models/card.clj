@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -27,7 +26,6 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
@@ -41,7 +39,9 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
@@ -1000,14 +1000,6 @@
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
 
-(defn- library-content-type
-  "The content type a Library collection checks `card` against, counting a question as a dashboard question when `dashboard-pending?`."
-  [card dashboard-pending?]
-  (if (and (= :question (keyword (:type card)))
-           (or (:dashboard_id card) dashboard-pending?))
-    :dashboard-question
-    (:type card)))
-
 (defn- data-app-card-error
   "A 400 error for a card in a data app's collection, with `message`."
   [message]
@@ -1072,7 +1064,7 @@
         populate-query-fields
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
+    (collection/check-allowed-content (:type <>) (:collection_id <>))
     (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
@@ -1087,13 +1079,6 @@
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
     card))
-
-(defn- check-allowed-content
-  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection or dashboard."
-  [card changes]
-  (when (some #(contains? changes %) [:collection_id :dashboard_id])
-    (let [card (apply-dashboard-question-updates card changes)]
-      (collection/check-allowed-content (library-content-type card mi/*deserializing?*) (:collection_id card)))))
 
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
@@ -1137,7 +1122,7 @@
         card     (normalize-card card)]
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
-    (check-allowed-content card changes)
+    (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
@@ -1310,11 +1295,9 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (u/prog1 (queries.db/insert-card! (cond-> card-data
-                                                                                  metadata
-                                                                                  (assoc :result_metadata metadata)))
-                                                (when (collections/remote-synced-collection? (:collection_id <>))
-                                                  (collections/check-non-remote-synced-dependencies <>))))]
+                                              (queries.db/insert-card! (cond-> card-data
+                                                                         metadata
+                                                                         (assoc :result_metadata metadata))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
@@ -1535,7 +1518,7 @@
                                              :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
                                              :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                         :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                                        :result_metadata :collection_preview :verified-result-metadata?})]
+                                                        :result_metadata :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
       (maybe-unverify! card-before-update updated-fields actor)
       (queries.db/update-card! (:id card-before-update)
@@ -1550,7 +1533,7 @@
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
-    (collection/check-for-remote-sync-update card-before-update)))
+    (queries.db/card (:id card-before-update))))
 
 (defn- changed-action-events
   "The `[topic action]` pairs that announce how an update to a card changed its actions: `:event/action-delete` with
@@ -1620,194 +1603,172 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defn- export-result-metadata [card _k metadata]
-  (cond
-    (empty? metadata)
-    ::serdes/skip
+(def ^:private export-walkers
+  "The dependency walkers for a Card row with database ids."
+  {:mbql                   serialization/export-mbql-dependencies
+   :parameters             serialization/export-parameters-dependencies
+   :visualization-settings serialization/export-visualization-settings-dependencies})
 
-    ;; Native cards — models included — keep their result_metadata. Unlike MBQL cards, their columns can't be
-    ;; re-derived from the query at import time without executing the SQL, and downstream questions that join them
-    ;; depend on this metadata to resolve join columns. We whitelist the portable keys (dropping computed `:lib/*`,
-    ;; `:fingerprint`, etc.) rather than the model soft-key set, since native columns also need their structural
-    ;; type info preserved. This must precede the model branch, whose soft-key set omits type info.
-    (lib/native? (:dataset_query card))
-    (let [keep-keys #{:name :base_type :effective_type :field_ref :database_type
-                      :display_name :semantic_type :description :visibility_type :settings
-                      :fk_target_field_id :id :table_id}]
-      (mapv (fn [m]
-              (-> (select-keys m keep-keys)
-                  (m/update-existing :table_id           serdes/*export-table-fk*)
-                  (m/update-existing :id                 serdes/*export-field-fk*)
-                  (m/update-existing :field_ref          serdes/export-mbql)
-                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))
-            metadata))
+(def ^:private import-walkers
+  "The dependency walkers for Card entities, which hold references."
+  {:mbql                   serialization/import-mbql-dependencies
+   :parameters             serialization/import-parameters-dependencies
+   :visualization-settings serialization/import-visualization-settings-dependencies})
 
-    (model? card)
-    (let [keep-keys (into #{:name}
-                          (map u/->snake_case_en)
-                          (lib/model-preserved-keys false))]
-      (mapv (fn [m]
-              (-> (select-keys m keep-keys)
-                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
-                  (m/update-existing :id serdes/*export-field-fk*)))
-            metadata))
+(defn- result-metadata-dependencies
+  "The dependencies of a Card's `:result_metadata`: what their field refs refer to, found with `mbql`."
+  [metadata {:keys [mbql]}]
+  (into #{} (comp (keep :field_ref) (mapcat mbql)) metadata))
 
-    :else
-    ::serdes/skip))
+(defmethod serialization/storage-paths :model/Card [_ entities ctx]
+  (mapv (fn [card]
+          (let [base (serialization/storage-default-collection-path card ctx)]
+            (cond
+              (:dashboard_id card)
+              (let [dash-segment (get (:dashboards ctx) (:dashboard_id card))]
+                (if dash-segment
+                  (into (vec (butlast base)) [dash-segment (last base)])
+                  base))
 
-(defn- import-result-metadata [metadata]
-  (when metadata
-    (for [m metadata]
-      (-> m
-          (m/update-existing :table_id  serdes/*import-table-fk*)
-          (m/update-existing :id        serdes/*import-field-fk*)
-          (m/update-existing :field_ref serdes/import-mbql)
-          ;; FIXME: remove that `if` after v52
-          (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
+              (:document_id card)
+              (let [doc-segment (get (:documents ctx) (:document_id card))]
+                (if doc-segment
+                  (into (vec (butlast base)) [doc-segment (last base)])
+                  base))
 
-(defn- result-metadata-deps [allow-int-ids? metadata]
-  (when (seq metadata)
-    (-> (reduce into #{} (for [m metadata]
-                           (serdes/mbql-deps allow-int-ids? (:field_ref m))))
-        (disj nil))))
-
-(defmethod serdes/storage-path "Card" [card ctx]
-  (let [base (serdes/storage-default-collection-path card ctx)]
-    (cond
-      (:dashboard_id card)
-      (let [dash-segment (get (:dashboards ctx) (:dashboard_id card))]
-        (if dash-segment
-          (into (vec (butlast base)) [dash-segment (last base)])
-          base))
-
-      (:document_id card)
-      (let [doc-segment (get (:documents ctx) (:document_id card))]
-        (if doc-segment
-          (into (vec (butlast base)) [doc-segment (last base)])
-          base))
-
-      :else base)))
-
-(defmethod serdes/load-one! "Card" [ingested maybe-local]
-  (u/prog1 (serdes/default-load-one! ingested maybe-local)
-    (collection/check-allowed-content
-     (library-content-type <> (and (some? (:dashboard_id ingested))
-                                   (contains? (::serdes/strip ingested) :dashboard_id)))
-     (:collection_id <>))))
+              :else base)))
+        entities))
 
 ;; A data app's resource collection holds the saved questions and metric copies the app runs.
 (defmethod collection/allowed-namespaces :model/Card
   [_]
   (conj collection/default-allowed-namespaces collection/data-apps-ns))
 
-(defmethod serdes/make-spec "Card"
-  [_model-name _opts]
-  {:schema ::queries.schema/external-card
-   :copy [:archived :archived_directly :collection_position :collection_preview :description :display
-          :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
-          :card_schema]
-   :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
-          ;; serialized representation is versioned by :card_schema instead
-          :metabase_version
-          ;; cache invalidation is instance-specific
-          :cache_invalidated_at
-          ;; those are instance-specific analytic columns
-          :view_count :last_used_at :initially_published_at
-          ;; this is data migration column
-          :dataset_query_metrics_v2_migration_backup
-          ;; this column is not used anymore
-          :cache_ttl
-          ;; temporary column to power rollback from v57 to v56; we can remove it in v58
-          :legacy_query
-          ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
-          :query_type
-          ;; always re-derived from dataset_query by populate-query-fields on import
-          :table_id :source_card_id
-          ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
-          :metabot_conversation_id :metabot_chart_id
-          ;; always re-derived from public_uuid on import
-          :public_uuid_prefix]
-   :transform
-   {;; database_id is usually derivable from dataset_query, but must be kept when the query
-    ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
-    :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
-                              {::serdes/fk true
-                               :export-with-context
-                               (fn [{:keys [dataset_query database_id]} _k _v]
-                                 (if (and (seq dataset_query) (get dataset_query :database))
-                                   ::serdes/skip
-                                   (when database_id
-                                     (serdes/*export-database-fk* database_id))))
-                               :import import})
-    :collection_id          (serdes/fk :model/Collection)
-    :dashboard_id           (serdes/fk :model/Dashboard)
-    :document_id            (serdes/fk :model/Document)
-    :creator_id             (serdes/fk :model/User)
-    :made_public_by_id      (serdes/fk :model/User)
-    :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
-    :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-    :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
-    :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export-with-context export-result-metadata :import import-result-metadata}
-    ;; curated metric v2 dimensions & their column mappings; nil for non-metric cards, which elides the keys
-    :dimensions             {:export metrics/export-dimensions :import metrics/import-dimensions}
-    :dimension_mappings     {:export metrics/export-dimension-mappings :import metrics/import-dimension-mappings}}
-   :defaults {:archived            false
-              :archived_directly   false
-              :collection_preview  true
-              :enable_embedding    false}})
+(defn- walk-export-result-metadata
+  "The exported `result_metadata` of `card`, its ids replaced by what `visit` resolves them to. Native cards, models
+  included, keep the keys of their columns, which can't be derived from the query without running it; other models
+  keep the keys a model preserves; other cards export none."
+  [visit {:keys [result_metadata dataset_query] :as card}]
+  (let [field #(serialization/visit-some :model/Field % visit)]
+    (cond
+      (empty? result_metadata)
+      nil
 
-(defn- card-deps
-  "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for
-  the mbql walkers. Shared by [[serdes/deserialization-dependencies]] (allow-int-ids? false) and
-  [[serdes/serialization-dependencies]] (allow-int-ids? true)."
-  [allow-int-ids? {:keys [collection_id database_id dataset_query dimension_mappings parameters parameter_mappings
-                          result_metadata source_card_id visualization_settings
-                          dashboard_id document_id]}]
+      (lib/native? dataset_query)
+      (mapv (fn [column]
+              (-> (select-keys column [:name :base_type :effective_type :field_ref :database_type :display_name
+                                       :semantic_type :description :visibility_type :settings :fk_target_field_id
+                                       :id :table_id])
+                  (m/update-existing :table_id #(serialization/visit-some :model/Table % visit))
+                  (m/update-existing :id field)
+                  (m/update-existing :field_ref #(serialization/walk-export visit %))
+                  (m/update-existing :fk_target_field_id field)))
+            result_metadata)
+
+      (model? card)
+      (mapv (fn [column]
+              (-> (select-keys column (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false)))
+                  (m/update-existing :fk_target_field_id field)
+                  (m/update-existing :id field)))
+            result_metadata)
+
+      :else
+      nil)))
+
+(defn- walk-import-result-metadata
+  "The `result_metadata` of an exported card with its references replaced by what `visit` resolves them to."
+  [visit result-metadata]
+  (some->> result-metadata
+           (mapv (fn [column]
+                   (-> column
+                       (m/update-existing :table_id #(serialization/visit-some :model/Table % visit))
+                       (m/update-existing :id #(serialization/visit-some :model/Field % visit))
+                       (m/update-existing :field_ref #(serialization/walk-import-refs visit %))
+                       (m/update-existing :fk_target_field_id
+                                          #(if (number? %) % (serialization/visit-some :model/Field % visit))))))))
+
+(defn- export-database-ids
+  "A transform fn exporting the Database of each card whose query doesn't name it, the only reference of an empty
+  query; the rest leave it out."
+  [store cards ids _opts]
+  (mapv (fn [{:keys [dataset_query]} db-name]
+          (when-not (and (seq dataset_query) (:database dataset_query))
+            db-name))
+        cards
+        (serialization/column-refs store :model/Database ids)))
+
+(defmethod serialization/spec :model/Card [_]
+  {:schema    ::queries.schema/external-card
+   :copy      [:archived :archived_directly :collection_position :description :display
+               :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name :card_schema]
+   :skip      [:metabase_version :cache_invalidated_at :view_count :last_used_at :initially_published_at
+               :dataset_query_metrics_v2_migration_backup :cache_ttl :legacy_query :query_type :table_id
+               :source_card_id :metabot_conversation_id :metabot_chart_id :public_uuid_prefix]
+   :transform {:database_id            (assoc serialization/database-transform :export export-database-ids)
+               :collection_id          (serialization/fk-transform :model/Collection)
+               :dashboard_id           (serialization/fk-transform :model/Dashboard)
+               :document_id            (serialization/fk-transform :model/Document)
+               :creator_id             serialization/user-transform
+               :made_public_by_id      serialization/user-transform
+               :dataset_query          serialization/mbql-transform
+               :parameters             serialization/parameters-transform
+               :parameter_mappings     serialization/parameter-mappings-transform
+               :visualization_settings serialization/visualization-settings-transform
+               :result_metadata        {:export (fn [store cards _ _]
+                                                  (serialization/export-in-bulk
+                                                   store cards walk-export-result-metadata))
+                                        :import (fn [store _ xs opts]
+                                                  (serialization/import-in-bulk
+                                                   store xs opts walk-import-result-metadata))}
+               :dimensions             {:export (fn [store _ xs _]
+                                                  (serialization/export-in-bulk
+                                                   store xs metrics/walk-export-dimensions))
+                                        :import (fn [store _ xs opts]
+                                                  (serialization/import-in-bulk
+                                                   store xs opts metrics/walk-import-dimensions))}
+               :dimension_mappings     {:export (fn [store _ xs _]
+                                                  (serialization/export-in-bulk
+                                                   store xs metrics/walk-export-dimension-mappings))
+                                        :import (fn [store _ xs opts]
+                                                  (serialization/import-in-bulk
+                                                   store xs opts metrics/walk-import-dimension-mappings))}}
+   :defaults  {:archived          false
+               :archived_directly false
+               :enable_embedding  false}})
+
+(defn- dimension-mappings-dependencies
+  "The dependencies of a Card's `:dimension_mappings`: what their targets refer to, found with `mbql`."
+  [mappings {:keys [mbql]}]
+  (into #{} (comp (keep :target) (mapcat mbql)) mappings))
+
+(defn- card-dependencies
+  "The dependencies of a Card, found with the `walkers` of [[export-walkers]] or [[import-walkers]]."
+  [{:keys [collection_id dataset_query dimension_mappings parameter_mappings result_metadata source_card_id
+           dashboard_id document_id] :as card}
+   {:keys [mbql parameters visualization-settings] :as walkers}]
   (set
    (concat
-    (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
-    (metrics/dimension-mappings-deps allow-int-ids? dimension_mappings)
-    (serdes/parameters-deps allow-int-ids? parameters)
-    (when (and allow-int-ids? database_id) [[{:model "Database" :id database_id}]])
-    (when source_card_id #{[{:model "Card" :id source_card_id}]})
-    (when collection_id #{[{:model "Collection" :id collection_id}]})
-    (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})
-    (when document_id #{[{:model "Document" :id document_id}]})
-    (result-metadata-deps allow-int-ids? result_metadata)
-    (serdes/mbql-deps allow-int-ids? dataset_query)
-    (serdes/visualization-settings-deps allow-int-ids? visualization_settings))))
+    (mapcat mbql parameter_mappings)
+    (dimension-mappings-dependencies dimension_mappings walkers)
+    (parameters (:parameters card))
+    (when source_card_id #{[:model/Card source_card_id]})
+    (when collection_id #{[:model/Collection collection_id]})
+    (when dashboard_id #{[:model/Dashboard dashboard_id]})
+    (when document_id #{[:model/Document document_id]})
+    (result-metadata-dependencies result_metadata walkers)
+    (mbql dataset_query)
+    (visualization-settings (:visualization_settings card)))))
 
-(defmethod serdes/deserialization-dependencies "Card" [card]
-  (card-deps false card))
+(defn- export-card-dependencies
+  "The `[model id]` dependencies of a Card row, its Database included."
+  [{:keys [database_id] :as card}]
+  (cond-> (card-dependencies card export-walkers)
+    database_id (conj [:model/Database database_id])))
 
-(defmethod serdes/descendants "Card" [_model-name id _opts]
-  (let [card               (queries.db/card id)
-        query              (not-empty (:dataset_query card))
-        source-cards       (some-> query lib/all-source-card-ids)
-        template-tags      (some-> query lib/all-template-tags)
-        parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
-        snippets           (some->> template-tags (keep :snippet-id))]
-    (into {} (concat
-              (for [source-card source-cards]
-                {["Card" source-card] {"Card" id}})
-              (for [{:keys [card-id]} template-tags
-                    :when             card-id]
-                {["Card" card-id] {"Card" id}})
-              (for [card-id parameters-card-id]
-                {["Card" card-id] {"Card" id}})
-              (for [snippet-id snippets]
-                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
-
-(defmethod serdes/extract-query "Card"
-  [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
-  (queries.db/cards-for-serdes-reducible collection-set
-                                         filter-column
-                                         filter-ids
-                                         (serdes/extract-order-columns model-name opts)))
-
-(defmethod serdes/serialization-dependencies "Card" [_model-name card]
-  (card-deps true card))
+(defn- import-card-dependencies
+  "The `[model ref]` dependencies of a Card entity."
+  [card]
+  (card-dependencies card import-walkers))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -1922,3 +1883,51 @@
                             (when (setting/get :enable-public-sharing)
                               [:= :report_card.public_uuid nil])
                             (staleness/collection-filter :report_card.collection_id args)]})
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/Card [_ entities]
+  (mapv import-card-dependencies entities))
+
+(defmethod serialization/export-dependencies :model/Card [_ cards]
+  (mapv export-card-dependencies cards))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defn- overrides-stored?
+  "Whether each column of `metadata`, the exported overrides of a model, matches the column of `stored` metadata at
+  its position."
+  [metadata stored]
+  (and (= (count metadata) (count stored))
+       (every? true? (map (fn [column stored-column] (= column (select-keys stored-column (keys column))))
+                          metadata stored))))
+
+(defn- with-model-metadata
+  "The load `item` of a Card that updates a model, without the exported overrides of its metadata when the local row
+  stores them, or with them applied to freshly inferred metadata, as an update of its query would store them."
+  [{:keys [row local] :as item}]
+  (let [{query :dataset_query metadata :result_metadata card-type :type} row]
+    (cond
+      (not (and local query (seq metadata) (= :model (keyword card-type)) (not-any? :id metadata)))
+      item
+
+      (overrides-stored? metadata (:result_metadata local))
+      (update item :row dissoc :result_metadata)
+
+      :else
+      (assoc-in item [:row :result_metadata]
+                (or (card.metadata/infer-metadata-with-model-overrides query row) metadata)))))
+
+(defn- keep-local-metadata
+  "The load `item` of a Card without a `:result_metadata` to import keeping the local one, which export leaves out of
+  the cards whose metadata the query derives."
+  [item]
+  (cond-> item
+    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)))
+
+(defmethod serialization/before-load :model/Card [_ items]
+  (mapv (comp with-model-metadata keep-local-metadata) items))
+
+(defmethod remote-sync/spec :model/Card
+  [_model]
+  {:synced-filter-clause queries.db/synced-cards-clause})

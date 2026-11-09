@@ -31,6 +31,7 @@ import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionF
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   BaseEntityId,
@@ -46,7 +47,6 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -223,14 +223,14 @@ function getQuestion({
       display: "table",
       visualization_settings: {},
       type: "question",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        },
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
+      }),
     },
     metadata,
   );
@@ -285,14 +285,9 @@ describe("SaveQuestionModal", () => {
       await setup(
         new Question(
           {
-            dataset_query: {
-              type: "native",
-              database: ORDERS_ID,
-              native: {
-                query: "select * from orders",
-              },
-              display: "table",
-            },
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "select * from orders",
+            }),
           },
           metadata,
         ),
@@ -531,14 +526,9 @@ describe("SaveQuestionModal", () => {
       await setup(
         new Question(
           {
-            dataset_query: {
-              type: "native",
-              database: ORDERS_ID,
-              native: {
-                query: "select * from orders",
-              },
-              display: "table",
-            },
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "select * from orders",
+            }),
           },
           metadata,
         ),
@@ -561,11 +551,9 @@ describe("SaveQuestionModal", () => {
       const { onCreateMock, onCloseMock } = await setup(
         new Question(
           {
-            dataset_query: {
-              type: "native",
-              database: SAMPLE_DB_ID,
-              native: { query: "SELECT 1" },
-            },
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "SELECT 1",
+            }),
             display: "table",
           },
           metadata,
@@ -641,9 +629,9 @@ describe("SaveQuestionModal", () => {
       expect(
         await screen.findByLabelText(/Which tab should this go on/),
       ).toBeInTheDocument();
-      await waitFor(async () => {
+      await waitFor(() => {
         expect(
-          await screen.findByLabelText(/Which tab should this go on/),
+          screen.getByLabelText(/Which tab should this go on/),
         ).toHaveValue("Foo Tab 1");
       });
     });
@@ -916,14 +904,14 @@ describe("SaveQuestionModal", () => {
   describe("Cache TTL field", () => {
     const question = Question.create({
       metadata,
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        },
-      },
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
+      }),
     });
 
     describe("OSS", () => {
@@ -1072,9 +1060,9 @@ describe("SaveQuestionModal", () => {
           await userEvent.click(saveLocDropdown());
           await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
           await userEvent.click(newCollBtn());
-          await waitFor(async () => {
+          await waitFor(() => {
             expect(
-              await screen.findByRole("heading", {
+              screen.getByRole("heading", {
                 name: "Create a new collection",
               }),
             ).toBeInTheDocument();

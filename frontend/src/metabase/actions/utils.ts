@@ -6,8 +6,7 @@ import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasActionsEnabled } from "metabase/common/utils/database";
 import type { ButtonProps } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type Field from "metabase-lib/v1/metadata/Field";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import * as Lib from "metabase-lib";
 import type {
   ActionDashboardCard,
   ActionDisplayType,
@@ -59,51 +58,6 @@ function getSampleOptions(fieldType: FieldType) {
     ? getOptionsFromArray([1, 2, 3])
     : getOptionsFromArray([t`Option One`, t`Option Two`, t`Option Three`]);
 }
-
-const AUTOMATIC_DATE_TIME_FIELDS = [
-  TYPE.CreationDate,
-  TYPE.CreationTemporal,
-  TYPE.CreationTime,
-  TYPE.CreationTimestamp,
-
-  TYPE.DeletionDate,
-  TYPE.DeletionTemporal,
-  TYPE.DeletionTime,
-  TYPE.DeletionTimestamp,
-
-  TYPE.UpdatedDate,
-  TYPE.UpdatedTemporal,
-  TYPE.UpdatedTime,
-  TYPE.UpdatedTimestamp,
-];
-
-const isAutomaticDateTimeField = (field: Field) => {
-  return (
-    field.semantic_type !== null &&
-    AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type)
-  );
-};
-
-const isEditableField = (field: Field, parameter: Parameter) => {
-  const isRealField = typeof field.id === "number";
-  if (!isRealField) {
-    // Filters out custom, aggregated columns, etc.
-    return false;
-  }
-
-  if (field.isPK()) {
-    // Most of the time PKs are auto-generated,
-    // but there are rare cases when they're not
-    // In this case they're marked as `required`
-    return parameter.required;
-  }
-
-  if (isAutomaticDateTimeField(field)) {
-    return parameter.required;
-  }
-
-  return true;
-};
 
 export const inputTypeHasOptions = (inputType: InputSettingType) =>
   ["select", "radio"].includes(inputType);
@@ -232,10 +186,6 @@ const getFormField = (
   parameter: Parameter,
   fieldSettings: LocalFieldSettings,
 ) => {
-  if (fieldSettings.field && !isEditableField(fieldSettings.field, parameter)) {
-    return undefined;
-  }
-
   const fieldProps: ActionFormFieldProps = {
     name: parameter.id,
     type: fieldPropsTypeMap[fieldSettings?.inputType] ?? "text",
@@ -250,7 +200,6 @@ const getFormField = (
     // fieldSettings for implicit actions contain only `hidden` and `id`
     // in this case we rely on required settings of parameter
     optional: fieldSettings.required === false || parameter.required === false,
-    field: fieldSettings.field,
   };
 
   if (inputTypeHasOptions(fieldSettings.inputType)) {
@@ -270,10 +219,9 @@ export const getForm = (
     sortActionParams({ fields: fieldSettings }),
   );
   return {
-    // Unjustified type cast. FIXME
-    fields: sortedParams
-      .map((param) => getFormField(param, fieldSettings[param.id] ?? {}))
-      .filter(Boolean) as ActionFormFieldProps[],
+    fields: sortedParams.map((param) =>
+      getFormField(param, fieldSettings[param.id] ?? {}),
+    ),
   };
 };
 
@@ -422,4 +370,16 @@ export const getActionItems = ({
   }
 
   return actionItems;
+};
+
+export const supportsImplicitActions = (query: Lib.Query): boolean => {
+  const { isNative } = Lib.queryDisplayInfo(query);
+  if (isNative || Lib.hasClauses(query, -1)) {
+    return false;
+  }
+
+  const pkColumns = Lib.returnedColumns(query, -1).filter((column) =>
+    Lib.isPrimaryKey(column),
+  );
+  return pkColumns.length === 1;
 };

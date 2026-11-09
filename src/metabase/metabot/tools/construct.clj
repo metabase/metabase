@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
-   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -26,15 +25,17 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-processor.core :as qp]
+   [metabase.serialization.core :as serialization]
+   [metabase.serialization.protocol.mp :as serialization.protocol.mp]
+   [metabase.serialization.resolve :as serialization.resolve]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -136,19 +137,9 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
-   [:show_chart {:optional true
-                 :description (str "Pass false for a query you build only to read its values with run_query: "
-                                   "the user is then shown no chart. Defaults to true.")}
-    [:maybe :boolean]]
+   shared/show-chart-arg
    [:title :string]
    [:description :string]])
-
-(defn without-show-chart
-  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
-   model is not told about the argument."
-  [tool]
-  (update tool :schema (fn [[arrow [cat args-schema] output]]
-                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -230,7 +221,7 @@
   is not a table reference at all, so it must not be collected — and on it, it still has to be
   permission-checked like any portable FK."
   [x]
-  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+  (when (and repr.resolve/*numeric-ids-allowed?* (pos-int? x))
     x))
 
 (defn- numeric-field-id-ref
@@ -241,7 +232,7 @@
   so we tag the raw id and resolve it to a table id in [[resolve-table-fk]]. Off the numeric-id
   surface a bare number is not a field reference at all, so it must not be collected."
   [x]
-  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+  (when (and repr.resolve/*numeric-ids-allowed?* (pos-int? x))
     [::field-id x]))
 
 (defn- numeric-scoped-content-ref
@@ -257,7 +248,7 @@
   a card pulls in whatever tables its own query names, which this pre-flight sweep cannot see,
   and the QP re-checks them at execution."
   [model x]
-  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+  (when (and repr.resolve/*numeric-ids-allowed?* (pos-int? x))
     [::scoped-content model x]))
 
 (defn- node-scoped-content-ref
@@ -306,7 +297,7 @@
         (tree-seq coll? seq parsed-query)))
 
 (def ^:private unresolved-table-fk-errors
-  #{:unknown-table :ambiguous-table :cross-database-table})
+  #{:unknown-table :ambiguous-table :unknown-database :cross-database-table})
 
 ;;; ----- the numeric-id boundary contract -------------------------------------------------
 ;;;
@@ -407,7 +398,7 @@
   (:table-id (visible-field metadata-provider field-id)))
 
 (defn- resolve-table-fk
-  [metadata-provider resolver table-fk]
+  [metadata-provider store table-fk]
   (cond
     (pos-int? table-fk)
     ;; Already a table id, but not necessarily one this query may reference. Resolve it through
@@ -429,8 +420,8 @@
     (let [[_ model id] table-fk
           row (try
                 (case model
-                  :model/Measure (resolve.mp/measure-by-id permission-aware-content-store id)
-                  :model/Segment (resolve.mp/segment-by-id permission-aware-content-store id)
+                  :model/Measure (serialization.protocol.mp/measure-by-id permission-aware-content-store id)
+                  :model/Segment (serialization.protocol.mp/segment-by-id permission-aware-content-store id)
                   nil)
                 (catch Exception _ nil))]
       (when-let [table-id (or (:table-id row) (:table_id row))]
@@ -438,7 +429,7 @@
 
     :else
     (try
-      (serdes.resolve/import-table-fk resolver table-fk)
+      (get (serialization.resolve/table-ids store #{table-fk} (repr.resolve/import-opts)) table-fk)
       (catch clojure.lang.ExceptionInfo e
         (when-not (contains? unresolved-table-fk-errors (:error (ex-data e)))
           (throw e))
@@ -455,7 +446,7 @@
   as plain not-found — an id being absent, hidden, or in the wrong database are all the same
   answer to the agent, and distinguishing them would report on rows it cannot otherwise see."
   [metadata-provider parsed-query]
-  (when serdes.resolve/*numeric-ids-allowed?*
+  (when repr.resolve/*numeric-ids-allowed?*
     (doseq [ref (referenced-table-fks parsed-query)]
       (cond
         (pos-int? ref)
@@ -530,9 +521,9 @@
 
   ([metadata-provider portable-query already-checked]
    (if-let [table-fks (not-empty (referenced-table-fks portable-query))]
-     (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)]
+     (let [store (serialization.protocol.mp/import-store metadata-provider permission-aware-content-store)]
        (reduce (fn [checked table-fk]
-                 (if-let [table-id (resolve-table-fk metadata-provider resolver table-fk)]
+                 (if-let [table-id (resolve-table-fk metadata-provider store table-fk)]
                    (if (contains? checked table-id)
                      checked
                      (do (query-check-table! table-fk table-id)
@@ -580,7 +571,7 @@
   [ref]
   (when-let [card (cond
                     (string? ref)                           (metabot.db/card-by-entity-id ref)
-                    serdes.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
+                    repr.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
     (when (mi/can-read? card)
       card)))
 
@@ -602,16 +593,16 @@
           metric-ids   (into metric-ids (comp (filter #(= :metric (:type %))) (map :id)) cards)
           card-ids     (into #{} (comp (remove #(= :metric (:type %))) (map :id)) cards)
           source-card  (some-> (or (first-stage-source-card-eid parsed-query)
-                                   (when serdes.resolve/*numeric-ids-allowed?*
+                                   (when repr.resolve/*numeric-ids-allowed?*
                                      (first-stage-numeric-source-card parsed-query)))
                                readable-card-by-ref
                                :id)
           source-table (when-let [fk (or (first-stage-source-table-fk parsed-query)
-                                         (when serdes.resolve/*numeric-ids-allowed?*
+                                         (when repr.resolve/*numeric-ids-allowed?*
                                            (first-stage-numeric-source-table parsed-query)))]
                          (resolve-table-fk metadata-provider
-                                           (resolve.mp/import-resolver metadata-provider
-                                                                       permission-aware-content-store)
+                                           (serialization.protocol.mp/import-store metadata-provider
+                                                                                   permission-aware-content-store)
                                            fk))
           uncurated    (curation/uncurated-sources metadata-provider
                                                    {:source-table source-table
@@ -656,10 +647,10 @@
   [parsed-query]
   (detect-metabase-uri-source-table! parsed-query)
   (let [source-table-fk     (first-stage-source-table-fk parsed-query)
-        numeric-table       (when serdes.resolve/*numeric-ids-allowed?*
+        numeric-table       (when repr.resolve/*numeric-ids-allowed?*
                               (first-stage-numeric-source-table parsed-query))
         source-card-eid     (first-stage-source-card-eid parsed-query)
-        numeric-card        (when serdes.resolve/*numeric-ids-allowed?*
+        numeric-card        (when repr.resolve/*numeric-ids-allowed?*
                               (first-stage-numeric-source-card parsed-query))]
     (cond
       source-table-fk
@@ -739,11 +730,14 @@
 ;;; ---------------------------------------- Implicit joins ----------------------------------------
 
 (defn- field-ref-for-error
-  "Return `field-ref` with portable field paths unless the caller accepts numeric IDs."
+  "Return `field-ref` with Field references unless the caller accepts numeric IDs."
   [metadata-provider field-ref]
-  (if serdes.resolve/*numeric-ids-allowed?*
+  (if repr.resolve/*numeric-ids-allowed?*
     field-ref
-    (serdes.resolve/export-mbql (resolve.mp/export-resolver metadata-provider permission-aware-content-store) field-ref)))
+    (first (serialization/export-in-bulk (serialization.protocol.mp/export-store metadata-provider
+                                                                                 permission-aware-content-store)
+                                         [field-ref]
+                                         serialization/walk-export-refs))))
 
 (defn- foreign-key-target-table-id
   [metadata-provider field]
@@ -770,7 +764,7 @@
 
 (defn- intermediate-source-field
   [metadata-provider from-table-id to-table-id]
-  (let [fields (->> (resolve.mp/outbound-fks-from-table metadata-provider from-table-id)
+  (let [fields (->> (serialization.protocol.mp/outbound-fks-from-table metadata-provider from-table-id)
                     (map :source-field)
                     (filter #(visible-field metadata-provider (:id %)))
                     entity-details/permission-filter-columns
@@ -1236,7 +1230,7 @@
       (let [;; Repair's mini-resolve lookups are best-effort - a failure is logged at debug and the
             ;; clause left alone - and `resolve-query` below resolves the query for real. A refusal
             ;; in there reaches nobody, so it must not go into the audit trail as an access attempt.
-            repaired      (binding [resolve.mp/*audit-refusals?* false]
+            repaired      (binding [shared.content-store/*audit-refusals?* false]
                             (repr.repair/repair mp parsed permission-aware-content-store))
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
@@ -1435,16 +1429,6 @@
        (str "- To state any of its values, call `run_query` with `query_id` `" query-id
             "` first. Call it without telling the user you are doing so.")))))
 
-(defn- query-instructions
-  "What to tell the model to do with a query built without a chart."
-  [query-id]
-  (te/lines
-   "Your query has been created. The user has not been shown it."
-   ""
-   (str "- To read its values, call `run_query` with `query_id` `" query-id "`.")
-   (str "- To let the user open it, link it using: `" (te/link "Link text" "metabase://query/" query-id) "`")
-   instructions/not-saved-instruction))
-
 (defrecord ConstructNotebookQueryTool []
   tools/Tool
   (declaration [_]
@@ -1462,13 +1446,18 @@
           ;; Declared pipeline errors and refusals are recoverable; anything else is `:internal`.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))
-          ;; A query built only to be read needs run_query, so without it the chart is the one way
-          ;; the user sees anything and is always shown.
-          show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+          ;; A query built only to be read needs run_query to read it, so without that the chart is the one way
+          ;; the user sees anything and is always shown. Readability reads the app DB, so it is checked only when
+          ;; it can change the delivery.
+          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))]
       (if-not show-chart?
-        {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
-                                         (query-instructions (:query-id structured)))
-         :structured-output (assoc structured :result-type :query)}
+        (let [instruction-text (te/lines
+                                "Your query has been created."
+                                ""
+                                (instructions/query-hidden-instructions-for (:query-id structured)))]
+          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
+                                           instruction-text)
+           :structured-output (assoc structured :result-type :query)})
         (let [chart            (create-chart-tools/create-chart
                                 {:query-id      (:query-id structured)
                                  :chart-type    chart-type

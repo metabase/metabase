@@ -1,6 +1,5 @@
 import type {
   CacheStrategy,
-  LocalFieldReference,
   Parameter,
   ParameterValueOrArray,
   VisualizerColumnValueSource,
@@ -8,12 +7,7 @@ import type {
 
 import type { Card, ColumnSettings, UnsavedCard } from "./card";
 import type { DatabaseId } from "./database";
-import type {
-  Field,
-  FieldFingerprint,
-  FieldId,
-  FieldVisibilityType,
-} from "./field";
+import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import type { Insight } from "./insight";
 import type { NormalizedQueryParameter, ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
@@ -94,7 +88,7 @@ export interface DatasetColumn {
 }
 
 export interface ResultsMetadata {
-  columns: Field[];
+  columns: DatasetColumn[];
 }
 
 export interface DatasetData {
@@ -243,7 +237,7 @@ export interface TemplateTag {
   "snippet-name"?: string;
 
   // Field filter and time grouping specific
-  dimension?: LocalFieldReference;
+  "field-id"?: FieldId;
   alias?: string;
 
   // Field filter specific

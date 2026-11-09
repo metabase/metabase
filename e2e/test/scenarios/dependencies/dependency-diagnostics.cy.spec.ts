@@ -1478,7 +1478,7 @@ function createNativeQuestionWithParameterWithCardSource({
           type: "dimension",
           name: "filter",
           "display-name": "Filter",
-          dimension: ["field", tableFieldId, null],
+          "field-id": tableFieldId,
           "widget-type": "string/=",
         },
       },

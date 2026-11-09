@@ -1,5 +1,6 @@
 ---
 title: "Developer Guide"
+summary: Everything you need to work on the Metabase codebase, from setting up a dev environment to writing your own driver.
 redirect_from:
   - /docs/latest/developers-guide
 ---

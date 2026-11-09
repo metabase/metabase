@@ -1,5 +1,6 @@
 ---
 title: Using or migrating from an H2 application database
+summary: Fix problems with an H2 application database, including failed migrations, locked or corrupted files, and downgrades.
 ---
 
 # Using or migrating from an H2 application database

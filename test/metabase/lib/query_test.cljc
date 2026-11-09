@@ -617,7 +617,7 @@
            :database 1
            :stages   [{:lib/type      :mbql.stage/native
                        :native        "SELECT * FROM table WHERE {{checkin_date}};"
-                       :template-tags [{:dimension    [:field {} 2]
+                       :template-tags [{:field-id 2
                                         :display-name "Checkin Date"
                                         :name         "checkin_date"
                                         :type         :dimension
@@ -630,7 +630,7 @@
                                             :display-name "Checkin Date"
                                             :type         :dimension
                                             :widget-type  :date/all-options
-                                            :dimension    [:field 2 nil]}}}))))
+                                            :field-id     2}}}))))
 
 #?(:clj
    (deftest ^:synchronized query-from-legacy-error-containment-test

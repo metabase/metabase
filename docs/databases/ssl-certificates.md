@@ -1,5 +1,6 @@
 ---
 title: SSL certificate
+summary: Secure the connection between Metabase and your database with an SSL certificate, including truststores and keystores.
 redirect_from:
   - /docs/latest/administration-guide/secure-database-connections-with-ssl-certificates
 ---

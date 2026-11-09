@@ -2,7 +2,8 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -115,36 +116,12 @@
   [table-id :- ::lib.schema.id/table]
   (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-table table-id))))
 
-(defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids] :as opts}]
-  (if (= filter-column :table_id)
-    (warehouse-schema.db/field-user-settings-for-tables filter-ids)
-    (serdes/extract-query-collections :model/FieldUserSettings opts)))
+(def ^:private field-user-settings-slug "___fieldusersettings")
 
-(defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
-
-(defmethod serdes/generate-path "FieldUserSettings" [_ {:keys [field_id]}]
-  (conj (serdes/generate-path "Field" {:id field_id})
-        {:model "FieldUserSettings" :id "1"}))
-
-(defmethod serdes/load-find-local "FieldUserSettings" [path]
-  (when-let [field (serdes/load-find-local (pop path))]
-    (warehouse-schema.db/field-user-settings (:id field))))
-
-(defmethod serdes/load-update! "FieldUserSettings" [model-name ingested local]
-  ((get-method serdes/load-update! :default)
-   model-name
-   (merge (zipmap user-settings/user-settable-field-columns (repeat nil)) ingested)
-   local))
-
-(defmethod serdes/load-one! "FieldUserSettings" [ingested maybe-local]
-  (t2/with-transaction [_]
-    (u/prog1 (serdes/default-load-one! ingested maybe-local)
-      (when-let [field-id (or (:field_id maybe-local) (:field_id <>))]
-        (let [settings (warehouse-schema.db/field-user-settings field-id)]
-          (warehouse-schema.db/update-field! field-id (select-keys settings (user-settings/user-set-field-columns settings))))))))
-
-(defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
+(defmethod serialization/spec :model/FieldUserSettings [_]
   {:schema    ::warehouse-schema.schema/external-field-user-settings
+   :identity  [:field_id]
+   :primary-key :field_id
    :copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
@@ -153,19 +130,28 @@
    :defaults  {:description_set        false
                :semantic_type_set      false
                :fk_target_field_id_set false}
-   :transform {:fk_target_field_id (serdes/fk :model/Field)
-               :field_id     {::serdes/fk true
-                              :export     #(serdes/*export-field-fk* %)
-                              :import-with-context (fn [current _ _]
-                                                     (serdes/*import-field-fk*
-                                                      (serdes/field-path->field-ref (pop (serdes/path current)))))}}})
+   :transform {:fk_target_field_id serialization/field-transform
+               :field_id           serialization/field-transform}})
 
-(defmethod serdes/ingested-path "FieldUserSettings" [_ {:keys [field_id]}]
-  (conj (serdes/field->path field_id) {:model "FieldUserSettings" :id "1"}))
+(defmethod serialization/storage-paths :model/FieldUserSettings [_ entities _ctx]
+  (mapv (fn [field-user-settings]
+          (let [field-path (serialization/storage-path-prefixes (:field_id field-user-settings))]
+            (update field-path (dec (count field-path))
+                    (fn [segment] (assoc segment :suffix field-user-settings-slug)))))
+        entities))
 
-(def ^:private field-user-settings-slug "___fieldusersettings")
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
 
-(defmethod serdes/storage-path "FieldUserSettings" [field-user-settings _ctx]
-  (let [field-path (serdes/storage-path-prefixes (pop (serdes/path field-user-settings)))]
-    (update field-path (dec (count field-path))
-            (fn [segment] (assoc segment :suffix field-user-settings-slug)))))
+(defmethod serialization/before-load :model/FieldUserSettings [_ items]
+  (mapv (fn [{:keys [local] :as item}]
+          (cond-> item
+            local (update :row #(merge (zipmap user-settings/user-settable-field-columns (repeat nil)) %))))
+        items))
+
+(defmethod serialization/after-load :model/FieldUserSettings [_ items]
+  (doseq [{{:keys [field_id] :as settings} :instance} items]
+    (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
+
+(defmethod remote-sync/spec :model/FieldUserSettings
+  [_model]
+  {:synced-filter-clause warehouse-schema.db/synced-field-user-settings-clause})

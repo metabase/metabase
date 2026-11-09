@@ -1,5 +1,6 @@
 ---
 title: Collection permissions
+summary: Control which groups can view and curate each collection, and how permissions flow to sub-collections.
 redirect_from:
   - /docs/latest/administration-guide/06-collections
 ---

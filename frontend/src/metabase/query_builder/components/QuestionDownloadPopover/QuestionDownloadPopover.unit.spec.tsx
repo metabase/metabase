@@ -8,24 +8,18 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockDataset,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import { QuestionDownloadPopover } from "./QuestionDownloadPopover";
 
 const TEST_CARD = createMockCard({
-  dataset_query: createMockStructuredDatasetQuery({
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+  ),
 });
 
 const TEST_RESULT = createMockDataset();
@@ -43,7 +37,7 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
   });
 
   const metadata = createMockMetadataFromState(state);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
 
   setupCardQueryDownloadEndpoint(card, "json");
 

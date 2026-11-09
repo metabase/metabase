@@ -282,11 +282,9 @@
      (mt/with-temp [:model/Card {elsewhere-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
        (testing "the app's card and its metadata are readable"
          (is (=? {:id card-id} (mt/user-http-request :crowberto :get 200 (format "card/%d" card-id) as-data-app)))
-         (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" card-id) as-data-app)))
-         (is (=? {:id (str "card__" card-id)}
-                 (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" card-id) as-data-app))))
+         (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" card-id) as-data-app))))
        (testing "a card outside the app's collection is refused"
-         (doseq [url ["card/%d" "card/%d/query_metadata" "table/card__%d/query_metadata"]]
+         (doseq [url ["card/%d" "card/%d/query_metadata"]]
            (is (= (card-error elsewhere-id)
                   (mt/user-http-request :crowberto :get 400 (format url elsewhere-id) as-data-app))
                url)))
@@ -300,7 +298,7 @@
       (fn [{:keys [metric-id]}]
         (testing "a Library metric and its metadata are open to an app and its dev preview, as the SDK reads them"
           (doseq [options [as-data-app as-preview]
-                  url     ["card/%d" "card/%d/query_metadata" "table/card__%d/query_metadata"]]
+                  url     ["card/%d" "card/%d/query_metadata"]]
             (is (map? (mt/user-http-request :crowberto :get 200 (format url metric-id) options)) url)))
         (mt/with-temp [:model/Card {outside-id :id} {:name          "Venue count elsewhere"
                                                      :type          :metric
@@ -552,9 +550,6 @@
           (mt/with-temp [:model/Collection outside   {:name "Birds outside"}
                          :model/Card       root-card {:name "Birds root card"}]
             (let [library-id         (:id (collections/library-collection))
-                  dashboards-id      (t2/select-one-pk :model/Collection
-                                                       :location (str "/" library-id "/")
-                                                       :type     collections/library-dashboards-collection-type)
                   data-child         (mt/user-http-request :crowberto :post 200 "collection" {:name "Birds data" :parent_id data-id})
                   data-grandchild    (mt/user-http-request :crowberto :post 200 "collection" {:name      "Birds data nested"
                                                                                               :parent_id (:id data-child)})
@@ -565,11 +560,10 @@
                 (let [found (item-ids as-data-app "collection/root/items")]
                   (is (contains? found ["collection" library-id]))
                   (is (not-any? found [["collection" (:id outside)] ["card" (:id root-card)]]))))
-              (testing "the Library holds its Data, Metrics and Dashboards collections"
+              (testing "the Library holds its Data and Metrics collections"
                 (let [found (item-ids as-data-app (str "collection/" library-id "/items"))]
                   (is (contains? found ["collection" data-id]))
-                  (is (contains? found ["collection" metrics-id]))
-                  (is (contains? found ["collection" dashboards-id]))))
+                  (is (contains? found ["collection" metrics-id]))))
               (testing "Data and Metrics hold their nested collections at every level"
                 (doseq [[parent child] [[data-id data-child]
                                         [(:id data-child) data-grandchild]
@@ -578,12 +572,12 @@
                   (is (contains? (item-ids as-data-app (str "collection/" parent "/items")) ["collection" (:id child)])
                       (:name child))))
               (testing "a data app reads the Library, its collections and their nested collections"
-                (doseq [id (into [library-id data-id metrics-id dashboards-id]
+                (doseq [id (into [library-id data-id metrics-id]
                                  (map :id)
                                  [data-child data-grandchild metrics-child metrics-grandchild])]
                   (is (= id (:id (mt/user-http-request :crowberto :get 200 (str "collection/" id) as-data-app))))))
               (testing "the collection list and the tree of a data app hold the Library, its collections and their nested collections"
-                (let [visible [library-id data-id metrics-id dashboards-id (:id data-grandchild) (:id metrics-grandchild)]
+                (let [visible [library-id data-id metrics-id (:id data-grandchild) (:id metrics-grandchild)]
                       hidden  [(:id outside)]]
                   (doseq [[label found] [["list" (set (map :id (mt/user-http-request :crowberto :get 200 "collection" as-data-app)))]
                                          ["tree" (set (map :id (mapcat #(tree-seq (comp seq :children) :children %)

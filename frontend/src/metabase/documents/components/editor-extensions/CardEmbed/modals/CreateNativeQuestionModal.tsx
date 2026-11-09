@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import Question from "metabase-lib/v1/Question";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 
 import { NativeQueryModal } from "./NativeQueryModal";
 
@@ -13,12 +13,10 @@ export const CreateNativeQuestionModal = ({
   onSave,
   onClose,
 }: CreateQuestionModalProps) => {
+  const buildQuestion = useQuestionFromOptsBuilder();
   const question = useMemo(
-    () =>
-      Question.create({
-        DEPRECATED_RAW_MBQL_type: "native",
-      }),
-    [],
+    () => buildQuestion({ DEPRECATED_RAW_MBQL_type: "native" }),
+    [buildQuestion],
   );
 
   const handleSaveNativeQuestion = async ({ card_id }: { card_id: number }) => {

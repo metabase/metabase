@@ -68,7 +68,7 @@
                                                               :display-name "Cat"
                                                               :type :dimension
                                                               :widget-type :string/=
-                                                              :dimension [:field (mt/id :venues :name) nil]}}})}]
+                                                              :field-id  (mt/id :venues :name)}}})}]
       (let [targets (mapping-targets/valid-targets card {:id "p1" :type "string/="})]
         (is (= [[:dimension [:template-tag "cat"]]] (mapv :target targets)))))))
 
@@ -101,10 +101,10 @@
     :native   {:query "SELECT 1 WHERE {{cat}} AND total > {{min}} /* {{unit}} {{snippet: base}} */"
                :template-tags
                {"cat"           {:id "u1" :name "cat" :display-name "Category" :type :dimension
-                                 :dimension [:field 18 nil] :widget-type :string/=}
+                                 :field-id  18 :widget-type :string/=}
                 "min"           {:id "u2" :name "min" :display-name "Min" :type :number}
                 "unit"          {:id "u3" :name "unit" :display-name "Unit" :type :temporal-unit
-                                 :dimension [:field 22 nil]}
+                                 :field-id  22}
                 "snippet: base" {:id "u4" :name "snippet: base" :display-name "base" :type :snippet
                                  :snippet-name "base"}}}}})
 

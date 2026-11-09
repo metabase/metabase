@@ -124,7 +124,7 @@ function setup({
       canSelectTable={entityTypes ? entityTypes.includes("table") : true}
       canSelectQuestion={entityTypes ? entityTypes.includes("question") : true}
       triggerElement={<div>Click me to open or close data picker</div>}
-      setSourceTableFn={jest.fn()}
+      setSourceFn={jest.fn()}
     />,
     { storeInitialState },
   );
@@ -282,7 +282,7 @@ describe("DataSourceSelector", () => {
       ).toBeTruthy();
       expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("Raw Data"));
+      await userEvent.click(rawData);
       expect(await screen.findByText("Models")).toBeInTheDocument();
       expect(screen.getByText("Raw Data")).toBeInTheDocument();
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
@@ -399,7 +399,7 @@ describe("DataSourceSelector", () => {
           canSelectTable
           canSelectQuestion
           triggerElement={<div>Click me to open or close data picker</div>}
-          setSourceTableFn={jest.fn()}
+          setSourceFn={jest.fn()}
         />,
         {
           storeInitialState: createMockState({
