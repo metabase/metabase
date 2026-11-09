@@ -11,7 +11,7 @@ You can use a single Metabase to manage permissions for all of your customers. W
 - [One database per customer](#one-database-per-customer)
 - [One schema per customer](#multiple-schemas-one-schema-per-customer)
 
-The tools on this page work for people with Metabase accounts, so they need an embedding setup with SSO. [Guest embeds](../embedding/guest-embedding.md) don't know who's viewing them, so features that rely on user attributes, like row and column security and database routing, don't apply. To restrict data in a guest embed, use [locked parameters](../embedding/guest-embedding.md#locked-parameters).
+The tools on this page work for people with Metabase accounts, so you'll need an embedding setup with SSO. [Guest embeds](../embedding/guest-embedding.md) don't know who's viewing them, so features that rely on user attributes, like row and column security and database routing, don't apply. To restrict data in a guest embed, use [locked parameters](../embedding/guest-embedding.md#locked-parameters).
 
 ## One database for all customers (commingled setups)
 

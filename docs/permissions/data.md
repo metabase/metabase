@@ -49,9 +49,13 @@ From there, you can selectively grant privileges to different groups.
 
 ## Default permissions for new groups and databases
 
-A new group gets the All Users group's most restrictive settings for each database: the lowest **Create queries** and **Download results** levels, and, on Pro and Enterprise plans, **Blocked** View data wherever the All Users group has Blocked, Impersonated, or Row and column security (and **Can view** everywhere else). **Manage table metadata** and **Manage database** start at **No** for new groups and on new databases.
+When you create a group, Metabase gives it these permissions for each database:
 
-On a new database, each group gets its most restrictive settings from your other databases. On Pro and Enterprise plans, a group with Blocked, Impersonated, or Row and column security on any database gets Blocked View data on the new one.
+- **View data** (Pro and Enterprise plans): **Blocked** wherever the All Users group has Blocked, Impersonated, or Row and column security, and **Can view** everywhere else.
+- **Create queries** and **Download results**: the All Users group's lowest level for that database.
+- **Manage table metadata** and **Manage database**: **No**.
+
+When you add a database, each group gets its lowest **Create queries** and **Download results** levels from your other databases. On Pro and Enterprise plans, a group with Blocked, Impersonated, or Row and column security on any database gets **Blocked** View data on the new database. **Manage table metadata** and **Manage database** start at **No**.
 
 [Tenant groups](../embedding/tenants.md#group-types), including the **All tenant users** group, always get the least access to a new database: View data is Blocked, and every other data permission is No. You also can't give tenant groups the Manage table metadata or Manage database permissions.
 

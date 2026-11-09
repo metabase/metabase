@@ -169,7 +169,7 @@ You can use impersonation to give people access to the SQL editor, while restric
 
 If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query. Redshift, SQL Server, and Starburst/Trino switch to a database _user_ instead, so for those databases the attribute value must be a user name.
 
-## Impersonated queries must be a single SELECT statement
+## Native queries on a database with impersonation must be a single SELECT statement
 
 Once any group has impersonated access to a database, Metabase checks every native query on that database before running it, no matter who runs the query. That includes admins, people whose other groups give them **Can view** access, and SQL questions that other questions use as a data source or in a join.
 
@@ -198,7 +198,7 @@ So if a person is in two groups with different permissions for the same database
 
 Blue group's more permissive access would override the impersonated access.
 
-## Admins won't see the effects of impersonation
+## Admins won't see impersonation's data restrictions
 
 Admins won't ever see the data restrictions of impersonation, because their privileges will override those of any other group they're a member of.
 

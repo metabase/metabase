@@ -126,7 +126,9 @@ The Data Analysts group always has Curate access to Library collections, and you
 
 ### Data app collections
 
-Each [data app](../data-apps/start.md) has its own collection. You don't set permissions on a data app's collection directly: groups get View access to it when you [add them to the app](../data-apps/manage.md#choose-who-can-open-an-app). No group can get Curate access to it, and no one, not even an admin, can edit the collection or its items from Metabase: changes come from the app's Git repository.
+Each [data app](../data-apps/start.md) has its own collection. You don't set permissions on a data app's collection directly. Groups get View access to it when you [add them to the app](../data-apps/manage.md#choose-who-can-open-an-app), and no group can get Curate access to it.
+
+When [remote sync](../data-modeling/semantic-layer/remote-sync.md#remote-sync-has-two-modes-for-different-roles) is in Read-only mode, no one, not even an admin, can edit a data app's collection or its items in Metabase. Changes come from the app's Git repository.
 
 ### Data actions folders
 

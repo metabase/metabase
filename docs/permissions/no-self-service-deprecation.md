@@ -8,7 +8,7 @@ title: Migrating from legacy permissions
 
 In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
 
-**The TL;DR: we split the old Data access setting into two settings: [View data](./data.md#view-data-permissions) and [Create Queries](./data.md#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
+**The TL;DR: we split the old Data access setting into two settings: [View data](./data.md#view-data-permissions) and [Create queries](./data.md#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
 
 ## How Metabase migrated your permissions
 
@@ -81,7 +81,7 @@ We could migrate the permissions like so:
 |                    | **Group A**        | **Group B** | **Group C** | **Group D**             | **Group E**        |
 | ------------------ | ------------------ | ----------- | ----------- | ----------------------- | ------------------ |
 | **View data**      | Can view           | ?           | Blocked     | Row and column security | Impersonated       |
-| **Create queries** | Query Builder only | No          | No          | Query Builder only      | Query Builder only |
+| **Create queries** | Query builder only | No          | No          | Query builder only      | Query builder only |
 
 We can't make a call on what Group B's View data should be. If we switch it to **Can view**, the person won't be affected by the Blocked, Row and column security, or Impersonated settings in their other group. If we set it to **Blocked**, they could lose access to data that you think they should have access to. So we created an interim setting, **No self-service (Deprecated)**, to manage this (temporarily) awkward transition.
 

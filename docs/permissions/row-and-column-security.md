@@ -85,7 +85,7 @@ For example, you can set up a row-level security so that the user attribute `pla
 
 Metabase uses the user attribute key to look up the user attribute value for a specific person. User attribute keys can be mapped to parameters in Metabase.
 
-The **user attribute value** must exactly match the filter value. Whether the match is case-sensitive depends on your database (for example, PostgreSQL compares text case-sensitively, while MySQL and SQL Server usually don't), so it's safest to match the case too. For example, if you add row security to the Accounts table with the filter `Plan = "Basic"`, make sure that you enter "Basic" as the user attribute value. If you set the user attribute value to lowercase "basic" (a value which doesn't exist in the Plan column of the Accounts table), the person will get an empty result instead of the table.
+The **user attribute value** must match the filter value. Whether the match is case-sensitive depends on your database (for example, PostgreSQL compares text case-sensitively, while MySQL and SQL Server usually don't), so it's safest to match the case too. For example, if you add row security to the Accounts table with the filter `Plan = "Basic"`, make sure that you enter "Basic" as the user attribute value. If you set the user attribute value to lowercase "basic" (a value which doesn't exist in the Plan column of the Accounts table), the person will get an empty result instead of the table.
 
 Examples of user attributes in play:
 
@@ -294,7 +294,7 @@ Some things to keep in mind when using row and column security.
 Row and column security is limited to the [query builder](../questions/query-builder/editor.md). Native (SQL) queries would get around it, so Metabase keeps people with row and column security out of the SQL editor:
 
 - You can't give [native query permissions](./data.md#create-queries-permissions) to a group with row and column security on that database. When you save a row and column security policy, Metabase changes the group's **Create queries** permission for the database from **Query builder and native** to **Query builder only**.
-- If row and column security applies to a person on any table in a database, that person can't run native queries on that database, even if another of their groups has native query access.
+- If row and column security applies to a person on any table in a database, that person can't run native queries on that database. But row and column security doesn't apply to a person if another of their groups has **Can view** access to the table, so that person can use the SQL editor if any of their groups has native query access.
 - People with row and column security can't view the SQL that Metabase generates for their questions, or convert their questions to SQL.
 - Groups with row and column security can't get [Transforms](./data.md#transform-permissions) permissions, since transforms require native query access.
 

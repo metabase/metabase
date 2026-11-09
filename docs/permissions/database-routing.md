@@ -51,7 +51,6 @@ Database routing **can't be used** on databases with:
 Some other features don't work with routed data:
 
 - [Automatic cache refresh](../configuring-metabase/caching.md#some-permissions-setups-are-incompatible-with-automatic-cache-refreshing) isn't available. Caching still works for the queries people run.
-- [Research](../ai/research.md) can't use metrics from a router database.
 - People whose queries are routed to a destination database won't see [individual records from models](../data-modeling/models/models.md#surface-individual-records-in-search-by-matching-against-this-column) in search results. Metabase indexes those values without routing, so it hides them to keep each person's data separate.
 
 With **guest embedding**, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
@@ -141,6 +140,6 @@ curl 'http://localhost:3000/api/ee/database-routing/destination-database?check_c
 
 The `details` object will have a different set of keys depending on the database. You can add several destination databases in one request by adding more items to `destinations`.
 
-Metabase copies the engine and other database settings from the router database, so each destination only needs a `name` and `details`. Metabase ignores any other keys, like `engine` or sync schedules.
+Metabase copies the engine from the router database, so each destination only needs a `name` and `details`. Metabase ignores any other keys, like `engine` or sync schedules.
 
 With `check_connection_details=true`, Metabase tests each connection before it adds the destination databases. If a connection fails, Metabase adds none of them, and returns the errors for each failed destination by name. Leave the parameter off if you want to add a destination database that isn't reachable yet.
