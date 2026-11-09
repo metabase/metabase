@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type { RemoteSyncSettingsModalProps } from "metabase/plugins";
-import { Modal, Stack, Text } from "metabase/ui";
+import { FocusTrap, Modal, Stack, Text } from "metabase/ui";
 
 import { SettingsForm } from "../SettingsForm";
 
@@ -15,6 +15,7 @@ export const SettingsModal = ({
     size="xl"
     onClose={onClose}
   >
+    <FocusTrap.InitialFocus />
     <ModalBody onClose={onClose} />
   </Modal>
 );

@@ -71,13 +71,19 @@
         row          (when id (remote-sync.db/row model id))
         removed-row  (when-not row (first (serialization/local-rows model [(:entity doc)])))
         current      (or row removed-row)
-        collection-id (some->> current (remote-sync/synced-collection-id model))]
+        collection-id (some->> current (remote-sync/synced-collection-id model))
+        table-id      (case model
+                        :model/FieldUserSettings            (some-> current :field_id remote-sync.db/field-table-id)
+                        (:model/Segment :model/Measure)     (:table_id current)
+                        nil)]
     (cond-> {:id          (or (some-> current (get (first (t2/primary-keys model)))) 0)
              :name        (remote-sync.merge/label key doc)
              :model       (u/lower-case-en (name model))
              :sync_status (if (and (= "delete" status) removed-row) "removed" status)}
       collection-id                 (assoc :collection_id collection-id)
-      (contains? current :model_id) (assoc :model_id (:model_id current)))))
+      (contains? current :model_id) (assoc :model_id (:model_id current))
+      table-id                      (assoc :table_id table-id)
+      (:transform_id current)       (assoc :transform_id (:transform_id current)))))
 
 (defn- with-collections
   "The `items` with the collection each change belongs to, the entity itself for a collection, with its effective

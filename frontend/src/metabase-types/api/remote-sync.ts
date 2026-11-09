@@ -5,6 +5,8 @@ import type {
   RegularCollectionId,
 } from "./collection";
 import type { RemoteSyncType } from "./settings";
+import type { TableId } from "./table";
+import type { TransformId } from "./transform";
 import type { UserId } from "./user";
 
 export type RemoteSyncTaskId = number;
@@ -53,6 +55,8 @@ export type RemoteSyncEntity = {
   sync_status: RemoteSyncEntityStatus;
   collection?: RemoteSyncEntityCollection;
   model_id?: CardId | null;
+  table_id?: TableId;
+  transform_id?: TransformId;
 };
 
 export type RemoteSyncEntityRef = {

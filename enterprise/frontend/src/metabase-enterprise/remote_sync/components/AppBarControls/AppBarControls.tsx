@@ -5,18 +5,15 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
-import { Group } from "metabase/ui";
 import {
   useImportChangesMutation,
   useLazyGetRemoteSyncIsDirtyQuery,
 } from "metabase-enterprise/api";
 
-import { trackBranchSwitched, trackPullChanges } from "../../analytics";
+import { trackPullChanges } from "../../analytics";
 import { getIsRemoteSyncVisible } from "../../selectors";
 import { SyncTaskModal } from "../SyncTaskModal";
 
-import { BranchSelect } from "./BranchSelect";
-import { NewBranchModal } from "./NewBranchModal";
 import { PullModal } from "./PullModal";
 import { PushModal } from "./PushModal";
 import { SyncMenu } from "./SyncMenu";
@@ -24,8 +21,7 @@ import type { SyncTask } from "./types";
 
 type ControlsModal =
   | { type: "push" }
-  | { type: "pull"; targetBranch: string }
-  | { type: "new-branch" }
+  | { type: "pull" }
   | { type: "task"; task: SyncTask };
 
 export const AppBarControls = () => {
@@ -53,32 +49,22 @@ const Controls = ({ branch }: ControlsProps) => {
     setModal({ type: "task", task });
   const handleClose = () => setModal(null);
 
-  const pull = async (targetBranch: string, keepChanges?: boolean) => {
+  const pull = async (keepChanges?: boolean) => {
     try {
       const { task_id } = await importChanges({
-        branch: targetBranch,
+        branch,
         expected_branch: branch,
         ...(keepChanges != null && {
           merge: keepChanges,
           force: !keepChanges,
         }),
       }).unwrap();
-      if (targetBranch === branch) {
-        trackPullChanges({
-          triggeredFrom: "app-bar",
-          force: keepChanges === false,
-        });
-      } else {
-        trackBranchSwitched({ triggeredFrom: "app-bar" });
-      }
+      trackPullChanges({
+        triggeredFrom: "app-bar",
+        force: keepChanges === false,
+      });
       if (task_id != null) {
-        handleTaskStarted({
-          id: task_id,
-          title:
-            targetBranch === branch
-              ? t`Pulling changes`
-              : t`Switching to ${targetBranch}`,
-        });
+        handleTaskStarted({ id: task_id, title: t`Pulling changes` });
       } else {
         handleClose();
       }
@@ -90,29 +76,26 @@ const Controls = ({ branch }: ControlsProps) => {
     }
   };
 
-  const handlePull = async (targetBranch: string) => {
+  const handlePull = async () => {
     const { data, error } = await checkIsDirty();
     if (data?.is_dirty) {
-      setModal({ type: "pull", targetBranch });
+      setModal({ type: "pull" });
     } else if (error) {
       sendToast({
         message: getErrorMessage(error, t`Couldn't pull changes`),
         variant: "negative",
       });
     } else {
-      await pull(targetBranch);
+      await pull();
     }
   };
 
-  const pullTargetBranch = modal?.type === "pull" ? modal.targetBranch : branch;
-
   return (
-    <Group data-testid="git-sync-controls" gap="sm" wrap="nowrap">
-      <BranchSelect branch={branch} onChange={handlePull} />
+    <>
       <SyncMenu
-        onPull={() => handlePull(branch)}
+        branch={branch}
+        onPull={handlePull}
         onPush={() => setModal({ type: "push" })}
-        onPushToNewBranch={() => setModal({ type: "new-branch" })}
       />
       <PushModal
         opened={modal?.type === "push"}
@@ -122,15 +105,8 @@ const Controls = ({ branch }: ControlsProps) => {
       />
       <PullModal
         opened={modal?.type === "pull"}
-        branch={branch}
-        targetBranch={pullTargetBranch}
         isPulling={isPulling}
-        onPull={(keepChanges) => pull(pullTargetBranch, keepChanges)}
-        onClose={handleClose}
-      />
-      <NewBranchModal
-        opened={modal?.type === "new-branch"}
-        onTaskStarted={handleTaskStarted}
+        onPull={pull}
         onClose={handleClose}
       />
       <SyncTaskModal
@@ -138,6 +114,6 @@ const Controls = ({ branch }: ControlsProps) => {
         taskId={modal?.type === "task" ? modal.task.id : null}
         onClose={handleClose}
       />
-    </Group>
+    </>
   );
 };

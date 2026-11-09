@@ -16,7 +16,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
-import { Button, Group, Loader, Radio, Stack } from "metabase/ui";
+import { Button, Group, Loader, Radio, Stack, Tooltip } from "metabase/ui";
 import {
   useCreateLibraryMutation,
   useGetRemoteSyncIsDirtyQuery,
@@ -32,6 +32,8 @@ import type {
 import { isRemoteSyncUnsyncedDependenciesError } from "metabase-types/guards";
 
 import {
+  trackBranchSwitched,
+  trackPullChanges,
   trackRemoteSyncDeactivated,
   trackRemoteSyncSettingsChanged,
 } from "../../analytics";
@@ -45,6 +47,7 @@ import {
   useSettingsFormValues,
   useSyncableCollections,
 } from "./hooks";
+import { getConnectionRequest, getSettingsRequest } from "./utils";
 
 type SettingsFormProps = {
   triggeredFrom: "admin-settings" | "data-studio";
@@ -82,7 +85,7 @@ const LoadedSettingsForm = ({
     () => [...regularCollections, ...tenantCollections],
     [regularCollections, tenantCollections],
   );
-  const initialValues = useSettingsFormValues(collections, library);
+  const initialValues = useSettingsFormValues(collections);
   const [updateSettings] = useUpdateRemoteSyncSettingsMutation();
   const [createLibrary] = useCreateLibraryMutation();
   const [taskId, setTaskId] = useState<RemoteSyncTaskId | null>(null);
@@ -90,16 +93,11 @@ const LoadedSettingsForm = ({
     RemoteSyncUnsyncedDependency[] | null
   >(null);
 
-  const getLibraryChange = async (
-    isLibrarySynced: boolean,
-  ): Promise<Record<RegularCollectionId, boolean>> => {
+  const getLibraryChange = async (): Promise<
+    Record<RegularCollectionId, boolean>
+  > => {
     if (library) {
-      return isLibrarySynced !== library.isRemoteSynced
-        ? { [library.id]: isLibrarySynced }
-        : {};
-    }
-    if (!isLibrarySynced) {
-      return {};
+      return library.isRemoteSynced ? {} : { [library.id]: true };
     }
     const created = await createLibrary().unwrap();
     return typeof created.id === "number" ? { [created.id]: true } : {};
@@ -119,20 +117,14 @@ const LoadedSettingsForm = ({
           values.collections[collection.id] ?? false,
         ]),
     );
-    const isReadWrite = values["remote-sync-type"] === "read-write";
-    const libraryChange = isReadWrite
-      ? await getLibraryChange(values.library)
-      : {};
+    const isReadWrite = values.type === "read-write";
+    const libraryChange = isReadWrite ? await getLibraryChange() : {};
     setUnsyncedDependencies(null);
     const { task_id } = await updateSettings({
-      "remote-sync-url": values["remote-sync-url"],
-      "remote-sync-token": values["remote-sync-token"] || undefined,
-      "remote-sync-type": values["remote-sync-type"],
-      "remote-sync-branch": values["remote-sync-branch"] || null,
-      "remote-sync-auto-import": values["remote-sync-auto-import"],
-      collections: isReadWrite
-        ? { ...changedCollections, ...libraryChange }
-        : null,
+      ...getSettingsRequest(
+        values,
+        isReadWrite ? { ...changedCollections, ...libraryChange } : null,
+      ),
     })
       .unwrap()
       .catch((error: unknown) => {
@@ -142,6 +134,9 @@ const LoadedSettingsForm = ({
         throw error;
       });
     trackRemoteSyncSettingsChanged({ triggeredFrom });
+    if (initialValues.url !== "" && values.branch !== initialValues.branch) {
+      trackBranchSwitched({ triggeredFrom: "admin-settings" });
+    }
     sendToast({ message: t`Remote sync settings saved`, icon: "check" });
     if (task_id != null) {
       setTaskId(task_id);
@@ -204,8 +199,7 @@ const SettingsFormBody = ({
     useFormikContext<SettingsFormValues>();
   const isEnabled = useSetting("remote-sync-enabled");
   const savedType = useSetting("remote-sync-type");
-  const isReadWrite = values["remote-sync-type"] === "read-write";
-  const isBranchInAppBar = isEnabled === true && isReadWrite;
+  const isReadWrite = values.type === "read-write";
   const isDirtyChecked = isEnabled === true && savedType === "read-write";
   const { data: dirtyState } = useGetRemoteSyncIsDirtyQuery(
     isDirtyChecked ? undefined : skipToken,
@@ -214,8 +208,8 @@ const SettingsFormBody = ({
   const isReadOnlyBlocked = isDirtyChecked && dirtyState?.is_dirty !== false;
 
   useEffect(() => {
-    if (isReadOnlyBlocked && values["remote-sync-type"] === "read-only") {
-      setFieldValue("remote-sync-type", "read-write");
+    if (isReadOnlyBlocked && values.type === "read-only") {
+      setFieldValue("type", "read-write");
     }
   }, [isReadOnlyBlocked, values, setFieldValue]);
 
@@ -223,18 +217,18 @@ const SettingsFormBody = ({
     <Form>
       <Stack gap="lg">
         <FormTextInput
-          name="remote-sync-url"
+          name="url"
           label={t`Repository URL`}
           placeholder="https://github.com/your-org/your-repo.git"
         />
         <FormTextInput
-          name="remote-sync-token"
+          name="token"
           type="password"
           label={t`Access token`}
           description={t`A token with access to the repository. Read-write sync needs write access.`}
         />
         <TestConnectionButton />
-        <FormRadioGroup name="remote-sync-type" label={t`Sync mode`}>
+        <FormRadioGroup name="type" label={t`Sync mode`}>
           <Stack gap="sm" mt="xs">
             <Radio
               value="read-write"
@@ -254,18 +248,12 @@ const SettingsFormBody = ({
           </Stack>
         </FormRadioGroup>
         <FormTextInput
-          name="remote-sync-branch"
+          name="branch"
           label={t`Branch`}
-          description={
-            isBranchInAppBar
-              ? t`Switch branches from the app bar.`
-              : t`Leave empty to use the repository's default branch.`
-          }
-          disabled={isBranchInAppBar}
+          description={t`Leave empty to use the repository's default branch.`}
         />
         {isReadWrite ? (
           <>
-            <FormSwitch name="library" label={t`Sync Library`} />
             <CollectionsField
               title={t`Collections to sync`}
               emptyMessage={t`There are no top-level collections yet.`}
@@ -282,11 +270,11 @@ const SettingsFormBody = ({
         ) : (
           <Group justify="space-between">
             <FormSwitch
-              name="remote-sync-auto-import"
+              name="autoImport"
               label={t`Pull changes automatically`}
             />
             {isEnabled && savedType === "read-only" && (
-              <PullButton onPullStarted={onPullStarted} />
+              <PullButton isDirty={dirty} onPullStarted={onPullStarted} />
             )}
           </Group>
         )}
@@ -300,7 +288,7 @@ const SettingsFormBody = ({
             <FormSubmitButton
               label={isEnabled ? t`Save changes` : t`Set up remote sync`}
               variant="filled"
-              disabled={!dirty || values["remote-sync-url"].length === 0}
+              disabled={!dirty || values.url.length === 0}
             />
           </Group>
         </Group>
@@ -316,10 +304,7 @@ const TestConnectionButton = () => {
 
   const handleClick = async () => {
     try {
-      await testConnection({
-        "remote-sync-url": values["remote-sync-url"],
-        "remote-sync-token": values["remote-sync-token"] || undefined,
-      }).unwrap();
+      await testConnection(getConnectionRequest(values)).unwrap();
       sendToast({ message: t`Connected to the repository`, icon: "check" });
     } catch (error) {
       sendToast({
@@ -333,7 +318,7 @@ const TestConnectionButton = () => {
     <Group>
       <Button
         loading={isLoading}
-        disabled={values["remote-sync-url"].length === 0}
+        disabled={values.url.length === 0}
         onClick={handleClick}
       >{t`Test connection`}</Button>
     </Group>
@@ -341,16 +326,18 @@ const TestConnectionButton = () => {
 };
 
 type PullButtonProps = {
+  isDirty: boolean;
   onPullStarted: (taskId: RemoteSyncTaskId) => void;
 };
 
-const PullButton = ({ onPullStarted }: PullButtonProps) => {
+const PullButton = ({ isDirty, onPullStarted }: PullButtonProps) => {
   const [importChanges, { isLoading }] = useImportChangesMutation();
   const [sendToast] = useToast();
 
   const handleClick = async () => {
     try {
       const { task_id } = await importChanges({ force: true }).unwrap();
+      trackPullChanges({ triggeredFrom: "admin-settings", force: true });
       if (task_id != null) {
         onPullStarted(task_id);
       }
@@ -363,7 +350,14 @@ const PullButton = ({ onPullStarted }: PullButtonProps) => {
   };
 
   return (
-    <Button loading={isLoading} onClick={handleClick}>{t`Pull now`}</Button>
+    <Tooltip
+      label={t`Save settings before pulling changes`}
+      disabled={!isDirty}
+    >
+      <Button loading={isLoading} disabled={isDirty} onClick={handleClick}>
+        {t`Pull changes now`}
+      </Button>
+    </Tooltip>
   );
 };
 
@@ -385,7 +379,7 @@ const DisableButton = () => {
   return (
     <>
       <Button
-        variant="subtle"
+        variant="filled"
         color="negative"
         loading={isLoading}
         onClick={handleClick}

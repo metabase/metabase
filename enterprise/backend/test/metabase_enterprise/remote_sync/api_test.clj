@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -106,6 +108,42 @@
                       (remote-sync.tu/wait-for-task! task_id))))
             (is (= "Renamed remotely" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
 
+(deftest dirty-links-tables-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection        synced  {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Table             table   {:db_id (mt/id) :name "synced_table"}
+                     :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
+                     :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
+                     :model/FieldUserSettings _       {:field_id (:id field) :description "Synced"}
+                     :model/Segment           segment {:table_id   (:id table)
+                                                       :name       "Synced segment"
+                                                       :definition (let [mp (mt/metadata-provider)]
+                                                                     (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                                                                         (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]
+        (testing "the changes of a table's segments and fields carry the table"
+          (is (=? [{:model "fieldusersettings" :id (:id field) :table_id (:id table)}
+                   {:model "segment" :id (:id segment) :table_id (:id table)}]
+                  (->> (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))
+                       (filter (comp #{(:id field) (:id segment)} :id))
+                       (filter (comp #{"fieldusersettings" "segment"} :model))
+                       (sort-by :model)))))))))
+
+(deftest data-app-bundle-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-additional-premium-features #{:data-apps}
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (mt/with-temp [:model/DataApp _ {:name        "bundled-app"
+                                           :bundle_path "dist/index.js"
+                                           :bundle      (.getBytes "console.log(1);" "UTF-8")}]
+            (testing "a push writes the bundle of a data app, after which the app isn't changed"
+              (push!)
+              (is (= "console.log(1);"
+                     (remote-sync.tu/read-file! url "main" "data_apps/bundled-app/dist/index.js")))
+              (is (not-any? (comp #{"dataapp"} :model)
+                            (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))))))))
+
 (deftest export-checks-branch-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
@@ -166,6 +204,16 @@
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id child))))
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {(:id parent) true}})
           (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id parent)))))))))
+
+(deftest settings-refuse-unsyncing-library-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection library {:name "Library" :location "/" :type "library" :is_remote_synced true}]
+        (testing "the Library keeps syncing"
+          (is (re-find #"The Library always syncs"
+                       (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                             {:collections {(:id library) false}})))
+          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id library)))))))))
 
 (deftest settings-refuse-unsynced-dependencies-test
   (remote-sync.tu/with-repository [url]

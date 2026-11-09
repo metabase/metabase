@@ -53,7 +53,9 @@
    [:model       :string]
    [:sync_status :string]
    [:collection  {:optional true} ::dirty-item-collection]
-   [:model_id    {:optional true} [:maybe pos-int?]]])
+   [:model_id     {:optional true} [:maybe pos-int?]]
+   [:table_id     {:optional true} pos-int?]
+   [:transform_id {:optional true} pos-int?]])
 
 (def ImportResponse
   "Schema for POST /import response."

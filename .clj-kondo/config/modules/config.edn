@@ -4422,6 +4422,7 @@
                     :model/Dashboard
                     :model/DataApp
                     :model/Document
+                    :model/Field
                     :model/FieldUserSettings
                     :model/Glossary
                     :model/Measure
