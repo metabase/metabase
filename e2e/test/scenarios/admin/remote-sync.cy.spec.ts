@@ -930,52 +930,51 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("should disable sync toggles in read-only mode", () => {
+      it("should hide collections to sync in read-only mode", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
         // Wait for the read-only import to finish before creating the tenant collection: racing
         // their two implicit collection-permission revision bumps triggers a primary-key 500.
         H.configureGitAndPullChanges("read-only");
 
-        // Create a tenant collection
         H.createSharedTenantCollection("Read Only Tenant Collection");
 
         cy.visit("/admin/settings/remote-sync");
 
-        // The switch should be disabled in read-only mode
-        cy.findByTestId("admin-layout-content")
-          .findByRole("switch", { name: "Sync Read Only Tenant Collection" })
-          .should("be.disabled");
+        cy.findByTestId("admin-layout-content").within(() => {
+          // Wait for the form to render so the negative assertions are meaningful
+          cy.findByLabelText("Read-only").should("be.checked");
+          cy.findByText("Collections to sync").should("not.exist");
+          cy.findByRole("switch", {
+            name: "Sync Read Only Tenant Collection",
+          }).should("not.exist");
+        });
       });
 
-      it("should reset collection toggles when switching from read-write to read-nly", () => {
+      it("should hide collection toggles when switching from read-write to read-only", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
         H.configureGitAndPullChanges("read-write");
 
-        // Create a tenant collection
         H.createSharedTenantCollection("Mode Switch Test Collection");
 
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
-          // Toggle sync on
           cy.findByRole("switch", {
             name: "Sync Mode Switch Test Collection",
           }).click({ force: true });
-
-          // Verify it's checked
           cy.findByRole("switch", {
             name: "Sync Mode Switch Test Collection",
           }).should("be.checked");
 
-          // Switch to read-only mode
           cy.findByText("Read-only").click();
 
-          // The toggle should reset to unchecked (initial value)
+          cy.findByLabelText("Read-only").should("be.checked");
+          cy.findByText("Collections to sync").should("not.exist");
           cy.findByRole("switch", {
             name: "Sync Mode Switch Test Collection",
-          }).should("not.be.checked");
+          }).should("not.exist");
         });
       });
     });
