@@ -15,6 +15,7 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/Sidebar";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
 import type { Collection, CollectionType } from "metabase-types/api";
 
@@ -146,6 +147,13 @@ export function NavbarLibrarySection({
             TreeNode={SidebarCollectionLink}
             role="tree"
             aria-label="library-collection-tree"
+            rightSection={(item) =>
+              typeof item.id === "number" && (
+                <PLUGIN_REMOTE_SYNC.ChangesBadge
+                  target={{ type: "collection", id: item.id }}
+                />
+              )
+            }
           />
         </CollapseSection>
       </ErrorBoundary>

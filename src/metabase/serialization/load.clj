@@ -275,6 +275,17 @@
             (log/warnf "Skipping %s: %s" (ex-message error) (ex-message (ex-cause error))))
           errors)))))
 
+(defn do-with-import-transaction
+  "Calls `thunk`, which should do the whole import, in one transaction of the app DB (see [[with-import-transaction]]),
+  retrying it on a transient DB error."
+  [thunk]
+  (protocol/transact protocol.app-db/store {:retries 3} thunk))
+
+(defmacro with-import-transaction
+  "Runs `body`, which should do the whole import, in one transaction of the app DB, so it lands whole or not at all."
+  [& body]
+  `(do-with-import-transaction (fn [] ~@body)))
+
 (defn load-all
   "Loads the entities with the `[model ref]` keys `ks` into the app DB in one transaction, every entity after what it
   depends on. `read` is a fn of a batch of keys returning their entities, called a batch at a

@@ -21,7 +21,11 @@ import {
   getUserCanWriteToCollections,
 } from "metabase/current-user";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
-import { PLUGIN_DATA_APPS, PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
@@ -276,6 +280,13 @@ export function MainNavbarView({
                   TreeNode={SidebarCollectionLink}
                   role="tree"
                   aria-label="collection-tree"
+                  rightSection={(item) =>
+                    typeof item.id === "number" && (
+                      <PLUGIN_REMOTE_SYNC.ChangesBadge
+                        target={{ type: "collection", id: item.id }}
+                      />
+                    )
+                  }
                 />
                 {showOtherUsersCollections && (
                   <SidebarLink

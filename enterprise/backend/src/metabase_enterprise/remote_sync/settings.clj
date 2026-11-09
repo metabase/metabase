@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.dependencies :as remote-sync.dependencies]
    [metabase-enterprise.remote-sync.protocol :as protocol]
    [metabase-enterprise.remote-sync.protocol.git :as git]
    [metabase.collections.core :as collections]
@@ -167,7 +168,7 @@
 
 (defn set-synced-collections!
   "Syncs the top-level collections whose id `collections` maps to true, and their descendants, and stops syncing those
-  it maps to false."
+  it maps to false, refusing a change after which synced content depends on content that isn't synced."
   [collections]
   (when (seq collections)
     (when (= :read-only (setting/get :remote-sync-type))
@@ -178,4 +179,7 @@
         (when-not (and collection (= "/" (:location collection)) (nil? (:personal_owner_id collection)))
           (throw (ex-info (tru "Only top-level collections that are not personal can be synced.")
                           {:status-code 400 :collection-id id})))
-        (collections/set-remote-synced! collection synced?)))))
+        (collections/set-remote-synced! collection synced?))
+      (when-let [dependencies (seq (remote-sync.dependencies/unsynced-dependencies))]
+        (throw (ex-info (tru "Synced content uses content that isn''t synced.")
+                        {:status-code 400 :unsynced-dependencies dependencies}))))))

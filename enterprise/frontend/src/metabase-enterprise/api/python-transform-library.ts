@@ -5,7 +5,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { idTag, invalidateTags, providePythonLibraryTags } from "./tags";
+import { idTag, invalidateTags, providePythonLibraryTags, tag } from "./tags";
 
 export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -24,7 +24,10 @@ export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
         body: { source },
       }),
       invalidatesTags: (_, error, { path }) =>
-        invalidateTags(error, [idTag("python-transform-library", path)]),
+        invalidateTags(error, [
+          idTag("python-transform-library", path),
+          tag("remote-sync-changes"),
+        ]),
       onQueryStarted: async (
         { path, ...patch },
         { dispatch, queryFulfilled },

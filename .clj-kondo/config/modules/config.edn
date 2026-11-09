@@ -433,6 +433,7 @@
                     :model/PermissionsGroupMembership
                     :model/Pulse
                     :model/QueryExecution
+                    :model/RemoteSyncTask
                     :model/Segment
                     :model/Table
                     :model/Transform
@@ -4370,14 +4371,37 @@
   enterprise/remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{metabase-enterprise.remote-sync.init}
-   :uses #{collections
+   :api  #{metabase-enterprise.remote-sync.api metabase-enterprise.remote-sync.init}
+   :uses #{api
+           app-db
+           collections
+           events
            lib.schema
+           models
            premium-features
+           remote-sync
+           serialization
            settings
            startup
-           util}
-   :model-imports #{:model/Collection}}
+           task
+           util
+           enterprise/serialization}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DataApp
+                    :model/Document
+                    :model/FieldUserSettings
+                    :model/Glossary
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Segment
+                    :model/TableUserSettings
+                    :model/Timeline
+                    :model/Transform
+                    :model/User}
+   :model-exports #{:model/RemoteSyncTask}}
 
   enterprise/search
   {:team "Metabot"
