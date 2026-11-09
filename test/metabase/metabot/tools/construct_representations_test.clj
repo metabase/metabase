@@ -279,8 +279,7 @@
         (is (=? {:lone       {"source-table" [db-name "lever_data" "user"]
                               "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
                  :default    {"source-table" [db-name "clean" "orders"]}
-                 :named      {"source-table" [db-name "staging" "events"]
-                              "breakout"     [["field" {} [db-name "staging" "events" "kind"]]]}
+                 :named-only :unknown-table
                  :conflict   :unknown-table
                  :ambiguous  :unknown-table
                  :schemaless {"source-table" [db-name nil "items"]}
@@ -289,7 +288,7 @@
                 (mt/with-current-user (mt/user->id :crowberto)
                   {:lone       (construct [nil "user"] [nil "user" "email"])
                    :default    (construct [nil "orders"])
-                   :named      (construct ["staging" "events"] [nil "events" "kind"])
+                   :named-only (construct ["staging" "events"] [nil "events" "kind"])
                    :conflict   (construct ["raw" "orders"] [nil "orders" "status"])
                    :ambiguous  (construct [nil "events"])
                    :schemaless (construct [nil "items"])
