@@ -34,9 +34,9 @@
       (mapv #(get row %) columns)
       (get row column))))
 
-(defn in-order-of
-  "`instances`, the rows an insert of `rows` of `model` returned in any order, in the order of `rows`, each matched to
-  its row by [[row-ref]]; throws when a row has no match."
+(defn inserted-rows
+  "The rows an insert of `rows` of `model` returned as `instances`, in any order, in the order of `rows`, each matched
+  to its row by [[row-ref]]; throws when a row has no match."
   [model rows instances]
   (let [by-ref (into {} (map (juxt #(row-ref model %) identity)) instances)]
     (mapv (fn [row]

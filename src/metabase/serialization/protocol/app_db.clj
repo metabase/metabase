@@ -214,7 +214,7 @@
       (rows-by-parent-pks model parent-pks columns))
     (insert-rows! [_ model rows]
       (into []
-            (mapcat #(protocol.util/in-order-of model % (serialization.db/insert-rows! model (vec %))))
+            (mapcat #(protocol.util/inserted-rows model % (serialization.db/insert-rows! model (vec %))))
             (partition-all serialization.util/batch-size rows)))
     (update-row! [_ model pk changes]
       (serialization.db/update-row! model (serialization.spec/primary-key model) pk changes))
