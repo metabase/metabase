@@ -2,8 +2,6 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Form,
   FormErrorMessage,
@@ -12,6 +10,8 @@ import {
   FormSubmitButton,
   FormTextarea,
 } from "metabase/forms";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Button,
   FocusTrap,
@@ -34,6 +34,7 @@ import { trackPushChanges } from "../../../analytics";
 import type { SyncTask } from "../types";
 
 import { ChangesList } from "./ChangesList";
+import { getDefaultCommitMessage } from "./utils";
 
 type PushModalProps = {
   opened: boolean;
@@ -43,7 +44,6 @@ type PushModalProps = {
 };
 
 type PushStrategy = "merge" | "overwrite";
-
 
 type PushFormValues = {
   message: string;
@@ -84,7 +84,7 @@ const PushModalBody = ({
   onClose,
 }: PushModalBodyProps) => {
   const applicationName = useSelector(getApplicationName);
-  const defaultMessage = t`Exported from ${applicationName}`;
+  const defaultMessage = getDefaultCommitMessage(applicationName);
   const {
     data: changes,
     error: changesError,
