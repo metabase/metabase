@@ -174,18 +174,20 @@
        (is (= (error-message :cards 999999999)
               (run-query 400 {:database (mt/id) :type :query :query {:source-table "card__999999999"}})))))))
 
-(deftest native-query-test
+(deftest native-query-is-refused-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
-     (testing "an app runs no native query, in its MBQL 5, legacy and nested legacy forms"
-       (doseq [query [(lib/native-query (mt/metadata-provider) "SELECT * FROM VENUES")
-                      {:database (mt/id) :type :native :native {:query "SELECT * FROM VENUES"}}
-                      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-query {:native "SELECT * FROM VENUES"}}}]]
-         (is (= "A data app can run only queries built on the cards in its own collection." (run-query 400 query)))))
-     (testing "a dev preview runs one"
-       (is (= "completed" (:status (run-query 202 (lib/native-query (mt/metadata-provider) "SELECT 1") as-preview))))))))
+     (testing "an app and its dev preview run no native query, in its MBQL 5, legacy and nested legacy forms"
+       (doseq [options [as-data-app as-preview]
+               query   [(lib/native-query (mt/metadata-provider) "SELECT * FROM VENUES")
+                        {:database (mt/id) :type :native :native {:query "SELECT * FROM VENUES"}}
+                        {:database (mt/id)
+                         :type     :query
+                         :query    {:source-query {:native "SELECT * FROM VENUES"}}}]]
+         (is (= "A data app cannot run native queries." (run-query 400 query options)))))
+     (testing "a request that is not a data app's still runs native SQL"
+       (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 "dataset"
+                                                         (lib/native-query (mt/metadata-provider) "SELECT 1")))))))))
 
 (deftest internal-query-is-refused-test
   (do-with-app-collection

@@ -57,17 +57,15 @@
     (and (some? collection-id) (= collection-id (:collection_id entity)))))
 
 (defn- check-preview-query
-  "Throws a 400 if `query`, a dev preview's, builds on a card; its metrics, like everything else, may be any."
+  "Throws a 400 if `query`, a dev preview's MBQL query, builds on a card; its metrics, like everything else, may be any."
   [query]
   (when-let [card-ids (not-empty (set/difference (set (lib/all-source-card-ids query)) (set (lib/all-metric-ids query))))]
     (throw (data-app-error (tru "A data app''s dev preview cannot build on cards, not the cards {0}." (format-ids card-ids))))))
 
 (defn- check-app-query
-  "Throws a 400 unless `query`, an app's, builds only on the cards in the app's collection, reading no table, segment,
-  measure or metric."
+  "Throws a 400 unless `query`, an app's MBQL query, builds only on the cards in the app's collection, reading no table,
+  segment, measure or metric."
   [data-app query]
-  (when (lib/any-native-stage? query)
-    (throw (data-app-error (tru "A data app can run only queries built on the cards in its own collection."))))
   (when-let [ids (lib/all-source-table-ids query)]
     (throw (data-app-error (tru "A data app cannot read tables, not the tables {0}." (format-ids ids)))))
   (when-let [ids (lib/all-segment-ids query)]
@@ -83,13 +81,15 @@
                                 (format-ids external))))))
 
 (defenterprise-schema check-adhoc-query :- :nil
-  "Throws a 400 unless `data-app` may run `query`, as the `/api/dataset` endpoints normalize it: no internal query, a dev
-  preview's query that builds on no card, or an app's that builds only on the cards in its collection."
+  "Throws a 400 unless `data-app` may run `query`, as the `/api/dataset` endpoints normalize it: no internal or native
+  query, a dev preview's query that builds on no card, or an app's that builds only on the cards in its collection."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    query    :- ::lib-be.schema/maybe-legacy-or-internal-query]
   (when (= :internal (keyword (:type query)))
     (throw (data-app-error (tru "A data app cannot run internal queries."))))
+  (when (lib/any-native-stage? query)
+    (throw (data-app-error (tru "A data app cannot run native queries."))))
   (if (preview? data-app)
     (check-preview-query query)
     (check-app-query data-app query))
