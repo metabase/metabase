@@ -290,9 +290,12 @@
        "combine data from these two databases, and say what you can do instead."))
 
 (def ^:private query-per-database-recovery
-  (str "Build one query for each database, run each one with `run_query` at its largest `row_limit`, and compare the "
-       "rows in your answer. If a result is truncated, make that query coarser or filter it on the keys of the other "
-       "result and run it again. If it is still truncated, tell the user that the data is too large to combine."))
+  (str "Build one query for each database, run each one with `run_query` at its largest `row_limit`, and match the "
+       "rows on a column that both results have. If a result is truncated, make that query coarser or filter it on "
+       "the keys of the other result and run it again. A result filtered on the keys of a truncated result is partial "
+       "too. Combine partial rows only when they answer the question, and say that the answer comes from partial "
+       "data, for example that a count is a lower bound. Otherwise tell the user that the data is too large to "
+       "combine."))
 
 (deftest table-in-another-database-recovery-test
   (mt/with-current-user (mt/user->id :crowberto)
