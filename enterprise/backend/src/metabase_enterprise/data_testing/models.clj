@@ -59,6 +59,16 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
+(mu/defn- can-write-native-sql? :- :boolean
+  "Whether the current user may run native SQL against the Database `db-id`. False for a nil `db-id`, unless the user
+  is a superuser."
+  [db-id :- [:maybe ::lib.schema.id/database]]
+  (boolean
+   (or api/*is-superuser?*
+       (when db-id
+         (query-perms/can-run-query?
+          (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))))))
+
 (mu/defn- can-save-test? :- :boolean
   "Whether the current user may save or delete a test of the Transform `transform-id`: they may edit it, and write the
   native SQL of a test against its source Database."
@@ -66,10 +76,16 @@
   (boolean
    (when-let [transform (data-testing.db/transform transform-id)]
      (and (mi/can-write? transform)
-          (or api/*is-superuser?*
-              (when-let [db-id (transforms-base.i/source-db-id transform)]
-                (query-perms/can-run-query?
-                 (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))))))))
+          (can-write-native-sql? (transforms-base.i/source-db-id transform))))))
+
+(mu/defn can-run-test? :- :boolean
+  "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
+  a test against its source Database."
+  [transform-id :- ::lib.schema.id/transform]
+  (boolean
+   (when-let [transform (data-testing.db/transform transform-id)]
+     (and (mi/can-read? transform)
+          (can-write-native-sql? (transforms-base.i/source-db-id transform))))))
 
 (defmethod mi/can-read? :model/TransformTest
   ([instance]

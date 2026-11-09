@@ -56210,7 +56210,7 @@
     },
     "/api/ee/transform-test/{id}/run" : {
       "post" : {
-        "description" : "Run a transform test, which reading it is enough to do.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation\n  reports what it found — including one that could not be evaluated, which comes back as that\n  expectation's own `:error` rather than discarding the answers of the others.\n\n  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`\n  naming which refusal it was, as [[refusing]] describes.",
+        "description" : "Run a transform test. Needs read access to the test and its transform, and native query access to the transform's\n  source database: a test's inputs and expectations are SQL run on that database.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation\n  reports what it found — including one that could not be evaluated, which comes back as that\n  expectation's own `:error` rather than discarding the answers of the others.\n\n  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`\n  naming which refusal it was, as [[refusing]] describes.",
         "operationId" : "post-api-ee-transform-test-id-run",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",

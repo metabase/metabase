@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.api.common :as api]
@@ -85,7 +86,8 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
-  "Run a transform test, which reading it is enough to do.
+  "Run a transform test. Needs read access to the test and its transform, and native query access to the transform's
+  source database: a test's inputs and expectations are SQL run on that database.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation
   reports what it found — including one that could not be evaluated, which comes back as that
@@ -97,6 +99,7 @@
                     [:id ms/PositiveInt]]]
   (let [transform-test (api/read-check :model/TransformTest id)
         transform      (api/read-check :model/Transform (:transform_id transform-test))]
+    (api/check-403 (data-testing.models/can-run-test? (:id transform)))
     (refusing #(data-testing.runner/run-test! transform transform-test))))
 
 (def ^{:arglists '([request respond raise])} routes

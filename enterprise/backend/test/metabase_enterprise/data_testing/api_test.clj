@@ -274,11 +274,18 @@
             (mt/user-http-request :rasta :post 403 (str path "/run"))
             (refused-writes :rasta))
           (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (testing "data analysts who can read transform can read and run its tests"
+            (testing "data analysts who can read transform can read its tests"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                             :perms/create-queries :query-builder}
                 (is (some #{test-id} (map :id (mt/user-http-request :lucky :get 200 "ee/transform-test"))))
                 (mt/user-http-request :lucky :get 200 path)
+                (testing "but running them needs native access to source database"
+                  (let [runs-before (t2/count :model/DataTestRun :test_type "transform" :test_id test-id)]
+                    (mt/user-http-request :lucky :post 403 (str path "/run"))
+                    (is (= runs-before (t2/count :model/DataTestRun :test_type "transform" :test_id test-id)))))))
+            (testing "data analysts who can read transform and write native queries on its source database can run its tests"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
+                                                                            :perms/create-queries :query-builder-and-native}
                 (is (= "passed" (:status (mt/user-http-request :lucky :post 200 (str path "/run")))))))
             (testing "saving or deleting tests needs transforms permission on source database"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no

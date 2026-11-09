@@ -16,6 +16,9 @@ summary: Breaking changes to the Metabase API, listed by release.
   leaves a `test_id` that names no test. A run belongs to a test only if the test exists and was created no later than
   the run started, so such a run is never listed or returned as `last_run`.
 
+- `POST /api/ee/transform-test/:id/run` needs native query access to the transform's source database, as well as
+  read access to the test and its transform. Users without native query access get `403 Forbidden`.
+
 - Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
   they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
   Queries sent with `dimension` are still accepted and converted to `field-id`.
