@@ -59,7 +59,6 @@ const setup = (
   setupCardEndpoints(createMockCard({ id: 123, name: "Test Model" }));
   setupDatabasesEndpoints(
     [createMockDatabase({ id: 1, name: "DB 1" })],
-    {},
     {
       "can-query": true,
     },
