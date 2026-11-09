@@ -49,9 +49,9 @@
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- query-database-id
-  "The id of the Database the query of `card` runs on."
+  "The id of the Database the query of `card` runs on, or nil when `card` has no query."
   [card]
-  (lib/database-id (:dataset_query card)))
+  (some-> (not-empty (:dataset_query card)) lib/database-id))
 
 (defn- card-allows?
   "Whether `card-check` holds for the Card `card-id`, and the current user may run the card's query and write the native

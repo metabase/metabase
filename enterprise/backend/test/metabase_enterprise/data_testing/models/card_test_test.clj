@@ -175,3 +175,19 @@
                       :create (boolean (mi/can-create? :model/CardTest {:card_id card-id}))
                       :update (boolean (mi/can-update? card-test {:name "renamed"}))
                       :write  (boolean (mi/can-write? card-test))})))))))))
+
+(deftest permissions-of-a-test-of-a-card-with-no-query-test
+  (mt/with-temp [:model/Card     {card-id :id} {:dataset_query {}}
+                 :model/CardTest card-test     {:card_id card-id}]
+    (testing "premise: the card has no query"
+      (is (= {} (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+    (testing "an admin may save and run the test"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= {:run true :write true}
+               {:run   (boolean (data-testing.models.card-test/can-run? card-test))
+                :write (boolean (mi/can-write? card-test))}))))
+    (testing "another user may not: the card has no Database to write native SQL against"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (= {:run false :write false}
+               {:run   (boolean (data-testing.models.card-test/can-run? card-test))
+                :write (boolean (mi/can-write? card-test))}))))))
