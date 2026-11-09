@@ -1852,8 +1852,9 @@
 (deftest restore-cache-accepting-legacy-values!-test
   (testing "rows a version predating `value_with_aad` wrote are read from their legacy `value`, and nothing is written"
     (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+      ;; Set up under the key, so the encryption sentinel it records is this key's.
       (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/setup-db! :create-sample-content? false)
         (t2/delete! :setting :key "toucan-name")
         (t2/delete! :setting :key "test-never-encrypted-setting")
         ;; `value` only, as that version writes it: encrypted for a setting that encrypts, plaintext for one that does not
@@ -1875,6 +1876,27 @@
           (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
           (setting/restore-cache-accepting-legacy-values!)
           (is (= "Sad Can" (toucan-name))))))))
+
+(deftest restore-cache-accepting-legacy-values!-checks-the-key-test
+  (testing "on an encrypted app DB, legacy values are read only with the key that encrypted it"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      ;; Set up under the key, so the encryption sentinel it records is this key's.
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/setup-db! :create-sample-content? false)
+        (t2/delete! :setting :key "toucan-name")
+        (t2/insert! :setting {:key "toucan-name", :value (encryption/encrypt "Lenny")})
+        (setting/restore-cache-accepting-legacy-values!)
+        (is (= "Lenny" (toucan-name))))
+      (testing "without the key, it refuses rather than caching the ciphertext"
+        (encryption-test/with-secret-key nil
+          (is (=? {:encryption-state :missing-key}
+                  (try (setting/restore-cache-accepting-legacy-values!)
+                       (catch clojure.lang.ExceptionInfo e (ex-data e)))))))
+      (testing "with another key, it refuses too"
+        (encryption-test/with-secret-key "ZYXWVUTS87654321"
+          (is (=? {:encryption-state :wrong-key}
+                  (try (setting/restore-cache-accepting-legacy-values!)
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))))))))
 
 (deftest migrate-settings!-writes-past-the-read-only-mode-guard-test
   ;; The cloud-migration guard on Toucan DML (registered when `metabase.cloud-migration.models.cloud-migration`

@@ -1817,15 +1817,27 @@
     (some? value_with_aad)              (:value (read-setting-value row))
     (maybe-resolve-setting setting-key) (some-> value mdb.setting/legacy-plaintext)))
 
+(def ^:private unreadable-encryption-states
+  "The [[app-db/encryption-state]]s in which MB_ENCRYPTION_SECRET_KEY cannot read the app DB, each with why."
+  {:missing-key     "The app DB is encrypted, but MB_ENCRYPTION_SECRET_KEY is not set."
+   :wrong-key       "MB_ENCRYPTION_SECRET_KEY does not decrypt this app DB."
+   :not-decryptable "Some of this app DB's encrypted content does not decrypt with MB_ENCRYPTION_SECRET_KEY."})
+
 (defn restore-cache-accepting-legacy-values!
   "Populate the Settings cache from the `setting` table, taking a row's legacy `value` when it has no `value_with_aad`.
   For a process that reads an app DB it does not migrate, such as a CLI scoring a copy of an older instance's app DB.
   Server startup fills in `value_with_aad` from `value` (see [[mdb.setting/migrate-settings!]]), but nothing does that
   without migrations, so the Setting model reads every value an older version wrote as unset.
+  A legacy `value` is taken as ciphertext only when it decrypts, which is sound only once the key is known to fit the
+  database. So, like server startup, this first checks [[app-db/encryption-state]], and throws, with the state in
+  `:encryption-state`, when the key is missing or wrong. Otherwise a ciphertext would be cached as the value.
   Writes nothing.
   Reads made with the setting cache disabled still go through the model, and so does the reload that follows another
   instance changing a setting."
   []
+  (let [state (app-db/encryption-state)]
+    (when-let [reason (unreadable-encryption-states state)]
+      (throw (ex-info (str reason " Set the key the instance uses.") {:encryption-state state}))))
   (setting.cache/restore-cache!
    (into {}
          (keep (fn [row]

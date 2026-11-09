@@ -60,6 +60,7 @@
   decrypt-db
   encrypt-db
   encryption-check-status
+  encryption-state
   encrypt-plaintext-columns!]
  [metabase.app-db.format
   format-sql]

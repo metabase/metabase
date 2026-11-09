@@ -209,12 +209,13 @@
       :else           (try
                         (write-result! (run-cli options) (:output options))
                         (catch clojure.lang.ExceptionInfo e
-                          ;; Handle CLI validation failures (`:cli-validation`) and missing-embeddings
-                          ;; failures from representation (`:embeddings-path`) — both are user-facing
-                          ;; misconfigurations rather than bugs. Everything else gets the stack trace
-                          ;; so an `ex-cause` SQL exception remains diagnosable from the terminal.
+                          ;; Handle CLI validation failures (`:cli-validation`), missing-embeddings
+                          ;; failures from representation (`:embeddings-path`) and an encryption key that cannot
+                          ;; read the appdb (`:encryption-state`) — all user-facing misconfigurations rather than
+                          ;; bugs. Everything else gets the stack trace so an `ex-cause` SQL exception remains
+                          ;; diagnosable from the terminal.
                           (let [data (ex-data e)]
-                            (if (or (:cli-validation data) (:embeddings-path data))
+                            (if (or (:cli-validation data) (:embeddings-path data) (:encryption-state data))
                               (fail! (ex-message e))
                               (fail-with-trace! e))))
                         (catch Throwable t
