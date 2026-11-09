@@ -47,7 +47,7 @@
                           :title             "E2E test advisory"
                           :description       "Tests the full sync-and-evaluate flow"
                           :remediation       "Upgrade"
-                          :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                          :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
                           :matching_query    {:default {:select [[1 :one]]}}
                           ;; query returns rows unconditionally — tests the full evaluate flow
                           :match_status      "not_affected"
