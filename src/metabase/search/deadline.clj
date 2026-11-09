@@ -12,10 +12,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *observation-grace-ms*
+(def ^:private observation-grace-ms
   "Delay after a deadline before reporting a worker that has not exited."
   30000)
 
+;; A rebuild run's dynamic extent, like `metabase.search.lease/*lease-context*`: lease and index code reached from
+;; anywhere inside the run check its deadline without the run being passed down every call path.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *run-context*
   "The current run's identity, monotonic deadline, worker, and terminal state; nil outside a rebuild."
   nil)
@@ -101,7 +104,7 @@
         (when (pos? timeout-ms)
           (vswap! tasks conj (schedule! timeout-ms (bound-fn [] (expire! context))))
           (vswap! tasks conj
-                  (schedule! (+ timeout-ms *observation-grace-ms*)
+                  (schedule! (+ timeout-ms observation-grace-ms)
                              (bound-fn []
                                (when (and (= :timed-out (:status @state)) (not (:exited? @state)))
                                  (report! context :worker-stuck))))))
