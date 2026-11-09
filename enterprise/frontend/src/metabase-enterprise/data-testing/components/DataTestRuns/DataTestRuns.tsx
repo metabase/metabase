@@ -2,6 +2,7 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useState } from "react";
 
+import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -18,6 +19,9 @@ import type {
 } from "metabase-types/api";
 
 import { PAGE_SIZE } from "../../constants";
+import { getDataTestTypeDefinition } from "../../test-types";
+import { getRunDataTestCacheKey } from "../../utils";
+import { DataTestRunButton } from "../DataTestRunButton";
 
 import { DataTestRunFilterBar } from "./DataTestRunFilterBar";
 import { DataTestRunSidebar } from "./DataTestRunSidebar";
@@ -27,33 +31,38 @@ import { getParsedParams } from "./utils";
 
 const EMPTY_RUNS: DataTestRunWithUser[] = [];
 
-type DataTestRunsProps = {
-  testType: DataTestType;
+type DataTestRunsProps<K extends DataTestType> = {
+  testType: K;
   testId: DataTestId;
-  testName: string;
   header: ReactNode;
-  subjectLink: ReactNode;
-  runButton: ReactNode;
-  isRunning: boolean;
-  getRunsUrl: (params: Urls.DataTestRunListParams) => string;
 };
 
 /**
  * The run history of one test: filters, a paginated table of runs, and a
- * sidebar with the selected run. The caller supplies what depends on the test
- * type: the page header, the link to the tested entity, the run button, and
- * the URL of each filtered page.
+ * sidebar with the selected run. `header` renders above the runs, beside the
+ * sidebar.
  */
-export function DataTestRuns({
+export function DataTestRuns<K extends DataTestType>({
   testType,
   testId,
-  testName,
   header,
-  subjectLink,
-  runButton,
-  isRunning,
-  getRunsUrl,
-}: DataTestRunsProps) {
+}: DataTestRunsProps<K>) {
+  const definition = getDataTestTypeDefinition(testType);
+  const {
+    data: test,
+    isLoading: isLoadingTest,
+    error: testError,
+  } = definition.useGetTestQuery(testId);
+  const {
+    readOnly,
+    isLoading: isLoadingReadOnly,
+    error: readOnlyError,
+  } = definition.useReadOnly(
+    test != null ? definition.getSubjectId(test) : skipToken,
+  );
+  const [, { isLoading: isRunning }] = definition.useRunTestMutation({
+    fixedCacheKey: getRunDataTestCacheKey(testType, testId),
+  });
   const location = useLocation();
   const navigate = useNavigate();
   const params = getParsedParams(location);
@@ -88,14 +97,29 @@ export function DataTestRuns({
     setIsPolling(shouldPoll);
   }
 
+  if (test == null || isLoadingTest || isLoadingReadOnly) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoadingTest || isLoadingReadOnly}
+        error={testError ?? readOnlyError}
+      />
+    );
+  }
+
+  const { SubjectLink } = definition;
+
   const handleFilterOptionsChange = (
     filterOptions: Omit<Urls.DataTestRunListParams, "page">,
   ) => {
-    navigate(getRunsUrl(filterOptions), { replace: true });
+    navigate(definition.getTestRunsUrl(test, filterOptions), {
+      replace: true,
+    });
   };
 
   const handlePageChange = (page: number) => {
-    navigate(getRunsUrl({ ...params, page }), { replace: true });
+    navigate(definition.getTestRunsUrl(test, { ...params, page }), {
+      replace: true,
+    });
   };
 
   return (
@@ -117,7 +141,12 @@ export function DataTestRuns({
               }}
               onFilterOptionsChange={handleFilterOptionsChange}
             />
-            {runButton}
+            <DataTestRunButton
+              testType={testType}
+              test={test}
+              readOnly={readOnly}
+              triggeredFrom="test_runs"
+            />
           </Group>
           {data == null || isLoading || error != null ? (
             <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -147,8 +176,8 @@ export function DataTestRuns({
       </PageContainer>
       {selectedRun != null && (
         <DataTestRunSidebar
-          testName={testName}
-          subjectLink={subjectLink}
+          testName={test.name}
+          subjectLink={<SubjectLink test={test} />}
           run={selectedRun}
           containerWidth={containerWidth}
           onResizeStart={startResizing}

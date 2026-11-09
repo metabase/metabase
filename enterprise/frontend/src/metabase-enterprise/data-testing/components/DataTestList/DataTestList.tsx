@@ -5,6 +5,7 @@ import { jt, t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
@@ -20,29 +21,76 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import { useRunTransformTestMutation } from "metabase-enterprise/api";
-import type { DataTestRun, TransformTest } from "metabase-types/api";
+import type { DataTestRun, DataTestType } from "metabase-types/api";
 
-import { trackTransformTestTriggerManualRun } from "../../../analytics";
-import { MB_CLI_NAME } from "../../../constants";
-import { isFailedDataTestRunStatus } from "../../../utils";
+import { MB_CLI_NAME } from "../../constants";
+import { getDataTestTypeDefinition } from "../../test-types";
+import type {
+  DataTest,
+  DataTestSubjectId,
+  DataTestTypeDefinition,
+} from "../../types";
+import { isFailedDataTestRunStatus } from "../../utils";
 
-type TransformTestListProps = {
-  tests: TransformTest[];
+type DataTestListProps<K extends DataTestType> = {
+  testType: K;
+  subjectId: DataTestSubjectId;
+};
+
+/** The tests of one entity, such as a transform, with search and a menu to run each. */
+export function DataTestList<K extends DataTestType>({
+  testType,
+  subjectId,
+}: DataTestListProps<K>) {
+  const definition = getDataTestTypeDefinition(testType);
+  const {
+    data: tests,
+    isLoading: isLoadingTests,
+    error: testsError,
+  } = definition.useListTestsQuery(subjectId);
+  const {
+    readOnly,
+    isLoading: isLoadingReadOnly,
+    error: readOnlyError,
+  } = definition.useReadOnly(subjectId);
+
+  if (tests == null || isLoadingTests || isLoadingReadOnly) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoadingTests || isLoadingReadOnly}
+        error={testsError ?? readOnlyError}
+      />
+    );
+  }
+
+  return (
+    <DataTestTable definition={definition} tests={tests} readOnly={readOnly} />
+  );
+}
+
+type DataTestTableProps<T extends DataTest> = {
+  definition: DataTestTypeDefinition<T>;
+  tests: T[];
   readOnly: boolean;
 };
 
-export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
+function DataTestTable<T extends DataTest>({
+  definition,
+  tests,
+  readOnly,
+}: DataTestTableProps<T>) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const columns = useMemo(() => getColumns(readOnly), [readOnly]);
+  const columns = useMemo(
+    () => getColumns(definition, readOnly),
+    [definition, readOnly],
+  );
 
   const handleRowActivate = useCallback(
-    (row: Row<TransformTest>) => {
-      navigate(Urls.transformTest(row.original.transform_id, row.original.id));
+    (row: Row<T>) => {
+      navigate(definition.getTestUrl(row.original));
     },
-    [navigate],
+    [definition, navigate],
   );
 
   const treeTableInstance = useTreeTableInstance({
@@ -78,7 +126,7 @@ export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
               />
             )
           }
-          ariaLabel={t`Transform tests`}
+          ariaLabel={definition.getListLabel()}
           onRowClick={handleRowActivate}
         />
       </Card>
@@ -86,8 +134,11 @@ export function TransformTestList({ tests, readOnly }: TransformTestListProps) {
   );
 }
 
-function getColumns(readOnly: boolean): TreeTableColumnDef<TransformTest>[] {
-  const columns: TreeTableColumnDef<TransformTest>[] = [
+function getColumns<T extends DataTest>(
+  definition: DataTestTypeDefinition<T>,
+  readOnly: boolean,
+): TreeTableColumnDef<T>[] {
+  const columns: TreeTableColumnDef<T>[] = [
     {
       id: "name",
       accessorKey: "name",
@@ -124,7 +175,9 @@ function getColumns(readOnly: boolean): TreeTableColumnDef<TransformTest>[] {
       id: "actions",
       header: "",
       width: 48,
-      cell: ({ row }) => <TransformTestMenu test={row.original} />,
+      cell: ({ row }) => (
+        <DataTestMenu definition={definition} test={row.original} />
+      ),
     },
   ];
 }
@@ -138,12 +191,20 @@ function LastRunCell({ run }: { run: DataTestRun }) {
   );
 }
 
-function TransformTestMenu({ test }: { test: TransformTest }) {
-  const [runTest] = useRunTransformTestMutation();
+type DataTestMenuProps<T extends DataTest> = {
+  definition: DataTestTypeDefinition<T>;
+  test: T;
+};
+
+function DataTestMenu<T extends DataTest>({
+  definition,
+  test,
+}: DataTestMenuProps<T>) {
+  const [runTest] = definition.useRunTestMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleRun = async () => {
-    trackTransformTestTriggerManualRun({
+    definition.trackManualRun({
       testId: test.id,
       triggeredFrom: "test_list",
     });
@@ -175,7 +236,7 @@ function TransformTestMenu({ test }: { test: TransformTest }) {
         </Menu.Item>
         <Menu.Item
           component={ForwardRefLink}
-          to={Urls.transformTestRuns(test.transform_id, test.id)}
+          to={definition.getTestRunsUrl(test)}
           leftSection={<Icon name="clock" />}
         >
           {t`View runs`}

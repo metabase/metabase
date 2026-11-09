@@ -3,8 +3,8 @@ import { msgid, ngettext, t } from "ttag";
 import type { TransformTestInput } from "metabase-types/api";
 
 import { DataTestSection } from "../../../components/DataTestSection";
-import { TransformTestDataCard } from "../../../components/TransformTestDataCard";
 import { getTableName } from "../../../utils";
+import { TransformTestDataCard } from "../TransformTestDataCard";
 
 type TransformTestInputsSectionProps = {
   inputs: TransformTestInput[];

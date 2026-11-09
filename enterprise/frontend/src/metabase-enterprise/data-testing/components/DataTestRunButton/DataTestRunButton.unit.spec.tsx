@@ -5,7 +5,7 @@ import {
   createMockTransformTest,
 } from "metabase-types/api/mocks";
 
-import { TransformTestRunButton } from "./TransformTestRunButton";
+import { DataTestRunButton } from "./DataTestRunButton";
 
 type SetupOpts = {
   test: TransformTest;
@@ -13,7 +13,8 @@ type SetupOpts = {
 
 function setup({ test }: SetupOpts) {
   return renderWithProviders(
-    <TransformTestRunButton
+    <DataTestRunButton
+      testType="transform"
       test={test}
       readOnly={false}
       triggeredFrom="test_overview"
@@ -21,7 +22,7 @@ function setup({ test }: SetupOpts) {
   );
 }
 
-describe("TransformTestRunButton", () => {
+describe("DataTestRunButton", () => {
   it("offers to run a test again when it re-renders with the same last run", () => {
     const test = createMockTransformTest({
       last_run: createMockDataTestRun({ status: "passed" }),
@@ -29,7 +30,8 @@ describe("TransformTestRunButton", () => {
     const { rerender } = setup({ test });
 
     rerender(
-      <TransformTestRunButton
+      <DataTestRunButton
+        testType="transform"
         test={test}
         readOnly={false}
         triggeredFrom="test_overview"

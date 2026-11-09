@@ -7,8 +7,8 @@ import type {
 } from "metabase-types/api";
 
 import { DataTestSection } from "../../../components/DataTestSection";
-import { TransformTestDataCard } from "../../../components/TransformTestDataCard";
 import { getTableName } from "../../../utils";
+import { TransformTestDataCard } from "../TransformTestDataCard";
 
 type TransformTestOutputSectionProps = {
   transform: Transform;

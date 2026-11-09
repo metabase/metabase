@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
 import type {
+  DataTestId,
   DataTestRun,
   DataTestRunStatus,
+  DataTestType,
   TransformRun,
   TransformRunStatus,
-  TransformTestId,
   TransformTestTable,
 } from "metabase-types/api";
 
@@ -59,6 +60,9 @@ export function isFailedDataTestRunStatus(status: DataTestRunStatus) {
   return status === "failed" || status === "error" || status === "timeout";
 }
 
-export function getRunTransformTestCacheKey(testId: TransformTestId) {
-  return `run-transform-test-${testId}`;
+export function getRunDataTestCacheKey(
+  testType: DataTestType,
+  testId: DataTestId,
+) {
+  return `run-${testType}-test-${testId}`;
 }

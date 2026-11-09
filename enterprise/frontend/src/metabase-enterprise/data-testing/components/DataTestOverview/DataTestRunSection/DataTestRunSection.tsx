@@ -7,7 +7,7 @@ import { RunStatus } from "metabase/transforms/components/RunStatus";
 import { Anchor, Group } from "metabase/ui";
 import type { DataTestRun } from "metabase-types/api";
 
-import { getRunStatusInfo } from "../../utils";
+import { getRunStatusInfo } from "../../../utils";
 
 type DataTestRunSectionProps = {
   lastRun: DataTestRun | null;

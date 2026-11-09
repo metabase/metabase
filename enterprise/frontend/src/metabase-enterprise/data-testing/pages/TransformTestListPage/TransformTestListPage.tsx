@@ -6,9 +6,8 @@ import { TransformHeader } from "metabase/transforms/components/TransformHeader"
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { useListTransformTestsQuery } from "metabase-enterprise/api";
 
-import { TransformTestList } from "./TransformTestList";
+import { DataTestList } from "../../components/DataTestList";
 
 type TransformTestListPageParams = {
   transformId: string;
@@ -22,17 +21,10 @@ export function TransformTestListPage() {
     isLoading: isLoadingTransform,
     error: transformError,
   } = useGetTransformQuery(transformId ?? skipToken);
-  const {
-    data: tests = [],
-    isLoading: isLoadingTests,
-    error: testsError,
-  } = useListTransformTestsQuery(
-    transformId != null ? { "transform-id": transformId } : skipToken,
-  );
   const { readOnly, isLoadingDatabases, databasesError } =
     useTransformPermissions({ transform });
-  const isLoading = isLoadingTransform || isLoadingTests || isLoadingDatabases;
-  const error = transformError ?? testsError ?? databasesError;
+  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const error = transformError ?? databasesError;
 
   if (transform == null || isLoading || error != null) {
     return (
@@ -45,7 +37,7 @@ export function TransformTestListPage() {
   return (
     <PageContainer data-testid="transform-test-list">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <TransformTestList tests={tests} readOnly={readOnly ?? false} />
+      <DataTestList testType="transform" subjectId={transform.id} />
     </PageContainer>
   );
 }
