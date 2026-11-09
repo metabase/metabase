@@ -31,7 +31,7 @@ Every operation and field that differs from master carries `x-status`:
 1. An admin enables workspaces on a database: driver supports `:workspace`, database-local setting `database-enable-workspaces` on, not a router database. Provisioning DDL uses the database's `:admin-details` overlay when configured.
 2. `POST /api/ee/workspace-manager` `{name, database_ids}`. The parent records every schema with an active synced table as `input_schemas`, creates the scratch namespace and user, and grants read on the inputs. Blocks.
 3. `GET /{id}/config` returns `config.yml` with the workspace login.
-4. The sidecar boots from it (`MB_CONFIG_FILE_PATH`), or, already holding the databases, enters workspace mode with `POST /api/ee/workspace-instance/current`.
+4. The sidecar boots from it (`MB_CONFIG_FILE_PATH`; its token needs `:config-text-file` for every section except `settings`, and `:workspaces` for the `workspace` section), or, already holding the databases, enters workspace mode with `POST /api/ee/workspace-instance/current`.
 5. Transforms run on the sidecar write to the scratch namespace and record remap rows. Queries read remapped tables from scratch and everything else from production.
 6. `DELETE /{id}` drops the warehouse objects and remap rows, then the workspace. Safe to retry.
 
@@ -41,7 +41,7 @@ Every operation and field that differs from master carries `x-status`:
 - The warehouse enforces isolation: the workspace user has no write grant outside its scratch namespace. A sidecar bug cannot write production.
 - `input_schemas` is fixed at create.
 - Workspace names are not unique. For idempotent create, pick a unique name and find it with `GET /` after a lost response.
-- master: a `200` from create can hide a failure. Treat any database not `provisioned` as failed and `DELETE` the workspace. With #86601 a failed create is never `200`; `cleanup_required: true` means the workspace was kept and must be deleted.
+- master: a `200` from create can hide a failure. Unless `databases` has one entry per requested id and each is `provisioned`, treat the create as failed and `DELETE` the workspace. With #86601 a failed create is never `200`; `cleanup_required: true` means the workspace was kept and must be deleted.
 - `config.yml` supports `{{env VAR}}` in any value, so a caller can keep secrets out of the file and pass them as environment variables or JVM system properties.
 
 ## MB Code: what it needs
@@ -58,7 +58,7 @@ Every operation and field that differs from master carries `x-status`:
 
 ## Engines
 
-Master reports `:workspace` for Postgres, Redshift, MySQL, ClickHouse, SQL Server, Snowflake, BigQuery and H2. #86589 limits it to Postgres until each other engine is proven (ENG-14447 to ENG-14450).
+On master, Postgres, MySQL, Redshift, ClickHouse and SQL Server report the `:workspace` feature. Snowflake, BigQuery and H2 have isolation methods but report it false, so their databases are not eligible. #86589 limits the feature to Postgres until each other engine is proven (ENG-14447 to ENG-14450).
 
 ## Verifying
 

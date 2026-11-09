@@ -65,8 +65,10 @@ paths:
         "200":
           description: |
             master: the workspace. Also returned when provisioning AND its cleanup failed: the workspace is kept,
-            with its databases `unprovisioned`. Callers must treat any database not `provisioned` as a failure and
-            delete the workspace.
+            the databases whose teardown succeeded are gone from `databases`, and each remaining one is
+            `unprovisioned` (its destroy failed) or keeps its prior status (the teardown failed before destroy, e.g. a
+            lock timeout). Callers must treat the create as failed, and DELETE the workspace, unless `databases` has
+            one entry per requested id and every entry is `provisioned`.
 
             hardening (#86601): only returned when every database is `provisioned`.
           content:
@@ -106,7 +108,8 @@ paths:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
         "500":
           description: |
-            master: provisioning failed and cleanup succeeded; nothing is left behind.
+            master: provisioning failed and cleanup succeeded. Nothing is left in the warehouse; if deleting the
+            Workspace row then failed, that row (with no databases) is left behind.
 
             hardening (#86601): also provisioning failed and cleanup failed, or the workspace row delete failed.
             Then `cleanup_required` is true, the workspace is kept, and the caller must `DELETE` it.
@@ -142,7 +145,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                name: { type: string, minLength: 1, description: Not unique. }
+                name: { type: string, pattern: "\\S", description: Not unique. Must not be blank. }
       responses:
         "200":
           content:
@@ -157,7 +160,8 @@ paths:
       summary: Tear down every database's warehouse objects, then delete the workspace. Blocks. Safe to retry.
       description: |
         Works from any state. Each database is either fully torn down (row deleted) or kept. Remap rows for the
-        scratch namespace are always cleared. If any teardown fails, the workspace stays with the failed rows and
+        scratch namespace are cleared whenever destroy is attempted, even if it fails; a teardown that fails
+        earlier (60 s lock timeout, identifier computation) leaves them. If any teardown fails, the workspace stays with the failed rows and
         the combined error is returned.
       x-status: master
       x-source: EE/core.clj:303, EE/provisioning.clj:217
@@ -192,9 +196,10 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: At least one database is not `provisioned`.
+          description: At least one database is not `provisioned`. Plain-text body.
+          x-source: EE/config.clj:131
           content:
-            application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
+            text/plain: { schema: { type: string } }
 
   /{id}/schemas:
     parameters:
@@ -240,7 +245,10 @@ components:
 
   responses:
     FeatureMissing:
-      description: The instance's token lacks the `:workspaces` feature.
+      description: |
+        The instance's token lacks the `:workspaces` feature. Body has `message` and
+        `status: "error-premium-feature-not-available"`, or only `{"message": "Something went wrong"}` when the
+        instance hides stack traces.
       x-source: src/metabase/premium_features/token_check.clj:766
       content:
         application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
@@ -263,10 +271,12 @@ components:
       additionalProperties: false
       required: [name, database_ids]
       properties:
-        name: { type: string, minLength: 1, description: Not unique. }
+        name: { type: string, pattern: "\\S", description: Not unique. Must not be blank. }
         database_ids:
           type: array
           minItems: 1
+          uniqueItems: true
+          description: A repeated id is not rejected up front; it fails the create with a 500 from a unique constraint.
           items: { type: integer, minimum: 1 }
 
     WorkspaceStatus:
@@ -274,7 +284,8 @@ components:
       enum: [unprovisioned, provisioning, provisioned, deprovisioning]
       description: |
         unprovisioned -> provisioning (create) -> provisioned, or back to unprovisioned on failure.
-        A failed teardown also leaves a row unprovisioned. No API moves a row to deprovisioning.
+        A teardown whose destroy fails forces the row to unprovisioned; one that fails before destroy (lock timeout,
+        identifier computation) leaves the status unchanged. No API moves a row to deprovisioning.
       x-source: EE/provisioning.clj:96-280
 
     WorkspaceDatabase:
@@ -286,10 +297,14 @@ components:
         input_schemas:
           type: array
           items: { type: string }
-          description: Every schema with an active synced table at create. Empty only on schemaless engines (MySQL).
+          description: |
+            Every schema with an active synced table at create. Empty on schemaless engines (MySQL), and on master
+            also on a database that has not synced any table; hardening #86612 refuses the latter.
         output_namespace:
           type: string
-          description: The scratch schema (a database on MySQL), `mb__isolation_<slug>_<id>`. Empty until provisioned.
+          description: |
+            The scratch schema (a database on MySQL), `mb__isolation_<slug>_<id>`: `<slug>` derives from the parent's
+            site UUID, `<id>` is this WorkspaceDatabase row's id. Empty until provisioned.
         status: { $ref: "#/components/schemas/WorkspaceStatus" }
         database:
           type: [object, "null"]
@@ -307,7 +322,7 @@ components:
           type: [object, "null"]
           description: Null if the user was deleted.
           additionalProperties: false
-          required: [id, email]
+          required: [id, first_name, last_name, email]
           properties:
             id: { type: integer }
             first_name: { type: [string, "null"] }

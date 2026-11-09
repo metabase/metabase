@@ -14,7 +14,7 @@
       "properties": {
         "databases": {
           "type": "array",
-          "description": "The workspace's databases with the workspace login, then every other database of the parent as a stub, then the sample database if the parent has one.",
+          "description": "The workspace's databases with the workspace login, then every other database of the parent as a stub (except the sample database, the audit database and database-routing destinations), then the sample database if the parent has one.",
           "items": {
             "oneOf": [
               { "$ref": "#/$defs/workspaceDatabase" },
@@ -44,7 +44,7 @@
       "required": ["user", "let-user-control-scheduling"],
       "properties": {
         "user": { "type": "string", "description": "The workspace user, not the parent's login." },
-        "password": { "type": "string", "description": "Generated at provisioning. Absent on BigQuery, where user is the workspace service account and impersonate-service-account is set to it." },
+        "password": { "type": "string", "description": "Generated at provisioning. Absent on BigQuery (not eligible on master), where user is the workspace service account and impersonate-service-account is set to it." },
         "let-user-control-scheduling": { "const": false },
         "schema-filters-type": { "const": "inclusion", "description": "Engines with schemas that sync through metabase.driver.sync (Postgres, Redshift, SQL Server)." },
         "schema-filters-patterns": {
@@ -110,7 +110,7 @@
       "required": ["name", "databases"],
       "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400.",
       "properties": {
-        "name": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "pattern": "\\S" },
         "databases": {
           "type": "object",
           "minProperties": 1,
@@ -119,15 +119,19 @@
             "type": "object",
             "required": ["input_schemas", "output"],
             "properties": {
-              "input_schemas": { "type": "array", "items": { "type": "string" } },
+              "input_schemas": { "type": "array", "items": { "type": "string", "pattern": "\\S" } },
               "output": {
                 "type": "object",
-                "minProperties": 1,
+                "description": "At least one of db and schema is a non-null string.",
                 "additionalProperties": false,
                 "properties": {
                   "db": { "type": ["string", "null"] },
                   "schema": { "type": ["string", "null"] }
-                }
+                },
+                "anyOf": [
+                  { "required": ["db"], "properties": { "db": { "type": "string" } } },
+                  { "required": ["schema"], "properties": { "schema": { "type": "string" } } }
+                ]
               }
             }
           }

@@ -9,7 +9,7 @@ info:
     In workspace mode the sidecar redirects transform output into the scratch namespace and records a remap row
     per redirected table. Queries that name a remapped table read the scratch copy; every other table is read
     from production. Remap rows are written by the transform hook, not through this API.
-    (`EE/transform_hooks.clj:10`, `EE/query_processor/middleware.clj`.)
+    (`EE/transform_hooks.clj:11`, `EE/query_processor/middleware.clj`.)
 
     Every route needs a session or API key, the `:workspaces` premium feature (402 otherwise), and a superuser
     on the sidecar (403 otherwise).
@@ -138,14 +138,16 @@ components:
   schemas:
     TableNamespace:
       description: |
-        Where a table lives. Which keys are set depends on the engine: `schema` on Postgres, Redshift and
-        ClickHouse; `db` and `schema` on SQL Server, Snowflake and BigQuery; `db` on MySQL. At least one is set.
+        Where a table lives. Which keys are set depends on the engine: `schema` on Postgres, Redshift, ClickHouse
+        and Snowflake; `db` and `schema` on SQL Server and BigQuery; `db` on MySQL. At least one is non-null.
       type: object
       additionalProperties: false
-      minProperties: 1
       properties:
         db: { type: [string, "null"] }
         schema: { type: [string, "null"] }
+      anyOf:
+        - { required: [db], properties: { db: { type: string } } }
+        - { required: [schema], properties: { schema: { type: string } } }
       x-source: src/metabase/workspaces/core.clj:46
 
     WorkspaceDatabaseConfig:
@@ -181,15 +183,16 @@ components:
 
     TableRemapping:
       type: object
-      required: [id, database_id, from_table_name, to_table_name, created_at]
+      required: [id, database_id, from_db, from_schema, from_table_name, to_db, to_schema, to_table_name, created_at]
+      x-source: EE/models/table_remapping.clj:4
       properties:
         id: { type: integer }
         database_id: { type: integer }
-        from_db: { type: [string, "null"] }
-        from_schema: { type: [string, "null"] }
+        from_db: { type: string, description: '"" when the engine has no db slot. Never null.' }
+        from_schema: { type: string, description: '"" when the engine has no schema slot. Never null.' }
         from_table_name: { type: string }
-        to_db: { type: [string, "null"] }
-        to_schema: { type: [string, "null"] }
+        to_db: { type: string, description: '"" when absent. Never null.' }
+        to_schema: { type: string, description: '"" when absent. Never null.' }
         to_table_name:
           type: string
           description: "`<from_schema>__<from_table_name>`, shortened with a hash when too long (`EE/table_remapping.clj:138`)."
