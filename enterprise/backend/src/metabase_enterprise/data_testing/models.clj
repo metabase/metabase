@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -71,7 +70,7 @@
   (boolean
    (and transform
         transform-writable?
-        (or api/*is-superuser?*
+        (or (mi/superuser?)
             (some-> (transforms-base.i/source-db-id transform) can-run-native-query?)))))
 
 (mu/defn- can-save? :- :boolean
