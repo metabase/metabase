@@ -46734,7 +46734,7 @@
     },
     "/api/ee/card-test" : {
       "get" : {
-        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio\n  access.",
+        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio\n  access.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
         "operationId" : "get-api-ee-card-test",
         "parameters" : [ {
           "in" : "query",
@@ -46775,7 +46775,7 @@
         "tags" : [ "/api/ee/card-test" ]
       },
       "post" : {
-        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit.",
+        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other\n  `{{...}}` is refused.\n\n  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values.\n  A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table.",
         "operationId" : "post-api-ee-card-test",
         "parameters" : [ ],
         "requestBody" : {
@@ -46845,7 +46845,7 @@
         "tags" : [ "/api/ee/card-test" ]
       },
       "get" : {
-        "description" : "Get a card test with its newest run.",
+        "description" : "Get a card test with its newest run.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
         "operationId" : "get-api-ee-card-test-id",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
@@ -46879,7 +46879,7 @@
         "tags" : [ "/api/ee/card-test" ]
       },
       "put" : {
-        "description" : "Update a card test.",
+        "description" : "Update a card test.\n\n  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values.\n  A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table.",
         "operationId" : "put-api-ee-card-test-id",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
@@ -46924,7 +46924,7 @@
     },
     "/api/ee/card-test/{id}/run" : {
       "post" : {
-        "description" : "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the\n  database of that query.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
+        "description" : "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the\n  database of that query.\n\n  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values.\n  A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
         "operationId" : "post-api-ee-card-test-id-run",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
