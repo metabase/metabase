@@ -62,31 +62,35 @@ describe("formulaTokens", () => {
     cleanup = undefined;
   });
 
-  it("deletes a complete column reference in one backspace", () => {
-    const { view } = setup({ formula: "Sum([Total]|)" });
-
-    expect(pressBackspace(view)).toBe("Sum(|)");
-  });
+  it.each([
+    ["Sum([Total]|)", "Sum(|)"],
+    ["Average|([Total])", "|([Total])"],
+    ["Sum|[Total]", "|[Total]"],
+  ])(
+    "deletes the complete token in %s in one backspace",
+    (formula, expected) => {
+      const { view } = setup({ formula });
+      expect(pressBackspace(view)).toBe(expected);
+    },
+  );
 
   it("deletes a complete column reference in one forward delete", () => {
     const { view } = setup({ formula: "Sum(|[Total])" });
-
     deleteCharForward(view);
-
     expect(getFormula(view)).toBe("Sum(|)");
   });
 
-  it("moves the caret past a complete column reference in one step", () => {
-    const { view } = setup({ formula: "Sum([Total]|) + 1" });
-
+  it.each([
+    ["Sum([Total]|) + 1", "Sum(|[Total]) + 1"],
+    ["Sum|([Total])", "|Sum([Total])"],
+  ])("moves past the complete token in %s in one step", (formula, expected) => {
+    const { view } = setup({ formula });
     cursorCharLeft(view);
-
-    expect(getFormula(view)).toBe("Sum(|[Total]) + 1");
+    expect(getFormula(view)).toBe(expected);
   });
 
-  it("backspaces a column reference being typed one character at a time, without stranding its brackets", () => {
+  it("backspaces a column being typed one character at a time, without stranding its brackets", () => {
     const { view } = setup({ formula: "Sum([To|])" });
-
     expect([
       pressBackspace(view),
       pressBackspace(view),
@@ -95,37 +99,14 @@ describe("formulaTokens", () => {
     ]).toEqual(["Sum([T|])", "Sum([|])", "Sum(|)", "Sum|"]);
   });
 
-  describe("function names", () => {
-    it("deletes a function's name in one backspace", () => {
-      const { view } = setup({ formula: "Average|([Total])" });
-
-      expect(pressBackspace(view)).toBe("|([Total])");
-    });
-
-    it("deletes a function's name in one backspace once its parentheses are gone", () => {
-      const { view } = setup({ formula: "Sum|[Total]" });
-
-      expect(pressBackspace(view)).toBe("|[Total]");
-    });
-
-    it("moves the caret past a function's name in one step", () => {
-      const { view } = setup({ formula: "Sum|([Total])" });
-
-      cursorCharLeft(view);
-
-      expect(getFormula(view)).toBe("|Sum([Total])");
-    });
-
-    it("backspaces one character at a time with the caret inside a function's name", () => {
-      const { view } = setup({ formula: "Aver|age([Total])" });
-
-      expect(pressBackspace(view)).toBe("Ave|age([Total])");
-    });
-
-    it("backspaces one character at a time after a name that isn't a function", () => {
-      const { view } = setup({ formula: "Averag|" });
-
-      expect(pressBackspace(view)).toBe("Avera|");
-    });
-  });
+  it.each([
+    ["Aver|age([Total])", "Ave|age([Total])"],
+    ["Averag|", "Avera|"],
+  ])(
+    "backspaces one character while editing a function in %s",
+    (formula, expected) => {
+      const { view } = setup({ formula });
+      expect(pressBackspace(view)).toBe(expected);
+    },
+  );
 });

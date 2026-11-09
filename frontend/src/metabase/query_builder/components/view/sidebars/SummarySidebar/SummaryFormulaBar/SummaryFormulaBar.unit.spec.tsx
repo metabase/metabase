@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import { databaseApi } from "metabase/api";
 import { defer } from "metabase/utils/promise";
@@ -127,6 +128,14 @@ describe("summary formula handoff", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Add" }));
       await expectClosed();
+      expect(
+        screen.queryByTestId("summary-well-placeholder"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", {
+          name: `Remove ${[...dimensions, ...values][0]}`,
+        }),
+      ).toBeInTheDocument();
       expect(onQueryChange).toHaveBeenCalledTimes(1);
       const [query] = onQueryChange.mock.calls[0];
       expect(getValueItems(query, -1).map((item) => item.label)).toEqual(
@@ -140,6 +149,52 @@ describe("summary formula handoff", () => {
       expect(input).toHaveFocus();
     },
   );
+
+  it("shows the live draft in its well and lets the chip focus or cancel the editor", async () => {
+    const { onQueryChange } = await setup();
+    const input = getInput("values");
+    fireEvent.change(input, { target: { value: "=" } });
+    const editor = await screen.findByRole("textbox", { name: "Formula" });
+    const chip = within(screen.getByTestId("summary-well-values")).getByTestId(
+      "summary-well-placeholder",
+    );
+    expect(chip).toHaveTextContent("New formula");
+    expect(
+      within(screen.getByTestId("summary-well-columns")).queryByTestId(
+        "summary-well-placeholder",
+      ),
+    ).not.toBeInTheDocument();
+
+    const view = getEditor();
+    expect(view).not.toBeNull();
+    if (view) {
+      await act(async () => {
+        view.dispatch({
+          changes: { from: 0, insert: "Sum([Total])" },
+          userEvent: "input.type",
+        });
+      });
+    }
+    expect(chip).toHaveTextContent("Sum(Total)");
+    await userEvent.click(getInput("columns"));
+    await userEvent.click(
+      within(chip).getByRole("button", {
+        name: "Edit the new formula in the formula bar",
+      }),
+    );
+    expect(editor).toHaveFocus();
+    expect(getEditor()?.state.doc.toString()).toBe("Sum([Total])");
+
+    await userEvent.click(
+      within(chip).getByRole("button", { name: "Cancel the new formula" }),
+    );
+    await expectClosed();
+    expect(
+      screen.queryByTestId("summary-well-placeholder"),
+    ).not.toBeInTheDocument();
+    expect(input).toHaveFocus();
+    expect(onQueryChange).not.toHaveBeenCalled();
+  });
 
   it("keeps text entered before the formula editor takes focus", async () => {
     await setup();

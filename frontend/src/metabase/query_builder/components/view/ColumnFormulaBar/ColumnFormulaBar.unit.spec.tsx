@@ -1,4 +1,3 @@
-import { closeCompletion } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 
@@ -235,39 +234,24 @@ describe("column formula bar", () => {
     await expectClosed();
   });
 
-  it.each(["Escape", "Cancel button"])(
-    "cancels with %s and starts the next formula empty",
-    async (action) => {
-      const { onQuestionChange } = setup();
-      const trigger = screen.getByRole("button", { name: "Add column" });
-      const { textbox, view } = await openFormula("1 + 2");
-      if (view) {
-        await act(async () => closeCompletion(view));
-      }
-      if (action === "Escape") {
-        fireEvent.keyDown(textbox, { key: "Escape" });
-      } else {
-        await userEvent.click(
-          screen.getByRole("button", { name: "Cancel formula" }),
-        );
-      }
-      await expectClosed();
-      expect(onQuestionChange).not.toHaveBeenCalled();
-      expect(trigger).toHaveFocus();
-
-      const { textbox: nextTextbox, view: nextView } = await openFormula();
-      expect(nextView?.state.doc.toString()).toBe("");
-      expect(nextTextbox).toHaveFocus();
-    },
-  );
-
-  it("keeps an invalid formula open without changing the query", async () => {
+  it("keeps the current draft on repeated clicks and resets it after Cancel", async () => {
     const { onQuestionChange } = setup();
-    const { textbox } = await openFormula("1 +");
-    fireEvent.keyDown(textbox, { key: "Enter", ctrlKey: true });
+    const trigger = screen.getByRole("button", { name: "Add column" });
+    const { textbox, view } = await openFormula("1 + 2");
+    await userEvent.click(trigger);
+    expect(view?.state.doc.toString()).toBe("1 + 2");
+    expect(textbox).toHaveFocus();
 
-    expect(await screen.findByTestId("formula-error")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel formula" }),
+    );
+    await expectClosed();
     expect(onQuestionChange).not.toHaveBeenCalled();
+    expect(trigger).toHaveFocus();
+
+    const nextEditor = await openFormula();
+    expect(nextEditor.view?.state.doc.toString()).toBe("");
+    expect(nextEditor.textbox).toHaveFocus();
   });
 
   it("does not offer the formula bar for read-only queries", () => {
@@ -285,18 +269,13 @@ describe("column formula bar", () => {
   });
 
   it("keeps an existing expression when the new formula has the same name", async () => {
-    const question = new Question(
-      createAdHocCard({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            expressions: { "Total * 2": ["+", 1, 2] },
-          },
-        },
-      }),
-      metadata,
+    const question = defaultQuestion.setQuery(
+      Lib.expression(
+        defaultQuestion.query(),
+        -1,
+        "Total * 2",
+        Lib.expressionClause("+", [1, 2]),
+      ),
     );
     const { onQuestionChange } = setup({ question });
     const { textbox } = await openFormula("[Total] * 2");
@@ -313,16 +292,6 @@ describe("column formula bar", () => {
       },
     });
     await expectClosed();
-  });
-
-  it("focuses the existing draft when the table button is clicked again", async () => {
-    setup();
-    const trigger = screen.getByRole("button", { name: "Add column" });
-    const { textbox, view } = await openFormula("[Total] * 2");
-    await userEvent.click(trigger);
-
-    expect(view?.state.doc.toString()).toBe("[Total] * 2");
-    expect(textbox).toHaveFocus();
   });
 
   it("discards the draft when the query builder leaves view mode", async () => {

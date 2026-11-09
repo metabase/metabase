@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { getTooltipPosition } from "metabase/querying/components/expressions/Editor";
@@ -25,6 +26,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     initialSource,
     initialName = "",
     onEditorCreate,
+    onNameChange,
     onSubmit,
     onCancel,
     onNavigate,
@@ -51,6 +53,12 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     onChange: () => setErrorMessage(null),
   });
   const hasFormula = source.trim().length > 0;
+  const formulaName = initialName.trim() || getDefaultFormulaName(source);
+  const liveName = hasFormula ? formulaName : "";
+  const nameChangeRef = useLatest(onNameChange);
+  useEffect(() => {
+    nameChangeRef.current?.(liveName);
+  }, [liveName, nameChangeRef]);
 
   const getExpression = (): NamedExpression | null => {
     if (!hasFormula) {
@@ -70,7 +78,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
       return null;
     }
     return {
-      name: initialName.trim() || getDefaultFormulaName(source),
+      name: formulaName,
       clause: expressionClause,
     };
   };

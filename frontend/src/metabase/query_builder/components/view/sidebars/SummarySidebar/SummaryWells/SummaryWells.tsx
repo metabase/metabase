@@ -17,6 +17,10 @@ import {
   getWellFieldSections,
 } from "../utils";
 
+import {
+  DraftFormulaChip,
+  type DraftFormulaChipProps,
+} from "./DraftFormulaChip";
 import { SummaryWell } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
@@ -27,6 +31,7 @@ type SummaryWellsProps = {
   stageIndex: number;
   sections: SummaryFieldSection[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
+  draftFormula?: (DraftFormulaChipProps & { wellId: SummaryWellId }) | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query) => void;
 };
@@ -36,6 +41,7 @@ export function SummaryWells({
   stageIndex,
   sections,
   formulaInputs,
+  draftFormula,
   onPick,
   onChange,
 }: SummaryWellsProps) {
@@ -86,6 +92,9 @@ export function SummaryWells({
               onRemove={() => handleRemove(item.clause)}
             />
           ))}
+          {draftFormula?.wellId === "values" && (
+            <DraftFormulaChip {...draftFormula} />
+          )}
         </SummaryWellInput>
       </SummaryWell>
       <SummaryWell wellId="columns" title={t`Group by`}>
@@ -111,6 +120,9 @@ export function SummaryWells({
               <span className={S.chipLabel}>{item.label}</span>
             </WellChip>
           ))}
+          {draftFormula?.wellId === "columns" && (
+            <DraftFormulaChip {...draftFormula} />
+          )}
         </SummaryWellInput>
       </SummaryWell>
     </Box>

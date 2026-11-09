@@ -33,6 +33,8 @@ export function useSummaryFormulaBar({ query, stageIndex, onAdd }: Options) {
   const slot = useFormulaBarSlot();
   const ownership = useFormulaBarOwnership();
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [draftName, setDraftName] = useState("");
+  const viewRef = useRef<EditorView | null>(null);
   const nextKey = useRef(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const pendingInput = useRef<{
@@ -48,12 +50,14 @@ export function useSummaryFormulaBar({ query, stageIndex, onAdd }: Options) {
   useEffect(() => {
     if (!ownership.isActive) {
       setDraft(null);
+      viewRef.current = null;
       pendingInput.current?.onReady();
       pendingInput.current = null;
     }
   }, [ownership.isActive]);
 
   const close = () => {
+    viewRef.current = null;
     pendingInput.current?.onReady();
     pendingInput.current = null;
     setDraft(null);
@@ -74,6 +78,7 @@ export function useSummaryFormulaBar({ query, stageIndex, onAdd }: Options) {
   };
 
   const handleEditorCreate = (view: EditorView) => {
+    viewRef.current = view;
     const pending = pendingInput.current;
     pendingInput.current = null;
     if (pending) {
@@ -99,6 +104,7 @@ export function useSummaryFormulaBar({ query, stageIndex, onAdd }: Options) {
         pendingInput.current = { wellId, source, onReady };
         inputRef.current = input;
         nextKey.current += 1;
+        setDraftName("");
         setDraft({ key: nextKey.current, wellId, source });
         ownership.open();
       },
@@ -127,6 +133,7 @@ export function useSummaryFormulaBar({ query, stageIndex, onAdd }: Options) {
             initialSource={draft.source}
             submitLabel={t`Add`}
             onEditorCreate={handleEditorCreate}
+            onNameChange={setDraftName}
             onSubmit={handleSubmit}
             onCancel={close}
           />
@@ -137,6 +144,15 @@ export function useSummaryFormulaBar({ query, stageIndex, onAdd }: Options) {
 
   return {
     bar,
+    draftFormula:
+      ownership.isActive && draft
+        ? {
+            wellId: draft.wellId,
+            name: draftName,
+            onFocus: () => viewRef.current?.focus(),
+            onCancel: close,
+          }
+        : null,
     formulaInputs: {
       values: getFormulaInput("values"),
       columns: getFormulaInput("columns"),

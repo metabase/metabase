@@ -18,6 +18,7 @@ export type FormulaEditorProps = {
   initialName?: string;
   submitLabel: string;
   onEditorCreate?: (view: EditorView) => void;
+  onNameChange?: (name: string) => void;
   onSubmit: (expression: NamedExpression) => void;
   onCancel: () => void;
   onNavigate?: (

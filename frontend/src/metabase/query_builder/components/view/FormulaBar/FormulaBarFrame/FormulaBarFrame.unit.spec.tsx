@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { act, fireEvent, render, screen, waitFor } from "__support__/ui";
+import { act, render, screen } from "__support__/ui";
 
 import { FormulaBarFrame } from "./FormulaBarFrame";
 
@@ -29,36 +29,35 @@ describe("FormulaBarFrame", () => {
   afterEach(() => {
     jest.useRealTimers();
   });
-  it("preserves the current draft during closing and removes its focus", async () => {
+  it("preserves a closing draft and keeps the editor when reopened during collapse", async () => {
+    jest.useFakeTimers();
+    const { clear, type } = userEvent.setup({
+      advanceTimers: jest.advanceTimersByTime,
+    });
     const { rerender } = setup();
     const input = screen.getByRole("textbox", { name: "Formula" });
-    await userEvent.clear(input);
-    await userEvent.type(input, "Edited formula");
+    await clear(input);
+    await type(input, "Edited formula");
 
     rerender(<FormulaBarFrame>{null}</FormulaBarFrame>);
-
     expect(screen.getByDisplayValue("Edited formula")).toBe(input);
     expect(input).not.toHaveFocus();
-    await waitFor(() => {
-      expect(
-        screen.queryByDisplayValue("Edited formula"),
-      ).not.toBeInTheDocument();
-    });
-  });
 
-  it("keeps a reopened editor after the previous closing transition", async () => {
-    jest.useFakeTimers();
-    const { rerender } = setup();
-    rerender(<FormulaBarFrame>{null}</FormulaBarFrame>);
     rerender(
       <FormulaBarFrame>
         <Draft key="next" />
       </FormulaBarFrame>,
     );
-
-    const input = screen.getByRole("textbox", { name: "Formula" });
-    fireEvent.change(input, { target: { value: "Reopened formula" } });
+    const reopenedInput = screen.getByDisplayValue("Initial formula");
+    await clear(reopenedInput);
+    await type(reopenedInput, "Reopened formula");
     await act(async () => jest.advanceTimersByTime(1000));
     expect(screen.getByDisplayValue("Reopened formula")).toHaveFocus();
+
+    rerender(<FormulaBarFrame>{null}</FormulaBarFrame>);
+    await act(async () => jest.runOnlyPendingTimers());
+    expect(
+      screen.queryByDisplayValue("Reopened formula"),
+    ).not.toBeInTheDocument();
   });
 });

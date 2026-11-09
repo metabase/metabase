@@ -13,27 +13,26 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useMemo, useState } from "react";
 
+import { defer } from "metabase/utils/promise";
+
 import { CodeMirror } from "./CodeMirror";
 
 type SetupOpts = { indentWithTab?: boolean };
 
 async function setup({ indentWithTab }: SetupOpts = {}) {
-  let onEditorCreate = (_view: EditorView) => {};
-  const created = new Promise<EditorView>((resolve) => {
-    onEditorCreate = resolve;
-  });
+  const created = defer<EditorView>();
   render(
     <>
       <CodeMirror
         value="value"
         autoFocus
         indentWithTab={indentWithTab}
-        onCreateEditor={onEditorCreate}
+        onCreateEditor={created.resolve}
       />
       <button>Next</button>
     </>,
   );
-  return { view: await created };
+  return { view: await created.promise };
 }
 
 function SearchReplaceHarness({

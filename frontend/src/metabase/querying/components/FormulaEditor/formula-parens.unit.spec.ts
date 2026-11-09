@@ -65,32 +65,24 @@ describe("parenPairDeletion", () => {
     cleanup = undefined;
   });
 
-  it("deletes the closing paren along with a backspaced opening one, keeping the arguments", () => {
-    const { view } = setup({ formula: "Sum(|[Total])" });
-
-    expect(press(view, "Backspace")).toBe("Sum|[Total]");
-  });
+  it.each([
+    ["Sum(|[Total])", "Sum|[Total]"],
+    [
+      "Sum(|[Total] * (1 - [Discount])) + 1",
+      "Sum|[Total] * (1 - [Discount]) + 1",
+    ],
+    ['concat(|[Price (USD)], ")")', 'concat|[Price (USD)], ")"'],
+  ])(
+    "backspaces the matching parenthesis pair in %s, keeping its arguments",
+    (formula, expected) => {
+      const { view } = setup({ formula });
+      expect(press(view, "Backspace")).toBe(expected);
+    },
+  );
 
   it("deletes the closing paren along with a forward-deleted opening one", () => {
     const { view } = setup({ formula: "Sum|([Total])" });
-
     expect(press(view, "Delete")).toBe("Sum|[Total]");
-  });
-
-  it("deletes the paren that closes the opening one, not a nested one", () => {
-    const { view } = setup({
-      formula: "Sum(|[Total] * (1 - [Discount])) + 1",
-    });
-
-    expect(press(view, "Backspace")).toBe("Sum|[Total] * (1 - [Discount]) + 1");
-  });
-
-  it("ignores parens inside column names and strings", () => {
-    const { view } = setup({
-      formula: 'concat(|[Price (USD)], ")")',
-    });
-
-    expect(press(view, "Backspace")).toBe('concat|[Price (USD)], ")"');
   });
 
   it("deletes an unclosed opening paren on its own", () => {
