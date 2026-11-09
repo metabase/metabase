@@ -208,6 +208,9 @@
     (testing "quoted JSON text that does not parse: the message says it was quoted and where it breaks"
       (is (= (message "the text is not valid JSON near line 1, column 26")
              (:output (invoke "build" {:query "{\"stages\": [{\"limit\": 1}]]}"})))))
+    (testing "text with leading whitespace"
+      (is (= (message "the text is not valid JSON near line 1, column 9")
+             (:output (invoke "build" {:query "  {\"a\": ]"})))))
     (testing "text that ends early"
       (is (= (message "the text ends before the JSON is complete")
              (:output (invoke "build" {:query "{\"stages\": [1"})))))

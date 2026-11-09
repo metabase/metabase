@@ -165,8 +165,7 @@
              (str/starts-with? trimmed "[")))))
 
 (defn- json-text-error
-  "What is wrong with the JSON text `s`, such as `the text is not valid JSON near line 1, column 72`, or nil when it
-  parses."
+  "What is wrong with the JSON text `s`, such as `the text ends before the JSON is complete`, or nil when it parses."
   [^String s]
   (try
     (json/decode s)
