@@ -95,6 +95,13 @@ Reference items using: [name](metabase://type/id)")
        "reject — do not offer a link, the query is already in front of them\n"
        "- Present what the query does in a way that matches the user's intent and follow up if they need clarification"))
 
+(def client-query-shown-instruction
+  "Added to the instructions for an edit of the user's own query that the model asked not to show, which is shown
+   anyway."
+  (str "This is the user's own query, so the change was shown to them although you passed `show_chart: false`. "
+       "To read a variant of their query without showing it, write the SQL with `create_sql_query` (pass "
+       "`show_chart: false`) and run that query with `run_query`."))
+
 (defn query-hidden-instructions-for
   "Instructions for a query, SQL or notebook, that the model asked not to show the user."
   [query-id]

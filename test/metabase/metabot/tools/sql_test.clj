@@ -206,10 +206,11 @@
                                              metabot-sql-execution-enabled?   true]
             (let [query-id "test-show-chart-q"
                   query    (-> (lib/native-query (mt/metadata-provider) "SELECT * FROM t") lib/->legacy-MBQL)
-                  run      (fn [tool-name tool-names context args]
+                  run      (fn [tool-name tool-names context args & {:keys [client-ids]}]
                              (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
                                                                                        :conversation-id own
                                                                                        :context         context
+                                                                                       :client-ids      client-ids
                                                                                        :state           {:queries {query-id query}}})
                                        scope/*current-user-metabot-permissions* scope/all-yes-permissions
                                        scope/*current-user-scope*               (scope/user-metabot-perms->scopes
@@ -224,9 +225,10 @@
                                                                      :title       "Results"}
                                                                     args))
                                      shown-id (get-in result [:structured-output :query-id])]
-                                 {:parts   (mapv :data-type (:data-parts result))
-                                  :run-it? (str/includes? (:output result)
-                                                          (str "call `run_query` with `query_id` `" shown-id "`"))})))
+                                 {:parts         (mapv :data-type (:data-parts result))
+                                  :run-it?       (str/includes? (:output result)
+                                                                (str "call `run_query` with `query_id` `" shown-id "`"))
+                                  :shown-anyway? (str/includes? (:output result) "This is the user's own query")})))
                   readable #{"create_sql_query" "edit_sql_query" "replace_sql_query" "run_query"}
                   editor   {:user_is_viewing [{:type    "code_editor"
                                                :buffers [{:id     "buf-1"
@@ -235,21 +237,31 @@
               (doseq [tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
                 (testing tool-name
                   (testing "with run_query offered, show_chart false shows the user nothing and points at run_query"
-                    (is (= {:parts [], :run-it? true}
-                           (run tool-name readable {} {:show_chart false}))))
+                    (is (=? {:parts [], :run-it? true, :shown-anyway? false}
+                            (run tool-name readable {} {:show_chart false}))))
                   (testing "with run_query offered and the argument left out, the chart is shown"
-                    (is (= {:parts ["generated_entity"], :run-it? false}
-                           (run tool-name readable {} {}))))
+                    (is (=? {:parts ["generated_entity"], :run-it? false}
+                            (run tool-name readable {} {}))))
                   (testing "without run_query the chart is shown whatever the argument says"
-                    (is (= {:parts ["generated_entity"], :run-it? false}
-                           (run tool-name (disj readable "run_query") {} {:show_chart false}))))
+                    (is (=? {:parts ["generated_entity"], :run-it? false}
+                            (run tool-name (disj readable "run_query") {} {:show_chart false}))))
                   (when-not (= tool-name "create_sql_query")
                     (testing "in an open SQL editor, a query built only to be read is not proposed there"
-                      (is (= {:parts [], :run-it? true}
-                             (run tool-name readable editor {:show_chart false}))))
+                      (is (=? {:parts [], :run-it? true}
+                              (run tool-name readable editor {:show_chart false}))))
                     (testing "in an open SQL editor, a query left to show is proposed there"
-                      (is (= {:parts ["code_edit"], :run-it? false}
-                             (run tool-name readable editor {}))))))))))))))
+                      (is (=? {:parts ["code_edit"], :run-it? false}
+                              (run tool-name readable editor {}))))
+                    (testing "the user's own query is shown even when show_chart is false, and the model is told why"
+                      (testing "as a proposal in their open SQL editor"
+                        (is (= {:parts ["code_edit"], :run-it? false, :shown-anyway? true}
+                               (run tool-name readable editor {:show_chart false} :client-ids #{query-id}))))
+                      (testing "as a chart without an editor"
+                        (is (= {:parts ["generated_entity"], :run-it? false, :shown-anyway? true}
+                               (run tool-name readable {} {:show_chart false} :client-ids #{query-id})))))
+                    (testing "the user's own query shown because they asked carries no explanation"
+                      (is (=? {:parts ["code_edit"], :shown-anyway? false}
+                              (run tool-name readable editor {} :client-ids #{query-id}))))))))))))))
 
 (deftest ^:parallel create-sql-query-editor-variant-has-no-show-chart-test
   (is (nil? (mut/get (:args (tools.core/declaration sql/create-sql-query-code-edit-tool)) :show_chart))))
