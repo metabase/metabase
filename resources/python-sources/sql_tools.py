@@ -1242,7 +1242,7 @@ class FieldReferenceWalker:
         # Column reference (including table.*)
         if isinstance(expr, exp.Column):
             column_name = expr.name
-            table_ref = expr.table
+            table_ref = self._column_qualifier(expr)
 
             # Table wildcard: SELECT t.*
             if column_name == "*":
@@ -1289,7 +1289,7 @@ class FieldReferenceWalker:
         # Column reference
         if isinstance(expr, exp.Column):
             column_name = expr.name
-            table_ref = expr.table
+            table_ref = self._column_qualifier(expr)
 
             # Table wildcard: t.* - expand to actual fields from source
             if column_name == "*" and table_ref:
@@ -1466,7 +1466,7 @@ class FieldReferenceWalker:
     def _get_column(self, sources, column_expr, return_table_matches):
         """Get column reference with source resolution."""
         column_name = column_expr.name
-        table_ref = column_expr.table
+        table_ref = self._column_qualifier(column_expr)
 
         # Find valid sources
         if table_ref:
@@ -1620,6 +1620,18 @@ class FieldReferenceWalker:
             },
             "errors": errors
         }]
+
+    def _column_qualifier(self, column):
+        """
+        The table qualifier of `column`, spelled as the sources of a scope name their tables.
+
+        SQLGlot reads the T-SQL temp table `[#t]` in a FROM clause as the table `t` flagged temporary, but keeps `#t` as
+        the name of the same bracket-quoted qualifier in `[#t].col`. The prefix is dropped here so the two match.
+        """
+        table_ref = column.table
+        if self.dialect == "tsql":
+            return table_ref.lstrip("#")
+        return table_ref
 
     def _find_source(self, search, sources):
         """Find a source matching the search criteria."""

@@ -2293,3 +2293,16 @@ from dbt_models.account a
 left join monthly_account_subscription_status mas
   on a.id = mas.id
 ;"))))
+
+(deftest ^:parallel tsql-temp-table-qualifier-test
+  (let [errors #(:errors (sql-parsing/field-references "tsql" %))]
+    (testing "a column qualified by a bracket-quoted temp table resolves to that table"
+      (is (= #{} (errors "SELECT [#t].[ID] FROM [#t]")))
+      (is (= #{} (errors "SELECT [#t].[ID] FROM #t"))))
+    (testing "a subquery reading a bracket-quoted temp table keeps its alias"
+      (is (= #{} (errors (str "SELECT [x].[C] FROM [a] LEFT JOIN (SELECT [#b].[C] AS [C], [#b].[ID] AS [ID] FROM [#b]) AS [x]"
+                              " ON [a].[P] = [x].[ID]")))))
+    (testing "control: a qualifier naming no table of the query is still an error"
+      (is (seq (errors "SELECT [#u].[ID] FROM [#t]"))))
+    (testing "control: outside T-SQL, a quoted name starting with # is a plain name"
+      (is (seq (:errors (sql-parsing/field-references "postgres" "SELECT \"#t\".id FROM t")))))))
