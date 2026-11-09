@@ -5,11 +5,12 @@ import {
   createMockState,
 } from "__support__/state";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
+import Question from "metabase-lib/v1/Question";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -20,7 +21,11 @@ registerVisualizations();
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
-const table = checkNotNull(metadata.table(PRODUCTS_ID));
+const question = Question.create({
+  DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+  DEPRECATED_RAW_MBQL_tableId: PRODUCTS_ID,
+  metadata,
+});
 
 describe("ChartSettingsSidebar", () => {
   const result = createMockDataset({
@@ -39,7 +44,7 @@ describe("ChartSettingsSidebar", () => {
   it("hides the gauge options header while keeping formatting sections visible", () => {
     renderWithProviders(
       <ChartSettingsSidebar
-        question={table.question().setDisplay("gauge")}
+        question={question.setDisplay("gauge")}
         result={result}
       />,
     );
@@ -64,7 +69,7 @@ describe("ChartSettingsSidebar", () => {
   it("shows the number options header for scalar display when showSidebarTitle is true", () => {
     renderWithProviders(
       <ChartSettingsSidebar
-        question={table.question().setDisplay("scalar")}
+        question={question.setDisplay("scalar")}
         result={result}
       />,
       {

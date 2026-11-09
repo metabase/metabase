@@ -6,6 +6,18 @@ title: API changelog
 
 ## Metabase 0.66.0
 
+- Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
+  they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
+  Queries sent with `dimension` are still accepted and converted to `field-id`.
+
+- `GET /api/table/card__:id/query_metadata` and `GET /api/table/card__:id/fks` have been removed. Use
+  `GET /api/card/:id` and `GET /api/card/:id/query_metadata` for a card's columns and dependent metadata.
+
+- `GET /api/card/:id/query_metadata`, `GET /api/dashboard/:id/query_metadata`, `POST /api/dataset/query_metadata`
+  and the x-ray `query_metadata` endpoints no longer return a `card__<id>` "virtual" table in `tables` for each source
+  card. They return the source cards themselves in a new `cards` list instead, and in `tables` the tables of the
+  cards' columns and the tables their foreign keys point to, as they do for a source table.
+
 - The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
   `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
   `GET /api/table`, have been removed and are ignored. To list only what the current user can edit the data model of,

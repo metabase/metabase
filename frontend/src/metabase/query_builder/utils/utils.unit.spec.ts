@@ -3,15 +3,15 @@ import { createMockLocation } from "__support__/state";
 import { getNextId } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DraftQuestionBuilder } from "metabase/metadata-store";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, TableId } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -71,19 +71,15 @@ const cards: Card[] = [
 
 const metadata = createMockMetadata({ questions: cards });
 
-const structuredQuestion = checkNotNull(metadata.question(structuredCard.id));
+const structuredQuestion = new Question(structuredCard, metadata);
 
-const nativeQuestion = checkNotNull(metadata.question(nativeCard.id));
+const nativeQuestion = new Question(nativeCard, metadata);
 
-const structuredModelQuestion = checkNotNull(
-  metadata.question(structuredModelCard.id),
-);
+const structuredModelQuestion = new Question(structuredModelCard, metadata);
 
-const nativeModelQuestion = checkNotNull(metadata.question(nativeModelCard.id));
+const nativeModelQuestion = new Question(nativeModelCard, metadata);
 
-const structuredMetricQuestion = checkNotNull(
-  metadata.question(structuredMetricCard.id),
-);
+const structuredMetricQuestion = new Question(structuredMetricCard, metadata);
 
 const questions: Question[] = [
   structuredQuestion,
@@ -685,9 +681,14 @@ describe("getTableUrlForPristineQuestion", () => {
   const buildDraftQuestion: DraftQuestionBuilder = (opts) =>
     Question.create({ ...opts, metadata: tableMetadata });
 
-  const pristineOrders = checkNotNull(
-    tableMetadata.table(ORDERS_ID),
-  ).newQuestion();
+  const createPristineQuestion = (tableId: TableId) =>
+    Question.create({
+      DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+      DEPRECATED_RAW_MBQL_tableId: tableId,
+      metadata: tableMetadata,
+    });
+
+  const pristineOrders = createPristineQuestion(ORDERS_ID);
 
   it("returns the /table/:slug URL for a table's pristine default question", () => {
     expect(
@@ -695,7 +696,7 @@ describe("getTableUrlForPristineQuestion", () => {
     ).toBe("/table/2-orders");
     expect(
       getTableUrlForPristineQuestion(
-        checkNotNull(tableMetadata.table(PRODUCTS_ID)).newQuestion(),
+        createPristineQuestion(PRODUCTS_ID),
         buildDraftQuestion,
       ),
     ).toBe("/table/1-products");

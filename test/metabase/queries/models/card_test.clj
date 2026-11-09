@@ -445,8 +445,7 @@
                         :name         "cat"
                         :display-name "Category"
                         :type         :dimension
-                        :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-                                       (meta/id :products :category)]
+                        :field-id     (meta/id :products :category)
                         :widget-type  :category}})]
       (is (= [{:id       "_CAT_"
                :type     :category
@@ -470,7 +469,7 @@
                                                                                     :name         "FILTER"
                                                                                     :display-name "Filter"
                                                                                     :type         :dimension
-                                                                                    :dimension    [:field (mt/id :venues :name) nil]
+                                                                                    :field-id     (mt/id :venues :name)
                                                                                     :widget-type  :string/=
                                                                                     :default      nil}}}}})
           good-card-data  (card-data test-data-db-id)
@@ -1726,16 +1725,14 @@
                                     :display-name "DF"
                                     :type         :dimension
                                     :widget-type  :date/range
-                                    :dimension    [:field
-                                                   {:base-type :type/DateTime}
-                                                   (mt/id :orders :created_at)]}}}})
+                                    :field-id     "created_at"}}}})
 
 (deftest create-card!-with-malformed-dataset-query-throws-test
   (testing "queries/create-card! with structurally malformed :dataset_query throws a normalization error, not a SQL constraint error (#74615)"
     (mt/with-model-cleanup [:model/Card]
       (is (thrown-with-msg?
            Throwable
-           #"(?i)normaliz|MBQL"
+           #"(?i)normaliz|MBQL|legacy query"
            (card/create-card!
             {:name                   "Bad card"
              :display                "table"

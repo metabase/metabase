@@ -43,7 +43,7 @@ function createNativeCard(templateTag: TemplateTag): Card {
         Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
           query: `SELECT * FROM PRODUCTS WHERE {{${templateTag.name}}}`,
         }),
-        { [templateTag.name]: templateTag },
+        [templateTag],
       ),
     ),
   });
@@ -155,7 +155,7 @@ describe("QueryBuilder > native question parameters", () => {
       name: "filter",
       "display-name": "Filter",
       type: "dimension",
-      dimension: ["field", PRODUCTS.CATEGORY, null],
+      "field-id": PRODUCTS.CATEGORY,
       "widget-type": "string/=",
     });
 
@@ -181,7 +181,7 @@ describe("QueryBuilder > native question parameters", () => {
             name: "filter",
             "display-name": "Filter",
             type: "dimension",
-            dimension: ["field", PRODUCTS.RATING, null],
+            "field-id": PRODUCTS.RATING,
             "widget-type": "number/between",
           }),
         ),

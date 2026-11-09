@@ -870,7 +870,7 @@
                                            :display_name "User ID"
                                            :type         "dimension"
                                            :widget-type  "number"
-                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
+                                           :field-id     (mt/id :users :user_id)}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -887,7 +887,7 @@
                                            :display_name "User ID"
                                            :type         "dimension"
                                            :widget-type  :number
-                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
+                                           :field-id     (mt/id :users :user_id)}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -1176,7 +1176,7 @@
                                  {"type" {:name         "type"
                                           :display-name "Type"
                                           :type         :dimension
-                                          :dimension    (lib/ref type-field)
+                                          :field-id     (:id type-field)
                                           :widget-type  :string/=}}))
                            :parameters [{:type   :string/=
                                          :target [:dimension [:template-tag "type"]]

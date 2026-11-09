@@ -10,7 +10,6 @@ import { useQuestionFromCard } from "metabase/metadata-store";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -54,14 +53,13 @@ export function PublicOrEmbeddedQuestionView({
   setCard,
   downloadsEnabled,
 }: PublicOrEmbeddedQuestionViewProps) {
-  // EmbedFrame lays out a question frame before the card loads.
-  const question = useQuestionFromCard(card) ?? new Question(null);
+  const question = useQuestionFromCard(card);
 
-  const isTable = question.display() === "table";
+  const isTable = question?.display() === "table";
   const downloadInFooter = !titled && isTable;
 
   const questionResultDownloadButton =
-    result && downloadsEnabled.results ? (
+    result && downloadsEnabled.results && question != null ? (
       <PublicOrEmbeddedQuestionDownloadPopover
         className={cx(
           CS.m1,
@@ -85,7 +83,7 @@ export function PublicOrEmbeddedQuestionView({
     <EmbedFrame
       name={card && card.name}
       description={card && card.description}
-      question={question}
+      question={question ?? null}
       parameters={getParameters()}
       parameterValues={parameterValues}
       setParameterValue={setParameterValue}
