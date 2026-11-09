@@ -110,6 +110,10 @@ describe("scenarios > embedding > embedding hub > get started", () => {
         "eq",
         "/embedding/get-started/permissions",
       );
+      H.main()
+        .findByText("Configure data permissions and enable tenants")
+        .scrollIntoView()
+        .should("be.visible");
 
       cy.log(
         "the wizard's back link is relative, so it lands on the host that mounted it rather than admin",
@@ -184,6 +188,12 @@ describe("scenarios > embedding > embedding hub > get started", () => {
           .closest(`[data-testid=${CARD}]`)
           .findByLabelText("Step 3 complete")
           .should("not.exist");
+
+        cy.log("the upsell banner and the AI step render in a real browser");
+        cy.findByText(
+          "Upgrade to Metabase Pro to configure advanced options.",
+        ).should("be.visible");
+        cy.findByRole("button", { name: "Configure AI" }).should("be.visible");
       });
 
       cy.log("publish a dashboard as a guest embed");

@@ -17,6 +17,11 @@ describe("scenarios - setup guide", () => {
     it('"Create a dashboard" card should save the x-ray and show a success toast without leaving the guide', () => {
       cy.visit("/embedding/get-started");
 
+      cy.log("the permissions card is unlocked on Pro Cloud");
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("link", { name: "Configure data permissions and tenants" })
+        .should("have.attr", "href", "/embedding/get-started/permissions");
+
       cy.log("Find and click on 'Create a dashboard' card");
       cy.findByTestId("embedding-hub-main")
         .findByText("Create a dashboard")
@@ -191,6 +196,10 @@ describe("scenarios - setup guide", () => {
       cy.get("main")
         .findByText("Get started with modular embedding")
         .should("be.visible");
+      cy.get("main").within(() => {
+        cy.findByText("Create a dashboard").should("be.visible");
+        cy.findByText("Connect a database").should("be.visible");
+      });
 
       cy.log("Click overflow menu button on the embedding homepage");
       cy.get("main").within(() => {
@@ -443,6 +452,41 @@ describe("scenarios - setup guide", () => {
           name: "Enable tenants and create shared collection",
         })
         .should("be.disabled");
+    });
+
+    it("selecting database routing strategy should show documentation link in step 3", () => {
+      cy.visit("/embedding/get-started/permissions");
+
+      cy.log("click the enable tenants button");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .should("be.enabled")
+        .click();
+
+      cy.log("complete the move-dashboard step");
+      H.main()
+        .findByRole("button", { name: "Create a sample dashboard" })
+        .click();
+
+      cy.log("select database routing strategy");
+      H.main()
+        .findByRole("radio", { name: /Database routing/ })
+        .click();
+
+      cy.log("confirm the strategy selection");
+      H.main().findByRole("button", { name: "Use database routing" }).click();
+
+      cy.log("should show database routing content with docs link");
+      H.main()
+        .findByText("Manage data permissions with database routing")
+        .should("be.visible");
+
+      H.main()
+        .findByRole("link", { name: /View the guide/i })
+        .should("have.attr", "href")
+        .and("include", "database-routing");
     });
 
     describe("create tenants step", () => {

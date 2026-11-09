@@ -1,5 +1,3 @@
-import userEvent from "@testing-library/user-event";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   createMockSetupGuideChecklist,
@@ -27,12 +25,6 @@ const SHARED_COLLECTION = createMockCollection({
   name: "Shared collection",
 });
 
-// Everything up to the data segregation step is done.
-const TENANTS_ENABLED_CHECKLIST: Partial<SetupGuideChecklist> = {
-  "enable-tenants": true,
-  "move-dashboard-to-shared": true,
-};
-
 const setup = ({
   checklist = {},
 }: { checklist?: Partial<SetupGuideChecklist> } = {}) => {
@@ -58,13 +50,6 @@ const setup = ({
   );
 };
 
-const chooseStrategy = async (strategyLabel: RegExp, confirmText: string) => {
-  await userEvent.click(
-    await screen.findByRole("radio", { name: strategyLabel }),
-  );
-  await userEvent.click(screen.getByRole("button", { name: confirmText }));
-};
-
 describe("SetupPermissionsAndTenantsPage", () => {
   it("renders the wizard heading", async () => {
     setup();
@@ -75,21 +60,5 @@ describe("SetupPermissionsAndTenantsPage", () => {
         level: 1,
       }),
     ).toBeVisible();
-  });
-
-  it("selecting database routing strategy should show documentation link in step 3", async () => {
-    setup({ checklist: TENANTS_ENABLED_CHECKLIST });
-
-    await chooseStrategy(/Database routing/, "Use database routing");
-
-    expect(
-      await screen.findByText("Manage data permissions with database routing"),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("link", { name: /View the guide/i }),
-    ).toHaveAttribute(
-      "href",
-      expect.stringContaining("/permissions/database-routing"),
-    );
   });
 });
