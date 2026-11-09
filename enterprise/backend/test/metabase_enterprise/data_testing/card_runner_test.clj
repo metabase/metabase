@@ -46,7 +46,7 @@
     (m/find-first #(= field-id (:id %)) (lib/visible-columns query))))
 
 (defn- native-card
-  "The columns of a card running `sql`."
+  "Card columns for a native card running `sql`."
   [sql]
   {:dataset_query (lib/native-query (mt/metadata-provider) sql)})
 
@@ -253,10 +253,10 @@
                                         :sql    (str "SELECT 1 AS id, " timestamp " AS created_at")}]
                                       [{:type :empty :name "the input timestamp is unchanged"
                                         :sql  (str "SELECT * FROM {{output}} WHERE created_at <> " timestamp)}
-                                       {:type :empty :name "control: the row is there"
+                                       {:type :empty :name "control, fails when the row is there"
                                         :sql  "SELECT * FROM {{output}} WHERE id = 1"}])]
         (testing "a timestamp in a card's output is the one in its input, whatever the report timezone"
-          (is (= {"the input timestamp is unchanged" :passed "control: the row is there" :failed}
+          (is (= {"the input timestamp is unchanged" :passed "control, fails when the row is there" :failed}
                  (into {} (map (juxt :name :status)) (:expectations result)))))))))
 
 (defn- new-card-run

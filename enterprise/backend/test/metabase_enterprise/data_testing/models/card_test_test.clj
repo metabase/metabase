@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.models.card-test-test
-  "CardTest model behavior: JSON columns, the newest run, and what deleting a test or its card does."
+  "CardTest model behavior: JSON columns, the newest run, what deleting a test or its card does, and permissions."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
