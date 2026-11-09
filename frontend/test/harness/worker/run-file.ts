@@ -31,6 +31,7 @@ import {
   selectTests,
   setRunningTest,
 } from "./collect.ts";
+import { environmentOptionsOf } from "./docblock.ts";
 import { currentWindow, replaceWindow } from "./dom.ts";
 import {
   clearCallHistory,
@@ -180,6 +181,12 @@ export function runFile(t: TestContext, file: string): Promise<void> {
 
 async function runFileInScope(t: TestContext, file: string): Promise<void> {
   const startedAt = Date.now();
+  const environmentOptions = environmentOptionsOf(file);
+  // The window for the next file has the project's options, so a file with
+  // options of its own gets a window of its own.
+  if (Object.keys(environmentOptions).length > 0) {
+    replaceWindowForNextFile(environmentOptions);
+  }
   captureUnhandledRejections();
   forgetTestTimeoutOfFile();
   recordSetupMocks();
@@ -530,8 +537,8 @@ function resetDocument(): void {
   resetClipboard();
 }
 
-function replaceWindowForNextFile(): void {
-  const previous = replaceWindow();
+function replaceWindowForNextFile(options?: Record<string, unknown>): void {
+  const previous = replaceWindow(options);
   mirrorGlobalsAgain();
   tryTo(() => previous.close());
   // Packages that bind to the window load again, and register their hooks

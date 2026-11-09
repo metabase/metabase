@@ -175,9 +175,11 @@ export function installDom(): void {
  * Gives the next spec file a new window, as jest does. Returns the previous
  * window, to close once nothing refers to it.
  */
-export function replaceWindow(): Jsdom.DOMWindow {
+export function replaceWindow(
+  options?: Record<string, unknown>,
+): Jsdom.DOMWindow {
   const previous = dom.window;
-  dom = createDom();
+  dom = createDom(options);
   if (project.environment === "jsdom") {
     installWindowGlobals({ again: true });
   }
@@ -208,11 +210,20 @@ export function mirrorGlobalsOntoWindow(): void {
   }
 }
 
-function createDom(): Jsdom.JSDOM {
-  return new JSDOM("<!DOCTYPE html><html><head></head><body></body></html>", {
-    url: "http://localhost/",
-    pretendToBeVisual: true,
-  });
+// jest's jsdom environment passes the environment options, such as url, to
+// jsdom. Its html option is the markup of the page.
+function createDom(options: Record<string, unknown> = {}): Jsdom.JSDOM {
+  const { html, ...jsdomOptions } = options;
+  return new JSDOM(
+    typeof html === "string"
+      ? html
+      : "<!DOCTYPE html><html><head></head><body></body></html>",
+    {
+      url: "http://localhost/",
+      pretendToBeVisual: true,
+      ...jsdomOptions,
+    },
+  );
 }
 
 function replaceNodeFetch(): void {

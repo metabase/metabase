@@ -121,17 +121,18 @@ job and fails in the other is a difference between the two runners.
 
 ## How it differs from jest's own runner
 
-|                                                                                       | jest's own runner                                  | This runner                                                             |
-| ------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------- |
-| jsdom window                                                                          | A new window for each spec file                    | A new window for each spec file                                         |
-| Packages from `node_modules`                                                          | Evaluated again for each spec file                 | Loaded one time for each worker                                         |
-| Project modules                                                                       | Evaluated again for each spec file                 | Evaluated again for each spec file                                      |
-| Test API                                                                              | jest's own globals                                 | jest's globals on top of `node:test`                                    |
-| Module resolution and setup files                                                     | `jest.config.js`                                   | The same values, read from `jest.config.js`                             |
-| Timers, `process.env`, the console, keys added to the global object                   | Discarded with the sandbox of each spec file       | Reset between spec files                                                |
-| A test or hook that runs out of time                                                  | The next tests run                                 | The worker skips its next tests and ends                                |
-| JavaScript built-ins: prototypes, `Math`, `JSON`, `Date`, matchers of `expect.extend` | New for each spec file                             | Reset between spec files, except what a package changed while it loaded |
-| `instanceof` across realms, such as `Buffer.from("a") instanceof Uint8Array`          | `false`, because the spec runs in a separate realm | `true`, as in Node                                                      |
+|                                                                                       | jest's own runner                                  | This runner                                                                                           |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| jsdom window                                                                          | A new window for each spec file                    | A new window for each spec file                                                                       |
+| Packages from `node_modules`                                                          | Evaluated again for each spec file                 | Loaded one time for each worker                                                                       |
+| Project modules                                                                       | Evaluated again for each spec file                 | Evaluated again for each spec file                                                                    |
+| Test API                                                                              | jest's own globals                                 | jest's globals on top of `node:test`                                                                  |
+| Module resolution and setup files                                                     | `jest.config.js`                                   | The same values, read from `jest.config.js`                                                           |
+| Timers, `process.env`, the console, keys added to the global object                   | Discarded with the sandbox of each spec file       | Reset between spec files                                                                              |
+| A test or hook that runs out of time                                                  | The next tests run                                 | The worker skips its next tests and ends                                                              |
+| JavaScript built-ins: prototypes, `Math`, `JSON`, `Date`, matchers of `expect.extend` | New for each spec file                             | Reset between spec files, except what a package changed while it loaded                               |
+| `instanceof` across realms, such as `Buffer.from("a") instanceof Uint8Array`          | `false`, because the spec runs in a separate realm | `true`, as in Node                                                                                    |
+| A file's `@jest-environment` pragma                                                   | Runs the file in that environment                  | Fails the file. Each worker serves one project and its environment. `@jest-environment-options` works |
 
 The second row is the source of the speed difference. The other rows exist so
 that a spec cannot tell which runner it is under, except the timeout and the
