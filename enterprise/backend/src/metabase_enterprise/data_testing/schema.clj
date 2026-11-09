@@ -147,34 +147,34 @@
    [:expectations ::expectations]])
 
 (defn- test-create
-  "What a client sends to create a test of the subject that `subject-key` names, a `subject-id`."
-  [subject-key subject-id]
+  "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`."
+  [subject-key subject-id-schema]
   [:merge
    [:map {:closed true}
-    [subject-key subject-id]]
+    [subject-key subject-id-schema]]
    ::test.definition])
 
 (defn- saved-test
-  "A saved test of the subject that `subject-key` names, a `subject-id`: the subject, the inputs that stand in for the
-  tables it reads, and the expectations checked against its output."
-  [subject-key subject-id]
+  "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the inputs that stand in for
+  the tables the subject reads, and the expectations checked against its output."
+  [subject-key subject-id-schema]
   [:merge
    ::test.definition
    [:map {:closed true}
     [:id          ms/PositiveInt]
     [:entity_id   :string]
-    [subject-key  subject-id]
+    [subject-key  subject-id-schema]
     [:creator_id  ::lib.schema.id/user]
     [:description {:optional true} [:maybe :string]]
     [:created_at  ms/TemporalInstant]
     [:updated_at  ms/TemporalInstant]]])
 
 (defn- test-update
-  "What a client sends to update a test of the subject that `subject-key` names, a `subject-id`. Omitted fields are
-  left unchanged."
-  [subject-key subject-id]
+  "What a client sends to update a test: any of its fields, with the id of its subject under `subject-key`, of schema
+  `subject-id-schema`. Omitted fields are left unchanged."
+  [subject-key subject-id-schema]
   [:map {:closed true}
-   [subject-key   {:optional true} subject-id]
+   [subject-key   {:optional true} subject-id-schema]
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
    [:inputs       {:optional true} ::inputs]
