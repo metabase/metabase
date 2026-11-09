@@ -38,7 +38,7 @@ import { findCollectionById } from "./utils";
 interface SavedEntityPickerProps {
   type: SavedEntityType;
   /** Lists only these Library collections and their subcollections. */
-  libraryFolders?: Collection[];
+  libraryCollections?: Collection[];
   collectionId?: CollectionId | null;
   selectedSource?: DataSource;
   databaseId?: DatabaseId | null;
@@ -101,7 +101,7 @@ function InnerSavedEntityPicker({
   databaseId,
   onSelect,
   onBack,
-  libraryFolders,
+  libraryCollections,
   collections,
   rootCollection,
   currentUser,
@@ -109,8 +109,8 @@ function InnerSavedEntityPicker({
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const modelFilter = (model: string) => CARD_INFO[type].model === model;
 
-    if (libraryFolders) {
-      return buildCollectionTree(libraryFolders, { modelFilter });
+    if (libraryCollections) {
+      return buildCollectionTree(libraryCollections, { modelFilter });
     }
 
     const preparedCollections: Collection[] = [];
@@ -146,7 +146,7 @@ function InnerSavedEntityPicker({
         buildCollectionTree(preparedCollections, { modelFilter }),
       ),
     ];
-  }, [collections, rootCollection, currentUser, type, libraryFolders]);
+  }, [collections, rootCollection, currentUser, type, libraryCollections]);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     CollectionId | undefined
@@ -208,9 +208,9 @@ function InnerSavedEntityPicker({
   );
 }
 
-// The Library only holds its Data and Metrics folders, so when a
-// single folder is left after filtering, the Library node stands for it:
-// selecting the Library lists that folder's items instead of nothing. Same rule
+// The Library only holds its Data and Metrics collections, so when a
+// single collection is left after filtering, the Library node stands for it:
+// selecting the Library lists that collection's items instead of nothing. Same rule
 // as `useGetResolvedLibraryCollection` in the core pickers.
 function resolveLibraryNodes(
   collectionTree: CollectionTreeItem[],

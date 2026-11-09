@@ -32,8 +32,8 @@ interface LibraryPickerProps {
 }
 
 /**
- * Offers the Library's Data and Metrics folders like the bucket step, then
- * opens the chosen one in `SavedEntityPicker`. A folder without tables or
+ * Offers the Library's Data and Metrics collections like the bucket step, then
+ * opens the chosen one in `SavedEntityPicker`. A collection without tables or
  * metrics isn't offered, and when only one is left it opens straight away.
  */
 export function LibraryPicker({
@@ -47,7 +47,7 @@ export function LibraryPicker({
   const { data: collections } = useListCollectionsTreeQuery(
     COLLECTION_TREE_REQUEST,
   );
-  const [selectedFolderId, setSelectedFolderId] =
+  const [selectedCollectionKindId, setSelectedCollectionKindId] =
     useState<DataTypeInfoItem["id"]>();
 
   if (!collections) {
@@ -55,24 +55,30 @@ export function LibraryPicker({
   }
 
   const libraryNode = findCollectionById(collections, libraryCollection.id);
-  const folders = getLibraryFolders(libraryNode?.children ?? [], {
-    canSelectMetric,
-  });
-  const selectedFolder =
-    folders.length === 1
-      ? folders[0]
-      : folders.find((folder) => folder.infoItem.id === selectedFolderId);
+  const collectionKinds = getLibraryCollectionKinds(
+    libraryNode?.children ?? [],
+    { canSelectMetric },
+  );
+  const selectedCollectionKind =
+    collectionKinds.length === 1
+      ? collectionKinds[0]
+      : collectionKinds.find(
+          (collectionKind) =>
+            collectionKind.infoItem.id === selectedCollectionKindId,
+        );
 
-  if (selectedFolder) {
+  if (selectedCollectionKind) {
     return (
       <SavedEntityPicker
-        type={selectedFolder.type}
-        libraryFolders={selectedFolder.collections}
+        type={selectedCollectionKind.type}
+        libraryCollections={selectedCollectionKind.collections}
         selectedSource={selectedSource}
         databaseId={databaseId}
         onSelect={onSelect}
         onBack={
-          folders.length === 1 ? onBack : () => setSelectedFolderId(undefined)
+          collectionKinds.length === 1
+            ? onBack
+            : () => setSelectedCollectionKindId(undefined)
         }
       />
     );
@@ -92,40 +98,44 @@ export function LibraryPicker({
       )}
       <Box p="sm">
         <DataSelectorDataBucketPicker
-          dataTypes={folders.map((folder) => folder.infoItem)}
-          onChangeDataBucket={setSelectedFolderId}
+          dataTypes={collectionKinds.map(
+            (collectionKind) => collectionKind.infoItem,
+          )}
+          onChangeDataBucket={setSelectedCollectionKindId}
         />
       </Box>
     </Box>
   );
 }
 
-// Only Data and Metrics hold data sources. Empty subfolders inside them are left
-// out by `buildCollectionTree`, in `SavedEntityPicker.tsx`. When the user can't
-// read the Data or Metrics folder, the collection tree lifts its readable
-// subfolders into the Library, so a folder can be several collections.
-function getLibraryFolders(
+// Only Data and Metrics hold data sources. Empty subcollections inside them are
+// left out by `buildCollectionTree`, in `SavedEntityPicker.tsx`. When the user
+// can't read the Data or Metrics collection, the collection tree lifts its
+// readable subcollections into the Library, so a kind can be several collections.
+function getLibraryCollectionKinds(
   children: Collection[],
   { canSelectMetric }: { canSelectMetric: boolean },
 ) {
-  return LIBRARY_FOLDER_KINDS.flatMap(({ collectionType, type, infoItem }) => {
-    if (type === "metric" && !canSelectMetric) {
-      return [];
-    }
+  return LIBRARY_COLLECTION_KINDS.flatMap(
+    ({ collectionType, type, infoItem }) => {
+      if (type === "metric" && !canSelectMetric) {
+        return [];
+      }
 
-    const collections = children.filter(
-      (collection) =>
-        collection.type === collectionType &&
-        [...(collection.here ?? []), ...(collection.below ?? [])].includes(
-          type,
-        ),
-    );
+      const collections = children.filter(
+        (collection) =>
+          collection.type === collectionType &&
+          [...(collection.here ?? []), ...(collection.below ?? [])].includes(
+            type,
+          ),
+      );
 
-    return collections.length > 0 ? [{ type, infoItem, collections }] : [];
-  });
+      return collections.length > 0 ? [{ type, infoItem, collections }] : [];
+    },
+  );
 }
 
-const LIBRARY_FOLDER_KINDS = [
+const LIBRARY_COLLECTION_KINDS = [
   {
     collectionType: "library-data",
     type: "table",
