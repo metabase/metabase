@@ -4665,11 +4665,9 @@
            lib.be
            lib.schema
            models
-           permissions
            premium-features
            query-permissions
            query-processor
-           remote-sync
            request
            revisions
            run-tracking
