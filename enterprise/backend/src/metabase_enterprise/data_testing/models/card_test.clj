@@ -41,7 +41,7 @@
 
 (defenterprise delete-card-tests!
   "Enterprise implementation: delete the tests of the card `card-id`, each through its own hook. Runs whatever the token
-  says, since the rows outlive the feature. See the OSS declaration in `metabase.queries.models.card`."
+  says, since the rows outlive the feature."
   :feature :none
   [card-id]
   (data-testing.db/delete-card-tests! card-id))

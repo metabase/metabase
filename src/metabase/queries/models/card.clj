@@ -1143,14 +1143,13 @@
   (u/prog1 card
     (queries.db/move-actions-of-model! (:id card) (:collection_id card))))
 
-;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defenterprise delete-card-tests!
-  "Hook called from the `:model/Card` before-delete: delete the tests of the card `card-id` through Toucan, so that each
-  one's own delete hook runs. OSS is a no-op (no data-testing module)."
+  "Delete the tests of the card `card-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
   metabase-enterprise.data-testing.models.card-test
   [_card-id]
   nil)
 
+;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
   [{:keys [id] :as card}]
   (pre-delete-check-sandbox-constraints card)
