@@ -12,6 +12,12 @@ summary: Changes to the Metabase driver interface, listed by release.
   query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
   Return false for a driver where a capped query breaks the transaction it runs in.
 
+- `metabase.driver.sql-jdbc.execute/execute-write-statement!` `[driver stmt sql]` -- new multimethod that runs a
+  statement returning no rows, such as DDL, INSERT, UPDATE or DELETE, and returns the number of rows it affected.
+  `stmt` is a `PreparedStatement` with its parameters set, or a plain `Statement` on which to run `sql`. The default
+  calls `executeUpdate`. Transforms, transform testing and `execute-write-query!` run their statements through it.
+  Override it for a database that answers such statements with a result set, which `executeUpdate` rejects.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of

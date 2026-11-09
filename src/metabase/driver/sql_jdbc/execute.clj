@@ -169,6 +169,17 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti execute-write-statement!
+  "Runs a statement that returns no rows, such as DDL, INSERT, UPDATE or DELETE, and returns the number of rows it
+  affected. `stmt` is either a `PreparedStatement` with its parameters already set, or a plain `Statement` on which to
+  run `sql`. The default calls `executeUpdate`. Override it for a database that answers such statements with a result
+  set, which `executeUpdate` rejects."
+  ;; No primitive return hint on the arglists: the compiler would then call the var through a primitive interface,
+  ;; which a MultiFn doesn't implement.
+  {:added "0.66.0", :arglists '([driver ^java.sql.Statement stmt ^String sql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti db-type-name
   "Return the type name of a column given the rsmeta and the column-index. The default implementation fetches this
   information from rsmeta."
@@ -677,6 +688,12 @@
     (throw (ex-info (str (tru "Select statement did not produce a ResultSet for native query"))
                     {:sql sql :driver driver}))))
 
+(defmethod execute-write-statement! :sql-jdbc
+  [_driver ^Statement stmt ^String sql]
+  (if (instance? PreparedStatement stmt)
+    (.executeUpdate ^PreparedStatement stmt)
+    (.executeUpdate stmt sql)))
+
 (defn- execute-statement-or-prepared-statement! ^ResultSet [driver ^Statement stmt max-rows params sql]
   (let [max-rows (or max-rows 0) ; 0 means no limit
         st (doto stmt (.setMaxRows max-rows))]
@@ -1025,9 +1042,7 @@
       :session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]
-         {:rows-affected (if (instance? PreparedStatement stmt)
-                           (.executeUpdate ^PreparedStatement stmt)
-                           (.executeUpdate stmt sql))})))
+         {:rows-affected (execute-write-statement! driver stmt sql)})))
     (catch Throwable e
       (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
                       {:sql sql, :params params, :type driver-api/qp.error-type.invalid-query}
@@ -1040,9 +1055,7 @@
 (defn- create-and-execute-statement!
   [driver conn sql params]
   (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
-    {:rows-affected (if (instance? PreparedStatement stmt)
-                      (.executeUpdate ^PreparedStatement stmt)
-                      (.executeUpdate stmt sql))}))
+    {:rows-affected (execute-write-statement! driver stmt sql)}))
 
 (defmethod driver/do-with-test-connection :sql-jdbc
   [driver database f]

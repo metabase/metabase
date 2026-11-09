@@ -249,6 +249,59 @@
         (is (identical? rs (sql-jdbc.execute/execute-statement! :motherduck stmt "SELECT 1")))
         (is (= 2 @attempts))))))
 
+(defn- result-set-of
+  "A stand-in `ResultSet` with one column and the rows in `cells`."
+  [cells]
+  (let [remaining (atom cells)
+        current   (atom nil)]
+    (reify ResultSet
+      (^ResultSetMetaData getMetaData [_]
+        (reify ResultSetMetaData
+          (getColumnCount [_] 1)))
+      (^boolean next [_]
+        (let [[cell & more] @remaining]
+          (reset! current cell)
+          (reset! remaining more)
+          (some? cell)))
+      (^Object getObject [_ ^int _i] @current)
+      (close [_]))))
+
+(defn- answering-statement
+  "A stand-in `PreparedStatement` whose `execute` returns `rs` when given one, and otherwise reports `update-count`."
+  [rs update-count]
+  (reify PreparedStatement
+    (^boolean execute [_] (some? rs))
+    (^int getUpdateCount [_] (if rs -1 update-count))
+    (^ResultSet getResultSet [_] rs)))
+
+;; Not ^:parallel: kondo counts `execute-write-statement!` as destructive, though these statements are stand-ins.
+(deftest execute-write-statement-test
+  (testing "a statement with a command tag reports its row count"
+    (is (= 3 (sql-jdbc.execute/execute-write-statement! :motherduck (answering-statement nil 3) "CREATE TABLE t AS ..."))))
+  (testing "a statement answered with a one-cell result set, as UPDATE and DELETE are, reports that cell"
+    (is (= 1 (sql-jdbc.execute/execute-write-statement! :motherduck (answering-statement (result-set-of [1]) -1) "UPDATE ..."))))
+  (testing "a statement answered with an empty result set, as DROP and ANALYZE are, reports no rows"
+    (is (= 0 (sql-jdbc.execute/execute-write-statement! :motherduck (answering-statement (result-set-of []) -1) "DROP TABLE t"))))
+  (testing "a plain Statement runs the SQL it's given"
+    (let [ran  (atom nil)
+          stmt (reify Statement
+                 (^boolean execute [_ ^String sql] (reset! ran sql) false)
+                 (^int getUpdateCount [_] 2))]
+      (is (= 2 (sql-jdbc.execute/execute-write-statement! :motherduck stmt "INSERT INTO t VALUES (1), (2)")))
+      (is (= "INSERT INTO t VALUES (1), (2)" @ran)))))
+
+(deftest ^:parallel compile-transform-test
+  (is (= ["CREATE OR REPLACE TABLE \"main\".\"out\" AS SELECT x FROM src WHERE y = ?" [5]]
+         (driver/compile-transform :motherduck {:query        {:query "SELECT x FROM src WHERE y = ?", :params [5]}
+                                                :output-table :main/out}))))
+
+(deftest ^:parallel compile-create-temp-table-test
+  (testing "transform tests use an ordinary table, since the endpoint refuses temp tables"
+    (is (= ["CREATE TABLE \"mb_test_abc\" AS SELECT 1 AS x" []]
+           (driver/compile-create-temp-table :motherduck {:table "mb_test_abc", :query {:query "SELECT 1 AS x", :params []}})))
+    (is (= ["DROP TABLE IF EXISTS \"mb_test_abc\"" []]
+           (driver/compile-drop-temp-table :motherduck "mb_test_abc")))))
+
 (defn- read-unparseable
   "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects.
 
@@ -708,6 +761,16 @@
     ;; option with "FATAL: option is not allowed: search_path".
     (is (= "main"
            (driver.sql/default-schema :motherduck (lib.metadata/database (mt/metadata-provider)))))))
+
+(deftest schema-exists?-test
+  (mt/test-driver :motherduck
+    (testing "a schema of the connected database"
+      (is (true? (driver/schema-exists? :motherduck (mt/id) "main"))))
+    ;; JDBC's getSchemas() lists these, and would answer yes for a schema of any attached database.
+    (testing "a schema the endpoint only emulates for Postgres clients"
+      (is (false? (driver/schema-exists? :motherduck (mt/id) "pg_catalog"))))
+    (testing "a schema that doesn't exist"
+      (is (false? (driver/schema-exists? :motherduck (mt/id) (str "no_such_schema_" (mt/random-name))))))))
 
 (deftest recreated-views-test
   (mt/test-driver :motherduck

@@ -34,7 +34,7 @@
   (:import
    (com.mchange.v2.c3p0 ConnectionTester UnifiedConnectionTester)
    (com.mchange.v2.c3p0.impl DefaultConnectionTester)
-   (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
@@ -189,14 +189,14 @@
                  ;; MotherDuck uses token authentication rather than Postgres roles and row-level security.
                  :test/rls-impersonation
                  :test/column-impersonation
-                 ;; Transforms are not supported at all. The rename flags are read only by transforms; the endpoint can
-                 ;; rename tables, so turn them back on with transforms.
+                 ;; Transforms replace their target with `CREATE OR REPLACE TABLE`, which is atomic, so the rename
+                 ;; strategies are never needed. Only transforms read these flags.
                  :atomic-renames
                  :rename
-                 :transforms/table
+                 ;; Python transforms create the target from Metabase types through the inherited Postgres type map,
+                 ;; where `float` is double precision but DuckDB's FLOAT is 4 bytes. Map the types before enabling.
                  :transforms/python
                  :transforms/index-ddl
-                 :transforms/testing
                  ;; The inherited fetch-table-indexes reads pg_index, which is empty on the endpoint, and calls
                  ;; a pg_get_indexdef arity it doesn't provide. Only transform index management uses these.
                  :index/fetch
@@ -210,6 +210,12 @@
   (defmethod driver/database-supports? [:motherduck feature]
     [_driver _feature _db]
     false))
+
+;; `CREATE OR REPLACE TABLE ... AS` swaps a transform's target in one atomic statement, inside or outside a
+;; transaction, and reports the rows it inserted.
+(defmethod driver/database-supports? [:motherduck :create-or-replace-table]
+  [_driver _feature _db]
+  true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Metadata / sync                                                    |
@@ -254,6 +260,20 @@
                     inclusion-patterns exclusion-patterns schema)
                    (conj! schema))))
         (persistent! schemas)))))
+
+;; The inherited check reads the same `getSchemas()`, so it finds a schema that exists only in another attached
+;; database. Transforms then skip `CREATE SCHEMA`, and the table creation that follows fails.
+(defmethod driver/schema-exists? :motherduck
+  [driver db-id schema]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver db-id nil
+   (fn [^Connection conn]
+     (with-open [stmt (sql-jdbc.sync.common/prepare-statement
+                       driver conn
+                       "SELECT 1 FROM duckdb_schemas() WHERE database_name = current_database() AND schema_name = ?"
+                       [schema])
+                 rs   (.executeQuery stmt)]
+       (.next rs)))))
 
 ;; Based on the Postgres query, with three changes:
 ;; - Primary keys come from duckdb_constraints(), scoped to the current database. The endpoint's
@@ -593,6 +613,46 @@
   [driver stmt sql]
   (let [postgres-method (get-method sql-jdbc.execute/execute-statement! :postgres)]
     (execute-with-retry stmt #(postgres-method driver stmt sql))))
+
+;; The endpoint answers UPDATE, DELETE, ALTER, DROP, TRUNCATE, COMMENT, SET and ANALYZE with a result set instead of a
+;; command tag, and pgjdbc's `executeUpdate` rejects a result set. `execute` accepts either. For UPDATE and DELETE the
+;; result set's one cell is the row count; for the DDL statements it's empty, and they affect no rows anyway.
+;; CREATE TABLE, CREATE TABLE AS and INSERT return proper command tags, so `getUpdateCount` is accurate for them.
+(defmethod sql-jdbc.execute/execute-write-statement! :motherduck
+  [_driver ^Statement stmt ^String sql]
+  (if-not (if (instance? PreparedStatement stmt)
+            (.execute ^PreparedStatement stmt)
+            (.execute stmt sql))
+    (.getUpdateCount stmt)
+    (with-open [rs (.getResultSet stmt)]
+      (let [cell (when (and (= 1 (.getColumnCount (.getMetaData rs))) (.next rs))
+                   (.getObject rs 1))]
+        (if (instance? Number cell)
+          (long cell)
+          0)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  Transforms                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; `CREATE OR REPLACE TABLE ... AS` replaces the target atomically, so a failed run leaves the old table in place and a
+;; successful one never leaves readers without a table. HoneySQL's `:or-replace` modifier puts the words after the
+;; table name, so build the statement from the quoted name, as the SQL Server driver does.
+(defmethod driver/compile-transform :motherduck
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
+    [(str "CREATE OR REPLACE TABLE " table-name " AS " sql-query) sql-params]))
+
+;; The endpoint refuses `CREATE TEMPORARY TABLE` ("Creating temp tables is not allowed"), and MotherDuck has said temp
+;; tables aren't coming. Transform tests run on one connection inside a transaction that is always rolled back, and
+;; DDL is transactional here, so an ordinary table does the job: it's visible on that connection alone, dropped by the
+;; test's own cleanup, and gone after the rollback in any case. The inherited drop is a plain `DROP TABLE IF EXISTS`.
+(defmethod driver/compile-create-temp-table :motherduck
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (sql.qp/format-honeysql driver [:raw ["CREATE TABLE " [:inline (keyword table)] " AS " sql-query]]))
+     sql-params]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Reading results                                                 |
