@@ -220,7 +220,7 @@
     (data-testing.executor/create-temp-table! driver conn output-table compiled-transform)
     nil
     (catch Exception e
-      (rethrow-remapped e ::data-testing.errors/transform-failed
+      (rethrow-remapped e ::data-testing.errors/query-failed
                         (tru "The query under test failed to run:")
                         labels))))
 

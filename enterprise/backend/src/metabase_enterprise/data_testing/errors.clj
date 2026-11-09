@@ -30,7 +30,7 @@
    ::unsupported-transform      422  ; Not a query transform (Python, say).
    ::unsupported-driver         422  ; The database does not support testing.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
-   ::transform-failed           422  ; The query under test would not run.
+   ::query-failed               422  ; The query under test would not run.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
 
