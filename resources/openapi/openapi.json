@@ -2963,6 +2963,114 @@
         } ],
         "description" : "What an `equals` expectation found.\n\n  Unless `:status` is `error`, every key is present on a pass as well as a failure:\n  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.\n  `:row-counts` sets the output's row count against the number of rows the expectation declared.\n  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.\n  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped."
       },
+      "metabase-enterprise.data-testing.schema..card-test.create" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to create a card test.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "card_id", "name", "inputs", "expectations" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..card-test.response" : {
+        "additionalProperties" : false,
+        "description" : "A card test as the read endpoints return it, with its newest run.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "last_run" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.data-test-run"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "card_id", "creator_id", "created_at", "updated_at", "last_run" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..card-test.update" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to update a card test. Omitted fields are left unchanged.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema..data-test-run.response" : {
         "additionalProperties" : false,
         "description" : "A test run as the API returns it, with the user who started it.",
@@ -3205,8 +3313,28 @@
         "type" : "object"
       },
       "metabase-enterprise.data-testing.schema..transform-test.definition" : {
-        "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test.definition",
-        "description" : "A transform test as a client writes it, without the transform it covers."
+        "additionalProperties" : false,
+        "description" : "A transform test as a client writes it, without the transform it covers.",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations" ],
+        "type" : "object"
       },
       "metabase-enterprise.data-testing.schema..transform-test.response" : {
         "additionalProperties" : false,
@@ -3287,6 +3415,54 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
           }
         },
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.card-test" : {
+        "additionalProperties" : false,
+        "description" : "A saved card test.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "card_id", "creator_id", "created_at", "updated_at" ],
         "type" : "object"
       },
       "metabase-enterprise.data-testing.schema.column" : {
@@ -3514,11 +3690,6 @@
       "metabase-enterprise.data-testing.schema.run-status" : {
         "description" : "The persisted lifecycle state of a test run.",
         "enum" : [ "started", "passed", "failed", "error", "timeout" ],
-        "type" : "string"
-      },
-      "metabase-enterprise.data-testing.schema.saved-test-type" : {
-        "description" : "The kinds of test that can be saved.",
-        "enum" : [ "transform" ],
         "type" : "string"
       },
       "metabase-enterprise.data-testing.schema.sql-data" : {
@@ -46585,6 +46756,232 @@
         "tags" : [ "/api/ee/billing" ]
       }
     },
+    "/api/ee/card-test" : {
+      "get" : {
+        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card.",
+        "operationId" : "get-api-ee-card-test",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "card-id",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.response"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/card-test",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "post" : {
+        "description" : "Create a card test.",
+        "operationId" : "post-api-ee-card-test",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.create"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.card-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/card-test",
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
+    "/api/ee/card-test/{id}" : {
+      "delete" : {
+        "description" : "Delete a card test.",
+        "operationId" : "delete-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "get" : {
+        "description" : "Get a card test with its newest run.",
+        "operationId" : "get-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "put" : {
+        "description" : "Update a card test.",
+        "operationId" : "put-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.update"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.card-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
+    "/api/ee/card-test/{id}/run" : {
+      "post" : {
+        "description" : "Run a card test. Needs read access to the test and native query access to its card's database.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`\n  naming which refusal it was.",
+        "operationId" : "post-api-ee-card-test-id-run",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/card-test/{id}/run",
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
     "/api/ee/cloud-add-ons/addons" : {
       "get" : {
         "description" : "Get addons information from the Metabase Store API.",
@@ -49820,7 +50217,7 @@
           "name" : "test-type",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.saved-test-type"
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.test-type"
           }
         }, {
           "in" : "query",
