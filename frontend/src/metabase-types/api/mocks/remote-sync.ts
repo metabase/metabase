@@ -1,5 +1,4 @@
 import type {
-  RemoteSyncEntityParent,
   ExportChangesResponse,
   ExportPreflightResponse,
   ForcePushCasualties,
@@ -10,6 +9,7 @@ import type {
   RemoteSyncEntity,
   RemoteSyncEntityCollection,
   RemoteSyncEntityCollectionAncestor,
+  RemoteSyncEntityParent,
   RemoteSyncEntityRef,
   RemoteSyncIsDirtyResponse,
   RemoteSyncMergeSummary,

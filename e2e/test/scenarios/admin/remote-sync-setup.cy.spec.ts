@@ -1,5 +1,3 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
 const { H } = cy;
 
 const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";

@@ -1,8 +1,8 @@
 import {
   createMockRemoteSyncEntity,
-  createMockRemoteSyncEntityParent,
   createMockRemoteSyncEntityCollection,
   createMockRemoteSyncEntityCollectionAncestor,
+  createMockRemoteSyncEntityParent,
 } from "metabase-types/api/mocks";
 
 import { getRemoteSyncChanges, hasRemoteSyncChanges } from "./utils";

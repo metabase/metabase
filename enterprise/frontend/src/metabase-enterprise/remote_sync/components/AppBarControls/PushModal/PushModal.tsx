@@ -2,6 +2,8 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { getErrorMessage } from "metabase/api/utils";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Form,
   FormErrorMessage,
@@ -42,7 +44,6 @@ type PushModalProps = {
 
 type PushStrategy = "merge" | "overwrite";
 
-const DEFAULT_COMMIT_MESSAGE = "Exported from Metabase";
 
 type PushFormValues = {
   message: string;
@@ -82,6 +83,8 @@ const PushModalBody = ({
   onTaskStarted,
   onClose,
 }: PushModalBodyProps) => {
+  const applicationName = useSelector(getApplicationName);
+  const defaultMessage = t`Exported from ${applicationName}`;
   const {
     data: changes,
     error: changesError,
@@ -116,7 +119,7 @@ const PushModalBody = ({
     const isForce = preflight.has_changes && strategy === "overwrite";
     const { task_id } = await exportChanges({
       branch,
-      message: message.trim() || undefined,
+      message: message.trim() || defaultMessage,
       merge: preflight.has_changes && strategy === "merge",
       force: isForce,
     }).unwrap();
@@ -140,7 +143,7 @@ const PushModalBody = ({
           <FormTextarea
             name="message"
             label={t`Commit message`}
-            placeholder={DEFAULT_COMMIT_MESSAGE}
+            placeholder={defaultMessage}
           />
           <FormErrorMessage />
           <Group justify="flex-end" gap="sm">
