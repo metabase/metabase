@@ -3,7 +3,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.transforms.usage :as transforms.usage]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,12 +38,12 @@
   :encryption :no
   :audit      :getter)
 
-(defn- explicit-transforms-enabled
+(mu/defn- explicit-transforms-enabled :- [:maybe :boolean]
   "Returns the :transforms-enabled setting if explicitly set, otherwise nil."
   []
   (setting/get-value-of-type :boolean :transforms-enabled))
 
-(defn- cloud-enabled-transforms?
+(mu/defn- cloud-enabled-transforms? :- :boolean
   "Whether a cloud instance has enabled transforms.
    If a cloud instance has the transforms token feature, then they've gone through the upsell and enabled transforms.
    Self-hosted instances don't go through the upsell, so we require that they explicitly enable transforms via the setting."

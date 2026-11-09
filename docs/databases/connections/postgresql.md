@@ -1,5 +1,6 @@
 ---
 title: PostgreSQL
+summary: Connect Metabase to PostgreSQL or Supabase, including which versions are supported and every connection setting.
 redirect_from:
   - /docs/latest/administration-guide/databases/postgresql
 ---
@@ -192,7 +193,7 @@ Set up an additional connection used for write operations. See [Writable connect
 
 ## Data actions
 
-Turn on **Data actions** to let people run actions on this database: both [actions on models](../../data-modeling/models/actions/introduction.md) and [data actions](../../data-modeling/data-actions.md). Actions can read, write, and delete data, so your database user needs write permissions.
+Turn on **Data actions** to let people run actions on this database: [data actions](../../data-modeling/data-actions.md), actions in [data apps](../../data-apps/build.md), and [model actions](../../data-modeling/models/actions/introduction.md). Actions can read, write, and delete data, so your database user needs write permissions.
 
 ## Model persistence
 

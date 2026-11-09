@@ -400,7 +400,7 @@
    (fn [_]
      {:entity_id (u/generate-nano-id)
       :name (str "Test Transform " (u/generate-nano-id))
-      :source {:type  "query"
+      :source {:type  :query
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
                :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))
@@ -493,17 +493,6 @@
   ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
   (locking dimension-lock
     (next-method model explicit-attributes f)))
-
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
-  "Give a temp data app a temp collection named like the one the API creates, unless the attributes set
-  `resource_collection_id`, even to nil."
-  [model explicit-attributes f]
-  (let [attributes (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)]
-    (if (contains? attributes :resource_collection_id)
-      (next-method model attributes f)
-      (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:name      (str "Data App: " (:name attributes))
-                                                                      :namespace "data-apps"}]
-        (next-method model (assoc attributes :resource_collection_id collection-id) f)))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -799,7 +788,7 @@
                   (format "%s %d not found." (name model) (u/the-id object-or-id)))
         column->temp-value (maybe-merge-original-values model original-column->value column->temp-value)]
     (try
-      (t2/update! model (u/the-id object-or-id) column->temp-value)
+      (t2/update! model :id (u/the-id object-or-id) column->temp-value)
       (f)
       (finally
         (t2/query-one
@@ -1251,7 +1240,7 @@
         (finally
           (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
           (doseq [[id original-val] @pk->original]
-            (t2/update! model id original-val)))))
+            (t2/update! model :id id original-val)))))
     (with-discard-model-updates! (rest models)
       (thunk))))
 
@@ -1272,23 +1261,23 @@
     (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
       (testing "with single model"
         (with-discard-model-updates! [:model/Card]
-          (t2/update! :model/Card card-id {:name "New Card name"})
+          (t2/update! :model/Card :id card-id {:name "New Card name"})
           (testing "the changes takes affect inside the macro"
-            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card :id card-id)))))
         (testing "outside macro, the changes should be reverted"
-          (is (= card (t2/select-one :model/Card card-id)))))
+          (is (= card (t2/select-one :model/Card :id card-id)))))
       (testing "with multiple models"
         (with-discard-model-updates! [:model/Card :model/Dashboard]
           (testing "the changes takes affect inside the macro"
-            (t2/update! :model/Card card-id {:name "New Card name"})
-            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
-            (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
-            (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
+            (t2/update! :model/Card :id card-id {:name "New Card name"})
+            (is (= "New Card name" (t2/select-one-fn :name :model/Card :id card-id)))
+            (t2/update! :model/Dashboard :id dash-id {:name "New Dashboard name"})
+            (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard :id dash-id)))))
         (testing "outside macro, the changes should be reverted"
           (is (= (dissoc card :updated_at)
-                 (dissoc (t2/select-one :model/Card card-id) :updated_at)))
+                 (dissoc (t2/select-one :model/Card :id card-id) :updated_at)))
           (is (= (dissoc dash :updated_at)
-                 (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
+                 (dissoc (t2/select-one :model/Dashboard :id dash-id) :updated_at)))))
       (testing "make sure that we cleaned up the aux methods after"
         (is (= count-aux-method-before
                (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))

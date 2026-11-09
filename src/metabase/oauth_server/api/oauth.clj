@@ -316,7 +316,7 @@
   [{:keys [attempts attempts-threshold attempt-ttl-ms]} throttle-key]
   (if-let [[_ blocking-attempt-ms] (nth (filter (fn [[attempt-key]] (= throttle-key attempt-key)) @attempts)
                                         (dec attempts-threshold) nil)]
-    (quot (+ 999 (max 0 (- (+ blocking-attempt-ms attempt-ttl-ms) (System/currentTimeMillis)))) 1000)
+    (quot (+ 999 (max 0 (- (+ blocking-attempt-ms attempt-ttl-ms) (u.throttle/now-ms)))) 1000)
     0))
 
 (defn- do-with-token-throttling

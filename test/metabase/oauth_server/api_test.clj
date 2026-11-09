@@ -13,6 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util.secret :as u.secret]
+   [metabase.util.throttle :as u.throttle]
    [oidc-provider.store :as oidc.store]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
@@ -999,7 +1000,7 @@
                                   :redirect_uri "https://example.com/callback"}
                 client-throttler @#'api.oauth/token-client-throttler
                 ip-throttler     @#'api.oauth/token-ip-throttler
-                now              (System/currentTimeMillis)]
+                now              (u.throttle/now-ms)]
             (reset! (:attempts client-throttler)
                     (repeat client-attempt-count [client-id (- now (* 10 60 1000))]))
             (reset! (:attempts ip-throttler) (repeat 50 [ip-address (- now (* 59 60 1000))]))
@@ -1121,7 +1122,7 @@
                 authorization (basic-auth-header client-id client-secret)
                 client-throttler @#'api.oauth/token-client-throttler
                 ip-throttler     @#'api.oauth/token-ip-throttler
-                now              (System/currentTimeMillis)
+                now              (u.throttle/now-ms)
                 attempts         (fn [throttler throttle-key age-minutes]
                                    (when age-minutes
                                      (concat (repeat (- (:attempts-threshold throttler) 2)

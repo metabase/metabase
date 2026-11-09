@@ -45,7 +45,7 @@ import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheP
 import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
-import { initMetaplow } from "metabase/utils/metaplow";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import MetabaseSettings from "metabase/utils/settings";
@@ -109,6 +109,7 @@ function _init(
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
+    hostUrl: getCollectorHostUrl(),
     getUserId: () => getUserId(store.getState()),
   });
 

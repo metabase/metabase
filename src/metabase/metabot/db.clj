@@ -15,9 +15,9 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (declare collection metabot-metrics-and-models-query root-collections-of-types)
@@ -53,7 +53,7 @@
   "Apply `changes` to the Metabot with `metabot-id`."
   [metabot-id :- ms/PositiveInt
    changes :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (t2/update! :model/Metabot metabot-id changes))
+  (t2/update! :model/Metabot :id metabot-id changes))
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
@@ -101,12 +101,13 @@
               [:card.name :model_name]
               :created_at
               :updated_at]
-             (cond-> (prompts-for-metabot-query metabot-id card-type card-id)
-               true   (assoc :order-by (if sample?
-                                         (prompt-sample-order-by)
-                                         [[:card.name :asc] [:id :asc]]))
-               limit  (assoc :limit limit)
-               offset (assoc :offset offset))))
+             (h2x/assert-map-or-nil!
+              (cond-> (prompts-for-metabot-query metabot-id card-type card-id)
+                true   (assoc :order-by (if sample?
+                                          (prompt-sample-order-by)
+                                          [[:card.name :asc] [:id :asc]]))
+                limit  (assoc :limit limit)
+                offset (assoc :offset offset)))))
 
 (mu/defn prompt-count
   "The number of MetabotPrompts of the Metabot with `metabot-id` whose Card is within scope, optionally restricted to
@@ -114,7 +115,7 @@
   [metabot-id :- ms/PositiveInt
    card-type :- [:maybe [:enum "metric" "model"]]
    card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/count :model/MetabotPrompt (prompts-for-metabot-query metabot-id card-type card-id)))
+  (t2/count :model/MetabotPrompt (h2x/assert-map-or-nil! (prompts-for-metabot-query metabot-id card-type card-id))))
 
 (mu/defn prompt-count-for-metabot
   "The number of MetabotPrompts of the Metabot with `metabot-id`."
@@ -356,7 +357,7 @@
   "Apply `changes` to the MetabotMessage with `message-id`."
   [message-id :- ms/PositiveInt
    changes :- ::metabot.schema/metabot-message.update]
-  (t2/update! :model/MetabotMessage message-id changes))
+  (t2/update! :model/MetabotMessage :id message-id changes))
 
 (mu/defn soft-delete-messages-where!
   "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
@@ -373,8 +374,8 @@
   (let [{:keys [id]} conditions
         conditions   (cond-> conditions
                        (coll? id) (assoc :id [:in id]))]
-    (t2/update! :model/MetabotMessage conditions {:deleted_at         [:now]
-                                                  :deleted_by_user_id deleted-by-user-id})))
+    (t2/update! :model/MetabotMessage (h2x/assert-map-or-nil! conditions) {:deleted_at         [:now]
+                                                                           :deleted_by_user_id deleted-by-user-id})))
 
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."
@@ -425,7 +426,7 @@
   "The `columns` of the Database with `database-id`."
   [columns :- [:sequential :keyword]
    database-id :- ::lib.schema.id/database]
-  (t2/select-one columns database-id))
+  (t2/select-one columns :id database-id))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
@@ -462,7 +463,7 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn active-table-with-columns
   "The `columns` of the active Table with `table-id`, or nil."
@@ -473,7 +474,7 @@
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table :id table-id))
 
 (defn readable-active-table-database-id
   "The Database ID of the active Table with `table-id`, or nil when there is no such table *or*
@@ -489,34 +490,34 @@
   and `:collection_id`. Handing it a trimmed row makes it answer a narrower question and deny a
   user whose access comes through that path."
   [table-id]
-  (when-let [table (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]})]
+  (when-let [table (t2/select-one :model/Table :id table-id :active true)]
     (when (mi/can-read? table)
       (:db_id table))))
 
 (mu/defn tables-by-id
   "A map of ID to Table for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn->fn :id identity :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-fn->fn :id identity :model/Table :id [:in table-ids]))
 
 (mu/defn table-summaries
   "The ID, names, schema, Database ID, and description of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids]))
 
 (mu/defn table-schema-rows
   "Return the ID, name, schema, and database ID of each table in `table-ids`.
 
   Rows also include `:is_published` and `:collection_id`, which `can-read?` and `can-query?` need to check access
-  through a collection. Both keys must be present, even when nil.
-  Both are user values, so the rows read through the user-settings overlay."
+  through a collection, present even when nil."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]
-             {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]))
 
 (mu/defn table-curation-rows
-  "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
+  "The ID, Database ID, active flag, visibility type, published flag, data layer, and data authority of the Tables with
+  `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id :active :visibility_type :is_published :data_layer :data_authority]
+             :id [:in table-ids]))
 
 (mu/defn visible-table-summaries
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -527,7 +528,7 @@
              :db_id database-id
              :id [:in table-ids]
              :active true
-             :visibility_type nil {:from [(warehouse-schema-overlay/table-query)]}))
+             :visibility_type nil))
 
 (defn- current-user-visible-table-clause
   "Honey SQL `{:where …}` (plus `:with` when the filter needs a CTE) restricting Tables to those visible to the
@@ -553,7 +554,7 @@
              :id [:in table-ids]
              :active true
              :visibility_type nil
-             (assoc (current-user-visible-table-clause) :from [(warehouse-schema-overlay/table-query)])))
+             (current-user-visible-table-clause)))
 
 (def ^:private max-visible-tables-to-consider
   "Cap on the number of visible Tables fetched for fuzzy table-name matching."
@@ -568,9 +569,7 @@
                        :db_id database-id
                        :active true
                        :visibility_type nil
-                       (cond-> (assoc (current-user-visible-table-clause)
-                                      :from  [(warehouse-schema-overlay/table-query)]
-                                      :limit max-visible-tables-to-consider)
+                       (cond-> (assoc (current-user-visible-table-clause) :limit max-visible-tables-to-consider)
                          (seq excluded-table-ids)
                          (update :where (fn [where-clause]
                                           (if where-clause
@@ -588,7 +587,6 @@
              :active true
              :visibility_type nil
              (assoc (current-user-visible-table-clause)
-                    :from     [(warehouse-schema-overlay/table-query)]
                     :order-by [[:view_count :desc]]
                     :limit    limit)))
 
@@ -600,8 +598,7 @@
              :db_id database-id
              :active true
              :visibility_type nil
-             {:from [(warehouse-schema-overlay/table-query)]
-              :limit limit}))
+             {:limit limit}))
 
 (mu/defn active-tables-for-database
   "The presentable columns of the active Tables in the Database with `database-id`, ordered by schema and name."
@@ -609,8 +606,7 @@
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
              :db_id database-id
              :active true
-             {:from [(warehouse-schema-overlay/table-query)]
-              :order-by [[:%lower.schema :asc] [:%lower.name :asc]]}))
+             {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]}))
 
 (mu/defn active-tables-in-schema
   "The presentable columns of the active Tables in `schema` of the Database with `database-id`, ordered by name."
@@ -620,14 +616,13 @@
              :db_id database-id
              :schema schema
              :active true
-             {:from [(warehouse-schema-overlay/table-query)]
-              :order-by [[:%lower.name :asc]]}))
+             {:order-by [[:%lower.name :asc]]}))
 
 (mu/defn active-schemas-for-database
   "The distinct `:schema` rows of the active Tables in the Database with `database-id`, ordered by schema."
   [database-id :- ::lib.schema.id/database]
   (t2/query {:select-distinct [:schema]
-             :from            [(warehouse-schema-overlay/table-query {:user-settings? false})]
+             :from            [(t2/table-name :model/Table)]
              :where           [:and [:= :db_id database-id] [:= :active true]]
              :order-by        [[:schema :asc]]}))
 
@@ -671,7 +666,7 @@
    table :- :string]
   (t2/select-one :model/QueryTable
                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                  :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
+                  :from      [[(t2/table-name :model/Table) :t]]
                   :where  [:and
                            [:= :t.db_id db-id]
                            (table-match-clause {:schema schema :table table})]}))
@@ -686,7 +681,7 @@
                            [:table :string]]]]
   (t2/select :model/QueryTable
              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-              :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
+              :from      [[(t2/table-name :model/Table) :t]]
               :where  [:and
                        [:= :t.db_id db-id]
                        (into [:or] (map table-match-clause) tables)]}))
@@ -696,22 +691,22 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id))
 
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in field-ids]))
 
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :fingerprint :model/Field :id field-id))
 
 (mu/defn field-table-ids
   "A map of Field ID to Table ID for `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids]))
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 
@@ -807,8 +802,9 @@
   given, caps the number of rows returned."
   [metabot-id :- ms/PositiveInt
    limit      :- [:maybe ms/PositiveInt]]
-  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id limit)
-                             (update :order-by (fnil conj []) [:report_card.id]))))
+  (t2/select :model/Card (h2x/assert-map-or-nil!
+                          (-> (metabot-metrics-and-models-query metabot-id limit)
+                              (update :order-by (fnil conj []) [:report_card.id])))))
 
 (mu/defn card-entity-ids
   "A map of Card ID to entity ID for `card-ids`."
@@ -884,8 +880,8 @@
   [card-id :- ::lib.schema.id/card
    conversation-id :- :string
    chart-id :- :string]
-  (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
-                                                   :metabot_chart_id        chart-id}))
+  (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
+                                                       :metabot_chart_id        chart-id}))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -1054,15 +1050,20 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn card-collection-ids
-  "The ID and Collection ID of the Cards with `ids`."
+(mu/defn archived-card-ids
+  "The subset of `ids` that are archived Cards."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Card :id :collection_id] :id [:in ids]))
+  (t2/select-fn-set :id :model/Card :id [:in ids] :archived true))
 
-(mu/defn dashboard-collection-ids
-  "The ID and Collection ID of the Dashboards with `ids`."
+(mu/defn card-curation-rows
+  "The ID, Collection ID, archived flag, and Document ID of the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Dashboard :id :collection_id] :id [:in ids]))
+  (t2/select [:model/Card :id :collection_id :archived :document_id] :id [:in ids]))
+
+(mu/defn dashboard-curation-rows
+  "The ID, Collection ID, and archived flag of the Dashboards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Dashboard :id :collection_id :archived] :id [:in ids]))
 
 (mu/defn measure-table-id
   "The Table ID of the Measure with `id`, or nil."
@@ -1073,6 +1074,16 @@
   "The Table ID of the Segment with `id`, or nil."
   [id :- ::lib.schema.id/segment]
   (t2/select-one-fn :table_id :model/Segment :id id))
+
+(mu/defn live-measure-table-id
+  "The Table ID of the Measure with `id`, or nil when it is missing or in the trash."
+  [id :- ::lib.schema.id/measure]
+  (t2/select-one-fn :table_id :model/Measure :id id :archived false))
+
+(mu/defn live-segment-table-id
+  "The Table ID of the Segment with `id`, or nil when it is missing or in the trash."
+  [id :- ::lib.schema.id/segment]
+  (t2/select-one-fn :table_id :model/Segment :id id :archived false))
 
 (mu/defn measure-entity-id
   "The entity ID of the Measure with `id`."

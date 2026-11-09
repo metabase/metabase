@@ -1,5 +1,6 @@
 ---
 title: API changelog
+summary: Breaking changes to the Metabase API, listed by release.
 ---
 
 # Breaking changes to the API interface
@@ -18,6 +19,11 @@ title: API changelog
 
 - `POST /api/ee/serialization/export` accepts a `dirname` of 1-255 characters from `A-Z a-z 0-9 _ - . %`
   that does not start with `.` or `-`. Other values get `400 Bad Request`.
+
+- `PUT /api/field/:id` no longer accepts `nfc_path`, which only sync sets, and answers `null` for `has_field_values`,
+  `display_name`, `visibility_type` or `json_unfolding` with `400 Bad Request`. Leave a key out to keep its value.
+  `PUT /api/table/:id`, `PUT /api/table` and the Data Studio bulk table edit answer `data_authority: null` the same
+  way.
 
 ## Metabase 0.65.0
 

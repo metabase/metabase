@@ -1,5 +1,6 @@
 ---
 title: Full app embedding
+summary: Embed all of Metabase in an iframe, wired up to your app's SSO and permissions, with the full query builder and drill-through.
 redirect_from:
   - /docs/latest/enterprise-guide/full-app-embedding
   - /docs/latest/embedding/full-app-embedding

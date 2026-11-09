@@ -1,5 +1,6 @@
 ---
 title: SAML with Microsoft Entra ID
+summary: Step-by-step setup for SAML single sign-on between Microsoft Entra ID and Metabase, including group mapping.
 
 redirect_from:
   - /docs/latest/enterprise-guide/authenticating-with-saml-azure-ad

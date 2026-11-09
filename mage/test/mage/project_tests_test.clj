@@ -48,8 +48,7 @@
                       metabase.core.modules-test
                       metabase.core.kondo-ratchet-test
                       metabase.core.kondo-ratchet-check-test
-                      metabase.core.namespace-uniqueness-test
-                      metabase.core.table-or-field-raw-usage-test])]]
+                      metabase.core.namespace-uniqueness-test])]]
              calls)))
     (testing "the failed suite is reported"
       (is (= ["migrations"] failed))

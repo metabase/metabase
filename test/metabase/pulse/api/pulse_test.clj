@@ -11,6 +11,7 @@
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.channel.settings :as channel.settings]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -323,6 +324,72 @@
               (testing "authorization"
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :post 403 "pulse" (assoc payload :dashboard_id blocked-dashboard-id))))))))))))
+
+(defn- plain-card-ref [card]
+  {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil})
+
+(deftest create-dashboard-subscription-without-collection-write-test
+  (testing "POST /api/pulse"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id}  {}
+                     :model/Card       card           {:collection_id coll-id}
+                     :model/Dashboard  {dash-id :id}  {:collection_id coll-id}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+        (mt/with-model-cleanup [:model/Pulse]
+          (let [payload {:name         "Subscription"
+                         :cards        [(plain-card-ref card)]
+                         :channels     [daily-email-channel]
+                         :dashboard_id dash-id}]
+            (testing "a dashboard subscription needs only read access to the dashboard's collection"
+              (let [{pulse-id :id} (mt/user-http-request :rasta :post 200 "pulse" payload)]
+                (testing "and is filed in that collection"
+                  (is (= coll-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))))))))))
+
+(deftest create-pulse-in-root-collection-without-root-write-test
+  (testing "POST /api/pulse"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
+      (mt/with-temp [:model/Card      card          {}
+                     :model/Dashboard {dash-id :id} {}]
+        (mt/with-model-cleanup [:model/Pulse :model/Collection]
+          (let [card-pulse {:name     "Card pulse"
+                            :cards    [(plain-card-ref card)]
+                            :channels [daily-email-channel]}]
+            (testing "rasta cannot write to the root collection"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "collection" {:name "Root child"}))))
+            (testing "a card-only pulse with no collection_id needs root write"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "pulse" card-pulse))))
+            (testing "a root-write user can still create it"
+              (let [{pulse-id :id} (mt/user-http-request :crowberto :post 200 "pulse" card-pulse)]
+                (is (=? {:collection_id nil, :dashboard_id nil}
+                        (t2/select-one :model/Pulse :id pulse-id)))))
+            (testing "a subscription to a root dashboard lands in the root collection"
+              (let [{pulse-id :id} (mt/user-http-request :rasta :post 200 "pulse"
+                                                         (assoc card-pulse :name "Subscription" :dashboard_id dash-id))]
+                (is (=? {:collection_id nil, :dashboard_id dash-id}
+                        (t2/select-one :model/Pulse :id pulse-id)))))))))))
+
+(deftest update-pulse-collection-without-write-test
+  (testing "PUT /api/pulse/:id"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {src-id :id}   {}
+                     :model/Collection {other-id :id} {}
+                     :model/Pulse      {pulse-id :id} {:name "Card pulse", :collection_id src-id}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) src-id)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
+        (testing "cannot move into the root collection"
+          (mt/user-http-request :rasta :put 403 (str "pulse/" pulse-id) {:collection_id nil})
+          (is (= src-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))
+        (testing "cannot move into a read-only collection"
+          (mt/user-http-request :rasta :put 403 (str "pulse/" pulse-id) {:collection_id other-id})
+          (is (= src-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))
+        (testing "cannot un-archive a pulse in a collection it cannot write"
+          (t2/update! :model/Pulse :id pulse-id {:archived true})
+          (perms/revoke-collection-permissions! (perms-group/all-users) src-id)
+          (mt/user-http-request :rasta :put 403 (str "pulse/" pulse-id) {:archived false})
+          (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))))))
 
 (deftest create-with-hybrid-pulse-card-test
   (testing "POST /api/pulse"
@@ -647,7 +714,7 @@
              (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse)))))
     (testing "...and unset (unpin) it as well?"
       (pulse-test/with-pulse-in-collection! [_ collection pulse]
-        (t2/update! :model/Pulse (u/the-id pulse) {:collection_position 1})
+        (t2/update! :model/Pulse :id (u/the-id pulse) {:collection_position 1})
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:collection_position nil})
@@ -660,7 +727,7 @@
         (is (= nil
                (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse))))
         (testing "shouldn't be able to unset (unpin) a Pulse"
-          (t2/update! :model/Pulse (u/the-id pulse) {:collection_position 1})
+          (t2/update! :model/Pulse :id (u/the-id pulse) {:collection_position 1})
           (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                                 {:collection_position nil})
           (is (= 1
@@ -679,7 +746,7 @@
   (testing "Can we unarchive a Pulse?"
     (pulse-test/with-pulse-in-collection! [_ collection pulse]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (t2/update! :model/Pulse (u/the-id pulse) {:archived true})
+      (t2/update! :model/Pulse :id (u/the-id pulse) {:archived true})
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived false})
       (is (= false

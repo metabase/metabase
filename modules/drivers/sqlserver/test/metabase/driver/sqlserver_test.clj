@@ -1147,7 +1147,7 @@
     (mt/test-driver :sqlserver
       (mt/dataset bigint-identity-data
         (is (= :type/BigInteger
-               (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+               (t2/select-one-fn :base_type :model/Field :id (mt/id :bigint_identity_test :id))))))))
 
 (def ^:private udt-alias-db-details
   (delay (mt/dbdef->connection-details :sqlserver :db {:database-name "udt_alias_test"})))

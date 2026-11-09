@@ -489,10 +489,8 @@
       (mt/with-temp-env-var-value! [mb-transforms-enabled true]
         (mt/with-temp [:model/Transform {id :id} {:name   "t1"
                                                   :source {:type  :query
-                                                           :query {:database (mt/id)
-                                                                   :type     "query"
-                                                                   :query    {:source-table (mt/id :venues)}}}
-                                                  :target {:type   :table
+                                                           :query (venues-query)}
+                                                  :target {:type   "table"
                                                            :schema (t2/select-one-fn :schema :model/Table
                                                                                      :id (mt/id :venues))
                                                            :name   "t1_out"}}]
@@ -1089,7 +1087,7 @@
           (is (nil? (:error row)))
           (is (re-find #"hello" (:content_markdown row))
               "the read still returns the body")))
-      (is (= 0 (t2/select-one-fn :view_count :model/Document doc-id))
+      (is (= 0 (t2/select-one-fn :view_count :model/Document :id doc-id))
           "and left view_count alone"))))
 
 (deftest get-content-dimensions-respects-a-curated-metric-test
@@ -1109,7 +1107,7 @@
       (metrics/sync-dimensions! :metadata/metric metric-id)
       (let [seeded (t2/select-one-fn :dimensions :model/Card :id metric-id)]
         (is (seq seeded) "the metric must seed at least one dimension for this to prove anything")
-        (t2/update! :model/Card metric-id {:dimensions (vec (take 1 seeded))})
+        (t2/update! :model/Card :id metric-id {:dimensions (vec (take 1 seeded))})
         (mt/with-test-user :crowberto
           (let [row   (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})
                 again (content-one {:items [{:type "metric" :id metric-id}] :include ["dimensions"]})]
@@ -1182,7 +1180,7 @@
         (metrics/sync-dimensions! :metadata/metric metric-id)
         (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id metric-id)
               orphan-id (:id (first dimensions))]
-          (t2/update! :model/Card metric-id
+          (t2/update! :model/Card :id metric-id
                       {:dimension_mappings (mapv #(cond-> %
                                                     (= orphan-id (:dimension-id %))
                                                     (assoc-in [:target 2] (mt/id :users :name)))

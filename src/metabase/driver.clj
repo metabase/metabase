@@ -286,10 +286,11 @@
   as connection properties. Typically parameters whose value the client loads and instantiates as a Java class. Defaults
   to none.
 
-  Matched case-insensitively, and as substrings, so a name here also catches its longer spellings (`socketFactory`
-  covers `socketFactoryClass`). Enforced by [[metabase.driver.util/validate-connection-parameters!]], which runs when a
-  connection is tested, a connection pool is created, and a Database is saved. Extend a parent's list rather than
-  replacing it:
+  Matched as substrings of `:additional-options` and of each detail key, after normalization: case folded, percent
+  escapes decoded once, and `_ . - +` and whitespace ignored. So a name here also catches its longer and disguised
+  spellings (`socketFactory` covers `socketFactoryClass` and `SOCKET_FACTORY`). Enforced by
+  [[metabase.driver.util/validate-connection-parameters!]], which runs when a connection is tested, a connection pool
+  is created, and a Database is saved. Extend a parent's list rather than replacing it:
 
     (defmethod driver/disallowed-connection-parameters :mysql
       [driver]
@@ -301,6 +302,21 @@
 (defmethod disallowed-connection-parameters :default
   [_driver]
   [])
+
+(defmulti url-building-detail-keys
+  "The connection-detail keys whose values this driver splices into its connection URL.
+  [[metabase.driver.util/validate-connection-parameters!]] refuses a value of one of these that contains a URL
+  separator, even percent-encoded, so it cannot start a client parameter of its own.
+
+  Defaults to `[:host :port :db :dbname :catalog :account]`. Override it when one of those keys is not spliced into a
+  URL, such as one holding a whole connection string or a file path."
+  {:added "0.65.3" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod url-building-detail-keys :default
+  [_driver]
+  [:host :port :db :dbname :catalog :account])
 
 (def default-host-detail-keys
   "Detail keys that hold a warehouse host across the drivers we ship. `:host` is the near-universal one;

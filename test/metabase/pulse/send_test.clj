@@ -165,7 +165,7 @@
                             (pulse.test-util/with-captured-channel-send-messages!
                               (mt/with-temporary-setting-values [site-url "https://testmb.com"]
                                 (notification.tu/with-javascript-visualization-stub
-                                  (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))))))
+                                  (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))))))
                       (thunk []
                         (if fixture
                           (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
@@ -223,12 +223,12 @@
 
      :http
      (fn [{:keys [card-id pulse-id]} [request]]
-       (let [pulse (t2/select-one :model/Pulse pulse-id)
-             card  (t2/select-one :model/Card card-id)]
+       (let [pulse (t2/select-one :model/Pulse :id pulse-id)
+             card  (t2/select-one :model/Card :id card-id)]
          (is (=? {:body {:type               "alert"
                          :alert_id           pulse-id
                          :alert_creator_id   (mt/malli=? int?)
-                         :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
+                         :alert_creator_name (t2/select-one-fn :common_name :model/User :id (:creator_id pulse))
                          :data               {:type          "question"
                                               :question_id   card-id
                                               :question_name (:name card)
@@ -644,7 +644,7 @@
                     (pulse.test-util/with-captured-channel-send-messages!
                       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                             #"Failed to deliver to channel/slack$"
-                                            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))
+                                            (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id)))))
                     count)))))))))
 
 (deftest failure-on-several-channels-names-each-channel-test
@@ -666,7 +666,7 @@
         (with-redefs [channel/render-notification (fn [channel-type & _]
                                                     (throw (ex-info (str (name channel-type) " failed") {})))]
           (let [e (is (thrown? clojure.lang.ExceptionInfo
-                               (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+                               (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))]
             ;; the channels come in the pulse's channel order, which the test does not fix
             (is (re-matches #"Failed to deliver to (channel/email, channel/slack|channel/slack, channel/email)"
                             (ex-message e)))
@@ -695,7 +695,7 @@
                                                :channel_id   channel-id}]
         (with-redefs [channel/render-notification (fn [& _] (throw (ex-info "http failed" {})))]
           (let [e (is (thrown? clojure.lang.ExceptionInfo
-                               (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+                               (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))]
             (is (= (str "Failed to deliver to channel/http " channel-id) (ex-message e)))
             (is (=? {:failed-handlers [{:channel_type :channel/http
                                         :channel_id   channel-id}]}
@@ -725,7 +725,7 @@
                :model/PulseChannel _              {:pulse_id pulse-id
                                                    :channel_type "http"
                                                    :channel_id   (:id channel)}]
-              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+              (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))
               (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
                               :alert_creator_name "Rasta Toucan"
                               :alert_id           pulse-id
@@ -768,7 +768,7 @@
             (mt/with-fake-inbox
               (let [results (pulse.test-util/with-captured-channel-send-messages!
                               (mt/with-temporary-setting-values [site-url "https://testmb.com"]
-                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))]
                 (is (seq (:channel/email results)))))))))))
 
 (deftest send-skip-alert-test

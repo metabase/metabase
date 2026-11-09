@@ -1717,8 +1717,8 @@
                                                                            {:type "link"
                                                                             :linkType "question"
                                                                             :targetId deleted-card-id}}}}}]
-      (t2/delete! :model/Card deleted-card-id)
-      (t2/delete! :model/Dashboard deleted-dash-id)
+      (t2/delete! :model/Card :id deleted-card-id)
+      (t2/delete! :model/Dashboard :id deleted-dash-id)
       (testing "the references to deleted cards and dashboards are ignored"
         (is (= #{[{:model "Dashboard" :id clickdash-eid :label "dashboard"}]
                  [{:model "Collection" :id coll-eid :label "some_collection"}]
@@ -1939,7 +1939,7 @@
                   {:card-id (:id c)}))]
         (when-not (= (:status res) :completed)
           (throw (ex-info "Query failed" res)))
-        (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
+        (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card :id (:id c)))]
           (is (=? {:fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]}
                   (->> (:result_metadata ser)
                        (u/seek #(and (= (:name %) "CATEGORY_ID")
@@ -1959,7 +1959,7 @@
         [:model/Card {card-id :id} {:type            :model
                                     :dataset_query   (mt/query venues)
                                     :result_metadata overridden}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
               by-name   (u/index-by :name (:result_metadata extracted))]
           (is (every? #(re-matches #"Custom .*" (:display_name %))
                       (:result_metadata extracted)))
@@ -1987,7 +1987,7 @@
                            :base_type      :type/Text
                            :effective_type :type/Text
                            :semantic_type  :type/Title}]}]
-      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
+      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
             by-name   (u/index-by :name (:result_metadata extracted))]
         (testing "physical passthrough column keeps its types"
           (is (= :type/Integer (:base_type (get by-name "project_id"))))
@@ -2306,10 +2306,9 @@
                             :description "A test transform for serialization"
                             :entity_id "2HzIFwJ6720JAx07UMavl"
                             :collection_id coll-id
-                            :source {:query {:database db-id
-                                             :type     "query"
-                                             :query    {:source-table table-id}}
-                                     :type "query"}
+                            :source {:type :query
+                                     :query (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                              (lib/query mp (lib.metadata/table mp table-id)))}
                             :target {:database db-id
                                      :type "table"
                                      :schema "public"
@@ -2323,7 +2322,7 @@
                             :entity_id "pythonEtlPythonEtlxxx"
                             :collection_id coll-id
                             :source_database_id db-id
-                            :source {:type "python"
+                            :source {:type :python
                                      :source-database db-id
                                      :source-tables [{:alias "orders"
                                                       :table_id table-id}]
@@ -2392,47 +2391,6 @@
             (is (= #{transform-eid python-transform-eid}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
 
-(deftest transform-with-null-source-database-extract-test
-  (testing "A transform whose source database has been deleted serializes as a tombstone (GDGT-2447)"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-empty-h2-app-db!
-        (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Soon-to-be-deleted DB"}
-                           :model/Transform {transform-id :id transform-eid :entity_id}
-                           {:name "Orphan Transform"
-                            :entity_id "orphanXxxxxxxxxxxxxxx"
-                            :source {:type "query"
-                                     :query {:database db-id
-                                             :type "native"
-                                             :native {:query "SELECT 1"}}}
-                            :target {:database db-id
-                                     :type "table"
-                                     :schema "public"
-                                     :name "orphan_target"}}]
-          ;; Delete the database — ON DELETE SET NULL nulls source_database_id and target_db_id.
-          (t2/delete! :model/Database db-id)
-          (let [reloaded (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags :indexes)
-                ser (serdes/extract-one "Transform" {} reloaded)]
-            (is (nil? (:source_database_id reloaded))
-                "Database deletion should have nulled the column")
-            (testing "exported entity carries a nil source_database_id"
-              (is (=? {:serdes/meta [{:model "Transform" :id transform-eid}]
-                       :name "Orphan Transform"}
-                      ser))
-              (is (nil? (:source_database_id ser))))
-            (testing "exported source is marked :serdes/unresolved with the dead :database ref nulled"
-              ;; The :database slot is nulled because the numeric id refers to a now-deleted database —
-              ;; keeping it would make the destination instance's before-insert hook bind
-              ;; source_database_id to a stale id and crash the FK.
-              (is (true? (get-in ser [:source :serdes/unresolved])))
-              (is (nil? (get-in ser [:source :query :database]))))
-            (testing "the native SQL body is preserved verbatim as a breadcrumb"
-              ;; `lib-be/normalize-query` rewrites the raw query to MBQL5 (`:stages [...]`) at read time,
-              ;; so the native text now lives under `:stages [0] :native`.
-              (is (= "SELECT 1" (get-in ser [:source :query :stages 0 :native]))))
-            (testing "Transform/dependencies does not emit a Database dep when source_database_id is nil"
-              (is (not-any? #(some (fn [{:keys [model]}] (= "Database" model)) %)
-                            (serdes/deserialization-dependencies (assoc reloaded :tags [])))))))))))
-
 (deftest table-with-transform-id-dependency-test
   (testing "Table created by a Transform declares the Transform as a serdes dependency (GDGT-2444)"
     (mt/with-premium-features #{:transforms-basic}
@@ -2445,10 +2403,8 @@
                             transform-eid :entity_id}
                            {:name "Transform Creating Table"
                             :entity_id "transformCreatingTblx"
-                            :source {:query {:database db-id
-                                             :type "native"
-                                             :native {:query "select 1 as x"}}
-                                     :type "query"}
+                            :source {:type :query
+                                     :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "select 1 as x")}
                             :target {:database db-id
                                      :type "table"
                                      :schema "public"
@@ -2591,6 +2547,13 @@
           (testing "database is not exported (no-data-model: true)"
             (is (empty? (filter #(= "Database" (-> % :serdes/meta last :model)) extracted)))))))))
 
+(defn- filter-definition
+  "A Segment definition filtering the Table `table-id` in the Database `db-id` on its Field `field-id`."
+  [db-id table-id field-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/> (lib.metadata/field mp field-id) 100)))))
+
 (deftest collection-export-includes-fields-and-segments-test
   (testing "Exporting a collection with published tables includes their Fields and Segments"
     (mt/with-empty-h2-app-db!
@@ -2608,7 +2571,7 @@
                                                                  :base_type :type/Text}
                          :model/Segment    {segment-id :id}     {:name       "Test Segment"
                                                                  :table_id   table-id
-                                                                 :definition {}}
+                                                                 :definition (filter-definition db-id table-id field1-id)}
                          ;; Create another table with fields that should NOT be exported
                          :model/Table      {other-table-id :id} {:name          "Other Table"
                                                                  :db_id         db-id
@@ -2792,7 +2755,7 @@
        :model/Channel {http-id :id}  {:name "HTTP Channel"
                                       :type :channel/http
                                       :details {:url "https://example.com/webhook"
-                                                :method "POST"
+                                                :method "post"
                                                 :auth-method "none"}
                                       :description "An HTTP channel"}]
       (testing "email channel extraction"
@@ -2812,7 +2775,7 @@
                    :type :channel/http
                    :description "An HTTP channel"
                    :details {:url "https://example.com/webhook"
-                             :method "POST"
+                             :method "post"
                              :auth-method "none"}}
                   ser))))
       (testing "channel storage-path uses top-level channels directory"
@@ -2846,7 +2809,7 @@
                          :model/Card {card-id :id} {:name "MBQL Card"
                                                     :dataset_query (mbql5-query db-id table-id)
                                                     :display :table}]
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))]
           (is (not (contains? ser :table_id))
               "table_id should be omitted — derivable from dataset_query")
           (is (not (contains? ser :query_type))
@@ -2864,7 +2827,7 @@
                                                     :database_id db-id
                                                     :dataset_query {}
                                                     :display :table}]
-        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))]
           (is (= "Test DB" (:database_id ser))
               "database_id should be kept when query is empty"))))))
 
@@ -2877,7 +2840,7 @@
                          :model/Card {card-id :id} {:name "MBQL Card"
                                                     :dataset_query (mbql5-query db-id table-id)
                                                     :display :table}]
-        (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))
+        (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))
               deps (serdes/deserialization-dependencies ser)]
           (is (not-any? #(some (fn [step] (#{"Database" "Table" "Field"} (:model step))) %) deps)
               "Database/Table/Field should not be dependencies"))))))

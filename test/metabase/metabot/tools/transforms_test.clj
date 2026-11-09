@@ -24,7 +24,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Gadget Products"
-                      :source {:type  "query"
+                      :source {:type  :query
                                :query (lib/native-query (mt/metadata-provider) gadget-sql)}}]
         (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
           (is (str/includes? output "name=\"Gadget Products\""))
@@ -36,7 +36,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Notebook Products"
-                      :source {:type  "query"
+                      :source {:type  :query
                                :query (lib/query (mt/metadata-provider)
                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}]
         (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
@@ -57,7 +57,7 @@
   [query]
   (mt/with-premium-features #{:transforms-basic :transforms-python :hosting :advanced-permissions}
     (mt/with-temp [:model/Transform {transform-id :id}
-                   {:name "Orders Rollup" :source {:type "query" :query query}}]
+                   {:name "Orders Rollup" :source {:type :query :query query}}]
       (mt/with-data-analyst-role! (mt/user->id :rasta)
         (mt/with-current-user (mt/user->id :rasta)
           (:output (agent-transforms/get-transform-details-tool {:transform_id transform-id})))))))
@@ -79,9 +79,10 @@
  (deftest get-transform-details-unpermissionable-source-test
    (testing "a source query whose permissions cannot be calculated at all still renders, since that is
             not a refusal - it just renders unresolved, naming nothing the user may not see"
-     (let [output (query-transform-details! {:database (mt/id)
-                                             :type     :query
-                                             :query    {:source-table "card__13371337"}})]
+     (let [output (query-transform-details! {:lib/type :mbql/query
+                                             :database (mt/id)
+                                             :stages   [{:lib/type    :mbql.stage/mbql
+                                                         :source-card 13371337}]})]
        (is (str/includes? output "<query>"))
        (is (str/includes? output ":source-card 13371337")
            "the card id is still a number, so nothing was resolved to a name")))))
@@ -90,7 +91,7 @@
   "The source query [[query-export/transform-with-exportable-source]] leaves on a transform whose
   source is `query`, or nil when it withholds it."
   [query]
-  (get-in (query-export/transform-with-exportable-source {:source {:type "query" :query query}})
+  (get-in (query-export/transform-with-exportable-source {:source {:type :query :query query}})
           [:source :query]))
 
 (deftest transform-source-withholds-native-sql-behind-a-later-stage-test
@@ -124,13 +125,12 @@
    (testing "native SQL stays out when the check could not run, since its table and column names are
             already plain text and having no provider hides nothing"
      (let [output (query-transform-details!
-                   {:database (mt/id)
-                    :type     :native
-                    :native   {:query         "SELECT * FROM {{snip}}"
-                               :template-tags {"snip" {:type         :snippet
-                                                       :name         "snip"
-                                                       :display-name "snip"
-                                                       :snippet-id   Integer/MAX_VALUE}}}})]
+                   (-> (lib/native-query (mt/metadata-provider) "SELECT * FROM {{snip}}")
+                       (lib/with-template-tags {"snip" {:type         :snippet
+                                                        :name         "snip"
+                                                        :display-name "snip"
+                                                        :snippet-name "snip"
+                                                        :snippet-id   Integer/MAX_VALUE}})))]
        (is (not (str/includes? output "<query>")))
        (is (not (str/includes? output "SELECT")))))))
 
@@ -142,7 +142,7 @@
      (mt/with-premium-features #{:transforms-basic :transforms-python :hosting :advanced-permissions}
        (mt/with-temp [:model/Transform {transform-id :id}
                       {:name   "Orders Rollup"
-                       :source {:type  "query"
+                       :source {:type  :query
                                 :query (lib/query (mt/metadata-provider)
                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
          (mt/with-data-analyst-role! (mt/user->id :rasta)
@@ -164,8 +164,9 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Gadget Metrics"
-                      :source {:type            "python"
+                      :source {:type            :python
                                :source-database (mt/id)
+                               :source-tables   []
                                :body            "import pandas as pd"}}]
         (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
           (is (str/includes? output "<source type=\"python\">"))
@@ -189,7 +190,7 @@
                                                      (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
                           :model/Transform {transform-id :id}
                           {:name   "Private source Card"
-                           :source {:type  "query"
+                           :source {:type  :query
                                     :query (lib/query (mt/metadata-provider)
                                                       (lib.metadata/card (mt/metadata-provider) card-id))}}]
              (mt/with-current-user (mt/user->id :rasta)

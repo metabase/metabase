@@ -6,6 +6,7 @@ import {
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
@@ -29,6 +30,7 @@ const setup = async ({ isAdmin = true }: SetupOpts = {}) => {
   setupDatabasesEndpoints([]);
   setupSearchEndpoints([]);
   setupRecentViewsEndpoints([]);
+  setupUserMetabotPermissionsEndpoint();
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", can_write: true })],
   });

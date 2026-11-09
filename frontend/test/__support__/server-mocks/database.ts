@@ -5,6 +5,7 @@ import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  AutocompleteSuggestion,
   Database,
   DatabaseId,
   DatabaseUsageInfo,
@@ -39,6 +40,19 @@ export function setupDatabaseEndpoints(db: Database) {
   setupDatabaseIdFieldsEndpoints({ database: db });
   db.tables?.forEach((table) => setupTableEndpoints({ ...table, db }));
   setupUpdateDatabaseEndpoint(db);
+}
+
+export function setupDatabaseAutocompleteSuggestionsEndpoint({
+  databaseId,
+  suggestions,
+}: {
+  databaseId: DatabaseId;
+  suggestions: AutocompleteSuggestion[];
+}) {
+  fetchMock.get(
+    `path:/api/database/${databaseId}/autocomplete_suggestions`,
+    suggestions,
+  );
 }
 
 export function setupUpdateDatabaseEndpoint(db: Database) {

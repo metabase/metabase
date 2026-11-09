@@ -8,7 +8,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- format-union
@@ -25,9 +24,9 @@
   [field-id mapping-type]
   ^:allow-subquery
   {:select    [[:dest.id :id] [^:allow-raw-sql [:inline mapping-type] :mapping_type]]
-   :from      [(warehouse-schema-overlay/field-query {:alias :source})]
+   :from      [[(t2/table-name :model/Field) :source]]
    :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-               (warehouse-schema-overlay/field-query {:alias :dest}) [:= :dest.table_id :table.id]]
+               [(t2/table-name :model/Field) :dest] [:= :dest.table_id :table.id]]
    :where     [:and
                [:= :source.id field-id]
                (mdb/isa :source.semantic_type :type/PK)
@@ -55,7 +54,7 @@
                                 (implicit-pk->name-mapping-query
                                  ^:allow-subquery
                                  {:select    [:fk_target_field_id]
-                                  :from      [(warehouse-schema-overlay/field-query)]
+                                  :from      [(t2/table-name :model/Field)]
                                   :where     [:and
                                               [:= :id field-id]
                                               (mdb/isa :semantic_type :type/FK)]
@@ -69,32 +68,32 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id field-id))
 
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in field-ids]))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
 
 (mu/defn field-fk-target-field-id
   "The FK target Field id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fk_target_field_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one-fn :fk_target_field_id :model/Field :id field-id))
 
 (mu/defn field-base-type
   "The base type of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :base_type :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :base_type :model/Field :id field-id))
 
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :name :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :name :model/Field :id field-id))
 
 (mu/defn full-field-values-exist?
   "Whether complete, non-remapped FieldValues of type `full` exist for the Field with `field-id`."
@@ -142,14 +141,13 @@
   (t2/select (into [:model/Field] columns)
              :table_id      [:in table-ids]
              :semantic_type (mdb/isa :type/Name)
-             :active        true
-             {:from [(warehouse-schema-overlay/field-query)]}))
+             :active        true))
 
 (mu/defn fields-with-columns
   "The `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field] columns) :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select (into [:model/Field] columns) :id [:in field-ids]))
 
 (mu/defn fk-relationships-for-database
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
@@ -159,12 +157,12 @@
                           [:fk-table.id :t1]
                           [:pk-field.id :f2]
                           [:pk-field.table_id :t2]]
-              :from      [(warehouse-schema-overlay/field-query {:alias :fk-field})]
+              :from      [[(t2/table-name :model/Field) :fk-field]]
               :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
                                                           :fk-table.active]
                           [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                          (warehouse-schema-overlay/field-query {:alias :pk-field}) [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                                     :pk-field.active]]
+                          [(t2/table-name :model/Field) :pk-field] [:and [:= :fk-field.fk_target_field_id :pk-field.id]
+                                                                    :pk-field.active]]
               :where     [:and
                           [:= :database.id database-id]
                           [:not= :fk-field.fk_target_field_id nil]

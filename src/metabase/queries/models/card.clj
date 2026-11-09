@@ -4,7 +4,6 @@
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
-   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
@@ -22,7 +21,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -659,7 +657,7 @@
 (defmethod upgrade-card-schema-to 22
   [card _schema-version]
   (update card :result_metadata (fn [cols]
-                                  (mapv #(dissoc % :ident :model/inner_ident) cols))))
+                                  (some->> cols (mapv #(dissoc % :ident :model/inner_ident))))))
 
 ;; Schema upgrade: 22 to 23 ==========================================================================================
 ;; #66199 shows a customer upgrading to 57 breaking certain cards
@@ -984,89 +982,37 @@
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
 
-(defn- library-content-type
-  "The content type a Library collection checks `card` against, counting a question as a dashboard question when `dashboard-pending?`."
-  [card dashboard-pending?]
-  (if (and (= :question (keyword (:type card)))
-           (or (:dashboard_id card) dashboard-pending?))
-    :dashboard-question
-    (:type card)))
-
 (defn- data-app-card-error
   "A 400 error for a card in a data app's collection, with `message`."
   [message]
   (ex-info message {:status-code 400}))
 
-(defn- card-labels
-  "The cards with `card-ids` as they appear in an error, by name and ID."
-  [metadata-providerable card-ids]
-  (str/join ", " (for [{card-name :name, card-id :id} (sort-by :id (lib.metadata/bulk-metadata metadata-providerable :metadata/card card-ids))]
-                   (format "\"%s\" (%d)" card-name card-id))))
-
-(defn- tables-read
-  "The IDs of the tables `query` reads: its source tables, explicit joins included, and the tables it reaches through a
-  foreign key."
-  [query]
-  (set/union (set (lib/all-source-table-ids query))
-             (set (lib/all-implicitly-joined-table-ids query))))
-
-(defn- macro-tables-read
-  "The IDs of the tables that the definitions of the segments and measures `query` uses read."
-  [query]
-  (into #{}
-        (comp (keep :definition)
-              (filter (comp seq :stages))
-              (mapcat #(tables-read (lib/query query %))))
-        (concat (some->> (lib/all-segment-ids query) (lib.metadata/bulk-metadata query :metadata/segment))
-                (some->> (lib/all-measure-ids query) (lib.metadata/bulk-metadata query :metadata/measure)))))
-
-(defn- remapped-tables-read
-  "The IDs of the tables whose columns replace a column `query` returns, through a foreign key remapping."
-  [query]
-  (into #{}
-        (keep :table-id)
-        (some->> (lib/returned-columns query)
-                 (keep (comp :field-id :lib/external-remap))
-                 not-empty
-                 (lib.metadata/bulk-metadata query :metadata/column))))
-
 (defn- check-data-app-card-query
-  "Returns the IDs of the Library metrics `dataset_query` aggregates, and throws unless it is an MBQL query on a
-  database, based on no card, that reads only tables published to the Library, through its segments, measures and
-  remapped columns too; a load skips the published check, since it may load a table's published state later."
+  "Throws unless `dataset_query` is an MBQL query on a database of a single stage that reads a table, with no explicit
+  joins or custom columns; the metrics, segments and measures it names may be any."
   [{:keys [dataset_query]}]
   (when-not (:database dataset_query)
     (throw (data-app-card-error (tru "A card in a data app''s collection must hold a query on a database."))))
-  (let [query      (lib/query (lib-be/application-database-metadata-provider (:database dataset_query)) dataset_query)
-        metric-ids (set (lib/all-metric-ids query))
-        card-ids   (set/difference (set (lib/all-source-card-ids query)) metric-ids)]
+  (let [query (lib-be/normalize-query dataset_query)]
     (when (lib/any-native-stage? query)
       (throw (data-app-card-error (tru "A card in a data app''s collection must be built with the query builder, not SQL."))))
-    (when (seq card-ids)
-      (throw (data-app-card-error (tru "A card in a data app''s collection can read only tables published to the Library, not the card {0}."
-                                       (card-labels query card-ids)))))
-    (when-let [outside (seq (when (seq metric-ids)
-                              (set/difference metric-ids (queries.db/library-metric-ids metric-ids))))]
-      (throw (data-app-card-error (tru "A card in a data app''s collection can use only metrics from the Library, not the metric {0}."
-                                       (card-labels query outside)))))
-    (when-not mi/*deserializing?*
-      (when-let [unpublished (seq (some-> (not-empty (set/union (tables-read query)
-                                                                (macro-tables-read query)
-                                                                (remapped-tables-read query)))
-                                          queries.db/unpublished-table-names))]
-        (throw (data-app-card-error (tru "A card in a data app''s collection can read only tables published to the Library, not {0}. Publish them, or read other tables."
-                                         (str/join ", " (sort unpublished)))))))
-    metric-ids))
+    (when (not= 1 (lib/stage-count query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must be a query of a single stage."))))
+    (when (or (lib/primary-source-card-id query) (nil? (lib/primary-source-table-id query)))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must read a table, not a card."))))
+    (when (seq (lib/joins query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t join tables explicitly."))))
+    (when (seq (lib/expressions query))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t have custom columns."))))))
 
 (defn- check-data-app-card
-  "Throws unless `card`, when it is in a data app's collection, is a question or metric in no dashboard or document, not
-  archived, public or embedded, whose query reads only the Library, and whose other references, such as parameter
-  values, name only cards in the collection."
+  "Throws unless `card`, when it is in a data app's collection, is a question in no dashboard or document, not archived,
+  public or embedded, with no parameters, whose query reads a table in a single stage."
   [{:keys [collection_id] :as card}]
   (when (and (some? collection_id)
              (perms/data-app-collection? collection_id))
     ;; a new card without a type is a question, the column's default
-    (when (or (not (contains? #{:question :metric} (keyword (or (:type card) :question))))
+    (when (or (not= :question (keyword (or (:type card) :question)))
               (:dashboard_id card)
               (:document_id card)
               (:archived card)
@@ -1074,23 +1020,15 @@
               (:enable_embedding card)
               (:embedding_params card)
               (:embedding_type card))
-      (throw (data-app-card-error (tru "A card in a data app''s collection must be a question or metric, in no dashboard or document, that is not archived, public or embedded."))))
-    (let [metric-ids (check-data-app-card-query card)
-          card-ids   (into #{}
-                           (keep (fn [path]
-                                   (let [{:keys [model id]} (last path)]
-                                     (when (and (= "Card" model) (not (metric-ids id))) id))))
-                           (serdes/serialization-dependencies "Card" card))
-          outside    (when (seq card-ids)
-                       (queries.db/card-ids-outside-collection card-ids collection_id))]
-      (when (seq outside)
-        (throw (data-app-card-error (tru "A card in a data app''s collection can reference only the app''s own cards and Library metrics, not card {0}."
-                                         (str/join ", " (sort outside)))))))))
+      (throw (data-app-card-error (tru "A card in a data app''s collection must be a question, in no dashboard or document, that is not archived, public or embedded."))))
+    (when (seq (:parameters card))
+      (throw (data-app-card-error (tru "A card in a data app''s collection can''t have parameters."))))
+    (check-data-app-card-query card)))
 
 (def ^:private data-app-card-columns
   "The columns [[check-data-app-card]] reads; an update that changes none of them leaves a card as it was checked."
   #{:collection_id :dashboard_id :document_id :type :archived :public_uuid :enable_embedding :embedding_params
-    :embedding_type :dataset_query :parameters :parameter_mappings :visualization_settings})
+    :embedding_type :dataset_query :parameters})
 
 (t2/define-before-insert :model/Card
   [card]
@@ -1108,7 +1046,7 @@
         populate-query-fields
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix)
-    (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
+    (collection/check-allowed-content (:type <>) (:collection_id <>))
     (check-data-app-card <>)))
 
 (t2/define-after-insert :model/Card
@@ -1123,13 +1061,6 @@
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
     card))
-
-(defn- check-allowed-content
-  "Checks that the Collection `card` ends up in allows it when `changes` touch its collection or dashboard."
-  [card changes]
-  (when (some #(contains? changes %) [:collection_id :dashboard_id])
-    (let [card (apply-dashboard-question-updates card changes)]
-      (collection/check-allowed-content (library-content-type card mi/*deserializing?*) (:collection_id card)))))
 
 (mu/defn- populate-result-metadata :- [:map
                                        [:result_metadata {:optional true} [:maybe
@@ -1173,7 +1104,7 @@
         card     (normalize-card card)]
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
-    (check-allowed-content card changes)
+    (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
@@ -1183,7 +1114,6 @@
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.
         (populate-query-fields (contains? changes :dataset_query))
-        ;; after the query's columns are set again: `source_card_id` is one of the references it reads
         (cond-> (some data-app-card-columns (keys changes)) (doto check-data-app-card))
         (clear-metabot-origin changes)
         (pre-update changes)
@@ -1725,13 +1655,6 @@
 
       :else base)))
 
-(defmethod serdes/load-one! "Card" [ingested maybe-local]
-  (u/prog1 (serdes/default-load-one! ingested maybe-local)
-    (collection/check-allowed-content
-     (library-content-type <> (and (some? (:dashboard_id ingested))
-                                   (contains? (::serdes/strip ingested) :dashboard_id)))
-     (:collection_id <>))))
-
 ;; A data app's resource collection holds the saved questions and metric copies the app runs.
 (defmethod collection/allowed-namespaces :model/Card
   [_]
@@ -1739,7 +1662,8 @@
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
+  {:schema ::queries.schema/external-card
+   :copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
    :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the

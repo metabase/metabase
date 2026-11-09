@@ -4,7 +4,6 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.collections.core :as collections]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -14,7 +13,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
@@ -153,7 +151,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -255,14 +253,14 @@
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
              :from      [[:metabase_field :field]]
-             :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
+             :left-join [[(t2/table-name :model/Table) :table]
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
 (mu/defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."
@@ -293,7 +291,7 @@
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
@@ -567,27 +565,3 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
-
-(mu/defn unpublished-table-names :- [:set :string]
-  "Among the Tables with `table-ids`, the names of those not published to the Library."
-  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
-  (or (t2/select-fn-set :name [:model/Table :name] :id [:in table-ids] :is_published false
-                        {:from [(warehouse-schema-overlay/table-query)]})
-      #{}))
-
-(mu/defn library-metric-ids :- [:set ::lib.schema.id/card]
-  "Among `card-ids`, the IDs of the metrics in the Library's Metrics collection or one of its subcollections."
-  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
-  (or (t2/select-fn-set :id [:model/Card :report_card.id] {:join  [:collection [:= :collection.id :report_card.collection_id]]
-                                                           :where [:and
-                                                                   [:in :report_card.id card-ids]
-                                                                   [:= :report_card.type "metric"]
-                                                                   [:= :collection.type collections/library-metrics-collection-type]]})
-      #{}))
-
-(defn card-ids-outside-collection
-  "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."
-  [card-ids collection-id]
-  (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))

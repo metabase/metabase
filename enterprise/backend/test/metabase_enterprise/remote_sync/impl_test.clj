@@ -14,9 +14,11 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
@@ -29,9 +31,16 @@
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 (use-fixtures :each
-  remote-sync.tu/allow-remote-synced-collections (fn [f]
-                                                   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                                                     (test-helpers/clean-remote-sync-state f))))
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (test-helpers/clean-remote-sync-state f))))
+
+(defn- count-definition
+  "A Measure definition counting the rows of the Table `table-id` in the Database `db-id`."
+  [db-id table-id]
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
 
 ;; import! tests
 
@@ -1169,11 +1178,13 @@
                          :model/Measure {_active-measure-id :id}
                          {:name "Active Measure"
                           :table_id table-id
+                          :definition (count-definition db-id table-id)
                           :entity_id "active-measure-xxxxxx"
                           :archived false}
                          :model/Measure {_archived-measure-id :id}
                          {:name "Archived Measure"
                           :table_id table-id
+                          :definition (count-definition db-id table-id)
                           :entity_id "archived-measure-xxxx"
                           :archived true}]
             (let [mock-source (test-helpers/create-mock-source)
@@ -2436,13 +2447,3 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
-
-(deftest keep-library-dashboards-test
-  (testing "An import with the Library keeps its Dashboards collection, even from a repo that predates it"
-    (is (= #{collection/library-entity-id collection/library-dashboards-entity-id "other-collection-xxxxx"}
-           (get-in (#'impl/keep-library-dashboards
-                    {:by-entity-id {"Collection" #{collection/library-entity-id "other-collection-xxxxx"}}})
-                   [:by-entity-id "Collection"]))))
-  (testing "An import without the Library leaves it to be removed with the Library"
-    (is (= {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}}
-           (#'impl/keep-library-dashboards {:by-entity-id {"Collection" #{"other-collection-xxxxx"}}})))))

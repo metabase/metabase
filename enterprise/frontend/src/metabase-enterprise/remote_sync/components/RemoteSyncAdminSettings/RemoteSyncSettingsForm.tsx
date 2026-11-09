@@ -54,9 +54,6 @@ export const RemoteSyncSettingsForm = ({
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
-  const isCollectionsSyncEnabled = !!useSetting(
-    "remote-sync-custom-collections-enabled",
-  );
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -96,7 +93,7 @@ export const RemoteSyncSettingsForm = ({
           const isReadWrite = values?.[TYPE_KEY] === "read-write";
 
           return (
-            <Form disabled={!dirty}>
+            <Form disabled={isRemoteSyncEnabled && !dirty}>
               <Stack gap="xxl" maw="52rem">
                 {!isModalVariant && !isRemoteSyncEnabled && <SetupGuideLink />}
 
@@ -107,9 +104,7 @@ export const RemoteSyncSettingsForm = ({
                   <BranchSwitcherSection dirty={dirtyEntities} />
                 )}
                 {isReadOnly && <ReadOnlyBranchSection />}
-                {isCollectionsSyncEnabled &&
-                  (isRemoteSyncEnabled || isReadWrite) &&
-                  !isModalVariant && <CollectionsToSyncSection />}
+                {isReadWrite && !isModalVariant && <CollectionsToSyncSection />}
                 {isModalVariant && isReadWrite && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
                     <TopLevelCollectionsList skipCollections />
@@ -174,7 +169,7 @@ export const RemoteSyncSettingsForm = ({
 const SetupGuideLink = () => {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
-    "installation-and-operation/remote-sync",
+    "data-modeling/semantic-layer/remote-sync",
     {
       anchor: "remote-sync",
     },

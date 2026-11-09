@@ -4,11 +4,44 @@ import { ACTIVE_USERS_NUDGE_THRESHOLD } from "metabase/admin/people/constants";
 import { getUserIsAdmin } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import { getSetting, hasAnySsoFeature } from "metabase/settings";
+import type { EnterpriseSettingKey, User } from "metabase-types/api";
 
 export const getUserTemporaryPassword = (
   state: State,
   props: { userId: number },
 ) => state.admin.people.temporaryPasswords[props.userId];
+
+const SSO_SOURCE_ENABLED_SETTING = {
+  google: "google-auth-enabled",
+  ldap: "ldap-enabled",
+  saml: "saml-enabled",
+  jwt: "jwt-enabled",
+  oidc: "oidc-enabled",
+  slack: "slack-connect-enabled",
+  scim: "scim-enabled",
+} as const satisfies Record<
+  NonNullable<User["sso_source"]>,
+  EnterpriseSettingKey
+>;
+
+type SsoOnlyUserOpts = {
+  sso_source: User["sso_source"];
+  has_used_password?: boolean;
+};
+
+/**
+ * Whether the user signs in through an SSO provider that is currently enabled
+ * and has no used password. Admins can't reset passwords for these users; once
+ * the provider is disabled (or its license lapses) the user falls back to
+ * password login.
+ */
+export const getIsSsoOnlyUser = (
+  state: State,
+  { sso_source, has_used_password }: SsoOnlyUserOpts,
+): boolean =>
+  has_used_password !== true &&
+  sso_source != null &&
+  Boolean(getSetting(state, SSO_SOURCE_ENABLED_SETTING[sso_source]));
 
 export const shouldNudgeToPro = createSelector(
   (state) => getSetting(state, "token-features"),

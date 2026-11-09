@@ -78,7 +78,7 @@
         (testing "deletes triggers for subscriptions that no longer exist"
           (let [subscription-id (first (t2/select-pks-vec :model/NotificationSubscription
                                                           :notification_id (:id notification)))]
-            (t2/delete! :notification_subscription subscription-id)
+            (t2/delete! :notification_subscription :id subscription-id)
             (testing "sanity check that it has trigger before"
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))
             (notification.task.send-trigger/init-send-notification-triggers!)
@@ -100,12 +100,12 @@
           (is (not-empty notification-triggers)))
         (testing "skips triggers for inactive notifications"
           ;; Deactivate the notification
-          (t2/update! :model/Notification (:id notification) {:active false})
+          (t2/update! :model/Notification :id (:id notification) {:active false})
           (notification.task.send-trigger/init-send-notification-triggers!)
           (is (empty? (notification.tu/send-notification-triggers subscription-id))))
         (testing "recreates triggers when notification is reactivated"
           ;; Reactivate the notification
-          (t2/update! :model/Notification (:id notification) {:active true})
+          (t2/update! :model/Notification :id (:id notification) {:active true})
           (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))))))
 

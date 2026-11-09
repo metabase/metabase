@@ -1,5 +1,6 @@
 ---
 title: SSH tunneling
+summary: Reach databases Metabase can't connect to directly, and add a layer of security, by tunneling the connection through an intermediate server.
 redirect_from:
   - /docs/latest/administration-guide/ssh-tunnel-for-database-connections
 ---

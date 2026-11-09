@@ -478,7 +478,7 @@
                                                          :dataset_query (card-query hidden-metabot-sql)}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) open)
       (mark-saved-by-metabot! [metabot-sql-card metabot-mixed metabot-write-card edited-sql-card hidden-metabot-sql])
-      (t2/update! :model/Card edited-sql-card {:display :bar})
+      (t2/update! :model/Card :id edited-sql-card {:display :bar})
       (let [no-permission {:output "You do not have permission to run query q1."}]
         (testing "a saved question runs with SQL execution on or off, whether it is a notebook or a SQL question"
           (doseq [[shape card-id] {"a notebook question"                        notebook-card
@@ -581,6 +581,9 @@
 
       "It holds a backslash before a quote. Write a quote inside a string by doubling it."
       :mysql "SELECT 'it\\'s' FROM t"
+
+      "It holds a carriage return with no newline after it. End lines with a newline."
+      :mysql "SELECT 1\rFROM t"
 
       "It holds a U&\"...\" name, whose escapes this check cannot read. Write the name plainly."
       :postgres "SELECT U&\"pg_\\0073leep\"(10)"
@@ -721,7 +724,7 @@
         (mt/with-dynamic-fn-redefs [sql-tools/read-only-select?
                                     (fn [driver sql]
                                       (u/prog1 (read-only? driver sql)
-                                        (t2/update! :model/NativeQuerySnippet snippet-id
+                                        (t2/update! :model/NativeQuerySnippet :id snippet-id
                                                     {:content "SELECT 2 AS N FOR UPDATE"})))]
           (binding [qp.pipeline/*execute* (fn [_driver query respond]
                                             (swap! driver-ran-sql conj (get-in query [:native :query]))

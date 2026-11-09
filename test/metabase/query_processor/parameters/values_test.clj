@@ -278,6 +278,21 @@
            :dimension    [:field (meta/id :checkins :date) nil]}
           nil)))))
 
+(deftest ^:parallel temporal-unit-with-required-but-no-value-test
+  (let [tag {:name         "unit"
+             :display-name "Unit updated"
+             :type         :temporal-unit
+             :required     true
+             :dimension    [:field (meta/id :orders :created-at) nil]}]
+    (testing "required but unspecified"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"\QYou'll need to pick a value for 'Unit updated' before this query can run.\E"
+           (value-for-tag tag nil))))
+    (testing "required with a default"
+      (is (=? {:value "year"}
+              (value-for-tag (assoc tag :default "year") nil))))))
+
 (deftest ^:parallel field-filter-with-required-and-default-test
   (testing "required and default specified"
     (is (=? {:field {:id            (meta/id :checkins :date)

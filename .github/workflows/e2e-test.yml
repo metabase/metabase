@@ -107,6 +107,7 @@ jobs:
           openldap: true
           webhook: true
           snowplow: true
+          metaplow: true
           postgres: true
           mysql: true
           mongo: true

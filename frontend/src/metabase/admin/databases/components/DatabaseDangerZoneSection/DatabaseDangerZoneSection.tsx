@@ -76,7 +76,7 @@ export const DatabaseDangerZoneSection = ({
             <DeleteDatabaseModal
               opened={isDeleteDbModalOpen}
               title={t`Delete the ${database.name} database?`}
-              defaultDatabaseRemovalMessage={t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone. Transforms that use this database won’t be deleted, but they will stop working.`}
+              defaultDatabaseRemovalMessage={t`This will delete every saved question, model, metric, segment, and transform you’ve made that uses this data, and can’t be undone!`}
               database={database}
               onClose={deleteDbModal.close}
               onDelete={handleDeleteDatabase}

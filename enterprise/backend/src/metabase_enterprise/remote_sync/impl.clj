@@ -28,6 +28,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.core :as warehouse-schema]
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
@@ -62,13 +63,6 @@
                   (let [entity (serialization/ingest-one ingestable path)]
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
-
-(defn- keep-library-dashboards
-  "Adds the Library's Dashboards collection to `imported-data` when it has the Library, since repos may predate it."
-  [imported-data]
-  (cond-> imported-data
-    (contains? (get-in imported-data [:by-entity-id "Collection"]) collection/library-entity-id)
-    (update-in [:by-entity-id "Collection"] conj collection/library-dashboards-entity-id)))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
@@ -326,11 +320,11 @@
       (doseq [batch (->> (in-batches remote-sync.db/table-ids-with-user-settings table-ids)
                          (remove kept-tables)
                          (partition-all app-db-batch-size))]
-        (remote-sync.db/delete-table-user-settings! (vec batch)))
+        (warehouse-schema/delete-table-user-settings! (vec batch)))
       (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-user-settings (remove legacy-tables table-ids))
                          (remove kept-fields)
                          (partition-all app-db-batch-size))]
-        (remote-sync.db/delete-field-user-settings! (vec batch)))
+        (warehouse-schema/delete-field-user-settings! (vec batch)))
       (doseq [batch (->> (in-batches remote-sync.db/field-ids-with-dimensions table-ids)
                          (remove kept-dims)
                          (partition-all app-db-batch-size))]
@@ -423,7 +417,7 @@
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
-            _                     (remove-unsynced! synced-collection-ids (keep-library-dashboards imported-data))
+            _                     (remove-unsynced! synced-collection-ids imported-data)
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
@@ -432,7 +426,6 @@
         (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                                (source.ingestable/cached-file-paths base-ingestable))
         (track-user-settings! settings-table-ids sync-timestamp)
-        (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish

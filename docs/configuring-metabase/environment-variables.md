@@ -1,5 +1,6 @@
 ---
 title: Environment variables
+summary: Every environment variable you can use to configure Metabase. Environment variables take precedence over settings in the admin panel.
 redirect_from:
   - /docs/latest/operations-guide/environment-variables
 ---
@@ -2249,14 +2250,6 @@ The remote branch to sync with, e.g. `main`.
 - [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
 
 Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
-
-### `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `remote-sync-custom-collections-enabled`
-
-Whether remote sync can sync collections besides the Library, transforms, snippets and data apps. When off, no other collection can be marked as synced, and a pull or a serialization import refuses content with other synced collections, so set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` on an instance that pulls or imports such content. It can only be turned off once no other collection is synced.
 
 ### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
 

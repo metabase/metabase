@@ -8,7 +8,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.native-query-snippets.schema]
+   [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
@@ -163,12 +163,13 @@
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
   (mu/with-api-error-message
-   [:fn (fn [x]
-          ((every-pred
-            string?
-            (complement #(boolean (re-find #"^\s+" %)))
-            (complement #(boolean (re-find #"}" %))))
-           x))]
+   [:fn {:json-schema {:type "string"}}
+    (fn [x]
+      ((every-pred
+        string?
+        (complement #(boolean (re-find #"^\s+" %)))
+        (complement #(boolean (re-find #"}" %))))
+       x))]
    (deferred-tru "snippet names cannot include ''}'' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
@@ -200,7 +201,8 @@
   (serdes/card-template-tag-renames serdes/card-template-tag-export-rename (vals template-tags)))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :description :entity_id :name]
+  {:schema    ::native-query-snippets.schema/external-native-query-snippet
+   :copy      [:archived :description :entity_id :name]
    :skip      []
    :transform {:collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
