@@ -3301,7 +3301,7 @@
       },
       "metabase-enterprise.data-testing.schema.data-test-run" : {
         "additionalProperties" : false,
-        "description" : "A persisted execution of a test of any type. `:test_id` is nil for a run of a test that was deleted.",
+        "description" : "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete\n  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test.",
         "properties" : {
           "end_time" : {
             "anyOf" : [ {

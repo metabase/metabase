@@ -11,8 +11,10 @@ summary: Breaking changes to the Metabase API, listed by release.
   `GET /api/ee/data-test-run?test-type=transform&test-id=:id`, which takes the same `statuses`, `start-time`,
   `end-time`, `limit` and `offset` parameters. Without `test-id`, it needs Data Studio access and lists the runs of
   every test of the type that the caller can read. Runs of a test that was deleted are not listed. A run, and
-  `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`. `test_id`
-  is `null` for a run of a test that was deleted.
+  `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`. Deleting
+  a test through Metabase sets `test_id` to `null` on its runs. A delete outside Metabase (raw SQL, a database cascade)
+  leaves a `test_id` that names no test. A run belongs to a test only if the test exists and was created no later than
+  the run started, so such a run is never listed or returned as `last_run`.
 
 - Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
   they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
