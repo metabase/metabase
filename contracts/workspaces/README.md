@@ -67,6 +67,7 @@ sequenceDiagram
     alt Teardown succeeds
         P->>P: Delete the workspace row
         P-->>C: 500 {message}
+        Note over P: If that row delete fails, the 500 is the same<br/>and an empty workspace row is left behind
     else Teardown fails
         P->>P: Keep the workspace. Rows whose destroy failed become<br/>unprovisioned, rows torn down are gone, a row whose teardown<br/>failed before destroy keeps its status
         P-->>C: 200 Workspace
@@ -157,8 +158,8 @@ Sketches to discuss, not commitments. Marked `proposed` in the specs.
 | Delete a kept workspace without a name lookup | `workspace_id` in the failed-create error body |
 | Read a schema created after the workspace | `POST /{id}/schemas` `{database_id, add, remove}` (ENG-14446). Needs a revoke driver method |
 | Shadow a table up front, or stop shadowing it | `POST /table-remappings`, `DELETE /table-remappings/{id}` on the sidecar. Open: copy or empty, and how a copy avoids handing the agent credentials |
-| Strictly read-only credentials (no scratch) | A `read_only` create option. Not needed for the demo; see section 4 |
 | A database added to a live workspace | Nothing proposed. Create a new workspace and restart the sidecar |
+| Strictly read-only credentials (no scratch) | Nothing proposed; not in the specs. Section 4 covers main's read-only boot without it |
 
 ```mermaid
 sequenceDiagram
@@ -172,7 +173,7 @@ sequenceDiagram
     P-->>A: 200 Workspace, input_schemas now includes finance
     A->>P: GET /{id}/config
     A->>S: Apply the new sync filter
-    A->>S: POST /table-remappings {from_schema: sales, from_table_name: orders}
+    A->>S: POST /table-remappings {database_id, from_schema: sales, from_table_name: orders}
     S-->>A: 200 TableRemapping
     A->>S: DELETE /table-remappings/{id}
     S-->>A: 204, reads of sales.orders go back to production
