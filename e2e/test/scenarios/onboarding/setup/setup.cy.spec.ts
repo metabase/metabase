@@ -201,6 +201,20 @@ describe("scenarios > setup", () => {
     });
   });
 
+  it("should not show 'Sample Database' if env var is explicitly set to false during setup", () => {
+    H.mockSessionProperty("has-sample-database?", false);
+
+    navigateToDatabaseStep();
+
+    cy.findByLabelText("Add your data").within(() => {
+      cy.button("Continue with sample data").should("not.exist");
+      cy.button("I'll add my data later").click();
+    });
+
+    cy.log("We're done with the database step");
+    cy.findByLabelText("I'll add my own data later").should("be.visible");
+  });
+
   it("should create a new user upon inviting a teammate", () => {
     H.mockSessionProperty("email-configured?", true);
 
@@ -231,6 +245,19 @@ describe("scenarios > setup", () => {
 
     // Checks we are now in the next step
     cy.findByTestId("step-number").should("have.text", "4");
+  });
+
+  // There are only one step in the setup flow, so there is no need to show step numbers.
+  it("should not show step numbers in cloud embedding use case", () => {
+    H.mockSessionProperty("is-hosted?", true);
+    H.mockSessionProperty("token-features", { hosting: true });
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+    );
+
+    H.main().findByText("What should we call you?").should("be.visible");
+    cy.findByTestId("step-number").should("not.exist");
   });
 
   it("should update the site locale setting when changing language in setup", () => {
@@ -656,6 +683,24 @@ describe("scenarios > setup > AI config step", () => {
       .its("request.body")
       .should("deep.equal", { type: "metabase" });
     cy.findByLabelText("Connected to Metabase AI service").should("be.visible");
+  });
+
+  it("should not offer the step when AI features are disabled", () => {
+    H.mockSessionProperty("ai-features-enabled?", false);
+
+    navigateToDatabaseStep();
+    cy.findByTestId("setup-forms")
+      .findByText("Continue with sample data")
+      .click();
+
+    skipLicenseStepOnEE();
+    cy.findByLabelText("Usage data preferences").should("be.visible");
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByText("Finish").click();
+
+      cy.findByText("You're all set up!").should("be.visible");
+      cy.button("Set up AI").should("not.exist");
+    });
   });
 });
 
