@@ -19,7 +19,7 @@ databaseChangeLog:
             sql: >-
               UPDATE collection SET is_remote_synced = TRUE
               WHERE (entity_id = 'librarylibrarylibrary'
-                     OR location LIKE CONCAT('/', (SELECT id FROM (SELECT id FROM collection WHERE entity_id = 'librarylibrarylibrary') library), '/%'))
+                     OR location LIKE CONCAT('/', (SELECT id FROM (SELECT id FROM collection WHERE entity_id = 'librarylibrarylibrary') library_collection), '/%'))
                 AND EXISTS (SELECT 1 FROM setting WHERE `key` = 'remote-sync-url')
                 AND EXISTS (SELECT 1 FROM setting WHERE `key` = 'remote-sync-type' AND value = 'read-write')
         - sql:
