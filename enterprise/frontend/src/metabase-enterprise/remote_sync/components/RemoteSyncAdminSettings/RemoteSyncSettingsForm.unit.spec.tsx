@@ -965,6 +965,34 @@ describe("RemoteSyncSettingsForm", () => {
       expect(screen.getByText("Collections to sync")).toBeInTheDocument();
     });
 
+    it("should not display collections section in read-only mode when remote sync is enabled", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-only")).toBeChecked();
+      });
+
+      expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
+    });
+
+    it("should display collections section in read-write mode when remote sync is enabled", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.getByText("Collections to sync")).toBeInTheDocument();
+    });
+
     it("should not display collections section in modal variant when read-write mode is selected", async () => {
       setup({
         remoteSyncEnabled: false,

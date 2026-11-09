@@ -104,9 +104,7 @@ export const RemoteSyncSettingsForm = ({
                   <BranchSwitcherSection dirty={dirtyEntities} />
                 )}
                 {isReadOnly && <ReadOnlyBranchSection />}
-                {(isRemoteSyncEnabled || isReadWrite) && !isModalVariant && (
-                  <CollectionsToSyncSection />
-                )}
+                {isReadWrite && !isModalVariant && <CollectionsToSyncSection />}
                 {isModalVariant && isReadWrite && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
                     <TopLevelCollectionsList skipCollections />

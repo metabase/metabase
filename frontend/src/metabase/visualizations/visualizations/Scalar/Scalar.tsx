@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
+import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 import {
   ScalarCardShell,
   useScalarCardShell,
@@ -49,6 +50,8 @@ function ScalarComponent(
   props: VisualizationProps & VisualizationPassThroughProps,
 ) {
   const scalarRef = useRef<HTMLDivElement>(null);
+  const { isTruncated: isValueTruncated, ref: valueRef } =
+    useIsTruncated<HTMLHeadingElement>({ ignoreHeightTruncation: true });
 
   const {
     series: [
@@ -138,6 +141,9 @@ function ScalarComponent(
     }
   };
 
+  const showsFullValueTooltip =
+    fullScalarValue !== displayValue || isValueTruncated;
+
   return (
     <ScalarCardShell
       tier={tier}
@@ -148,7 +154,7 @@ function ScalarComponent(
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}
-          alwaysShowTooltip={fullScalarValue !== displayValue}
+          alwaysShowTooltip={showsFullValueTooltip}
           isClickable={isClickable}
         >
           <Tooltip
@@ -160,6 +166,7 @@ function ScalarComponent(
           >
             <Stack onClick={handleClick} ref={scalarRef} align="center" gap={0}>
               <ScalarValue
+                ref={valueRef}
                 color={color}
                 disableHover={isMetricsViewer}
                 fontSize={fontSize}
