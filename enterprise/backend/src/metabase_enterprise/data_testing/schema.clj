@@ -180,10 +180,6 @@
    [:inputs       {:optional true} ::inputs]
    [:expectations {:optional true} ::expectations]])
 
-(mr/def ::transform-test.definition
-  "A transform test as a client writes it, without the transform it covers."
-  ::test.definition)
-
 (mr/def ::transform-test.create
   "What a client sends to create a transform test."
   (test-create :transform_id ::lib.schema.id/transform))
@@ -195,10 +191,6 @@
 (mr/def ::transform-test.update
   "What a client sends to update a transform test. Omitted fields are left unchanged."
   (test-update :transform_id ::lib.schema.id/transform))
-
-(mr/def ::card-test.definition
-  "A card test as a client writes it, without the card it covers."
-  ::test.definition)
 
 (mr/def ::card-test.create
   "What a client sends to create a card test."
