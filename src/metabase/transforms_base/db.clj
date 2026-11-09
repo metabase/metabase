@@ -10,7 +10,7 @@
 (mu/defn transform-source
   "The source of the Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :source [:model/Transform :id :source] transform-id))
+  (t2/select-one-fn :source [:model/Transform :id :source] :id transform-id))
 
 (mu/defn transforms-for-ordering
   "The id, name, target, target Table id, source Database id, and table dependencies of every Transform
@@ -22,7 +22,7 @@
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform transform-id))
+  (t2/select-one :model/Transform :id transform-id))
 
 (mu/defn update-transform!
   "Apply `changes` to the Transform with `transform-id`."
@@ -30,7 +30,7 @@
    changes      :- [:map {:closed true}
                     [:last_checkpoint_value {:optional true} [:maybe :string]]
                     [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]]]
-  (t2/update! :model/Transform transform-id changes))
+  (t2/update! :model/Transform :id transform-id changes))
 
 (mu/defn update-transform-run!
   "Apply `changes` to the TransformRun with `run-id`."
@@ -39,12 +39,12 @@
                [:checkpoint_filter_field_id {:optional true} [:maybe ::lib.schema.id/field]]
                [:checkpoint_lo_value        {:optional true} [:maybe :string]]
                [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TransformRun run-id changes))
+  (t2/update! :model/TransformRun :id run-id changes))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
@@ -79,7 +79,7 @@
                 [:schema       {:optional true} [:maybe :string]]
                 [:active       {:optional true} [:maybe :boolean]]
                 [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]]]
-  (t2/update! :model/Table table-id changes))
+  (t2/update! :model/Table :id table-id changes))
 
 (mu/defn mark-table-index-failed!
   "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."

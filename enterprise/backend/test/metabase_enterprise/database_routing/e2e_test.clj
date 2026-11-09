@@ -424,7 +424,7 @@
       ;; Router: a normal synced DB that owns the Table/Field rows (matches prod + the H2 `with-routing-setup!`).
       (mt/dataset (router-dataset driver/*driver*)
         (let [router (mt/db)]
-          (t2/update! :model/Database (u/the-id router)
+          (t2/update! :model/Database :id (u/the-id router)
                       {:details (merge (:details router)
                                        (router-dataset-details driver/*driver*))})
           (let [router (t2/select-one :model/Database :id (u/the-id router))]
@@ -483,7 +483,7 @@
                                            [["us-east-1-foo"]
                                             ["us-east-1-bar"]]]])
         (let [router (mt/db)]
-          (t2/update! :model/Database (u/the-id router)
+          (t2/update! :model/Database :id (u/the-id router)
                       {:details (assoc (:details router) :dbname nil)})
           (let [router (t2/select-one :model/Database :id (u/the-id router))]
             (sync/sync-database! router {:scan :schema})

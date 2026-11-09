@@ -1799,9 +1799,36 @@ _SESSION_EFFECT_FUNCTIONS = frozenset(
         "pg_sleep", "pg_sleep_for", "pg_sleep_until", "sleep", "benchmark", "sleepeachrow", "system$wait",
         "master_pos_wait", "source_pos_wait", "wait_for_executed_gtid_set", "wait_until_sql_thread_after_gtids",
         # running a program, Java code or a request outside the database
-        "executable", "reflect", "java_method", "http_request", "system$send_email",
+        "executable", "reflect", "java_method", "http_request", "system$send_email", "sys_exec", "sys_eval",
+        # reading a file on the database server
+        "load_file",
+        # Postgres server administration: the write-ahead log, backups, replication slots, recovery, the log file
+        "pg_switch_wal", "pg_switch_xlog", "pg_create_restore_point", "pg_backup_start", "pg_backup_stop",
+        "pg_start_backup", "pg_stop_backup", "pg_promote", "pg_rotate_logfile", "pg_create_physical_replication_slot",
+        "pg_create_logical_replication_slot", "pg_drop_replication_slot", "pg_wal_replay_pause",
+        "pg_wal_replay_resume", "pg_export_snapshot",
     }
 )
+
+# Table functions that read from another server, a URL, object storage or the server's files. Their names are common
+# words elsewhere (`url`, `file`, `mysql`), so each set applies only in its own dialect.
+_DIALECT_SESSION_EFFECT_FUNCTIONS = {
+    "clickhouse": frozenset(
+        {
+            "url", "urlcluster", "s3", "s3cluster", "gcs", "remote", "remotesecure", "mysql", "postgresql",
+            "mongodb", "redis", "sqlite", "file", "filecluster", "hdfs", "hdfscluster", "azureblobstorage",
+            "azureblobstoragecluster", "jdbc", "odbc", "deltalake", "iceberg", "hudi", "cosn", "oss", "hive",
+            "cluster", "clusterallreplicas",
+        }
+    ),
+    "duckdb": frozenset(
+        {
+            "read_csv", "read_csv_auto", "read_parquet", "parquet_scan", "read_json", "read_json_auto",
+            "read_json_objects", "read_ndjson", "read_ndjson_auto", "read_ndjson_objects", "read_text", "read_blob",
+            "read_xlsx", "sniff_csv", "glob", "iceberg_scan", "delta_scan",
+        }
+    ),
+}
 
 
 def _function_name(node: exp.Expression):
@@ -1813,13 +1840,25 @@ def _function_name(node: exp.Expression):
     return None
 
 
-def _session_effect_function(stmt: exp.Expression):
-    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or None."""
+def _session_effect_function(stmt: exp.Expression, dialect: str):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
+    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
+    names = _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
     for node in stmt.walk():
         name = _function_name(node)
-        if name in _SESSION_EFFECT_FUNCTIONS:
+        if name in names:
             return name
     return None
+
+
+def _external_table(stmt: exp.Expression, dialect: str) -> bool:
+    """Whether `stmt` names a file or a URL as a table. DuckDB reads `FROM 'data.csv'` and `FROM "s3://b/x.parquet"`
+    as the file at that path, and a name holding `.`, `/`, `\\` or `:` cannot be a plain table there unless quoted."""
+    if dialect != "duckdb":
+        return False
+    return any(
+        isinstance(node, exp.Table) and re.search(r"[./\\:]", node.name or "") is not None for node in stmt.walk()
+    )
 
 
 _SQL_EXECUTING_FUNCTIONS = frozenset(
@@ -1869,18 +1908,30 @@ _MYSQL_FAMILY_DIALECTS = frozenset({"mysql", "mariadb", "singlestore", "starrock
 
 def _hidden_sql(sql: str, dialect: str, select: bool):
     """`(reason, detail)` when `sql` holds text its database would run and sqlglot would not parse as a statement of
-    its own, else None."""
+    its own, else None.
+
+    A carriage return with no newline after it is refused in every dialect. sqlglot ends a `--` or `#` comment at
+    one, and MySQL does not, so the text after it would be a comment to one and SQL to the other."""
+    if re.search(r"\r(?!\n)", sql) is not None:
+        return ("lone-carriage-return", None)
     if re.search(r"(?<![\w\$])[uU]&\"", sql) is not None:
         return ("unicode-identifier", None)
     if dialect == "tsql" and select:
         quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
         for tok in sqlglot.tokenize(sql, read=dialect):
-            if tok.token_type not in quoted and tok.text.upper() in _TSQL_STATEMENT_WORDS:
-                return ("statement-word", tok.text.upper())
+            if tok.token_type in quoted:
+                continue
+            # sqlglot keeps a character such as U+200B inside a word, `t<U+200B>EXEC`, where SQL Server may end the
+            # word. Each piece between characters that cannot be part of a name is checked on its own.
+            for word in re.split(r"[^\w@#$]+", tok.text):
+                if word.upper() in _TSQL_STATEMENT_WORDS:
+                    return ("statement-word", word.upper())
     if dialect in _MYSQL_FAMILY_DIALECTS:
         if "/*!" in sql or "/*M!" in sql:
             return ("executable-comment", None)
-        if re.search(r"--(?=\S)", sql) is not None:
+        # MySQL reads `--` as a comment only before ASCII whitespace or a control character. Python's `\s` also
+        # matches non-ASCII spaces such as U+00A0, so the characters are spelled out.
+        if re.search(r"--(?![ \t\n\r\f\v]|\Z)", sql) is not None:
             return ("bare-dash-comment", None)
         if re.search(r"\\['\"`]", sql) is not None:
             return ("backslash-quote", None)
@@ -1896,9 +1947,11 @@ def _unbracketed(stmt: exp.Expression) -> exp.Expression:
 
 def _statement_reason(stmt: exp.Expression, sql: str, dialect: str):
     """`(reason, detail)` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else None."""
-    function = _session_effect_function(stmt)
+    function = _session_effect_function(stmt, dialect)
     if function is not None:
         return ("session-function", function)
+    if _external_table(stmt, dialect):
+        return ("external-table", None)
     executor = _sql_executing_function(stmt)
     if executor is not None:
         return ("sql-executing-function", executor)

@@ -18,8 +18,8 @@
                                          [{:field-name "indexed" :indexed? true :base-type :type/Integer}
                                           {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
                                          [[1 2]]]])
-      (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :indexed))))
-      (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :not-indexed)))))))
+      (is (true? (t2/select-one-fn :database_indexed :model/Field :id (mt/id :table :indexed))))
+      (is (not= true (t2/select-one-fn :database_indexed :model/Field :id (mt/id :table :not-indexed)))))))
 
 (deftest sync-composite-indexed-columns-test
   (mt/test-drivers
@@ -32,8 +32,8 @@
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
         (sync/sync-database! (mt/db))
-        (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
-        (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))))))
+        (is (true? (t2/select-one-fn :database_indexed :model/Field :id (mt/id :table :first))))
+        (is (not= true (t2/select-one-fn :database_indexed :model/Field :id (mt/id :table :second))))))))
 
 (driver/register! ::not-support-index-test :abstract? true)
 

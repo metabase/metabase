@@ -90,6 +90,14 @@
              (update :credentials hash-password-credentials))
     (provider/validate (provider/provider-string->keyword provider) <>)))
 
+(mi/define-batched-hydration-method add-has-used-password
+  :has_used_password
+  "Adds `has_used_password`, whether each of `users` has a password that has been used to log in and has not expired."
+  [users]
+  (let [user-ids (auth-identity.db/user-ids-with-used-password (set (map u/the-id users)))]
+    (for [user users]
+      (assoc user :has_used_password (contains? user-ids (u/the-id user))))))
+
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
   authoritative credential store. This is the only supported way to set a user's password; the User model itself no
@@ -125,6 +133,14 @@
          (auth-identity.db/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
      (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
      (auth-identity.db/delete-sessions-for-user! user-id))))
+
+(mu/defn current-password? :- :boolean
+  "Whether `password` is the current password of the user with `user-id`, false when they have none."
+  [user-id  :- ms/PositiveInt
+   password :- :string]
+  (boolean
+   (when-let [{{:keys [password_hash password_salt]} :credentials} (auth-identity.db/auth-identity user-id "password")]
+     (u.password/verify-password password password_salt password_hash))))
 
 (mu/defn reset-token-hash :- [:maybe :string]
   "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`

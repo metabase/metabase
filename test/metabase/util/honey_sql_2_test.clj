@@ -8,6 +8,16 @@
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
+(deftest ^:parallel assert-map-or-nil!-test
+  (testing "a map or nil passes through unchanged"
+    (is (= {:where [:= :id 1]} (h2x/assert-map-or-nil! {:where [:= :id 1]})))
+    (is (nil? (h2x/assert-map-or-nil! nil))))
+  (testing "anything else, such as a string or a number, throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Expected a Honey SQL map"
+                          (h2x/assert-map-or-nil! "DELETE FROM core_user")))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Expected a Honey SQL map"
+                          (h2x/assert-map-or-nil! 1)))))
+
 (deftest ^:parallel inline-Ratio-test
   (testing ":inline behavior for clojure.lang.Ratio should make sense (#28354)"
     (is (= ["SELECT 4 / (1.0 / 3.0) AS x"]

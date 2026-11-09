@@ -12,6 +12,8 @@
 
 (p/import-vars
  [metabase.sso.common
+  ldap-directory-user
+  sso-only-user?
   sync-group-memberships!]
  [metabase.sso.ldap
   find-user

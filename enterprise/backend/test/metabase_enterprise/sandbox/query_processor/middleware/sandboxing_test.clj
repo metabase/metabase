@@ -1169,7 +1169,7 @@
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
     (mt/with-test-user :crowberto
-      (t2/update! :model/Card card-id {:result_metadata metadata}))))
+      (t2/update! :model/Card :id card-id {:result_metadata metadata}))))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
@@ -1565,9 +1565,9 @@
                                               :model/Sandbox
                                               :group_id (:id &group)
                                               :table_id (mt/id :venues))]
-        (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
+        (is (nil? (t2/select-one-fn :result_metadata :model/Card :id sandbox-card-id)))
         (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
-        (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))
+        (is (not (nil? (t2/select-one-fn :result_metadata :model/Card :id sandbox-card-id))))))))
 
 (deftest filter-by-column-sandboxing-test
   (mt/test-drivers (mt/normal-drivers)
@@ -2081,6 +2081,36 @@
                   result))
           (is (= ["First row, first column" "First row, second column"]
                  (->> result :data :rows first (drop 1)))))))))
+
+(defn- select-star-native-sandbox-def [table-key]
+  {:query (lib/native-query (mt/metadata-provider)
+                            (format-honeysql {:select [:*], :from [[(identifier table-key)]]}))})
+
+(deftest join-native-sandbox-with-empty-result-metadata-test
+  (testing "A native sandbox card with empty result metadata should return columns (#74173)"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql, :+features [:nested-queries :left-join :inner-join]})
+      (met/with-gtaps! {:gtaps {:categories (select-star-native-sandbox-def :categories)
+                                :venues     (select-star-native-sandbox-def :venues)}}
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :categories))
+              mp      (lib.tu/merged-mock-metadata-provider
+                       (mt/metadata-provider)
+                       {:cards [{:id card-id, :result-metadata []}]})
+              categories         (lib.metadata/table mp (mt/id :categories))
+              venues             (lib.metadata/table mp (mt/id :venues))
+              category-id        (lib.metadata/field mp (mt/id :categories :id))
+              venues-id          (lib.metadata/field mp (mt/id :venues :id))
+              venues-category-id (lib.metadata/field mp (mt/id :venues :category_id))
+              query   (-> (lib/query mp categories)
+                          (lib/join (-> (lib/join-clause venues [(lib/= category-id venues-category-id)])
+                                        (lib/with-join-strategy :inner-join)
+                                        (lib/with-join-alias "Venues")))
+                          (lib/order-by (lib/with-join-alias venues-id "Venues"))
+                          (lib/limit 2))]
+          (mt/with-native-query-testing-context query
+            (is (= [[4 "Asian" 1 "Red Medicine" 4 10.0646 -165.374 3]
+                    [11 "Burger" 2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
+                   (mt/formatted-rows [int str int str int 4.0 4.0 int]
+                                      (qp/process-query query))))))))))
 
 (deftest test-66781
   (testing "Handle user attribute filters against implicitly joined tables that are also sandboxed correctly (#66781)"

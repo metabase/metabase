@@ -164,16 +164,16 @@
           (doseq [{:keys [label query-filter viz-settings delete! msg-re]}
                   [{:label        "a Field referenced in the query"
                     :query-filter (fn [field-id _seg-id] [:> [:field field-id nil] 1])
-                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field field-id))
+                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field :id field-id))
                     :msg-re       #"Field .* is missing from the source database"}
                    {:label        "a Segment referenced in the query"
                     :query-filter (fn [_field-id seg-id] [:segment seg-id])
-                    :delete!      (fn [_field-id seg-id] (t2/delete! :model/Segment seg-id))
+                    :delete!      (fn [_field-id seg-id] (t2/delete! :model/Segment :id seg-id))
                     :msg-re       #"Segment .* is missing from the source database"}
                    {:label        "a Field referenced only in visualization_settings"
                     :viz-settings (fn [field-id] {:column_settings {(str "[\"ref\",[\"field\"," field-id ",null]]")
                                                                     {:column_title "X"}}})
-                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field field-id))
+                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field :id field-id))
                     :msg-re       #"Field .* is missing from the source database"}]]
             (testing label
               (ts/with-temp-dpc [:model/Field   {field-id :id}   {:table_id table-id :name "F" :base_type :type/Integer}

@@ -15,7 +15,7 @@
 (mu/defn database-name
   "The name of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :name :model/Database database-id))
+  (t2/select-one-fn :name :model/Database :id database-id))
 
 (mu/defn destination-database?
   "Whether the Database with `database-id` is a routing destination."

@@ -2,6 +2,7 @@
   "Application database queries for the auth identity module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [java-time.api :as t]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
@@ -46,6 +47,16 @@
    provider :- :string]
   (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
 
+(mu/defn user-ids-with-used-password :- [:set ::lib.schema.id/user]
+  "The ids among `user-ids` of the Users whose `password` AuthIdentity has been used to log in and has not expired."
+  [user-ids :- [:set ::lib.schema.id/user]]
+  (set (when (seq user-ids)
+         (t2/select-fn-set :user_id [:model/AuthIdentity :user_id]
+                           :user_id      [:in [:auto/param user-ids]]
+                           :provider     "password"
+                           :last_used_at [:not= nil]
+                           {:where [:or [:= :expires_at nil] [:> :expires_at [:auto/param (t/offset-date-time)]]]}))))
+
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
   [row :- AuthIdentityRow]
@@ -55,13 +66,13 @@
   "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- AuthIdentityRow]
-  (t2/update! :model/AuthIdentity id changes))
+  (t2/update! :model/AuthIdentity :id [:auto/param id] changes))
 
 (mu/defn touch-auth-identity!
   "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no
   matching AuthIdentity), which updates nothing."
   [id :- [:maybe ms/PositiveInt]]
-  (t2/update! :model/AuthIdentity id {:last_used_at :%now}))
+  (t2/update! :model/AuthIdentity :id [:auto/param id] {:last_used_at :%now}))
 
 (mu/defn delete-auth-identities!
   "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
@@ -79,7 +90,7 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User user-id))
+  (t2/select-one :model/User :id user-id))
 
 (mu/defn user-by-email
   "The User whose email matches `email` case-insensitively, or nil."
@@ -100,7 +111,7 @@
 (mu/defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login] user-id))
+  (t2/select-one [:model/User :id :is_active :last_login] :id [:auto/param user-id]))
 
 (mu/defn user-active?
   "Whether the User with `user-id` is active."
@@ -111,7 +122,7 @@
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id [:auto/param user-id] changes))
 
 (mu/defn insert-user-returning-login-columns!
   "Insert the User `row` and return its id, last login, active flag, and tenant id."

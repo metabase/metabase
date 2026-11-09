@@ -307,9 +307,10 @@
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
 (mu/defn magic-group
-  "The ID, name, and type of the magic PermissionsGroup of `magic-group-type`, or nil."
+  "The ID, name, type, and tenant flag of the magic PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
-  (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type))
+  (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type :is_tenant_group]
+                 :magic_group_type magic-group-type))
 
 (mu/defn group-by-magic-type
   "The PermissionsGroup of `magic-group-type`, or nil."
@@ -389,7 +390,7 @@
   "Apply `changes` to the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :magic_group_type :is_tenant_group])]
-  (t2/update! :model/PermissionsGroup group-id changes))
+  (t2/update! :model/PermissionsGroup :id group-id changes))
 
 (mu/defn group-member-counts
   "A map of PermissionsGroup ID to number of active members in the group. Groups with no active members have no
@@ -543,7 +544,7 @@
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."
   [revision-id :- ms/PositiveInt
    changes     :- (mut/select-keys ::permissions.schema/collection-permission-graph-revision.update [:before :after])]
-  (t2/update! :model/CollectionPermissionGraphRevision revision-id changes))
+  (t2/update! :model/CollectionPermissionGraphRevision :id revision-id changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -709,7 +710,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn update-users!
   "Apply `changes` to the Users with `user-ids`."

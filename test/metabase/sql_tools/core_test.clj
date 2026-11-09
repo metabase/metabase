@@ -241,6 +241,65 @@
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"))))
 
+(deftest ^:parallel validate-executable-stmt-session-effect-function-test
+  (testing "a SELECT that administers the server, runs a program, or reads a file, a URL or another server is refused"
+    (are [driver sql] (=? {:verdict :disallowed :single-stmt? true}
+                          (sql-tools/validate-executable-stmt driver sql "read"))
+      :postgres   "SELECT pg_switch_wal()"
+      :postgres   "SELECT pg_create_logical_replication_slot('s', 'pgoutput')"
+      :postgres   "SELECT pg_promote()"
+      :postgres   "SELECT pg_export_snapshot()"
+      :mysql      "SELECT sys_exec('id')"
+      :mysql      "SELECT sys_eval('id')"
+      :mysql      "SELECT load_file('/etc/passwd')"
+      :clickhouse "SELECT * FROM url('http://h/x', CSV, 'a String')"
+      :clickhouse "SELECT * FROM s3('http://h/x', 'CSV')"
+      :clickhouse "SELECT * FROM remote('h:9000', db.t)"
+      :clickhouse "SELECT * FROM mysql('h:3306', 'db', 't', 'u', 'p')"
+      :clickhouse "SELECT * FROM file('x.csv', CSV)"
+      :clickhouse "SELECT * FROM cluster('c', db.t)"
+      :clickhouse "SELECT * FROM clusterAllReplicas('c', db.t)"))
+  (testing "the same names are ordinary elsewhere"
+    (are [driver sql] (=? {:verdict :allowed}
+                          (sql-tools/validate-executable-stmt driver sql "read"))
+      :clickhouse "SELECT url FROM t"
+      :postgres   "SELECT url('x')"
+      :postgres   "SELECT * FROM \"x.csv\"")))
+
+(deftest ^:parallel validate-executable-stmt-hidden-sql-test
+  (testing "-- before a non-ASCII space is not a comment on MySQL, so the text after it is refused"
+    (doseq [space ["\u00a0" "\u2000" "\u3000" "\u0085" "\u2028"]]
+      (testing (format "U+%04X" (int (first space)))
+        (is (=? {:verdict :disallowed}
+                (sql-tools/validate-executable-stmt
+                 :mysql (str "select 1 --" space ", sleep(5)\nfrom (select 1 as `" space "`) t") "read"))))))
+  (testing "a carriage return with no newline after it is refused"
+    (doseq [driver [:mysql :postgres :sqlserver :snowflake]]
+      (testing driver
+        (are [sql] (not= :allowed (:verdict (sql-tools/validate-executable-stmt driver sql "read")))
+          "select 1 -- x\r'\n, sleep(5) -- '"
+          "select 1\rfrom t"))))
+  (testing "-- before ASCII whitespace or at the end, and \\r\\n line endings, are allowed"
+    (are [driver sql] (=? {:verdict :allowed}
+                          (sql-tools/validate-executable-stmt driver sql "read"))
+      :mysql     "select 1 -- note\nfrom t"
+      :mysql     "select 1 --\tnote\nfrom t"
+      :mysql     "select 1 --"
+      :mysql     "select 1 -- note\r\nfrom t\r\n"
+      :postgres  "select 1 -- note\r\nfrom t\r\n"
+      :sqlserver "select 1 -- note\r\nfrom t\r\n"))
+  (testing "a T-SQL statement word glued to a name by a character that is not part of a word is refused"
+    (doseq [glue ["\u200b" "\u200c" "\u2060" "\ufeff"]]
+      (testing (format "U+%04X" (int (first glue)))
+        (is (=? {:verdict :disallowed}
+                (sql-tools/validate-executable-stmt
+                 :sqlserver (str "select * from t" glue "EXEC('select 1')") "read"))))))
+  (testing "a T-SQL statement word inside a longer name is allowed"
+    (are [sql] (=? {:verdict :allowed}
+                   (sql-tools/validate-executable-stmt :sqlserver sql "read"))
+      "select executed_at, @exec_count, updated_by from t"
+      "select [exec] from #temp_exec")))
+
 (defn- placeholder-count
   [sql]
   (count (re-seq #"\?" sql)))

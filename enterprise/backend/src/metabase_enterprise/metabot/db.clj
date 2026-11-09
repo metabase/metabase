@@ -107,7 +107,7 @@
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
    max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotGroupLimit limit-id {:max_usage max-usage}))
+  (t2/update! :model/MetabotGroupLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-group-limit!
   "Delete the MetabotGroupLimit of the group with `group-id`."
@@ -136,7 +136,7 @@
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
    max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotInstanceLimit limit-id {:max_usage max-usage}))
+  (t2/update! :model/MetabotInstanceLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-instance-limit!
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."

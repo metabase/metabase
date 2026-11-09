@@ -1,4 +1,9 @@
-import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  ALL_EXTERNAL_USERS_GROUP_ID,
+  NORMAL_USER_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const { H } = cy;
 
@@ -549,6 +554,16 @@ describe("AI Controls > Tenant usage limits", () => {
 
     // Enable multi-tenancy
     H.updateSetting("use-tenants", true);
+
+    // Give tenant users database access to test their Metabot usage limits
+    cy.updatePermissionsGraph({
+      [ALL_EXTERNAL_USERS_GROUP_ID!]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
 
     // Create a tenant
     cy.request("POST", "/api/ee/tenant", {

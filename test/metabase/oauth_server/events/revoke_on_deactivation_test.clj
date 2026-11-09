@@ -68,12 +68,12 @@
             auth-code    (insert-auth-code! user-id)]
         (is (not (revoked? :model/OAuthAccessToken access-token))
             "token is live while the user is active")
-        (t2/update! :model/User user-id {:is_active false})
+        (t2/update! :model/User :id user-id {:is_active false})
         (is (revoked? :model/OAuthAccessToken access-token)
             "deactivation revokes the token")
         (is (not (t2/exists? :model/OAuthAuthorizationCode :code auth-code))
             "deactivation deletes the pending authorization code")
         (let [revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token access-token)]
-          (t2/update! :model/User user-id {:is_active true})
+          (t2/update! :model/User :id user-id {:is_active true})
           (is (= revoked-at (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token access-token))
               "reactivation does not un-revoke the pre-deactivation token"))))))

@@ -297,7 +297,7 @@
                                                          :pulse_channel_id pc-id}]
             (notification.tu/with-javascript-visualization-stub
               (pulse.tu/with-captured-channel-send-messages!
-                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))
+                (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))
             (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
               (is (some? run) "task run was created")
               (is (= :subscription (:run_type run)))

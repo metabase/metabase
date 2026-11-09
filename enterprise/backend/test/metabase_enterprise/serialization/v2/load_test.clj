@@ -1693,9 +1693,9 @@
             (serdes.load/load-metabase! (ingestion-in-memory extract1))
             (ts/with-db source-db
               ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
-              (t2/delete! :model/DashboardCardSeries (:id series1s))
-              (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
-              (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
+              (t2/delete! :model/DashboardCardSeries :id (:id series1s))
+              (t2/update! :model/DashboardCardSeries :id (:id series3s) {:position 0})
+              (t2/update! :model/DashboardCardSeries :id (:id series2s) {:position 1})
               (let [extract2 (into [] (serdes.extract/extract {:no-settings true :no-data-model true}))]
                 (ts/with-db dest-db
                   (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
@@ -1956,7 +1956,7 @@
       (ts/with-db source-db
         (let [coll (ts/create! :model/Collection :name "coll")
               card (ts/create! :model/Card :name "self-ref card" :collection_id (:id coll))
-              _    (t2/update! :model/Card (:id card)
+              _    (t2/update! :model/Card :id (:id card)
                                {:parameters [(card-sourced-param (:id card))]})
               ser  (into [] (serdes.extract/extract {:no-settings   true
                                                      :no-data-model false}))]
@@ -1979,8 +1979,8 @@
         (let [coll   (ts/create! :model/Collection :name "coll")
               card-a (ts/create! :model/Card :name "card a" :collection_id (:id coll))
               card-b (ts/create! :model/Card :name "card b" :collection_id (:id coll))
-              _      (t2/update! :model/Card (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
-              _      (t2/update! :model/Card (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
+              _      (t2/update! :model/Card :id (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
+              _      (t2/update! :model/Card :id (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
               ser    (into [] (serdes.extract/extract {:no-settings   true
                                                        :no-data-model false}))]
           (testing "loading on top of the existing cards"
@@ -2009,7 +2009,7 @@
               dash (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
               card (ts/create! :model/Card :name "dq card" :dashboard_id (:id dash))
               _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
-              _    (t2/update! :model/Dashboard (:id dash)
+              _    (t2/update! :model/Dashboard :id (:id dash)
                                {:parameters [(card-sourced-param (:id card))]})
               ser  (into [] (serdes.extract/extract {:no-settings   true
                                                      :no-data-model false}))]
@@ -2151,10 +2151,10 @@
                              {:model "Field" :id "field"}
                              {:model "Field" :id "field"}]}
               (ts/extract-one "Field" (:id f3))))
-      (t2/update! :model/Field (:id f3) {:description "some new one"})
+      (t2/update! :model/Field :id (:id f3) {:description "some new one"})
       (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
       (is (= "desc"
-             (t2/select-one-fn :description :model/Field (:id f3)))))))
+             (t2/select-one-fn :description :model/Field :id (:id f3)))))))
 
 (deftest field-data-sensitivity-round-trip-test
   (testing "data_sensitivity travels through export and import on both Field and FieldUserSettings"

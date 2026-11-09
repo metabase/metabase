@@ -69,7 +69,7 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
@@ -219,7 +219,7 @@
   "Apply `changes` to the Table with `table-id`, returning the number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table table-id changes))
+  (t2/update! :model/Table :id table-id changes))
 
 (mu/defn update-tables!
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
@@ -471,7 +471,7 @@
   "Apply `changes` to the Field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field field-id changes))
+  (t2/update! :model/Field :id field-id changes))
 
 (mu/defn field-id-by-name :- [:maybe ::lib.schema.id/field]
   "The ID of the Field named `field-name` of the Table with `table-id`, or nil."
