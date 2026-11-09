@@ -201,13 +201,12 @@
         ;; The user's own query is always shown: the edit is stored under its ID, which stands for what is on their
         ;; screen, so a hidden edit would change it unseen.
         client-query? (contains? (shared/current-client-ids) query-id)
-        ;; Readability reads the app DB, so it is checked only when it can change the delivery.
-        delivery      (query-delivery buffer-id (and hide-asked?
-                                                     (not client-query?)
-                                                     (tools.run-query/sql-results-readable?)))
+        ;; Readability reads the app DB, so it is checked only when hiding was asked.
+        readable?     (and hide-asked? (tools.run-query/sql-results-readable?))
+        delivery      (query-delivery buffer-id (and readable? (not client-query?)))
         instr         (cond-> (instruction-fn query-id delivery)
-                        (and hide-asked? client-query?)
-                        (str "\n\n" instructions/client-query-shown-instruction))]
+                        (and hide-asked? client-query?) (str "\n\n" instructions/client-query-shown-instruction)
+                        (and readable? client-query?)   (str " " instructions/client-query-variant-instruction))]
     ;; The calls after this one in the same model response read this query before the agent loop stores the results
     (some-> (:memory-atom ctx) (swap! memory/set-query query-id (:query action-result)))
     (m/assoc-some {:output            (format-query-output structured instr)

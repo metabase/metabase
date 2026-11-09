@@ -228,7 +228,13 @@
                                  {:parts         (mapv :data-type (:data-parts result))
                                   :run-it?       (str/includes? (:output result)
                                                                 (str "call `run_query` with `query_id` `" shown-id "`"))
-                                  :shown-anyway? (str/includes? (:output result) "This is the user's own query")})))
+                                  :link?         (str/includes? (:output result)
+                                                                (str "(metabase://query/" shown-id ")"))
+                                  :unsaved?      (str/includes? (:output result) instructions/not-saved-instruction)
+                                  :shown-anyway? (str/includes? (:output result)
+                                                                instructions/client-query-shown-instruction)
+                                  :variant?      (str/includes? (:output result)
+                                                                instructions/client-query-variant-instruction)})))
                   readable #{"create_sql_query" "edit_sql_query" "replace_sql_query" "run_query"}
                   editor   {:user_is_viewing [{:type    "code_editor"
                                                :buffers [{:id     "buf-1"
@@ -237,7 +243,7 @@
               (doseq [tool-name ["create_sql_query" "edit_sql_query" "replace_sql_query"]]
                 (testing tool-name
                   (testing "with run_query offered, show_chart false shows the user nothing and points at run_query"
-                    (is (=? {:parts [], :run-it? true, :shown-anyway? false}
+                    (is (=? {:parts [], :run-it? true, :link? true, :unsaved? true, :shown-anyway? false}
                             (run tool-name readable {} {:show_chart false}))))
                   (testing "with run_query offered and the argument left out, the chart is shown"
                     (is (=? {:parts ["generated_entity"], :run-it? false}
@@ -254,11 +260,15 @@
                               (run tool-name readable editor {}))))
                     (testing "the user's own query is shown even when show_chart is false, and the model is told why"
                       (testing "as a proposal in their open SQL editor"
-                        (is (= {:parts ["code_edit"], :run-it? false, :shown-anyway? true}
-                               (run tool-name readable editor {:show_chart false} :client-ids #{query-id}))))
+                        (is (=? {:parts ["code_edit"], :run-it? false, :shown-anyway? true, :variant? true}
+                                (run tool-name readable editor {:show_chart false} :client-ids #{query-id}))))
                       (testing "as a chart without an editor"
-                        (is (= {:parts ["generated_entity"], :run-it? false, :shown-anyway? true}
-                               (run tool-name readable {} {:show_chart false} :client-ids #{query-id})))))
+                        (is (=? {:parts ["generated_entity"], :run-it? false, :shown-anyway? true, :variant? true}
+                                (run tool-name readable {} {:show_chart false} :client-ids #{query-id}))))
+                      (testing "without the advice to read a variant when run_query cannot read SQL results"
+                        (is (=? {:parts ["generated_entity"], :shown-anyway? true, :variant? false}
+                                (run tool-name (disj readable "run_query") {} {:show_chart false}
+                                     :client-ids #{query-id})))))
                     (testing "the user's own query shown because they asked carries no explanation"
                       (is (=? {:parts ["code_edit"], :shown-anyway? false}
                               (run tool-name readable editor {} :client-ids #{query-id}))))))))))))))

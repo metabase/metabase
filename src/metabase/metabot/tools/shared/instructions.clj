@@ -97,8 +97,11 @@ Reference items using: [name](metabase://type/id)")
 
 (def client-query-shown-instruction
   "Added to the instructions for an edit of the user's own query that the model asked to hide, which is shown anyway."
-  (str "This is the user's own query, so the change was shown to them although you passed `show_chart: false`. "
-       "To read a variant of their query without showing it, write the SQL with `create_sql_query` (pass "
+  "This is the user's own query, so the change was shown to them although you passed `show_chart: false`.")
+
+(def client-query-variant-instruction
+  "Follows [[client-query-shown-instruction]] when run_query can read SQL results, to say how to read a variant."
+  (str "To read a variant of their query without showing it, write the SQL with `create_sql_query` (pass "
        "`show_chart: false`) and run that query with `run_query`."))
 
 (defn query-hidden-instructions-for
