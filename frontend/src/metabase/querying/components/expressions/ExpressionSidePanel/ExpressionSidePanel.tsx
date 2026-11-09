@@ -218,13 +218,13 @@ function FunctionRow({
       position="right-start"
       offset={8}
       openDelay={150}
-      disabled={fn.isDisabled || !database}
+      disabled={!database}
     >
       <HoverCard.Target>
         <UnstyledButton
           className={cx(S.row, { [S.disabled]: fn.isDisabled })}
-          disabled={fn.isDisabled}
-          onClick={() => onClauseClick?.(fn.name)}
+          aria-disabled={fn.isDisabled}
+          onClick={fn.isDisabled ? undefined : () => onClauseClick?.(fn.name)}
           data-testid="expression-side-panel-function"
         >
           <PanelIcon name={fn.icon} />
@@ -238,7 +238,8 @@ function FunctionRow({
         className={S.details}
         data-testid="expression-side-panel-details"
       >
-        {database && (
+        {fn.isDisabled && t`This database doesn't support ${fn.displayName}.`}
+        {!fn.isDisabled && database && (
           <FunctionDetails
             name={fn.name}
             database={database}

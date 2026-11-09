@@ -1,5 +1,5 @@
 import { hasRequiredFeature } from "metabase/databases";
-import { clausesForMode } from "metabase/querying/expressions";
+import { clausesForMode, getHelpText } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
@@ -47,7 +47,7 @@ export function getSidePanelSections({
   search,
 }: {
   expressionMode: Lib.ExpressionMode;
-  database: Pick<Database, "features"> | undefined;
+  database: Pick<Database, "engine" | "features"> | undefined;
   search: string;
 }): SidePanelSections {
   const clausesByName = new Map(
@@ -79,16 +79,31 @@ export function getSidePanelSections({
   const isSearching = normalizedSearch !== "";
   const allGroups = getSidePanelGroups();
 
+  const descriptionMatches = (fn: SidePanelFunction) => {
+    const description = database
+      ? getHelpText(fn.name, database)?.description
+      : undefined;
+    // Descriptions are Markdown, with `$name` marking argument references.
+    return (
+      description != null &&
+      matchesSearch(description.replace(/[`$]/g, ""), normalizedSearch)
+    );
+  };
+
   const groups = GROUP_ORDER[expressionMode].flatMap(
     (id): SidePanelGroupView[] => {
       const group = allGroups[id];
+      const groupMatches = matchesSearch(group.name, normalizedSearch);
       const templates = group.templates.filter(
         (template) =>
           template.modes.includes(expressionMode) &&
-          matchesSearch(template.name, normalizedSearch),
+          (groupMatches || matchesSearch(template.name, normalizedSearch)),
       );
-      const functions = toFunctions(group.functions).filter((fn) =>
-        matchesSearch(fn.displayName, normalizedSearch),
+      const functions = toFunctions(group.functions).filter(
+        (fn) =>
+          groupMatches ||
+          matchesSearch(fn.displayName, normalizedSearch) ||
+          descriptionMatches(fn),
       );
 
       if (templates.length === 0 && functions.length === 0) {
