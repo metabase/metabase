@@ -145,7 +145,7 @@ export const WorkerPositionHistoryDetails = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage
-      initialRoute={tableRoute(WORKER_POSITION_HISTORY, "details")}
+      initialRoute={tableRoute(WORKER_POSITION_HISTORY, "history")}
     />
   ),
 };
@@ -153,14 +153,14 @@ export const WorkerPositionHistoryDetails = {
 export const DbtSnapshotDetails = {
   beforeEach: seedStorage(),
   render: () => (
-    <DataStudioPage initialRoute={tableRoute(CUSTOMERS_SNAPSHOT, "details")} />
+    <DataStudioPage initialRoute={tableRoute(CUSTOMERS_SNAPSHOT, "history")} />
   ),
 };
 
 export const FivetranHistoryModeDetails = {
   beforeEach: seedStorage(),
   render: () => (
-    <DataStudioPage initialRoute={tableRoute(ACCOUNT_HISTORY, "details")} />
+    <DataStudioPage initialRoute={tableRoute(ACCOUNT_HISTORY, "history")} />
   ),
 };
 
@@ -168,7 +168,7 @@ export const KeyShapeDetails = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage
-      initialRoute={tableRoute(SUBSCRIPTION_HISTORY, "details")}
+      initialRoute={tableRoute(SUBSCRIPTION_HISTORY, "history")}
     />
   ),
 };
@@ -184,7 +184,7 @@ export const OldVersionsOfAnotherTable = {
   beforeEach: seedStorage(),
   render: () => (
     <DataStudioPage
-      initialRoute={tableRoute(SUBSCRIPTION_HISTORY, "details")}
+      initialRoute={tableRoute(SUBSCRIPTION_HISTORY, "history")}
     />
   ),
 };
@@ -192,7 +192,7 @@ export const OldVersionsOfAnotherTable = {
 export const TodaysValuesOnEveryVersion = {
   beforeEach: seedStorage(),
   render: () => (
-    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER, "details")} />
+    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER, "history")} />
   ),
 };
 
@@ -202,7 +202,7 @@ export const FactsLinkToTheEntity = {
     grainByField: {},
   }),
   render: () => (
-    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER, "details")} />
+    <DataStudioPage initialRoute={tableRoute(DIM_CUSTOMER, "history")} />
   ),
 };
 

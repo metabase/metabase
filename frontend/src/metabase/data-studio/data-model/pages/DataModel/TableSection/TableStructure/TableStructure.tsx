@@ -82,9 +82,6 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
     setTableRole,
     setGrainDescription,
     setPeriodGranularity,
-    setHistoryBinding,
-    setScdType,
-    setScdDetails,
     setEavBinding,
     setMainDate,
   } = useTableStructures();
@@ -208,18 +205,6 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
         </SidebarSection>
       </Box>
 
-      {role && isRoleA(role, "role/HistoryDimension") && (
-        <HistoryBindingSection
-          table={table}
-          fields={fields}
-          structure={structure}
-          disabled={readOnly}
-          onChange={(history) => setHistoryBinding(table, history)}
-          onScdTypeChange={(scdType) => setScdType(table, scdType)}
-          onScdDetailsChange={(scdDetails) => setScdDetails(table, scdDetails)}
-        />
-      )}
-
       <PreviousValuesSection table={table} disabled={readOnly} />
 
       <RevealTransition
@@ -236,6 +221,23 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
 
       <EntityCustomPropertiesSection table={table} />
     </>
+  );
+}
+
+export function TableHistorySection({ table, readOnly }: TableStructureProps) {
+  const { getTableStructure, setHistoryBinding, setScdType, setScdDetails } =
+    useTableStructures();
+
+  return (
+    <HistoryBindingSection
+      table={table}
+      fields={table.fields ?? []}
+      structure={getTableStructure(table)}
+      disabled={readOnly}
+      onChange={(history) => setHistoryBinding(table, history)}
+      onScdTypeChange={(scdType) => setScdType(table, scdType)}
+      onScdDetailsChange={(scdDetails) => setScdDetails(table, scdDetails)}
+    />
   );
 }
 
