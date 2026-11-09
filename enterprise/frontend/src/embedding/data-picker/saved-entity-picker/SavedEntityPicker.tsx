@@ -208,7 +208,7 @@ function InnerSavedEntityPicker({
   );
 }
 
-// The Library only holds its Data, Metrics and Dashboards folders, so when a
+// The Library only holds its Data and Metrics folders, so when a
 // single folder is left after filtering, the Library node stands for it:
 // selecting the Library lists that folder's items instead of nothing. Same rule
 // as `useGetResolvedLibraryCollection` in the core pickers.
