@@ -52,7 +52,7 @@ describe("DataStudioLayout", () => {
         tab: "SQL snippets",
       },
       {
-        entity: createMockRemoteSyncEntity({ model: "action", model_id: null }),
+        entity: createMockRemoteSyncEntity({ model: "action" }),
         tab: "Data actions",
       },
       {

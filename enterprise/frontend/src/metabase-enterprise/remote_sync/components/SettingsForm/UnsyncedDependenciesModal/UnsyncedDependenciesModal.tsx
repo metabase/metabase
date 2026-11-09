@@ -1,7 +1,15 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
-import { Button, Group, Modal, Stack, Switch, Text } from "metabase/ui";
+import {
+  Button,
+  FocusTrap,
+  Group,
+  Modal,
+  Stack,
+  Switch,
+  Text,
+} from "metabase/ui";
 import type { RemoteSyncUnsyncedDependency } from "metabase-types/api";
 
 import type { SettingsFormValues } from "../../../types";
@@ -29,6 +37,7 @@ export const UnsyncedDependenciesModal = ({
       title={t`Synced content uses unsynced content`}
       onClose={onClose}
     >
+      <FocusTrap.InitialFocus />
       <Stack gap="lg">
         <Text>{t`Sync the collections this content is in, or remove the references to it.`}</Text>
         {getDependencyGroups(dependencies).map((group) => (
@@ -76,24 +85,17 @@ type CollectionSyncSwitchProps = {
 
 const CollectionSyncSwitch = ({ collection }: CollectionSyncSwitchProps) => {
   const { values, setFieldValue } = useFormikContext<SettingsFormValues>();
-  const isLibrary = collection.type === "library";
-  const isSyncable = isLibrary || collection.id in values.collections;
-
-  if (!isSyncable) {
+  if (!(collection.id in values.collections)) {
     return <Text c="text-secondary">{t`Can't be synced`}</Text>;
   }
 
-  const isSynced = isLibrary
-    ? values.library
-    : (values.collections[collection.id] ?? false);
+  const isSynced = values.collections[collection.id] ?? false;
 
   const handleChange = (checked: boolean) =>
-    isLibrary
-      ? setFieldValue("library", checked)
-      : setFieldValue("collections", {
-          ...values.collections,
-          [collection.id]: checked,
-        });
+    setFieldValue("collections", {
+      ...values.collections,
+      [collection.id]: checked,
+    });
 
   return (
     <Switch

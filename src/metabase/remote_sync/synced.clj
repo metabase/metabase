@@ -26,6 +26,12 @@
   [model row]
   ((:collection-id (remote-sync.spec/spec model) :collection_id) row))
 
+(defn synced-parent
+  "The `[model pk]` of the entity the UI shows `row`, a row of `model`, within, or nil."
+  [model row]
+  (when-let [parent (:parent (remote-sync.spec/spec model))]
+    (parent row)))
+
 (defenterprise read-only?
   "Whether remote sync is on and keeps the rows it syncs read-only, which it never is without remote sync."
   metabase-enterprise.remote-sync.settings

@@ -60,7 +60,7 @@ const getEntityAreas = (entity: RemoteSyncEntity): RemoteSyncChangesArea[] => {
     ...(TRANSFORM_MODELS.has(entity.model) ? ["transforms" as const] : []),
     ...(entity.model === "pythonlibrary" ? ["python-library" as const] : []),
     ...(entity.model === "nativequerysnippet" ? ["snippets" as const] : []),
-    ...(entity.model === "action" && entity.model_id == null
+    ...(entity.model === "action" && entity.parent == null
       ? ["data-actions" as const]
       : []),
     ...(entity.model === "glossary" ? ["glossary" as const] : []),

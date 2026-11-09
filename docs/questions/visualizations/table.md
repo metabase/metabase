@@ -162,7 +162,7 @@ The options you see will differ depending on the type of column you're viewing:
 
 You can rename the column.
 
-### Align text
+### Alignment
 
 You can display the text on the left, right, or in the middle (i.e., centered) of the column.
 
@@ -170,7 +170,7 @@ You can display the text on the left, right, or in the middle (i.e., centered) o
 
 You can toggle text wrapping, which is useful for columns with long text values like comments.
 
-### Display as
+### Display as text, link, or image
 
 You can display a column as:
 
@@ -178,7 +178,7 @@ You can display a column as:
 - [Link](#display-text-as-a-link)
 - Email link
 - [Image](#display-url-as-an-image)
-- Automatic (Metabase guesses based on the values).
+- Choose automatically (Metabase guesses based on the values).
 
 #### Display text as a link
 
@@ -204,7 +204,7 @@ If you select image, and the text is a link to an image asset, Metabase will dis
 
 Date formatting options include the same options as [Text formatting](#text-formatting-options), as well as:
 
-### Align date
+### Alignment
 
 You can display the date on the left, right, or in the middle (i.e., centered) of the column.
 
@@ -248,14 +248,14 @@ You can choose either 12-hour clock style, or 24-hour clock style.
 
 This option displays a small horizontal bar next to each number in this column to show its size relative to the other values in the column.
 
-### Style
+### Format
 
-Number styles include:
+Number formats are shown as examples of how the same value would look, using the column's separator style and currency symbol:
 
-- Number
-- Percent
-- Scientific
-- Currency
+- `1.23` (number)
+- `123%` (percent)
+- `$1.23` (currency)
+- `1.23e+0` (scientific)
 
 ### Separator style
 
@@ -269,7 +269,7 @@ Gives you various options for how commas and periods are used to separate the nu
 
 ### Number of decimal places
 
-Forces the number to be displayed with exactly this many decimal places.
+Forces the number to be displayed with exactly this many decimal places (from 0 to 20). Clear the field to go back to the default.
 
 ### Multiply by a number
 

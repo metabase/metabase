@@ -1,11 +1,9 @@
 import { t } from "ttag";
 
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 
 type PullModalProps = {
   opened: boolean;
-  branch: string;
-  targetBranch: string;
   isPulling: boolean;
   onPull: (keepChanges: boolean) => void;
   onClose: () => void;
@@ -13,19 +11,12 @@ type PullModalProps = {
 
 export const PullModal = ({
   opened,
-  branch,
-  targetBranch,
   isPulling,
   onPull,
   onClose,
 }: PullModalProps) => (
-  <Modal
-    opened={opened}
-    title={
-      targetBranch === branch ? t`Pull changes` : t`Switch to ${targetBranch}`
-    }
-    onClose={onClose}
-  >
+  <Modal opened={opened} title={t`Pull changes`} onClose={onClose}>
+    <FocusTrap.InitialFocus />
     <Stack gap="lg">
       <Text>{t`You have changes that aren't pushed yet. Keep them on top of the pulled content, or discard them.`}</Text>
       <Group justify="flex-end" gap="sm">
