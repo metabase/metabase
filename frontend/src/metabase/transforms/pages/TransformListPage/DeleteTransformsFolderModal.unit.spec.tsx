@@ -36,7 +36,6 @@ const TRANSFORMS: Transform[] = [
     name: "Orders by day",
     collection_id: COLLECTION.id,
     can_write: true,
-    target_table_id: 10,
     target: createMockTransformTarget({
       name: "orders_by_day",
       schema: "public",
@@ -47,7 +46,6 @@ const TRANSFORMS: Transform[] = [
     name: "Products by category",
     collection_id: COLLECTION.id,
     can_write: true,
-    target_table_id: null,
     target: createMockTransformTarget({ name: "products_by_category" }),
   }),
 ];
@@ -125,7 +123,7 @@ describe("DeleteTransformsFolderModal", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
-  it("names the tables of the transforms that ran when the user chooses to delete the tables too", async () => {
+  it("names the target table of every transform when the user chooses to delete the tables too", async () => {
     const { onClose } = await setup({ transforms: TRANSFORMS });
 
     await userEvent.click(
@@ -138,10 +136,7 @@ describe("DeleteTransformsFolderModal", () => {
       screen.getByText("These transforms and tables will be deleted:"),
     ).toBeInTheDocument();
     expect(screen.getByText("(public.orders_by_day)")).toBeInTheDocument();
-    expect(screen.getByText("Products by category")).toBeInTheDocument();
-    expect(
-      screen.queryByText("(products_by_category)"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("(products_by_category)")).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Delete transforms and tables" }),
@@ -155,36 +150,6 @@ describe("DeleteTransformsFolderModal", () => {
       ),
     ).toBeInTheDocument();
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-  });
-
-  it("keeps the plain heading when no transform in the folder has a table yet", async () => {
-    await setup({
-      transforms: [
-        createMockTransform({
-          id: 3,
-          name: "Never ran",
-          collection_id: COLLECTION.id,
-          can_write: true,
-          target_table_id: null,
-        }),
-      ],
-    });
-
-    await userEvent.click(
-      screen.getByRole("radio", {
-        name: "Delete the transforms and their tables",
-      }),
-    );
-
-    expect(
-      screen.getByText("These transforms will be deleted:"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("These transforms and tables will be deleted:"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Delete transforms and tables" }),
-    ).toBeInTheDocument();
   });
 
   it("offers no table choice for a folder without transforms", async () => {

@@ -151,11 +151,10 @@ function TransformsInFolder({
   transforms,
   showTables,
 }: TransformsInFolderProps) {
-  const showTableNames = showTables && transforms.some(hasTable);
   return (
     <Stack gap="sm">
       <Text>
-        {showTableNames
+        {showTables
           ? t`These transforms and tables will be deleted:`
           : t`These transforms will be deleted:`}
       </Text>
@@ -164,7 +163,8 @@ function TransformsInFolder({
           {transforms.map((transform) => (
             <List.Item key={transform.id}>
               <Text component="span">{transform.name}</Text>
-              {showTableNames && hasTable(transform) && (
+              {/* the target, as in the Output table column: the delete drops it whether or not a run created it */}
+              {showTables && (
                 <Text component="span" c="text-secondary">
                   {" "}
                   ({getTargetTableName(transform.target)})
@@ -176,10 +176,6 @@ function TransformsInFolder({
       </ScrollArea.Autosize>
     </Stack>
   );
-}
-
-function hasTable(transform: Transform) {
-  return transform.target_table_id != null;
 }
 
 function getTargetTableName({ schema, name }: TransformTarget) {

@@ -15,8 +15,6 @@ import type {
   CardType,
   CollectionId,
   PythonTransformTableAliases,
-  Transform,
-  TransformId,
   TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
@@ -1995,7 +1993,7 @@ LIMIT
           targetTable: "deleted_transform_table",
           collectionId: collection.body.id,
         }).then(({ body: transform }) => {
-          runAndWaitForOutputTable(transform.id);
+          H.runTransformAndWaitForSuccess(transform.id);
         });
       });
       H.createTransformCollection({ name: "Delete Tables Too" }).then(
@@ -2005,7 +2003,7 @@ LIMIT
             targetTable: TARGET_TABLE_2,
             collectionId: collection.body.id,
           }).then(({ body: transform }) => {
-            runAndWaitForOutputTable(transform.id);
+            H.runTransformAndWaitForSuccess(transform.id);
           });
         },
       );
@@ -3562,18 +3560,6 @@ function pythonSourceTables(
       schema: TARGET_SCHEMA,
     },
   ];
-}
-
-/**
- * Runs the transform and waits until its output table is synced: the run reports "succeeded" before the sync
- * sets `target_table_id`, which the folder delete dialog reads.
- */
-function runAndWaitForOutputTable(transformId: TransformId) {
-  H.runTransformAndWaitForSuccess(transformId);
-  H.retryRequest(
-    () => cy.request<Transform>("GET", `/api/transform/${transformId}`),
-    ({ body }) => body.target_table_id != null,
-  );
 }
 
 function visitTableQuestion({
