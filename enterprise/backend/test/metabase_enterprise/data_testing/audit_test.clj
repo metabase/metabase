@@ -118,3 +118,40 @@
           (finally
             (data-testing.run-tracking/finish-run! run-id :timeout)
             (t2/delete! :model/DataTestRun :id run-id)))))))
+
+(deftest card-test-audit-events-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card     {card-id :id}      {}
+                   :model/CardTest {card-test-id :id} {:card_id     card-id
+                                                       :creator_id  (mt/user->id :crowberto)
+                                                       :name        "Original"
+                                                       :description "Checks output"}]
+      (testing "create"
+        (is (= {:model_id card-test-id
+                :user_id  (mt/user->id :crowberto)
+                :details  {:card_id     card-id
+                           :name        "Original"
+                           :description "Checks output"}
+                :topic    :card-test-create
+                :model    "CardTest"}
+               (mt/latest-audit-log-entry :card-test-create card-test-id))))
+      (testing "update"
+        (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
+        (is (= {:model_id card-test-id
+                :user_id  (mt/user->id :crowberto)
+                :details  {:card_id     card-id
+                           :name        "Renamed"
+                           :description "Checks output"}
+                :topic    :card-test-update
+                :model    "CardTest"}
+               (mt/latest-audit-log-entry :card-test-update card-test-id))))
+      (testing "delete"
+        (t2/delete! :model/CardTest :id card-test-id)
+        (is (= {:model_id card-test-id
+                :user_id  (mt/user->id :crowberto)
+                :details  {:card_id     card-id
+                           :name        "Renamed"
+                           :description "Checks output"}
+                :topic    :card-test-delete
+                :model    "CardTest"}
+               (mt/latest-audit-log-entry :card-test-delete card-test-id)))))))

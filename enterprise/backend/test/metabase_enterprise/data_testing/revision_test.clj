@@ -2,8 +2,13 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models]
+   [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.revisions.core :as revisions]
    [metabase.revisions.events]
    [metabase.revisions.models.revision.diff :as revision.diff]
@@ -121,3 +126,125 @@
                         (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" transform-test-id))))
                 (is (=? [{:level :warn, :message #".*TransformTest.*"}]
                         (messages)))))))))))
+
+;;; ------------------------------------------------- Card tests -------------------------------------------------
+
+(deftest card-test-revision-serialization-test
+  (let [card-test (t2/instance :model/CardTest
+                               {:id           1
+                                :entity_id    "test-entity-id"
+                                :card_id      2
+                                :creator_id   3
+                                :name         "No nulls"
+                                :description  "Checks the output"
+                                :inputs       []
+                                :expectations []
+                                :created_at   :not-revisioned
+                                :updated_at   :not-revisioned})]
+    (is (= {:card_id      2
+            :name         "No nulls"
+            :description  "Checks the output"
+            :inputs       []
+            :expectations []}
+           (revisions/serialize-instance :model/CardTest 1 card-test)))))
+
+(deftest card-test-create-and-update-revisions-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card     {card-id :id}      {}
+                   :model/CardTest {card-test-id :id} {:card_id    card-id
+                                                       :creator_id (mt/user->id :crowberto)
+                                                       :name       "Original"}]
+      (testing "creation records the initial revision"
+        (let [[creation :as revisions] (revisions/revisions :model/CardTest card-test-id)]
+          (is (= 1 (count revisions)))
+          (is (=? {:is_creation true
+                   :user_id     (mt/user->id :crowberto)
+                   :object      {:card_id card-id :name "Original"}}
+                  creation))))
+      (testing "an update records the changed editable fields"
+        (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
+        (let [[updated creation] (revisions/revisions :model/CardTest card-test-id)]
+          (is (=? {:is_creation false :object {:name "Renamed"}} updated))
+          (is (=? {:is_creation true :object {:name "Original"}} creation)))))))
+
+(deftest card-test-revision-revert-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card     {card-id :id}      {}
+                   :model/CardTest {card-test-id :id} {:card_id card-id
+                                                       :name    "Original"}]
+      (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
+      (let [creation (last (revisions/revisions :model/CardTest card-test-id))]
+        (mt/user-http-request :crowberto :post 200 "revision/revert"
+                              {:entity      "card-test"
+                               :id          card-test-id
+                               :revision_id (:id creation)})
+        (testing "the saved test is restored"
+          (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id))))
+        (testing "the reversion is recorded after the model update revision"
+          (let [[reversion reverted-update update creation :as all]
+                (revisions/revisions :model/CardTest card-test-id)]
+            (is (= 4 (count all)))
+            (is (=? {:is_reversion true :object {:name "Original"}} reversion))
+            (is (=? {:is_reversion false :object {:name "Original"}} reverted-update))
+            (is (=? {:object {:name "Renamed"}} update))
+            (is (=? {:is_creation true} creation))))))))
+
+(deftest card-test-revert-checks-the-reverted-state-test
+  (testing "Reverting a card test to a revision about a card the user may not edit is refused"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {writable :id}  {}
+                     :model/Collection {readable :id}  {}
+                     :model/Card       {old-card :id}  {:collection_id readable
+                                                        :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                     :model/Card       {new-card :id}  {:collection_id writable
+                                                        :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/CardTest {card-test-id :id} {:card_id old-card}]
+            (t2/update! :model/CardTest :id card-test-id {:card_id new-card})
+            (let [creation (last (revisions/revisions :model/CardTest card-test-id))]
+              (testing "premise: rasta may edit the test as it is now"
+                (mt/with-current-user (mt/user->id :rasta)
+                  (is (true? (boolean (mi/can-write? :model/CardTest card-test-id))))))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:entity      "card-test"
+                                            :id          card-test-id
+                                            :revision_id (:id creation)})))
+              (testing "the test still covers the card rasta may edit"
+                (is (= new-card (t2/select-one-fn :card_id :model/CardTest :id card-test-id)))))))))))
+
+(deftest card-test-runs-are-not-revisioned-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card     {card-id :id}      {}
+                   :model/CardTest {card-test-id :id} {:card_id card-id}]
+      (let [{run-id :id} (data-testing.run-tracking/start-run! :card card-test-id (mt/user->id :crowberto))]
+        (try
+          (data-testing.run-tracking/finish-run! run-id :passed)
+          (is (zero? (t2/count :model/Revision :model "DataTestRun" :model_id run-id)))
+          (finally
+            (t2/delete! :model/DataTestRun :id run-id)))))))
+
+(deftest card-test-revision-history-api-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card     {card-id :id}      {}
+                   :model/CardTest {card-test-id :id} {:card_id card-id
+                                                       :name    "Original"}]
+      (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
+      (let [expected [{:is_creation false
+                       :description "renamed this Card test from \"Original\" to \"Renamed\"."}
+                      {:is_creation true
+                       :description "created this."}]]
+        (testing "GET /api/revision?entity=card-test"
+          (is (=? expected
+                  (mt/user-http-request :crowberto :get 200 "revision" :entity "card-test" :id card-test-id))))
+        (testing "GET /api/revision/card-test/:id"
+          (is (=? expected
+                  (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" card-test-id)))))
+        (testing "a user who cannot read the card cannot read the history"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Collection {coll-id :id} {}]
+              (t2/update! :model/Card :id card-id {:collection_id coll-id})
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 "revision" :entity "card-test" :id card-test-id))))))))))
