@@ -347,19 +347,19 @@
   "The schema to fill in for a null-schema reference to one of `tables`, which share a name, or nil to keep the null.
 
   A lone table decides it.
-  Among several, a schema in `named`, the schemas the query gives that name elsewhere, wins when there is one.
-  Otherwise the one in `default-schema` wins, as it does for an unqualified name in SQL.
+  Among several, the one table in `default-schema` or in `named`, the schemas the query gives that name elsewhere,
+  wins, as an unqualified name in SQL resolves to the default schema.
+  When those point at different tables, the reference could mean either, so the null stays.
   When a table without a schema is among them, the null already matches it exactly, so the null stays."
   [named default-schema tables]
   (let [schemas (map :schema tables)]
     (when (every? some? schemas)
       (if-not (next schemas)
         (first schemas)
-        (let [in-query (filter #(contains? named %) schemas)]
-          (case (count in-query)
-            0 (some #{default-schema} schemas)
-            1 (first in-query)
-            nil))))))
+        (let [preferred (cond-> (set named) default-schema (conj default-schema))
+              picks     (filter #(contains? preferred %) schemas)]
+          (when-not (next picks)
+            (first picks)))))))
 
 (defn- inferred-schemas
   "A map from each table name that `fks` give a null schema to the schema [[inferred-schema]] picks for it, for the

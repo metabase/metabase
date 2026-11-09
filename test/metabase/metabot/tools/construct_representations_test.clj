@@ -256,7 +256,8 @@
                    :model/Field    _          {:name "status" :table_id (:id raw-orders) :base_type :type/Text}
                    :model/Table    _          {:name "orders" :schema "clean" :db_id (:id db)}
                    :model/Table    _          {:name "events" :schema "raw" :db_id (:id db)}
-                   :model/Table    _          {:name "events" :schema "staging" :db_id (:id db)}
+                   :model/Table    events     {:name "events" :schema "staging" :db_id (:id db)}
+                   :model/Field    _          {:name "kind" :table_id (:id events) :base_type :type/Text}
                    :model/Table    _          {:name "items" :schema nil :db_id (:id db)}
                    :model/Table    _          {:name "items" :schema "clean" :db_id (:id db)}
                    :model/Table    _          {:name "secrets" :schema "raw" :db_id (:id db) :visibility_type :hidden}]
@@ -278,8 +279,9 @@
         (is (=? {:lone       {"source-table" [db-name "lever_data" "user"]
                               "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
                  :default    {"source-table" [db-name "clean" "orders"]}
-                 :named      {"source-table" [db-name "raw" "orders"]
-                              "breakout"     [["field" {} [db-name "raw" "orders" "status"]]]}
+                 :named      {"source-table" [db-name "staging" "events"]
+                              "breakout"     [["field" {} [db-name "staging" "events" "kind"]]]}
+                 :conflict   :unknown-table
                  :ambiguous  :unknown-table
                  :schemaless {"source-table" [db-name nil "items"]}
                  :hidden     :unknown-table
@@ -287,7 +289,8 @@
                 (mt/with-current-user (mt/user->id :crowberto)
                   {:lone       (construct [nil "user"] [nil "user" "email"])
                    :default    (construct [nil "orders"])
-                   :named      (construct ["raw" "orders"] [nil "orders" "status"])
+                   :named      (construct ["staging" "events"] [nil "events" "kind"])
+                   :conflict   (construct ["raw" "orders"] [nil "orders" "status"])
                    :ambiguous  (construct [nil "events"])
                    :schemaless (construct [nil "items"])
                    :hidden     (construct [nil "secrets"])
