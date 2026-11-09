@@ -748,6 +748,34 @@
               (is (= ["PUBLIC" table-name column-name]
                      (some-> fk json/decode rest vec))))))))))
 
+(deftest adhoc-viewing-context-escapes-look-alike-quotes-in-portable-fk-test
+  (testing "the portable FK escapes double-quote look-alikes, as the quoted name does"
+    (let [column-name (str "A" (char 0x201D) " display name " (char 0x201C) "B")]
+      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC" :name "LOOK_ALIKE" :active true}
+                     :model/Field {field-id :id} {:table_id      table-id
+                                                  :name          column-name
+                                                  :display_name  "Column"
+                                                  :base_type     :type/Text
+                                                  :database_type "VARCHAR"}]
+        (mt/with-test-user :crowberto
+          (let [out  (user-context/format-viewing-context
+                      {:user_is_viewing [{:type  "adhoc"
+                                          :query (legacy-table-query table-id)}]})
+                line (some #(when (str/includes? % "display name \"Column\"") %) (str/split-lines out))
+                fk   (second (re-find #"portable FK (\[.*\])" (str line)))]
+            (is (some? fk))
+            (is (not (re-find #"[\u201C\u201D]" (str fk))))
+            (testing "the escaped FK, copied into a tool call, resolves to the same column"
+              (let [result (construct/execute-representations-query
+                            (walk/keywordize-keys
+                             {"lib/type" "mbql/query"
+                              "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                           "source-table" (vec (take 3 (json/decode fk)))
+                                           "aggregation"  [["count" {}]]
+                                           "breakout"     [["field" {} (json/decode fk)]]}]}))]
+                (is (= field-id
+                       (-> result :structured-output :query :stages first :breakout first last)))))))))))
+
 (deftest adhoc-viewing-context-lists-joined-columns-with-join-alias-test
   (testing "a joined column is listed with its join alias, also when the join returns no fields"
     (let [mp    (mt/metadata-provider)

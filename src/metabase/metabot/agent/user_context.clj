@@ -313,7 +313,7 @@
        ", display name " (quoting/quoted (lib/display-name query -1 column :long))
        ", " (u/qualified-name (or (:effective-type column) (:base-type column)))
        (when-let [portable-fk (column-portable-fk query column)]
-         (str ", portable FK " (quoting/escape-code-points (json/encode portable-fk) quoting/invisible-code-point?)))))
+         (str ", portable FK " (quoting/escape-code-points (json/encode portable-fk) quoting/escaped-code-point?)))))
 
 (defn- column-group
   "The group of `column` in the column list: `[:source]`, `[:expressions]`, or `[:join alias]`."
