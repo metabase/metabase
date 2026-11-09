@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
-import { Box, Icon } from "metabase/ui";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 import type {
   Collection,
   DatabaseId,
@@ -32,8 +32,8 @@ interface LibraryPickerProps {
 }
 
 /**
- * Offers the Library's Data and Metrics folders like the bucket step, then
- * opens the chosen one in `SavedEntityPicker`. A folder without tables or
+ * Offers the Library's Data and Metrics collections like the bucket step, then
+ * opens the chosen one in `SavedEntityPicker`. A collection without tables or
  * metrics isn't offered, and when only one is left it opens straight away.
  */
 export function LibraryPicker({
@@ -47,7 +47,7 @@ export function LibraryPicker({
   const { data: collections } = useListCollectionsTreeQuery(
     COLLECTION_TREE_REQUEST,
   );
-  const [selectedFolderId, setSelectedFolderId] =
+  const [selectedCollectionKindId, setSelectedCollectionKindId] =
     useState<DataTypeInfoItem["id"]>();
 
   if (!collections) {
@@ -55,24 +55,30 @@ export function LibraryPicker({
   }
 
   const libraryNode = findCollectionById(collections, libraryCollection.id);
-  const folders = getLibraryFolders(libraryNode?.children ?? [], {
-    canSelectMetric,
-  });
-  const selectedFolder =
-    folders.length === 1
-      ? folders[0]
-      : folders.find((folder) => folder.infoItem.id === selectedFolderId);
+  const collectionKinds = getLibraryCollectionKinds(
+    libraryNode?.children ?? [],
+    { canSelectMetric },
+  );
+  const selectedCollectionKind =
+    collectionKinds.length === 1
+      ? collectionKinds[0]
+      : collectionKinds.find(
+          (collectionKind) =>
+            collectionKind.infoItem.id === selectedCollectionKindId,
+        );
 
-  if (selectedFolder) {
+  if (selectedCollectionKind) {
     return (
       <SavedEntityPicker
-        type={selectedFolder.type}
-        libraryFolder={selectedFolder.collection}
+        type={selectedCollectionKind.type}
+        libraryCollections={selectedCollectionKind.collections}
         selectedSource={selectedSource}
         databaseId={databaseId}
         onSelect={onSelect}
         onBack={
-          folders.length === 1 ? onBack : () => setSelectedFolderId(undefined)
+          collectionKinds.length === 1
+            ? onBack
+            : () => setSelectedCollectionKindId(undefined)
         }
       />
     );
@@ -81,50 +87,63 @@ export function LibraryPicker({
   return (
     <Box>
       {onBack && (
-        <a
+        <UnstyledButton
           className={SavedEntityPickerS.BackButton}
           onClick={onBack}
           data-testid="library-picker-back-navigation"
         >
-          <Icon name="chevronleft" className={CS.mr1} />
+          <Icon name="chevronleft" className={CS.mr1} aria-hidden />
           {libraryCollection.name}
-        </a>
+        </UnstyledButton>
       )}
       <Box p="sm">
         <DataSelectorDataBucketPicker
-          dataTypes={folders.map((folder) => folder.infoItem)}
-          onChangeDataBucket={setSelectedFolderId}
+          dataTypes={collectionKinds.map(
+            (collectionKind) => collectionKind.infoItem,
+          )}
+          onChangeDataBucket={setSelectedCollectionKindId}
         />
       </Box>
     </Box>
   );
 }
 
-// Only Data and Metrics hold data sources. Empty subfolders inside them are left
-// out by `buildCollectionTree`, in `SavedEntityPicker.tsx`.
-function getLibraryFolders(
+// Only Data and Metrics hold data sources. Empty subcollections inside them are
+// left out by `buildCollectionTree`, in `SavedEntityPicker.tsx`. When the user
+// can't read the Data or Metrics collection, the collection tree lifts its
+// readable subcollections into the Library, so a kind can be several collections.
+function getLibraryCollectionKinds(
   children: Collection[],
   { canSelectMetric }: { canSelectMetric: boolean },
 ) {
-  return children.flatMap((collection) => {
-    const folder = getLibraryFolder(collection);
-    const contents = [...(collection.here ?? []), ...(collection.below ?? [])];
-    const isSelectable =
-      folder != null &&
-      contents.includes(folder.type) &&
-      (folder.type !== "metric" || canSelectMetric);
+  return LIBRARY_COLLECTION_KINDS.flatMap(
+    ({ collectionType, type, infoItem }) => {
+      if (type === "metric" && !canSelectMetric) {
+        return [];
+      }
 
-    return isSelectable ? [{ ...folder, collection }] : [];
-  });
+      const collections = children.filter(
+        (collection) =>
+          collection.type === collectionType &&
+          [...(collection.here ?? []), ...(collection.below ?? [])].includes(
+            type,
+          ),
+      );
+
+      return collections.length > 0 ? [{ type, infoItem, collections }] : [];
+    },
+  );
 }
 
-function getLibraryFolder(collection: Collection) {
-  switch (collection.type) {
-    case "library-data":
-      return { type: "table" as const, infoItem: LIBRARY_DATA_INFO_ITEM };
-    case "library-metrics":
-      return { type: "metric" as const, infoItem: LIBRARY_METRICS_INFO_ITEM };
-    default:
-      return null;
-  }
-}
+const LIBRARY_COLLECTION_KINDS = [
+  {
+    collectionType: "library-data",
+    type: "table",
+    infoItem: LIBRARY_DATA_INFO_ITEM,
+  },
+  {
+    collectionType: "library-metrics",
+    type: "metric",
+    infoItem: LIBRARY_METRICS_INFO_ITEM,
+  },
+] as const;

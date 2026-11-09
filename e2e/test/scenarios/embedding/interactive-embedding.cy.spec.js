@@ -1321,6 +1321,55 @@ describe("scenarios > embedding > full app", () => {
           cy.findByText("Library").should("not.exist");
         });
       });
+
+      it("should offer every Library subfolder the user can read when they can't read Data itself", () => {
+        cy.signInAsAdmin();
+        H.unpublishTables({ table_ids: [ORDERS_ID] });
+        cy.request("GET", "/api/ee/library").then(({ body }) => {
+          const dataCollection = body.effective_children.find(
+            (collection) => collection.type === "library-data",
+          );
+          H.createCollection({
+            name: "Client A",
+            parent_id: dataCollection.id,
+          }).then(({ body: clientA }) => {
+            H.publishTables({
+              table_ids: [PRODUCTS_ID],
+              collection_id: clientA.id,
+            });
+            H.createCollection({
+              name: "Client B",
+              parent_id: dataCollection.id,
+            }).then(({ body: clientB }) => {
+              H.publishTables({
+                table_ids: [ORDERS_ID],
+                collection_id: clientB.id,
+              });
+              cy.updateCollectionGraph({
+                [ALL_USERS_GROUP]: {
+                  [dataCollection.id]: "none",
+                  [clientA.id]: "read",
+                  [clientB.id]: "read",
+                },
+              });
+            });
+          });
+        });
+        cy.signInAsNormalUser();
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+
+        H.popover().within(() => {
+          cy.findByText("Library").click();
+          // Client A and Client B share one "Data" entry, not one each
+          cy.findAllByText("Data").should("have.length", 1);
+          cy.findByText("Client A").should("be.visible");
+          cy.findByText("Client B").click();
+          cy.findByText("Orders").click();
+        });
+        cy.wait("@getTableMetadata");
+
+        H.getNotebookStep("data").findByText("Orders").should("be.visible");
+      });
     });
   });
 

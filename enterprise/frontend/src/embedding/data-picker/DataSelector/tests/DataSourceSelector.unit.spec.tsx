@@ -125,6 +125,53 @@ const LIBRARY_COLLECTION_WITH_ONLY_TABLES = createMockCollection({
   ],
 });
 
+// The user can't read the Library's Data folder, so the collection tree lifts
+// its readable subfolders into the Library.
+const CLIENT_A_COLLECTION = createMockCollection({
+  id: 6470,
+  name: "Client A",
+  type: "library-data",
+  here: ["table"],
+});
+const CLIENT_B_COLLECTION = createMockCollection({
+  id: 6471,
+  name: "Client B",
+  type: "library-data",
+  here: ["table"],
+});
+const LIBRARY_COLLECTION_WITH_UNREADABLE_DATA = createMockCollection({
+  ...LIBRARY_COLLECTION,
+  below: ["table", "metric"],
+  children: [
+    CLIENT_A_COLLECTION,
+    CLIENT_B_COLLECTION,
+    LIBRARY_METRICS_COLLECTION,
+  ],
+});
+
+// Same for the Metrics folder.
+const TEAM_A_METRICS_COLLECTION = createMockCollection({
+  id: 6472,
+  name: "Team A",
+  type: "library-metrics",
+  here: ["metric"],
+});
+const TEAM_B_METRICS_COLLECTION = createMockCollection({
+  id: 6473,
+  name: "Team B",
+  type: "library-metrics",
+  here: ["metric"],
+});
+const LIBRARY_COLLECTION_WITH_UNREADABLE_METRICS = createMockCollection({
+  ...LIBRARY_COLLECTION,
+  below: ["table", "metric"],
+  children: [
+    LIBRARY_DATA_COLLECTION,
+    TEAM_A_METRICS_COLLECTION,
+    TEAM_B_METRICS_COLLECTION,
+  ],
+});
+
 const WAREHOUSE_DB_ID = 100;
 const WAREHOUSE_PAYMENTS_TABLE_ID = 1000;
 const WAREHOUSE_INVOICES_TABLE_ID = 1001;
@@ -251,6 +298,50 @@ function setup({
           id: getNextId(),
           name: "Finance Orders",
           model: "table",
+          database_id: SAMPLE_DB_ID,
+        }),
+      ],
+    });
+    setupCollectionItemsEndpoint({
+      collection: CLIENT_A_COLLECTION,
+      collectionItems: [
+        createMockCollectionItem({
+          id: getNextId(),
+          name: "Client A Orders",
+          model: "table",
+          database_id: SAMPLE_DB_ID,
+        }),
+      ],
+    });
+    setupCollectionItemsEndpoint({
+      collection: CLIENT_B_COLLECTION,
+      collectionItems: [
+        createMockCollectionItem({
+          id: getNextId(),
+          name: "Client B Accounts",
+          model: "table",
+          database_id: SAMPLE_DB_ID,
+        }),
+      ],
+    });
+    setupCollectionItemsEndpoint({
+      collection: TEAM_A_METRICS_COLLECTION,
+      collectionItems: [
+        createMockCollectionItem({
+          id: getNextId(),
+          name: "Team A Revenue",
+          model: "metric",
+          database_id: SAMPLE_DB_ID,
+        }),
+      ],
+    });
+    setupCollectionItemsEndpoint({
+      collection: TEAM_B_METRICS_COLLECTION,
+      collectionItems: [
+        createMockCollectionItem({
+          id: getNextId(),
+          name: "Team B Churn",
+          model: "metric",
           database_id: SAMPLE_DB_ID,
         }),
       ],
@@ -834,6 +925,48 @@ describe("DataSourceSelector", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should offer one Data folder holding every readable subfolder when the user can't read Data itself", async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION_WITH_UNREADABLE_DATA,
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+
+      expect(
+        await screen.findAllByTestId("data-bucket-list-item"),
+      ).toHaveLength(2);
+      await userEvent.click(screen.getByText("Data"));
+
+      const tree = await screen.findByTestId("saved-entity-collection-tree");
+      expect(within(tree).getByText("Client A")).toBeInTheDocument();
+      expect(within(tree).queryByText("Data")).not.toBeInTheDocument();
+      expect(await screen.findByText("Client A Orders")).toBeInTheDocument();
+      await userEvent.click(within(tree).getByText("Client B"));
+      expect(await screen.findByText("Client B Accounts")).toBeInTheDocument();
+    });
+
+    it("should offer one Metrics folder holding every readable subfolder when the user can't read Metrics itself", async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION_WITH_UNREADABLE_METRICS,
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+
+      expect(
+        await screen.findAllByTestId("data-bucket-list-item"),
+      ).toHaveLength(2);
+      await userEvent.click(screen.getByText("Metrics"));
+
+      const tree = await screen.findByTestId("saved-entity-collection-tree");
+      expect(within(tree).getByText("Team A")).toBeInTheDocument();
+      expect(within(tree).queryByText("Metrics")).not.toBeInTheDocument();
+      expect(await screen.findByText("Team A Revenue")).toBeInTheDocument();
+      await userEvent.click(within(tree).getByText("Team B"));
+      expect(await screen.findByText("Team B Churn")).toBeInTheDocument();
+    });
+
     it("should show the Library subfolders that hold tables", async () => {
       setup({ ...setupOpts, libraryCollection: LIBRARY_COLLECTION });
 
@@ -912,6 +1045,40 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Raw Data")).toBeInTheDocument();
       expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("library-picker-back-navigation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should name the Library back link by its label only", async () => {
+      setup({
+        libraryCollection: LIBRARY_COLLECTION,
+        availableModels: ["table", "card"],
+        entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+
+      expect(
+        await screen.findByRole("button", { name: "Library" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should return to the bucket step when pressing Enter on the Library back link", async () => {
+      setup({
+        libraryCollection: LIBRARY_COLLECTION,
+        availableModels: ["table", "card"],
+        entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+      await screen.findByTestId("library-picker-back-navigation");
+      // focus the "‹ Library" back link
+      await userEvent.tab();
+      expect(screen.getByRole("button", { name: "Library" })).toHaveFocus();
+      await userEvent.keyboard("{Enter}");
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
       expect(
         screen.queryByTestId("library-picker-back-navigation"),
       ).not.toBeInTheDocument();
