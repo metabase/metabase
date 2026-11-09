@@ -88,6 +88,17 @@
         (mt/user-http-request :crowberto :post 404 "ee/card-test/run"
                               {:card {:dataset_query (:dataset_query (card))} :test (dissoc (body card-id) :card_id)})))))
 
+(deftest a-test-of-a-missing-card-is-refused-as-forbidden-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card     {card-id :id} (card)
+                   :model/CardTest {test-id :id} {:card_id card-id :inputs inputs :expectations expectations}]
+      (let [missing-id (inc (t2/select-one-fn :max-id [:model/Card [:%max.id :max-id]]))]
+        (testing "even for an admin, the permission check refuses a card that does not exist"
+          (mt/user-http-request :crowberto :post 403 "ee/card-test" (body missing-id))
+          (mt/user-http-request :crowberto :put 403 (str "ee/card-test/" test-id) {:card_id missing-id}))
+        (testing "control: the same requests on the existing card succeed"
+          (mt/user-http-request :crowberto :put 200 (str "ee/card-test/" test-id) {:card_id card-id}))))))
+
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Card     {card-id :id} (card)

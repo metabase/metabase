@@ -22,13 +22,11 @@
   (data-testing.errors/refusing "card-test" thunk))
 
 (mu/defn- validate-test! :- :nil
-  "Refuse a test of the Card `card-id` with `inputs` and `expectations` unless it could run. 404 when there is no such
-  Card."
+  "Refuse a test of the Card `card-id` with `inputs` and `expectations` unless it could run."
   [card-id      :- ms/PositiveInt
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
-  (let [card (api/check-404 (data-testing.db/card card-id))]
-    (refusing #(data-testing.runner/validate-test :card card inputs expectations))))
+  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) inputs expectations)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
   "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio
