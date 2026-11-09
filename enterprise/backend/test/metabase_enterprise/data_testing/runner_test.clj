@@ -109,7 +109,8 @@
 
 (deftest run-transform-test-expectation-after-a-warehouse-error-test
   (testing "an expectation whose query fails at the warehouse does not change the result of the next one"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    ;; Redshift rejects SAVEPOINT, so there a failed statement still aborts the rest of the run.
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/testing) :redshift)
       (with-people-transform
         (fn [schema table transform]
           (let [output   (str schema ".people_summary")
