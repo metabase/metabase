@@ -14,7 +14,6 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -79,8 +78,6 @@ const setup = ({
 
   const metadata = createMockMetadataFromState(state);
 
-  const databaseMetadata = checkNotNull(metadata.database(database.id));
-
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
   setupParameterValuesEndpoints(parameterValues);
@@ -92,8 +89,7 @@ const setup = ({
   renderWithProviders(
     <TagEditorParam
       tag={tag}
-      database={databaseMetadata}
-      databases={metadata.databasesList()}
+      databaseId={database.id}
       parameter={parameter}
       originalQuestion={
         originalCard ? new Question(originalCard, metadata) : undefined

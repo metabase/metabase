@@ -408,10 +408,12 @@ describe("Question", () => {
 
       it("questions that differ only by randomized idents are considered equal", () => {
         const question1 = Question.create({
+          metadata: createMockMetadata(),
           DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
           DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });
         const question2 = Question.create({
+          metadata: createMockMetadata(),
           DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
           DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });
@@ -420,10 +422,12 @@ describe("Question", () => {
 
       it("questions that differ by query only are not considered equal", () => {
         const question1 = Question.create({
+          metadata: createMockMetadata(),
           DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
           DEPRECATED_RAW_MBQL_tableId: PRODUCTS_ID,
         });
         const question2 = Question.create({
+          metadata: createMockMetadata(),
           DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
           DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });

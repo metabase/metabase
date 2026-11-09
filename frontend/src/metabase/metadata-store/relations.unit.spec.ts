@@ -13,7 +13,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
-  getMetadata,
   getShallowDatabaseSchemas,
   getShallowDatabaseTables,
   getShallowDatabases,
@@ -78,7 +77,6 @@ function setup() {
 
   return {
     state,
-    metadata: getMetadata(state),
     databases: getShallowDatabases(state),
     schemas: getShallowSchemas(state),
     tables: getShallowTables(state),
@@ -91,42 +89,29 @@ function setup() {
   };
 }
 
-describe("the store's relation selectors", () => {
-  it("should resolve each relation the way the v1 Metadata object hydrates it", () => {
-    const {
-      metadata,
-      databaseSchemas,
-      databaseTables,
-      schemaTables,
-      tableFields,
-    } = setup();
-    const database = metadata.database(MULTI_SCHEMA_DB_ID);
+describe("store relation selectors", () => {
+  it("should resolve each relation from normalized records", () => {
+    const { databaseSchemas, databaseTables, schemaTables, tableFields } =
+      setup();
     const [firstSchema, secondSchema] = databaseSchemas(MULTI_SCHEMA_DB_ID);
 
-    expect(ids(databaseSchemas(MULTI_SCHEMA_DB_ID))).toEqual(
-      ids(database?.getSchemas()),
-    );
-    expect(ids(databaseTables(MULTI_SCHEMA_DB_ID))).toEqual(
-      ids(database?.getTables()),
-    );
-    expect(ids(schemaTables(secondSchema.id))).toEqual(
-      ids(metadata.schema(secondSchema.id)?.tables),
-    );
-    expect(ids(tableFields(ORDERS_ID))).toEqual(
-      ids(metadata.table(ORDERS_ID)?.getFields()),
-    );
-
-    // Guards the comparisons above: two empty lists would also match.
     expect(firstSchema.name).toBe("first");
+    expect(secondSchema.name).toBe("second");
+    expect(ids(databaseTables(MULTI_SCHEMA_DB_ID))).toEqual([101, 102]);
     expect(ids(schemaTables(secondSchema.id))).toEqual([102]);
+    expect(ids(tableFields(ORDERS_ID))).toEqual(
+      entities.tables[ORDERS_ID].fields,
+    );
     expect(tableFields(ORDERS_ID).length).toBeGreaterThan(0);
   });
 
-  it("should leave out hidden tables, like the v1 Metadata object", () => {
-    const { metadata, tables } = setup();
+  it("should leave out hidden tables", () => {
+    const { tables, databaseTables } = setup();
 
     expect(tables[HIDDEN_TABLE_ID]).toBeUndefined();
-    expect(metadata.table(HIDDEN_TABLE_ID)).toBeNull();
+    expect(ids(databaseTables(MULTI_SCHEMA_DB_ID))).not.toContain(
+      HIDDEN_TABLE_ID,
+    );
   });
 
   it("should hand out the store's normalized records", () => {

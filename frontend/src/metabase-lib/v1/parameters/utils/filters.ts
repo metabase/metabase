@@ -109,7 +109,7 @@ export function columnFilterForParameter(
       isID: Lib.isID(column),
       isAddress: Lib.isAddress(column),
       isTemporalBucketable: Lib.isTemporalBucketable(query, stageIndex, column),
-      hasFieldValues: Lib.fieldValuesSearchInfo(query, column).hasFieldValues,
+      hasFieldValues: Lib.fieldSearchInfo(query, column).hasFieldValues,
     });
 }
 
@@ -133,7 +133,7 @@ export function dimensionTagFilterForParameter(
         isID: Lib.isID(column),
         isAddress: Lib.isAddress(column),
         isTemporalBucketable: false,
-        hasFieldValues: Lib.fieldValuesSearchInfo(query, column).hasFieldValues,
+        hasFieldValues: Lib.fieldSearchInfo(query, column).hasFieldValues,
       })
     );
   };

@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_PROVIDER,
@@ -117,9 +116,7 @@ function setup({
     questions: cards,
   });
 
-  const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
-
-  return { metadata, ordersTable };
+  return { metadata };
 }
 
 describe("data model utils", () => {
@@ -133,14 +130,14 @@ describe("data model utils", () => {
 
     describe("structured queries", () => {
       it("returns true for regular questions", () => {
-        const { ordersTable } = setup();
-        const question = ordersTable.question();
+        const { metadata } = setup();
+        const question = new Question(createSavedStructuredCard(), metadata);
         expect(checkCanBeModel(question)).toBe(true);
       });
 
       it("returns true if database does not support nested queries", () => {
-        const { ordersTable } = setup({ hasNestedQueriesSupport: false });
-        const question = ordersTable.question();
+        const { metadata } = setup({ hasNestedQueriesSupport: false });
+        const question = new Question(createSavedStructuredCard(), metadata);
         expect(checkCanBeModel(question)).toBe(true);
       });
     });
@@ -150,7 +147,7 @@ describe("data model utils", () => {
         const card = createSavedNativeCard();
         const { metadata } = setup({ cards: [card] });
 
-        const question = checkNotNull(metadata.question(card.id));
+        const question = new Question(card, metadata);
 
         expect(checkCanBeModel(question)).toBe(true);
       });
@@ -162,7 +159,7 @@ describe("data model utils", () => {
           hasNestedQueriesSupport: false,
         });
 
-        const question = checkNotNull(metadata.question(card.id));
+        const question = new Question(card, metadata);
 
         expect(checkCanBeModel(question)).toBe(true);
       });
@@ -175,7 +172,7 @@ describe("data model utils", () => {
         });
         const { metadata } = setup({ cards: [card] });
 
-        const question = checkNotNull(metadata.question(card.id));
+        const question = new Question(card, metadata);
 
         expect(checkCanBeModel(question)).toBe(true);
       });
@@ -189,7 +186,7 @@ describe("data model utils", () => {
           });
           const { metadata } = setup({ cards: [card] });
 
-          const question = checkNotNull(metadata.question(card.id));
+          const question = new Question(card, metadata);
 
           expect(checkCanBeModel(question)).toBe(false);
         });
@@ -204,7 +201,7 @@ describe("data model utils", () => {
         });
         const { metadata } = setup({ cards: [card] });
 
-        const question = checkNotNull(metadata.question(card.id));
+        const question = new Question(card, metadata);
 
         expect(checkCanBeModel(question)).toBe(false);
       });
@@ -228,7 +225,7 @@ describe("data model utils", () => {
       const card = createNativeModelCard();
       const { metadata } = setup({ cards: [card] });
 
-      const question = checkNotNull(metadata.question(card.id));
+      const question = new Question(card, metadata);
 
       expect(isAdHocModelOrMetricQuestion(question, question)).toBe(false);
     });
@@ -236,7 +233,7 @@ describe("data model utils", () => {
     it("identifies when model goes into ad-hoc exploration mode", () => {
       const modelCard = createStructuredModelCard({ id: 1 });
       const { metadata } = setup({ cards: [modelCard] });
-      const originalQuestion = checkNotNull(metadata.question(modelCard.id));
+      const originalQuestion = new Question(modelCard, metadata);
       const question = originalQuestion.composeQuestion();
 
       expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
@@ -252,7 +249,7 @@ describe("data model utils", () => {
       });
       const { metadata } = setup({ cards: [modelCard] });
 
-      const originalQuestion = checkNotNull(metadata.question(modelCard.id));
+      const originalQuestion = new Question(modelCard, metadata);
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
@@ -268,7 +265,7 @@ describe("data model utils", () => {
       });
       const { metadata } = setup({ cards: [modelCard] });
 
-      const originalQuestion = checkNotNull(metadata.question(modelCard.id));
+      const originalQuestion = new Question(modelCard, metadata);
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(
@@ -284,7 +281,7 @@ describe("data model utils", () => {
       });
       const { metadata } = setup({ cards: [modelCard] });
 
-      const originalQuestion = checkNotNull(metadata.question(modelCard.id));
+      const originalQuestion = new Question(modelCard, metadata);
       const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelOrMetricQuestion(question, originalQuestion)).toBe(

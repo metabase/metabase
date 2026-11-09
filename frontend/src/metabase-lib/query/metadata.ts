@@ -10,35 +10,6 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-/**
- * We do not have full type-safety into the CLJS of metabase-lib, so
- * we mark objects that are instances of Metadata using this symbol
- * without having to import them here.
- */
-export declare const MetadataSymbol: unique symbol;
-
-/**
- * Structural shape consumed by {@link metadataProvider}. The CLJS-side provider
- * (`metabase.lib.js.metadata/metadata-provider`) only reads these top-level
- * keys and iterates each entry — it does not call any methods on the value.
- *
- * Branded so arbitrary objects do not accidentally satisfy it. Construct a
- * value either by using v1's `Metadata` class (which declares the brand) or
- * via the {@link metadataInput} helper.
- */
-export interface Metadata {
-  readonly [MetadataSymbol]?: void;
-  databases?: Record<string, unknown>;
-  tables?: Record<string, unknown>;
-  fields?: Record<string, unknown>;
-  metrics?: Record<string, unknown>;
-  measures?: Record<string, unknown>;
-  segments?: Record<string, unknown>;
-  questions?: Record<string, unknown>;
-  snippets?: Record<string, unknown>;
-  settings?: object;
-}
-
 import type {
   AggregationClause,
   AggregationClauseDisplayInfo,
@@ -50,8 +21,7 @@ import type {
   BucketDisplayInfo,
   CardDisplayInfo,
   CardMetadata,
-  DatabaseDisplayInfo,
-  DatabaseMetadata,
+  CardPickerInfo,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
@@ -60,6 +30,9 @@ import type {
   ColumnGroup,
   ColumnGroupDisplayInfo,
   ColumnMetadata,
+  ColumnPickerInfo,
+  DatabaseDisplayInfo,
+  DatabaseMetadata,
   DependentItem,
   DrillThru,
   DrillThruDisplayInfo,
@@ -80,11 +53,15 @@ import type {
   SegmentMetadata,
   TableDisplayInfo,
   TableMetadata,
+  TablePickerInfo,
 } from "./types";
+
+declare const JsMetadataSymbol: unique symbol;
+export type JsMetadata = unknown & { _opaque: typeof JsMetadataSymbol };
 
 export function metadataProvider(
   databaseId: DatabaseId | null,
-  metadata: Metadata,
+  metadata: JsMetadata,
 ): MetadataProvider {
   return ML.metadataProvider(databaseId, metadata);
 }
@@ -189,6 +166,21 @@ declare function DisplayInfoFn(
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
 export const displayInfo: typeof DisplayInfoFn = ML.display_info;
 
+declare function PickerInfoFn(
+  query: Query,
+  tableMetadata: TableMetadata,
+): TablePickerInfo;
+declare function PickerInfoFn(
+  query: Query,
+  cardMetadata: CardMetadata,
+): CardPickerInfo;
+declare function PickerInfoFn(
+  query: Query,
+  columnMetadata: ColumnMetadata,
+): ColumnPickerInfo;
+
+export const pickerInfo: typeof PickerInfoFn = ML.picker_info;
+
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   return ML.group_columns(columns);
 }
@@ -273,6 +265,11 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
   return ML.display_info(query, -1, query);
 }
 
+export function databaseDisplayInfo(query: Query): DatabaseDisplayInfo | null {
+  const database = databaseMetadata(query);
+  return database != null ? ML.display_info(query, -1, database) : null;
+}
+
 export function dependentMetadata(
   query: Query,
   cardId: CardId | undefined,
@@ -291,6 +288,14 @@ export function columnUniqueKey(column: ColumnMetadata): string {
 
 export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.column_metadata_QMARK_(arg);
+}
+
+export function isTableMetadata(arg: unknown): arg is TableMetadata {
+  return ML.table_metadata_QMARK_(arg);
+}
+
+export function isCardMetadata(arg: unknown): arg is CardMetadata {
+  return ML.card_metadata_QMARK_(arg);
 }
 
 export function isMetricMetadata(arg: unknown): arg is MetricMetadata {

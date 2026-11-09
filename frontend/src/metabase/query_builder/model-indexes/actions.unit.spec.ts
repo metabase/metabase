@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
+import { createMockMetadata } from "__support__/metadata";
 import { setupModelIndexEndpoints } from "__support__/server-mocks";
 import { Api } from "metabase/api";
 import Question from "metabase-lib/v1/Question";
@@ -20,6 +21,7 @@ import { cleanIndexFlags, updateModelIndexes } from "./actions";
 const createModelWithResultMetadata = (fields: DatasetColumn[]) => {
   return new Question(
     createMockCard({ result_metadata: fields, type: "model" }),
+    createMockMetadata(),
   );
 };
 

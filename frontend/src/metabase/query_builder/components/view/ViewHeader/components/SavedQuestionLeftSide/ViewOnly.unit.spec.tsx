@@ -50,14 +50,7 @@ function setup({
   });
 
   const metadata = createMockMetadataFromState(storeInitialState);
-  const isSaved = card.id != null;
-  const question = isSaved
-    ? metadata.question(card.id)
-    : new Question(card, metadata);
-
-  if (!question) {
-    throw new Error("question is null");
-  }
+  const question = new Question(card, metadata);
 
   renderWithProviders(
     <div>

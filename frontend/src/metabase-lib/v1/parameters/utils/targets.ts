@@ -6,6 +6,7 @@ import type Question from "metabase-lib/v1/Question";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type {
   ConcreteFieldReference,
+  FieldId,
   FieldReference,
   NativeParameterDimensionTarget,
   Parameter,
@@ -85,10 +86,7 @@ export function getParameterTargetField(
       return null;
     }
 
-    return question
-      .metadata()
-      .fieldsList()
-      .find((field) => field.id === fieldId);
+    return findField(query, fieldId);
   }
 
   // mbql queries
@@ -99,19 +97,24 @@ export function getParameterTargetField(
   return null;
 }
 
+function findField(
+  query: Lib.Query,
+  fieldId: FieldId,
+): Lib.ParameterFieldInfo | undefined {
+  const column = Lib.fieldMetadata(query, fieldId);
+  return (column != null && Lib.parameterFieldInfo(query, column)) || undefined;
+}
+
 function getParameterTargetFieldFromFieldRef(
   question: Question,
   parameter: Parameter,
   fieldRef: ConcreteFieldReference,
 ) {
-  const metadata = question.metadata();
-
   const [_type, fieldIdOrName] = fieldRef;
-  const fields = metadata.fieldsList();
   if (typeof fieldIdOrName === "number") {
     // performance optimization:
     // we can match by id directly without finding this column via query
-    return fields.find((field) => field.id === fieldIdOrName);
+    return findField(question.query(), fieldIdOrName);
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
@@ -130,17 +133,8 @@ function getParameterTargetFieldFromFieldRef(
     );
 
     if (columnIndex >= 0) {
-      const column = stageColumns[columnIndex];
-      const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
-
-      if (fieldValuesInfo.fieldId == null) {
-        // the column does not represent to a database field, e.g. coming from an aggregation clause
-        return null;
-      }
-
-      // do not use `metadata.field(id)` because it only works for fields loaded
-      // with the original table, not coming from model metadata
-      return fields.find((field) => field.id === fieldValuesInfo.fieldId);
+      const { id: fieldId } = Lib.pickerInfo(query, stageColumns[columnIndex]);
+      return fieldId != null ? findField(query, fieldId) : null;
     }
   }
 

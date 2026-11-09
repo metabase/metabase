@@ -1397,6 +1397,20 @@
   [arg]
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
+(defn ^:export table-metadata?
+  "Returns true if arg is a Lib table, ie. has `:lib/type :metadata/table`.
+
+  > **Code health:** Healthy"
+  [arg]
+  (and (map? arg) (= :metadata/table (:lib/type arg))))
+
+(defn ^:export card-metadata?
+  "Returns true if arg is a Lib card, ie. has `:lib/type :metadata/card`.
+
+  > **Code health:** Healthy"
+  [arg]
+  (and (map? arg) (= :metadata/card (:lib/type arg))))
+
 (defn ^:export measure-metadata?
   "Returns true if arg is an Lib measure, ie. has `:lib/type :metadata/measure`.
 
@@ -1982,17 +1996,16 @@
   (lib.join/joined-thing a-query a-join))
 
 (defn ^:export picker-info
-  "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions.
+  "IDs of a table, card or column `metadata` for the FE to fetch or link the entity. A column's `:id` and `:tableId`
+  are `nil` when it is not backed by a Field.
 
-  > **Code health:** Single-use, Legacy, Deprecated! This exists only to support some legacy UI in the join picker. No
-  new calls should be added, and the UI should be refactored to remove the need for this function."
-  [a-query metadata]
+  > **Code health:** Healthy"
+  [_a-query metadata]
   (case (:lib/type metadata)
-    :metadata/table #js {:databaseId (:database a-query)
-                         :tableId (:id metadata)}
-    :metadata/card  #js {:databaseId (:database a-query)
-                         :cardId (:id metadata)
-                         :isModel (= (keyword (:type metadata)) :model)}
+    (:metadata/table :metadata/card) #js {:id (:id metadata)}
+    :metadata/column (let [{field-id :id, table-id :table-id} metadata]
+                       #js {:id      (when (int? field-id) field-id)
+                            :tableId (when (int? table-id) table-id)})
     (do
       (log/warn "Cannot provide picker-info for" (:lib/type metadata))
       nil)))
@@ -2583,20 +2596,39 @@
                                             expression-position)
         clj->js)))
 
-;; TODO: [[field-values-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
+;; TODO: [[field-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
 ;; from arbitrary entities, akin to [[display-info]].
 
-(defn ^:export field-values-search-info
+(defn ^:export field-search-info
   "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
   widget in the QB filter modals.
 
   > **Code health:** Single use. Only supports the search info."
   [metadata-providerable column]
-  (let [{:keys [field-id search-field search-field-id has-field-values]} (lib.field/field-values-search-info metadata-providerable column)]
+  (let [{:keys [field-id search-field search-field-id has-field-values]} (lib.field/field-search-info metadata-providerable column)]
     #js {:fieldId        field-id
          :searchField    search-field
          :searchFieldId  search-field-id
          :hasFieldValues (name has-field-values)}))
+
+(defn ^:export parameter-field-info
+  "What a parameter widget needs to know about the Field of `column`: its name, the name of the Field its values are
+  searched by, its type, its FieldValues, and whether its values have human-readable labels. `nil` for a column without
+  a Field.
+
+  > **Code health:** Single use. Only used to describe the field of a parameter target."
+  [metadata-providerable column]
+  (when-let [info (lib.field/parameter-field-info metadata-providerable column)]
+    #js {:id                     (:id info)
+         :displayName            (:display-name info)
+         :searchFieldDisplayName (:search-field-display-name info)
+         :isString               (:string? info)
+         :isBoolean              (:boolean? info)
+         :isDate                 (:date? info)
+         :isNumeric              (:numeric? info)
+         :settings               (some-> (:settings info) clj->js)
+         :hasFieldValues         (name (:has-field-values info))
+         :hasRemappedValues      (:has-remapped-values? info)}))
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map

@@ -1,7 +1,11 @@
 import { type PropsWithChildren, type ReactNode, forwardRef } from "react";
 
-import { useLazyGetTableQuery } from "metabase/api";
-import { setNativeQueryDatabaseId } from "metabase/querying/native";
+import { useLazyGetTableQuery, useLazyListTablesQuery } from "metabase/api";
+import {
+  requiresNativeCollection,
+  setNativeQueryDatabaseId,
+  setNativeQueryDefaultCollection,
+} from "metabase/querying/native";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
@@ -35,6 +39,7 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
     databaseDisabledTooltip,
   } = useNativeQueryEditorContext();
   const [fetchTable] = useLazyGetTableQuery();
+  const [fetchTables] = useLazyListTablesQuery();
 
   if (!question) {
     return null;
@@ -47,14 +52,21 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
     }
   };
 
-  const setDatabaseId = (databaseId: DatabaseId) => {
-    if (question.databaseId() !== databaseId) {
-      setQuery(
-        setNativeQueryDatabaseId(query, databaseId, question.metadata()),
-      );
-      onSetDatabaseId?.(databaseId);
-      focusEditor();
+  const setDatabaseId = async (databaseId: DatabaseId) => {
+    if (question.databaseId() === databaseId) {
+      return;
     }
+    const newQuery = setNativeQueryDatabaseId(
+      query,
+      databaseId,
+      question.metadata(),
+    );
+    const tables = requiresNativeCollection(newQuery)
+      ? await fetchTables({ dbId: databaseId }).unwrap()
+      : [];
+    setQuery(setNativeQueryDefaultCollection(newQuery, tables));
+    onSetDatabaseId?.(databaseId);
+    focusEditor();
   };
 
   return (

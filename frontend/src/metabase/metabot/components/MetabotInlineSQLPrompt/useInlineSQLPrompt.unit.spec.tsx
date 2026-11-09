@@ -35,7 +35,7 @@ import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEdito
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockDatabase,
@@ -198,7 +198,7 @@ function setup({ isMetabotEnabled = true, otherContent }: SetupOpts = {}) {
     }),
   });
   const metadata = createMockMetadataFromState(state);
-  const question = checkNotNull(metadata.question(TEST_CARD.id));
+  const question = new Question(TEST_CARD, metadata);
 
   renderWithProviders(
     <MetabotProvider>

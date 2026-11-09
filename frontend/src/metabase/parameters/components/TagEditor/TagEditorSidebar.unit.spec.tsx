@@ -87,12 +87,7 @@ const setup = ({ query, templateTags = [], loadedTableIds }: SetupOpts) => {
     });
   } else {
     setupDatabasesEndpoints([database]);
-    renderWithProviders(
-      <TagEditorSidebar
-        {...props}
-        databases={Object.values(metadata.databases)}
-      />,
-    );
+    renderWithProviders(<TagEditorSidebar {...props} />);
   }
 
   return { setTemplateTag };
