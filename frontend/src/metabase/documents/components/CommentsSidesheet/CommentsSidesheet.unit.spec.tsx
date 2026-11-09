@@ -115,7 +115,14 @@ async function findCommentByText(text: string) {
 
 /** Sets the browser URL in place, like opening a link that only changes the hash. */
 function openLink(link: string) {
-  act(() => window.history.replaceState(null, "", link));
+  act(() => {
+    window.history.replaceState(null, "", link);
+    // A browser fires popstate when a link changes only the hash. react-use's
+    // useLocation listens for it. Its replaceState patch can't be relied on,
+    // because it wraps the history of the window that was there when the
+    // package loaded, and the node:test runner loads packages once per worker.
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
 }
 
 function getSidebar() {
