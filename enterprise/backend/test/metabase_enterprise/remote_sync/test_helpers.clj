@@ -81,7 +81,6 @@ creator_id: rasta@metabase.com
 display: table
 archived: false
 collection_id: %s
-collection_preview: true
 collection_position: null
 query_type: null
 database_id: test-data (h2)
@@ -796,18 +795,6 @@ serdes/meta:
   model: Glossary
 "
           entity-id term definition entity-id (str/replace (u/lower-case-en term) #"\s+" "_")))
-
-(defn generate-legacy-glossary-yaml
-  "Generates YAML content for a Glossary entry as exported before `entity_id` existed: keyed on the term."
-  [term definition]
-  (format "term: %s
-definition: %s
-creator_id: rasta@metabase.com
-serdes/meta:
-- id: %s
-  model: Glossary
-"
-          term definition term))
 
 (defn generate-transform-tag-yaml
   "Generates YAML content for a TransformTag with the given `entity-id` and `name`."

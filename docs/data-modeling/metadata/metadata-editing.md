@@ -1,5 +1,6 @@
 ---
 title: "Table metadata editing"
+summary: Edit how Metabase displays your tables and columns, including display names, descriptions, column types, visibility, and sorting. None of these settings change the data in your database.
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
   - /docs/latest/data-modeling/metadata-editing

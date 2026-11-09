@@ -5,6 +5,7 @@ import type {
   FieldValue,
   GetRemappedParameterValueRequest,
   InternalDatasetQuery,
+  JsonQuery,
   NativeDatasetResponse,
 } from "metabase-types/api";
 
@@ -53,7 +54,7 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      (DatasetQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
+      (JsonQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
     >({
       query: ({ ignore_error, ...body }) => ({
         method: "POST",
@@ -70,7 +71,7 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
-      DatasetQuery & {
+      JsonQuery & {
         pivot_rows?: number[];
         pivot_cols?: number[];
         show_row_totals?: boolean;
@@ -96,7 +97,7 @@ export const datasetApi = Api.injectEndpoints({
       providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
     }),
-    getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
+    getNativeDataset: builder.query<NativeDatasetResponse, JsonQuery>({
       query: (body) => ({
         method: "POST",
         url: "/api/dataset/native",

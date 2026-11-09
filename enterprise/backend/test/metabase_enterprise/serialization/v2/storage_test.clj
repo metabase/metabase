@@ -10,7 +10,8 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
+   [metabase.serialization.db :as serialization.db]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -122,7 +123,7 @@
                          :model/Field       website {:name "Company/organization website" :table_id (:id table)}
                          :model/FieldValues _       {:field_id (:id website)}
                          :model/Table       _       {:name "Orders/Invoices" :db_id (:id db)}]
-        (let [export (into [] (extract/extract {:include-field-values true}))]
+        (let [export (into [] (extract/extract {:include-field-values true :include-h2? true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
             (is (= #{["company__SLASH__organization_website.yaml"]
@@ -133,7 +134,7 @@
                            ["orders__SLASH__invoices" "orders__SLASH__invoices.yaml"])
                 "Slashes in directory names get escaped"))
           (testing "the Field was properly exported"
-            (is (= (serdes/storable (ts/extract-one "Field" (:id website)))
+            (is (= (serialization/storable (ts/extract-one "Field" (:id website)))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases"  "my_company_data"
                                                 "tables"     "customers"
@@ -151,7 +152,7 @@
                                                          :data_sensitivity :PII}
                          :model/Field             _     {:name "Id" :table_id (:id table)}
                          :model/FieldUserSettings _     {:field_id (:id email) :data_sensitivity :PII}]
-        (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+        (storage/store! (into [] (extract/extract {:include-h2? true})) (storage.files/file-writer dump-dir))
         (let [fields-dir (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")
               read-yaml  (fn [file-name] (yaml/from-file (io/file fields-dir file-name)))]
           (testing "the label is written as the bare enum string on the Field and its settings"
@@ -170,7 +171,7 @@
                          :model/TableUserSettings _     {:table_id (:id table) :display_name "Clients"}
                          :model/FieldUserSettings _     {:field_id (:id email) :description "edited"}
                          :model/Dimension         _     {:field_id (:id email) :name "Email" :type :internal}]
-        (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+        (storage/store! (into [] (extract/extract {:include-h2? true})) (storage.files/file-writer dump-dir))
         (testing "each settings entity is a file beside its Table's or Field's, only where one exists"
           (is (= #{["customers.yaml"]
                    ["customers___tableusersettings.yaml"]
@@ -192,7 +193,7 @@
                              :model/FieldUserSettings _     {:field_id (:id field) :description "edited"}
                              :model/Dimension         _     {:field_id (:id field) :name "Long" :type :internal}
                              :model/FieldValues       _     {:field_id (:id field)}]
-            (storage/store! (into [] (extract/extract {:include-field-values true})) (storage.files/file-writer dump-dir))
+            (storage/store! (into [] (extract/extract {:include-field-values true :include-h2? true})) (storage.files/file-writer dump-dir))
             (is (= #{[(str slug ".yaml")]
                      [(str slug "___fieldusersettings.yaml")]
                      [(str slug "___dimension.yaml")]
@@ -228,7 +229,7 @@
                          :model/DashboardCard      _   {:card_id (:id c1) :dashboard_id (:id d1)}
                          :model/DashboardCard      _   {:card_id (:id c2) :dashboard_id (:id d1)}
                          :model/NativeQuerySnippet _   {:name "root snippet" :collection_id nil}]
-        (let [export     (extract/extract nil)
+        (let [export     (extract/extract {:include-h2? true})
               check-sort (fn [coll order]
                            (loop [[k :as ks] (keys coll)
                                   idx        -1]
@@ -275,7 +276,7 @@
             (.mkdirs (io/file parent-dir))
             (.setWritable (io/file parent-dir) false)
             (is (thrown-with-msg? Exception #"Destination path is not writeable: "
-                                  (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
+                                  (storage/store! [{:serdes/meta [{:model "Setting"}] :key "some-setting" :value "x"}]
                                                   (storage.files/file-writer dump-dir)))))
           (testing "directory exists but is not writable"
             (.setWritable (io/file parent-dir) true)
@@ -283,7 +284,7 @@
             (io/make-parents dump-dir "inner")
             (.setWritable (io/file dump-dir) false)
             (is (thrown-with-msg? Exception #"Destination path is not writeable: "
-                                  (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
+                                  (storage/store! [{:serdes/meta [{:model "Setting"}] :key "some-setting" :value "x"}]
                                                   (storage.files/file-writer dump-dir))))))))))
 
 (deftest nested-fields-test
@@ -293,9 +294,8 @@
             t   (ts/create! :model/Table :name "table" :db_id (:id db))
             f1  (ts/create! :model/Field :name "parent" :table_id (:id t))
             _f2 (ts/create! :model/Field :name "child" :table_id (:id t) :parent_id (:id f1))]
-        (serdes/with-cache
-          (-> (extract/extract {:no-settings true})
-              (storage/store! (storage.files/file-writer dump-dir))))
+        (-> (extract/extract {:no-settings true :include-h2? true})
+            (storage/store! (storage.files/file-writer dump-dir)))
         (testing "we get correct names for nested fields"
           (is (= #{["parent.yaml"]
                    ["parent.child.yaml"]}
@@ -349,8 +349,9 @@
                                   (doseq [^java.io.File f (reverse (file-seq (io/file dump-dir)))]
                                     (.delete f))
                                   (.mkdirs (io/file dump-dir))
-                                  (storage/store! (serdes/with-cache (into [] (extract/extract {:no-settings true
-                                                                                                :no-transforms true})))
+                                  (storage/store! (into [] (extract/extract {:no-settings   true
+                                                                             :no-transforms true
+                                                                             :include-h2?   true}))
                                                   (storage.files/file-writer dump-dir))
                                   (slurp (find-dash-file dump-dir)))
 
@@ -359,11 +360,10 @@
 
               ;; Export again but with nested entity query results reversed,
               ;; simulating non-deterministic DB row ordering (as seen on Aurora Postgres)
-              original-fn (mt/original-fn #'serdes/transform->nested)
+              dashboard-cards (mt/original-fn #'serialization.db/dashboard-cards-by-dashboard-ids)
               yaml-reversed
-              (mt/with-dynamic-fn-redefs [serdes/transform->nested
-                                          (fn [transform opts batch]
-                                            (update-vals (original-fn transform opts batch) reverse))]
+              (mt/with-dynamic-fn-redefs [serialization.db/dashboard-cards-by-dashboard-ids
+                                          (comp reverse dashboard-cards)]
                 (clean-and-export!))]
           (testing "Dashcard ordering should be stable regardless of DB return order"
             (is (= yaml-before yaml-reversed)
@@ -377,7 +377,7 @@
         (let [export        (into [] (extract/extract {:no-settings   true
                                                        :no-data-model true
                                                        :no-transforms true
-                                                       :targets       [["Card" (:id card)]]}))
+                                                       :targets       [[:model/Card (:id card)]]}))
               ;; 66 is 'char-count * max-bytes / byte-count'
               card-filename (str/join (repeat 66 "ป"))]
           (storage/store! export (storage.files/file-writer dump-dir))
@@ -502,12 +502,10 @@
                            :model/Collection _child {:name "Child Collection" :location (format "/%d/" (:id parent))}
                            :model/Card       _card  {:name "A Question" :collection_id (:id parent)}]
           (let [export   (into [] (extract/extract {:no-settings true :no-data-model true :no-transforms true}))
-                entities (filterv (comp #{"Collection" "Card"} :model last :serdes/meta) export)
-                ctx      (serdes/storage-base-context)]
+                paths    (storage.util/entity-file-paths (storage.util/file-namer) export)]
             (storage/store! export (storage.files/file-writer dump-dir))
-            (is (= 3 (count entities)))
-            (doseq [entity entities
-                    :let   [path (storage.util/entity-file-path ctx entity)]]
+            (is (= 3 (count (filter (comp #{"Collection" "Card"} :model last :serdes/meta) export))))
+            (doseq [[entity path] (map vector export paths)]
               (testing path
                 (is (= (storage.util/entity-yaml entity)
                        (slurp (io/file dump-dir path))))))))))))

@@ -18,7 +18,12 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { ListTransformTestRunsResponse } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type {
+  ListTransformTestRunsResponse,
+  QueryTransformSource,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -30,6 +35,11 @@ import {
 } from "metabase-types/api/mocks";
 
 import { TransformTestRunsPage } from "./TransformTestRunsPage";
+
+const QUERY_SOURCE: QueryTransformSource = {
+  type: "query",
+  query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+};
 
 type SetupOpts = {
   response?: ListTransformTestRunsResponse;
@@ -47,7 +57,9 @@ function setup({
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root" })],
   });
-  setupGetTransformEndpoint(createMockTransform({ id: 1 }));
+  setupGetTransformEndpoint(
+    createMockTransform({ id: 1, source: QUERY_SOURCE }),
+  );
   setupGetTransformTestEndpoint(
     createMockTransformTest({ id: 2, transform_id: 1, name: "Refunds" }),
   );

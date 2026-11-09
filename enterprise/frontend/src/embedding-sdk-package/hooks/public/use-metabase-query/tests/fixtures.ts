@@ -1,5 +1,7 @@
 /* eslint-disable metabase/no-external-references-for-sdk-package-code */
 
+import * as Lib from "metabase-lib";
+import type { TestAggregationSpec } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 const column = <
@@ -63,26 +65,6 @@ const metadataField = (
   effective_type: baseType,
   ...options,
 });
-
-const cardMetadata = (
-  id: number,
-  name: string,
-  sourceTable: number,
-  aggregation?: [["sum", ["field", number, null]]],
-) =>
-  createMockCard({
-    id,
-    name,
-    ...(aggregation && { type: "metric" }),
-    dataset_query: {
-      type: "query",
-      database: 1,
-      query: {
-        "source-table": sourceTable,
-        ...(aggregation && { aggregation }),
-      },
-    },
-  });
 
 export const TEST_SCHEMA = {
   tables: {
@@ -179,7 +161,7 @@ export const TEST_SCHEMA = {
   },
 } as const;
 
-export const TEST_METADATA = {
+const BASE_METADATA = {
   databases: {
     1: {
       id: 1,
@@ -230,8 +212,45 @@ export const TEST_METADATA = {
       },
     },
   },
+};
+
+const BASE_PROVIDER = Lib.metadataProvider(
+  1,
+  // `Lib.Metadata` is opaque, and a fixture in the API shape cannot build it otherwise.
+  // A clone keeps the provider from caching parsed state into the shared fixture.
+  structuredClone(BASE_METADATA) as unknown as Lib.Metadata,
+);
+
+const cardMetadata = (
+  id: number,
+  name: string,
+  sourceTable: number,
+  aggregation?: TestAggregationSpec,
+) =>
+  createMockCard({
+    id,
+    name,
+    ...(aggregation && { type: "metric" }),
+    dataset_query: Lib.toLegacyQuery(
+      Lib.createTestQuery(BASE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: sourceTable },
+            ...(aggregation && { aggregations: [aggregation] }),
+          },
+        ],
+      }),
+    ),
+  });
+
+export const TEST_METADATA = {
+  ...BASE_METADATA,
   questions: {
     41: cardMetadata(41, "Orders question", 1),
-    31: cardMetadata(31, "Revenue", 1, [["sum", ["field", 102, null]]]),
+    31: cardMetadata(31, "Revenue", 1, {
+      type: "operator",
+      operator: "sum",
+      args: [{ type: "column", fieldId: 102 }],
+    }),
   },
 };

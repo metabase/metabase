@@ -1,5 +1,6 @@
 ---
 title: "Code reviews"
+summary: How the Metabase team approaches code reviews, and what authors and reviewers can each do to make them better.
 redirect_from:
   - /docs/latest/code-reviews
 ---

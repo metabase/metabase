@@ -1,5 +1,6 @@
 ---
 title: "Configuration file"
+summary: Set up people, databases, API keys, and settings from a config.yml file when Metabase launches, on self-hosted Pro and Enterprise plans.
 ---
 
 # Configuration file

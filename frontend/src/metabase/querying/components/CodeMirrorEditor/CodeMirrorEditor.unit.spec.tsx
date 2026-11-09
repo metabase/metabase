@@ -23,7 +23,7 @@ import type {
 import {
   createMockCard,
   createMockDatabase,
-  createMockField,
+  createMockColumn,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -321,7 +321,7 @@ describe("CodemirrorEditor", () => {
       createMockCard({
         id: 42,
         name: "Referenced Question",
-        result_metadata: [createMockField({ name: "A_UNIQUE_COLUMN_NAME" })],
+        result_metadata: [createMockColumn({ name: "A_UNIQUE_COLUMN_NAME" })],
       }),
     );
     setup({ text: "SELECT * FROM {{#42-referenced-question}}" });

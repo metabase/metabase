@@ -552,9 +552,6 @@
           (mt/with-temp [:model/Collection outside   {:name "Birds outside"}
                          :model/Card       root-card {:name "Birds root card"}]
             (let [library-id         (:id (collections/library-collection))
-                  dashboards-id      (t2/select-one-pk :model/Collection
-                                                       :location (str "/" library-id "/")
-                                                       :type     collections/library-dashboards-collection-type)
                   data-child         (mt/user-http-request :crowberto :post 200 "collection" {:name "Birds data" :parent_id data-id})
                   data-grandchild    (mt/user-http-request :crowberto :post 200 "collection" {:name      "Birds data nested"
                                                                                               :parent_id (:id data-child)})
@@ -565,11 +562,10 @@
                 (let [found (item-ids as-data-app "collection/root/items")]
                   (is (contains? found ["collection" library-id]))
                   (is (not-any? found [["collection" (:id outside)] ["card" (:id root-card)]]))))
-              (testing "the Library holds its Data, Metrics and Dashboards collections"
+              (testing "the Library holds its Data and Metrics collections"
                 (let [found (item-ids as-data-app (str "collection/" library-id "/items"))]
                   (is (contains? found ["collection" data-id]))
-                  (is (contains? found ["collection" metrics-id]))
-                  (is (contains? found ["collection" dashboards-id]))))
+                  (is (contains? found ["collection" metrics-id]))))
               (testing "Data and Metrics hold their nested collections at every level"
                 (doseq [[parent child] [[data-id data-child]
                                         [(:id data-child) data-grandchild]
@@ -578,12 +574,12 @@
                   (is (contains? (item-ids as-data-app (str "collection/" parent "/items")) ["collection" (:id child)])
                       (:name child))))
               (testing "a data app reads the Library, its collections and their nested collections"
-                (doseq [id (into [library-id data-id metrics-id dashboards-id]
+                (doseq [id (into [library-id data-id metrics-id]
                                  (map :id)
                                  [data-child data-grandchild metrics-child metrics-grandchild])]
                   (is (= id (:id (mt/user-http-request :crowberto :get 200 (str "collection/" id) as-data-app))))))
               (testing "the collection list and the tree of a data app hold the Library, its collections and their nested collections"
-                (let [visible [library-id data-id metrics-id dashboards-id (:id data-grandchild) (:id metrics-grandchild)]
+                (let [visible [library-id data-id metrics-id (:id data-grandchild) (:id metrics-grandchild)]
                       hidden  [(:id outside)]]
                   (doseq [[label found] [["list" (set (map :id (mt/user-http-request :crowberto :get 200 "collection" as-data-app)))]
                                          ["tree" (set (map :id (mapcat #(tree-seq (comp seq :children) :children %)

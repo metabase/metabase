@@ -201,6 +201,15 @@
   (-> (lib.convert/->legacy-MBQL query-map)
       fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
+(defn ^:export xray-cell-query
+  "Returns the filter of the last stage of `a-query` as a legacy clause in vanilla JSON form, the cell query of an automatic
+  dashboard URL, or nil when the stage has no filter."
+  [a-query]
+  (some-> (lib.convert/->legacy-MBQL a-query)
+          (get-in [:query :filter])
+          fix-namespaced-values
+          (clj->js :keyword-fn u/qualified-name)))
+
 (defn ^:export append-stage
   "Adds a new, blank *stage* to the provided `query`.
 
@@ -1664,18 +1673,6 @@
         #_{:clj-kondo/ignore [:discouraged-var]}
         (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
-(defn ^:export source-table-or-card-id
-  "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
-  with \"card__\") of `a-query`. If `a-query` has none of these, nil is returned.
-
-  > **Code health:** Legacy. This is exposing too much about cards and sources. Its callers will likely have to be
-  updated to handle Metrics v2."
-  ;; TODO: Figure out what the callers of this function really need it for, and consider an alternative design.
-  ;; [[with-different-table]] should be included in that refactor.
-  [a-query]
-  (or (lib.util/source-table-id a-query)
-      (some->> (lib.util/source-card-id a-query) (str "card__"))))
-
 ;; # Joins
 ;; Joins are a relatively complex component of a query. They specify a table (or model, in theory), 1 or more conditions
 ;; (which resemble filters), an optional subset of fields to include from the joined table, and one of a handful of join
@@ -1994,7 +1991,6 @@
     :metadata/table #js {:databaseId (:database a-query)
                          :tableId (:id metadata)}
     :metadata/card  #js {:databaseId (:database a-query)
-                         :tableId (str "card__" (:id metadata))
                          :cardId (:id metadata)
                          :isModel (= (keyword (:type metadata)) :model)}
     (do
@@ -2211,6 +2207,33 @@
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
+(defn ^:export database-metadata
+  "Returns the metadata of the database `query-or-metadata-provider` is bound to.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider]
+  (lib.metadata/database query-or-metadata-provider))
+
+(defn ^:export table-metadata
+  "Given an integer `table-id`, returns the table's metadata.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider table-id]
+  (lib.metadata/table query-or-metadata-provider table-id))
+
+(defn ^:export card-metadata
+  "Given an integer `card-id`, returns the card's metadata.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider card-id]
+  (lib.metadata/card query-or-metadata-provider card-id))
+
 (defn ^:export field-metadata
   "Given an integer `field-id`, returns the field's metadata.
 
@@ -2288,13 +2311,18 @@
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
 (defn ^:export legacy-column->type-info
-  "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
-  does not require a `query`. Lib columns remain unchanged.
+  "Reads only the base, effective, and semantic types of a `legacy-column` into an object compatible with type checking
+  functions. Unlike [[legacy-column->metadata]], does not require a `query`. Lib columns remain unchanged.
 
   > **Code health:** Legacy."
   [column]
-  (cond-> column
-    (object? column) js.metadata/parse-column))
+  (if (object? column)
+    (let [type-keyword (fn [k] (some-> (gobject/get column k) keyword))]
+      (m/assoc-some {}
+                    :base-type      (type-keyword "base_type")
+                    :effective-type (type-keyword "effective_type")
+                    :semantic-type  (type-keyword "semantic_type")))
+    column))
 
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
@@ -2652,6 +2680,20 @@
   "Return a JS array of all source card IDs referenced anywhere in `a-query`."
   [a-query]
   (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
+
+(defn ^:export primary-source-table-id
+  "Return the ID of the table the first stage of `a-query` is based on, or `nil` (JS `null`) for any other source.
+
+  > **Code health:** Healthy."
+  [a-query]
+  (lib.core/primary-source-table-id a-query))
+
+(defn ^:export primary-source-card-id
+  "Return the ID of the card the first stage of `a-query` is based on, or `nil` (JS `null`) for any other source.
+
+  > **Code health:** Healthy."
+  [a-query]
+  (lib.core/primary-source-card-id a-query))
 
 (defn ^:export all-field-ids
   "Return a JS array of all field IDs referenced anywhere in `a-query`."

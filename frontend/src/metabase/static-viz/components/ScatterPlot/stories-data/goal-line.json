@@ -131,7 +131,6 @@
       "include_csv": false,
       "display": "scatter",
       "entity_id": "87wxJNPkkzh8AXbkjbjEC",
-      "collection_preview": true,
       "visualization_settings": {
         "series_settings": {
           "speed": {

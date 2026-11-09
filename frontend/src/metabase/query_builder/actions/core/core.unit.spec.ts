@@ -3,17 +3,11 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import type { TemplateTag } from "metabase-types/api";
-import {
-  createMockNativeDatasetQuery,
-  createMockNativeQuery,
-  createMockTemplateTag,
-} from "metabase-types/api/mocks";
-import {
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-  createSavedNativeCard,
-} from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { TestTemplateTag } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { setParameterValue } from "../../store/actions";
 
@@ -22,25 +16,23 @@ import { setParameterValueToDefault } from "./core";
 const TAG_ID = "category-tag";
 
 interface SetupOpts {
-  tag: Partial<TemplateTag>;
+  tag: Partial<TestTemplateTag>;
 }
 
 async function setup({ tag }: SetupOpts) {
-  const card = createSavedNativeCard({
-    dataset_query: createMockNativeDatasetQuery({
-      database: SAMPLE_DB_ID,
-      native: createMockNativeQuery({
-        query: "select * from products where category = {{category}}",
-        "template-tags": {
-          category: createMockTemplateTag({
-            id: TAG_ID,
-            name: "category",
-            "display-name": "Category",
-            type: "text",
-            ...tag,
-          }),
+  const card = createMockCard({
+    query_type: "native",
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select * from products where category = {{category}}",
+      templateTags: {
+        category: {
+          id: TAG_ID,
+          name: "category",
+          "display-name": "Category",
+          type: "text",
+          ...tag,
         },
-      }),
+      },
     }),
   });
   const state = createMockState({

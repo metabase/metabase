@@ -1,5 +1,6 @@
 ---
 title: Impersonation access
+summary: Hand data permissions off to roles in your database, covering questions written in both the SQL editor and the query builder.
 ---
 
 # Impersonation permissions

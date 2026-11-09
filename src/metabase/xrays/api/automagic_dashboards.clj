@@ -198,12 +198,12 @@
     :api/regex #"(?:[A-Za-z0-9\-._~=]|%[0-9A-Fa-f]{2})+"}])
 
 (def ^:private ComparisonEntity
-  (let [entity-types [:adhoc :segment :table]]
+  (let [entity-types [:adhoc :question :segment :table]]
     (mu/with-api-error-message
      (into [:enum
             {:api/regex (u.regex/re-or (map name entity-types))}]
            entity-types)
-     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""))))
+     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\""))))
 
 (defn- coerce-show
   "Show is either nil, \"all\", or a number. If it's a string it needs to be converted into a keyword."

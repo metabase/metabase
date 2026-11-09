@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import {
   useAddSampleDatabaseMutation,
   useListDatabasesQuery,
@@ -44,22 +45,24 @@ export const DatabaseListApp = (props: DatabaseListAppProps) => {
   }, [isSyncing]);
 
   return (
-    <LoadingAndGenericErrorWrapper
-      loading={databasesReq.isLoading}
-      error={databasesReq.error}
-      noWrapper
-    >
-      <DatabaseList
-        {...props}
-        databases={dbs}
-        addSampleDatabase={addSampleDb}
-        isAddingSampleDatabase={addSampleDbResult.isLoading}
-        addSampleDatabaseError={addSampleDbResult.isError}
-        engines={engines}
-        deletes={deletes}
-        deletionError={deletionError}
-        isAdmin={isAdmin}
-      />
-    </LoadingAndGenericErrorWrapper>
+    <AdminSettingsLayout>
+      <LoadingAndGenericErrorWrapper
+        loading={databasesReq.isLoading}
+        error={databasesReq.error}
+        noWrapper
+      >
+        <DatabaseList
+          {...props}
+          databases={dbs}
+          addSampleDatabase={addSampleDb}
+          isAddingSampleDatabase={addSampleDbResult.isLoading}
+          addSampleDatabaseError={addSampleDbResult.isError}
+          engines={engines}
+          deletes={deletes}
+          deletionError={deletionError}
+          isAdmin={isAdmin}
+        />
+      </LoadingAndGenericErrorWrapper>
+    </AdminSettingsLayout>
   );
 };

@@ -87,7 +87,6 @@
       "include_csv": false,
       "display": "waterfall",
       "entity_id": "zpnXXxmZ2TX3V2H0a8cmT",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["category"],
         "graph.y_axis.scale": "pow",

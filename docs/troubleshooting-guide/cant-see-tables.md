@@ -1,5 +1,6 @@
 ---
 title: I can't see my tables
+summary: Track down why tables are missing from the query builder, the data browser, or table metadata.
 ---
 
 # I can't see my tables

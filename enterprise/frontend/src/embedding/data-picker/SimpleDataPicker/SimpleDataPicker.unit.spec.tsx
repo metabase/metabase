@@ -33,7 +33,7 @@ function setup(opts?: SetupOpts) {
     <SimpleDataPicker
       entityTypes={["model", "table"]}
       isInitiallyOpen={true}
-      setSourceTableFn={onClick}
+      setSourceFn={onClick}
       filterByDatabaseId={null}
       triggerElement={<div>data picker trigger</div>}
     />,
@@ -121,6 +121,6 @@ describe("SimpleDataPicker", () => {
      * data source that it's the one with ID 1.
      */
     await userEvent.click(dataSources[0]);
-    expect(onClick).toHaveBeenCalledWith("card__2");
+    expect(onClick).toHaveBeenCalledWith({ type: "card", id: 2 });
   });
 });

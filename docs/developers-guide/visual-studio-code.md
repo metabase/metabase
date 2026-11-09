@@ -1,5 +1,6 @@
 ---
 title: Developing with Visual Studio Code
+summary: Set up Visual Studio Code for Metabase development, including debugging and a Docker-based workflow.
 ---
 
 # Developing with Visual Studio Code

@@ -1,5 +1,6 @@
 ---
 title: Basic exploration
+summary: Find the dashboards, charts, and data your teammates have already made, using search, the command palette, and browsing.
 redirect_from:
   - /docs/latest/users-guide/03-basic-exploration
 ---

@@ -1,5 +1,6 @@
 ---
 title: Gauge chart
+summary: Show a single number against colored ranges you define, for progress or status against thresholds.
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/gauge
 ---

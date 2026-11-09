@@ -1,5 +1,6 @@
 ---
 title: Visualization overview
+summary: Pick the right chart for your results and customize how it looks.
 redirect_from:
   - /docs/latest/users-guide/05-visualizing-results
   - /docs/latest/questions/sharing/visualizing-results
