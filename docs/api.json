@@ -5128,16 +5128,16 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.transform-testing.schema.row" : {
-        "description" : "A row of inline test data, keyed by column name.",
+        "description" : "A row of inline test data, keyed by column name, with `:string` first so request decoding keeps every cell as sent.",
         "type" : "object",
         "additionalProperties" : {
           "anyOf" : [ {
             "anyOf" : [ {
+              "type" : "string"
+            }, {
               "type" : "boolean"
             }, {
               "type" : "number"
-            }, {
-              "type" : "string"
             } ]
           }, {
             "type" : "null"
@@ -9536,13 +9536,6 @@
           "copy" : {
             "type" : "boolean"
           },
-          "collection_preview" : {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "dashboard_count" : {
             "anyOf" : [ {
               "description" : "value must be an integer greater than zero.",
@@ -10558,7 +10551,7 @@
       },
       "metabase.driver.connection.connection-type" : {
         "type" : "string",
-        "enum" : [ "default", "write-data", "transform" ]
+        "enum" : [ "default", "write-data", "admin", "transform" ]
       },
       "metabase.driver.index-field" : {
         "description" : "One form field describing how to request an index: the same shape as a [[connection-properties]] descriptor, plus a\n  `:columns` type for the indexed columns.",
@@ -14962,10 +14955,6 @@
           "lib/stage-metadata" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata.stage"
           },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "type" : "integer",
-            "minimum" : 0
-          },
           "metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes" : {
             "type" : "array",
             "items" : {
@@ -15005,6 +14994,9 @@
           },
           "qp/added-implicit-fields?" : {
             "type" : "boolean"
+          },
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "qp/stage-is-from-source-card" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
@@ -15052,10 +15044,6 @@
           },
           "pivot" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.pivot"
-          },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "type" : "integer",
-            "minimum" : 0
           },
           "breakout" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.breakouts"
@@ -15125,6 +15113,9 @@
           "qp/added-implicit-fields?" : {
             "type" : "boolean"
           },
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
+          },
           "qp/stage-is-from-source-card" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
           },
@@ -15178,10 +15169,6 @@
             }, {
               "type" : "null"
             } ]
-          },
-          "metabase.driver.sql.query-processor/cte-level" : {
-            "type" : "integer",
-            "minimum" : 0
           },
           "projections" : {
             "anyOf" : [ {
@@ -15273,6 +15260,9 @@
           },
           "qp/added-implicit-fields?" : {
             "type" : "boolean"
+          },
+          "metabase.driver.sql.query-processor/cte-name" : {
+            "type" : "string"
           },
           "qp/stage-is-from-source-card" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
@@ -16312,7 +16302,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ]
+        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -20213,6 +20203,10 @@
             "type" : "boolean",
             "description" : "Should we skip persisting `result_metadata` to a saved Card while still returning it in query results? Used by\n       `metabase.query-processor.middleware.results-metadata`; default `false`. Has no effect when\n       `skip-results-metadata?` is true."
           },
+          "card-reference?" : {
+            "type" : "boolean",
+            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers without the `:stage-ctes/nested` feature compile it without stage CTEs."
+          },
           "pivot?" : {
             "description" : "Whether the results should be laid out as a pivot table. Set by `metabase.query-processor.api` from the\n  `format_rows`/pivot download options and read by `metabase.query-processor.middleware.pivot-export` and the\n  streaming writers; default `false`.",
             "anyOf" : [ {
@@ -20224,6 +20218,14 @@
           "disable-mbql->native?" : {
             "type" : "boolean",
             "description" : "Disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where\n  you should set this yourself. This is only used by the `metabase.query-processor.preprocess/preprocess` function to\n  get the fully pre-processed query without attempting to convert it to native."
+          },
+          "display" : {
+            "description" : "The `:display` of the Card or unsaved question whose results are being exported, e.g. `:table`. Used by\n     `metabase.query-processor.streaming` to leave the columns the table visualization hides out of exports.",
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
           },
           "userland-query?" : {
             "description" : "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in\n  certain userland-only middleware for such queries -- results are returned in a slightly different format, and\n  QueryExecution entries are normally saved, unless you pass `:no-save` as the option.",
@@ -26993,13 +26995,6 @@
                     "type" : "null"
                   } ]
                 },
-                "collection_preview" : {
-                  "anyOf" : [ {
-                    "type" : "boolean"
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
                 "initially_published_at" : {
                   "anyOf" : [ {
                     "anyOf" : [ {
@@ -28656,13 +28651,6 @@
                       "description" : "value must be a valid date string",
                       "type" : "string"
                     } ]
-                  }, {
-                    "type" : "null"
-                  } ]
-                },
-                "collection_preview" : {
-                  "anyOf" : [ {
-                    "type" : "boolean"
                   }, {
                     "type" : "null"
                   } ]
@@ -30708,13 +30696,6 @@
               "type" : "null"
             } ]
           },
-          "collection_preview" : {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "initially_published_at" : {
             "anyOf" : [ {
               "description" : "value must be a valid date/time/datetime",
@@ -31957,6 +31938,9 @@
           "has_invited_second_user" : {
             "type" : "boolean"
           },
+          "has_used_password" : {
+            "type" : "boolean"
+          },
           "personal_collection_id" : {
             "anyOf" : [ {
               "description" : "value must be an integer greater than zero.",
@@ -31980,7 +31964,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "slack_account_status", "can_write_any_collection", "sso_source", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
+        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "slack_account_status", "can_write_any_collection", "sso_source", "has_used_password", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
       },
       "metabase.users-rest.api.user-permissions" : {
         "description" : "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,\n  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled.",
@@ -32604,6 +32588,62 @@
           },
           "required" : [ "enabled" ]
         }
+      },
+      "metabase.workspaces.core.table-namespace" : {
+        "description" : "A `{:db ?, :schema ?}` namespace map. Either or both keys may be present\n   depending on the driver's `qualified-name-components`; at least one must\n   populate. Empty-string `\"\"` is reserved for the storage layer; the atom\n   carries `nil`/missing for absent slots.",
+        "type" : "object",
+        "properties" : {
+          "db" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "additionalProperties" : false
+      },
+      "metabase.workspaces.core.workspace-database-config" : {
+        "description" : "Per-database workspace config: `:input_schemas` is a vector of driver-opaque\n   schema names (the source schemas the workspace reads from) — may be empty\n   on drivers with no schema layer (e.g. MySQL), where the bound DB itself acts\n   as the implicit input namespace; `:output` is a single namespace map (the\n   workspace's isolation schema, expanded with the warehouse catalog at boot).",
+        "type" : "object",
+        "properties" : {
+          "input_schemas" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "output" : {
+            "$ref" : "#/components/schemas/metabase.workspaces.core.table-namespace"
+          }
+        },
+        "required" : [ "input_schemas", "output" ],
+        "additionalProperties" : false
+      },
+      "metabase.workspaces.core.workspace-instance-config" : {
+        "description" : "The shape stored in the EE `instance-workspace` setting after the `:workspace`\n   config.yml loader has resolved database names to ids. Database keys are integer\n   ids (post-resolution); the wire format with name keys lives in\n   `metabase-enterprise.advanced-config.file.workspace`.",
+        "type" : "object",
+        "properties" : {
+          "databases" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/metabase.workspaces.core.workspace-database-config"
+            }
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "name", "databases" ],
+        "additionalProperties" : false
       },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON",
@@ -34565,9 +34605,9 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "segment", "table" ]
+            "enum" : [ "adhoc", "question", "segment", "table" ]
           },
-          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\""
         }, {
           "in" : "path",
           "name" : "comparison-entity-id-or-query",
@@ -34731,9 +34771,9 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "segment", "table" ]
+            "enum" : [ "adhoc", "question", "segment", "table" ]
           },
-          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\""
         }, {
           "in" : "path",
           "name" : "comparison-entity-id-or-query",
@@ -34800,9 +34840,9 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "segment", "table" ]
+            "enum" : [ "adhoc", "question", "segment", "table" ]
           },
-          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\""
         }, {
           "in" : "path",
           "name" : "comparison-entity-id-or-query",
@@ -34987,9 +35027,9 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "segment", "table" ]
+            "enum" : [ "adhoc", "question", "segment", "table" ]
           },
-          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+          "description" : "Invalid comparison entity type. Can only be one of \"table\", \"question\", \"segment\", or \"adhoc\""
         }, {
           "in" : "path",
           "name" : "comparison-entity-id-or-query",
@@ -36062,13 +36102,6 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "collection_preview" : {
-                    "anyOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
                   "dashboard_id" : {
                     "anyOf" : [ {
                       "description" : "value must be an integer greater than zero.",
@@ -36310,13 +36343,6 @@
                       "description" : "value must be an integer greater than zero.",
                       "type" : "integer",
                       "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "collection_preview" : {
-                    "anyOf" : [ {
-                      "type" : "boolean"
                     }, {
                       "type" : "null"
                     } ]
@@ -42159,6 +42185,15 @@
                       "type" : "null"
                     } ]
                   },
+                  "admin_details" : {
+                    "anyOf" : [ {
+                      "description" : "Value must be a map.",
+                      "type" : "object",
+                      "properties" : { }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "refingerprint" : {
                     "anyOf" : [ {
                       "type" : "boolean"
@@ -43138,7 +43173,7 @@
       "post" : {
         "operationId" : "post-api-dataset-native",
         "summary" : "POST /api/dataset/native",
-        "description" : "Fetch a native version of an MBQL query.",
+        "description" : "Fetch a native version of an MBQL query.\n\n  Display path: workspace remapping is suppressed via\n  [[ws.table-remapping/with-display-context]] so the user sees canonical-schema SQL\n  in the 'Show me the SQL' panel. The query still executes against the workspace\n  isolation schema at warehouse time (separate code path); this endpoint only\n  affects what the user reads.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -43432,6 +43467,18 @@
                     "description" : "value must be a valid boolean string ('true' or 'false').",
                     "type" : "boolean",
                     "default" : false
+                  },
+                  "display" : {
+                    "anyOf" : [ {
+                      "description" : "value must be a keyword or string.",
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
                   },
                   "format_rows" : {
                     "description" : "value must be a valid boolean string ('true' or 'false').",
@@ -56573,6 +56620,957 @@
           }
         },
         "tags" : [ "/api/ee/upload-management" ]
+      }
+    },
+    "/api/ee/workspace-instance/current" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-instance-current",
+        "summary" : "GET /api/ee/workspace-instance/current",
+        "description" : "Read-only summary of the workspace loaded on this instance, wrapped in a\n  `{:data ...}` envelope.\n\n  Reads from the `instance-workspace` setting populated at boot by the `:workspace`\n  section of `config.yml`, or at runtime by `POST /current`. `:data` is `null`\n  when no workspace was loaded — i.e. this is a manager-only instance, or no\n  `config.yml` was present at boot and `POST /current` hasn't been called.\n  The envelope avoids an empty JSON body for the `nil` case.\n\n  The workspace's `can_write` flag is `false` when it was set by deployment\n  config (`config.yml` or `MB_INSTANCE_WORKSPACE`); `POST`/`DELETE` are rejected\n  in that case.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "anyOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "can_write" : {
+                            "type" : "boolean"
+                          },
+                          "databases" : {
+                            "type" : "object",
+                            "additionalProperties" : {
+                              "type" : "object",
+                              "properties" : {
+                                "input_schemas" : {
+                                  "type" : "array",
+                                  "items" : {
+                                    "type" : "string"
+                                  }
+                                },
+                                "output" : {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "db" : {
+                                      "anyOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "schema" : {
+                                      "anyOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    }
+                                  }
+                                }
+                              },
+                              "required" : [ "input_schemas", "output" ]
+                            }
+                          },
+                          "name" : {
+                            "description" : "value must be a non-blank string.",
+                            "type" : "string",
+                            "minLength" : 1
+                          }
+                        },
+                        "required" : [ "name", "databases", "can_write" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "data" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-instance" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-workspace-instance-current",
+        "summary" : "POST /api/ee/workspace-instance/current",
+        "description" : "Install a workspace config on this instance at runtime. Accepts the same shape\n  `GET /current` returns and persists it via the `instance-workspace` setting so\n  it survives restarts. Use this on a running instance to enter workspace mode\n  without restarting from `config.yml`.\n\n  Returns 400 if the workspace was set by deployment config (`config.yml` or\n  `MB_INSTANCE_WORKSPACE`) and so is read-only.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
+                    "databases" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "object",
+                        "properties" : {
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          },
+                          "output" : {
+                            "type" : "object",
+                            "properties" : {
+                              "db" : {
+                                "anyOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "schema" : {
+                                "anyOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              }
+                            }
+                          }
+                        },
+                        "required" : [ "input_schemas", "output" ]
+                      }
+                    },
+                    "name" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "name", "databases", "can_write" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.workspaces.core.workspace-instance-config"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace-instance" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-workspace-instance-current",
+        "summary" : "DELETE /api/ee/workspace-instance/current",
+        "description" : "Clear the workspace config on this instance. After this returns, the instance\n  is no longer in workspace mode and `GET /current` returns `nil`. Also drops\n  every `TableRemapping` row, since stale mappings from the prior workspace\n  would otherwise keep rewriting queries on the now-unmanaged databases.\n\n  Returns 400 if the workspace was set by deployment config (`config.yml` or\n  `MB_INSTANCE_WORKSPACE`) and so is read-only.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-instance" ]
+      }
+    },
+    "/api/ee/workspace-instance/table-remappings" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-instance-table-remappings",
+        "summary" : "GET /api/ee/workspace-instance/table-remappings",
+        "description" : "Return all table remappings, ordered by id.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "from_db" : {
+                        "anyOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "to_table_name" : {
+                        "description" : "value must be a non-blank string.",
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "database_id" : {
+                        "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                      },
+                      "to_db" : {
+                        "anyOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "created_at" : { },
+                      "from_schema" : {
+                        "anyOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "from_table_name" : {
+                        "description" : "value must be a non-blank string.",
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "to_schema" : {
+                        "anyOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "database_id", "from_db", "from_schema", "from_table_name", "to_db", "to_schema", "to_table_name", "created_at" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-instance" ]
+      }
+    },
+    "/api/ee/workspace-manager" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-manager",
+        "summary" : "GET /api/ee/workspace-manager",
+        "description" : "List all Workspaces.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "created_at" : {
+                        "anyOf" : [ {
+                          "type" : "string",
+                          "format" : "date-time"
+                        }, {
+                          "type" : "string"
+                        } ]
+                      },
+                      "creator" : {
+                        "anyOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "common_name" : {
+                              "anyOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "email" : {
+                              "description" : "value must be a non-blank string.",
+                              "type" : "string",
+                              "minLength" : 1
+                            },
+                            "first_name" : {
+                              "anyOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            },
+                            "last_name" : {
+                              "anyOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
+                          },
+                          "required" : [ "id", "first_name", "last_name", "email" ],
+                          "additionalProperties" : false
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "databases" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "database" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : { }
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "database_id" : {
+                              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                            },
+                            "input_schemas" : {
+                              "type" : "array",
+                              "items" : {
+                                "description" : "value must be a non-blank string.",
+                                "type" : "string",
+                                "minLength" : 1
+                              }
+                            },
+                            "output_namespace" : {
+                              "type" : "string"
+                            },
+                            "status" : {
+                              "type" : "string",
+                              "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                            }
+                          },
+                          "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                          "additionalProperties" : false
+                        }
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "name" : {
+                        "description" : "value must be a non-blank string.",
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "updated_at" : {
+                        "anyOf" : [ {
+                          "type" : "string",
+                          "format" : "date-time"
+                        }, {
+                          "type" : "string"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                    "additionalProperties" : false
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-workspace-manager",
+        "summary" : "POST /api/ee/workspace-manager",
+        "description" : "Create a new Workspace attached to the given databases (each must be eligible\n   for workspaces) and provision it (blocking).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    },
+                    "creator" : {
+                      "anyOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "description" : "value must be a non-blank string.",
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database" : {
+                            "anyOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "description" : "value must be a non-blank string.",
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "database_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                    },
+                    "minItems" : 1
+                  },
+                  "name" : {
+                    "description" : "value must be a non-blank string.",
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "name", "database_ids" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      }
+    },
+    "/api/ee/workspace-manager/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-manager-id",
+        "summary" : "GET /api/ee/workspace-manager/{id}",
+        "description" : "Get a single Workspace by id.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    },
+                    "creator" : {
+                      "anyOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "description" : "value must be a non-blank string.",
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database" : {
+                            "anyOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "description" : "value must be a non-blank string.",
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-workspace-manager-id",
+        "summary" : "PUT /api/ee/workspace-manager/{id}",
+        "description" : "Update a workspace's name.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "created_at" : {
+                      "anyOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    },
+                    "creator" : {
+                      "anyOf" : [ {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "email" : {
+                            "description" : "value must be a non-blank string.",
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "last_name" : {
+                            "anyOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "first_name", "last_name", "email" ],
+                        "additionalProperties" : false
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "databases" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database" : {
+                            "anyOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "database_id" : {
+                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                          },
+                          "input_schemas" : {
+                            "type" : "array",
+                            "items" : {
+                              "description" : "value must be a non-blank string.",
+                              "type" : "string",
+                              "minLength" : 1
+                            }
+                          },
+                          "output_namespace" : {
+                            "type" : "string"
+                          },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
+                          }
+                        },
+                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "description" : "value must be a non-blank string.",
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : {
+                      "anyOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "string"
+                      } ]
+                    }
+                  },
+                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "description" : "value must be a non-blank string.",
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-workspace-manager-id",
+        "summary" : "DELETE /api/ee/workspace-manager/{id}",
+        "description" : "Delete a Workspace. Tears down every database's warehouse isolation first\n  (blocking, any state). Each database is either fully torn down (its row is\n  deleted) or kept; when any teardown fails the workspace is kept too — with the\n  failed rows, so the delete can be retried — and the combined failure is\n  returned as the error. 204 on success, no response body.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
+      }
+    },
+    "/api/ee/workspace-manager/{id}/config" : {
+      "get" : {
+        "operationId" : "get-api-ee-workspace-manager-id-config",
+        "summary" : "GET /api/ee/workspace-manager/{id}/config",
+        "description" : "Download the workspace's developer-instance config as a YAML file. 409 if any\n  of the workspace's databases is not `:provisioned`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "string"
+                    },
+                    "headers" : {
+                      "type" : "object",
+                      "additionalProperties" : {
+                        "type" : "string"
+                      }
+                    },
+                    "status" : {
+                      "const" : 200
+                    }
+                  },
+                  "required" : [ "status", "headers", "body" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/workspace-manager" ]
       }
     },
     "/api/eid-translation/translate" : {
