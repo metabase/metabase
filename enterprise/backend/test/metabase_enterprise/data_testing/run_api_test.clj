@@ -85,6 +85,48 @@
         (testing "a test that does not exist is not found"
           (mt/user-http-request :crowberto :get 404 path :test-type "transform" :test-id Integer/MAX_VALUE))))))
 
+(deftest last-run-is-the-first-listed-run-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform    {transform-id :id} {}
+                   :model/TransformTest {test-id :id}     {:transform_id transform-id
+                                                           :created_at   #t "2026-01-01T10:00:00Z"}
+                   ;; The run with the higher id started earlier.
+                   :model/DataTestRun  {later-start-id :id} {:test_type  :transform
+                                                             :test_id    test-id
+                                                             :status     :passed
+                                                             :start_time #t "2026-03-01T10:00:00Z"}
+                   :model/DataTestRun  {higher-id :id}      {:test_type  :transform
+                                                             :test_id    test-id
+                                                             :status     :passed
+                                                             :start_time #t "2026-02-01T10:00:00Z"}
+                   ;; Two runs that start at the same instant: the higher id is the newer.
+                   :model/TransformTest {tied-test-id :id} {:transform_id transform-id
+                                                            :created_at   #t "2026-01-01T10:00:00Z"}
+                   :model/DataTestRun  _                   {:test_type  :transform
+                                                            :test_id    tied-test-id
+                                                            :status     :passed
+                                                            :start_time #t "2026-02-01T10:00:00Z"}
+                   :model/DataTestRun  {tied-newer-id :id} {:test_type  :transform
+                                                            :test_id    tied-test-id
+                                                            :status     :failed
+                                                            :start_time #t "2026-02-01T10:00:00Z"}]
+      (let [last-run-id (fn [id]
+                          (-> (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" id)) :last_run :id))
+            first-listed-id (fn [id]
+                              (-> (mt/user-http-request :crowberto :get 200 "ee/data-test-run"
+                                                        :test-type "transform" :test-id id)
+                                  :data first :id))]
+        (testing "the list shows the run that started last first"
+          (is (= [later-start-id higher-id]
+                 (->> (mt/user-http-request :crowberto :get 200 "ee/data-test-run" :test-type "transform" :test-id test-id)
+                      :data
+                      (map :id)))))
+        (testing "the last run of a test is the run that started last, not the one with the highest id"
+          (is (= later-start-id (last-run-id test-id))))
+        (testing "between runs that start at the same instant, the last run is the one with the higher id"
+          (is (= tied-newer-id (first-listed-id tied-test-id)))
+          (is (= tied-newer-id (last-run-id tied-test-id))))))))
+
 (deftest list-runs-by-type-test
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform    {transform-id :id} {}
