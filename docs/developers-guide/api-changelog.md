@@ -1,5 +1,6 @@
 ---
 title: API changelog
+summary: Breaking changes to the Metabase API, listed by release.
 ---
 
 # Breaking changes to the API interface

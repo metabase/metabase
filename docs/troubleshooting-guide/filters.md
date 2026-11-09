@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting filters
+summary: Fix dashboard and question filters that return no results, the wrong results, or the wrong list of values.
 ---
 
 # Troubleshooting filters

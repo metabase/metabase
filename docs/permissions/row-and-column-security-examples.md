@@ -1,5 +1,6 @@
 ---
 title: Row and column security examples
+summary: Worked examples of restricting rows and columns with user attributes and SQL questions, using the Sample Database.
 redirect_from:
   - /docs/latest/permissions/row-and-column-security-examples
 ---

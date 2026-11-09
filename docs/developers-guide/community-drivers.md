@@ -1,5 +1,6 @@
 ---
 title: Community drivers
+summary: Use a community-built driver to connect your self-hosted Metabase to a database Metabase doesn't officially support.
 redirect_from:
   - /docs/latest/developers-guide-drivers
   - /docs/latest/developers-guide/partner-and-community-drivers

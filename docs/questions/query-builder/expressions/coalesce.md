@@ -1,5 +1,6 @@
 ---
 title: Coalesce
+summary: Fill in missing values, or consolidate data from several columns, by returning the first value that isn't null.
 ---
 
 # Coalesce

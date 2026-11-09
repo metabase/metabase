@@ -1,5 +1,6 @@
 ---
 title: Customizing the Metabase Jetty webserver
+summary: Run Metabase on a different port, bind it to a specific network interface, or serve it over HTTPS directly.
 redirect_from:
   - /docs/latest/operations-guide/customizing-jetty-webserver
 ---

@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting database performance
+summary: Find and fix the bottlenecks that make queries against your database slow.
 ---
 
 # Troubleshooting database performance
