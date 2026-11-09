@@ -28,3 +28,30 @@ export function setupRevertRevisionErrorEndpoint({
     body: { message },
   });
 }
+
+/**
+ * Serves an entity's revisions and a revert endpoint that behaves like the real
+ * API: a revert records `revertRevision` at the top of the list, and
+ * `onRevert` is where the spec restores the entity's earlier version.
+ */
+export function setupRevertableRevisionsEndpoints({
+  entity,
+  id,
+  revisions,
+  revertRevision,
+  onRevert,
+}: {
+  entity: RevisionEntityType;
+  id: number | string;
+  revisions: Revision[];
+  revertRevision: Revision;
+  onRevert: () => void;
+}) {
+  let current = revisions;
+  fetchMock.get(`path:/api/revision?entity=${entity}&id=${id}`, () => current);
+  fetchMock.post("path:/api/revision/revert", () => {
+    current = [revertRevision, ...current];
+    onRevert();
+    return revertRevision;
+  });
+}
