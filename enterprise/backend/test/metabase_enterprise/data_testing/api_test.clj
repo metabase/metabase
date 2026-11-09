@@ -1,9 +1,9 @@
 (ns metabase-enterprise.data-testing.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
@@ -27,12 +27,6 @@
             :query (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM PUBLIC.PEOPLE")}
    :target {:type "table" :schema "PUBLIC" :name "PEOPLE_SUMMARY" :database (mt/id)}})
 
-(defmacro ^:private with-transforms-enabled [& body]
-  ;; advanced-permissions: the Data Analyst role only opens transform tests while the plan includes it
-  `(mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-testing}
-     (mt/with-temporary-raw-setting-values [~'transforms-enabled "true"]
-       ~@body)))
-
 (deftest premium-feature-test
   (testing "every endpoint refuses an instance without the feature"
     (mt/with-premium-features #{:transforms-basic}
@@ -53,13 +47,13 @@
 
 (deftest run-history-route-removed-test
   (testing "GET /:id/run is gone: run history comes from /api/ee/data-test-run"
-    (with-transforms-enabled
+    (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
       (mt/with-temp [:model/Transform     {transform-id :id} {}
                      :model/TransformTest {test-id :id}      {:transform_id transform-id}]
         (mt/user-http-request :crowberto :get 404 (str "ee/transform-test/" test-id "/run"))))))
 
 (deftest crud-test
-  (with-transforms-enabled
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform {transform-id :id} (transform)
                    :model/Transform {other-id :id}     (transform)]
       (let [created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
@@ -97,7 +91,7 @@
             (t2/delete! :model/TransformTest :id (:id created))))))))
 
 (deftest rows-cells-keep-request-values-test
-  (with-transforms-enabled
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform {transform-id :id} (transform)]
       (let [cells   {"ID" 1 "CODE" "0001" "FLAG" "true" "AMOUNT" "1.50" "RATE" 1.5 "ACTIVE" false "NOTE" nil}
             columns (mapv (fn [column] {:name column :cast_type "VARCHAR"}) (keys cells))
@@ -121,7 +115,7 @@
             (t2/delete! :model/TransformTest :id (:id created))))))))
 
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
-  (with-transforms-enabled
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform {transform-id :id} (transform)]
       (testing "POST refuses a test the runner would refuse, as that refusal"
         (let [response (mt/user-http-request :crowberto :post 400 "ee/transform-test"
@@ -157,7 +151,7 @@
 
 (deftest no-expectations-test
   (mt/test-driver :h2
-    (with-transforms-enabled
+    (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
       (mt/with-temp [:model/Transform     {transform-id :id} (transform)
                      :model/TransformTest {test-id :id}      {:transform_id transform-id
                                                               :inputs       inputs
@@ -185,7 +179,7 @@
 
 (deftest no-expectations-refusal-writes-nothing-test
   (mt/test-driver :h2
-    (with-transforms-enabled
+    (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
       (mt/with-temp [:model/Transform     {transform-id :id} {:source {:type  :query
                                                                        :query (lib/native-query (mt/metadata-provider)
                                                                                                 "SELECT ID FROM PUBLIC.PEOPLE")}
@@ -218,7 +212,7 @@
             (t2/delete! :model/TransformTest :transform_id transform-id :id [:not-in [test-id empty-id]])))))))
 
 (deftest validation-test
-  (with-transforms-enabled
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform     {transform-id :id} {}
                    :model/TransformTest {test-id :id}      {:transform_id transform-id}]
       (let [valid {:transform_id transform-id :name "t" :inputs [] :expectations []}]
@@ -236,7 +230,7 @@
 
 (deftest run-transform-test-endpoint-test
   (mt/test-driver :h2
-    (with-transforms-enabled
+    (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:source {:type  :query
                                :query (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM PUBLIC.PEOPLE")}
@@ -265,24 +259,15 @@
           (testing "rejects a test that doesn't replace every table the transform reads"
             (run 400 {:inputs [] :expectations []})))))))
 
-(defn- people-id-transform
-  "An MBQL transform selecting `ID` from `PEOPLE` into `PEOPLE_SUMMARY`."
-  []
-  (let [mp (mt/metadata-provider)]
-    {:source {:type  :query
-              :query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
-                         (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))]))}
-     :target {:type "table" :schema "PUBLIC" :name "PEOPLE_SUMMARY" :database (mt/id)}}))
-
 (deftest permissions-test
-  (with-transforms-enabled
-    (mt/with-temp [:model/Transform     {transform-id :id} (people-id-transform)
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {transform-id :id} (data-testing.test-util/id-transform :people)
                    :model/TransformTest {test-id :id}      {:transform_id transform-id
                                                             :inputs       inputs
                                                             :expectations expectations}]
       (let [path  (str "ee/transform-test/" test-id)
             body  {:transform_id transform-id :name "nope" :inputs inputs :expectations expectations}
-            adhoc {:transform (assoc (people-id-transform) :name "adhoc")
+            adhoc {:transform (assoc (data-testing.test-util/id-transform :people) :name "adhoc")
                    :test      {:name "adhoc" :inputs inputs :expectations expectations}}
             refused-writes (fn [user]
                              (mt/user-http-request user :post 403 "ee/transform-test" body)
@@ -326,7 +311,7 @@
 
 (deftest adhoc-run-respects-tables-blocked-by-other-group-test
   (testing "unsaved tests cannot read tables another group of caller blocks"
-    (with-transforms-enabled
+    (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (perms.tu/with-no-data-perms-for-all-users!
           (perms.tu/with-restored-data-perms-for-group! (:id (perms-group/all-users))
@@ -339,14 +324,14 @@
               (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
               (data-perms/set-table-permission! group-id (mt/id :orders) :perms/view-data :blocked)
               (mt/user-http-request :lucky :post 403 "ee/transform-test/run"
-                                    {:transform (assoc (people-id-transform) :name "adhoc")
+                                    {:transform (assoc (data-testing.test-util/id-transform :people) :name "adhoc")
                                      :test      {:name "adhoc" :inputs orders-input :expectations expectations}}))))))))
 
 (deftest update-transform-id-needs-access-to-both-transforms-test
   (testing "moving test to another transform needs permission to save tests of both transforms"
-    (with-transforms-enabled
+    (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
       (mt/with-temp [:model/Database      {other-db-id :id}  {}
-                     :model/Transform     {transform-id :id} (people-id-transform)
+                     :model/Transform     {transform-id :id} (data-testing.test-util/id-transform :people)
                      :model/Transform     {other-id :id}     {:source {:type  :query
                                                                        :query (lib/native-query (lib-be/application-database-metadata-provider other-db-id) "SELECT 1")}}
                      :model/TransformTest {test-id :id}      {:transform_id transform-id
@@ -363,7 +348,7 @@
                 (is (=? {:name "renamed"} (mt/user-http-request :lucky :put 200 path {:name "renamed"})))))))))))
 
 (deftest last-run-test
-  (with-transforms-enabled
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform        {transform-id :id} {}
                    :model/TransformTest    {test-id :id}      {:transform_id transform-id :name "a"
                                                                :created_at   #t "2025-01-01T00:00:00Z"}

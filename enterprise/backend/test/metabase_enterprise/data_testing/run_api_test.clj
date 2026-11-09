@@ -1,28 +1,26 @@
 (ns metabase-enterprise.data-testing.run-api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defmacro ^:private with-transforms-enabled [& body]
-  ;; advanced-permissions: the Data Analyst role only opens Data Studio while the plan includes it
-  `(mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-testing}
-     (mt/with-temporary-raw-setting-values [~'transforms-enabled "true"]
-       ~@body)))
+(defn- listed-runs
+  "The ids and the `total` of the transform test runs that `user` lists with the query parameters `params`."
+  [user & params]
+  (let [{:keys [data total]} (apply mt/user-http-request user :get 200 "ee/data-test-run" :test-type "transform" params)]
+    {:ids (into #{} (map :id) data) :total total}))
 
 (deftest premium-feature-test
   (testing "the endpoint refuses an instance without the feature"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-        (mt/assert-has-premium-feature-error
-         "Transforms Testing"
-         (mt/user-http-request :crowberto :get 402 "ee/data-test-run" :test-type "transform"))))))
+    (data-testing.test-util/with-transforms-enabled #{:transforms-basic}
+      (mt/assert-has-premium-feature-error
+       "Transforms Testing"
+       (mt/user-http-request :crowberto :get 402 "ee/data-test-run" :test-type "transform")))))
 
 (deftest list-runs-test
-  (with-transforms-enabled
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform    {transform-id :id} {}
                    ;; created when its oldest run starts: a run is listed when it starts no earlier than its test
                    :model/TransformTest {test-id :id}     {:transform_id transform-id
@@ -75,7 +73,7 @@
                   (get! :end-time "2026-03-01"))))
         (testing "needs a test type"
           (mt/user-http-request :crowberto :get 400 path :test-id test-id))
-        (testing "refuses a type that no test has"
+        (testing "refuses an unknown test type"
           (mt/user-http-request :crowberto :get 400 path :test-type "nonsense"))
         (testing "refuses users who can't read the test"
           (mt/user-http-request :rasta :get 403 path :test-type "transform" :test-id test-id))
@@ -83,85 +81,68 @@
           (mt/user-http-request :crowberto :get 404 path :test-type "transform" :test-id Integer/MAX_VALUE))))))
 
 (deftest list-runs-by-type-test
-  (with-transforms-enabled
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    ;; Every run starts on a day no other test uses, and each listing filters on it, so other rows in the app DB do not
+    ;; match.
     (mt/with-temp [:model/Transform    {transform-id :id} {}
                    :model/TransformTest {test-id :id}     {:transform_id transform-id
-                                                           :created_at   #t "2025-01-01T00:00:00Z"}
+                                                           :created_at   #t "2000-01-01T00:00:00Z"}
                    :model/DataTestRun  {saved-id :id}     {:test_type :transform, :test_id test-id, :status :passed
-                                                           :start_time #t "2026-01-01T10:00:00Z"}
-                   :model/DataTestRun  {unsaved-id :id}   {:test_type :transform, :test_id nil, :status :failed
-                                                           :start_time #t "2026-02-01T10:00:00Z"}
-                   :model/DataTestRun  _                  {:test_type :card, :test_id nil, :status :failed
-                                                           :start_time #t "2026-03-01T10:00:00Z"}]
+                                                           :start_time #t "2001-01-01T10:00:00Z"}
+                   :model/DataTestRun  _                  {:test_type :transform, :test_id nil, :status :failed
+                                                           :start_time #t "2001-01-01T11:00:00Z"}
+                   :model/DataTestRun  _                  {:test_type :card, :test_id test-id, :status :failed
+                                                           :start_time #t "2001-01-01T12:00:00Z"}]
       (testing "without a test id, the runs of the saved tests of the type are listed, and no run of an unsaved test"
-        (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "ee/data-test-run"
-                                                         :test-type "transform" :limit 1000)
-              ids                  (into #{} (map :id) data)]
-          (is (contains? ids saved-id))
-          (is (not (contains? ids unsaved-id)))
-          (is (every? :test_id data))
-          (is (= (count data) total))))
+        (is (= {:ids #{saved-id} :total 1}
+               (listed-runs :crowberto :start-time "2001-01-01"))))
       (testing "without a test id, the caller needs data studio access"
         (mt/user-http-request :rasta :get 403 "ee/data-test-run" :test-type "transform")))))
 
 (deftest runs-outlive-their-test-test
-  (with-transforms-enabled
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform    {transform-id :id} {}
-                   :model/TransformTest {test-id :id}     {:transform_id transform-id}
-                   :model/DataTestRun  {run-id :id}       {:test_type :transform, :test_id test-id, :status :passed}]
+                   :model/TransformTest {test-id :id}     {:transform_id transform-id
+                                                           :created_at   #t "2000-01-01T00:00:00Z"}
+                   :model/DataTestRun  {run-id :id}       {:test_type :transform, :test_id test-id, :status :passed
+                                                           :start_time #t "2001-01-02T10:00:00Z"}]
+      (testing "the run of a test is listed"
+        (is (= {:ids #{run-id} :total 1}
+               (listed-runs :crowberto :start-time "2001-01-02"))))
       (mt/user-http-request :crowberto :delete 204 (str "ee/transform-test/" test-id))
-      (testing "the run stays, owned by no test, and is no longer listed"
+      (testing "after the test is deleted, the run stays, owned by no test, and is no longer listed"
+        (is (t2/exists? :model/DataTestRun :id run-id))
         (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id)))
-        (is (not (contains? (into #{} (map :id)
-                                  (:data (mt/user-http-request :crowberto :get 200 "ee/data-test-run"
-                                                               :test-type "transform" :limit 1000)))
-                            run-id)))))))
+        (is (= {:ids #{} :total 0}
+               (listed-runs :crowberto :start-time "2001-01-02")))))))
 
 (deftest list-runs-only-of-readable-tests-test
-  (with-transforms-enabled
-    (let [mp (mt/metadata-provider)]
-      (mt/with-temp [:model/Transform    {transform-id :id} {:source {:type  :query
-                                                                      :query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
-                                                                                 (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))]))}
-                                                             :target {:type     "table"
-                                                                      :schema   "PUBLIC"
-                                                                      :name     "PEOPLE_SUMMARY"
-                                                                      :database (mt/id)}}
-                     :model/TransformTest {test-id :id}     {:transform_id transform-id}
-                     :model/DataTestRun  {run-id :id}       {:test_type :transform, :test_id test-id, :status :passed}]
-        (let [listed? (fn []
-                        (contains? (into #{} (map :id)
-                                         (:data (mt/user-http-request :lucky :get 200 "ee/data-test-run"
-                                                                      :test-type "transform" :limit 1000)))
-                                   run-id))]
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (testing "a data analyst who can read the transform sees the runs of its test"
-              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
-                                                                            :perms/create-queries :query-builder}
-                (is (listed?))))
-            (testing "a data analyst who cannot read the transform sees no run of its test"
-              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
-                                                                            :perms/view-data      :blocked
-                                                                            :perms/create-queries :no}
-                (is (not (listed?)))
-                (testing "and cannot ask for them by test id"
-                  (mt/user-http-request :lucky :get 403 "ee/data-test-run"
-                                        :test-type "transform" :test-id test-id))))))))))
-
-(defn- table-transform [table]
-  (let [mp (mt/metadata-provider)]
-    {:source {:type  :query
-              :query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                         (lib/with-fields [(lib.metadata/field mp (mt/id table :id))]))}
-     :target {:type     "table"
-              :schema   "PUBLIC"
-              :name     (str (name table) "_SUMMARY")
-              :database (mt/id)}}))
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform    {transform-id :id} (data-testing.test-util/id-transform :people)
+                   :model/TransformTest {test-id :id}     {:transform_id transform-id
+                                                           :created_at   #t "2000-01-01T00:00:00Z"}
+                   :model/DataTestRun  {run-id :id}       {:test_type :transform, :test_id test-id, :status :passed
+                                                           :start_time #t "2001-01-03T10:00:00Z"}]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (testing "a data analyst who can read the transform sees the runs of its test"
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
+                                                                        :perms/create-queries :query-builder}
+            (is (= {:ids #{run-id} :total 1}
+                   (listed-runs :lucky :start-time "2001-01-03")))))
+        (testing "a data analyst who cannot read the transform sees no run of its test"
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
+                                                                        :perms/view-data      :blocked
+                                                                        :perms/create-queries :no}
+            (is (= {:ids #{} :total 0}
+                   (listed-runs :lucky :start-time "2001-01-03")))
+            (testing "and cannot ask for them by test id"
+              (mt/user-http-request :lucky :get 403 "ee/data-test-run"
+                                    :test-type "transform" :test-id test-id))))))))
 
 (deftest reused-test-id-lists-only-its-own-runs-test
-  (with-transforms-enabled
-    (mt/with-temp [:model/Transform    {hidden-transform :id} (table-transform :people)
-                   :model/Transform    {open-transform :id}   (table-transform :venues)
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform    {hidden-transform :id} (data-testing.test-util/id-transform :people)
+                   :model/Transform    {open-transform :id}   (data-testing.test-util/id-transform :venues)
                    :model/TransformTest {old-test-id :id}     {:transform_id hidden-transform}
                    :model/DataTestRun  {run-id :id}           {:test_type    :transform
                                                                :test_id      old-test-id
@@ -190,10 +171,7 @@
               (testing "the data analyst can read the test that has the reused id"
                 (mt/user-http-request :lucky :get 200 (str "ee/transform-test/" old-test-id)))
               (testing "a test with a reused id does not list the runs of the deleted test"
-                (is (not (contains? (into #{} (map :id)
-                                          (:data (mt/user-http-request :lucky :get 200 "ee/data-test-run"
-                                                                       :test-type "transform" :test-id old-test-id)))
-                                    run-id))))
+                (is (not (contains? (:ids (listed-runs :lucky :test-id old-test-id)) run-id))))
               (testing "a test with a reused id has no last run from the deleted test"
                 (is (nil? (get-in (mt/user-http-request :lucky :get 200 (str "ee/transform-test/" old-test-id))
                                   [:last_run :id]))))
