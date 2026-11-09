@@ -10,7 +10,12 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
-import { createMockCard, createMockUser } from "metabase-types/api/mocks";
+import type { Parameter, ParameterValuesMap } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockParameter,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover";
 
@@ -44,13 +49,18 @@ const TestComponent = ({
 const setup = async ({
   hasPublicLink = true,
   isAdmin = true,
+  parameters = [],
+  parameterValues = {},
 }: {
   hasPublicLink?: boolean;
   isAdmin?: boolean;
+  parameters?: Parameter[];
+  parameterValues?: ParameterValuesMap;
 } = {}) => {
   const TEST_CARD = createMockCard({
     id: TEST_CARD_ID,
     public_uuid: hasPublicLink ? "mock-uuid" : null,
+    parameters,
   });
 
   setupCardPublicLinkEndpoints(TEST_CARD_ID);
@@ -66,7 +76,9 @@ const setup = async ({
   });
 
   const metadata = createMockMetadataFromState(state);
-  const question = checkNotNull(metadata.question(TEST_CARD_ID));
+  const question = checkNotNull(
+    metadata.question(TEST_CARD_ID),
+  ).setParameterValues(parameterValues);
 
   const onClose = jest.fn();
 
@@ -97,6 +109,55 @@ describe("QuestionPublicLinkPopover", () => {
       "xlsx",
       "json",
     ]);
+  });
+
+  it.each(["csv", "xlsx", "json"])(
+    "should include the selected parameter values in the %s export link",
+    async (extension) => {
+      await setup({
+        parameters: [
+          createMockParameter({ id: "group", slug: "group" }),
+          createMockParameter({ id: "unset", slug: "unset" }),
+          createMockParameter({ id: "count", type: "number/=" }),
+        ],
+        parameterValues: { group: ["A & B", "香港 + %"], count: 0 },
+      });
+
+      await userEvent.click(screen.getByText(extension));
+
+      const input = screen.getByRole("textbox");
+      expect(input).toHaveValue(
+        `${SITE_URL}/public/question/mock-uuid.${extension}?${new URLSearchParams(
+          {
+            parameters: JSON.stringify([
+              { id: "group", value: ["A & B", "香港 + %"] },
+              { id: "count", value: 0 },
+            ]),
+          },
+        )}`,
+      );
+    },
+  );
+
+  it("should keep export links without selected parameters unchanged", async () => {
+    await setup({ parameters: [createMockParameter()] });
+
+    await userEvent.click(screen.getByText("csv"));
+
+    expect(
+      screen.getByDisplayValue(`${SITE_URL}/public/question/mock-uuid.csv`),
+    ).toBeInTheDocument();
+  });
+
+  it("should keep the interactive public link unchanged with selected parameters", async () => {
+    await setup({
+      parameters: [createMockParameter()],
+      parameterValues: { "1": "selected" },
+    });
+
+    expect(
+      screen.getByDisplayValue(`${SITE_URL}/public/question/mock-uuid`),
+    ).toBeInTheDocument();
   });
 
   it("should call Card public link API when creating link", async () => {
