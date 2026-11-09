@@ -1,4 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { Center } from "metabase/ui";
 
 import { DataTestRuns } from "../../components/DataTestRuns";
@@ -17,10 +18,9 @@ export function TransformTestRunsPage() {
   }
 
   return (
-    <DataTestRuns
-      testType="transform"
-      testId={test.id}
-      header={<TransformTestHeader transform={transform} test={test} />}
-    />
+    <PageContainer data-testid="transform-test-runs">
+      <TransformTestHeader transform={transform} test={test} />
+      <DataTestRuns testType="transform" testId={test.id} />
+    </PageContainer>
   );
 }

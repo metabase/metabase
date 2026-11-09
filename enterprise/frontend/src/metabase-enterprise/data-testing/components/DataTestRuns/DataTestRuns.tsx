@@ -1,11 +1,10 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useLocation, useNavigate } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { Flex, Group, Stack } from "metabase/ui";
@@ -34,18 +33,15 @@ const EMPTY_RUNS: DataTestRunWithUser[] = [];
 type DataTestRunsProps<K extends DataTestType> = {
   testType: K;
   testId: DataTestId;
-  header: ReactNode;
 };
 
 /**
  * The run history of one test: filters, a paginated table of runs, and a
- * sidebar with the selected run. `header` renders above the runs, beside the
- * sidebar.
+ * sidebar with the selected run.
  */
 export function DataTestRuns<K extends DataTestType>({
   testType,
   testId,
-  header,
 }: DataTestRunsProps<K>) {
   const definition = getDataTestTypeDefinition(testType);
   const {
@@ -126,54 +122,54 @@ export function DataTestRuns<K extends DataTestType>({
     <Flex
       className={cx({ [S.resizing]: isResizing })}
       ref={containerRef}
-      h="100%"
+      flex={1}
+      mih={0}
+      gap="lg"
       wrap="nowrap"
+      data-testid="data-test-runs"
     >
-      <PageContainer className={S.main} flex={1} data-testid="data-test-runs">
-        {header}
-        <Stack gap="lg">
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <DataTestRunFilterBar
-              filterOptions={{
-                statuses: params.statuses,
-                startTime: params.startTime,
-                endTime: params.endTime,
-              }}
-              onFilterOptionsChange={handleFilterOptionsChange}
+      <Stack className={S.main} flex={1} gap="lg">
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <DataTestRunFilterBar
+            filterOptions={{
+              statuses: params.statuses,
+              startTime: params.startTime,
+              endTime: params.endTime,
+            }}
+            onFilterOptionsChange={handleFilterOptionsChange}
+          />
+          <DataTestRunButton
+            testType={testType}
+            test={test}
+            readOnly={readOnly}
+            triggeredFrom="test_runs"
+          />
+        </Group>
+        {data == null || isLoading || error != null ? (
+          <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        ) : (
+          <>
+            <DataTestRunTable
+              runs={runs}
+              hasFilters={hasFilters}
+              onSelect={setSelectedRunId}
             />
-            <DataTestRunButton
-              testType={testType}
-              test={test}
-              readOnly={readOnly}
-              triggeredFrom="test_runs"
-            />
-          </Group>
-          {data == null || isLoading || error != null ? (
-            <LoadingAndErrorWrapper loading={isLoading} error={error} />
-          ) : (
-            <>
-              <DataTestRunTable
-                runs={runs}
-                hasFilters={hasFilters}
-                onSelect={setSelectedRunId}
-              />
-              {data.total > PAGE_SIZE && (
-                <Group justify="end">
-                  <PaginationControls
-                    page={page}
-                    pageSize={PAGE_SIZE}
-                    itemsLength={runs.length}
-                    total={data.total}
-                    showTotal
-                    onPreviousPage={() => handlePageChange(page - 1)}
-                    onNextPage={() => handlePageChange(page + 1)}
-                  />
-                </Group>
-              )}
-            </>
-          )}
-        </Stack>
-      </PageContainer>
+            {data.total > PAGE_SIZE && (
+              <Group justify="end">
+                <PaginationControls
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  itemsLength={runs.length}
+                  total={data.total}
+                  showTotal
+                  onPreviousPage={() => handlePageChange(page - 1)}
+                  onNextPage={() => handlePageChange(page + 1)}
+                />
+              </Group>
+            )}
+          </>
+        )}
+      </Stack>
       {selectedRun != null && (
         <DataTestRunSidebar
           testName={test.name}
