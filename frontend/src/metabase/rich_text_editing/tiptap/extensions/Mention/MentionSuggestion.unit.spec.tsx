@@ -10,9 +10,11 @@ import {
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
+import type { MentionableUser } from "metabase-types/api";
 import {
   createMockRecentCollectionItem,
   createMockSearchResult,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { MentionSuggestionProps } from "./MentionSuggestion";
@@ -42,10 +44,37 @@ const RECENT_ITEMS = [
   }),
 ];
 
+const CURRENT_USER = createMockUser({
+  id: 1,
+  first_name: "Bobby",
+  last_name: "Tables",
+  common_name: "Bobby Tables",
+});
+
+// The backend falls back to the email for the common name of a user without
+// a first and last name
+const NO_NAME_USER: MentionableUser = {
+  id: 2,
+  first_name: null,
+  last_name: null,
+  common_name: "no-name@metabase.test",
+};
+
+const MENTIONABLE_USERS: MentionableUser[] = [
+  {
+    id: CURRENT_USER.id,
+    first_name: CURRENT_USER.first_name,
+    last_name: CURRENT_USER.last_name,
+    common_name: CURRENT_USER.common_name,
+  },
+  NO_NAME_USER,
+];
+
 interface SetupProps extends Partial<MentionSuggestionProps> {
   query?: string;
   searchItems?: typeof SEARCH_ITEMS;
   recentItems?: typeof RECENT_ITEMS;
+  mentionableUsers?: MentionableUser[];
 }
 
 const setup = (props: SetupProps = {}) => {
@@ -71,6 +100,9 @@ const setup = (props: SetupProps = {}) => {
 
   setupSearchEndpoints(props.searchItems ?? SEARCH_ITEMS);
   setupRecentViewsEndpoints(props.recentItems ?? RECENT_ITEMS);
+  fetchMock.get("path:/api/comment/mentions", {
+    data: props.mentionableUsers ?? [],
+  });
 
   const defaultProps: MentionSuggestionProps = {
     items: [],
@@ -82,7 +114,7 @@ const setup = (props: SetupProps = {}) => {
   };
 
   renderWithProviders(<MentionSuggestion {...defaultProps} />, {
-    storeInitialState: createMockState({}),
+    storeInitialState: createMockState({ currentUser: CURRENT_USER }),
   });
 
   return { command, editor };
@@ -228,6 +260,44 @@ describe("MentionSuggestion", () => {
     const urlObject = new URL(checkNotNull(call?.request?.url));
     const models = urlObject.searchParams.getAll("models").sort();
     expect(models).toEqual(["card", "dashboard", "table"]);
+  });
+
+  describe("users", () => {
+    const USER_SEARCH_MODELS: SetupProps["searchModels"] = ["card", "user"];
+
+    it("lists the current user, matching the query case-insensitively", async () => {
+      setup({
+        query: "tAbLe",
+        searchModels: USER_SEARCH_MODELS,
+        searchItems: [],
+        mentionableUsers: MENTIONABLE_USERS,
+      });
+
+      await expectOptionToBePresent(/Bobby Tables/);
+      expectOptionNotToBePresent(/no-name@metabase.test/);
+    });
+
+    it("lists a user without a first and last name by email and mentions them by it", async () => {
+      const { command } = setup({
+        query: "No",
+        searchModels: USER_SEARCH_MODELS,
+        searchItems: [],
+        mentionableUsers: MENTIONABLE_USERS,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("option", { name: /no-name@metabase.test/ }),
+      );
+      expectOptionNotToBePresent(/Bobby Tables/);
+
+      expect(command).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: NO_NAME_USER.id,
+          model: "user",
+          label: "no-name@metabase.test",
+        }),
+      );
+    });
   });
 
   describe("cmd/ctrl+click behavior", () => {
