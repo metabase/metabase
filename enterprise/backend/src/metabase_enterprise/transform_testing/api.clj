@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
-   [metabase-enterprise.transform-testing.models :as transform-testing.models]
    [metabase-enterprise.transform-testing.runner :as transform-testing.runner]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.api.common :as api]
@@ -11,7 +10,6 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.request.core :as request]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -102,17 +100,6 @@
                                                   e))))]
       [(some-> start u.date/parse) (some-> end u.date/parse)])))
 
-(api.macros/defendpoint :post "/run" :- ::transform-testing.schema/run-result
-  "Run a transform test that is not saved, of a transform that need not be saved either, as `POST /:id/run` runs a
-  saved one. Needs what saving the test needs, apart from remote sync."
-  [_route-params
-   _query-params
-   {:keys [transform test]} :- [:map {:closed true}
-                                [:transform ::transforms.schema/transform.definition]
-                                [:test      ::transform-testing.schema/transform-test.definition]]]
-  (api/check-403 (transform-testing.models/can-run-test? transform))
-  (refusing #(transform-testing.runner/run-test! transform test nil)))
-
 (api.macros/defendpoint :get "/:id/run" :- ::transform-testing.schema/transform-test-runs.response
   "List the runs of a transform test, newest first."
   [{:keys [id]} :- [:map {:closed true}
@@ -150,7 +137,7 @@
                     [:id ms/PositiveInt]]]
   (let [transform-test (api/read-check :model/TransformTest id)
         transform      (api/read-check :model/Transform (:transform_id transform-test))]
-    (refusing #(transform-testing.runner/run-saved-test! transform transform-test))))
+    (refusing #(transform-testing.runner/run-test! transform transform-test))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-test` routes."

@@ -35,8 +35,8 @@
   (t2/insert-returning-instance! :model/TransformTest transform-test))
 
 (mu/defn insert-transform-test-run! :- ::transform-testing.schema/transform-test-run
-  "Insert a started TransformTestRun for `transform-test-id`, nil for a test that is not saved, and return it."
-  [transform-test-id :- [:maybe ms/PositiveInt]
+  "Insert a started TransformTestRun for `transform-test-id` and return it."
+  [transform-test-id :- ms/PositiveInt
    initiated-by      :- [:maybe ::lib.schema.id/user]]
   (t2/insert-returning-instance! :model/TransformTestRun
                                  {:transform_test_id transform-test-id

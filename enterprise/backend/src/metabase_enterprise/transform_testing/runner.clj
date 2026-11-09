@@ -31,7 +31,6 @@
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase-enterprise.transform-testing.subject :as transform-testing.subject]
    [metabase-enterprise.transform-testing.subject.transform]
-   [metabase-enterprise.transform-testing.util :as transform-testing.u]
    [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -287,16 +286,15 @@
 
 (mu/defn run-test! :- ::transform-testing.schema/run-result
   "Run `transform-test` against `transform` on temp tables and report what each expectation found, recording the run
-  under `transform-test-id`, or under no test when it is nil.
+  under the test.
 
   Throws a typed refusal from [[metabase-enterprise.transform-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
-  [transform                                        :- ::transforms.schema/transform.definition
-   {:keys [inputs expectations]}                    :- ::transform-testing.schema/transform-test.definition
-   transform-test-id                                :- [:maybe ms/PositiveInt]]
+  [transform                                        :- ::transforms.schema/transform
+   {:keys [inputs expectations] :as transform-test} :- ::transform-testing.schema/transform-test]
   (let [{:keys [driver database input->table output-table labels replacements compiled]}
-        (validated-plan :transform transform inputs expectations)
-        {run-id :id} (transform-testing.run-tracking/start-run! transform-test-id api/*current-user-id*)
+        (validated-plan :transform (transforms.u/->definition transform) inputs expectations)
+        {run-id :id} (transform-testing.run-tracking/start-run! (:id transform-test) api/*current-user-id*)
         final-status (atom :error)]
     (try
       (let [result
@@ -321,10 +319,3 @@
         result)
       (finally
         (transform-testing.run-tracking/finish-run! run-id @final-status)))))
-
-(mu/defn run-saved-test! :- ::transform-testing.schema/run-result
-  "Run the saved `transform-test` of the saved `transform`, as [[run-test!]] runs definitions, recording the run under
-  the test."
-  [transform      :- ::transforms.schema/transform
-   transform-test :- ::transform-testing.schema/transform-test]
-  (run-test! (transforms.u/->definition transform) (transform-testing.u/->definition transform-test) (:id transform-test)))

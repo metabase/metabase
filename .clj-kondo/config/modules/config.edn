@@ -4653,7 +4653,6 @@
            lib.be
            lib.schema
            models
-           permissions
            premium-features
            query-permissions
            query-processor

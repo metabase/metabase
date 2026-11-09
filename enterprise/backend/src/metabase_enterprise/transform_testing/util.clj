@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transform-testing.util
   "Helpers shared across the module."
   (:require
-   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -15,8 +14,3 @@
   unquoted identifier."
   [identifier :- [:maybe :string]]
   (some-> identifier u/lower-case-en))
-
-(mu/defn ->definition :- ::transform-testing.schema/transform-test.definition
-  "What the saved `transform-test` checks, as a client writes it."
-  [transform-test :- ::transform-testing.schema/transform-test]
-  (select-keys transform-test [:name :description :inputs :expectations]))
