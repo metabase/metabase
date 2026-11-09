@@ -1,4 +1,4 @@
-## Adds card_test: a test of one card (a question, model or metric), replacing some of the tables its query reads with
+## Adds card_test: a test of one card (a question, model or metric), replacing the tables its query reads with
 ## fixture data and checking its result set against expectations. The inputs and expectations are JSON documents
 ## validated by metabase-enterprise.data-testing.schema, as for transform_test. A card's tests are deleted with it.
 
