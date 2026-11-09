@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 
 import { formatIdentifier } from "../identifier";
 import { tokenAtPos } from "../position";
+import { getTemplateFieldKind } from "../templates";
 
 import type { CompletionResult } from "./types";
 import { fuzzyMatcher } from "./util";
@@ -38,6 +39,21 @@ export function suggestFields({
   const matcher = fuzzyMatcher(columns);
 
   return function (context: CompletionContext): CompletionResult | null {
+    const templateFieldKind = getTemplateFieldKind(context.state);
+    if (templateFieldKind === "text") {
+      return null;
+    }
+    if (templateFieldKind === "column") {
+      // The placeholder isn't a search term, so offer every column.
+      const { from, to } = context.state.selection.main;
+      return {
+        from,
+        to,
+        options: columns.map((column) => ({ ...column, matches: undefined })),
+        filter: false,
+      };
+    }
+
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
 

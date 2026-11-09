@@ -2,7 +2,10 @@ import type { Extension } from "@codemirror/state";
 import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
-import { suggestions } from "metabase/querying/expressions";
+import {
+  expressionTemplates,
+  suggestions,
+} from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
@@ -55,6 +58,7 @@ export function useExtensions(options: Options): Extension[] {
         database,
       }),
       expander(),
+      expressionTemplates({ activeClassName: S.templateActive }),
       suggestions({
         query,
         stageIndex,

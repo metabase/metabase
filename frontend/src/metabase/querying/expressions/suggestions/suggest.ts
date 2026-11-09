@@ -1,4 +1,7 @@
-import { autocompletion } from "@codemirror/autocomplete";
+import {
+  type CompletionSource,
+  autocompletion,
+} from "@codemirror/autocomplete";
 
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
@@ -12,6 +15,8 @@ export type SuggestOptions = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
 };
+
+import { getTemplateFieldKind } from "../templates";
 
 import { suggestAggregations } from "./aggregations";
 import { suggestFields } from "./fields";
@@ -27,13 +32,23 @@ export function suggestions(options: SuggestOptions) {
     activateOnTyping: true,
     activateOnTypingDelay: 0,
     override: [
-      suggestLiterals(),
-      suggestFunctions(options),
-      suggestAggregations(options),
+      quietOnTemplateBlanks(suggestLiterals()),
+      quietOnTemplateBlanks(suggestFunctions(options)),
+      quietOnTemplateBlanks(suggestAggregations(options)),
       suggestFields(options),
-      suggestMetrics(options),
-      suggestMeasures(options),
-      suggestSegments(options),
+      quietOnTemplateBlanks(suggestMetrics(options)),
+      quietOnTemplateBlanks(suggestMeasures(options)),
+      quietOnTemplateBlanks(suggestSegments(options)),
     ].filter(isNotNull),
   });
+}
+
+function quietOnTemplateBlanks(source: CompletionSource | null) {
+  if (source === null) {
+    return null;
+  }
+
+  const guarded: CompletionSource = (context) =>
+    getTemplateFieldKind(context.state) === null ? source(context) : null;
+  return guarded;
 }

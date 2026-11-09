@@ -58,6 +58,7 @@ type ExpressionSidePanelProps = {
   query: Lib.Query;
   reportTimezone?: string;
   onClauseClick?: (name: string) => void;
+  onTemplateClick?: (code: string) => void;
 };
 
 export function ExpressionSidePanel({
@@ -65,6 +66,7 @@ export function ExpressionSidePanel({
   query,
   reportTimezone,
   onClauseClick,
+  onTemplateClick,
 }: ExpressionSidePanelProps) {
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
@@ -167,6 +169,7 @@ export function ExpressionSidePanel({
             reportTimezone={reportTimezone}
             onToggle={handleToggleGroup}
             onClauseClick={onClauseClick}
+            onTemplateClick={onTemplateClick}
           />
         ))}
       </ScrollArea>
@@ -190,10 +193,17 @@ function PanelIcon({ name }: { name: SidePanelIconName }) {
   );
 }
 
-function ActionRow({ item }: { item: SidePanelTool | SidePanelTemplate }) {
+function ActionRow({
+  item,
+  onClick,
+}: {
+  item: SidePanelTool | SidePanelTemplate;
+  onClick?: () => void;
+}) {
   return (
     <UnstyledButton
       className={S.row}
+      onClick={onClick}
       data-testid="expression-side-panel-action"
     >
       <PanelIcon name={item.icon} />
@@ -284,6 +294,7 @@ function Group({
   reportTimezone,
   onToggle,
   onClauseClick,
+  onTemplateClick,
 }: {
   group: SidePanelGroupView;
   isOpen: boolean;
@@ -291,6 +302,7 @@ function Group({
   reportTimezone?: string;
   onToggle: (id: SidePanelGroupId) => void;
   onClauseClick?: (name: string) => void;
+  onTemplateClick?: (code: string) => void;
 }) {
   const ChevronIcon = isOpen ? ChevronUpIcon : ChevronDownIcon;
 
@@ -316,7 +328,11 @@ function Group({
               <Subheading>{t`Templates`}</Subheading>
               <div className={S.list}>
                 {group.templates.map((template) => (
-                  <ActionRow key={template.name} item={template} />
+                  <ActionRow
+                    key={template.name}
+                    item={template}
+                    onClick={() => onTemplateClick?.(template.code)}
+                  />
                 ))}
               </div>
             </section>

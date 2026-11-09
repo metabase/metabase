@@ -6,4 +6,5 @@ export * from "./help-text";
 export * from "./mode";
 export * from "./position";
 export * from "./suggestions";
+export * from "./templates";
 export * from "./types";

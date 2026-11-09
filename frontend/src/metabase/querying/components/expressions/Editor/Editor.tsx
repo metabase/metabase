@@ -17,6 +17,7 @@ import {
   diagnoseAndCompile,
   format,
   getClauseDefinition,
+  insertExpressionTemplate,
   tokenAtPos,
 } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
@@ -164,6 +165,13 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
+  const handleTemplateClick = useCallback((code: string) => {
+    const view = ref.current?.view;
+    if (view) {
+      insertExpressionTemplate(view, code);
+    }
+  }, []);
+
   const applyInitialSnippet = useInitialClause({
     initialExpressionClause,
   });
@@ -245,6 +253,7 @@ export function Editor(props: EditorProps) {
             reportTimezone={reportTimezone}
             query={query}
             onClauseClick={handleFunctionBrowserClauseClick}
+            onTemplateClick={handleTemplateClick}
           />
         </LayoutSidebar>
       )}

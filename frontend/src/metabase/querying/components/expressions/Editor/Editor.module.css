@@ -37,6 +37,21 @@
   }
 }
 
+/* While a template is being filled in. Doubled to beat the shared CodeMirror styles. */
+.templateActive.templateActive {
+  /* The blanks. An underline, not a background: a background would hide the
+     selection colour that shows which blank is active. */
+  :global(.cm-snippetField) {
+    font-style: normal;
+    box-shadow: inset 0 -1px 0 var(--mb-color-text-brand);
+  }
+
+  /* The invisible stop at the end of a template */
+  :global(.cm-snippetFieldPosition) {
+    display: none;
+  }
+}
+
 .tooltips {
   :global(.cm-tooltip) {
     border: none !important;
