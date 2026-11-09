@@ -706,6 +706,37 @@
           (testing "a column of a model is referred to by its name, so its line has no portable FK"
             (is (not (str/includes? out "portable FK [")))))))))
 
+(deftest adhoc-viewing-context-model-column-name-builds-test
+  (testing "the listed name of a model column builds as a by-name ref on the model in a new query"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {model-id :id model-eid :entity_id}
+                     {:name          "Venues by category"
+                      :type          :model
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query (lib/->legacy-MBQL
+                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                          (lib/aggregate (lib/max (lib.metadata/field mp (mt/id :venues :price))))
+                                          (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))}]
+        (mt/with-test-user :crowberto
+          (let [mp          (mt/metadata-provider)
+                out         (user-context/format-viewing-context
+                             {:user_is_viewing [{:type  "adhoc"
+                                                 :query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp model-id)))}]})
+                column-name (second (re-find #"- \"([^\"]+)\", display name \"Max of Price\", type/Integer\n" out))]
+            (is (= "max" column-name))
+            (when column-name
+              (is (=? [{:name "max" :lib/card-id model-id}]
+                      (-> (construct/execute-representations-query
+                           (walk/keywordize-keys
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                          "source-card" model-eid
+                                          "aggregation" [["count" {}]]
+                                          "breakout"    [["field" {} column-name]]}]}))
+                          (get-in [:structured-output :query])
+                          lib/breakouts-metadata))))))))))
+
 (deftest adhoc-viewing-context-table-column-ref-builds-test
   (testing "a column of a source table is listed with a portable FK that builds in stage 0 of a new query"
     (mt/with-test-user :crowberto
@@ -789,6 +820,44 @@
         (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
           (is (str/includes? out "- [join \"Cat\"] \"NAME\", display name \"Cat → Name\", type/Text, portable FK ["))
           (is (str/includes? out "- \"NAME\", display name \"Name\", type/Text")))))))
+
+(deftest adhoc-viewing-context-joined-card-column-name-builds-test
+  (testing "the listed name of a column of a joined card builds as a by-name ref with its join alias"
+    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
+                   {:name          "Categories model"
+                    :type          :model
+                    :database_id   (mt/id)
+                    :table_id      (mt/id :categories)
+                    :dataset_query (legacy-table-query (mt/id :categories))}]
+      (mt/with-test-user :crowberto
+        (let [mp          (mt/metadata-provider)
+              query       (lib/join (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                    (-> (lib/join-clause (lib.metadata/card mp card-id)
+                                                         [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                                 (lib.metadata/field mp (mt/id :categories :id)))])
+                                        (lib/with-join-alias "Cat")))
+              out         (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})
+              column-name (second (re-find #"- \[join \"Cat\"\] \"([^\"]+)\", display name \"Cat → Name\", type/Text\n" out))
+              db-name     (t2/select-one-fn :name :model/Database :id (mt/id))]
+          (is (= "NAME" column-name))
+          (when column-name
+            (is (=? [{:name "NAME" :lib/card-id card-id}]
+                    (-> (construct/execute-representations-query
+                         (walk/keywordize-keys
+                          {"lib/type" "mbql/query"
+                           "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                        "source-table" [db-name "PUBLIC" "VENUES"]
+                                        "joins"        [{"lib/type"   "mbql/join"
+                                                         "alias"      "Cat"
+                                                         "stages"     [{"lib/type"    "mbql.stage/mbql"
+                                                                        "source-card" card-eid}]
+                                                         "conditions" [["=" {}
+                                                                        ["field" {} [db-name "PUBLIC" "VENUES" "CATEGORY_ID"]]
+                                                                        ["field" {"join-alias" "Cat"} "ID"]]]}]
+                                        "aggregation"  [["count" {}]]
+                                        "breakout"     [["field" {"join-alias" "Cat"} column-name]]}]}))
+                        (get-in [:structured-output :query])
+                        lib/breakouts-metadata)))))))))
 
 (deftest adhoc-viewing-context-lists-earlier-stage-joined-column-by-source-alias-test
   (testing "after a stage boundary, a joined column is listed by the name that resolves to it"
