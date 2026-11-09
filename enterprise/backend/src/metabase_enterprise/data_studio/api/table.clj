@@ -170,12 +170,17 @@
         _                  (api/write-check target-collection)
         selectors          (body->table-selectors body)
         upstream-ids       (all-upstream-table-ids selectors)
-        ;; Don't move already-published upstream tables; only publish unpublished ones. Get table IDs before update
-        ;; for event publishing.
-        table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors upstream-ids :unpublished)]
+        ;; Don't move already-published upstream tables; only publish unpublished ones.
+        table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors upstream-ids :unpublished)
+        selected-ids        (data-studio.db/table-ids-matching-selectors selectors nil :any)
+        upstream-only-ids   (set/difference table-ids-to-update selected-ids)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
-    (when (seq table-ids-to-update)
-      (data-studio.db/publish-tables! table-ids-to-update (:id target-collection)))
+    (when (seq selected-ids)
+      (data-studio.db/publish-tables! selected-ids (:id target-collection)))
+    ;; Recheck at update time: an upstream table published concurrently since the select above must not be moved into
+    ;; this request's collection.
+    (when (seq upstream-only-ids)
+      (data-studio.db/publish-tables! upstream-only-ids (:id target-collection) {:unpublished-only? true}))
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables" :- :nil
@@ -186,7 +191,6 @@
   (api/check-data-studio-access)
   (let [selectors       (body->table-selectors body)
         downstream-ids  (all-downstream-table-ids selectors)
-        ;; Get table IDs before update for event publishing
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)

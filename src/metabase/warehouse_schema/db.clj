@@ -429,6 +429,25 @@
    changes   :- ::warehouse-schema.schema/table.update]
   (t2/update! :model/Table :id [:in table-ids] changes))
 
+(mu/defn lock-table-ids-with-published-state :- [:set ::lib.schema.id/table]
+  "Lock the rows of, and return the ids of, the Tables among `table-ids` whose `is_published` is `published?`."
+  [table-ids  :- [:set ::lib.schema.id/table]
+   published? :- :boolean]
+  (set (t2/select-pks-set :model/Table :id [:in table-ids] :is_published published? {:for :update})))
+
+(mu/defn lock-table-ids-not-published-in :- [:set ::lib.schema.id/table]
+  "Lock the rows of, and return the ids of, the Tables among `table-ids` that are not published in the Collection with
+  `collection-id`."
+  [table-ids     :- [:set ::lib.schema.id/table]
+   collection-id :- ::lib.schema.id/collection]
+  (set (t2/select-pks-set :model/Table {:where [:and
+                                                [:in :id table-ids]
+                                                [:or
+                                                 [:= :is_published false]
+                                                 [:= :collection_id nil]
+                                                 [:not= :collection_id collection-id]]]
+                                        :for   :update})))
+
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
