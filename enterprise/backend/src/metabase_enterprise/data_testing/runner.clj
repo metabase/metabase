@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.runner
-  "Orchestrates a test run over the module's separated concerns. Callers hand the runner the saved subject and the
-  saved test; the runner owns the connection lifecycle, hands ordinary arguments to each concern (no marshaled plan
-  object), and owns the HTTP decisions.
+  "Orchestrates a test run over the module's separated concerns. Callers hand the runner the saved subject, and the
+  saved test to run or the inputs and expectations to validate; the runner owns the connection lifecycle, hands
+  ordinary arguments to each concern (no marshaled plan object), and owns the HTTP decisions.
 
     subject      — app-db: the subject's database and its query compiled to SQL, one method per subject type
     compile      — pure: referenced tables (once), then rewrites to temp tables
@@ -291,14 +291,14 @@
   nil)
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
-  "Run the saved `test` against `subject`, a `subject-type`, on temp tables and report what each expectation found,
+  "Run `saved-test` against `subject`, a `subject-type`, on temp tables and report what each expectation found,
   recording the run under the test.
 
   Throws a typed refusal from [[metabase-enterprise.data-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
-  [subject-type                             :- ::data-testing.subject/subject-type
-   subject                                  :- ::data-testing.subject/subject
-   {test-id :id :keys [inputs expectations]} :- ::data-testing.schema/saved-test]
+  [subject-type                                             :- ::data-testing.subject/subject-type
+   subject                                                  :- ::data-testing.subject/subject
+   {test-id :id :keys [inputs expectations] :as _saved-test} :- ::data-testing.schema/saved-test]
   (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
         (validated-plan subject-type subject inputs expectations)
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
