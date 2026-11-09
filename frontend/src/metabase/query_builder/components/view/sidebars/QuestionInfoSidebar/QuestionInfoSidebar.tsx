@@ -25,6 +25,7 @@ import type Question from "metabase-lib/v1/Question";
 
 import { onCloseQuestionInfo } from "../../../../store/actions";
 import { QuestionActivityTimeline } from "../../../QuestionActivityTimeline";
+import { CompareVersionsButton } from "../../../QuestionVersionDiff";
 
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionRelationshipsTab } from "./components/QuestionRelationshipsTab";
@@ -126,6 +127,7 @@ export const QuestionInfoSidebar = ({
           </Tabs.Panel>
           <Tabs.Panel value="history">
             <SidesheetCard>
+              <CompareVersionsButton question={question} />
               <QuestionActivityTimeline question={question} />
             </SidesheetCard>
           </Tabs.Panel>
