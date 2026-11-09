@@ -137,6 +137,44 @@ export const DashcardMultipleComparisonsTall: StoryFn = () => (
   </VisualizationWrapper>
 );
 
+// a value the card cannot compact truncates after the trend symbol
+const MOCK_LONG_VALUE_SERIES = mockSeries({
+  rows: [
+    ["2019-10-01T00:00:00", 9007199254740000],
+    ["2019-11-01T00:00:00", Number.MAX_SAFE_INTEGER],
+  ],
+  insights: [{ unit: "month", col: "Count" }],
+  name: "Last invoice",
+  settings: { "scalar.compact_primary_number": false },
+});
+
+// the narrowest card cannot fit even the compact value
+const LONG_VALUE_CARD_SIZES = [{ width: 170, height: 126 }, ...CARD_SIZES];
+
+export const DashcardLongValue: StoryFn = () => (
+  <VisualizationWrapper>
+    <Flex gap="lg" align="flex-start" p="lg" wrap="wrap">
+      {LONG_VALUE_CARD_SIZES.map(({ width, height }) => (
+        <Box
+          key={`${width}x${height}`}
+          w={width}
+          h={height}
+          style={{
+            borderRadius: 12,
+            border: "1px solid var(--mb-color-border-neutral)",
+          }}
+        >
+          <Visualization
+            rawSeries={MOCK_LONG_VALUE_SERIES}
+            showTitle
+            width={width}
+          />
+        </Box>
+      ))}
+    </Flex>
+  </VisualizationWrapper>
+);
+
 // a single comparison on a full-page question renders inline with the trend
 // symbol and the full comparison value
 export const QueryBuilderSingleComparison: StoryFn = () => (
