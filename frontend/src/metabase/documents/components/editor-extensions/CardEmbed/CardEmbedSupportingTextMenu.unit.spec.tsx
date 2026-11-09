@@ -3,14 +3,17 @@ import { Editor, type JSONContent } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { DecorationSet } from "@tiptap/pm/view";
 import StarterKit from "@tiptap/starter-kit";
+import { noop } from "underscore";
 
 import {
   setupCardQueryMetadataEndpoint,
   setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DocumentEditorHost } from "metabase/documents/components/Editor/DocumentEditorHost";
-import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
+import {
+  type DocumentEditorHost,
+  DocumentEditorHostProvider,
+} from "metabase/documents/components/Editor/DocumentEditorHost";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
@@ -121,8 +124,8 @@ function setup({ content, cardId }: SetupOpts) {
         innerDecorations={DecorationSet.empty}
         HTMLAttributes={{}}
         extension={CardEmbed}
-        updateAttributes={jest.fn()}
-        deleteNode={jest.fn()}
+        updateAttributes={noop}
+        deleteNode={noop}
       />
     </DocumentEditorHostProvider>,
   );
