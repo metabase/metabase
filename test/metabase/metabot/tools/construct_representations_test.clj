@@ -856,7 +856,7 @@
           (is (true? (:agent-error? (ex-data e))))
           (is (= :expression-editor-rejection (:error (ex-data e))))
           (is (= :filter (:mode (ex-data e))))
-          (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
+          (is (re-find #"Offset\(\) only works in Summarize, so it can't be used in a custom filter" (ex-message e))))))))
 
 (deftest aggregation-without-aggregation-function-explained-test
   (testing "an aggregation with no aggregation function in it is explained, with how to fix it"
@@ -885,7 +885,7 @@
                                               1 true]]}]})]
         (is (= :expression-editor-rejection (:error (ex-data e))))
         (is (= (str "The query builder's expression editor rejects a `filters:` clause in stage 0: "
-                    "Types are incompatible. The query would build but could not be visualized or saved "
+                    "One of the values here is the wrong type. Check that numbers, text and dates are used where they're expected. The query would build but could not be visualized or saved "
                     "- rewrite the offending clause.")
                (ex-message e)))))))
 
@@ -3814,7 +3814,7 @@
                 "Stage 1 aggregation entry 0 is a `field` clause"]
                [{"filters" [[">" {} ["offset" {} ["field" {} "count"] -1] 1]]}
                 :expression-editor-rejection
-                "rejects a `filters:` clause in stage 1: OFFSET is not supported in custom filters"]
+                "rejects a `filters:` clause in stage 1: Offset() only works in Summarize, so it can't be used in a custom filter."]
                [{"joins" [{"alias" "P"
                            "strategy" "left-join"
                            "stages" [{"lib/type" "mbql.stage/mbql"

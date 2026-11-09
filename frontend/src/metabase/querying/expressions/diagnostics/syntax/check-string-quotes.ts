@@ -12,16 +12,25 @@ export function checkStringQuotes({ tokens }: { tokens: Token[] }) {
 
     const { text, value } = token;
     if (typeof value !== "string") {
-      error(token, t`Missing string value`);
+      error(
+        token,
+        t`This text is empty or incomplete. Put the text between double quotes, like "Done".`,
+      );
     }
 
     const openQuote = text[0];
     if (openQuote === "'" || openQuote === '"') {
       if (quoteString(value, openQuote) !== text) {
-        error(token, t`Missing closing string quote`);
+        error(
+          token,
+          t`This text is missing its closing quote. Add a " at the end, like "Done".`,
+        );
       }
     } else {
-      error({ pos: token.start, len: 1 }, t`Unsupported string quote`);
+      error(
+        { pos: token.start, len: 1 },
+        t`This kind of quote can't be used here. Use straight double quotes, like "Done".`,
+      );
     }
   }
 }

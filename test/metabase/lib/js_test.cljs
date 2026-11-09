@@ -549,7 +549,7 @@
                            string?)
         "expression"  (lib/* (meta/field-metadata :people :address) 100)))
     (testing "circular definition"
-      (is (= "Cycle detected: c → x → b → c"
+      (is (= "These depend on each other, so they can't be calculated: c → x → b → c. Remove one of the references to break the loop."
              (-> (lib.js/diagnose-expression
                   query 0 "expression"  (lib/+ (lib/expression-ref query "x") 1) c-pos)
                  .-message))))))

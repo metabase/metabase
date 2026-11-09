@@ -75,7 +75,9 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Function Percentile expects 1 argument").should("not.exist");
+    cy.findByText("Percentile() needs 1 value inside its parentheses.").should(
+      "not.exist",
+    );
     H.CustomExpressionEditor.nameInput().type("Expression name");
     cy.button("Done").should("not.be.disabled").click();
     // Todo: Add positive assertions once this is fixed
@@ -764,7 +766,9 @@ describe("issue 49882", () => {
       'case([Total] > 200, [Total], "X")',
     );
     H.popover()
-      .findByText("Expecting a closing parenthesis")
+      .findByText(
+        "A parenthesis was opened but never closed. Add a ) where it should end.",
+      )
       .should("not.exist");
   });
 
@@ -811,7 +815,9 @@ describe("issue 49882", () => {
       );
 
       H.popover()
-        .findByText("Expecting operator but got case instead")
+        .findByText(
+          "Something's missing before case. Add a comma between values, or a symbol like + or = to connect them.",
+        )
         .should("be.visible", { timeout: 5000 });
     },
   );
@@ -1097,9 +1103,9 @@ describe("issue 53682", () => {
       formula: "contains([Category])",
     });
     H.popover().within(() => {
-      cy.findByText("Function contains expects at least 2 arguments").should(
-        "be.visible",
-      );
+      cy.findByText(
+        "contains() needs at least 2 values, separated by commas.",
+      ).should("be.visible");
       cy.button("Done").should("be.disabled");
     });
 
@@ -1108,7 +1114,7 @@ describe("issue 53682", () => {
     H.expressionEditorWidget().should("be.visible");
     H.CustomExpressionEditor.nameInput().should("have.value", "Name");
     H.popover()
-      .findByText("Function contains expects at least 2 arguments")
+      .findByText("contains() needs at least 2 values, separated by commas.")
       .should("be.visible");
   });
 });

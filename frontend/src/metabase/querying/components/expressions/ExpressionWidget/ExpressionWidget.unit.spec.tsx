@@ -132,7 +132,7 @@ describe("ExpressionWidget", () => {
       expect(doneButton).toBeDisabled();
 
       await screen.findByText(
-        "Unknown Aggregation, Measure or Metric: Imaginary",
+        `There's no metric or measure called "Imaginary". Check the spelling, or use a function like Sum([Total]).`,
       );
     });
 
@@ -146,7 +146,7 @@ describe("ExpressionWidget", () => {
       expect(doneButton).toBeDisabled();
 
       await screen.findByText(
-        "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
+        `"Total" is a column, so it can't be used as a summary on its own. Wrap it in a function like Sum([Total]) or Average([Total]).`,
       );
     });
   });
@@ -159,11 +159,13 @@ describe("ExpressionWidget", () => {
     // Validation is debounced, so the error must not appear synchronously with
     // the first change to a new expression.
     expect(
-      screen.queryByText("Unknown Aggregation, Measure or Metric: Imaginary"),
+      screen.queryByText(
+        `There's no metric or measure called "Imaginary". Check the spelling, or use a function like Sum([Total]).`,
+      ),
     ).not.toBeInTheDocument();
 
     await screen.findByText(
-      "Unknown Aggregation, Measure or Metric: Imaginary",
+      `There's no metric or measure called "Imaginary". Check the spelling, or use a function like Sum([Total]).`,
     );
   });
 
@@ -177,7 +179,9 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      await screen.findByText('Expecting operator but got "test" instead');
+      await screen.findByText(
+        `Something's missing before "test". Add a comma between values, or a symbol like + or = to connect them.`,
+      );
     });
   });
 
@@ -205,7 +209,9 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      await screen.findByText("Unsupported function Percentile");
+      await screen.findByText(
+        "This database doesn't support Percentile(). Try a different function.",
+      );
     });
   });
 });

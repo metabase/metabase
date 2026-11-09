@@ -724,13 +724,16 @@ describe("scenarios > question > custom column", () => {
       name: "A custom expression",
     });
     H.popover()
-      .contains(/^Unknown column: abcdef/i)
+      .contains(/^There's no column called "abcdef"/i)
       .should("be.visible");
     H.expressionEditorWidget().button("Done").should("be.disabled");
 
     cy.log("argument validation");
     H.enterCustomColumnDetails({ formula: "SUBSTRING('foo', 0, 1)" });
-    H.popover().should("contain", "Expected positive integer but found 0");
+    H.popover().should(
+      "contain",
+      "Positions start at 1, so this can't be 0. Use 1 or higher.",
+    );
     H.expressionEditorWidget().button("Done").should("be.disabled");
 
     cy.log("incomplete expression");

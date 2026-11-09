@@ -208,14 +208,14 @@ describe("scenarios > question > custom column > typing suggestion", () => {
       delay: 50,
     });
     H.popover()
-      .findByText(/Unknown column/)
+      .findByText(/There's no column called/)
       .should("not.exist");
     H.CustomExpressionEditor.type("{tab}", {
       focus: false,
       delay: 50,
     });
     H.popover()
-      .findByText(/Unknown column/)
+      .findByText(/There's no column called/)
       .should("be.visible");
   });
 

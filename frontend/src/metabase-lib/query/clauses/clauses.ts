@@ -38,7 +38,7 @@ const WINDOW = defineClauses(
       requiresFeature: "window-functions/offset",
       validator(_expr: Lib.ExpressionParts, offset: number) {
         if (offset === 0) {
-          return t`Row offset cannot be zero`;
+          return t`The row offset can't be 0, because that's the current row. Use -1 for the previous row or 1 for the next.`;
         }
       },
       hasOptions: true,
@@ -404,7 +404,7 @@ const STRING = defineClauses(
       type: "string",
       validator(_arg: Lib.ExpressionParts, start: number, _length: number) {
         if (start <= 0) {
-          return t`Expected positive integer but found ${start}`;
+          return t`Positions start at 1, so this can't be ${start}. Use 1 or higher.`;
         }
       },
       description: () =>
@@ -440,7 +440,7 @@ const STRING = defineClauses(
         position: number,
       ) {
         if (position < 1) {
-          return t`Expected positive integer but found ${position}`;
+          return t`Positions start at 1, so this can't be ${position}. Use 1 or higher.`;
         }
       },
       requiresFeature: "split-part",

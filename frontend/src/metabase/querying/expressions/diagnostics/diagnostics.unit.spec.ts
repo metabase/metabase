@@ -37,42 +37,62 @@ describe("diagnostics", () => {
 
     it("should catch mismatched parentheses after function", () => {
       expect(err("FLOOR [Price]/2)")).toBe(
-        "Expecting an opening parenthesis after function FLOOR",
+        "FLOOR is a function, so it needs parentheses after its name, like FLOOR().",
       );
       expect(err("LOWER [Vendor]")).toBe(
-        "Expecting an opening parenthesis after function LOWER",
+        "LOWER is a function, so it needs parentheses after its name, like LOWER().",
       );
     });
 
     it("should catch missing parentheses", () => {
-      expect(err("(")).toBe("Expecting a closing parenthesis");
-      expect(err("(()")).toBe("Expecting a closing parenthesis");
-      expect(err("((()")).toBe("Expecting a closing parenthesis");
+      expect(err("(")).toBe(
+        "A parenthesis was opened but never closed. Add a ) where it should end.",
+      );
+      expect(err("(()")).toBe(
+        "A parenthesis was opened but never closed. Add a ) where it should end.",
+      );
+      expect(err("((()")).toBe(
+        "A parenthesis was opened but never closed. Add a ) where it should end.",
+      );
 
-      expect(err(")")).toBe("Expecting an opening parenthesis");
-      expect(err("())")).toBe("Expecting an opening parenthesis");
-      expect(err("()))")).toBe("Expecting an opening parenthesis");
+      expect(err(")")).toBe(
+        "There's a closing parenthesis without a matching opening one. Remove it, or add a ( earlier in the expression.",
+      );
+      expect(err("())")).toBe(
+        "There's a closing parenthesis without a matching opening one. Remove it, or add a ( earlier in the expression.",
+      );
+      expect(err("()))")).toBe(
+        "There's a closing parenthesis without a matching opening one. Remove it, or add a ( earlier in the expression.",
+      );
     });
 
     it("should catch invalid characters", () => {
-      expect(err("[Price] / #")).toBe("Unexpected character: #");
+      expect(err("[Price] / #")).toBe(
+        "The character # can't be used here. Remove it, or put it inside quotes if it's part of some text.",
+      );
     });
 
     it("should catch unterminated string literals", () => {
-      expect(err('[Category] = "widget')).toBe("Missing closing string quote");
+      expect(err('[Category] = "widget')).toBe(
+        `This text is missing its closing quote. Add a " at the end, like "Done".`,
+      );
     });
 
     it("should catch unterminated field reference", () => {
-      expect(err("[Price / 2")).toBe("Missing a closing bracket");
+      expect(err("[Price / 2")).toBe(
+        "This column name is missing its closing bracket. Add a ] at the end, like [Total].",
+      );
     });
 
     it("should show the correct number of CASE arguments in a custom expression", () => {
-      expect(err("CASE([Total] > 0)")).toBe("CASE expects 2 arguments or more");
+      expect(err("CASE([Total] > 0)")).toBe(
+        `case() needs at least a condition and a result, like case([Total] > 100, "Large").`,
+      );
     });
 
     it("should show the correct number of function arguments in a custom expression", () => {
       expect(err("between([Tax])", "filter")).toBe(
-        "Function between expects 3 arguments",
+        "between() needs 3 values, separated by commas.",
       );
     });
 
@@ -91,19 +111,19 @@ describe("diagnostics", () => {
         for (const [rightToken, errToken] of right) {
           it(`should catch mismatched adjacent tokens in: ${leftToken} ${rightToken}`, () => {
             expect(err(`${leftToken} ${rightToken}`)).toBe(
-              `Expecting operator but got ${errToken} instead`,
+              `Something's missing before ${errToken}. Add a comma between values, or a symbol like + or = to connect them.`,
             );
           });
 
           it(`should catch mismatched adjacent tokens in: concat(${leftToken} ${rightToken})`, () => {
             expect(err(`concat(${leftToken} ${rightToken})`)).toBe(
-              `Expecting operator but got ${errToken} instead`,
+              `Something's missing before ${errToken}. Add a comma between values, or a symbol like + or = to connect them.`,
             );
           });
 
           it(`should catch mismatched adjacent tokens in: 2 * (${leftToken} ${rightToken})`, () => {
             expect(err(`2 * (${leftToken} ${rightToken})`)).toBe(
-              `Expecting operator but got ${errToken} instead`,
+              `Something's missing before ${errToken}. Add a comma between values, or a symbol like + or = to connect them.`,
             );
           });
         }
@@ -111,18 +131,24 @@ describe("diagnostics", () => {
     });
 
     it("should catch unknown functions", () => {
-      expect(err("unknown()")).toBe("Unknown function unknown");
+      expect(err("unknown()")).toBe(
+        "There's no function called unknown(). Check the spelling, or start typing to see matching functions.",
+      );
     });
 
     describe("arg count validation", () => {
       it("should catch mismatched number of function parameters", () => {
-        expect(err(`between()`)).toBe("Function between expects 3 arguments");
-        expect(err(`between(1)`)).toBe("Function between expects 3 arguments");
+        expect(err(`between()`)).toBe(
+          "between() needs 3 values, separated by commas.",
+        );
+        expect(err(`between(1)`)).toBe(
+          "between() needs 3 values, separated by commas.",
+        );
         expect(err(`between(1, 2)`)).toBe(
-          "Function between expects 3 arguments",
+          "between() needs 3 values, separated by commas.",
         );
         expect(err(`between(1, 2, 3, 4)`)).toBe(
-          "Function between expects 3 arguments",
+          "between() needs 3 values, separated by commas.",
         );
       });
 
@@ -141,14 +167,20 @@ describe("diagnostics", () => {
           err("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4", "filter"),
         ).toBeUndefined();
         expect(err("([ID] > 2 OR [Subtotal] = 100) and", "filter")).toBe(
-          "Expected expression",
+          "Something's missing here. Add a column, value or function to finish the expression.",
         );
       });
 
       it("should reject non-boolean expressions in filter mode", () => {
-        expect(err("[Tax] * 22", "filter")).toBe("Types are incompatible.");
-        expect(err("3.14159", "filter")).toBe("Types are incompatible.");
-        expect(err('"TheAnswer"', "filter")).toBe("Types are incompatible.");
+        expect(err("[Tax] * 22", "filter")).toBe(
+          "A filter has to be true or false for each row. Add a comparison, like [Total] > 100.",
+        );
+        expect(err("3.14159", "filter")).toBe(
+          "A filter has to be true or false for each row. Add a comparison, like [Total] > 100.",
+        );
+        expect(err('"TheAnswer"', "filter")).toBe(
+          "A filter has to be true or false for each row. Add a comparison, like [Total] > 100.",
+        );
         expect(err("[Total] > 10", "filter")).toBeUndefined();
       });
 
@@ -156,10 +188,10 @@ describe("diagnostics", () => {
         "should reject multi-arg function calls without options when there is not enough arguments",
         (fn) => {
           expect(err(`${fn}()`)).toBe(
-            `Function ${fn} expects at least 2 arguments`,
+            `${fn}() needs at least 2 values, separated by commas.`,
           );
           expect(err(`${fn}("foo")`)).toBe(
-            `Function ${fn} expects at least 2 arguments`,
+            `${fn}() needs at least 2 values, separated by commas.`,
           );
           expect(err(`${fn}("foo", "bar")`)).toBeUndefined();
           expect(err(`${fn}("foo", "bar", "baz")`)).toBeUndefined();
@@ -170,20 +202,20 @@ describe("diagnostics", () => {
         "should reject when there is not enough arguments for %s",
         (fn) => {
           expect(err(`${fn}()`)).toBe(
-            `Function ${fn} expects at least 2 arguments`,
+            `${fn}() needs at least 2 values, separated by commas.`,
           );
           expect(err(`${fn}("foo")`)).toBe(
-            `Function ${fn} expects at least 2 arguments`,
+            `${fn}() needs at least 2 values, separated by commas.`,
           );
 
           expect(err(`${fn}("foo", "bar")`)).toBeUndefined();
 
           expect(err(`${fn}("case-insensitive")`)).toBe(
-            `Function ${fn} expects at least 2 arguments`,
+            `${fn}() needs at least 2 values, separated by commas.`,
           );
 
           expect(err(`${fn}("foo", "case-insensitive")`)).toBe(
-            `Function ${fn} expects at least 2 arguments`,
+            `${fn}() needs at least 2 values, separated by commas.`,
           );
 
           expect(
@@ -197,21 +229,23 @@ describe("diagnostics", () => {
       );
 
       it("should reject when there is not enough arguments for interval", () => {
-        expect(err(`interval()`)).toBe(`Function interval expects 3 arguments`);
+        expect(err(`interval()`)).toBe(
+          `interval() needs 3 values, separated by commas.`,
+        );
         expect(err(`interval([Created At])`)).toBe(
-          `Function interval expects 3 arguments`,
+          `interval() needs 3 values, separated by commas.`,
         );
 
         expect(err(`interval([Created At], 1)`)).toBe(
-          `Function interval expects 3 arguments`,
+          `interval() needs 3 values, separated by commas.`,
         );
 
         expect(err(`interval("include-current")`)).toBe(
-          `Function interval expects 3 arguments`,
+          `interval() needs 3 values, separated by commas.`,
         );
 
         expect(err(`interval("foo", "include-current")`)).toBe(
-          `Function interval expects 3 arguments`,
+          `interval() needs 3 values, separated by commas.`,
         );
 
         expect(err(`interval([Created At], 1, "month")`)).toBeUndefined();
@@ -224,7 +258,9 @@ describe("diagnostics", () => {
       it.each(["week", "weekday"])(
         "should reject when there is not enough arguments for %s",
         (fn) => {
-          expect(err(`${fn}()`)).toBe(`Function ${fn} expects 1 argument`);
+          expect(err(`${fn}()`)).toBe(
+            `${fn}() needs 1 value inside its parentheses.`,
+          );
           expect(err(`${fn}([Created At])`)).toBeUndefined();
           expect(err(`${fn}([Created At], "US")`)).toBeUndefined();
         },
@@ -241,10 +277,10 @@ describe("diagnostics", () => {
       describe("substring", () => {
         it("should reject substring with index <= 0", () => {
           expect(err(`substring("foo", 0, 1)`)).toBe(
-            "Expected positive integer but found 0",
+            "Positions start at 1, so this can't be 0. Use 1 or higher.",
           );
           expect(err(`substring("foo", -1, 1)`)).toBe(
-            "Expected positive integer but found -1",
+            "Positions start at 1, so this can't be -1. Use 1 or higher.",
           );
         });
 
@@ -257,10 +293,10 @@ describe("diagnostics", () => {
       describe("split-part", () => {
         it("should reject split-part with index <= 0", () => {
           expect(err(`splitPart("foo", "/", 0)`)).toBe(
-            "Expected positive integer but found 0",
+            "Positions start at 1, so this can't be 0. Use 1 or higher.",
           );
           expect(err(`splitPart("foo", "/" ,-1)`)).toBe(
-            "Expected positive integer but found -1",
+            "Positions start at 1, so this can't be -1. Use 1 or higher.",
           );
         });
 
@@ -273,7 +309,7 @@ describe("diagnostics", () => {
       describe("offset", () => {
         it("should reject offset with offset = 0", () => {
           expect(err(`Offset([Total], 0)`, "aggregation")).toBe(
-            "Row offset cannot be zero",
+            "The row offset can't be 0, because that's the current row. Use -1 for the previous row or 1 for the next.",
           );
         });
 
@@ -290,7 +326,7 @@ describe("diagnostics", () => {
       const database = createSampleDatabase({ features: ["left-join"] });
 
       expect(err(`percentile(1, 2)`, "expression", database)).toBe(
-        "Unsupported function Percentile",
+        "This database doesn't support Percentile(). Try a different function.",
       );
     });
 
@@ -308,12 +344,24 @@ describe("diagnostics", () => {
     });
 
     it("should reject comparison operator with non-field operand", () => {
-      expect(err("1 < 2")).toBe("Expecting field but found 1");
-      expect(err("1 <= 2")).toBe("Expecting field but found 1");
-      expect(err("1 > 2")).toBe("Expecting field but found 1");
-      expect(err("1 >= 2")).toBe("Expecting field but found 1");
-      expect(err("1 = 2")).toBe("Expecting field but found 1");
-      expect(err("1 != 2")).toBe("Expecting field but found 1");
+      expect(err("1 < 2")).toBe(
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+      );
+      expect(err("1 <= 2")).toBe(
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+      );
+      expect(err("1 > 2")).toBe(
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+      );
+      expect(err("1 >= 2")).toBe(
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+      );
+      expect(err("1 = 2")).toBe(
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+      );
+      expect(err("1 != 2")).toBe(
+        "The left side of this comparison needs to be a column or calculation, not the number 1. Try something like [Total] > 1.",
+      );
 
       expect(err("[Tax] < 2")).toBeUndefined();
       expect(err("[Tax] <= 2")).toBeUndefined();
@@ -330,7 +378,9 @@ describe("diagnostics", () => {
     });
 
     it("should reject a CASE expression with only one argument", () => {
-      expect(err("case([Total] > 0)")).toBe("CASE expects 2 arguments or more");
+      expect(err("case([Total] > 0)")).toBe(
+        `case() needs at least a condition and a result, like case([Total] > 100, "Large").`,
+      );
     });
 
     it("should accept top-level literals", () => {
@@ -366,7 +416,9 @@ describe("diagnostics", () => {
         "4E-",
         "4E-",
       ])("handles missing exponents for %s", (expression) => {
-        expect(err(expression)).toBe("Missing exponent");
+        expect(err(expression)).toBe(
+          `This number has an "e" with nothing after it. Add a number, like 1e3, or remove the "e".`,
+        );
       });
     });
 
@@ -374,7 +426,9 @@ describe("diagnostics", () => {
       it.each([`"single`, `'double`, `"foo\\"`, `'foo\\'`])(
         "reject missing string quotes for %s",
         (expression) => {
-          expect(err(expression)).toBe("Missing closing string quote");
+          expect(err(expression)).toBe(
+            `This text is missing its closing quote. Add a " at the end, like "Done".`,
+          );
         },
       );
     });
@@ -388,15 +442,19 @@ describe("diagnostics", () => {
         `[foo \\[ bar`,
         `[foo \\[ bar \\]`,
       ])("reject missing closing field quotes for %s", (expression) => {
-        expect(err(expression)).toBe("Missing a closing bracket");
+        expect(err(expression)).toBe(
+          "This column name is missing its closing bracket. Add a ] at the end, like [Total].",
+        );
       });
 
       it("should reject missing field quotes for foo]", () => {
-        expect(err("foo]")).toMatch(/^Missing an opening bracket for /);
+        expect(err("foo]")).toMatch(/is missing its opening bracket/);
       });
 
       it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
-        expect(err(expression)).toBe("Expected a field name");
+        expect(err(expression)).toBe(
+          "This column name is empty. Put a column name between the brackets, like [Total].",
+        );
       });
 
       it.each([`"]"`, `']'`, `concat("[", "]")`, `concat("[", [Total], "]")`])(
@@ -411,14 +469,14 @@ describe("diagnostics", () => {
       it.each([`.`, `1°`, `@`, `#`, `%`, `@`, `(])`])(
         "should reject bad tokens like %s",
         (expression) => {
-          expect(err(expression)).toMatch(/^Unexpected character/);
+          expect(err(expression)).toMatch(/^The character /);
         },
       );
 
       it.each([`$#`, `$#@`, `$#@$`, `$#@$#`])(
         "should reject bad tokens like %s",
         (expression) => {
-          expect(err(expression)).toMatch(/^Invalid expression/);
+          expect(err(expression)).toMatch(/^This part can't be read/);
         },
       );
     });
@@ -426,13 +484,13 @@ describe("diagnostics", () => {
     describe("double commas", () => {
       it("should reject repeated commas", () => {
         expect(err(`concat("foo",, "bar")`)).toBe(
-          "Expected expression but got: ,",
+          "There are two commas in a row. Remove one, or add the missing value between them.",
         );
         expect(err(`concat("foo", , "bar")`)).toBe(
-          "Expected expression but got: ,",
+          "There are two commas in a row. Remove one, or add the missing value between them.",
         );
         expect(err(`concat("foo",,, "bar")`)).toBe(
-          "Expected expression but got: ,",
+          "There are two commas in a row. Remove one, or add the missing value between them.",
         );
       });
     });
@@ -440,98 +498,98 @@ describe("diagnostics", () => {
     it("should reject aggregations functions in expression mode", () => {
       const mode = "expression";
       expect(err("CumulativeCount([Total])", mode)).toBe(
-        "Aggregations like CumulativeCount are not allowed when building a custom expression",
+        "CumulativeCount() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("CumulativeSum([Total])", mode)).toBe(
-        "Aggregations like CumulativeSum are not allowed when building a custom expression",
+        "CumulativeSum() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Count([Total])", mode)).toBe(
-        "Aggregations like Count are not allowed when building a custom expression",
+        "Count() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Sum([Total])", mode)).toBe(
-        "Aggregations like Sum are not allowed when building a custom expression",
+        "Sum() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Distinct([Total])", mode)).toBe(
-        "Aggregations like Distinct are not allowed when building a custom expression",
+        "Distinct() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Average([Total])", mode)).toBe(
-        "Aggregations like Average are not allowed when building a custom expression",
+        "Average() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Median([Total])", mode)).toBe(
-        "Aggregations like Median are not allowed when building a custom expression",
+        "Median() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Min([Total])", mode)).toBe(
-        "Aggregations like Min are not allowed when building a custom expression",
+        "Min() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Max([Total])", mode)).toBe(
-        "Aggregations like Max are not allowed when building a custom expression",
+        "Max() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Share([Total] = 10)", mode)).toBe(
-        "Aggregations like Share are not allowed when building a custom expression",
+        "Share() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("CountIf([Total] = 10)", mode)).toBe(
-        "Aggregations like CountIf are not allowed when building a custom expression",
+        "CountIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("DistinctIf([Total], [Tax] = 10)", mode)).toBe(
-        "Aggregations like DistinctIf are not allowed when building a custom expression",
+        "DistinctIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("SumIf([Total], [Tax] = 10)", mode)).toBe(
-        "Aggregations like SumIf are not allowed when building a custom expression",
+        "SumIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Variance([Total])", mode)).toBe(
-        "Aggregations like Variance are not allowed when building a custom expression",
+        "Variance() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Percentile([Total], 0.9)", mode)).toBe(
-        "Aggregations like Percentile are not allowed when building a custom expression",
+        "Percentile() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
     });
 
     it("should reject aggregations functions in filter mode", () => {
       const mode = "filter";
       expect(err("CumulativeCount([Total] > 1)", mode)).toBe(
-        "Aggregations like CumulativeCount are not allowed when building a custom filter",
+        "CumulativeCount() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("CumulativeSum([Total] > 1)", mode)).toBe(
-        "Aggregations like CumulativeSum are not allowed when building a custom filter",
+        "CumulativeSum() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Count([Total] > 1)", mode)).toBe(
-        "Aggregations like Count are not allowed when building a custom filter",
+        "Count() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Sum([Total])", mode)).toBe(
-        "Aggregations like Sum are not allowed when building a custom filter",
+        "Sum() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Distinct([Total])", mode)).toBe(
-        "Aggregations like Distinct are not allowed when building a custom filter",
+        "Distinct() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Average([Total])", mode)).toBe(
-        "Aggregations like Average are not allowed when building a custom filter",
+        "Average() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Median([Total])", mode)).toBe(
-        "Aggregations like Median are not allowed when building a custom filter",
+        "Median() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Min([Total])", mode)).toBe(
-        "Aggregations like Min are not allowed when building a custom filter",
+        "Min() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Max([Total])", mode)).toBe(
-        "Aggregations like Max are not allowed when building a custom filter",
+        "Max() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Share([Total] = 10)", mode)).toBe(
-        "Aggregations like Share are not allowed when building a custom filter",
+        "Share() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("CountIf([Total] = 10)", mode)).toBe(
-        "Aggregations like CountIf are not allowed when building a custom filter",
+        "CountIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("DistinctIf([Total], [Tax] = 10)", mode)).toBe(
-        "Aggregations like DistinctIf are not allowed when building a custom filter",
+        "DistinctIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("SumIf([Total], [Tax] = 10)", mode)).toBe(
-        "Aggregations like SumIf are not allowed when building a custom filter",
+        "SumIf() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Variance([Total])", mode)).toBe(
-        "Aggregations like Variance are not allowed when building a custom filter",
+        "Variance() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
       expect(err("Percentile([Total], 0.9)", mode)).toBe(
-        "Aggregations like Percentile are not allowed when building a custom filter",
+        "Percentile() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
     });
   });
@@ -561,7 +619,9 @@ describe("diagnostics", () => {
     it("should handle invalid input", () => {
       const expression = "1+";
       const result = setup({ expression });
-      expect(result.error?.message).toBe("Expected expression");
+      expect(result.error?.message).toBe(
+        "Something's missing here. Add a column, value or function to finish the expression.",
+      );
     });
   });
 });

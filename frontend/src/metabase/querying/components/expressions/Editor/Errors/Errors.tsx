@@ -9,7 +9,7 @@ export function Errors({ error }: { error?: ExpressionError | Error | null }) {
   }
 
   return (
-    <Flex p="sm" className={S.errors} gap="sm" align="center">
+    <Flex p="sm" className={S.errors} gap="sm" align="flex-start">
       <Icon name="warning" className={S.icon} />
       {error.message}
     </Flex>

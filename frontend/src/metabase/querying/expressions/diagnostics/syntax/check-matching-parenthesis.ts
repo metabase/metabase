@@ -16,13 +16,19 @@ export function checkMatchingParentheses({ tokens }: { tokens: Token[] }) {
 
     if (token.type === GROUP_CLOSE) {
       if (count === 0) {
-        error(token, t`Expecting an opening parenthesis`);
+        error(
+          token,
+          t`There's a closing parenthesis without a matching opening one. Remove it, or add a ( earlier in the expression.`,
+        );
       }
       count -= 1;
     }
   }
 
   if (count !== 0) {
-    error(lastOpen, t`Expecting a closing parenthesis`);
+    error(
+      lastOpen,
+      t`A parenthesis was opened but never closed. Add a ) where it should end.`,
+    );
   }
 }

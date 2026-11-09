@@ -786,12 +786,14 @@ describe("pratt/compiler", () => {
     });
 
     it("should throw error on inclomplete expressions", () => {
-      expect(() => expr(`1 +`)).toThrow("Expected expression");
+      expect(() => expr(`1 +`)).toThrow(
+        "Something's missing here. Add a column, value or function to finish the expression.",
+      );
     });
 
     it("should throw error on unknown function", () => {
       expect(() => expr(`unknown_fn(1)`)).toThrow(
-        "Unknown function unknown_fn",
+        "There's no function called unknown_fn(). Check the spelling, or start typing to see matching functions.",
       );
     });
   });

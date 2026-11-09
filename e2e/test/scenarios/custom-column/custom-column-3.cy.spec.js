@@ -258,7 +258,10 @@ describe("scenarios > question > custom column > splitPart", () => {
       name: CC_NAME,
     });
     H.popover().button("Done").should("be.disabled");
-    H.popover().should("contain", "Expected positive integer but found 0");
+    H.popover().should(
+      "contain",
+      "Positions start at 1, so this can't be 0. Use 1 or higher.",
+    );
 
     H.enterCustomColumnDetails({
       formula: "splitPart([Name], ' ', 1)",
@@ -441,7 +444,9 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.CustomExpressionEditor.clear().type("[Custom Sum 2]");
 
     H.popover()
-      .findByText("Cycle detected: Custom Sum → Custom Sum 2 → Custom Sum")
+      .findByText(
+        "These depend on each other, so they can't be calculated: Custom Sum → Custom Sum 2 → Custom Sum. Remove one of the references to break the loop.",
+      )
       .should("be.visible");
   });
 

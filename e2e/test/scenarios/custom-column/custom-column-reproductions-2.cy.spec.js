@@ -447,7 +447,7 @@ describe("Issue 58230", () => {
     H.getNotebookStep("data").button("Custom column").click();
     H.CustomExpressionEditor.type("Average([Total])");
     H.popover().findByText(
-      "Aggregations like Average are not allowed when building a custom expression",
+      "Average() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
     );
   });
 
@@ -456,7 +456,7 @@ describe("Issue 58230", () => {
     H.popover().findByText("Custom Expression").click();
     H.CustomExpressionEditor.type("Average([Total])");
     H.popover().findByText(
-      "Aggregations like Average are not allowed when building a custom filter",
+      "Average() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
     );
   });
 
@@ -483,14 +483,14 @@ describe("issue 57674", () => {
       allowFastSet: true,
     }).blur();
     H.popover()
-      .findByText(/Types are incompatible/)
+      .findByText(/needs .* as its|wrong type/)
       .should("be.visible");
 
     H.CustomExpressionEditor.clear()
       .type('case([Total] > 100, "foo", "bar")', { allowFastSet: true })
       .blur();
     H.popover()
-      .findByText(/Types are incompatible/)
+      .findByText(/needs .* as its|wrong type/)
       .should("not.exist");
 
     H.CustomExpressionEditor.nameInput().type("Foo");
@@ -691,7 +691,7 @@ describe("Issue 26512", () => {
         .type(formula, { allowFastSet: true })
         .blur();
       H.popover()
-        .findByText(/Types are incompatible/)
+        .findByText(/needs .* as its|wrong type/)
         .should("be.visible");
     });
   });
@@ -708,7 +708,9 @@ describe("issues 41381, 33439, 33441", () => {
     H.addCustomColumn();
     H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
     H.popover().within(() => {
-      cy.findByText("Invalid expression").should("not.exist");
+      cy.findByText(
+        "This expression can't be read. Check it for typos, or for missing brackets or commas.",
+      ).should("not.exist");
       cy.button("Done").should("be.enabled");
     });
 
@@ -718,7 +720,9 @@ describe("issues 41381, 33439, 33441", () => {
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Unsupported function convertTimezone");
+      cy.findByText(
+        "This database doesn't support convertTimezone(). Try a different function.",
+      );
       cy.button("Done").should("be.disabled");
     });
 
@@ -727,7 +731,9 @@ describe("issues 41381, 33439, 33441", () => {
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Types are incompatible.").should("be.visible");
+      cy.findByText(
+        "One of the values here is the wrong type. Check that numbers, text and dates are used where they're expected.",
+      ).should("be.visible");
       cy.button("Done").should("be.disabled");
     });
   });
@@ -750,7 +756,11 @@ describe("Issue 38498", { tags: "@external" }, () => {
     H.CustomExpressionEditor.type(
       'convertTimezone([Created At], "Asia/Ho_Chi_Mihn", "UTC")',
     );
-    H.popover().findByText("Types are incompatible.").should("be.visible");
+    H.popover()
+      .findByText(
+        "One of the values here is the wrong type. Check that numbers, text and dates are used where they're expected.",
+      )
+      .should("be.visible");
   });
 });
 
