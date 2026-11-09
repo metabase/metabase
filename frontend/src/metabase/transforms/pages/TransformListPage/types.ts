@@ -15,7 +15,6 @@ export type TreeNode = {
   icon: IconName;
   updated_at?: string;
   target?: Transform["target"];
-  target_table_id?: Transform["target_table_id"];
   owner?: TransformOwner | null;
   owner_email?: string | null;
   children?: TreeNode[];
@@ -23,13 +22,13 @@ export type TreeNode = {
   collection?: Collection;
   url?: string;
   can_read?: boolean;
-  can_write?: boolean;
   warningTooltip?: string;
 };
 
-export function isCollectionNode(
-  node: TreeNode,
-): node is TreeNode & { collection: Collection } {
+/** A folder row of the tree, with the collection it stands for. */
+export type CollectionNode = TreeNode & { collection: Collection };
+
+export function isCollectionNode(node: TreeNode): node is CollectionNode {
   return node.nodeType === "folder" && typeof node.collection?.id === "number";
 }
 
@@ -41,16 +40,9 @@ export function getTransformNodeId(transformId: number): string {
   return `transform-${transformId}`;
 }
 
-export type FolderTransform = Pick<
-  Transform,
-  "id" | "name" | "can_write" | "target_table_id"
-> &
-  Partial<Pick<Transform, "target">>;
-
 export type DeleteTransformsFolderModalState = {
   type: "delete";
-  collection: Collection;
-  transforms: FolderTransform[];
+  folder: CollectionNode;
 };
 
 export type TransformsFolderModalState =

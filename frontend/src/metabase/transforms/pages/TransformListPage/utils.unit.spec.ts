@@ -22,9 +22,9 @@ import {
   buildTreeData,
   getDescendantCollectionIds,
   getFolderSyncColor,
+  getFolderTransforms,
   getIncrementalWarning,
   getSyncColorForEntities,
-  getTransformsInFolder,
 } from "./utils";
 
 const dirtyEntity = (
@@ -403,93 +403,36 @@ describe("getIncrementalWarning", () => {
   });
 });
 
-describe("getTransformsInFolder", () => {
-  it("returns the transforms of the folder and its subfolders, in tree order", () => {
-    const transform = (
-      id: number,
-      name: string,
-      can_write: boolean,
-    ): TreeNode => ({
-      id: `transform-${id}`,
-      name,
-      nodeType: "transform",
-      icon: "transform",
-      transformId: id,
-      can_write,
-      target_table_id: id * 10,
-      target: {
-        type: "table",
-        name: `table_${id}`,
-        schema: "public",
-        database: 1,
-      },
-    });
-    const folder: TreeNode = {
-      id: "collection-1",
-      name: "Folder",
-      nodeType: "folder",
-      icon: "folder",
-      children: [
-        transform(1, "First", true),
-        {
-          id: "collection-2",
-          name: "Subfolder",
-          nodeType: "folder",
-          icon: "folder",
-          children: [transform(2, "Nested", false)],
-        },
-        transform(3, "Last", true),
-      ],
-    };
+describe("getFolderTransforms", () => {
+  const folderNode = (id: number, children: TreeNode[] = []): TreeNode => ({
+    id: `collection-${id}`,
+    name: `Folder ${id}`,
+    nodeType: "folder",
+    icon: "folder",
+    collection: createMockCollection({ id, namespace: "transforms" }),
+    children,
+  });
 
-    expect(getTransformsInFolder(folder)).toEqual([
-      {
-        id: 1,
-        name: "First",
-        can_write: true,
-        target_table_id: 10,
-        target: {
-          type: "table",
-          name: "table_1",
-          schema: "public",
-          database: 1,
-        },
-      },
-      {
-        id: 2,
-        name: "Nested",
-        can_write: false,
-        target_table_id: 20,
-        target: {
-          type: "table",
-          name: "table_2",
-          schema: "public",
-          database: 1,
-        },
-      },
-      {
-        id: 3,
-        name: "Last",
-        can_write: true,
-        target_table_id: 30,
-        target: {
-          type: "table",
-          name: "table_3",
-          schema: "public",
-          database: 1,
-        },
-      },
+  it("returns the transforms of the folder and its subfolders, by name", () => {
+    const folder = folderNode(1, [folderNode(2)]);
+    const transforms = [
+      createMockTransform({ id: 1, name: "Zebra", collection_id: 1 }),
+      createMockTransform({ id: 2, name: "Nested", collection_id: 2 }),
+      createMockTransform({ id: 3, name: "Elsewhere", collection_id: 3 }),
+      createMockTransform({ id: 4, name: "Root", collection_id: null }),
+      createMockTransform({ id: 5, name: "Apple", collection_id: 1 }),
+    ];
+
+    expect(getFolderTransforms(folder, transforms).map((t) => t.id)).toEqual([
+      5, 2, 1,
     ]);
   });
 
-  it("returns an empty list for a folder without children", () => {
-    const folder: TreeNode = {
-      id: "collection-1",
-      name: "Folder",
-      nodeType: "folder",
-      icon: "folder",
-    };
-
-    expect(getTransformsInFolder(folder)).toEqual([]);
+  it("returns an empty list for a folder without transforms", () => {
+    expect(
+      getFolderTransforms(folderNode(1), [
+        createMockTransform({ id: 1, collection_id: 2 }),
+      ]),
+    ).toEqual([]);
   });
 });

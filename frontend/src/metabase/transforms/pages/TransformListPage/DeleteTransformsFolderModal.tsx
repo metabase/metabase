@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { useDeleteTransformsFolderMutation } from "metabase/api";
+import {
+  useDeleteTransformsFolderMutation,
+  useListTransformsQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
@@ -22,13 +25,17 @@ import {
   Text,
 } from "metabase/ui";
 import { is403Error } from "metabase/utils/errors";
-import type { Collection, TransformTarget } from "metabase-types/api";
+import type {
+  Collection,
+  Transform,
+  TransformTarget,
+} from "metabase-types/api";
 
-import type { FolderTransform } from "./types";
+import type { CollectionNode } from "./types";
+import { getFolderTransforms } from "./utils";
 
 type DeleteTransformsFolderModalProps = {
-  collection: Collection;
-  transforms: FolderTransform[];
+  folder: CollectionNode;
   onClose: () => void;
 };
 
@@ -37,10 +44,16 @@ type DeleteTransformsFolderModalProps = {
  * chooses to delete them too. There is no undo.
  */
 export function DeleteTransformsFolderModal({
-  collection,
-  transforms,
+  folder,
   onClose,
 }: DeleteTransformsFolderModalProps) {
+  const { collection } = folder;
+  // the list the page shows, from the cache; the dialog follows its refetches while open
+  const { data: allTransforms = [] } = useListTransformsQuery({});
+  const transforms = useMemo(
+    () => getFolderTransforms(folder, allTransforms),
+    [folder, allTransforms],
+  );
   const [deleteTransformsFolder] = useDeleteTransformsFolderMutation();
   const { sendSuccessToast } = useMetadataToasts();
   const [shouldDeleteTables, setShouldDeleteTables] = useState(false);
@@ -130,7 +143,7 @@ export function DeleteTransformsFolderModal({
 }
 
 type TransformsInFolderProps = {
-  transforms: FolderTransform[];
+  transforms: Transform[];
   showTables: boolean;
 };
 
@@ -165,10 +178,8 @@ function TransformsInFolder({
   );
 }
 
-function hasTable(
-  transform: FolderTransform,
-): transform is FolderTransform & { target: TransformTarget } {
-  return transform.target_table_id != null && transform.target != null;
+function hasTable(transform: Transform) {
+  return transform.target_table_id != null;
 }
 
 function getTargetTableName({ schema, name }: TransformTarget) {

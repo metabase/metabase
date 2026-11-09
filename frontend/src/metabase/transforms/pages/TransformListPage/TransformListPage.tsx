@@ -58,7 +58,7 @@ import {
 import {
   buildTreeData,
   getDefaultExpandedIds,
-  getTransformsInFolder,
+  getFolderTransforms,
   useGetNodeSyncColor,
   useGetTransformWarnings,
 } from "./utils";
@@ -279,14 +279,19 @@ export const TransformListPage = () => {
         cell: ({ row }) =>
           isCollectionNode(row.original) ? (
             <CollectionRowMenu
-              collection={row.original.collection}
-              transforms={getTransformsInFolder(row.original)}
+              folder={row.original}
+              transforms={getFolderTransforms(row.original, transforms ?? [])}
               onOpenModal={setCollectionModal}
             />
           ) : null,
       },
     ];
-  }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
+  }, [
+    hasPythonTransformsFeature,
+    warningsByTransformId,
+    getNodeSyncColor,
+    transforms,
+  ]);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -370,8 +375,7 @@ export const TransformListPage = () => {
       </Stack>
       {collectionModal?.type === "delete" ? (
         <DeleteTransformsFolderModal
-          collection={collectionModal.collection}
-          transforms={collectionModal.transforms}
+          folder={collectionModal.folder}
           onClose={() => closeModal(collectionModal)}
         />
       ) : (

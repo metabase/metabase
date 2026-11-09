@@ -1,12 +1,20 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type RouteResponse } from "fetch-mock";
 
-import { setupDeleteTransformsFolderEndpoint } from "__support__/server-mocks";
+import {
+  setupDeleteTransformsFolderEndpoint,
+  setupListTransformsEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
+import type { Transform } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockTransform,
+  createMockTransformTarget,
+} from "metabase-types/api/mocks";
 
 import { DeleteTransformsFolderModal } from "./DeleteTransformsFolderModal";
-import type { FolderTransform } from "./types";
+import type { CollectionNode } from "./types";
 
 const COLLECTION = createMockCollection({
   id: 7,
@@ -14,50 +22,59 @@ const COLLECTION = createMockCollection({
   namespace: "transforms",
 });
 
-const TRANSFORMS: FolderTransform[] = [
-  {
+const FOLDER: CollectionNode = {
+  id: "collection-7",
+  name: COLLECTION.name,
+  nodeType: "folder",
+  icon: "folder",
+  collection: COLLECTION,
+};
+
+const TRANSFORMS: Transform[] = [
+  createMockTransform({
     id: 1,
     name: "Orders by day",
+    collection_id: COLLECTION.id,
     can_write: true,
     target_table_id: 10,
-    target: {
-      type: "table",
+    target: createMockTransformTarget({
       name: "orders_by_day",
       schema: "public",
-      database: 1,
-    },
-  },
-  {
+    }),
+  }),
+  createMockTransform({
     id: 2,
     name: "Products by category",
+    collection_id: COLLECTION.id,
     can_write: true,
     target_table_id: null,
-    target: {
-      type: "table",
-      name: "products_by_category",
-      schema: null,
-      database: 1,
-    },
-  },
+    target: createMockTransformTarget({ name: "products_by_category" }),
+  }),
 ];
 
 type SetupOpts = {
-  transforms?: FolderTransform[];
+  transforms?: Transform[];
   response?: RouteResponse;
 };
 
-function setup({ transforms = [], response = 204 }: SetupOpts = {}) {
+async function setup({ transforms = [], response = 204 }: SetupOpts = {}) {
+  setupListTransformsEndpoint(transforms);
   setupDeleteTransformsFolderEndpoint(COLLECTION.id, response);
   const onClose = jest.fn<void, []>();
 
   renderWithProviders(
-    <DeleteTransformsFolderModal
-      collection={COLLECTION}
-      transforms={transforms}
-      onClose={onClose}
-    />,
+    <DeleteTransformsFolderModal folder={FOLDER} onClose={onClose} />,
     { withUndos: true },
   );
+  // the dialog reads the transforms list; wait until it has loaded
+  await waitFor(() =>
+    expect(
+      fetchMock.callHistory.calls("path:/api/transform", { method: "GET" }),
+    ).toHaveLength(1),
+  );
+  if (transforms.length > 0) {
+    await screen.findByText(/This will delete the folder, its subfolders/);
+  }
 
   return { onClose };
 }
@@ -72,7 +89,7 @@ const lastDeleteCall = () =>
 
 describe("DeleteTransformsFolderModal", () => {
   it("lists the transforms in the folder and keeps their tables by default", async () => {
-    const { onClose } = setup({ transforms: TRANSFORMS });
+    const { onClose } = await setup({ transforms: TRANSFORMS });
 
     expect(screen.getByText('Delete "Folder"?')).toBeInTheDocument();
     expect(
@@ -109,7 +126,7 @@ describe("DeleteTransformsFolderModal", () => {
   });
 
   it("names the tables of the transforms that ran when the user chooses to delete the tables too", async () => {
-    const { onClose } = setup({ transforms: TRANSFORMS });
+    const { onClose } = await setup({ transforms: TRANSFORMS });
 
     await userEvent.click(
       screen.getByRole("radio", {
@@ -141,9 +158,15 @@ describe("DeleteTransformsFolderModal", () => {
   });
 
   it("keeps the plain heading when no transform in the folder has a table yet", async () => {
-    setup({
+    await setup({
       transforms: [
-        { id: 3, name: "Never ran", can_write: true, target_table_id: null },
+        createMockTransform({
+          id: 3,
+          name: "Never ran",
+          collection_id: COLLECTION.id,
+          can_write: true,
+          target_table_id: null,
+        }),
       ],
     });
 
@@ -165,7 +188,7 @@ describe("DeleteTransformsFolderModal", () => {
   });
 
   it("offers no table choice for a folder without transforms", async () => {
-    const { onClose } = setup();
+    const { onClose } = await setup();
 
     expect(
       screen.getByText(
@@ -184,7 +207,7 @@ describe("DeleteTransformsFolderModal", () => {
   });
 
   it("closes without a request on cancel", async () => {
-    const { onClose } = setup({ transforms: TRANSFORMS });
+    const { onClose } = await setup({ transforms: TRANSFORMS });
 
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -193,7 +216,7 @@ describe("DeleteTransformsFolderModal", () => {
   });
 
   it("explains a 403 in the dialog and stays open", async () => {
-    const { onClose } = setup({
+    const { onClose } = await setup({
       transforms: TRANSFORMS,
       response: {
         status: 403,
@@ -216,7 +239,7 @@ describe("DeleteTransformsFolderModal", () => {
   });
 
   it("shows the server's message in the dialog when a table cannot be dropped", async () => {
-    const { onClose } = setup({
+    const { onClose } = await setup({
       transforms: TRANSFORMS,
       response: {
         status: 500,
@@ -243,7 +266,7 @@ describe("DeleteTransformsFolderModal", () => {
   });
 
   it("falls back to a generic message when the failure has none", async () => {
-    const { onClose } = setup({
+    const { onClose } = await setup({
       transforms: TRANSFORMS,
       response: { status: 500, body: {} },
     });

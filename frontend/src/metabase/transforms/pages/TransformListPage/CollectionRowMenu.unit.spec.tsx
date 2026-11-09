@@ -3,10 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import type { Transform } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockTransform,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
-import type { FolderTransform, TransformsFolderModalState } from "./types";
+import type { CollectionNode, TransformsFolderModalState } from "./types";
 
 const COLLECTION = createMockCollection({
   id: 7,
@@ -15,12 +20,20 @@ const COLLECTION = createMockCollection({
   can_write: true,
 });
 
-const TRANSFORMS: FolderTransform[] = [
-  { id: 1, name: "Orders by day", can_write: true },
+const FOLDER: CollectionNode = {
+  id: "collection-7",
+  name: COLLECTION.name,
+  nodeType: "folder",
+  icon: "folder",
+  collection: COLLECTION,
+};
+
+const TRANSFORMS: Transform[] = [
+  createMockTransform({ id: 1, name: "Orders by day", can_write: true }),
 ];
 
 type SetupOpts = {
-  transforms?: FolderTransform[];
+  transforms?: Transform[];
 };
 
 function setup({ transforms = TRANSFORMS }: SetupOpts = {}) {
@@ -28,7 +41,7 @@ function setup({ transforms = TRANSFORMS }: SetupOpts = {}) {
 
   renderWithProviders(
     <CollectionRowMenu
-      collection={COLLECTION}
+      folder={FOLDER}
       transforms={transforms}
       onOpenModal={onOpenModal}
     />,
@@ -63,7 +76,7 @@ describe("transforms CollectionRowMenu", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens the delete modal with the folder and its transforms", async () => {
+  it("opens the delete modal with the folder", async () => {
     const { onOpenModal } = setup();
     await openMenu();
 
@@ -72,16 +85,19 @@ describe("transforms CollectionRowMenu", () => {
     expect(onOpenModal).toHaveBeenCalledTimes(1);
     expect(onOpenModal).toHaveBeenCalledWith({
       type: "delete",
-      collection: COLLECTION,
-      transforms: TRANSFORMS,
+      folder: FOLDER,
     });
   });
 
   it("hides Delete when the user cannot edit every transform in the folder", async () => {
     setup({
       transforms: [
-        { id: 1, name: "Orders by day", can_write: true },
-        { id: 2, name: "Products by category", can_write: false },
+        createMockTransform({ id: 1, name: "Orders by day", can_write: true }),
+        createMockTransform({
+          id: 2,
+          name: "Products by category",
+          can_write: false,
+        }),
       ],
     });
     await openMenu();
