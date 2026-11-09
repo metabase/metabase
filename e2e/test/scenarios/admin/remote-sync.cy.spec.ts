@@ -163,7 +163,7 @@ describe("Remote Sync", () => {
       H.configureGitAndPullChanges("read-write");
 
       cy.visit("/collection/root");
-      H.getGitSyncControls().findByRole("button", { name: /Sync/ }).click();
+      H.getGitSyncControls().click();
       H.popover().within(() => {
         cy.findByRole("menuitem", { name: /Pull changes/ }).should(
           "be.disabled",
