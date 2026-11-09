@@ -498,31 +498,34 @@ describe("DocumentPage card embeds", () => {
       },
     );
 
-    it("opens a drill-through in a new tab when meta-clicking a click action", async () => {
-      const { router, onLocationChange, anchorClick } =
-        await setupNavigationDocument();
-      const user = userEvent.setup();
+    it.each(["Meta", "Control"])(
+      "opens a drill-through in a new tab when %s-clicking a click action",
+      async (modifierKey) => {
+        const { router, onLocationChange, anchorClick } =
+          await setupNavigationDocument();
+        const user = userEvent.setup();
 
-      const countCard = getDocumentCard(ORDERS_COUNT_CARD.name);
-      await user.click(
-        await within(countCard).findByRole("gridcell", { name: "18,760" }),
-      );
-      const clickActions = await screen.findByTestId("click-actions-view");
+        const countCard = getDocumentCard(ORDERS_COUNT_CARD.name);
+        await user.click(
+          await within(countCard).findByRole("gridcell", { name: "18,760" }),
+        );
+        const clickActions = await screen.findByTestId("click-actions-view");
 
-      await user.keyboard("{Meta>}");
-      await user.click(within(clickActions).getByText("See these Orders"));
-      await user.keyboard("{/Meta}");
+        await user.keyboard(`{${modifierKey}>}`);
+        await user.click(within(clickActions).getByText("See these Orders"));
+        await user.keyboard(`{/${modifierKey}}`);
 
-      expect(getClickedAnchors(anchorClick)).toEqual([
-        {
-          href: expect.stringMatching(/\/question/),
-          rel: "noopener",
-          target: "_blank",
-        },
-      ]);
-      expect(onLocationChange).not.toHaveBeenCalled();
-      expect(router.location.pathname).toBe(`/document/${DOCUMENT_ID}`);
-    });
+        expect(getClickedAnchors(anchorClick)).toEqual([
+          {
+            href: expect.stringMatching(/\/question/),
+            rel: "noopener",
+            target: "_blank",
+          },
+        ]);
+        expect(onLocationChange).not.toHaveBeenCalled();
+        expect(router.location.pathname).toBe(`/document/${DOCUMENT_ID}`);
+      },
+    );
 
     it("deletes a selected card with Backspace", async () => {
       await setupNavigationDocument();
