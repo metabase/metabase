@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/settings-components";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 
 import { SettingsForm } from "../SettingsForm";
 
@@ -9,6 +12,8 @@ export const SettingsPage = () => (
     title={t`Remote sync`}
     description={t`Keep your content in sync with a git repository.`}
   >
-    <SettingsForm triggeredFrom="admin-settings" />
+    <SettingsSection>
+      <SettingsForm triggeredFrom="admin-settings" />
+    </SettingsSection>
   </SettingsPageWrapper>
 );

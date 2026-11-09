@@ -1,5 +1,3 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
 const { H } = cy;
 
 const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
@@ -33,9 +31,6 @@ describe("Remote Sync first-time setup", () => {
       .clear()
       .type(LOCAL_GIT_URL);
     cy.findByTestId("admin-layout-content").findByText("Read-write").click();
-    cy.findByTestId("admin-layout-content").within(() => {
-      cy.findByLabelText("Sync Library").should("be.checked");
-    });
     cy.button("Set up remote sync").click();
     cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
     assertLibrarySynced();
@@ -81,25 +76,6 @@ describe("Remote Sync first-time setup", () => {
     });
   });
 
-  it("pushes to new branch and switches to it", () => {
-    H.createLibrary().then(({ libraryCollectionId }) => {
-      H.configureGit("read-write", LOCAL_GIT_URL, {
-        [libraryCollectionId]: true,
-      });
-    });
-
-    H.publishTables({ table_ids: [SAMPLE_DATABASE.PRODUCTS_ID] });
-    cy.visit("/collection/root");
-    H.pushChanges("Publish products");
-    H.waitForTask({ taskName: "export" });
-
-    H.pushToNewBranch("second-branch");
-    H.waitForTask({ taskName: "export" });
-    H.getGitSyncControls()
-      .findByRole("textbox", { name: "Branch" })
-      .should("have.value", "second-branch");
-  });
-
   it("sets up git sync from Data Studio modal, creating Library and syncing it with transforms", () => {
     H.DataModel.visitDataStudio();
     cy.findByRole("button", { name: "Set up remote sync" }).click();
@@ -108,7 +84,6 @@ describe("Remote Sync first-time setup", () => {
         scrollBehavior: "center",
       });
       cy.findByText("Read-write").click();
-      cy.findByLabelText("Sync Library").should("be.checked");
       cy.button("Set up remote sync").click();
     });
     cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
@@ -118,9 +93,10 @@ describe("Remote Sync first-time setup", () => {
 });
 
 function assertLibrarySynced() {
-  cy.visit("/admin/settings/remote-sync");
-  cy.findByTestId("admin-layout-content").within(() => {
-    cy.findByRole("button", { name: "Save changes" }).should("exist");
-    cy.findByLabelText("Sync Library").should("be.checked");
-  });
+  cy.request("/api/ee/library").then(({ body }) =>
+    cy
+      .request(`/api/collection/${body.id}`)
+      .its("body.is_remote_synced")
+      .should("eq", true),
+  );
 }

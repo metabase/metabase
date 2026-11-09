@@ -30,18 +30,18 @@ _Admin > Table Metadata > Database > Table > Field > Formatting_
 
 Options depend on the [semantic type](./semantic-types.md) you select for the field.
 
-### Align
+### Alignment
 
 Whether to display the values in the middle, left, or right in table cells.
 
-### Display As
+### Display as text, link, or image
 
 If you have text, like an image URL, you may need to change the semantic type before Metabase will offer you the option to display the text as an image.
 
 - Text (display "as is").
 - Email link (i.e., if you have a `mailto` link).
 - Image. Metabase will display links to images as images in tables.
-- Automatic. Metabase will detect the string based on its format.
+- Choose automatically. Metabase will detect the string based on its format.
 - Link. You can optionally change the text that you want to display in the **Link text** input field. For example, if you set the **Link URL** for an "Adjective" column to:
 
 ```
@@ -60,11 +60,11 @@ _Admin > Table Metadata > Database > Table > Field > Formatting_
 
 Options depend on the [semantic type](./semantic-types.md) you select for the field.
 
-### Align
+### Alignment
 
 Whether to display the values in the middle, left, or right in table cells.
 
-### Display as
+### Display as text, link, or image
 
 - **Text** (display "as is").
 - **Link** (display the date/time as a clickable link).
@@ -104,7 +104,7 @@ _Admin > Table Metadata > Database > Table > Field > Formatting_
 
 Options depend on the [semantic type](./semantic-types.md) you select for the field.
 
-### Align
+### Alignment
 
 Whether to display the values in the middle, left, or right in table cells.
 
@@ -112,26 +112,20 @@ Whether to display the values in the middle, left, or right in table cells.
 
 Only applies to table visualizations. Displays a bar for each value to show how large or small it is relative to the other values in the column.
 
-### Display as
+### Format
 
-- **Automatic** - Metabase will automatically detect the best display format
-- **Text** - Display the number as plain text
-- **Link** - Display the number as a clickable link
+Lets you choose to display the number as a plain number, a percent, as a currency, or in scientific notation. Each option shows an example of how the same value would look, using the field's separator style and currency symbol:
 
-### Style
-
-Lets you choose to display the number as a plain number, a percent, in scientific notation, or as a currency.
-
-- **Normal** - Display as a regular number
-- **Percent** - Display as a percentage
-- **Scientific notation** - Display in scientific format (e.g., 1.23e+4)
-- **Currency** - Display with currency formatting
+- `1.23` - Display as a regular number
+- `123%` - Display as a percentage
+- `$1.23` - Display with currency formatting
+- `1.23e+0` - Display in scientific notation
 
 ### Currency label style
 
-For fields with Style set to "Currency", choose how to display the currency label. For example, for Canadian dollars:
+For fields with **Format** set to currency, choose how to display the currency label. For example, for Canadian dollars:
 
-- **Symbol**: `CA$` 
+- **Symbol**: `CA$`
 - **Local symbol**: `$`
 - **Code**: `CAD`
 - **Name**: `Canadian dollars`
@@ -149,7 +143,7 @@ This gives you various options for how commas and periods are used to separate t
 
 ### Number of decimal places
 
-Forces the number to be displayed with exactly this many decimal places.
+Forces the number to be displayed with exactly this many decimal places (from 0 to 20). Clear the field to go back to the default.
 
 ### Multiply by a number
 
@@ -162,6 +156,12 @@ Lets you put a symbol, word, etc. before this number (e.g., "$" for currency).
 ### Add a suffix
 
 Lets you put a symbol, word, etc. after this number (e.g., "dollars", "%", "units").
+
+### Display as text, link, or image
+
+- **Choose automatically** - Metabase will automatically detect the best display format
+- **Text** - Display the number as plain text
+- **Link** - Display the number as a clickable link
 
 ### Currency
 

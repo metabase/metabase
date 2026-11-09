@@ -2,6 +2,7 @@ import {
   createMockRemoteSyncEntity,
   createMockRemoteSyncEntityCollection,
   createMockRemoteSyncEntityCollectionAncestor,
+  createMockRemoteSyncEntityParent,
 } from "metabase-types/api/mocks";
 
 import { getRemoteSyncChanges, hasRemoteSyncChanges } from "./utils";
@@ -84,7 +85,7 @@ describe("getRemoteSyncChanges", () => {
       areas: ["snippets"],
     },
     {
-      entity: createMockRemoteSyncEntity({ model: "action", model_id: null }),
+      entity: createMockRemoteSyncEntity({ model: "action" }),
       areas: ["data-actions"],
     },
     {
@@ -99,7 +100,10 @@ describe("getRemoteSyncChanges", () => {
 
   it("keeps model actions out of data actions area", () => {
     const changes = getRemoteSyncChanges([
-      createMockRemoteSyncEntity({ model: "action", model_id: 10 }),
+      createMockRemoteSyncEntity({
+        model: "action",
+        parent: createMockRemoteSyncEntityParent({ model: "card", id: 10 }),
+      }),
     ]);
 
     expect(changes.areas.has("data-actions")).toBe(false);

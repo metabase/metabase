@@ -252,6 +252,51 @@ describe("SettingsForm", () => {
     });
   });
 
+  it("pulls changes on demand when syncing read-only", async () => {
+    setup({
+      isEnabled: true,
+      url: "https://github.com/acme/metabase.git",
+      syncType: "read-only",
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Pull changes now" }),
+    );
+
+    expect(await screen.findByText("Pulling changes")).toBeInTheDocument();
+    const [call] = fetchMock.callHistory.calls(
+      "path:/api/ee/remote-sync/import",
+    );
+    expect(await call?.request?.json()).toEqual({ force: true });
+  });
+
+  it("doesn't pull on demand until settings changes are saved", async () => {
+    setup({
+      isEnabled: true,
+      url: "https://github.com/acme/metabase.git",
+      syncType: "read-only",
+    });
+
+    await userEvent.click(
+      await screen.findByRole("switch", { name: "Pull changes automatically" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Pull changes now" }),
+    ).toBeDisabled();
+  });
+
+  it("doesn't offer to pull on demand when syncing read-write", async () => {
+    setup({ isEnabled: true, url: "https://github.com/acme/metabase.git" });
+
+    expect(
+      await screen.findByRole("button", { name: "Save changes" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Pull changes now" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("can turn remote sync off once it is set up", async () => {
     setup({ isEnabled: true, url: "https://github.com/acme/metabase.git" });
 

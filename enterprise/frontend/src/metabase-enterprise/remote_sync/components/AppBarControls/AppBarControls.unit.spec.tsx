@@ -50,11 +50,20 @@ const wasCalled = (path: string) =>
   fetchMock.callHistory.called(`path:/api/ee/remote-sync/${path}`);
 
 const openSyncMenu = async () => {
-  await userEvent.click(screen.getByRole("button", { name: /Sync/ }));
+  await userEvent.click(screen.getByRole("button", { name: /main/ }));
   return screen.findByRole("menu");
 };
 
 describe("AppBarControls", () => {
+  it("shows synced branch", () => {
+    setup();
+
+    expect(screen.getByTestId("git-sync-controls")).toHaveTextContent("main");
+    expect(
+      screen.queryByRole("textbox", { name: "Branch" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders nothing on read-only instances", () => {
     setup({ syncType: "read-only" });
 
@@ -67,7 +76,6 @@ describe("AppBarControls", () => {
     expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
     expect(wasCalled("is-dirty")).toBe(false);
     expect(wasCalled("has-remote-changes")).toBe(false);
-    expect(wasCalled("branches")).toBe(false);
 
     await openSyncMenu();
 
@@ -89,9 +97,6 @@ describe("AppBarControls", () => {
         screen.getByRole("menuitem", { name: /Push changes/ }),
       ).toBeDisabled(),
     );
-    expect(
-      screen.getByRole("menuitem", { name: /Push to a new branch/ }),
-    ).toBeEnabled();
   });
 
   it("enables pulling and pushing when there are changes", async () => {
@@ -148,25 +153,6 @@ describe("AppBarControls", () => {
       expected_branch: "main",
       merge: true,
       force: false,
-    });
-  });
-
-  it("lists branches when branch select opens and switches branches", async () => {
-    setup();
-
-    await userEvent.click(screen.getByRole("textbox", { name: "Branch" }));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "develop" }),
-    );
-
-    expect(wasCalled("branches")).toBe(true);
-    expect(await screen.findByText("Switching to develop")).toBeInTheDocument();
-    const [importCall] = fetchMock.callHistory.calls(
-      "path:/api/ee/remote-sync/import",
-    );
-    expect(await importCall?.request?.json()).toEqual({
-      branch: "develop",
-      expected_branch: "main",
     });
   });
 });
