@@ -1,230 +1,213 @@
-import type { CollectionItemModel, CollectionType } from "./collection";
-import type { EnterpriseSettings } from "./settings";
+import type { CardId } from "./card";
+import type {
+  CollectionId,
+  CollectionType,
+  RegularCollectionId,
+} from "./collection";
+import type { RemoteSyncType } from "./settings";
 import type { UserId } from "./user";
-import type { CardDisplayType } from "./visualization";
+
+export type RemoteSyncTaskId = number;
+
+export type RemoteSyncEntityId = number;
 
 export type RemoteSyncEntityModel =
   | "action"
   | "card"
-  | "dataset"
-  | "metric"
-  | "dashboard"
   | "collection"
+  | "dashboard"
+  | "dataapp"
   | "document"
-  | "nativequerysnippet"
-  | "tableusersettings"
   | "fieldusersettings"
-  | "dimension"
-  | "segment"
+  | "glossary"
   | "measure"
+  | "nativequerysnippet"
+  | "pythonlibrary"
+  | "segment"
+  | "tableusersettings"
+  | "timeline"
   | "transform"
   | "transformtag"
-  | "transformjob"
-  | "transformtest"
-  | "pythonlibrary"
-  | "glossary"
-  | "dataapp";
+  | "transformtest";
 
-export type RemoteSyncEntityStatus =
-  | "create"
-  | "update"
-  | "delete"
-  | "touch"
-  | "removed";
+export type RemoteSyncEntityStatus = "create" | "update" | "delete" | "removed";
+
+export type RemoteSyncEntityCollectionAncestor = {
+  id: CollectionId;
+  name: string;
+  type: CollectionType | null;
+  personal_owner_id: UserId | null;
+};
+
+export type RemoteSyncEntityCollection = {
+  id: CollectionId;
+  name: string;
+  type: CollectionType | null;
+  effective_ancestors: RemoteSyncEntityCollectionAncestor[];
+};
 
 export type RemoteSyncEntity = {
-  id: number;
+  id: RemoteSyncEntityId;
   name: string;
   model: RemoteSyncEntityModel;
-  collection_id?: number;
-  display?: CardDisplayType;
   sync_status: RemoteSyncEntityStatus;
-  authority_level?: string | null;
-  /** Parent table ID for field and segment models */
-  table_id?: number;
-  /** Parent table name for field and segment models */
-  table_name?: string;
-  /** The model card of an existing action, null for an action without a model */
-  card_id?: number | null;
+  collection?: RemoteSyncEntityCollection;
+  model_id?: CardId | null;
+};
+
+export type RemoteSyncEntityRef = {
+  id: RemoteSyncEntityId;
+  name: string;
+  model: RemoteSyncEntityModel;
+};
+
+export type RemoteSyncUnsyncedDependency = {
+  id: RemoteSyncEntityId;
+  name: string;
+  model: RemoteSyncEntityModel;
+  collection?: RemoteSyncEntityCollection;
+  used_by: RemoteSyncEntityRef[];
+};
+
+export type RemoteSyncUnsyncedDependenciesErrorData = {
+  message: string;
+  "error-code": "unsynced-dependencies";
+  unsynced_dependencies: RemoteSyncUnsyncedDependency[];
+};
+
+export type RemoteSyncUnsyncedDependenciesError = {
+  data: RemoteSyncUnsyncedDependenciesErrorData;
 };
 
 export type RemoteSyncChangesResponse = {
   dirty: RemoteSyncEntity[];
-  changedCollections: Record<number, boolean>;
 };
 
-export type RemoteSyncHasChangesResponse = {
+export type RemoteSyncIsDirtyResponse = {
   is_dirty: boolean;
 };
 
 export type HasRemoteChangesResponse = {
   has_changes: boolean;
+  remote_version: string | null;
+  local_version: string | null;
+  branch_missing?: boolean;
 };
 
 export type ExportChangesRequest = {
+  branch: string;
   message?: string;
-  branch?: string;
   force?: boolean;
-  /** Perform a 3-way merge when the remote branch has advanced (instead of refusing). */
   merge?: boolean;
 };
 
 export type ExportChangesResponse = {
-  message?: string;
-  task_id?: number;
+  message: string;
+  task_id: RemoteSyncTaskId;
 };
 
-/** Counts of remote changes a merge would fold into local content. */
+export type ExportPreflightRequest = {
+  branch: string;
+};
+
 export type RemoteSyncMergeSummary = {
   added: number;
   updated: number;
   removed: number;
 };
 
-/** Remote content a force push would discard (vs. a merge, which folds it in). */
 export type ForcePushCasualties = {
-  /** Entities present on the remote but not in this instance's export — removed entirely. */
   deleted: string[];
-  /** Entities whose remote-side edits since the last sync would be replaced by this instance's version. */
   overwritten: string[];
 };
 
-/** Dry-run preview of what pushing the current state would do, given the live remote branch. */
 export type ExportPreflightResponse = {
-  /** Whether the remote branch has advanced beyond the last synced version. */
   has_changes: boolean;
-  /** Whether a 3-way merge would apply with no conflicts. */
   clean: boolean;
-  /** Human-readable labels of the entities that conflict (empty when clean). */
   conflicts: string[];
   summary: RemoteSyncMergeSummary;
-  /** Remote content a force push would permanently discard. */
   force_push_casualties: ForcePushCasualties;
-  /** "history-rewritten" when the remote was force-pushed/rebased so no merge base exists. */
   reason: string | null;
 };
 
-export type ImportFromBranchRequest = {
-  branch: string;
+export type ImportChangesRequest = {
+  branch?: string;
   force?: boolean;
-  /** Perform a local-only 3-way merge, keeping un-pushed local changes instead of overwriting them. */
   merge?: boolean;
-  /**
-   * The branch the client believes is currently active. Rejected (409) if it disagrees with the
-   * configured remote-sync-branch — i.e. another session switched branches. Differs from `branch`
-   * on a branch switch, where `branch` is the target and this is the branch being switched away from.
-   */
-  expected_branch: string;
+  expected_branch?: string;
 };
 
-export type ImportFromBranchResponse = {
-  status?: string;
-  task_id?: number;
-  message?: string;
+export type ImportChangesResponse = {
+  status: "success";
+  task_id: RemoteSyncTaskId | null;
+  message?: string | null;
 };
 
-export type CollectionSyncPreferences = Record<number, boolean>;
-
-export type RemoteSyncConfigurationSettings = Pick<
-  EnterpriseSettings,
-  | "remote-sync-enabled"
-  | "remote-sync-url"
-  | "remote-sync-token"
-  | "remote-sync-type"
-  | "remote-sync-branch"
-  | "remote-sync-auto-import"
-  | "remote-sync-transforms"
-> & {
-  collections?: CollectionSyncPreferences;
+export type StashChangesRequest = {
+  new_branch: string;
+  message: string;
 };
 
-export type UpdateRemoteSyncConfigurationResponse = {
+export type StashChangesResponse = {
+  status: string;
+  message: string;
+  task_id: RemoteSyncTaskId;
+};
+
+export type UpdateRemoteSyncSettingsRequest = {
+  "remote-sync-url"?: string | null;
+  "remote-sync-token"?: string | null;
+  "remote-sync-type"?: RemoteSyncType | null;
+  "remote-sync-branch"?: string | null;
+  "remote-sync-auto-import"?: boolean | null;
+  collections?: Record<RegularCollectionId, boolean> | null;
+};
+
+export type UpdateRemoteSyncSettingsResponse = {
   success: boolean;
-  task_id?: number;
-};
-
-export type RemoteSyncDependencyModel = Extract<
-  CollectionItemModel,
-  "card" | "dataset" | "metric" | "dashboard" | "document" | "snippet"
->;
-
-export type RemoteSyncCollectionRef = {
-  id: number;
-  name: string;
-};
-
-export type RemoteSyncRemedyCollection = RemoteSyncCollectionRef & {
-  type: CollectionType;
-  personal: boolean;
-};
-
-export type RemoteSyncDependencyRemedy =
-  | { type: "collection"; collection: RemoteSyncRemedyCollection }
-  | { type: "library" }
-  | { type: "none"; collection?: RemoteSyncCollectionRef | null };
-
-export type RemoteSyncDependentModel =
-  | RemoteSyncDependencyModel
-  | "collection"
-  | "timeline";
-
-export type RemoteSyncDependencyEntity = {
-  model: RemoteSyncDependentModel;
-  id: number;
-  name: string;
-  display?: CardDisplayType;
-};
-
-export type RemoteSyncIneligibleDependency = {
-  model: RemoteSyncDependencyModel;
-  id: number;
-  name: string;
-  /** Where it lives — `null` is the root collection, absent means we couldn't resolve one. */
-  collection?: RemoteSyncCollectionRef | null;
-  display?: CardDisplayType;
-  used_by: RemoteSyncDependencyEntity[];
-};
-
-export type RemoteSyncRequiredSync = {
-  remedy: RemoteSyncDependencyRemedy;
-  syncable: boolean;
-  blocks: RemoteSyncCollectionRef[];
-  dependencies: RemoteSyncIneligibleDependency[];
-};
-
-export const UNSYNCED_DEPENDENCIES_ERROR_CODE = "unsynced-dependencies";
-
-export type RemoteSyncDependencyErrorResponse = {
-  error_code: typeof UNSYNCED_DEPENDENCIES_ERROR_CODE;
-  error: string;
-  errors: {
-    required: RemoteSyncRequiredSync[];
-  };
+  task_id?: RemoteSyncTaskId;
 };
 
 export type RemoteSyncTaskStatus =
   | "running"
   | "successful"
-  | "timed-out"
+  | "errored"
   | "cancelled"
-  | "conflict"
-  | "errored";
+  | "timed-out"
+  | "conflict";
 
-export type RemoteSyncTaskType = "import" | "export" | null;
+export type RemoteSyncTaskType = "import" | "export";
 
-/**
- * Structured result of a completed sync task. The UI renders it to a localized message; unrecognized
- * shapes fall back to generic copy, so this union can grow without breaking older/newer clients.
- */
+export type RemoteSyncPulledOutcome = {
+  kind: "pulled";
+  count: number;
+  branch: string | null;
+};
+
+export type RemoteSyncPullSkippedOutcome = {
+  kind: "pull-skipped";
+};
+
+export type RemoteSyncPushedOutcome = {
+  kind: "pushed";
+  count: number;
+  branch: string | null;
+};
+
+export type RemoteSyncPushSkippedOutcome = {
+  kind: "push-skipped";
+};
+
+export type RemoteSyncRemoteChangedOutcome = {
+  kind: "remote-changed";
+};
+
 export type RemoteSyncOutcome =
-  | { kind: "pulled"; count: number; branch: string }
-  | { kind: "pull-skipped" }
-  | { kind: "pushed"; count: number; branch: string }
-  | { kind: "push-skipped" }
-  | { kind: "merged"; pulled: number; pushed: number; branch: string }
-  // Conflict outcomes: why a task stopped when the cause is not a collision.
-  | { kind: "remote-changed" }
-  | { kind: "history-rewritten" };
+  | RemoteSyncPulledOutcome
+  | RemoteSyncPullSkippedOutcome
+  | RemoteSyncPushedOutcome
+  | RemoteSyncPushSkippedOutcome
+  | RemoteSyncRemoteChangedOutcome;
 
 export type RemoteSyncTaskUser = {
   id: UserId;
@@ -234,40 +217,20 @@ export type RemoteSyncTaskUser = {
 };
 
 export type RemoteSyncTask = {
-  id: number;
+  id: RemoteSyncTaskId;
   sync_task_type: RemoteSyncTaskType;
   status: RemoteSyncTaskStatus;
   progress: number | null;
-  started_at: string | null;
-  ended_at: string | null;
-  last_progress_report_at: string | null;
-  last_heartbeat_at?: string | null;
-  error_message: string | null;
+  started_at: string;
+  ended_at?: string | null;
+  error_message?: string | null;
   outcome?: RemoteSyncOutcome | null;
-  initiated_by: UserId;
-  /** Absent on auto-imports, which have no initiating user. */
+  conflicts?: string[] | null;
   initiated_by_user?: RemoteSyncTaskUser | null;
-  conflicts?: string[];
 };
-
-export type RemoteSyncConflictVariant =
-  | "push" // Conflict when pushing (need to pull from remote first)
-  | "pull" // Conflict when pulling (need to sync local changes)
-  | "switch-branch" // Local changes present when switching branches (Settings panel)
-  | "setup"; // Conflict when setting up or pulling for the first time
 
 export type GetBranchesResponse = {
   items: string[];
-};
-
-export type CreateBranchRequest = {
-  name: string;
-  baseBranch?: string;
-};
-
-export type CreateBranchResponse = {
-  status: string;
-  message: string;
 };
 
 export type TestRemoteSyncConnectionRequest = {

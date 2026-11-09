@@ -396,7 +396,7 @@
                  lib/template-tags))))
     (testing "Allows to remove template tag properties"
       (let [template-tags     [{:default      nil
-                                :dimension    [:field {:lib/uuid (str (random-uuid))} 1]
+                                :field-id     1
                                 :display-name "Tag"
                                 :id           "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                 :name         "tag"
@@ -506,7 +506,7 @@
                              :name "foo"
                              :widget-type :text
                              :display-name "foo"
-                             :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
+                             :field-id  1}})
                    :question))
   (testing "a required tag without a default value does not block running or saving"
     (let [query (lib/with-template-tags
@@ -517,7 +517,7 @@
                           :widget-type :id
                           :display-name "foo"
                           :required true
-                          :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})]
+                          :field-id  1}})]
       (is (lib/can-run query :question))
       (is (lib/can-save? query :question))))
   (is (lib/can-run (lib.tu/venues-query) :question))
@@ -605,7 +605,7 @@
     (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
         (lib/with-template-tags {"mytag"
                                  {:default nil
-                                  :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                  :field-id  1
                                   :display-name "My Tag"
                                   :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                   :name "mytag"
@@ -616,7 +616,7 @@
   (let [query (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
                   (lib/with-template-tags {"mytag"
                                            {:default nil
-                                            :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                            :field-id  1
                                             :display-name "My Tag"
                                             :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                             :name "mytag"
@@ -715,9 +715,7 @@
            :target [:dimension [:template-tag "mytag"]]}]
          (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
              (lib/with-template-tags {"mytag"
-                                      {:dimension [:field
-                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
-                                                   (meta/id :products :category)]
+                                      {:field-id  (meta/id :products :category)
                                        :display-name "My Tag"
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"
@@ -733,9 +731,7 @@
            :target [:dimension [:template-tag "mytag"]]}]
          (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
              (lib/with-template-tags {"mytag"
-                                      {:dimension [:field
-                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
-                                                   (meta/id :orders :total)]
+                                      {:field-id  (meta/id :orders :total)
                                        :display-name "My Tag"
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"
@@ -751,9 +747,7 @@
            :target [:dimension [:template-tag "mytag"]]}]
          (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
              (lib/with-template-tags {"mytag"
-                                      {:dimension [:field
-                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
-                                                   (meta/id :orders :created-at)]
+                                      {:field-id  (meta/id :orders :created-at)
                                        :display-name "My Tag"
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"
@@ -769,9 +763,7 @@
            :target [:dimension [:template-tag "mytag"]]}]
          (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
              (lib/with-template-tags {"mytag"
-                                      {:dimension [:field
-                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
-                                                   (meta/id :orders :created-at)]
+                                      {:field-id  (meta/id :orders :created-at)
                                        :display-name "My Tag"
                                        :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                        :name "mytag"

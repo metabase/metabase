@@ -299,7 +299,7 @@
             ;; lower case. Refusing the run is a fine answer. Reporting :failed is not — it means
             ;; the fixture was ignored and the expectation was measured against real rows.
             (let [outcome (try
-                            (data-testing.runner/run-saved-test! transform transform-test)
+                            (data-testing.runner/run-test! transform transform-test)
                             (catch Exception e
                               {:refused (ex-message e)}))]
               (is (not= {:status :failed} outcome)
@@ -326,5 +326,5 @@
                         :expectations [{:type :empty
                                         :name "the output holds only the fixture row"
                                         :sql  (str "SELECT * FROM " schema "." target " WHERE id <> -1")}]}]
-          (is (= :passed (:status (data-testing.runner/run-saved-test! transform transform-test))))
+          (is (= :passed (:status (data-testing.runner/run-test! transform transform-test))))
           (is (not (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:schema schema :name target}))))))))

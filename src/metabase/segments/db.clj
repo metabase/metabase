@@ -4,9 +4,18 @@
   (:require
    [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.segments.schema :as segments.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
+
+(mu/defn synced-segments-clause :- [:fn vector?]
+  "The clause over the Segment table aliased `alias` selecting the segments of the tables remote sync syncs."
+  [alias :- :keyword]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   (remote-sync/synced-fk-clause alias :table_id :model/TableUserSettings)])
 
 (mu/defn insert-segment!
   "Insert a Segment and return the inserted instance."
@@ -57,8 +66,3 @@
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
-
-(mu/defn collections
-  "The Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))

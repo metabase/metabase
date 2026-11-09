@@ -8,9 +8,19 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn synced-documents-clause :- [:fn vector?]
+  "The clause over the Document table aliased `alias` selecting the documents remote sync syncs."
+  [alias :- :keyword]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   [:= (u/qualified-key alias :exploration_id) nil]
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
 
 (mu/defn document
   "The Document with `id`, or nil."

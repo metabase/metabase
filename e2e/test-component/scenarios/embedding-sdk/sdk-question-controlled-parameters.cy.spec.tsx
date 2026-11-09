@@ -29,7 +29,7 @@ const TEMPLATE_TAGS: TemplateTags = {
     "display-name": "State",
     type: "dimension",
     "widget-type": "string/=",
-    dimension: ["field", PEOPLE.STATE, null],
+    "field-id": PEOPLE.STATE,
   },
   city: {
     id: "city",
@@ -37,7 +37,7 @@ const TEMPLATE_TAGS: TemplateTags = {
     "display-name": "City",
     type: "dimension",
     "widget-type": "string/=",
-    dimension: ["field", PEOPLE.CITY, null],
+    "field-id": PEOPLE.CITY,
   },
   source: {
     id: "source",
@@ -45,7 +45,7 @@ const TEMPLATE_TAGS: TemplateTags = {
     "display-name": "Source",
     type: "dimension",
     "widget-type": "string/=",
-    dimension: ["field", PEOPLE.SOURCE, null],
+    "field-id": PEOPLE.SOURCE,
   },
 };
 

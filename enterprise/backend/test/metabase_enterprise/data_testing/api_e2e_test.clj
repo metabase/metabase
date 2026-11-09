@@ -102,43 +102,6 @@
                 (finally
                   (t2/delete! :model/TransformTest :id (:id created)))))))))))
 
-(deftest adhoc-run-test
-  (testing "POST /run runs an unsaved test of an unsaved transform and records a run owned by no test"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-      (with-transforms-enabled #{:transforms-basic :transforms-testing}
-        (let [mp                            (mt/metadata-provider)
-              {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
-              transform-count               (t2/count :model/Transform)
-              result                        (mt/user-http-request
-                                             :crowberto :post 200 "ee/transform-test/run"
-                                             {:transform {:name   "Adhoc"
-                                                          :source {:type  "query"
-                                                                   :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
-                                                          :target {:type   "table"
-                                                                   :schema schema
-                                                                   :name   "adhoc_people_summary"}}
-                                              :test      {:name         "Adhoc"
-                                                          :inputs       [{:table  {:schema schema :name table}
-                                                                          :format "sql"
-                                                                          :sql    "SELECT 1 AS id, 'abc' AS name"}]
-                                                          :expectations [{:type "empty"
-                                                                          :name "no null ids"
-                                                                          :sql  (str "SELECT * FROM " schema ".adhoc_people_summary WHERE id IS NULL")}]}})
-              run                           (t2/select-one :model/TransformTestRun {:order-by [[:id :desc]]})]
-          (try
-            (is (= "passed" (:status result)))
-            (is (= [{:name "no null ids" :type "empty" :status "passed"}]
-                   (outcomes result)))
-            (testing "saves no transform"
-              (is (= transform-count (t2/count :model/Transform))))
-            (testing "records run by caller under no test"
-              (is (=? {:transform_test_id nil
-                       :initiated_by      (mt/user->id :crowberto)
-                       :status            :passed}
-                      run)))
-            (finally
-              (t2/delete! :model/TransformTestRun :id (:id run)))))))))
-
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)

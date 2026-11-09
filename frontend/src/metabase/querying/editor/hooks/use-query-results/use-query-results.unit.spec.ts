@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import { setupCardDataset } from "__support__/server-mocks";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
@@ -34,7 +35,7 @@ function setup({
 
   const question = Question.create({
     dataset_query: NATIVE_QUERY,
-    metadata: undefined,
+    metadata: createMockMetadata(),
   });
 
   const initialUiState: QueryEditorUiState = {

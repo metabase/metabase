@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import { setupCardQueryEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
@@ -9,7 +10,7 @@ import { QuestionResultLoader } from "./QuestionResultLoader";
 describe("QuestionResultLoader", () => {
   it("should load a result given a question", async () => {
     const card = createMockCard({ id: 1 });
-    const question = new Question(card);
+    const question = new Question(card, createMockMetadata());
     const dataset = createMockDataset();
     setupCardQueryEndpoints(question.card(), dataset);
 

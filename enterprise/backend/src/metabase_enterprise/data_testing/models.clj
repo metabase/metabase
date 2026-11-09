@@ -9,15 +9,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms.schema :as transforms.schema]
-   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -62,29 +59,17 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(mu/defn can-run-test? :- :boolean
-  "Whether the current user may run test SQL they write against the source Database of `transform`, as an ad hoc
-  native query and a transform there need."
-  [transform :- ::transforms.schema/transform.definition]
-  (let [db-id (transforms-base.i/source-db-id transform)]
-    (boolean
-     (or api/*is-superuser?*
-         (and db-id
-              (transforms.u/source-readable? transform)
-              (perms/has-db-transforms-permission? api/*current-user-id* db-id)
-              (query-perms/can-run-query?
-               (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))))))
-
 (mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Transform `transform-id`, while remote sync allows editing
-  transforms."
+  "Whether the current user may save or delete a test of the Transform `transform-id`: they may edit it, and write the
+  native SQL of a test against its source Database."
   [transform-id :- ::lib.schema.id/transform]
   (boolean
-   (and (remote-sync/transforms-editable?)
-        (when-let [transform (data-testing.db/transform transform-id)]
+   (when-let [transform (data-testing.db/transform transform-id)]
+     (and (mi/can-write? transform)
           (or api/*is-superuser?*
-              (and (transforms-base.i/source-db-id transform)
-                   (can-run-test? (transforms.u/->definition transform))))))))
+              (when-let [db-id (transforms-base.i/source-db-id transform)]
+                (query-perms/can-run-query?
+                 (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))))))))
 
 (defmethod mi/can-read? :model/TransformTest
   ([instance]
@@ -95,7 +80,8 @@
 
 (defmethod mi/can-write? :model/TransformTest
   ([instance]
-   (can-save-test? (:transform_id instance)))
+   (and (remote-sync/can-write? :model/TransformTest (:id instance))
+        (can-save-test? (:transform_id instance))))
   ([_model pk]
    (when-let [transform-test (data-testing.db/transform-test pk)]
      (mi/can-write? transform-test))))
@@ -106,10 +92,10 @@
 
 (defmethod mi/can-update? :model/TransformTest
   [instance changes]
-  (let [transform-id (:transform_id changes (:transform_id instance))]
-    (and (can-save-test? (:transform_id instance))
-         (or (= transform-id (:transform_id instance))
-             (can-save-test? transform-id)))))
+  (and (can-save-test? (:transform_id instance))
+       (can-save-test? (:transform_id changes (:transform_id instance)))
+       (or (not (remote-sync/synced-changes? :model/TransformTest instance changes))
+           (remote-sync/can-write? :model/TransformTest (:id instance)))))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -185,3 +171,7 @@
   (mapv (fn [{:keys [transform_id]}]
           #{[:model/Transform transform_id]})
         entities))
+
+(defmethod remote-sync/spec :model/TransformTest
+  [_model]
+  {:synced-filter-clause data-testing.db/synced-transform-tests-clause})

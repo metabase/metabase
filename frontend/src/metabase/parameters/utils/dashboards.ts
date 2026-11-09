@@ -11,6 +11,7 @@ import type {
   FieldFilterUiParameter,
   UiParameter,
 } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   getParameterTargetField,
@@ -210,7 +211,7 @@ function buildSavedDashboardParameter(
   const uniqueParameterFields = _.uniq(
     fields?.[parameter.id] ?? [],
     (field) => field.id,
-  );
+  ).map(getParameterFieldInfo);
 
   return {
     ...parameter,

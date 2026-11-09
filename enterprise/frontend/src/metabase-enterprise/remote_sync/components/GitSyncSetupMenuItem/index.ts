@@ -1,1 +1,0 @@
-export { GitSyncSetupMenuItem } from "./GitSyncSetupMenuItem";

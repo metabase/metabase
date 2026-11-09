@@ -4,9 +4,15 @@
   (:require
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn synced-transform-tests-clause :- [:fn vector?]
+  "The clause over the TransformTest table aliased `alias` selecting the tests of the transforms remote sync syncs."
+  [alias :- :keyword]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
 
 (mu/defn transform-tests :- [:sequential ::data-testing.schema/transform-test]
   "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."
@@ -29,8 +35,8 @@
   (t2/insert-returning-instance! :model/TransformTest transform-test))
 
 (mu/defn insert-transform-test-run! :- ::data-testing.schema/transform-test-run
-  "Insert a started TransformTestRun for `transform-test-id`, nil for a test that is not saved, and return it."
-  [transform-test-id :- [:maybe ms/PositiveInt]
+  "Insert a started TransformTestRun for `transform-test-id` and return it."
+  [transform-test-id :- ms/PositiveInt
    initiated-by      :- [:maybe ::lib.schema.id/user]]
   (t2/insert-returning-instance! :model/TransformTestRun
                                  {:transform_test_id transform-test-id

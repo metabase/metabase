@@ -1,14 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/utils/types";
 import { getDataFromClicked } from "metabase/value-formatting";
 import * as dateFormatUtils from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   ClickBehaviorTarget,
-  FieldId,
+  Field,
   TemplateTagType,
 } from "metabase-types/api";
 import {
@@ -79,12 +77,10 @@ const metadata = createMockMetadata({
 
 const provider = createMetadataProvider({ metadata });
 
-const productId = checkNotNull(metadata.field(PRODUCTS.ID));
-const productTitle = checkNotNull(metadata.field(PRODUCTS.TITLE));
-const productFloatCategory = checkNotNull(
-  metadata.field(FLOAT_CATEGORY_FIELD.id),
-);
-const productCreatedAt = checkNotNull(metadata.field(PRODUCTS.CREATED_AT));
+const productId = createProductsIdField();
+const productTitle = createProductsTitleField();
+const productFloatCategory = FLOAT_CATEGORY_FIELD;
+const productCreatedAt = createProductsCreatedAtField();
 
 const emptyData = {
   column: {},
@@ -194,7 +190,7 @@ describe("metabase/dashboard/utils/click-behavior", () => {
                 templateTags: {
                   my_field_filter: {
                     default: null,
-                    dimension: PRODUCTS.CATEGORY,
+                    "field-id": PRODUCTS.CATEGORY,
                     "display-name": "My Field Filter",
                     id: "foo123",
                     name: "my_field_filter",
@@ -471,8 +467,7 @@ describe("metabase/dashboard/utils/click-behavior", () => {
                   templateTags: {
                     my_field_filter: {
                       default: null,
-                      // Unjustified type cast. FIXME
-                      dimension: field.id as FieldId,
+                      "field-id": field.id,
                       "display-name": "My Field Filter",
                       id: "foo123",
                       name: "my_field_filter",

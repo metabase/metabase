@@ -105,7 +105,7 @@ describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
         "display-name": "Category",
         type: "dimension",
         "widget-type": "string/=",
-        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "field-id": PRODUCTS.CATEGORY,
       },
     };
 

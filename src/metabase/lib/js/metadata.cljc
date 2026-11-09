@@ -12,6 +12,8 @@
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -275,6 +277,16 @@
     {:values                (#?(:cljs js->clj :clj identity) (object-get field-values "values"))
      :human-readable-values (#?(:cljs js->clj :clj identity) (object-get field-values "human_readable_values"))}))
 
+(defn- parse-external-remap [remap]
+  (lib.normalize/normalize ::lib.schema.metadata/column.remapping.external
+                           #?(:cljs (js->clj remap)
+                              :clj  remap)))
+
+(defn- parse-internal-remap [remap]
+  (lib.normalize/normalize ::lib.schema.metadata/column.remapping.internal
+                           #?(:cljs (js->clj remap)
+                              :clj  remap)))
+
 (defn- parse-dimension
   "`:dimensions` comes in as an array for historical reasons, even tho a Field can only have one. So it should never
   have more than one element. See #27054. Anyways just to be safe let's make sure it's either `:external` or
@@ -282,7 +294,7 @@
   [dimensions]
   (when-let [dimension (m/find-first (fn [dimension]
                                        (#{"external" "internal"} (get dimension "type")))
-                                     dimensions)]
+                                     #?(:cljs (js->clj dimensions) :clj dimensions))]
     (let [dimension-type (keyword (get dimension "type"))]
       (merge
        {:id   (get dimension "id")
@@ -338,6 +350,8 @@
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
+      :lib/external-remap               (parse-external-remap v)
+      :lib/internal-remap               (parse-internal-remap v)
       :lib/binning       (parse-binning-info v)
       :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
@@ -527,15 +541,18 @@
   [_object-type]
   "snippets")
 
+(defn- parse-template-tags [template-tags]
+  (lib.normalize/normalize ::lib.schema.template-tag/template-tag-map
+                           #?(:cljs (js->clj template-tags)
+                              :clj  template-tags)))
+
 (defmethod parse-field-fn :snippet
   [_object-type]
   (fn [k v]
     (case k
       ;; TODO (Cam 2026-07-06) not sure this is needed since this should be done automatically as part of normalizing
       ;; a `:metabase.lib.schema.metadata/native-query-snippet` these days
-      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map
-                                              #?(:cljs (js->clj v)
-                                                 :clj  v))
+      :template-tags (parse-template-tags v)
       v)))
 
 (defn- parse-objects-delay [object-type metadata]
