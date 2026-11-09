@@ -195,6 +195,11 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/CardTest :id id))
 
+(mu/defn delete-card-tests!
+  "Delete the CardTests of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/delete! :model/CardTest :card_id card-id))
+
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]

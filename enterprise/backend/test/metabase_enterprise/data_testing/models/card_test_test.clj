@@ -76,10 +76,20 @@
       (t2/delete! :model/DataTestRun :id run-id))))
 
 (deftest deleting-a-card-deletes-its-tests-test
-  (mt/with-temp [:model/Card     {card-id :id} {}
-                 :model/CardTest {test-id :id} {:card_id card-id}]
-    (t2/delete! :model/Card :id card-id)
-    (is (false? (t2/exists? :model/CardTest :id test-id)))))
+  (mt/with-temp [:model/Card     {card-id :id}  {}
+                 :model/CardTest {test-id :id}  {:card_id card-id}
+                 :model/CardTest {other-id :id} {:card_id card-id}]
+    (let [run-ids (mapv #(:id (data-testing.run-tracking/start-run! :card %)) [test-id other-id])]
+      (try
+        (doseq [run-id run-ids]
+          (data-testing.run-tracking/finish-run! run-id :passed))
+        (t2/delete! :model/Card :id card-id)
+        (testing "the tests are gone"
+          (is (false? (t2/exists? :model/CardTest :card_id card-id))))
+        (testing "each test was deleted through its own hook, so its runs stay with no test id"
+          (is (= [nil nil] (mapv #(t2/select-one-fn :test_id :model/DataTestRun :id %) run-ids))))
+        (finally
+          (t2/delete! :model/DataTestRun :id [:in run-ids]))))))
 
 ;;; ------------------------------------------------ Permissions ------------------------------------------------
 

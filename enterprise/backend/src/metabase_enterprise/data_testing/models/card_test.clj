@@ -6,6 +6,7 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -35,6 +36,13 @@
                         (data-testing.db/latest-test-runs :card (into #{} (map :id) card-tests)))]
       (for [card-test card-tests]
         (assoc card-test :last_run (get id->run (:id card-test)))))))
+
+(defenterprise delete-card-tests!
+  "Enterprise implementation: delete the tests of the card `card-id`, each through its own hook. Runs whatever the token
+  says, since the rows outlive the feature. See the OSS declaration in `metabase.queries.models.card`."
+  :feature :none
+  [card-id]
+  (data-testing.db/delete-card-tests! card-id))
 
 (t2/define-before-delete :model/CardTest [card-test]
   ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
