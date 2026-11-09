@@ -33,6 +33,7 @@ export const DATA_STUDIO_TABLE_METADATA_TABS = [
   "details",
   "field",
   "properties",
+  "history",
   // PROTOTYPE: a table's status lifecycle, shown when it has a process
   "process",
   "segments",

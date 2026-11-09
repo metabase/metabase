@@ -1,1 +1,1 @@
-export { TableStructure } from "./TableStructure";
+export { TableHistorySection, TableStructure } from "./TableStructure";

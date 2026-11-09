@@ -36,7 +36,7 @@ import { TableMetadata, TableStats } from "./TableMetadata";
 import { TableProcess, useHasProcess } from "./TableProcess";
 import { TablePropertyList } from "./TablePropertyList";
 import S from "./TableSection.module.css";
-import { TableStructure } from "./TableStructure";
+import { TableHistorySection, TableStructure } from "./TableStructure";
 
 interface Props {
   table: Table;
@@ -63,10 +63,14 @@ const TableSectionBase = ({
   const isCustomPropertyTable =
     structure.role != null &&
     isRoleA(structure.role, "role/CustomPropertyTable");
+  const isHistoryTable =
+    structure.role != null && isRoleA(structure.role, "role/HistoryDimension");
   const hasProcess = useHasProcess(table);
   // A link to the Process tab of a table without one lands on Details
-  const visibleTab =
-    activeTab === "process" && !hasProcess ? "details" : activeTab;
+  const isMissingTab =
+    (activeTab === "process" && !hasProcess) ||
+    (activeTab === "history" && !isHistoryTable);
+  const visibleTab = isMissingTab ? "details" : activeTab;
 
   const getFieldHref = (fieldId: FieldId) => {
     return Urls.dataStudioData({
@@ -109,6 +113,9 @@ const TableSectionBase = ({
             {isCustomPropertyTable && (
               <Tabs.Tab value="properties">{t`Custom properties`}</Tabs.Tab>
             )}
+            {isHistoryTable && (
+              <Tabs.Tab value="history">{t`History`}</Tabs.Tab>
+            )}
             {hasProcess && <Tabs.Tab value="process">{t`Process`}</Tabs.Tab>}
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
@@ -150,6 +157,12 @@ const TableSectionBase = ({
           {isCustomPropertyTable && (
             <Tabs.Panel value="properties">
               <TablePropertyList table={table} />
+            </Tabs.Panel>
+          )}
+
+          {isHistoryTable && (
+            <Tabs.Panel value="history">
+              <TableHistorySection table={table} readOnly={readOnly} />
             </Tabs.Panel>
           )}
 
