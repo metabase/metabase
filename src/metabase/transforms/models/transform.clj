@@ -103,7 +103,7 @@
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (transform-deletable? instance))
+   (:can_write (first (t2/hydrate [(t2/instance :model/Transform instance)] :can_write))))
   ([_model pk]
    (when-let [transform (transforms.db/transform pk)]
      (mi/can-write? transform))))
