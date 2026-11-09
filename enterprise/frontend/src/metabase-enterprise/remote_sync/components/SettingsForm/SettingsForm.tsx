@@ -20,6 +20,7 @@ import { Button, Group, Loader, Radio, Stack } from "metabase/ui";
 import {
   useCreateLibraryMutation,
   useGetRemoteSyncIsDirtyQuery,
+  useImportChangesMutation,
   useTestRemoteSyncConnectionMutation,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api";
@@ -165,6 +166,7 @@ const LoadedSettingsForm = ({
           <SettingsFormBody
             regularCollections={regularCollections}
             tenantCollections={tenantCollections}
+            onPullStarted={setTaskId}
             onCancel={onCancel}
           />
           {unsyncedDependencies != null && (
@@ -187,12 +189,14 @@ const LoadedSettingsForm = ({
 type SettingsFormBodyProps = {
   regularCollections: SyncableCollection[];
   tenantCollections: SyncableCollection[];
+  onPullStarted: (taskId: RemoteSyncTaskId) => void;
   onCancel?: () => void;
 };
 
 const SettingsFormBody = ({
   regularCollections,
   tenantCollections,
+  onPullStarted,
   onCancel,
 }: SettingsFormBodyProps) => {
   const isTenantsEnabled = useSetting("use-tenants");
@@ -276,10 +280,15 @@ const SettingsFormBody = ({
             )}
           </>
         ) : (
-          <FormSwitch
-            name="remote-sync-auto-import"
-            label={t`Pull changes automatically`}
-          />
+          <Group justify="space-between">
+            <FormSwitch
+              name="remote-sync-auto-import"
+              label={t`Pull changes automatically`}
+            />
+            {isEnabled && savedType === "read-only" && (
+              <PullButton onPullStarted={onPullStarted} />
+            )}
+          </Group>
         )}
         <FormErrorMessage />
         <Group justify="space-between">
@@ -328,6 +337,33 @@ const TestConnectionButton = () => {
         onClick={handleClick}
       >{t`Test connection`}</Button>
     </Group>
+  );
+};
+
+type PullButtonProps = {
+  onPullStarted: (taskId: RemoteSyncTaskId) => void;
+};
+
+const PullButton = ({ onPullStarted }: PullButtonProps) => {
+  const [importChanges, { isLoading }] = useImportChangesMutation();
+  const [sendToast] = useToast();
+
+  const handleClick = async () => {
+    try {
+      const { task_id } = await importChanges({ force: true }).unwrap();
+      if (task_id != null) {
+        onPullStarted(task_id);
+      }
+    } catch (error) {
+      sendToast({
+        message: getErrorMessage(error, t`Couldn't pull changes`),
+        variant: "negative",
+      });
+    }
+  };
+
+  return (
+    <Button loading={isLoading} onClick={handleClick}>{t`Pull now`}</Button>
   );
 };
 
