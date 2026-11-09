@@ -3437,18 +3437,13 @@
            api
            api-scope
            app-db
-           collections
            database-routing
            driver
            events
-           lib
-           lib.be
-           lib.metadata
            lib.schema
            models
            permissions
            premium-features
-           queries
            request
            sample-data
            settings
@@ -3460,7 +3455,6 @@
            warehouses.schema
            warehouses.secrets}
    :model-imports #{:model/Card
-                    :model/Collection
                     :model/Database
                     :model/Field
                     :model/Table}}
