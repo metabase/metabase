@@ -181,10 +181,17 @@
 
   Returns `{:expression <source> :name <name>}`. Throws an HTTP error with a plain-text message when
   the request can't be served, including when nothing in the columns or metrics fits or the LLM call fails. The
-  managed AI lock's error propagates as it is."
-  [{:keys [prompt columns metrics database_id] :as request}]
-  (api/check-400 (or (seq columns) (seq metrics))
-                 (tru "Provide at least one column or metric."))
+  managed AI lock's error propagates as it is. Metrics are aggregations, so expression mode rejects them and needs at
+  least one column."
+  [{:keys [mode prompt columns metrics database_id] :as request}]
+  (if (= mode "expression")
+    (do
+      (api/check-400 (empty? metrics)
+                     (tru "Metrics can only be used in aggregation mode."))
+      (api/check-400 (seq columns)
+                     (tru "Provide at least one column.")))
+    (api/check-400 (or (seq columns) (seq metrics))
+                   (tru "Provide at least one column or metric.")))
   (when-let [reason (metabot.self/llm-call-unavailable-reason required-permission)]
     (throw (unavailable-error reason)))
   (metabot.usage/check-metabase-managed-free-limit!)
