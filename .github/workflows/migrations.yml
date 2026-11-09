@@ -10,17 +10,6 @@ on:
 
 jobs:
 
-  lint-migrations:
-    if: github.event.action != 'labeled' && github.event.action != 'unlabeled'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Verify Liquibase Migrations
-        run: ./bin/mage lint-migrations
-
   check-migration-versions:
     if: github.event_name == 'pull_request'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

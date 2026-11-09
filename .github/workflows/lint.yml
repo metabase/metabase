@@ -19,6 +19,7 @@ jobs:
       ci_scripts: ${{ steps.changes.outputs.ci_scripts }}
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
+      migrations: ${{ steps.changes.outputs.migrations }}
       openapi: ${{ steps.changes.outputs.openapi }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
       workflows: ${{ steps.changes.outputs.workflows }}
@@ -69,15 +70,17 @@ jobs:
         run: clojure -Sdescribe > /dev/null
 
       - parallel:
-        # Deliberately ungated. This guards a coupling that drifts silently, so running it only when a
-        # path filter says .github changed would reintroduce the failure it exists to catch - and the
-        # filters here cover .github/workflows only, not the actions and scripts it also reads.
+        # Must always run to check Clojure classpaths match what exist in CI cache. 
         - name: Check cache-warm pre-resolves every alias combination CI uses
           run: .github/scripts/check-preresolve-aliases.sh
 
         # Lint whitespace, always runs
         - name: Run Whitespace Linter
           run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
+
+        - name: Lint Liquibase Migrations
+          if: needs.files-changed.outputs.migrations == 'true'
+          run: ./bin/mage lint-migrations
 
         # Lint YAML
         - name: Lint YAML files
