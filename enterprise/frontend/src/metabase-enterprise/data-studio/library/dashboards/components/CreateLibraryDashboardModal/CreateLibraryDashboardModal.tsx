@@ -84,7 +84,6 @@ export function CreateLibraryDashboardModal({
       >
         <Form as={Stack} gap={0}>
           <FormTextInput
-            labelProps={{ mb: "xxs" }}
             name="name"
             label={t`Name`}
             placeholder={t`What is the name of your dashboard?`}
@@ -92,7 +91,6 @@ export function CreateLibraryDashboardModal({
             mt="lg"
           />
           <FormTextarea
-            labelProps={{ mb: "xxs" }}
             name="description"
             label={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
