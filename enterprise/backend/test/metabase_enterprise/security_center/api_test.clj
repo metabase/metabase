@@ -7,8 +7,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -94,10 +93,12 @@
                                         "ee/security-center/SC-0000-001/acknowledge")))
           (testing "creates an audit log entry"
             (is (=? {:topic   :security-advisory-acknowledge
-                     :user_id (mt/user->id :crowberto)}
-                    (t2/select-one [:model/AuditLog :topic :user_id]
-                                   :topic :security-advisory-acknowledge
-                                   {:order-by [[:id :desc]]})))))
+                     :user_id (mt/user->id :crowberto)
+                     :model   "SecurityAdvisory"
+                     :details {:advisory_id "SC-0000-001"
+                               :title       string?
+                               :severity    string?}}
+                    (mt/latest-audit-log-entry :security-advisory-acknowledge)))))
         (testing "cannot acknowledge twice"
           (mt/user-http-request :crowberto :post 409
                                 "ee/security-center/SC-0000-001/acknowledge"))
