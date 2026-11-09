@@ -2,7 +2,7 @@ import type { FormEventHandler } from "react";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import { Box, Button, Flex, Icon, Stack } from "metabase/ui";
+import { Box, Button, Flex, Icon, Stack, Title } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
@@ -28,6 +28,9 @@ interface Props {
   withTitle?: boolean;
   width?: number;
 
+  /** Portal the column pickers. Set it only when the host popover gates its close on the overlay stack. */
+  withPortaledPickers?: boolean;
+
   /**
    * If set, use this as the first column to combine.
    */
@@ -49,6 +52,7 @@ export function CombineColumns({
   width,
   column,
   withTitle,
+  withPortaledPickers,
 }: Props) {
   const [state, setState] = useState<State>(() => {
     const defaultSeparator = getDefaultSeparator(column);
@@ -156,12 +160,17 @@ export function CombineColumns({
 
   return (
     <>
-      {onCancel && withTitle && (
-        <ExpressionWidgetHeader
-          title={t`Select columns to combine`}
-          onBack={onCancel}
-        />
-      )}
+      {withTitle &&
+        (onCancel ? (
+          <ExpressionWidgetHeader
+            title={t`Select columns to combine`}
+            onBack={onCancel}
+          />
+        ) : (
+          <Title p="xl" pb={0} order={6}>
+            {t`Select columns to combine`}
+          </Title>
+        ))}
       <form onSubmit={handleSubmit}>
         <Box maw="100vw" w={width} p="xl" pt={0}>
           <Stack gap="xl" mt="xl">
@@ -187,6 +196,7 @@ export function CombineColumns({
                           showRemove={columnsAndSeparators.length >= 3}
                           onChange={handleRowChange}
                           onRemove={handleRowRemove}
+                          withPortal={withPortaledPickers}
                         />
                       ),
                   )}

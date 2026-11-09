@@ -28,6 +28,7 @@ export const NotebookCell = Object.assign(_NotebookCell, {
 interface NotebookCellItemProps {
   color: string;
   inactive?: boolean;
+  selected?: boolean;
   readOnly?: boolean;
   disabled?: boolean;
   right?: React.ReactNode;
@@ -47,6 +48,7 @@ export const NotebookCellItem = forwardRef<
 >(function NotebookCellItem(
   {
     inactive,
+    selected,
     disabled,
     color,
     containerStyle,
@@ -67,6 +69,7 @@ export const NotebookCellItem = forwardRef<
       className={cx(
         S.NotebookCellItemContainer,
         {
+          [S.selected]: selected,
           [S.inactive]: inactive,
           [S.disabled]: disabled,
           [S.cursorPointer]:
@@ -88,6 +91,7 @@ export const NotebookCellItem = forwardRef<
           S.NotebookCellItemContentContainer,
           S.leftRoundedCorners,
           {
+            [S.selected]: selected,
             [S.inactive]: inactive,
             [S.rightRoundedCorners]: !hasRightSide,
             [S.canHover]: !inactive && !readOnly && !disabled,
@@ -108,6 +112,7 @@ export const NotebookCellItem = forwardRef<
             S.rightRoundedCorners,
             S.leftBorder,
             {
+              [S.selected]: selected,
               [S.inactive]: inactive,
               [S.canHover]: !inactive && !readOnly && !disabled,
             },

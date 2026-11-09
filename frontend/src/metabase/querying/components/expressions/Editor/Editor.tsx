@@ -1,8 +1,15 @@
 import { EditorSelection, type EditorState } from "@codemirror/state";
-import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -16,26 +23,28 @@ import {
   type ExpressionError,
   diagnoseAndCompile,
   format,
+  formatIdentifier,
   getClauseDefinition,
   tokenAtPos,
 } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
-import {
-  ActionIcon,
-  Button,
-  Tooltip as ButtonTooltip,
-  Flex,
-  Icon,
-} from "metabase/ui";
+import { ActionIcon, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import { AvailableColumnsBrowser } from "../AvailableColumnsBrowser";
+import type { ExpressionSidebarName } from "../ExpressionSidebar";
+import {
+  ExpressionSidebarPanel,
+  useExpressionSidebarHost,
+} from "../ExpressionSidebar";
 import { FunctionBrowser } from "../FunctionBrowser";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
+import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { Tooltip } from "./Tooltip";
@@ -61,11 +70,30 @@ export type EditorProps = {
   onCloseEditor?: () => void;
   initialExpressionClause?: Lib.DefinedClauseName | null;
 
+  /**
+   * Set when the editor is on the page, not in a popover. It drops the exit
+   * guard, which swallows clicks page-wide, and puts the sidebar in the host's
+   * slot when there is one.
+   */
+  inline?: boolean;
+
+  /** Rendered in the inline toolbar. */
+  shortcutsMenu?: ReactNode;
+  initialSource?: string;
+
   onChange: (
     clause: Lib.ExpressionClause | null,
     error: ExpressionError | null,
+    meta: EditorChangeMeta,
   ) => void;
   shortcuts?: Shortcut[];
+};
+
+export type EditorChangeMeta = {
+  /** False for the initial format pass, so autosaving callers can skip it. */
+  hasSourceChanged: boolean;
+  /** The raw text, which a caller can stash to restore later. */
+  source: string;
 };
 
 const EDITOR_WIDGET_HEIGHT = 220;
@@ -87,6 +115,8 @@ export function Editor(props: EditorProps) {
     hasHeader,
     onCloseEditor,
     initialExpressionClause,
+    inline = false,
+    shortcutsMenu,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -94,8 +124,20 @@ export function Editor(props: EditorProps) {
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
-  const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
-    useDisclosure();
+  const [localSidebar, setLocalSidebar] =
+    useState<ExpressionSidebarName | null>(null);
+
+  const sidebarHost = useExpressionSidebarHost();
+  const host = inline ? sidebarHost : null;
+
+  const openSidebar = host ? host.openSidebar : localSidebar;
+  const setOpenSidebar = host ? host.setOpenSidebar : setLocalSidebar;
+
+  const toggleSidebar = useCallback(
+    (name: ExpressionSidebarName) =>
+      setOpenSidebar(openSidebar === name ? null : name),
+    [openSidebar, setOpenSidebar],
+  );
 
   const {
     source,
@@ -112,7 +154,7 @@ export function Editor(props: EditorProps) {
   });
 
   const { showModal, closeModal } = useCloseModal({
-    allowPopoverExit: source === "" || !hasSourceChanged,
+    allowPopoverExit: inline || source === "" || !hasSourceChanged,
   });
 
   const [customTooltip, portal] = useCustomTooltip({
@@ -161,6 +203,28 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
+  const handleColumnClick = useCallback(
+    (column: Lib.ColumnMetadata) => {
+      const view = ref.current?.view;
+      if (!view) {
+        return;
+      }
+
+      // Same text the autocomplete inserts for a column.
+      const { longDisplayName } = Lib.displayInfo(query, stageIndex, column);
+      const text = formatIdentifier(longDisplayName);
+
+      view.focus();
+      view.dispatch(
+        view.state.changeByRange((range) => ({
+          range: EditorSelection.cursor(range.from + text.length),
+          changes: [{ from: range.from, to: range.to, insert: text }],
+        })),
+      );
+    },
+    [query, stageIndex],
+  );
+
   const applyInitialSnippet = useInitialClause({
     initialExpressionClause,
   });
@@ -170,9 +234,38 @@ export function Editor(props: EditorProps) {
     setIsSnippetActive(hasActiveSnippet(update.state));
   }, []);
 
+  const canFormat = source.trim() !== "" && error == null && isValidated;
+
+  const sidebarTitle =
+    openSidebar === "columns"
+      ? t`Available columns`
+      : t`Custom expression functions`;
+
+  const sidebarContent =
+    openSidebar === "columns" ? (
+      <AvailableColumnsBrowser
+        query={query}
+        stageIndex={stageIndex}
+        availableColumns={availableColumns}
+        onColumnClick={handleColumnClick}
+      />
+    ) : (
+      <FunctionBrowser
+        expressionMode={expressionMode}
+        reportTimezone={reportTimezone}
+        query={query}
+        onClauseClick={handleFunctionBrowserClauseClick}
+      />
+    );
+
   return (
     <>
-      <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
+      <LayoutMain
+        className={cx(S.wrapper, {
+          [S.formatting]: isFormatting,
+          [S.inline]: inline,
+        })}
+      >
         <CodeMirror
           id={id}
           ref={ref}
@@ -198,51 +291,87 @@ export function Editor(props: EditorProps) {
               : undefined
           }
         />
-        <Errors error={isSnippetActive ? null : error} />
+        <Errors error={isSnippetActive ? null : error} source={source} />
 
-        {source.trim() === "" && !isFormatting && error == null && (
+        {!inline && source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
         )}
 
-        <Flex className={S.toolbar} gap="sm" pt="sm" pr="sm" direction="column">
-          <ButtonTooltip label={t`Function browser`}>
-            <Button
-              aria-label={t`Function browser`}
-              onClick={toggleFunctionBrowser}
-              size="sm"
-              variant={isFunctionBrowserOpen ? "filled" : "subtle"}
-              className={S.toolbarButton}
-              leftSection={<Icon name="function" />}
-            />
-          </ButtonTooltip>
-          {source.trim() !== "" && error == null && isValidated && (
-            <ButtonTooltip label={t`Auto-format`}>
+        {inline ? (
+          <InlineToolbar
+            canFormat={
+              source.trim() !== "" &&
+              error == null &&
+              (isValidated || !hasSourceChanged) &&
+              !isFormatting
+            }
+            openSidebar={openSidebar}
+            shortcutsMenu={shortcutsMenu}
+            onFormat={formatExpression}
+            onToggleSidebar={toggleSidebar}
+          />
+        ) : (
+          <Flex
+            className={S.toolbar}
+            gap="sm"
+            pt="sm"
+            pr="sm"
+            direction="column"
+          >
+            <ButtonTooltip label={t`Function browser`}>
               <ActionIcon
-                variant="subtle"
-                aria-label={t`Auto-format`}
-                onClick={formatExpression}
-                className={S.toolbarButton}
-                disabled={isFormatting || error != null}
+                aria-label={t`Function browser`}
+                aria-pressed={openSidebar === "functions"}
+                onClick={() => toggleSidebar("functions")}
+                variant={openSidebar === "functions" ? "filled" : "subtle"}
               >
-                <Icon name="format_code" />
+                <Icon name="function" />
               </ActionIcon>
             </ButtonTooltip>
-          )}
-        </Flex>
+            <ButtonTooltip label={t`Available columns`}>
+              <ActionIcon
+                aria-label={t`Available columns`}
+                aria-pressed={openSidebar === "columns"}
+                onClick={() => toggleSidebar("columns")}
+                variant={openSidebar === "columns" ? "filled" : "subtle"}
+              >
+                <Icon name="list" />
+              </ActionIcon>
+            </ButtonTooltip>
+            {canFormat && (
+              <ButtonTooltip label={t`Auto-format`}>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={t`Auto-format`}
+                  onClick={formatExpression}
+                  disabled={isFormatting}
+                >
+                  <Icon name="format_code" />
+                </ActionIcon>
+              </ButtonTooltip>
+            )}
+          </Flex>
+        )}
 
         {portal}
       </LayoutMain>
 
-      {isFunctionBrowserOpen && (
-        <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
-          <FunctionBrowser
-            expressionMode={expressionMode}
-            reportTimezone={reportTimezone}
-            query={query}
-            onClauseClick={handleFunctionBrowserClauseClick}
-          />
-        </LayoutSidebar>
-      )}
+      {openSidebar != null &&
+        (host?.container ? (
+          createPortal(
+            <ExpressionSidebarPanel
+              title={sidebarTitle}
+              onClose={() => setOpenSidebar(null)}
+            >
+              {sidebarContent}
+            </ExpressionSidebarPanel>,
+            host.container,
+          )
+        ) : (
+          <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
+            {sidebarContent}
+          </LayoutSidebar>
+        ))}
 
       {showModal && (
         <CloseModal
@@ -256,6 +385,7 @@ export function Editor(props: EditorProps) {
 
 function useExpression({
   clause,
+  initialSource: seedSource,
   expressionMode,
   stageIndex,
   expressionIndex,
@@ -270,6 +400,8 @@ function useExpression({
 }) {
   const [source, setSource] = useState("");
   const [initialSource, setInitialSource] = useState("");
+  // CodeMirror reports the formatted source before the state above settles.
+  const initialSourceRef = useRef("");
   const [isFormatting, setIsFormatting] = useState(true);
   const [isValidated, setIsValidated] = useState(false);
   const errorRef = useRef<ExpressionError | null>(null);
@@ -281,6 +413,7 @@ function useExpression({
         setSource(source);
         if (initial) {
           setInitialSource(source);
+          initialSourceRef.current = source;
         }
       }
 
@@ -302,10 +435,10 @@ function useExpression({
   );
 
   const handleChange = useCallback<typeof onChange>(
-    (clause, error) => {
+    (clause, error, meta) => {
       setIsValidated(true);
       errorRef.current = error;
-      onChange(clause, error);
+      onChange(clause, error, meta);
     },
     [onChange],
   );
@@ -320,9 +453,14 @@ function useExpression({
       setSource(source);
       setIsValidated(false);
 
+      const meta = {
+        hasSourceChanged: source !== initialSourceRef.current,
+        source,
+      };
+
       if (source.trim() === "") {
         debouncedOnChange.cancel();
-        handleChange(null, null);
+        handleChange(null, null, meta);
         return;
       }
 
@@ -338,9 +476,9 @@ function useExpression({
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
-        handleChange(clause, error);
+        handleChange(clause, error, meta);
       } else {
-        debouncedOnChange(clause, error);
+        debouncedOnChange(clause, error, meta);
       }
     },
     [
@@ -357,7 +495,15 @@ function useExpression({
   );
 
   useMount(() => {
-    // format the source when the component mounts
+    if (seedSource != null) {
+      // Restored text may not compile; validate so its errors show at once.
+      setIsFormatting(false);
+      setInitialSource(seedSource);
+      initialSourceRef.current = seedSource;
+      handleUpdate(seedSource, true);
+      return;
+    }
+
     formatExpression({
       initial: clause === initialClause,
     });

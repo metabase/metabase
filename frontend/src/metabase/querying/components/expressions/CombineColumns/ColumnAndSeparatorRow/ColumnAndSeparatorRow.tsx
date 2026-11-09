@@ -25,6 +25,7 @@ interface Props {
     separator: string,
   ) => void;
   onRemove: (index: number) => void;
+  withPortal?: boolean;
 }
 
 export const ColumnAndSeparatorRow = ({
@@ -38,6 +39,7 @@ export const ColumnAndSeparatorRow = ({
   showSeparator,
   onChange,
   onRemove,
+  withPortal,
 }: Props) => {
   return (
     <Flex align="flex-end" gap={12} pos="relative">
@@ -54,6 +56,7 @@ export const ColumnAndSeparatorRow = ({
         columns={columns}
         value={column}
         label={label(index)}
+        withPortal={withPortal}
         onChange={(column) => {
           onChange(index, column, separator);
         }}

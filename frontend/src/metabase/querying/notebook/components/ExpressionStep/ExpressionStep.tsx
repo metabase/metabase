@@ -1,15 +1,32 @@
-import { type JSX, useMemo } from "react";
+import {
+  type JSX,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
-import {
-  ExpressionWidget,
-  useExpressionWidgetChunk,
-} from "../../../components/expressions/ExpressionWidget";
 import type { NotebookStepProps } from "../../types";
-import { ClauseStep } from "../ClauseStep";
+import { ClauseStepDndContext, ClauseStepDndItem } from "../ClauseStep";
+import {
+  InlineExpressionEditor,
+  useInlineExpressionEditorChunk,
+} from "../InlineExpressionEditor";
+import { NotebookCell, NotebookCellAdd } from "../NotebookCell";
+
+import { ExpressionPill } from "./ExpressionPill";
+
+type EditorTarget =
+  | { kind: "clause"; index: number }
+  | { kind: "draft"; id: string };
+
+type OpenEditor = { target: EditorTarget; session: number };
 
 export const ExpressionStep = ({
   color,
@@ -22,137 +39,352 @@ export const ExpressionStep = ({
   const { query, stageIndex } = step;
   const tc = useTranslateContent();
 
-  // A new custom column opens its popover as soon as the step appears. The
-  // widget is a separate chunk, so hold the popover shut until it arrives:
-  // `renderPopover` returning null disables it.
-  const isWidgetLoaded = useExpressionWidgetChunk();
+  const isEditorLoaded = useInlineExpressionEditorChunk();
+
+  const [openEditor, setOpenEditor] = useState<OpenEditor | null>(null);
+  // The debounced edit and the blur after it both commit, faster than React
+  // re-renders, so the target has to be readable synchronously.
+  const openEditorRef = useRef<OpenEditor | null>(null);
+
+  const setOpen = useCallback((next: OpenEditor | null) => {
+    openEditorRef.current = next;
+    setOpenEditor(next);
+  }, []);
+
+  const [draftIds, setDraftIds] = useState<string[]>([]);
+  const sessionRef = useRef(0);
+  const draftCountRef = useRef(0);
+
+  const [pendingSources, setPendingSources] = useState<Record<string, string>>(
+    {},
+  );
+
+  const dropPendingSource = useCallback((target: EditorTarget) => {
+    const key = pendingKey(target);
+    setPendingSources((pending) => {
+      if (!(key in pending)) {
+        return pending;
+      }
+      const { [key]: _removed, ...rest } = pending;
+      return rest;
+    });
+  }, []);
+
+  const openEditorAt = useCallback(
+    (target: EditorTarget) => {
+      sessionRef.current += 1;
+      setOpen({ target, session: sessionRef.current });
+    },
+    [setOpen],
+  );
+
+  const addDraft = useCallback(() => {
+    draftCountRef.current += 1;
+    const id = `draft-${draftCountRef.current}`;
+    setDraftIds((ids) => [...ids, id]);
+    openEditorAt({ kind: "draft", id });
+  }, [openEditorAt]);
 
   const expressions = useMemo(
     () => Lib.expressions(query, stageIndex),
     [query, stageIndex],
   );
 
-  const renderExpressionName = (expression: Lib.ExpressionClause) => {
-    return tc(Lib.displayInfo(query, stageIndex, expression).longDisplayName);
-  };
+  // Autosave outpaces the query prop, so commits build on the latest result.
+  const queryRef = useRef(query);
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
 
-  const handleReorderExpression = (
-    sourceClause: Lib.ExpressionClause,
-    targetClause: Lib.ExpressionClause,
-  ) => {
-    const nextQuery = Lib.swapClauses(
-      query,
-      stageIndex,
-      sourceClause,
-      targetClause,
-    );
-    updateQuery(nextQuery);
-  };
+  useEffect(() => {
+    if (isLastOpened && isEditorLoaded && !readOnly) {
+      addDraft();
+    }
+  }, [isLastOpened, isEditorLoaded, readOnly, addDraft]);
 
-  const handleRemoveExpression = (clause: Lib.ExpressionClause) => {
-    const nextQuery = Lib.removeClause(query, stageIndex, clause);
-    updateQuery(nextQuery);
-  };
+  const getExpressionName = useCallback(
+    (expression: Lib.ExpressionClause) =>
+      tc(Lib.displayInfo(query, stageIndex, expression).displayName),
+    [tc, query, stageIndex],
+  );
 
-  return (
-    <ClauseStep
-      color={color}
-      items={expressions}
-      renderName={renderExpressionName}
-      readOnly={readOnly}
-      renderPopover={({ item, index: expressionIndex, onClose }) =>
-        !isWidgetLoaded ? null : (
-          <ExpressionPopover
-            query={query}
-            stageIndex={stageIndex}
-            expression={item}
-            expressionIndex={expressionIndex}
-            reportTimezone={reportTimezone}
-            updateQuery={updateQuery}
-            onClose={onClose}
-            readOnly={readOnly}
-          />
-        )
+  // Names that a shortcut gave. They are still defaults, so the next shortcut
+  // can replace them. A rename by the user takes the name out of this set.
+  const autoNamesRef = useRef(new Set<string>());
+
+  const commitQuery = useCallback(
+    (nextQuery: Lib.Query) => {
+      queryRef.current = nextQuery;
+      updateQuery(nextQuery);
+    },
+    [updateQuery],
+  );
+
+  const handleCommit = useCallback(
+    (clause: Lib.ExpressionClause, nextName?: string) => {
+      const editor = openEditorRef.current;
+      if (editor == null) {
+        return;
       }
-      isLastOpened={isLastOpened}
-      onReorder={handleReorderExpression}
-      onRemove={handleRemoveExpression}
-    />
+
+      const currentQuery = queryRef.current;
+      const currentExpressions = Lib.expressions(currentQuery, stageIndex);
+      const { target } = editor;
+      const existing =
+        target.kind === "clause" ? currentExpressions[target.index] : undefined;
+
+      const existingName = existing
+        ? Lib.displayInfo(currentQuery, stageIndex, existing).displayName
+        : undefined;
+      const canRename =
+        existingName === undefined ||
+        isDefaultName(existingName) ||
+        autoNamesRef.current.has(existingName);
+      const name =
+        nextName !== undefined && canRename
+          ? nextName
+          : (existingName ?? t`New column`);
+      const uniqueName = getUniqueClauseName(
+        currentQuery,
+        stageIndex,
+        existing,
+        name,
+      );
+      const namedClause = Lib.withExpressionName(clause, uniqueName);
+      if (nextName !== undefined && canRename) {
+        autoNamesRef.current.add(uniqueName);
+      }
+
+      if (existing) {
+        commitQuery(
+          Lib.replaceClause(currentQuery, stageIndex, existing, namedClause),
+        );
+        return;
+      }
+
+      commitQuery(
+        Lib.expression(currentQuery, stageIndex, uniqueName, namedClause),
+      );
+
+      if (target.kind === "draft") {
+        dropPendingSource(target);
+        setDraftIds((ids) => ids.filter((id) => id !== target.id));
+        setOpen({
+          target: { kind: "clause", index: currentExpressions.length },
+          session: editor.session,
+        });
+      }
+    },
+    [stageIndex, commitQuery, dropPendingSource, setOpen],
   );
-};
 
-type ExpressionPopoverProps = {
-  query: Lib.Query;
-  stageIndex: number;
-  expression: Lib.ExpressionClause | undefined;
-  expressionIndex: number | undefined;
-  reportTimezone: string;
-  updateQuery: (query: Lib.Query) => Promise<void>;
-  onClose: () => void;
-  readOnly?: boolean;
-};
+  const handleRename = useCallback(
+    (index: number, name: string) => {
+      const currentQuery = queryRef.current;
+      const expression = Lib.expressions(currentQuery, stageIndex)[index];
+      if (!expression) {
+        return;
+      }
 
-function ExpressionPopover({
-  query,
-  stageIndex,
-  expression,
-  expressionIndex,
-  reportTimezone,
-  updateQuery,
-  onClose,
-  readOnly,
-}: ExpressionPopoverProps) {
-  const expressionInfo = useMemo(
-    () =>
-      expression ? Lib.displayInfo(query, stageIndex, expression) : undefined,
-    [query, stageIndex, expression],
-  );
-
-  const availableColumns = useMemo(
-    () => Lib.expressionableColumns(query, stageIndex, expressionIndex),
-    [query, stageIndex, expressionIndex],
-  );
-
-  const handleChangeClause = (name: string, clause: Lib.ExpressionClause) => {
-    const uniqueName = getUniqueClauseName(query, stageIndex, expression, name);
-    const namedClause = Lib.withExpressionName(clause, uniqueName);
-    const isUpdate = expression != null;
-
-    if (isUpdate) {
-      const nextQuery = Lib.replaceClause(
-        query,
+      const uniqueName = getUniqueClauseName(
+        currentQuery,
         stageIndex,
         expression,
-        namedClause,
+        name,
       );
-      updateQuery(nextQuery);
-    } else {
-      const nextQuery = Lib.expression(
-        query,
+      const oldName = Lib.displayInfo(
+        currentQuery,
         stageIndex,
-        uniqueName,
-        namedClause,
+        expression,
+      ).displayName;
+      if (uniqueName === oldName) {
+        return;
+      }
+      autoNamesRef.current.delete(oldName);
+      commitQuery(
+        Lib.replaceClause(
+          currentQuery,
+          stageIndex,
+          expression,
+          Lib.withExpressionName(expression, uniqueName),
+        ),
       );
-      updateQuery(nextQuery);
+    },
+    [stageIndex, commitQuery],
+  );
+
+  const handleRemove = useCallback(
+    (index: number) => {
+      const currentQuery = queryRef.current;
+      const expression = Lib.expressions(currentQuery, stageIndex)[index];
+      if (!expression) {
+        return;
+      }
+
+      const editor = openEditorRef.current;
+      if (editor?.target.kind === "clause" && editor.target.index === index) {
+        setOpen(null);
+      }
+      setPendingSources((pending) =>
+        Object.fromEntries(
+          Object.entries(pending).filter(([key]) => key.startsWith("draft:")),
+        ),
+      );
+      commitQuery(Lib.removeClause(currentQuery, stageIndex, expression));
+    },
+    [stageIndex, commitQuery, setOpen],
+  );
+
+  const handleReorder = useCallback(
+    (
+      sourceClause: Lib.ExpressionClause,
+      targetClause: Lib.ExpressionClause,
+    ) => {
+      setOpen(null);
+      setPendingSources((pending) =>
+        Object.fromEntries(
+          Object.entries(pending).filter(([key]) => key.startsWith("draft:")),
+        ),
+      );
+      commitQuery(
+        Lib.swapClauses(
+          queryRef.current,
+          stageIndex,
+          sourceClause,
+          targetClause,
+        ),
+      );
+    },
+    [stageIndex, commitQuery, setOpen],
+  );
+
+  const discardDraft = useCallback(
+    (id: string) => {
+      dropPendingSource({ kind: "draft", id });
+      setDraftIds((ids) => ids.filter((draftId) => draftId !== id));
+      const editor = openEditorRef.current;
+      if (editor?.target.kind === "draft" && editor.target.id === id) {
+        setOpen(null);
+      }
+    },
+    [dropPendingSource, setOpen],
+  );
+
+  const handleDiscard = useCallback(() => {
+    const editor = openEditorRef.current;
+    if (editor == null) {
+      return;
     }
-  };
+    const { target } = editor;
+    if (target.kind === "draft") {
+      discardDraft(target.id);
+      return;
+    }
+    dropPendingSource(target);
+    setOpen(null);
+  }, [discardDraft, dropPendingSource, setOpen]);
+
+  const handleSourceChange = useCallback((source: string, isValid: boolean) => {
+    const editor = openEditorRef.current;
+    if (editor == null) {
+      return;
+    }
+    const key = pendingKey(editor.target);
+    setPendingSources((pending) => {
+      if (isValid) {
+        if (!(key in pending)) {
+          return pending;
+        }
+        const { [key]: _removed, ...rest } = pending;
+        return rest;
+      }
+      return pending[key] === source ? pending : { ...pending, [key]: source };
+    });
+  }, []);
+
+  const openTarget = openEditor?.target;
+  const editedIndex = openTarget?.kind === "clause" ? openTarget.index : null;
+  const editedExpression =
+    editedIndex != null ? expressions[editedIndex] : undefined;
+
+  const availableColumns = useMemo(
+    () =>
+      Lib.expressionableColumns(query, stageIndex, editedIndex ?? undefined),
+    [query, stageIndex, editedIndex],
+  );
 
   return (
-    <ExpressionWidget
-      query={query}
-      stageIndex={stageIndex}
-      expressionIndex={expressionIndex}
-      availableColumns={availableColumns}
-      name={expressionInfo?.displayName}
-      clause={expression}
-      withName
-      onChangeClause={handleChangeClause}
-      reportTimezone={reportTimezone}
-      onClose={onClose}
-      readOnly={readOnly}
-    />
+    <>
+      <NotebookCell color={color}>
+        <ClauseStepDndContext items={expressions} onReorder={handleReorder}>
+          {expressions.map((expression, index) => (
+            <ClauseStepDndItem key={index} index={index} readOnly={!!readOnly}>
+              <ExpressionPill
+                name={getExpressionName(expression)}
+                color={color}
+                isActive={editedIndex === index}
+                readOnly={readOnly}
+                hasUnsavedChanges={
+                  pendingKey({ kind: "clause", index }) in pendingSources
+                }
+                onOpen={() => openEditorAt({ kind: "clause", index })}
+                onRename={(name) => handleRename(index, name)}
+                onRemove={() => handleRemove(index)}
+              />
+            </ClauseStepDndItem>
+          ))}
+        </ClauseStepDndContext>
+
+        {draftIds.map((id) => (
+          <ExpressionPill
+            key={id}
+            name={t`New column`}
+            color={color}
+            isActive={openTarget?.kind === "draft" && openTarget.id === id}
+            readOnly={readOnly}
+            canRename={false}
+            hasUnsavedChanges
+            onOpen={() => openEditorAt({ kind: "draft", id })}
+            onRename={noop}
+            onRemove={() => discardDraft(id)}
+          />
+        ))}
+
+        {!readOnly && <NotebookCellAdd color={color} onClick={addDraft} />}
+      </NotebookCell>
+
+      {openEditor != null && isEditorLoaded && (
+        <InlineExpressionEditor
+          key={openEditor.session}
+          query={query}
+          stageIndex={stageIndex}
+          expressionIndex={editedIndex ?? undefined}
+          expressionMode="expression"
+          availableColumns={availableColumns}
+          reportTimezone={reportTimezone}
+          readOnly={readOnly}
+          clause={editedExpression}
+          initialSource={pendingSources[pendingKey(openEditor.target)]}
+          onSourceChange={handleSourceChange}
+          onCommit={handleCommit}
+          onDone={handleDiscard}
+          onDiscard={handleDiscard}
+        />
+      )}
+    </>
   );
-}
+};
+
+const noop = () => {};
+
+// "New column", or "New column (2)" after the unique-name suffix.
+const isDefaultName = (name: string) => {
+  const base = t`New column`;
+  return name.startsWith(base) && /^( \(\d+\))?$/.test(name.slice(base.length));
+};
+
+const pendingKey = (target: EditorTarget) =>
+  target.kind === "clause" ? `clause:${target.index}` : `draft:${target.id}`;
 
 const getUniqueClauseName = (
   query: Lib.Query,

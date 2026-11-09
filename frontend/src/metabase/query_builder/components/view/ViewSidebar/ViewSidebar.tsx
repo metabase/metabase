@@ -10,6 +10,7 @@ interface ViewSidebarProps {
   width?: number;
   isOpen?: boolean;
   children?: ReactNode;
+  "data-testid"?: string;
 }
 
 export const ViewSidebar = ({
@@ -17,9 +18,8 @@ export const ViewSidebar = ({
   width = 400,
   isOpen,
   children,
+  "data-testid": dataTestId = `sidebar-${side}`,
 }: ViewSidebarProps) => (
-  // If we passed `width` as prop, it would end up in the final HTML elements.
-  // This would ruin the animation, so we pass it as `widthProp`.
   <Box
     className={cx(ViewSidebarS.ViewSidebarAside, {
       [ViewSidebarS.rightSide]: side === "right",
@@ -27,7 +27,7 @@ export const ViewSidebar = ({
       [ViewSidebarS.isOpen]: isOpen,
     })}
     component="aside"
-    data-testid={`sidebar-${side}`}
+    data-testid={dataTestId}
     w={isOpen ? width : undefined}
     left={side === "left" ? 0 : undefined}
     right={side === "right" ? 0 : undefined}

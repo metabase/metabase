@@ -7,3 +7,13 @@
 .icon {
   color: var(--mb-color-feedback-negative);
 }
+
+.position {
+  color: var(--mb-color-text-secondary);
+  white-space: nowrap;
+
+  &::before {
+    content: "•";
+    margin-right: var(--mantine-spacing-sm);
+  }
+}
