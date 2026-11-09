@@ -79,7 +79,8 @@
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
-  "Run a card test. Needs read access to the test and native query access to its card's database.
+  "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the
+  database of that query.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
