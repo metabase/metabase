@@ -66,12 +66,10 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
       .within(() => {
-        cy.findByText("Returns the string of text in all lower case.").should(
+        cy.findByText("Changes text to lower case.").should("be.visible");
+        cy.findByText("The column with the text to change.").should(
           "be.visible",
         );
-        cy.findByText(
-          "The column with values to convert to lower case.",
-        ).should("be.visible");
       });
   });
 
@@ -107,9 +105,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
      */
 
     H.CustomExpressionEditor.helpText().within(() => {
-      cy.findByText(
-        "Combine two or more strings of text together.",
-      ).realClick();
+      cy.findByText("Joins two or more pieces of text together.").realClick();
       cy.findByText("Example").realClick();
 
       // We want to trigger the "covered element" error if this is true without actually clicking the external link
@@ -119,7 +115,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
     cy.log("right-clicking the help text should not close it (metabase#41305)");
     H.CustomExpressionEditor.helpText()
-      .findByText("Combine two or more strings of text together.")
+      .findByText("Joins two or more pieces of text together.")
       .rightclick();
     H.popover().should("have.length", 2);
     H.CustomExpressionEditor.helpText().should("be.visible");

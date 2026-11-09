@@ -12,19 +12,21 @@ const WINDOW = defineClauses(
     "cum-count": {
       displayName: "CumulativeCount",
       type: "aggregation",
-      description: () => t`The additive total of rows across a breakout.`,
+      description: () =>
+        t`Counts rows as a running total across groups, such as months.`,
       docsPage: "cumulative",
       args: () => [],
     },
     "cum-sum": {
       displayName: "CumulativeSum",
       type: "aggregation",
-      description: () => t`The rolling sum of a column across a breakout.`,
+      description: () =>
+        t`Adds up a column as a running total across groups, such as months.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to sum.`,
+          description: t`The column or number to add up.`,
           example: dimension(t`Subtotal`),
         },
       ],
@@ -41,18 +43,18 @@ const WINDOW = defineClauses(
       },
       hasOptions: true,
       description: () =>
-        t`Returns the value of an aggregation expression in a different row`,
+        t`Gets the value of a summary from another row, such as the previous month.`,
       args: () => [
         {
           name: t`expression`,
           type: "any",
-          description: t`The value to get from a different row.`,
+          description: t`The summary to get from the other row, such as \`Sum([Total])\`.`,
           example: op("sum", dimension(t`Total`)),
         },
         {
           name: t`rowOffset`,
           type: "number",
-          description: t`Row number relative to the current row, for example \`-1\` for the previous row or \`1\` for the next row.`,
+          description: t`How many rows to move. \`-1\` is the previous row and \`1\` is the next.`,
           example: -1,
         },
       ],
@@ -67,18 +69,18 @@ const AGGREGATION = defineClauses(
     count: {
       displayName: "Count",
       type: "aggregation",
-      description: () => t`Returns the count of rows in the selected data.`,
+      description: () => t`Counts the rows in your data.`,
       args: () => [],
     },
     sum: {
       displayName: "Sum",
       type: "aggregation",
-      description: () => t`Adds up all the values of the column.`,
+      description: () => t`Adds up all the values in a column.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to sum.`,
+          description: t`The column or number to add up.`,
           example: dimension(t`Subtotal`),
         },
       ],
@@ -86,12 +88,13 @@ const AGGREGATION = defineClauses(
     distinct: {
       displayName: "Distinct",
       type: "aggregation",
-      description: () => t`The number of distinct values in this column.`,
+      description: () =>
+        t`Counts the different values in a column. Repeats only count once.`,
       args: () => [
         {
           name: t`column`,
           type: "expression",
-          description: t`The column whose distinct values to count.`,
+          description: t`The column to count different values in.`,
           example: dimension(t`Last Name`),
         },
       ],
@@ -100,12 +103,13 @@ const AGGREGATION = defineClauses(
       displayName: "StandardDeviation",
       type: "aggregation",
       requiresFeature: "standard-deviation-aggregations",
-      description: () => t`Calculates the standard deviation of the column.`,
+      description: () =>
+        t`Measures how spread out the values in a column are. A low number means they're close to the average.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The numeric column to get standard deviation of.`,
+          description: t`The number column to measure.`,
           example: dimension(t`Population`),
         },
       ],
@@ -113,12 +117,12 @@ const AGGREGATION = defineClauses(
     avg: {
       displayName: "Average",
       type: "aggregation",
-      description: () => t`Returns the average of the values in the column.`,
+      description: () => t`Finds the average of the values in a column.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The numeric column whose values to average.`,
+          description: t`The number column to average.`,
           example: dimension(t`Quantity`),
         },
       ],
@@ -127,12 +131,13 @@ const AGGREGATION = defineClauses(
       displayName: "Median",
       type: "aggregation",
       requiresFeature: "percentile-aggregations",
-      description: () => t`Returns the median of all the values of a column.`,
+      description: () =>
+        t`Finds the middle value in a column: half the values are higher and half are lower.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The numeric column whose values to average.`,
+          description: t`The number column to find the middle value of.`,
           example: dimension(t`Quantity`),
         },
       ],
@@ -140,12 +145,12 @@ const AGGREGATION = defineClauses(
     min: {
       displayName: "Min",
       type: "aggregation",
-      description: () => t`Returns the smallest value found in the column`,
+      description: () => t`Finds the smallest value in a column.`,
       args: () => [
         {
           name: t`column`,
           type: "expression",
-          description: t`The numeric column whose minimum you want to find.`,
+          description: t`The column to find the smallest value in.`,
           example: dimension(t`Salary`),
         },
       ],
@@ -153,12 +158,12 @@ const AGGREGATION = defineClauses(
     max: {
       displayName: "Max",
       type: "aggregation",
-      description: () => t`Returns the largest value found in the column.`,
+      description: () => t`Finds the largest value in a column.`,
       args: () => [
         {
           name: t`column`,
           type: "expression",
-          description: t`The numeric column whose maximum you want to find.`,
+          description: t`The column to find the largest value in.`,
           example: dimension(t`Age`),
         },
       ],
@@ -167,12 +172,12 @@ const AGGREGATION = defineClauses(
       displayName: "Share",
       type: "aggregation",
       description: () =>
-        t`Returns the percent of rows in the data that match the condition, as a decimal.`,
+        t`Gives the share of rows that match a condition, as a decimal. For example, \`0.25\` means 25%.`,
       args: () => [
         {
           name: t`condition`,
           type: "boolean",
-          description: t`Something that should evaluate to \`true\` or \`false\`.`,
+          description: t`A check that's either \`true\` or \`false\`.`,
           example: op("=", dimension(t`Source`), "Google"),
         },
       ],
@@ -180,12 +185,12 @@ const AGGREGATION = defineClauses(
     "count-where": {
       displayName: "CountIf",
       type: "aggregation",
-      description: () => t`Only counts rows where the condition is \`true\`.`,
+      description: () => t`Counts the rows that match a condition.`,
       args: () => [
         {
           name: t`condition`,
           type: "boolean",
-          description: t`Something that should evaluate to \`true\` or \`false\`.`,
+          description: t`A check that's either \`true\` or \`false\`.`,
           example: op(">", dimension(t`Subtotal`), 100),
         },
       ],
@@ -196,18 +201,18 @@ const AGGREGATION = defineClauses(
       type: "aggregation",
       requiresFeature: "distinct-where",
       description: () =>
-        t`The count of distinct values in this column for rows where the condition is \`true\`.`,
+        t`Counts the different values in a column, using only the rows that match a condition.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column to count distinct values in.`,
+          description: t`The column to count different values in.`,
           example: dimension(t`Customer ID`),
         },
         {
           name: t`condition`,
           type: "boolean",
-          description: t`Something that evaluates to \`true\` or \`false\`.`,
+          description: t`A check that's either \`true\` or \`false\`.`,
           example: op("=", dimension(t`Order Status`), "Completed"),
         },
       ],
@@ -216,18 +221,18 @@ const AGGREGATION = defineClauses(
       displayName: "SumIf",
       type: "aggregation",
       description: () =>
-        t`Sums up the specified column only for rows where the condition is \`true\`.`,
+        t`Adds up the values in a column, using only the rows that match a condition.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The numeric column to sum.`,
+          description: t`The number column to add up.`,
           example: dimension(t`Subtotal`),
         },
         {
           name: t`condition`,
           type: "boolean",
-          description: t`Something that evaluates to \`true\` or \`false\`.`,
+          description: t`A check that's either \`true\` or \`false\`.`,
           example: op("=", dimension(t`Order Status`), "Valid"),
         },
       ],
@@ -237,12 +242,13 @@ const AGGREGATION = defineClauses(
       displayName: "Variance",
       type: "aggregation",
       requiresFeature: "standard-deviation-aggregations",
-      description: () => t`Returns the numeric variance for a given column.`,
+      description: () =>
+        t`Measures how far the values in a column are from their average, using squared differences.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to get the variance of.`,
+          description: t`The column or number to measure.`,
           example: dimension(t`Temperature`),
         },
       ],
@@ -252,18 +258,18 @@ const AGGREGATION = defineClauses(
       type: "aggregation",
       requiresFeature: "percentile-aggregations",
       description: () =>
-        t`Returns the value of the column at the percentile value.`,
+        t`Finds the value that a given share of the column falls below. For example, \`0.9\` gives the value that 90% of rows fall below.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to get the percentile of.`,
+          description: t`The column or number to use.`,
           example: dimension(t`Score`),
         },
         {
           name: t`percentile-value`,
           type: "number",
-          description: t`The value of the percentile.`,
+          description: t`A decimal between \`0\` and \`1\`. For example, \`0.9\` for the 90th percentile.`,
           example: 0.9,
         },
       ],
@@ -279,12 +285,12 @@ const CONVERSION = defineClauses(
       type: "string",
       requiresFeature: "expressions/text",
       description: () =>
-        t`Converts a number or date to text. Useful for applying text filters or joining with other columns based on text comparisons.`,
+        t`Turns a number or date into text, so you can filter it as text or join it with text columns.`,
       args: () => [
         {
           name: t`value`,
           type: "expression",
-          description: t`The number or date to convert to text.`,
+          description: t`The number or date to turn into text.`,
           example: dimension("User ID"),
         },
       ],
@@ -294,12 +300,12 @@ const CONVERSION = defineClauses(
       type: "number",
       requiresFeature: "expressions/integer",
       description: () =>
-        t`The string or float column to convert to integers. Float values are rounded.`,
+        t`Turns text or a decimal number into a whole number. Decimals are rounded.`,
       args: () => [
         {
           name: t`value`,
           type: "expression",
-          description: t`The string or float column to convert to integers.`,
+          description: t`The text or decimal column to convert. Text must be a whole number.`,
           example: dimension("User ID"),
         },
       ],
@@ -309,12 +315,12 @@ const CONVERSION = defineClauses(
       type: "datetime",
       requiresFeature: "expressions/date",
       description: () =>
-        t`Converts a datetime or an ISO 8601 datetime string to a date. Time part is truncated.`,
+        t`Turns text or a date and time into a date, dropping the time.`,
       args: () => [
         {
           name: t`value`,
           type: "expression",
-          description: t`The string or datetime to convert to a date.`,
+          description: t`The text or date and time to convert. Text must be in a format like \`"2025-03-20"\`.`,
           example: "2025-03-20",
         },
       ],
@@ -323,19 +329,19 @@ const CONVERSION = defineClauses(
       displayName: "datetime",
       type: "datetime",
       requiresFeature: "expressions/datetime",
-      description: () => t`Converts a datetime string or bytes to a datetime.`,
+      description: () => t`Turns text or bytes into a date and time.`,
       hasOptions: true,
       args: () => [
         {
           name: t`value`,
           type: "expression",
-          description: t`The string, bytes, or number to convert to a datetime.`,
+          description: t`The text, bytes, or number to convert.`,
           example: "2025-03-20 12:45:04",
         },
         {
           name: t`mode`,
           type: "string",
-          description: t`The mode indicating the format. One of: \`"simple"\`, \`"iso"\`, \`"simpleBytes"\`, \`"isoBytes"\`, \`"unixSeconds"\`, \`"unixMilliseconds"\`, \`"unixMicroseconds"\`, \`"unixNanoseconds"\`. Default is \`"iso"\`.`,
+          description: t`How the value is stored. One of: \`"simple"\`, \`"iso"\`, \`"simpleBytes"\`, \`"isoBytes"\`, \`"unixSeconds"\`, \`"unixMilliseconds"\`, \`"unixMicroseconds"\`, \`"unixNanoseconds"\`. Default is \`"iso"\`.`,
           optional: true,
         },
       ],
@@ -344,19 +350,19 @@ const CONVERSION = defineClauses(
       displayName: "today",
       type: "datetime",
       requiresFeature: "expressions/today",
-      description: () => t`Returns the current date.`,
+      description: () => t`Gives today's date.`,
       args: () => [],
     },
     float: {
       displayName: "float",
       type: "number",
       requiresFeature: "expressions/float",
-      description: () => t`Converts a string to a floating-point number.`,
+      description: () => t`Turns text into a decimal number.`,
       args: () => [
         {
           name: t`value`,
           type: "expression",
-          description: t`The string column to convert to floats.`,
+          description: t`The text column to convert.`,
           example: dimension("Text Rating"),
         },
       ],
@@ -370,12 +376,12 @@ const STRING = defineClauses(
     lower: {
       displayName: "lower",
       type: "string",
-      description: () => t`Returns the string of text in all lower case.`,
+      description: () => t`Changes text to lower case.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column with values to convert to lower case.`,
+          description: t`The column with the text to change.`,
           example: dimension(t`Status`),
         },
       ],
@@ -383,12 +389,12 @@ const STRING = defineClauses(
     upper: {
       displayName: "upper",
       type: "string",
-      description: () => t`Returns the text in all upper case.`,
+      description: () => t`Changes text to upper case.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column with values to convert to upper case.`,
+          description: t`The column with the text to change.`,
           example: dimension(t`Status`),
         },
       ],
@@ -401,24 +407,25 @@ const STRING = defineClauses(
           return t`Expected positive integer but found ${start}`;
         }
       },
-      description: () => t`Returns a portion of the supplied text.`,
+      description: () =>
+        t`Gets part of a text, starting at the position you choose.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column or text to return a portion of.`,
+          description: t`The column or text to take part of.`,
           example: dimension(t`Title`),
         },
         {
           name: t`position`,
           type: "number",
-          description: t`The position to start copying characters. Index starts at position \`1\`.`,
+          description: t`Where to start. The first character is \`1\`.`,
           example: 1,
         },
         {
           name: t`length`,
           type: "number",
-          description: t`The number of characters to return.`,
+          description: t`How many characters to keep.`,
           example: 10,
         },
       ],
@@ -438,24 +445,24 @@ const STRING = defineClauses(
       },
       requiresFeature: "split-part",
       description: () =>
-        t`Splits a string on a specified delimiter and returns the nth substring.`,
+        t`Splits text wherever a separator appears and gives you one of the pieces.`,
       args: () => [
         {
           name: t`text`,
           type: "string",
-          description: t`The column or text to return a portion of.`,
+          description: t`The column or text to split.`,
           example: dimension(t`Title`),
         },
         {
           name: t`delimiter`,
           type: "string",
-          description: t`The pattern describing where each split should occur.`,
+          description: t`The text that marks each split, such as a comma.`,
           example: ",",
         },
         {
           name: t`position`,
           type: "number",
-          description: t`Which substring to return after the split. Index starts at position \`1\`.`,
+          description: t`Which piece to keep. The first piece is \`1\`.`,
           example: 1,
         },
       ],
@@ -465,18 +472,18 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "collate",
       description: () =>
-        t`Applies a collation to a text value for sorting and comparison purposes.`,
+        t`Sets the language rules used to sort and compare text.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column or text to apply the collation to.`,
+          description: t`The column or text to apply the rules to.`,
           example: dimension(t`Name`),
         },
         {
           name: t`collation`,
           type: "string",
-          description: t`The collation specification.`,
+          description: t`The name of the rules to use.`,
           example: t`en-ci-ai`,
         },
       ],
@@ -486,18 +493,18 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex",
       description: () =>
-        t`Extracts matching substrings according to a regular expression.`,
+        t`Gets the first part of a text that matches a pattern, written as a regular expression.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column or text to search through.`,
+          description: t`The column or text to search.`,
           example: dimension(t`Address`),
         },
         {
           name: t`regular_expression`,
           type: "string",
-          description: t`The regular expression to match.`,
+          description: t`The pattern to look for.`,
           example: "[0-9]+",
         },
       ],
@@ -508,12 +515,12 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
-        t`Extracts the pathname from a URL. E.g., \`${'path("https://www.example.com/path/to/page.html?key1=value)'}\` would return \`${"/path/to/page.html"}\`.`,
+        t`Gets the page path from a URL. For example, \`${'"/pricing"'}\` from \`${'"https://www.example.com/pricing"'}\`.`,
       args: () => [
         {
           name: t`url`,
           type: "string",
-          description: t`A column containing URLs`,
+          description: t`The column with URLs.`,
           example: dimension(t`URL`),
         },
       ],
@@ -522,24 +529,24 @@ const STRING = defineClauses(
       displayName: "concat",
       type: "string",
       multiple: true,
-      description: () => t`Combine two or more strings of text together.`,
+      description: () => t`Joins two or more pieces of text together.`,
       args: () => [
         {
           name: t`value1`,
           type: "expression",
-          description: t`The column or text to begin with.`,
+          description: t`The column or text to start with.`,
           example: dimension(t`Last Name`),
         },
         {
           name: t`value2`,
           type: "expression",
-          description: t`This will be added to the end of \`$value1\`.`,
+          description: t`The column or text to add after \`$value1\`.`,
           example: ", ",
         },
         {
           name: "…",
           type: "string",
-          description: t`This will be added to the end of \`$value2\`, and so on.`,
+          description: t`Keep adding as many as you need.`,
           example: dimension(t`First Name`),
           optional: true,
         },
@@ -549,12 +556,13 @@ const STRING = defineClauses(
     replace: {
       displayName: "replace",
       type: "string",
-      description: () => t`Replaces a part of the input text with new text.`,
+      description: () =>
+        t`Replaces text with other text, everywhere it appears.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column or text to search through.`,
+          description: t`The column or text to search.`,
           example: dimension(t`Title`),
         },
         {
@@ -566,7 +574,7 @@ const STRING = defineClauses(
         {
           name: t`replace`,
           type: "string",
-          description: t`The text to use as the replacement.`,
+          description: t`The text to put in its place.`,
           example: t`Gigantic`,
         },
       ],
@@ -574,12 +582,12 @@ const STRING = defineClauses(
     length: {
       displayName: "length",
       type: "number",
-      description: () => t`Returns the number of characters in text.`,
+      description: () => t`Counts the characters in a text.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column or text you want to get the length of.`,
+          description: t`The column or text to measure.`,
           example: dimension(t`Comment`),
         },
       ],
@@ -587,13 +595,12 @@ const STRING = defineClauses(
     trim: {
       displayName: "trim",
       type: "string",
-      description: () =>
-        t`Removes leading and trailing whitespace from a string of text.`,
+      description: () => t`Removes spaces from the start and end of a text.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column or text you want to trim.`,
+          description: t`The column or text to clean up.`,
           example: dimension(t`Comment`),
         },
       ],
@@ -601,12 +608,12 @@ const STRING = defineClauses(
     rtrim: {
       displayName: "rTrim",
       type: "string",
-      description: () => t`Removes trailing whitespace from a string of text.`,
+      description: () => t`Removes spaces from the end of a text.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column or text you want to trim.`,
+          description: t`The column or text to clean up.`,
           example: dimension(t`Comment`),
         },
       ],
@@ -614,12 +621,12 @@ const STRING = defineClauses(
     ltrim: {
       displayName: "lTrim",
       type: "string",
-      description: () => t`Removes leading whitespace from a string of text.`,
+      description: () => t`Removes spaces from the start of a text.`,
       args: () => [
         {
           name: t`value`,
           type: "string",
-          description: t`The column or text you want to trim.`,
+          description: t`The column or text to clean up.`,
           example: dimension(t`Comment`),
         },
       ],
@@ -629,12 +636,12 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
-        t`Extracts the domain name (eg. \`"metabase"\`) from a URL or email`,
+        t`Gets the domain name from a URL or email, such as \`"metabase"\`.`,
       args: () => [
         {
           name: t`urlOrEmail`,
           type: "string",
-          description: t`The URL or Email column to extract domain names from.`,
+          description: t`The column with URLs or emails.`,
           example: dimension(t`Email`),
         },
       ],
@@ -644,12 +651,12 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
-        t`Extracts the first subdomain (eg. \`"status"\` from \`"status.metabase.com"\`, \`""\` from \`"bbc.co.uk"\`) from a URL. Ignores \`"www"\`.`,
+        t`Gets the subdomain from a URL, such as \`"status"\` from \`"status.metabase.com"\`. Ignores \`"www"\`.`,
       args: () => [
         {
           name: t`url`,
           type: "string",
-          description: t`The URL column to extract the subdomain from.`,
+          description: t`The column with URLs.`,
           example: dimension(t`ProfileImage`),
         },
       ],
@@ -659,12 +666,12 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
-        t`Extracts the host (domain name and TLD, eg. \`"metabase.com"\` from \`"status.metabase.com"\`) from a URL or email`,
+        t`Gets the domain name and its ending from a URL or email, such as \`"metabase.com"\` from \`"status.metabase.com"\`.`,
       args: () => [
         {
           name: t`urlOrEmail`,
           type: "string",
-          description: t`The URL or Email column to extract the host from.`,
+          description: t`The column with URLs or emails.`,
           example: dimension(t`Email`),
         },
       ],
@@ -675,7 +682,7 @@ const STRING = defineClauses(
       multiple: true,
       hasOptions: true,
       description: () =>
-        t`Returns \`true\` if \`$string1\` contains \`$string2\` within it (or \`$string3\`, etc. if specified).`,
+        t`Checks whether text includes any of the words you're looking for.`,
       args: () => [
         {
           name: t`string1`,
@@ -686,12 +693,12 @@ const STRING = defineClauses(
         {
           name: t`string2`,
           type: "string",
-          description: t`The string of text to look for.`,
+          description: t`The text to look for.`,
           example: t`Small`,
         },
         {
           name: "…",
-          description: t`You can add more values to look for.`,
+          description: t`Add more text to look for.`,
           example: t`Medium`,
           type: "string",
           optional: true,
@@ -699,7 +706,7 @@ const STRING = defineClauses(
         {
           name: "caseSensitivity",
           type: "string",
-          description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
+          description: t`Optional. Use \`"case-insensitive"\` to ignore upper and lower case.`,
           example: "case-insensitive",
           template: '"case-insensitive"',
           optional: true,
@@ -712,7 +719,7 @@ const STRING = defineClauses(
       multiple: true,
       hasOptions: true,
       description: () =>
-        t`Returns \`true\` if \`$string1\` does not contain \`$string2\` within it (and \`$string3\`, etc. if specified).`,
+        t`Checks that text includes none of the words you're looking for.`,
       args: () => [
         {
           name: t`string1`,
@@ -723,19 +730,19 @@ const STRING = defineClauses(
         {
           name: t`string2`,
           type: "string",
-          description: t`The string of text to look for.`,
+          description: t`The text to look for.`,
           example: t`Small`,
         },
         {
           name: "…",
-          description: t`You can add more values to look for.`,
+          description: t`Add more text to look for.`,
           example: t`Medium`,
           type: "string",
           optional: true,
         },
         {
           name: "caseSensitivity",
-          description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
+          description: t`Optional. Use \`"case-insensitive"\` to ignore upper and lower case.`,
           example: "case-insensitive",
           template: '"case-insensitive"',
           type: "string",
@@ -749,7 +756,7 @@ const STRING = defineClauses(
       multiple: true,
       hasOptions: true,
       description: () =>
-        t`Returns true if the beginning of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
+        t`Checks whether text starts with any of the words you're looking for.`,
       args: () => [
         {
           name: t`string1`,
@@ -760,20 +767,20 @@ const STRING = defineClauses(
         {
           name: t`string2`,
           type: "string",
-          description: t`The string of text to look for.`,
+          description: t`The text to look for.`,
           example: t`Small`,
         },
         {
           name: "…",
           type: "string",
-          description: t`You can add more values to look for.`,
+          description: t`Add more text to look for.`,
           example: t`Medium`,
           optional: true,
         },
         {
           name: "caseSensitivity",
           type: "string",
-          description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
+          description: t`Optional. Use \`"case-insensitive"\` to ignore upper and lower case.`,
           example: "case-insensitive",
           template: '"case-insensitive"',
           optional: true,
@@ -786,7 +793,7 @@ const STRING = defineClauses(
       multiple: true,
       hasOptions: true,
       description: () =>
-        t`Returns true if the end of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
+        t`Checks whether text ends with any of the words you're looking for.`,
       args: () => [
         {
           name: t`string1`,
@@ -797,19 +804,19 @@ const STRING = defineClauses(
         {
           name: t`string2`,
           type: "string",
-          description: t`The string of text to look for.`,
+          description: t`The text to look for.`,
           example: t`Small`,
         },
         {
           name: "…",
           type: "string",
-          description: t`You can add more values to look for.`,
+          description: t`Add more text to look for.`,
           example: t`Medium`,
           optional: true,
         },
         {
           name: "caseSensitivity",
-          description: t`Optional. Set to \`"case-insensitive"\` to perform a case-insensitive match.`,
+          description: t`Optional. Use \`"case-insensitive"\` to ignore upper and lower case.`,
           example: "case-insensitive",
           template: '"case-insensitive"',
           type: "string",
@@ -820,12 +827,12 @@ const STRING = defineClauses(
     "is-empty": {
       displayName: "isEmpty",
       type: "boolean",
-      description: () => t`Checks if a column is empty`,
+      description: () => t`Checks whether text is blank or missing.`,
       args: () => [
         {
           name: t`column`,
           type: "expression",
-          description: t`The column to check.`,
+          description: t`The text column to check.`,
           example: dimension(t`Name`),
         },
       ],
@@ -834,12 +841,12 @@ const STRING = defineClauses(
     "not-empty": {
       displayName: "notEmpty",
       type: "boolean",
-      description: () => t`Checks if a column is not empty`,
+      description: () => t`Checks that text isn't blank or missing.`,
       args: () => [
         {
           name: t`column`,
           type: "expression",
-          description: t`The column to check.`,
+          description: t`The text column to check.`,
           example: dimension(t`Name`),
         },
       ],
@@ -854,12 +861,12 @@ const DATE = defineClauses(
       displayName: "monthName",
       type: "string",
       description: () =>
-        t`Returns the localized short name (eg. \`"Apr"\`) for the given month number (eg. \`4\`)`,
+        t`Gives a month's short name in your language, such as \`"Apr"\` for \`4\`.`,
       args: () => [
         {
           name: t`monthNumber`,
           type: "number",
-          description: t`Column or expression giving the number of a month in the year, \`1\` to \`12\`.`,
+          description: t`A column or calculation with the month number, \`1\` to \`12\`.`,
           example: dimension(t`Birthday Month`),
         },
       ],
@@ -868,12 +875,12 @@ const DATE = defineClauses(
       displayName: "quarterName",
       type: "string",
       description: () =>
-        t`Returns a string like \`"Q1"\`, given the quarter number`,
+        t`Gives a quarter as text, such as \`"Q1"\` for \`1\`.`,
       args: () => [
         {
           name: t`quarterNumber`,
           type: "number",
-          description: t`Column or expression giving the number of a quarter of the year, \`1\` to \`4\`.`,
+          description: t`A column or calculation with the quarter number, \`1\` to \`4\`.`,
           example: dimension(t`Fiscal Quarter`),
         },
       ],
@@ -882,12 +889,12 @@ const DATE = defineClauses(
       displayName: "dayName",
       type: "string",
       description: () =>
-        t`Returns the localized name of a day of the week, given the day's number.`,
+        t`Gives the name of a weekday in your language, from its number.`,
       args: () => [
         {
           name: t`dayNumber`,
           type: "number",
-          description: t`Column or expression giving the number of a day of the week, \`1\` to \`7\`. Which day is \`1\` is defined in your localization setting; default Sunday.`,
+          description: t`A column or calculation with the day number, \`1\` to \`7\`. Your localization settings decide which day is \`1\`. The default is Sunday.`,
           example: dimension(t`Weekday`),
         },
       ],
@@ -895,18 +902,19 @@ const DATE = defineClauses(
     interval: {
       displayName: "timeSpan",
       type: "number",
-      description: () => t`Gets a time interval of specified length`,
+      description: () =>
+        t`Creates a length of time, such as 7 days, to add to or subtract from a date.`,
       args: () => [
         {
           name: t`number`,
           type: "number",
-          description: t`Period of interval, where negative values are back in time.`,
+          description: t`How many units. Use a whole number. Negative numbers go back in time.`,
           example: 7,
         },
         {
           name: t`unit`,
           type: "string",
-          description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+          description: t`The unit of time, such as ${"day"}, ${"month"}, or ${"year"}.`,
           example: "day",
         },
       ],
@@ -916,24 +924,24 @@ const DATE = defineClauses(
       type: "boolean",
       hasOptions: true,
       description: () =>
-        t`Checks a date column's values to see if they're within the relative range.`,
+        t`Checks whether a date falls in a period relative to now, such as the last 30 days.`,
       args: () => [
         {
           name: t`column`,
           type: "expression",
-          description: t`The date column to return interval of.`,
+          description: t`The date column to check.`,
           example: dimension(t`Created At`),
         },
         {
           name: t`number`,
           type: "number",
-          description: t`Period of interval, where negative values are back in time.`,
+          description: t`How many units. Use a whole number. Negative numbers go back in time.`,
           example: -1,
         },
         {
           name: t`unit`,
           type: "string",
-          description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+          description: t`The unit of time, such as ${"day"}, ${"month"}, or ${"year"}.`,
           example: "month",
         },
       ],
@@ -942,7 +950,7 @@ const DATE = defineClauses(
       displayName: "intervalStartingFrom",
       type: "boolean",
       description: () =>
-        t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
+        t`Checks whether a date falls in a period that begins at a distance from now, such as the 20 months before 10 years ago.`,
       args: () => [
         {
           name: t`column`,
@@ -953,25 +961,25 @@ const DATE = defineClauses(
         {
           name: t`value`,
           type: "number",
-          description: t`Period of the interval, where negative numbers go back in time.`,
+          description: t`How many units. Use a whole number. Negative numbers go back in time.`,
           example: -20,
         },
         {
           name: t`unit`,
           type: "string",
-          description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+          description: t`The unit of time, such as ${"day"}, ${"month"}, or ${"year"}.`,
           example: "month",
         },
         {
           name: t`offsetValue`,
           type: "number",
-          description: t`The initial interval period to start from, where negative values are back in time.`,
+          description: t`How far from now the period starts. Negative numbers go back in time.`,
           example: -10,
         },
         {
           name: t`offsetUnit`,
           type: "string",
-          description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+          description: t`The unit of time for \`$offsetValue\`, such as ${"day"}, ${"month"}, or ${"year"}.`,
           example: "year",
         },
       ],
@@ -979,18 +987,19 @@ const DATE = defineClauses(
     "relative-datetime": {
       displayName: "relativeDateTime",
       type: "expression",
-      description: () => t`Gets a timestamp relative to the current time`,
+      description: () =>
+        t`Gets a point in time counted from now, such as 30 days ago. Rounds down to the unit you choose.`,
       args: () => [
         {
           name: t`number`,
           type: "number",
-          description: t`Period of interval, where negative values are back in time.`,
+          description: t`How many units. Use a whole number. Negative numbers go back in time.`,
           example: -30,
         },
         {
           name: t`unit`,
           type: "string",
-          description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+          description: t`The unit of time, such as ${"day"}, ${"month"}, or ${"year"}.`,
           example: "day",
         },
       ],
@@ -998,13 +1007,12 @@ const DATE = defineClauses(
     "get-year": {
       displayName: "year",
       type: "number",
-      description: () =>
-        t`Takes a datetime and returns an integer with the number of the year.`,
+      description: () => t`Gets the year from a date.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The datetime column.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
       ],
@@ -1013,12 +1021,12 @@ const DATE = defineClauses(
       displayName: "quarter",
       type: "number",
       description: () =>
-        t`Takes a datetime and returns an integer (\`1\`-\`4\`) with the number of the quarter in the year.`,
+        t`Gets the quarter from a date, as a number from \`1\` to \`4\`.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The datetime column.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
       ],
@@ -1027,12 +1035,12 @@ const DATE = defineClauses(
       displayName: "month",
       type: "number",
       description: () =>
-        t`Takes a datetime and returns an integer (\`1\`-\`12\`) with the number of the month in the year.`,
+        t`Gets the month from a date, as a number from \`1\` to \`12\`.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The datetime column.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
       ],
@@ -1041,12 +1049,12 @@ const DATE = defineClauses(
       displayName: "week",
       type: "number",
       hasOptions: true, // optional mode parameter
-      description: () => t`Extracts the week of the year as an integer.`,
+      description: () => t`Gets the week of the year from a date, as a number.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The name of the column with your date or datetime value.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
         {
@@ -1056,7 +1064,7 @@ const DATE = defineClauses(
           description:
             // TODO: This is the only place that's not easy to replace the application name.
             // eslint-disable-next-line metabase/no-literal-metabase-strings -- Hard to replace the application name because it's not a React component
-            t`Optional. The default is \`"ISO"\`.
+            t`Optional. How weeks are counted. The default is \`"ISO"\`.
   - ISO: Week 1 starts on the Monday before the first Thursday of January.
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
@@ -1070,12 +1078,12 @@ const DATE = defineClauses(
       displayName: "day",
       type: "number",
       description: () =>
-        t`Takes a datetime and returns an integer (\`1\`-\`31\`) with the number of the day of the month.`,
+        t`Gets the day of the month from a date, as a number from \`1\` to \`31\`.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The datetime column.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
       ],
@@ -1085,12 +1093,12 @@ const DATE = defineClauses(
       type: "number",
       hasOptions: true, // optional mode parameter
       description: () =>
-        t`Takes a datetime and returns an integer (\`1\`-\`7\`) with the number of the day of the week. Which day is \`1\` is defined in your localization settings.`,
+        t`Gets the day of the week from a date, as a number from \`1\` to \`7\`. Your localization settings decide which day is \`1\`.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The datetime column.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
       ],
@@ -1099,12 +1107,12 @@ const DATE = defineClauses(
       displayName: "hour",
       type: "number",
       description: () =>
-        t`Takes a datetime and returns an integer (\`0\`-\`23\`) with the number of the hour. No AM/PM.`,
+        t`Gets the hour from a date and time, as a number from \`0\` to \`23\`.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The datetime column.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
       ],
@@ -1113,12 +1121,12 @@ const DATE = defineClauses(
       displayName: "minute",
       type: "number",
       description: () =>
-        t`Takes a datetime and returns an integer (\`0\`-\`59\`) with the number of the minute in the hour.`,
+        t`Gets the minutes from a date and time, as a number from \`0\` to \`59\`.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The datetime column.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
       ],
@@ -1127,12 +1135,12 @@ const DATE = defineClauses(
       displayName: "second",
       type: "number",
       description: () =>
-        t`Takes a datetime and returns an integer (\`0\`-\`59\`) with the number of the seconds in the minute.`,
+        t`Gets the seconds from a date and time, as a number from \`0\` to \`59\`.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The datetime column.`,
+          description: t`The date column.`,
           example: dimension(t`Created At`),
         },
       ],
@@ -1142,18 +1150,18 @@ const DATE = defineClauses(
       type: "number",
       requiresFeature: "datetime-diff",
       description: () =>
-        t`Get the difference between two datetime values (\`$datetime2\` minus \`$datetime1\`) using the specified unit of time.`,
+        t`Counts the time from \`$datetime1\` to \`$datetime2\`, in the unit you choose.`,
       args: () => [
         {
           name: t`datetime1`,
           type: "datetime",
-          description: t`The column or expression with your datetime value.`,
+          description: t`The start date. Can be a column or calculation.`,
           example: dimension(t`Created At`),
         },
         {
           name: t`datetime2`,
           type: "datetime",
-          description: t`The column or expression with your datetime value.`,
+          description: t`The end date. Can be a column or calculation.`,
           example: dimension(t`Shipped At`),
         },
         {
@@ -1168,19 +1176,18 @@ const DATE = defineClauses(
     "datetime-add": {
       displayName: "datetimeAdd",
       type: "datetime",
-      description: () =>
-        t`Adds some units of time to a date or timestamp value.`,
+      description: () => t`Adds an amount of time to a date.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The column with your date or timestamp values.`,
+          description: t`The column with your dates.`,
           example: dimension(t`Created At`),
         },
         {
           name: t`amount`,
           type: "number",
-          description: t`The number of units to be added.`,
+          description: t`How many units to add. Use a whole number.`,
           example: 1,
         },
         {
@@ -1195,19 +1202,18 @@ const DATE = defineClauses(
     "datetime-subtract": {
       displayName: "datetimeSubtract",
       type: "datetime",
-      description: () =>
-        t`Subtracts some units of time to a date or timestamp value.`,
+      description: () => t`Subtracts an amount of time from a date.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The column with your date or timestamp values.`,
+          description: t`The column with your dates.`,
           example: dimension(t`Created At`),
         },
         {
           name: t`amount`,
           type: "number",
-          description: t`The number of units to be subtracted.`,
+          description: t`How many units to subtract. Use a whole number.`,
           example: 1,
         },
         {
@@ -1237,9 +1243,9 @@ const DATE = defineClauses(
         // also H2 is not recommended for use in production, so for now we skip
         // deeper logic to support displaying timestamps in it.
         if (database.engine === "h2") {
-          return t`Returns the current timestamp (in milliseconds).`;
+          return t`Gives the current date and time.`;
         } else {
-          return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
+          return t`Gives the current date and time. Currently ${nowAtTimezone} in ${timezone}.`;
         }
       },
       args: () => [],
@@ -1250,25 +1256,24 @@ const DATE = defineClauses(
       type: "datetime",
       hasOptions: true,
       requiresFeature: "convert-timezone",
-      description: () => t`Convert timezone of a date or timestamp column.
-We support tz database time zone names.`,
+      description: () => t`Changes a date and time to another time zone.`,
       args: () => [
         {
           name: t`column`,
           type: "datetime",
-          description: t`The column with your date or timestamp values.`,
+          description: t`The column with your dates and times.`,
           example: dimension(t`Created At`),
         },
         {
           name: t`target`,
           type: "string",
-          description: t`The timezone you want to assign to your column.`,
+          description: t`The time zone to change to. Use a name like \`"Canada/Pacific"\`.`,
           example: "Asia/Ho_Chi_Minh",
         },
         {
           name: t`source`,
           type: "string",
-          description: t`The current time zone. Only required for timestamps with no time zone.`,
+          description: t`The time zone it's in now. Only needed when your dates don't include a time zone.`,
           optional: true,
           example: "UTC",
         },
@@ -1286,12 +1291,12 @@ const MATH = defineClauses(
       type: "number",
       requiresFeature: "expressions",
       description: () =>
-        t`Returns the absolute (positive) value of the specified column.`,
+        t`Removes the minus sign from a number, so it's always positive.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to return absolute (positive) value of.`,
+          description: t`The column or number to make positive.`,
           example: dimension(t`Debt`),
         },
       ],
@@ -1300,7 +1305,7 @@ const MATH = defineClauses(
       displayName: "floor",
       type: "number",
       requiresFeature: "expressions",
-      description: () => t`Rounds a decimal number down.`,
+      description: () => t`Rounds a number down to a whole number.`,
       args: () => [
         {
           name: t`column`,
@@ -1314,7 +1319,7 @@ const MATH = defineClauses(
       displayName: "ceil",
       type: "number",
       requiresFeature: "expressions",
-      description: () => t`Rounds a decimal number up.`,
+      description: () => t`Rounds a number up to a whole number.`,
       args: () => [
         {
           name: t`column`,
@@ -1328,13 +1333,12 @@ const MATH = defineClauses(
       displayName: "round",
       type: "number",
       requiresFeature: "expressions",
-      description: () =>
-        t`Rounds a decimal number either up or down to the nearest integer value.`,
+      description: () => t`Rounds a number to the nearest whole number.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to round to nearest integer.`,
+          description: t`The column or number to round.`,
           example: dimension(t`Temperature`),
         },
       ],
@@ -1343,12 +1347,12 @@ const MATH = defineClauses(
       displayName: "sqrt",
       type: "number",
       requiresFeature: "advanced-math-expressions",
-      description: () => t`Returns the square root.`,
+      description: () => t`Gets the square root of a number.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to return square root value of.`,
+          description: t`The column or number to get the square root of.`,
           example: dimension(t`Hypotenuse`),
         },
       ],
@@ -1357,18 +1361,19 @@ const MATH = defineClauses(
       displayName: "power",
       type: "number",
       requiresFeature: "advanced-math-expressions",
-      description: () => t`Raises a number to the power of the exponent value.`,
+      description: () =>
+        t`Raises a number to a power. For example, \`3\` to the power of \`2\` is \`9\`.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number raised to the exponent.`,
+          description: t`The column or number to raise.`,
           example: dimension(t`Length`),
         },
         {
           name: t`exponent`,
           type: "number",
-          description: t`The value of the exponent.`,
+          description: t`The power to raise it to.`,
           example: 2,
         },
       ],
@@ -1377,12 +1382,12 @@ const MATH = defineClauses(
       displayName: "log",
       type: "number",
       requiresFeature: "advanced-math-expressions",
-      description: () => t`Returns the base 10 log of the number.`,
+      description: () => t`Gets the base 10 logarithm of a number.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to return the base 10 logarithm value of.`,
+          description: t`The column or number to get the logarithm of.`,
           example: dimension(t`Value`),
         },
       ],
@@ -1391,13 +1396,12 @@ const MATH = defineClauses(
       displayName: "exp",
       type: "number",
       requiresFeature: "advanced-math-expressions",
-      description: () =>
-        t`Returns Euler's number, e, raised to the power of the supplied number.`,
+      description: () => t`Raises e (about 2.718) to the power of a number.`,
       args: () => [
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to return the exponential value of.`,
+          description: t`The power to raise e to. Can be a column or number.`,
           example: dimension(t`Interest Months`),
         },
       ],
@@ -1412,24 +1416,24 @@ const LOGICAL = defineClauses(
       displayName: "between",
       type: "boolean",
       description: () =>
-        t`Checks a date or number column's values to see if they're within the specified range.`,
+        t`Checks whether a date or number falls within a range, including both ends.`,
       args: () => [
         {
           name: t`column`,
           type: "expression",
-          description: t`The date or numeric column that should be within the start and end values.`,
+          description: t`The date or number column to check.`,
           example: dimension(t`Created At`),
         },
         {
           name: t`start`,
           type: "expression",
-          description: t`The beginning of the range.`,
+          description: t`Where the range starts.`,
           example: "2019-01-01",
         },
         {
           name: t`end`,
           type: "expression",
-          description: t`The end of the range.`,
+          description: t`Where the range ends.`,
           example: "2022-12-31",
         },
       ],
@@ -1437,7 +1441,7 @@ const LOGICAL = defineClauses(
     "is-null": {
       displayName: "isNull",
       type: "boolean",
-      description: () => t`Checks if a column is null`,
+      description: () => t`Checks whether a value is missing.`,
       args: () => [
         {
           name: t`column`,
@@ -1451,7 +1455,7 @@ const LOGICAL = defineClauses(
     "not-null": {
       displayName: "notNull",
       type: "boolean",
-      description: () => t`Checks if a column is not null`,
+      description: () => t`Checks that a value isn't missing.`,
       args: () => [
         {
           name: t`column`,
@@ -1469,25 +1473,25 @@ const LOGICAL = defineClauses(
       },
       multiple: true,
       description: () =>
-        t`Looks at the values in each argument in order and returns the first non-null value for each row.`,
+        t`Gives the first value that isn't missing, checking from left to right.`,
       args: () => [
         {
           name: t`value1`,
           type: "expression",
-          description: t`The column or value to return.`,
+          description: t`The first column or value to try.`,
           example: dimension(t`Comments`),
         },
         {
           name: t`value2`,
           type: "expression",
-          description: t`If \`$value1\` is empty, \`$value2\` gets returned if its not empty.`,
+          description: t`Used if \`$value1\` is missing.`,
           example: dimension(t`Notes`),
         },
         {
           name: "…",
           type: "expression",
           optional: true,
-          description: t`If \`$value1\` is empty, and \`$value2\` is empty, the next non-empty one will be returned.`,
+          description: t`Add more values to try, in order.`,
           example: t`No comments`,
         },
       ],
@@ -1508,25 +1512,25 @@ const LOGICAL = defineClauses(
         return "boolean";
       },
       description: () =>
-        t`Alias for \`if()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
+        t`Checks conditions in order and gives the result for the first one that's true. You can end with a fallback result for when none are true. Same as \`if()\`.`,
       args: () => [
         {
           name: t`condition`,
           type: "expression",
-          description: t`Something that should evaluate to \`true\` or \`false\`.`,
+          description: t`A check that's either \`true\` or \`false\`.`,
           example: op(">", dimension(t`Weight`), 200),
         },
         {
           name: t`output`,
           type: "expression",
-          description: t`The value that will be returned if the preceding condition is \`true\`.`,
+          description: t`The result to give if this condition is \`true\`.`,
           example: t`Large`,
         },
         {
           name: "…",
           type: "expression",
           optional: true,
-          description: t`You can add more conditions to test.`,
+          description: t`Add more conditions and results. End with a single value to use as a fallback.`,
           example: [op(">", dimension(t`Weight`), 150), t`Medium`, t`Small`],
         },
       ],
@@ -1547,25 +1551,25 @@ const LOGICAL = defineClauses(
         return "boolean";
       },
       description: () =>
-        t`Alias for \`case()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
+        t`Checks conditions in order and gives the result for the first one that's true. You can end with a fallback result for when none are true. Same as \`case()\`.`,
       args: () => [
         {
           name: t`condition`,
           type: "expression",
-          description: t`Something that should evaluate to \`true\` or \`false\`.`,
+          description: t`A check that's either \`true\` or \`false\`.`,
           example: op(">", dimension(t`Weight`), 200),
         },
         {
           name: t`output`,
           type: "expression",
-          description: t`The value that will be returned if the preceding condition is \`true\`.`,
+          description: t`The result to give if this condition is \`true\`.`,
           example: t`Large`,
         },
         {
           name: "…",
           type: "expression",
           optional: true,
-          description: t`You can add more conditions to test.`,
+          description: t`Add more conditions and results. End with a single value to use as a fallback.`,
           example: [op(">", dimension(t`Weight`), 150), t`Medium`, t`Small`],
         },
       ],
@@ -1576,7 +1580,7 @@ const LOGICAL = defineClauses(
       type: "boolean",
       multiple: true,
       description: () =>
-        t`Returns true if \`value1\` equals \`$value2\` (or \`$value3\`, etc. if specified).`,
+        t`Checks whether a value matches any of the values you list.`,
       args: () => [
         {
           name: t`value1`,
@@ -1593,7 +1597,7 @@ const LOGICAL = defineClauses(
         {
           name: "…",
           type: "expression",
-          description: t`You can add more values to look for.`,
+          description: t`Add more values to look for.`,
           example: "Gadget",
           optional: true,
         },
@@ -1605,7 +1609,7 @@ const LOGICAL = defineClauses(
       type: "boolean",
       multiple: true,
       description: () =>
-        t`Returns true if \`$value1\` doesn't equal \`$value2\` (and \`$value3\`, etc. if specified).`,
+        t`Checks that a value matches none of the values you list.`,
       args: () => [
         {
           name: t`value1`,
@@ -1622,7 +1626,7 @@ const LOGICAL = defineClauses(
         {
           name: "…",
           type: "expression",
-          description: t`You can add more values to look for.`,
+          description: t`Add more values to look for.`,
           example: "Gadget",
           optional: true,
         },
