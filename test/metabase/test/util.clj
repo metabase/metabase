@@ -422,6 +422,14 @@
        :inputs       []
        :expectations []}))
 
+   :model/CardTest
+   (fn [_]
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Card Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
    :model/DataTestRun
    (fn [_]
      {:test_type      :transform

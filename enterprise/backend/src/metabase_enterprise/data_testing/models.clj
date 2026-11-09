@@ -26,7 +26,7 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(mu/defn- json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
+(mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
   way out."
   [schema :- :keyword]

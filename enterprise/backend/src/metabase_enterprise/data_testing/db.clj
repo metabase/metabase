@@ -46,7 +46,8 @@
                                   :status       :started}))
 
 (def ^:private test-type->table
-  {:transform :transform_test})
+  {:transform :transform_test
+   :card      :card_test})
 
 (mu/defn- runs-of-tests-clause :- vector?
   "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
