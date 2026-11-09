@@ -5,12 +5,11 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
@@ -59,17 +58,22 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Transform `transform-id`: they may edit it, and write the
-  native SQL of a test against its source Database."
-  [transform-id :- ::lib.schema.id/transform]
+(defn- can-save-test-of?
+  "Whether the current user may save or delete a test of `transform`: they may edit it, as its hydrated `:can_write`
+  says when it has one, and write the native SQL of a test against its source Database."
+  [transform]
   (boolean
-   (when-let [transform (data-testing.db/transform transform-id)]
-     (and (mi/can-write? transform)
-          (or api/*is-superuser?*
-              (when-let [db-id (transforms-base.i/source-db-id transform)]
-                (query-perms/can-run-query?
-                 (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))))))))
+   (and transform
+        (if (contains? transform :can_write) (:can_write transform) (mi/can-write? transform))
+        (or api/*is-superuser?*
+            (when-let [db-id (transforms-base.i/source-db-id transform)]
+              (perms/user-has-permission-for-database?
+               api/*current-user-id* :perms/create-queries :query-builder-and-native db-id))))))
+
+(mu/defn- can-save-test? :- :boolean
+  "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-test-of?]])."
+  [transform-id :- ::lib.schema.id/transform]
+  (can-save-test-of? (data-testing.db/transform transform-id)))
 
 (defmethod mi/can-read? :model/TransformTest
   ([instance]
@@ -85,6 +89,22 @@
   ([_model pk]
    (when-let [transform-test (data-testing.db/transform-test pk)]
      (mi/can-write? transform-test))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
+  "Add whether the current user can write each transform test, loading their transforms at once."
+  [_model k transform-tests]
+  (mi/instances-with-hydrated-data
+   transform-tests k
+   #(let [transforms (u/index-by :id (t2/hydrate (data-testing.db/transforms
+                                                  (into [] (comp (keep :transform_id) (distinct)) transform-tests))
+                                                 :can_write))]
+      (into {}
+            (map (fn [{:keys [id transform_id]}]
+                   [id (and (remote-sync/can-write? :model/TransformTest id)
+                            (can-save-test-of? (get transforms transform_id)))]))
+            (remove nil? transform-tests)))
+   :id
+   {:default false}))
 
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]

@@ -38,13 +38,37 @@
   []
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *read-only-pks*
+  "Within [[do-with-read-only-pks-cache]], an atom of the primary keys of the read-only rows of each model, each
+  looked up the first time it's asked for."
+  nil)
+
+(defn do-with-read-only-pks-cache
+  "Calls `thunk` with the read-only rows of each model looked up at most once, the first time [[can-write?]] asks
+  about the model, keeping a cache already in place."
+  [thunk]
+  (binding [*read-only-pks* (or *read-only-pks* (atom {}))]
+    (thunk)))
+
+(defn- read-only-row?
+  "Whether the row of `model` with the primary key `pk` is read-only, from the cache of [[do-with-read-only-pks-cache]]
+  when there is one."
+  [model pk]
+  (if-let [cache *read-only-pks*]
+    (let [pks (get (swap! cache #(cond-> % (not (contains? % model))
+                                         (assoc model (delay (remote-sync.db/read-only-pks model)))))
+                   model)]
+      (contains? @pks pk))
+    (remote-sync.db/read-only-row? model pk)))
+
 (mu/defn can-write? :- :boolean
-  "Whether the row of `model` with the primary key `pk` can be written, which a synced or built-in row can't on a
-  read-only instance."
+  "Whether the row of `model` with the primary key `pk` can be written, which a read-only row can't on a read-only
+  instance."
   [model :- :keyword
    pk    :- ::remote-sync.schema/pk]
   (or (not (read-only?))
-      (not (remote-sync.db/synced-or-built-in-row? model pk))))
+      (not (read-only-row? model pk))))
 
 (mu/defn can-write-filter-clause :- [:fn vector?]
   "The HoneySQL where-clause over the columns of `model`'s table, aliased `alias`, selecting the rows that can be
@@ -52,7 +76,7 @@
   [model :- :keyword
    alias :- :keyword]
   (if (read-only?)
-    (remote-sync.db/not-synced-or-built-in-filter-clause model alias)
+    (remote-sync.db/not-read-only-filter-clause model alias)
     remote-sync.db/all-rows-filter-clause))
 
 (mu/defn synced-changes? :- :boolean
