@@ -12,7 +12,6 @@ import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
-import { getScalarValueFontSize } from "metabase/visualizations/components/ScalarValue/sizing";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import {
   compactifyValue,
@@ -124,15 +123,11 @@ function SmartScalarComponent(
     tier.valueFontSize,
     formatOptions,
   );
-  const fontSize = getScalarValueFontSize(
-    displayValue,
-    centeredValueMaxWidth,
-    tier.valueFontSize,
-  );
 
   const isValueWide =
     typeof displayValue === "string" &&
-    estimateScalarValueWidth(displayValue, fontSize) > centeredValueMaxWidth;
+    estimateScalarValueWidth(displayValue, tier.valueFontSize) >
+      centeredValueMaxWidth;
   const valueMaxWidth = isValueWide
     ? Math.max(availableWidth - symbolAllowance, 0)
     : centeredValueMaxWidth;
@@ -158,7 +153,7 @@ function SmartScalarComponent(
       <span onClick={handleClick} ref={scalarRef}>
         <ScalarValue
           ref={valueRef}
-          fontSize={fontSize}
+          fontSize={tier.valueFontSize}
           // Unjustified type cast. FIXME
           value={displayValue as string}
         />

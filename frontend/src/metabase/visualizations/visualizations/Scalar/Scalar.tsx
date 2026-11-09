@@ -27,6 +27,7 @@ import {
   type ComputedVisualizationSettings,
   segmentIsValid,
 } from "metabase/viz-core";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { SCALAR_CHART_DEFINITION } from "./definition";
@@ -115,11 +116,9 @@ function ScalarComponent(
     tier.valueFontSize,
     formatOptions,
   );
-  const fontSize = getScalarValueFontSize(
-    displayValue,
-    availableWidth,
-    tier.valueFontSize,
-  );
+  const fontSize = isNumeric(column)
+    ? tier.valueFontSize
+    : getScalarValueFontSize(displayValue, availableWidth, tier.valueFontSize);
 
   const isClickable = onVisualizationClick != null && !isMetricsViewer;
 

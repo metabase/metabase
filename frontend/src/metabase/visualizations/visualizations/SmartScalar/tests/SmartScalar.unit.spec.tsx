@@ -264,16 +264,12 @@ describe("SmartScalar", () => {
         ["2019-11-01T00:00:00", Number.MAX_SAFE_INTEGER],
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
-      const settings = {
-        column_settings: { '["name","Count"]': { suffix: " active users" } },
-      };
 
       // 170px is the narrowest size-200 card: 24px padding and a 24px symbol
-      // allowance leave a 122px centered box, which "9007.2T active users"
-      // overflows even at the minimum font size
-      setup({ series: series({ rows, insights, settings }), width: 170 });
+      // allowance leave a 122px centered box, which "9007.2T" overflows
+      setup({ series: series({ rows, insights }), width: 170 });
 
-      expect(screen.getByText("9007.2T active users")).toBeInTheDocument();
+      expect(screen.getByText("9007.2T")).toBeInTheDocument();
       expect(screen.getByTestId("scalar-value-box")).toHaveStyle({
         marginLeft: "24px",
         alignSelf: "flex-start",
