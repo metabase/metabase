@@ -65,7 +65,7 @@ describe("EmbeddingHubAppearancePage", () => {
   it("upsells and shows neither section below the paywall", async () => {
     setup({ hasSimpleEmbedding: false });
 
-    expect(await screen.findByText("Create custom themes")).toBeInTheDocument();
+    expect(await screen.findByText("Create custom themes")).toBeVisible();
 
     expect(
       screen.queryByRole("heading", { name: "Themes" }),
@@ -88,9 +88,6 @@ describe("EmbeddingHubAppearancePage", () => {
     expect(
       await screen.findByRole("button", { name: /New theme/ }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Appearance" }),
-    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Themes" })).toBeInTheDocument();
 
     // The EE slot's own content, not just its heading -- an unregistered slot
@@ -99,12 +96,6 @@ describe("EmbeddingHubAppearancePage", () => {
       screen.getByRole("heading", { name: "Branding elements" }),
     ).toBeInTheDocument();
     expect(await screen.findByText("Loading message")).toBeInTheDocument();
-    expect(
-      screen.getByText("When calculations return no results"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("When no objects can be found"),
-    ).toBeInTheDocument();
 
     expect(screen.queryByText("Create custom themes")).not.toBeInTheDocument();
   });

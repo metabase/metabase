@@ -317,6 +317,36 @@ describe("scenarios > embedding > embedding hub > security", () => {
     });
   });
 
+  describe("oss", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.updateSetting("show-modular-embed-terms", false);
+    });
+
+    it("shows the Pro upsell banner and the CORS setting", () => {
+      cy.visit("/embedding/security");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText(
+          "Upgrade to Metabase Pro to access the SDK for React and more advanced options.",
+        ).should("be.visible");
+        // OSS leaves PLUGIN_ADMIN_SETTINGS.useUpsellFlow without a trigger, so
+        // UpsellCta renders the store link; paid builds get a button that
+        // opens the in-app flow instead.
+        cy.findByRole("link", { name: "Try Metabase Pro" })
+          .should("be.visible")
+          .and(
+            "have.attr",
+            "href",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
+          );
+
+        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
+      });
+    });
+  });
+
   describe("starter", () => {
     beforeEach(() => {
       H.restore();
@@ -401,6 +431,28 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
 
       H.main().within(() => {
         cy.findByText("SAML is configured").should("be.visible");
+        cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
+      });
+    });
+  });
+
+  describe("unlicensed", { tags: "@EE" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("upsells instead of exposing the form", () => {
+      cy.visit("/embedding/authentication");
+
+      // Card copy is unit-tested next to the component; this is what needs a
+      // real browser -- the upsell rendering in place of the real form.
+      H.main().within(() => {
+        cy.findByText("Secure your embeds with single sign-on").should(
+          "be.visible",
+        );
+
+        cy.log("nothing configurable renders below the paywall");
         cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
       });
     });
@@ -490,6 +542,23 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
       H.activateToken("pro-self-hosted");
     });
 
+    it("offers the enable card while the multi-tenant strategy is off", () => {
+      H.updateSetting("use-tenants", false);
+
+      cy.visit("/embedding");
+
+      cy.findByTestId("embedding-hub-nav")
+        .findByRole("link", { name: "Tenancy" })
+        .click();
+
+      cy.url().should("include", "/embedding/tenancy");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText("Enable multi-tenant user strategy").should("be.visible");
+        cy.findByRole("tab", { name: "Tenants" }).should("not.exist");
+      });
+    });
+
     it("carries the tenant surfaces once the strategy is on", () => {
       H.updateSetting("use-tenants", false);
 
@@ -518,6 +587,23 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
       cy.url().should("not.include", "/admin/people");
     });
   });
+
+  describe("oss", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("upsells rather than hiding the tab", () => {
+      cy.visit("/embedding/tenancy");
+
+      // Card copy is unit-tested next to the component; this just confirms
+      // the upsell renders in place of the real tenants surfaces.
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Use a multi-tenant user strategy")
+        .should("be.visible");
+    });
+  });
 });
 
 describe("scenarios > embedding > embedding hub > appearance", () => {
@@ -526,6 +612,29 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
+    });
+
+    it("carries the theme listing and the branding settings on one tab", () => {
+      cy.visit("/embedding");
+
+      cy.findByTestId("embedding-hub-nav")
+        .findByRole("link", { name: "Appearance" })
+        .click();
+
+      cy.url().should("include", "/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByRole("heading", { name: "Appearance" }).should("be.visible");
+        cy.findByRole("heading", { name: "Themes" }).should("be.visible");
+        cy.findByRole("heading", { name: "Branding elements" }).should(
+          "be.visible",
+        );
+        cy.findByText("Loading message").should("be.visible");
+        cy.findByText("When calculations return no results").should(
+          "be.visible",
+        );
+        cy.findByText("When no objects can be found").should("be.visible");
+      });
     });
 
     it("opens the theme editor inside the hub", () => {
@@ -605,6 +714,23 @@ describe("scenarios > embedding > embedding hub > localization", () => {
       cy.findByTestId("embedding-hub-main")
         .findByTestId("content-translation-configuration")
         .findByText("Translate embedded dashboards and questions")
+        .should("be.visible");
+    });
+  });
+
+  describe("unlicensed", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("upsells rather than hiding the tab", () => {
+      cy.visit("/embedding/localization");
+
+      // Card copy is unit-tested next to the component; this just confirms
+      // the upsell renders in place of the real dictionary configuration.
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Translate your embedded content")
         .should("be.visible");
     });
   });

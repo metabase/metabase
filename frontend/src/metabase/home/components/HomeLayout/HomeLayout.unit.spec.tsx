@@ -135,10 +135,11 @@ describe("HomeLayout", () => {
 
       expect(
         await screen.findByText("Get started with modular embedding"),
-      ).toBeInTheDocument();
+      ).toBeVisible();
       expect(screen.queryByTestId("home-page")).not.toBeInTheDocument();
 
-      expect(screen.getByText("Create a dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Create a dashboard")).toBeVisible();
+      expect(screen.getByText("Connect a database")).toBeVisible();
       await userEvent.click(screen.getByText("Connect a database"));
 
       // Sanity check: add data modal should open
@@ -146,7 +147,7 @@ describe("HomeLayout", () => {
         await within(await screen.findByRole("dialog")).findByRole("heading", {
           name: "Add data",
         }),
-      ).toBeInTheDocument();
+      ).toBeVisible();
     });
 
     it.each([

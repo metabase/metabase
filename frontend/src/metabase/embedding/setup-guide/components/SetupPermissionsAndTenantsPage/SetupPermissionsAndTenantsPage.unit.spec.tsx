@@ -74,7 +74,7 @@ describe("SetupPermissionsAndTenantsPage", () => {
         name: "Configure data permissions and enable tenants",
         level: 1,
       }),
-    ).toBeInTheDocument();
+    ).toBeVisible();
   });
 
   it("selecting database routing strategy should show documentation link in step 3", async () => {
@@ -84,7 +84,7 @@ describe("SetupPermissionsAndTenantsPage", () => {
 
     expect(
       await screen.findByText("Manage data permissions with database routing"),
-    ).toBeInTheDocument();
+    ).toBeVisible();
     expect(
       screen.getByRole("link", { name: /View the guide/i }),
     ).toHaveAttribute(

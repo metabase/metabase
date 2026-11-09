@@ -169,7 +169,7 @@ describe("EmbeddingHubGetStartedPage", () => {
       screen.getByText(
         "Upgrade to Metabase Pro to configure advanced options.",
       ),
-    ).toBeInTheDocument();
+    ).toBeVisible();
 
     // A feature-locked step is inert, with no link to follow.
     expect(
@@ -214,12 +214,24 @@ describe("EmbeddingHubGetStartedPage", () => {
     });
 
     it("links the tenants step to the permissions wizard", async () => {
-      setup({ hasTenants: true });
+      const { router } = setup({ hasTenants: true });
+
+      expect(
+        await screen.findByRole("heading", {
+          name: "Get started with Metabase Embedding",
+        }),
+      ).toBeInTheDocument();
 
       const card = await screen.findByRole("link", { name: TENANTS_CARD });
 
       expect(card).toHaveAttribute(
         "href",
+        "/embedding/get-started/permissions",
+      );
+
+      await userEvent.click(card);
+
+      expect(router?.location.pathname).toBe(
         "/embedding/get-started/permissions",
       );
     });

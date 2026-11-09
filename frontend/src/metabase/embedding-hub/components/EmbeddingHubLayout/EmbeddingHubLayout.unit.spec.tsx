@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -117,6 +119,19 @@ describe("EmbeddingHubLayout", () => {
         ).queryByTestId("upsell-gem"),
       ).not.toBeInTheDocument();
     }
+  });
+
+  it("opens Get started from the Security tab", async () => {
+    const { router } = setup({ initialRoute: "/embedding/security" });
+
+    expect(await screen.findByText("Security body")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(await findNav()).getByRole("link", { name: "Get started" }),
+    );
+
+    expect(await screen.findByText("Get started body")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/embedding/get-started");
   });
 
   it("keeps Get started current on the setup wizard sub-pages", async () => {
