@@ -2475,6 +2475,7 @@
            lib.schema
            permissions
            premium-features
+           remote-sync
            request.schema
            session
            settings
