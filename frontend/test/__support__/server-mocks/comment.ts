@@ -1,6 +1,10 @@
 import fetchMock from "fetch-mock";
 
-import type { Comment, UpdateCommentRequest } from "metabase-types/api";
+import type {
+  Comment,
+  MentionableUser,
+  UpdateCommentRequest,
+} from "metabase-types/api";
 
 export const setupCommentEndpoints = (
   comments: Comment[],
@@ -28,4 +32,8 @@ export const setupUpdateCommentEndpoint = (comments: Comment[]) => {
     comments[index] = { ...comments[index], ...changes };
     return comments[index];
   });
+};
+
+export const setupListMentionsEndpoint = (users: MentionableUser[]) => {
+  fetchMock.get("path:/api/comment/mentions", { data: users });
 };

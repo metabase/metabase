@@ -4,6 +4,7 @@ import type { Editor } from "@tiptap/core";
 import fetchMock from "fetch-mock";
 
 import {
+  setupListMentionsEndpoint,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -100,9 +101,7 @@ const setup = (props: SetupProps = {}) => {
 
   setupSearchEndpoints(props.searchItems ?? SEARCH_ITEMS);
   setupRecentViewsEndpoints(props.recentItems ?? RECENT_ITEMS);
-  fetchMock.get("path:/api/comment/mentions", {
-    data: props.mentionableUsers ?? [],
-  });
+  setupListMentionsEndpoint(props.mentionableUsers ?? []);
 
   const defaultProps: MentionSuggestionProps = {
     items: [],
