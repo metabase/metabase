@@ -1114,7 +1114,7 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Finance Orders")).not.toBeInTheDocument();
     });
 
-    it("should open the tables, as core does, when reopened with a published table whose Library collection the user can't read", async () => {
+    it("should open the tables, not the Library, when reopened with a published table whose Library collection the user can't read", async () => {
       setup({
         ...setupOpts,
         databases: createDatabasesWithOrdersPublishedIn(
