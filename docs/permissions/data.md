@@ -151,8 +151,6 @@ People can use Metabase's query builder or its native/SQL editor.
 
 If a group has "Blocked" or "Row and column security" View data permissions for _any_ of the tables in the database, then this group will have native queries disabled for _all_ tables in that database. That's because Metabase can't parse SQL queries, so it can't know for sure whether the SQL queries are using the tables with restricted access.
 
-With row and column security, a person's other groups can't give native access back. See [People with row and column security can't use the SQL editor](./row-and-column-security.md#people-with-row-and-column-security-cant-use-the-sql-editor-on-that-database).
-
 ### Query builder only create queries permission
 
 People can create new questions and drill-through existing questions using Metabase's query builder.
