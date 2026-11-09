@@ -198,8 +198,15 @@ describe("scenarios - setup guide", () => {
         .should("be.visible");
       cy.get("main").within(() => {
         cy.findByText("Create a dashboard").should("be.visible");
-        cy.findByText("Connect a database").should("be.visible");
+        cy.findByText("Connect a database").should("be.visible").click();
       });
+
+      cy.log("Sanity check: add data modal should open");
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("heading", { name: "Add data" }).should("be.visible");
+      });
+      cy.realPress("Escape");
+      cy.findByRole("dialog").should("not.exist");
 
       cy.log("Click overflow menu button on the embedding homepage");
       cy.get("main").within(() => {
