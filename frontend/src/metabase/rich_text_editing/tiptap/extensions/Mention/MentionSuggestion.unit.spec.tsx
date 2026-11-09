@@ -2,6 +2,7 @@ import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import fetchMock from "fetch-mock";
+import { createRef } from "react";
 
 import {
   setupListMentionsEndpoint,
@@ -9,7 +10,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type { MentionableUser } from "metabase-types/api";
 import {
@@ -26,6 +27,22 @@ const expectOptionToBePresent = async (name: string | RegExp) => {
 
 const expectOptionNotToBePresent = (name: string | RegExp) => {
   expect(screen.queryByRole("option", { name })).not.toBeInTheDocument();
+};
+
+interface SuggestionRef {
+  onKeyDown: (props: { event: KeyboardEvent }) => boolean;
+}
+
+const expectOnlyOptionActive = (name: string | RegExp) => {
+  expect(screen.getByRole("option", { name })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  expect(
+    screen
+      .getAllByRole("option")
+      .filter((option) => option.getAttribute("aria-selected") === "true"),
+  ).toHaveLength(1);
 };
 
 const SEARCH_ITEMS = [
@@ -71,6 +88,7 @@ interface SetupProps extends Partial<MentionSuggestionProps> {
 
 const setup = (props: SetupProps = {}) => {
   const command = jest.fn();
+  const ref = createRef<SuggestionRef>();
 
   const mockChain = {
     focus: jest.fn().mockReturnThis(),
@@ -103,11 +121,16 @@ const setup = (props: SetupProps = {}) => {
     ...props,
   };
 
-  renderWithProviders(<MentionSuggestion {...defaultProps} />, {
+  renderWithProviders(<MentionSuggestion {...defaultProps} ref={ref} />, {
     storeInitialState: createMockState({}),
   });
 
-  return { command, editor };
+  const pressKey = (key: string) =>
+    act(() => {
+      ref.current?.onKeyDown({ event: new KeyboardEvent("keydown", { key }) });
+    });
+
+  return { command, editor, pressKey };
 };
 
 describe("MentionSuggestion", () => {
@@ -288,6 +311,28 @@ describe("MentionSuggestion", () => {
         }),
       );
     });
+  });
+
+  it("keeps exactly one option active while navigating with keyboard and mouse", async () => {
+    const { pressKey } = setup({
+      query: "ord",
+      searchItems: [
+        createMockSearchResult({ name: "Orders", model: "card", id: 1 }),
+        createMockSearchResult({ name: "Orders, Count", model: "card", id: 2 }),
+      ],
+    });
+
+    await expectOptionToBePresent(/Orders, Count/);
+    expectOnlyOptionActive(/Orders$/);
+
+    pressKey("ArrowDown");
+    expectOnlyOptionActive(/Orders, Count/);
+
+    await userEvent.hover(screen.getByRole("option", { name: /Browse all/ }));
+    expectOnlyOptionActive(/Browse all/);
+
+    pressKey("ArrowDown");
+    expectOnlyOptionActive(/Orders$/);
   });
 
   describe("cmd/ctrl+click behavior", () => {
