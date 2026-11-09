@@ -212,6 +212,10 @@
   "What a client sends to update a card test. Omitted fields are left unchanged."
   (test-update :card_id ::lib.schema.id/card))
 
+(mr/def ::saved-test
+  "A saved test of any subject type."
+  [:or ::transform-test ::card-test])
+
 (mr/def ::run-status
   "The persisted lifecycle state of a test run."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
@@ -219,6 +223,11 @@
 
 (mr/def ::test-type
   "The kind of test a run ran. It selects the table that `test_id` points into."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword}
+   :transform :card])
+
+(mr/def ::saved-test-type
+  "The kinds of test that can be saved."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
    :transform])
 

@@ -55,7 +55,8 @@
    _query-params
    {:keys [transform_id inputs expectations] :as body} :- ::data-testing.schema/transform-test.create]
   (api/create-check :model/TransformTest body)
-  (refusing #(data-testing.runner/validate-test (transforms.u/->definition (data-testing.db/transform transform_id))
+  (refusing #(data-testing.runner/validate-test :transform
+                                                (transforms.u/->definition (data-testing.db/transform transform_id))
                                                 inputs
                                                 expectations))
   (data-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
@@ -70,7 +71,8 @@
     (api/update-check transform-test body)
     (when (some #(contains? body %) [:transform_id :inputs :expectations])
       (let [{:keys [transform_id inputs expectations]} (merge transform-test body)]
-        (refusing #(data-testing.runner/validate-test (transforms.u/->definition (data-testing.db/transform transform_id))
+        (refusing #(data-testing.runner/validate-test :transform
+                                                      (transforms.u/->definition (data-testing.db/transform transform_id))
                                                       inputs
                                                       expectations))))
     (when (seq body)
@@ -100,7 +102,7 @@
   (let [transform-test (api/read-check :model/TransformTest id)
         transform      (api/read-check :model/Transform (:transform_id transform-test))]
     (api/check-403 (data-testing.models/can-run-test? (:id transform)))
-    (refusing #(data-testing.runner/run-test! transform transform-test))))
+    (refusing #(data-testing.runner/run-test! :transform transform transform-test))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-test` routes."

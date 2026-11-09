@@ -23,13 +23,14 @@
 
 (mr/def ::card
   "A card a test can run: a saved Card, or a card that is not saved, which needs only its `:dataset_query`."
-  [:and
+  [:merge
    ::queries.schema/card
-   [:map [:dataset_query ::lib.schema/query]]])
+   [:map {:closed true}
+    [:dataset_query ::lib.schema/query]]])
 
 (mr/def ::subject
   "An entity a test can run, of one of the [[::subject-type]]s."
-  [:or ::transforms.schema/transform.definition ::card])
+  [:or ::transforms.schema/transform ::transforms.schema/transform.definition ::card])
 
 (mr/def ::subject-plan
   "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,

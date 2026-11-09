@@ -38,8 +38,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.transforms.schema :as transforms.schema]
-   [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -212,14 +210,14 @@
                           labels)))))
 
 (mu/defn- create-output! :- :nil
-  "Run the transform under test on `conn`, materializing its output as the temp table `output-table`."
-  [driver             :- :keyword
-   conn               :- ::data-testing.schema/connection
-   output-table       :- :string
-   compiled-transform :- ::data-testing.compile/compiled-query
-   labels             :- ::labels]
+  "Run the query under test on `conn`, materializing its output as the temp table `output-table`."
+  [driver       :- :keyword
+   conn         :- ::data-testing.schema/connection
+   output-table :- :string
+   compiled     :- ::data-testing.compile/compiled-query
+   labels       :- ::labels]
   (try
-    (data-testing.executor/create-temp-table! driver conn output-table compiled-transform)
+    (data-testing.executor/create-temp-table! driver conn output-table compiled)
     nil
     (catch Exception e
       (rethrow-remapped e ::data-testing.errors/query-failed
@@ -280,28 +278,30 @@
      :compiled     rewritten}))
 
 (mu/defn validate-test :- :nil
-  "Refuse a test of `transform` with these `inputs` and `expectations` unless it could run: the same
+  "Refuse a test of `subject`, a `subject-type`, with these `inputs` and `expectations` unless it could run: the same
   checks a run makes, up to but not including the connection.
 
   Returns nil when there is nothing to refuse, and otherwise throws the refusal the run would have thrown, so a test
   is turned away as it is authored rather than only when somebody runs it."
-  [transform    :- ::transforms.schema/transform.definition
+  [subject-type :- ::data-testing.subject/subject-type
+   subject      :- ::data-testing.subject/subject
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
-  (validated-plan :transform transform inputs expectations)
+  (validated-plan subject-type subject inputs expectations)
   nil)
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
-  "Run `transform-test` against `transform` on temp tables and report what each expectation found, recording the run
-  under the test.
+  "Run the saved `test` against `subject`, a `subject-type`, on temp tables and report what each expectation found,
+  recording the run under the test.
 
   Throws a typed refusal from [[metabase-enterprise.data-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
-  [transform                                        :- ::transforms.schema/transform
-   {:keys [inputs expectations] :as transform-test} :- ::data-testing.schema/transform-test]
+  [subject-type                             :- ::data-testing.subject/subject-type
+   subject                                  :- ::data-testing.subject/subject
+   {test-id :id :keys [inputs expectations]} :- ::data-testing.schema/saved-test]
   (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
-        (validated-plan :transform (transforms.u/->definition transform) inputs expectations)
-        {run-id :id} (data-testing.run-tracking/start-run! :transform (:id transform-test) api/*current-user-id*)
+        (validated-plan subject-type subject inputs expectations)
+        {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
     (try
       (let [result

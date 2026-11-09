@@ -21,7 +21,7 @@
 
 (mu/defn- readable-test-ids :- [:set ms/PositiveInt]
   "The ids of the `test-type` tests the current user can read."
-  [test-type :- ::data-testing.schema/test-type]
+  [test-type :- ::data-testing.schema/saved-test-type]
   (into #{}
         (comp (filter mi/can-read?)
               (map :id))
@@ -46,7 +46,7 @@
   [_route-params
    {:keys [test-type test-id statuses start-time end-time]}
    :- [:map {:closed true}
-       [:test-type  ::data-testing.schema/test-type]
+       [:test-type  ::data-testing.schema/saved-test-type]
        [:test-id    {:optional true} [:maybe ms/PositiveInt]]
        [:statuses   {:optional true} [:maybe (ms/QueryVectorOf ::data-testing.schema/run-status)]]
        [:start-time {:optional true} [:maybe ms/NonBlankString]]

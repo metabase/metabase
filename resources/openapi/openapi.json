@@ -3153,6 +3153,30 @@
         } ],
         "description" : "A check that the transform output holds exactly the declared rows, over exactly the declared columns."
       },
+      "metabase-enterprise.data-testing.schema..test.definition" : {
+        "additionalProperties" : false,
+        "description" : "A test as a client writes it, without the subject it covers.",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations" ],
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema..transform-test.create" : {
         "additionalProperties" : false,
         "description" : "What a client sends to create a transform test.",
@@ -3181,28 +3205,8 @@
         "type" : "object"
       },
       "metabase-enterprise.data-testing.schema..transform-test.definition" : {
-        "additionalProperties" : false,
-        "description" : "A transform test as a client writes it, without the transform it covers.",
-        "properties" : {
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "name", "inputs", "expectations" ],
-        "type" : "object"
+        "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..test.definition",
+        "description" : "A transform test as a client writes it, without the transform it covers."
       },
       "metabase-enterprise.data-testing.schema..transform-test.response" : {
         "additionalProperties" : false,
@@ -3512,6 +3516,11 @@
         "enum" : [ "started", "passed", "failed", "error", "timeout" ],
         "type" : "string"
       },
+      "metabase-enterprise.data-testing.schema.saved-test-type" : {
+        "description" : "The kinds of test that can be saved.",
+        "enum" : [ "transform" ],
+        "type" : "string"
+      },
       "metabase-enterprise.data-testing.schema.sql-data" : {
         "additionalProperties" : false,
         "description" : "Test data returned by a SQL query run against the transform's source database.",
@@ -3551,12 +3560,12 @@
       },
       "metabase-enterprise.data-testing.schema.test-type" : {
         "description" : "The kind of test a run ran. It selects the table that `test_id` points into.",
-        "enum" : [ "transform" ],
+        "enum" : [ "transform", "card" ],
         "type" : "string"
       },
       "metabase-enterprise.data-testing.schema.transform-test" : {
         "additionalProperties" : false,
-        "description" : "A saved transform test: the transform it covers, the inputs that stand in for its source\n  tables, and the expectations checked against its output.",
+        "description" : "A saved transform test.",
         "properties" : {
           "created_at" : {
             "description" : "value must be a valid date/time/datetime",
@@ -49811,7 +49820,7 @@
           "name" : "test-type",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.test-type"
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.saved-test-type"
           }
         }, {
           "in" : "query",
