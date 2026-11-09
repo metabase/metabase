@@ -41,16 +41,21 @@
   {:inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
 
+(defn with-last-runs
+  "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
+  [test-type tests]
+  (if-not (seq tests)
+    tests
+    (let [id->run (into {}
+                        (map (juxt :test_id identity))
+                        (data-testing.db/latest-test-runs test-type (into #{} (map :id) tests)))]
+      (for [saved-test tests]
+        (assoc saved-test :last_run (get id->run (:id saved-test)))))))
+
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :last_run]
   "Add the newest run, or nil, to each transform test."
   [_model _k transform-tests]
-  (if-not (seq transform-tests)
-    transform-tests
-    (let [id->run (into {}
-                        (map (juxt :test_id identity))
-                        (data-testing.db/latest-test-runs :transform (into #{} (map :id) transform-tests)))]
-      (for [transform-test transform-tests]
-        (assoc transform-test :last_run (get id->run (:id transform-test)))))))
+  (with-last-runs :transform transform-tests))
 
 (defmethod audit-app/model-details :model/TransformTest
   [transform-test _event-type]

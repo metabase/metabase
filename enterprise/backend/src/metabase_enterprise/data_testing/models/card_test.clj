@@ -31,13 +31,7 @@
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
   "Add the newest run, or nil, to each card test."
   [_model _k card-tests]
-  (if-not (seq card-tests)
-    card-tests
-    (let [id->run (into {}
-                        (map (juxt :test_id identity))
-                        (data-testing.db/latest-test-runs :card (into #{} (map :id) card-tests)))]
-      (for [card-test card-tests]
-        (assoc card-test :last_run (get id->run (:id card-test)))))))
+  (data-testing.models/with-last-runs :card card-tests))
 
 (defenterprise delete-card-tests!
   "Enterprise implementation: delete the tests of the card `card-id`, each through its own hook. Runs whatever the token
