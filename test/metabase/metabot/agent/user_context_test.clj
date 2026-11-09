@@ -922,6 +922,148 @@
                                                          :lib/source          :source/expressions
                                                          :lib/expression-name "A"))))))
 
+(defn- fake-expression-columns
+  [n]
+  (for [i (range n)]
+    (assoc (fake-column (str "E" i) (str "E " i) :type/Integer)
+           :lib/source          :source/expressions
+           :lib/expression-name (str "E" i))))
+
+(defn- fake-join-columns
+  [join-alias n]
+  (for [i (range n)]
+    (assoc (fake-column (str "J" i) (str "J " i) :type/Integer) :lib/join-alias join-alias)))
+
+(def ^:private double-column
+  (assoc (fake-column "Double" "Double" :type/Float)
+         :lib/source          :source/expressions
+         :lib/expression-name "Double"))
+
+(defn- column-lines
+  "The lines of a column list that show a column, not a count."
+  [out]
+  (filter #(and (str/starts-with? % "- ") (not (str/starts-with? % "- ... ")))
+          (str/split-lines out)))
+
+(defn- count-lines
+  "The lines of a column list that count hidden columns."
+  [out]
+  (filter #(str/starts-with? % "- ... ") (str/split-lines out)))
+
+(defn- lines-starting-with
+  [prefix out]
+  (filter #(str/starts-with? % prefix) (str/split-lines out)))
+
+(deftest ^:parallel column-list-keeps-every-group-test
+  (testing "a wide source does not hide the custom column or the joined columns"
+    (let [out   (#'user-context/column-list fake-query (concat (fake-columns 105)
+                                                               [double-column]
+                                                               (fake-join-columns "Cat" 3)))
+          lines (vec (str/split-lines out))
+          c95   (first (keep-indexed (fn [i line] (when (str/starts-with? line "- \"C95\",") i)) lines))]
+      (is (= 100 (count (column-lines out))))
+      (is (str/includes? out "- [expression] \"Double\", display name \"Double\", type/Float"))
+      (is (= 3 (count (lines-starting-with "- [join \"Cat\"] " out))))
+      (is (= ["- ... and 9 more source columns"] (count-lines out)))
+      (testing "the count line follows the last kept source line and comes before the custom column"
+        (is (some? c95))
+        (when c95
+          (is (= "- ... and 9 more source columns" (get lines (inc c95))))
+          (is (str/starts-with? (get lines (+ c95 2)) "- [expression] \"Double\""))))
+      (is (not (str/includes? out "- \"C96\""))))))
+
+(deftest ^:parallel column-list-wide-join-keeps-source-test
+  (testing "a wide join does not hide the source columns"
+    (let [out (#'user-context/column-list fake-query (concat (fake-columns 20) (fake-join-columns "Cat" 150)))]
+      (doseq [i (range 20)]
+        (is (str/includes? out (str "- \"C" i "\","))))
+      (is (= 80 (count (lines-starting-with "- [join \"Cat\"] " out))))
+      (is (= "- ... and 70 more [join \"Cat\"] columns" (last (str/split-lines out)))))))
+
+(deftest ^:parallel column-list-cut-custom-columns-test
+  (testing "a cut group of custom columns ends with a count that names the `[expression]` mark"
+    (let [out (#'user-context/column-list fake-query (concat (fake-columns 10) (fake-expression-columns 150)))]
+      (is (= 10 (count (lines-starting-with "- \"C" out))))
+      (is (= 90 (count (lines-starting-with "- [expression] " out))))
+      (is (= "- ... and 60 more [expression] columns" (last (str/split-lines out)))))))
+
+(deftest ^:parallel column-list-narrow-join-kept-test
+  (testing "a small join keeps all its lines, and its unused share goes to the wide join"
+    (let [out (#'user-context/column-list fake-query (concat (fake-columns 10)
+                                                             (fake-join-columns "A" 150)
+                                                             (fake-join-columns "B" 3)))]
+      (is (= 10 (count (lines-starting-with "- \"C" out))))
+      (is (= 87 (count (lines-starting-with "- [join \"A\"] " out))))
+      (is (= 3 (count (lines-starting-with "- [join \"B\"] " out))))
+      (is (= ["- ... and 63 more [join \"A\"] columns"] (count-lines out))))))
+
+(deftest ^:parallel column-list-share-remainder-test
+  (testing "the lines left after equal shares go to the first groups in order"
+    (let [out (#'user-context/column-list fake-query (concat (fake-columns 150)
+                                                             (fake-join-columns "A" 150)
+                                                             (fake-join-columns "B" 150)))]
+      (is (= 34 (count (lines-starting-with "- \"C" out))))
+      (is (= 33 (count (lines-starting-with "- [join \"A\"] " out))))
+      (is (= 33 (count (lines-starting-with "- [join \"B\"] " out))))
+      (is (= ["- ... and 116 more source columns"
+              "- ... and 117 more [join \"A\"] columns"
+              "- ... and 117 more [join \"B\"] columns"]
+             (count-lines out))))))
+
+(deftest ^:parallel column-list-count-line-quotes-join-alias-test
+  (testing "the join alias in a count line is quoted, so it cannot add a line"
+    (let [out (#'user-context/column-list fake-query (concat (fake-columns 1)
+                                                             (fake-join-columns "Cat \"1\"\nX" 150)))]
+      (is (= 99 (count (lines-starting-with "- [join \"Cat \\\"1\\\"\\nX\"] " out))))
+      (is (= "- ... and 51 more [join \"Cat \\\"1\\\"\\nX\"] columns" (last (str/split-lines out))))
+      (is (= 101 (count (str/split-lines out)))))))
+
+(deftest ^:parallel column-list-one-group-unchanged-test
+  (testing "a list of one group keeps the bare count line"
+    (doseq [[group-name columns] {"join"   (fake-join-columns "Cat" 101)
+                                  "custom" (fake-expression-columns 101)}]
+      (testing group-name
+        (let [out (#'user-context/column-list fake-query columns)]
+          (is (= 100 (count (column-lines out))))
+          (is (= "- ... and 1 more" (last (str/split-lines out)))))))))
+
+(deftest ^:parallel column-list-group-boundaries-test
+  (let [column-list #'user-context/column-list]
+    (testing "100 columns in two groups (at the cap) show every column and no count line"
+      (let [out (column-list fake-query (concat (fake-columns 99) (fake-join-columns "Cat" 1)))]
+        (is (= 100 (count (column-lines out))))
+        (is (empty? (count-lines out)))))
+    (testing "99 columns in two groups (below the cap) show every column and no count line"
+      (let [out (column-list fake-query (concat (fake-columns 98) (fake-join-columns "Cat" 1)))]
+        (is (= 99 (count (column-lines out))))
+        (is (empty? (count-lines out)))))
+    (testing "101 columns in two groups (above the cap) cut only the larger group"
+      (let [out (column-list fake-query (concat (fake-columns 99) (fake-join-columns "Cat" 2)))]
+        (is (= 98 (count (lines-starting-with "- \"C" out))))
+        (is (= ["- ... and 1 more source columns"] (count-lines out)))
+        (is (= 2 (count (lines-starting-with "- [join \"Cat\"] " out))))))))
+
+(deftest adhoc-viewing-context-wide-table-keeps-added-columns-test
+  (testing "on a table with more than 100 columns, the list keeps the custom column and the joined columns"
+    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "WIDE" :schema "PUBLIC" :active true}]
+      (t2/insert! :model/Field (for [i (range 105)]
+                                 {:table_id table-id :name (str "F" i) :base_type :type/Integer
+                                  :database_type "INTEGER" :active true}))
+      (let [mp    (mt/metadata-provider)
+            field (fn [field-name]
+                    (lib.metadata/field mp (t2/select-one-pk :model/Field :table_id table-id :name field-name)))
+            query (-> (lib/query mp (lib.metadata/table mp table-id))
+                      (lib/expression "Double" (lib/* (field "F1") 2))
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :categories))
+                                                     [(lib/= (field "F0")
+                                                             (lib.metadata/field mp (mt/id :categories :id)))])
+                                    (lib/with-join-alias "Cat"))))]
+        (mt/with-test-user :crowberto
+          (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+            (is (str/includes? out "- [expression] \"Double\", display name \"Double\", type/"))
+            (is (str/includes? out "- [join \"Cat\"] \"NAME\", display name \"Cat → Name\", type/Text, portable FK ["))
+            (is (str/includes? out "- ... and 8 more source columns\n"))))))))
+
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not
             leak into the generic user-message injection context. message_injection.selmer has no

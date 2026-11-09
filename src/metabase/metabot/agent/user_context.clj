@@ -315,16 +315,66 @@
        (when-let [portable-fk (column-portable-fk query column)]
          (str ", portable FK " (quoting/escape-code-points (json/encode portable-fk) quoting/invisible-code-point?)))))
 
-(defn- column-list
-  "The column list for `columns` of `query`, at most [[max-listed-columns]] lines and then a count of the rest.
+(defn- column-group
+  "The group of `column` in the column list: `[:source]`, `[:expressions]`, or `[:join alias]`."
+  [column]
+  ;; The same predicates as the marks of [[column-line]].
+  (if (= :source/expressions (:lib/source column))
+    [:expressions]
+    (if-let [join-alias (lib/current-join-alias column)]
+      [:join join-alias]
+      [:source])))
 
-  Nil when `columns` is empty."
+(defn- fair-shares
+  "How many lines each group keeps, for groups of `sizes` that share `limit` lines.
+
+    (fair-shares [150 150 3] 100) ;=> [49 48 3]
+
+  A group smaller than an equal share keeps all its lines, and its unused lines go to the other groups. The
+  lines that do not divide evenly go to the first groups that are still cut."
+  [sizes limit]
+  (let [used        (fn [level] (reduce + (map #(min % level) sizes)))
+        level       (last (take-while #(<= (used %) limit) (range (inc limit))))
+        spare       (- limit (used level))
+        extra-line? (set (take spare (keep-indexed (fn [i size] (when (> size level) i)) sizes)))]
+    (into [] (map-indexed (fn [i size] (if (extra-line? i) (inc level) (min size level)))) sizes)))
+
+(defn- hidden-count-line
+  "The line that counts the `hidden` columns of a cut group.
+
+  One group alone gets no group name.
+
+    - ... and 9 more source columns
+    - ... and 70 more [join \"Cat\"] columns"
+  [[kind join-alias] hidden one-group?]
+  (str "- ... and " hidden " more"
+       (cond
+         one-group?            nil
+         (= kind :source)      " source columns"
+         (= kind :expressions) " [expression] columns"
+         :else                 (str " [join " (quoting/quoted join-alias) "] columns"))))
+
+(defn- column-list
+  "The column list for `columns` of `query`, at most [[max-listed-columns]] column lines.
+
+  Each run of columns with one mark (source, custom column, or one join) shares the lines fairly. Each
+  group that is cut ends with a count of its hidden columns. Nil when `columns` is empty."
   [query columns]
   (when (seq columns)
-    (let [extra (- (count columns) max-listed-columns)]
-      (te/lines (map #(column-line query %) (take max-listed-columns columns))
-                (when (pos? extra)
-                  (str "- ... and " extra " more"))))))
+    ;; Each run of one group key is a group. A metric source repeats a key: its own custom columns and joins
+    ;; come before those of this stage (`metric-visible-columns`). A repeated key gives a second group, which
+    ;; keeps the order.
+    (let [groups     (partition-by column-group columns)
+          one-group? (= 1 (count groups))
+          shares     (if (<= (count columns) max-listed-columns)
+                       (map count groups)
+                       (fair-shares (map count groups) max-listed-columns))]
+      (te/lines (map (fn [group share]
+                       (let [hidden (- (count group) share)]
+                         [(map #(column-line query %) (take share group))
+                          (when (pos? hidden)
+                            (hidden-count-line (column-group (first group)) hidden one-group?))]))
+                     groups shares)))))
 
 (defn- permitted-column-list
   "The column list of the last stage of a cleared `query`, without the columns that the current user cannot see.
