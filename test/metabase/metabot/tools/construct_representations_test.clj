@@ -300,6 +300,25 @@
                                  (mt/with-current-user (mt/user->id :rasta)
                                    (construct [nil "user"])))})))))))
 
+(deftest null-schema-fill-in-covers-every-fk-slot-test
+  (testing "source-table, source-field and both field-ref slots are filled in, and other vectors are left alone"
+    (mt/with-temp [:model/Database db {:name (str "Analytics " (random-uuid)) :engine :h2}
+                   :model/Table    _  {:name "user" :schema "lever_data" :db_id (:id db)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (:name db)
+              null-fk [db-name nil "user"]
+              filled  [db-name "lever_data" "user"]]
+          (is (= {"stages" [{"source-table" filled
+                             "breakout"     [["field" {"source-field" (conj filled "id")} (conj filled "email")]
+                                             ["field" (conj filled "email")]]
+                             "filters"      [["=" {} ["field" {} "email"] null-fk]]}]}
+                 (#'construct/fill-in-null-schemas
+                  (lib-be/application-database-metadata-provider (:id db))
+                  {"stages" [{"source-table" null-fk
+                              "breakout"     [["field" {"source-field" (conj null-fk "id")} (conj null-fk "email")]
+                                              ["field" (conj null-fk "email")]]
+                              "filters"      [["=" {} ["field" {} "email"] null-fk]]}]}))))))))
+
 (defn- metadata-lookup-failures []
   (let [message    "SELECT private_metadata failed: connection unavailable"
         root-cause (RuntimeException. message)]

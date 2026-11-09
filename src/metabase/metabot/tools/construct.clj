@@ -55,6 +55,11 @@
   [:map {:closed true}
    [:chart_type (into [:enum] shared/chart-types)]])
 
+(def ^:private source-table-description
+  "How [[construct-notebook-query-json-schema]] describes a stage's `source-table`."
+  (str "Portable FK `[<db-name>, <schema>, <table-name>]`. "
+       "Use `null` as the schema only in a database without schemas."))
+
 (def ^:private construct-notebook-query-json-schema
   "Hand-authored JSON Schema for the `:query` argument, attached to the deliberately open,
   property-less malli `:map` via a `:json-schema` override. It does not participate in validation —
@@ -93,9 +98,7 @@
                                                            :minItems    3
                                                            :maxItems    3
                                                            :items       {}
-                                                           :description (str "Portable FK `[<db-name>, <schema>, <table-name>]`. "
-                                                                             "Use `null` as the schema only in a "
-                                                                             "database without schemas.")}
+                                                           :description source-table-description}
                                            "source-card"  {:type        "string"
                                                            :description "entity_id of a saved question/model used as the source."}
                                            ;; Each clause is itself a `["<op>", {opts}, ...args]` array; the inner
@@ -278,6 +281,12 @@
         (or (numeric-scoped-content-ref model (nth node 2 nil))
             (numeric-scoped-content-ref model (nth node 1 nil)))))))
 
+(defn- field-ref?
+  [x]
+  (and (vector? x)
+       (not (map-entry? x))
+       (= "field" (nth x 0 nil))))
+
 (defn- node-table-fks
   [node]
   (cond
@@ -290,9 +299,7 @@
     (node-scoped-content-ref node)
     [(node-scoped-content-ref node)]
 
-    (and (vector? node)
-         (not (map-entry? node))
-         (= "field" (nth node 0 nil)))
+    (field-ref? node)
     ;; Both slots, for both forms. Repair inserts the options map later, so an LLM-authored
     ;; `["field", 42]` still carries its target in slot 1 when this pass runs — checking the
     ;; numeric form in slot 2 only (as this did) let that shape through uncollected, and so
@@ -309,12 +316,6 @@
   (into []
         (comp (mapcat node-table-fks) (distinct))
         (tree-seq coll? seq parsed-query)))
-
-(defn- field-ref?
-  [x]
-  (and (vector? x)
-       (not (map-entry? x))
-       (= "field" (nth x 0 nil))))
 
 (defn- fk-slots
   "The keys or indexes of `node` that can hold a portable table or field FK: `source-table` and `source-field` in a
@@ -348,14 +349,14 @@
 (defn- inferred-schema
   "The schema to fill in for a null-schema reference to one of `tables`, which share a name, or nil to keep the null.
 
-  A lone table decides it, and among several the one in `default-schema` does, as an unqualified name in SQL resolves
-  there.
+  A lone table decides it, and among several the one in `default-schema` does.
   The schemas the query gives that name elsewhere, `named`, can only overrule the pick: when one names another table,
   the reference could mean either, so the null stays.
   When a table without a schema is among them, the null already matches it exactly, so the null stays."
   [named default-schema tables]
   (let [schemas (map :schema tables)
         pick    (if (next schemas)
+                  ;; An unqualified name in SQL resolves to the default schema too.
                   (some #{default-schema} schemas)
                   (first schemas))]
     (when (and (every? some? schemas)
@@ -363,8 +364,8 @@
       pick)))
 
 (defn- inferred-schemas
-  "A map from each table name that `refs` give a null schema to the schema [[inferred-schema]] picks for it, for the
-  names it picks one for.
+  "A map from table name to the schema [[inferred-schema]] picks for it, for each table name that `refs` give a null
+  schema.
   The `refs` are `[schema table-name]` pairs naming tables in the database with `database-id`, and the candidates are
   the tables there that the current user can query."
   [database-id default-schema refs]
@@ -381,8 +382,8 @@
         ;; reject, and whether a name gets one says nothing about tables the user cannot use.
         queryable   (when (seq tables)
                       (metabot.perms/queryable-table-ids (map :id tables)))]
-    (u/for-map [[table-name tables] (group-by :name (filter #(contains? queryable (:id %)) tables))
-                :let  [schema (inferred-schema (get named table-name) default-schema tables)]
+    (u/for-map [[table-name same-name] (group-by :name (filter #(contains? queryable (:id %)) tables))
+                :let  [schema (inferred-schema (get named table-name) default-schema same-name)]
                 :when schema]
       [table-name schema])))
 
