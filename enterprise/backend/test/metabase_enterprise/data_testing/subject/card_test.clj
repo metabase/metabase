@@ -155,19 +155,42 @@
         (is (= #{(table-ref :venues)}
                (tables-read (data-testing.subject/subject-plan :card (saved-card over-model-id)))))))))
 
-(deftest card-with-a-required-parameter-and-no-value-is-uncompilable-test
+(defn- refusal
+  "The `:error-type` and message of the refusal `thunk` throws, or nil when it does not throw."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch ExceptionInfo e
+      {:error-type (:error-type (ex-data e)) :message (ex-message e)})))
+
+(deftest card-with-a-parameter-and-no-default-is-refused-test
   (mt/test-driver :h2
-    (let [{:keys [schema name]} (table-ref :people)]
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query
-                                                (native-query
-                                                 (str "SELECT * FROM " schema "." name " WHERE source = {{source}}")
-                                                 "source" {:type         :text
-                                                           :name         "source"
-                                                           :display-name "Source"
-                                                           :required     true})}]
-        (testing "a card whose query does not compile is refused as uncompilable"
-          (is (= ::data-testing.errors/uncompilable-subject
-                 (refusal-type #(data-testing.subject/subject-plan :card (saved-card card-id))))))))))
+    (let [{:keys [schema name]} (table-ref :people)
+          people                (str schema "." name)
+          tag                   (fn [tag-name & {:as more}]
+                                  (merge {:type :text :name tag-name :display-name tag-name} more))
+          plan-of               (fn [query]
+                                  (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+                                    (refusal #(data-testing.subject/subject-plan :card (saved-card card-id)))))]
+      (testing "a required parameter with no default: the refusal says card tests cannot set it"
+        (is (= {:error-type ::data-testing.errors/uncompilable-subject
+                :message    (str "This card has a parameter with no default value: source. "
+                                 "Card tests cannot set parameter values.")}
+               (plan-of (native-query (str "SELECT * FROM " people " WHERE source = {{source}}")
+                                      "source" (tag "source" :required true))))))
+      (testing "a parameter outside an optional clause with no default is refused the same way"
+        (is (= {:error-type ::data-testing.errors/uncompilable-subject
+                :message    (str "This card has a parameter with no default value: source. "
+                                 "Card tests cannot set parameter values.")}
+               (plan-of (native-query (str "SELECT * FROM " people " WHERE source = {{source}}")
+                                      "source" (tag "source"))))))
+      (testing "control: a required parameter with a default compiles at its default"
+        (is (nil? (plan-of (native-query (str "SELECT * FROM " people " WHERE source = {{source}}")
+                                         "source" (tag "source" :required true :default "Google"))))))
+      (testing "control: a parameter in an optional clause compiles without a value"
+        (is (nil? (plan-of (native-query (str "SELECT * FROM " people " WHERE 1 = 1 [[AND source = {{source}}]]")
+                                         "source" (tag "source")))))))))
 
 (deftest card-on-a-database-without-testing-is-refused-test
   (mt/test-driver :h2

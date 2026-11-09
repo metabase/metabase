@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.subject.card
   "The `:card` subject: a question, model or metric, whose result set expectation SQL names as `{{output}}`."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
@@ -16,6 +17,15 @@
 (def ^:private output-token
   "{{output}}")
 
+(defn- parameters-without-default
+  "The names, sorted, of the template tags of `query` that take a value and have no default."
+  [query]
+  (->> (lib/template-tags query)
+       (remove (comp #{:card :snippet} :type))
+       (remove (comp some? :default))
+       (map :name)
+       sort))
+
 (mu/defmethod data-testing.subject/subject-plan :card :- ::data-testing.subject/subject-plan
   [_subject-type
    {query :dataset_query card-name :name} :- ::data-testing.subject/card]
@@ -30,7 +40,11 @@
           (catch Exception e
             (throw (data-testing.errors/ex
                     ::data-testing.errors/uncompilable-subject
-                    (tru "The query under test could not be compiled to SQL: {0}" (ex-message e))
+                    ;; A parameter with no value is the usual reason, and a test has no way to give one.
+                    (if-let [tag-names (seq (parameters-without-default query))]
+                      (tru "This card has a parameter with no default value: {0}. Card tests cannot set parameter values."
+                           (str/join ", " tag-names))
+                      (tru "The query under test could not be compiled to SQL: {0}" (ex-message e)))
                     {}
                     e))))]
     {:database      database

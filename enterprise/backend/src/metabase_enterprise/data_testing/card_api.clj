@@ -47,7 +47,9 @@
 
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/card-test
   "Create a card test. Its expectations read the result of the card's query without remapped columns and without the
-  default row limit."
+  default row limit.
+
+  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values."
   [_route-params
    _query-params
    {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]
@@ -56,7 +58,9 @@
   (data-testing.db/insert-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
-  "Update a card test."
+  "Update a card test.
+
+  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -81,6 +85,8 @@
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
   "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the
   database of that query.
+
+  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
