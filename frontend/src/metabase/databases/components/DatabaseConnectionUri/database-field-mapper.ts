@@ -154,6 +154,19 @@ function mapOracleValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
+// The string names no host, since that depends on the account's region. Other params configure DuckDB's own
+// client, so they would break the Postgres connection if copied into the additional options.
+function mapMotherDuckValues(parsedValues: RegexFields) {
+  const database = parsedValues.database || undefined;
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.dbname", database],
+    ["name", database],
+    ["details.password", parsedValues.params?.motherduck_token],
+  ]);
+
+  return fieldsMap;
+}
+
 function mapPostgresValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues.host],
@@ -349,6 +362,7 @@ export function mapDatabaseValues(
     .with([P.union("druid", "avatica"), P.union("druid", "druid-jdbc")], () =>
       mapDruidValues(parsedValues),
     )
+    .with(["md", "motherduck"], () => mapMotherDuckValues(parsedValues))
     .with(["mysql", "mysql"], () => mapMysqlValues(parsedValues))
     .with(["oracle", "oracle"], () => mapOracleValues(parsedValues))
     .with([P.union("postgres", "postgresql"), "postgres"], () =>

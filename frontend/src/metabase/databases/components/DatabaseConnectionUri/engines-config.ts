@@ -14,6 +14,7 @@ export const enginesConfig: Record<EngineKey, Placeholder> = {
   databricks:
     "jdbc:databricks://127.0.0.1:8123;httpPath=/sql/1.0/endpoints/abc;OAuthSecret=1234567890;OAuth2ClientId=xyz",
   mongo: undefined,
+  motherduck: "jdbc:duckdb:md:my_db",
   mysql: "jdbc:mysql://user:pass@host:3306/dbname?ssl=true",
   oracle:
     "jdbc:oracle:thin:@mydbhost:1521/mydbservice?ssl_server_cert_dn=ServerDN",
