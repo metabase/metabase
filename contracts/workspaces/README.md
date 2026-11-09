@@ -2,7 +2,7 @@
 
 > **Question this answers:** What exactly can a caller (MB Code desktop, CI) ask of the parent Metabase and of a sidecar Metabase to get an isolated warehouse login, what does it get back, and which parts are on master, in an open hardening PR, or still to do for MB Code?
 
-A workspace is a warehouse login plus a scratch namespace. The login reads the database's input schemas and writes only to the scratch namespace. A local Metabase (the sidecar) redirects transform output, and later reads of it, into the scratch namespace.
+A workspace spans one or more databases. For each, it has a warehouse login and a scratch namespace: the login reads that database's input schemas and writes only to its scratch namespace. A local Metabase (the sidecar) redirects transform output, and later reads of it, into the scratch namespace.
 
 This is the workspace layer. It is not the agent-facing API: "give me a safe place to run a transform", backed by a workspace or a staging database, is a layer above this and is not designed yet.
 
@@ -14,7 +14,7 @@ This is the workspace layer. It is not the agent-facing API: "give me a safe pla
 | `config.schema.json` | parent -> sidecar: the `config.yml` from `GET /{id}/config` | JSON Schema 2020-12 |
 | `sidecar.openapi.yaml` | caller -> sidecar: `/api/ee/workspace-instance` | OpenAPI 3.1 |
 
-The spec files tag every operation and field that differs from master with `x-status`: `master` (on master at `061dee78c2d`), `hardening` (an open PR, named in `x-pr`) or `proposed` (not built). `x-source` names the implementation; `EE/` is `enterprise/backend/src/metabase_enterprise/workspaces/`. The sections below follow the same split.
+Every operation in the specs carries `x-status`: `master` (on master at `061dee78c2d`) or `proposed` (not built). A response or field that an open hardening PR adds carries `x-status: hardening` and `x-pr`; one that exists on master but that a PR changes carries `x-pr` only, with the change in its description. `config.schema.json` lists the PRs that change `details` as a whole under `x-hardening`. Hardening PRs that change behavior but no request or response shape are only in section 2 below. `x-source` names the implementation; `EE/` is `enterprise/backend/src/metabase_enterprise/workspaces/`. The specs list every operation with its auth, 402/403/404 responses and error bodies; this README covers the flows. The sections below follow the same split.
 
 ## 1. On master
 
@@ -48,7 +48,7 @@ sequenceDiagram
     P-->>C: 204
 ```
 
-A sidecar that already holds the databases can enter workspace mode without a restart: `POST /api/ee/workspace-instance/current`, keyed by database id. Booting from `config.yml` needs the `:config-text-file` feature for every section except `settings`, and `:workspaces` for the `workspace` section.
+A sidecar that already holds the databases can enter workspace mode without a restart: `POST /api/ee/workspace-instance/current`, keyed by database id. The ids are not checked against the sidecar's databases. A sidecar booted from a `config.yml` with a `workspace:` section is locked: `POST` and `DELETE /current` return 400. Booting from `config.yml` needs the `:config-text-file` feature for every section except `settings`, and `:workspaces` for the `workspace` section.
 
 ### A failed create
 
@@ -71,14 +71,14 @@ sequenceDiagram
     else Teardown fails
         P->>P: Keep the workspace. Rows whose destroy failed become<br/>unprovisioned, rows torn down are gone, a row whose teardown<br/>failed before destroy keeps its status
         P-->>C: 200 Workspace
-        Note over C: Looks like success. The create failed unless databases<br/>has one entry per requested id and each is provisioned
+        Note over C: Looks like success. The create failed unless databases<br/>has one entry per requested id and each is provisioned.<br/>If it failed, DELETE the workspace
     end
 ```
 
 ### Rules a caller can rely on
 
 - No manager response carries a credential. Only `GET /{id}/config` does.
-- The warehouse enforces isolation: the workspace user has no write grant outside its scratch namespace. A sidecar bug cannot write production.
+- The warehouse enforces isolation: the workspace user gets no write grant outside its scratch namespace. A sidecar bug cannot write production through the workspace's own grants. On master, a grant to PUBLIC on an input schema still applies to the workspace user; #86588 refuses to provision while one exists.
 - `input_schemas` is fixed at create.
 - Workspace names are not unique. For idempotent create, pick a unique name and find it with `GET /` after a lost response.
 - `config.yml` supports `{{env VAR}}` in any value, so a caller can keep secrets out of the file and pass them as environment variables or JVM system properties.
@@ -86,7 +86,7 @@ sequenceDiagram
 
 ## 2. Open hardening PRs
 
-These keep the API shape. Two change a flow; the rest change what happens inside one step.
+These keep every endpoint and request shape. Some change responses (new status codes, `cleanup_required`, which databases are eligible), tagged in the specs as described above. Two change a flow; the rest change what happens inside one step.
 
 ### A failed create, with #86601
 
@@ -98,13 +98,13 @@ sequenceDiagram
 
     C->>P: POST /api/ee/workspace-manager
     P->>W: init, grant
-    W--xP: Fails, for example 409 role exists (PR 86587)<br/>or 412 precondition (PR 86588)
+    W--xP: Fails, for example 409 role exists or lock held (PR 86587)<br/>or 412 precondition (PR 86588)
     P->>W: Teardown every database
     alt Teardown succeeds and the workspace row is deleted
         P-->>C: The driver's status (409, 412, else 500)<br/>{message, cleanup_required: false}
     else Teardown fails, or the row delete fails
         P-->>C: 500 {message, cleanup_required: true}
-        C->>P: DELETE /{id} (retry until 204)
+        C->>P: DELETE /{id} (retry until 204, or 404 if already gone)
     end
 ```
 
@@ -146,7 +146,7 @@ sequenceDiagram
 | #86603 | Refuse actions and data-grid edits in workspace mode |
 | #86605 | Check the remapped target when a transform is created or retargeted |
 | #86600 | Skip remapping lookups on instances that have no remappings |
-| #86610 | Sync filter patterns match each input schema name literally |
+| #86610 | Schema and dataset filter patterns match each input schema name literally (ClickHouse filters are plain names and stay unescaped) |
 | #86612 | Refuse (400) to create on a database with schemas but no synced input schemas |
 
 ## 3. Follow-ups for MB Code: backend (proposed)
@@ -157,9 +157,9 @@ Sketches to discuss, not commitments. Marked `proposed` in the specs.
 | --- | --- |
 | Delete a kept workspace without a name lookup | `workspace_id` in the failed-create error body |
 | Read a schema created after the workspace | `POST /{id}/schemas` `{database_id, add, remove}` (ENG-14446). Needs a revoke driver method |
-| Shadow a table up front, or stop shadowing it | `POST /table-remappings`, `DELETE /table-remappings/{id}` on the sidecar. Open: copy or empty, and how a copy avoids handing the agent credentials |
+| Shadow a table up front, or stop shadowing it | `POST /table-remappings`, `DELETE /table-remappings/{id}` on the sidecar. Open: copy or empty, how a copy avoids handing the agent credentials, and whether this belongs on the sidecar or the parent |
 | A database added to a live workspace | Nothing proposed. Create a new workspace and restart the sidecar |
-| Strictly read-only credentials (no scratch) | Nothing proposed; not in the specs. Section 4 covers main's read-only boot without it |
+| Strictly read-only credentials (no scratch) | Nothing proposed; not in the specs. Section 4 covers main's boot without production writes |
 
 ```mermaid
 sequenceDiagram
@@ -172,7 +172,7 @@ sequenceDiagram
     P->>W: GRANT read on finance to the workspace user
     P-->>A: 200 Workspace, input_schemas now includes finance
     A->>P: GET /{id}/config
-    A->>S: Apply the new sync filter
+    A->>S: Restart with the new config.yml (new sync filter)
     A->>S: POST /table-remappings {database_id, from_schema: sales, from_table_name: orders}
     S-->>A: 200 TableRemapping
     A->>S: DELETE /table-remappings/{id}
@@ -187,10 +187,10 @@ Changes in metabase/mbcode, no backend work needed.
 | --- | --- |
 | On a failed create with `cleanup_required: true`, keep the ledger entry as owing a delete | With #86601 the parent keeps that workspace; removing the entry leaks it |
 | On master, treat a `200` as failed unless every requested database is present and `provisioned` | A teardown that fails before destroy can leave a row `provisioned` |
-| Boot main's Metabase without the `workspace:` section | Read-only credentials for main with no remapping, below |
+| Boot main's Metabase without the `workspace:` section | Main cannot write production and nothing is remapped, below |
 | Bump the pinned head image after the hardening PRs merge | The sidecar only gets the fixes in section 2 from a newer build |
 
-### Main's Metabase: read-only, no remapping
+### Main's Metabase: no production writes, no remapping
 
 ```mermaid
 sequenceDiagram
@@ -209,7 +209,7 @@ sequenceDiagram
     M-xW: Writes outside scratch are refused by the warehouse
 ```
 
-On Postgres older than 15, PUBLIC can create tables in `public` by default; #86588 refuses to provision until that is revoked.
+The login can still write to its own scratch namespace, so it is not strictly read-only. The trimmed file is an ordinary `config.yml`, not a `config.schema.json` document: that schema describes the file the parent returns, before a caller removes sections or templates values with `{{env VAR}}`. On Postgres older than 15, PUBLIC can create tables in `public` by default; when `public` is an input schema, #86588 refuses to provision until that grant is revoked.
 
 ### Keeping a workspace the parent kept
 

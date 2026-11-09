@@ -5,10 +5,15 @@ info:
   description: |
     The API a caller (MB Code desktop, CI) uses to get an isolated warehouse login from the parent Metabase.
 
-    Every operation and field carries `x-status`:
-    - `master`: on metabase/metabase master (061dee78c2d).
-    - `hardening`: changed by an open hardening PR, named in `x-pr`. Not on master yet.
-    - `proposed`: needed by MB Code, not built. Shape is a sketch, not a commitment.
+    Tagging:
+    - Every operation carries `x-status`: `master` (on metabase/metabase master, 061dee78c2d) or `proposed`
+      (needed by MB Code, not built; a sketch, not a commitment).
+    - A response or field that an open hardening PR adds carries `x-status: hardening` and `x-pr`.
+    - A response or field that exists on master but that an open PR changes carries `x-pr`; its description says
+      what changes. Not on master until the PR merges.
+    - `config.schema.json` lists the PRs that change `details` as a whole under `x-hardening`.
+    - Hardening PRs that change behavior but no request or response shape (for example #86604) are not in the
+      specs; README section 2 lists them.
 
     `x-source` points at the implementation, relative to the repo root.
     `EE` below means `enterprise/backend/src/metabase_enterprise/workspaces/`.
@@ -63,6 +68,7 @@ paths:
             schema: { $ref: "#/components/schemas/CreateWorkspaceRequest" }
       responses:
         "200":
+          x-pr: [86601]
           description: |
             master: the workspace. Also returned when provisioning AND its cleanup failed: the workspace is kept,
             the databases whose teardown succeeded are gone from `databases`, and each remaining one is
@@ -75,6 +81,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Workspace" }
         "400":
+          x-pr: [86612, 86589]
           description: |
             Invalid body; or a database is not eligible (driver lacks `:workspace`, the database-local setting
             `database-enable-workspaces` is off, or it is a router database).
@@ -107,6 +114,7 @@ paths:
           content:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
         "500":
+          x-pr: [86601]
           description: |
             master: provisioning failed and cleanup succeeded. Nothing is left in the warehouse; if deleting the
             Workspace row then failed, that row (with no databases) is left behind.

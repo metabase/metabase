@@ -49,12 +49,13 @@
         "schema-filters-type": { "const": "inclusion", "description": "Engines with schemas that sync through metabase.driver.sync (Postgres, Redshift, SQL Server)." },
         "schema-filters-patterns": {
           "type": "string",
+          "x-pr": 86610,
           "description": "Comma-separated input schemas. hardening (#86610): each name is escaped so it matches only itself (non-[A-Za-z0-9_] characters become \\x{HEX})."
         },
         "db-filters-type": { "const": "inclusion", "description": "ClickHouse." },
-        "db-filters-patterns": { "type": "string", "description": "ClickHouse: comma-separated input schemas, unescaped." },
+        "db-filters-patterns": { "type": "string", "description": "ClickHouse: comma-separated input schemas, unescaped, also after #86610 (ClickHouse reads them as names, not patterns)." },
         "dataset-filters-type": { "const": "inclusion", "description": "BigQuery." },
-        "dataset-filters-patterns": { "type": "string", "description": "BigQuery: comma-separated input datasets, escaped like schema-filters-patterns (#86610)." }
+        "dataset-filters-patterns": { "type": "string", "x-pr": 86610, "description": "BigQuery: comma-separated input datasets, escaped like schema-filters-patterns (#86610)." }
       },
       "x-hardening": [
         {
