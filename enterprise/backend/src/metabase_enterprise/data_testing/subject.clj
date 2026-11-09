@@ -6,8 +6,10 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.queries.schema :as queries.schema]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -17,11 +19,17 @@
 
 (mr/def ::subject-type
   "The kinds of entity a test can run."
-  [:enum :transform])
+  [:enum :transform :card])
+
+(mr/def ::card
+  "A card a test can run: a saved Card, or a card that is not saved, which needs only its `:dataset_query`."
+  [:and
+   ::queries.schema/card
+   [:map [:dataset_query ::lib.schema/query]]])
 
 (mr/def ::subject
   "An entity a test can run, of one of the [[::subject-type]]s."
-  [:or ::transforms.schema/transform.definition])
+  [:or ::transforms.schema/transform.definition ::card])
 
 (mr/def ::subject-plan
   "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,

@@ -30,6 +30,7 @@
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.subject.card]
    [metabase-enterprise.data-testing.subject.transform]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
@@ -51,6 +52,7 @@
 (comment
   metabase-enterprise.data-testing.expectations.empty/keep-me
   metabase-enterprise.data-testing.expectations.equals/keep-me
+  metabase-enterprise.data-testing.subject.card/keep-me
   metabase-enterprise.data-testing.subject.transform/keep-me)
 
 (mr/def ::labels
