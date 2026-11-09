@@ -594,6 +594,8 @@
                  "finalize-assistant-turn! was called even though the client disconnected")
              (is (false? (:finished? stored-kwargs))
                  "the finalized turn is marked :finished? false — the cancel was detected")
+             (is (= conversation-id (:conversation-id stored-kwargs))
+                 "the finalized turn gets the conversation id for the large-message warn")
              (is (= 2 (count (t2/select :model/MetabotMessage
                                         :conversation_id conversation-id)))
                  "start-turn! inserted exactly user + placeholder; no extra row from finalize"))))))))

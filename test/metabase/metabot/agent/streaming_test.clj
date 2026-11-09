@@ -127,6 +127,8 @@
     (is (false? (streaming/persistable-data-part? (streaming/search-results-part {:total_count 0 :results []})))))
   (testing "tool-title parts are not persisted (they render under the ephemeral chain of thought)"
     (is (false? (streaming/persistable-data-part? (streaming/tool-title-part "[Orders](metabase://table/1)")))))
+  (testing "research-plan-update parts are not persisted (the picker hydration is live-stream only)"
+    (is (false? (streaming/persistable-data-part? (streaming/research-plan-update-part {:groups []})))))
   (testing "other parts are persisted"
     (is (true? (streaming/persistable-data-part? {:type :data :data-type "todo_list" :data []})))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
