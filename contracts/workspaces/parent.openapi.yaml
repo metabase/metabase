@@ -13,7 +13,8 @@ info:
       what changes. Not on master until the PR merges.
     - `config.schema.json` lists the PRs that change `details` as a whole under `x-hardening`.
     - Hardening PRs that change behavior but no request or response shape (for example #86604) are not in the
-      specs; README section 2 lists them.
+      specs; the Linear doc "Workspaces API contract" lists them
+      (https://linear.app/metabase/document/workspaces-api-contract-018c0d7bc9ca).
 
     `x-source` points at the implementation, relative to the repo root.
     `EE` below means `enterprise/backend/src/metabase_enterprise/workspaces/`.
