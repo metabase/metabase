@@ -18,12 +18,11 @@
   (into [] (comp (partition-all serialization.util/batch-size) (mapcat #(f (vec %)))) xs))
 
 (defn ref-columns
-  "The columns whose values identify a row of `model`: the email of a User, the name of a Database, and otherwise its
-  identity columns, which for a Table or Field hold ids rather than the names of its ref."
+  "The columns whose values identify a row of `model`: the email of a User, and otherwise its identity columns, which
+  for a Table or Field hold ids rather than the names of its ref."
   [model]
-  (case model
-    :model/User     [:email]
-    :model/Database [:name]
+  (if (= :model/User model)
+    [:email]
     (serialization.spec/identity-columns model)))
 
 (defn row-ref
