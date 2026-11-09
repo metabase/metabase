@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useListMetabotsQuery } from "metabase/metabot";
@@ -13,12 +14,17 @@ import {
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import { queryToSearch, useSearchParams } from "metabase/router";
-import { useAdminSetting, useSetting } from "metabase/settings";
 import {
+  useAdminSetting,
+  useSetting,
+  useSettingSwitch,
+} from "metabase/settings";
+import {
+  SettingHeader,
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components";
-import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
+import { Box, Divider, Flex, Stack, Switch, Tabs, Text } from "metabase/ui";
 
 import { AIModelSettingsSection } from "./AIModelSettingsSection";
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
@@ -35,6 +41,7 @@ const MODELS_SECTION_ID = "models";
 const METABOT_SECTION_ID = "metabot";
 const MCP_SECTION_ID = "mcp";
 const AGENT_API_SECTION_ID = "agent-api";
+const DEPRECATED_AGENT_API_SETTING_ID = "deprecated-agent-api";
 const AI_FEATURES_ENABLED_SECTION_ID = "ai-features-enabled";
 const METABOT_SETTINGS_PATH = "/admin/metabot";
 const METABOT_ID_QUERY_PARAM = "metabot_id";
@@ -146,7 +153,60 @@ function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
       id={AGENT_API_SECTION_ID}
       onChange={handleAgentApiChange}
       title={t`Agent API`}
-    />
+    >
+      {isAgentApiEnabled && <DeprecatedAgentApiToggle />}
+    </ToggleSettingsSection>
+  );
+}
+
+function DeprecatedAgentApiToggle() {
+  const { checked, envName, isBusy, onChange } = useSettingSwitch(
+    "deprecated-agent-api-enabled?",
+  );
+  const label = t`Keep using the deprecated Agent API`;
+  const isSetByEnv = envName != null;
+  const descriptionId = useId();
+  const envMessageId = useId();
+
+  return (
+    <Box>
+      <SettingHeader
+        id={DEPRECATED_AGENT_API_SETTING_ID}
+        title={t`Deprecation`}
+        description={
+          <span id={descriptionId}>
+            {t`The Agent API is deprecated and will be removed in a future version. It's off by default. Turn this on to keep using it until then.`}
+          </span>
+        }
+      />
+      <Flex align="center" gap="lg" mt="lg">
+        <Switch
+          id={DEPRECATED_AGENT_API_SETTING_ID}
+          aria-label={label}
+          aria-describedby={
+            isSetByEnv ? `${descriptionId} ${envMessageId}` : descriptionId
+          }
+          checked={checked}
+          disabled={isSetByEnv}
+          // aria-disabled, not disabled, so focus stays on the switch during a write
+          aria-disabled={isBusy || undefined}
+          onChange={(e) => {
+            if (!isBusy) {
+              onChange(e.target.checked);
+            }
+          }}
+          w="auto"
+        />
+        <Text c={checked ? "text-primary" : "text-secondary"} fw="500">
+          {label}
+        </Text>
+      </Flex>
+      {isSetByEnv && (
+        <Box id={envMessageId}>
+          <SetByEnvVar varName={envName} />
+        </Box>
+      )}
+    </Box>
   );
 }
 
@@ -213,6 +273,7 @@ function MetabotSettingsSection({
 
 function ToggleSettingsSection({
   checked,
+  children,
   description,
   disabled,
   id,
@@ -220,6 +281,7 @@ function ToggleSettingsSection({
   title,
 }: {
   checked: boolean;
+  children?: ReactNode;
   description: ReactNode;
   disabled: boolean;
   id: string;
@@ -243,7 +305,8 @@ function ToggleSettingsSection({
       }
       description={description}
     >
-      <></>
+      {/* SettingsSection renders nothing for a falsy child; the title row is the content here */}
+      {children || <></>}
     </SettingsSection>
   );
 }

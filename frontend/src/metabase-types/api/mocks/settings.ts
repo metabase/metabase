@@ -334,6 +334,7 @@ export const createMockSettings = (
   "mcp-enabled?": true,
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "metabot-query-execution-enabled?": true,
+  "deprecated-agent-api-enabled?": false,
   "native-query-autocomplete-match-style": "substring",
   "openai-api-key": null,
   "openai-organization": null,

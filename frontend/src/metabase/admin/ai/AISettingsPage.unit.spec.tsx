@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -21,6 +22,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { waitForRequest } from "__support__/utils";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
@@ -58,17 +60,21 @@ function getInitialRoute(page: Page) {
   }
 }
 
-const setup = async ({
-  aiFeaturesEnabled = true,
-  enableEmbedding = false,
-  contentVerification = false,
-  initialRoute,
-  isConfigured = true,
-  metabots = buildDefaultMetabots(),
-  collections = defaultSeedCollections,
-  page = "ai-features",
-}: {
+const DEPRECATED_AGENT_API_LABEL = "Keep using the deprecated Agent API";
+
+const deprecatedAgentApiSwitch = () =>
+  screen.findByRole("switch", { name: DEPRECATED_AGENT_API_LABEL });
+
+const getLastSettingUpdateCall = (settingKey: string) =>
+  fetchMock.callHistory.lastCall(
+    `path:/api/setting/${encodeURIComponent(settingKey)}`,
+  );
+
+type SetupOpts = {
   aiFeaturesEnabled?: boolean;
+  agentApiEnabled?: boolean;
+  deprecatedAgentApiEnabled?: boolean;
+  deprecatedAgentApiEnvName?: string;
   enableEmbedding?: boolean;
   contentVerification?: boolean;
   initialRoute?: string;
@@ -78,7 +84,21 @@ const setup = async ({
     typeof setupCollectionByIdEndpoint
   >[0]["collections"];
   page?: Page;
-} = {}) => {
+};
+
+const setup = async ({
+  aiFeaturesEnabled = true,
+  agentApiEnabled = true,
+  deprecatedAgentApiEnabled = false,
+  deprecatedAgentApiEnvName,
+  enableEmbedding = false,
+  contentVerification = false,
+  initialRoute,
+  isConfigured = true,
+  metabots = buildDefaultMetabots(),
+  collections = defaultSeedCollections,
+  page = "ai-features",
+}: SetupOpts = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
     content_verification: contentVerification,
@@ -89,7 +109,8 @@ const setup = async ({
 
   const settings = createMockSettings({
     "ai-features-enabled?": aiFeaturesEnabled,
-    "agent-api-enabled?": true,
+    "agent-api-enabled?": agentApiEnabled,
+    "deprecated-agent-api-enabled?": deprecatedAgentApiEnabled,
     "embedded-metabot-enabled?": true,
     "llm-metabot-configured?": isConfigured,
     "llm-metabot-provider": null,
@@ -103,6 +124,12 @@ const setup = async ({
     createMockSettingDefinition({
       key: "llm-metabot-provider",
       value: null,
+    }),
+    createMockSettingDefinition({
+      key: "deprecated-agent-api-enabled?",
+      value: deprecatedAgentApiEnvName ? undefined : deprecatedAgentApiEnabled,
+      is_env_setting: deprecatedAgentApiEnvName != null,
+      env_name: deprecatedAgentApiEnvName,
     }),
   ]);
   setupUpdateSettingEndpoint();
@@ -211,6 +238,63 @@ describe("AISettingsPage", () => {
 
     expect(screen.getByRole("switch", { name: "MCP server" })).toBeEnabled();
     expect(screen.getByRole("switch", { name: "Agent API" })).toBeEnabled();
+  });
+
+  it.each([false, true])(
+    "shows the deprecated Agent API opt-in with the setting's value: %s",
+    async (deprecatedAgentApiEnabled) => {
+      await setup({ page: "mcp", deprecatedAgentApiEnabled });
+
+      expect(
+        await screen.findByRole("switch", {
+          name: DEPRECATED_AGENT_API_LABEL,
+          checked: deprecatedAgentApiEnabled,
+        }),
+      ).toBeInTheDocument();
+      expect(await deprecatedAgentApiSwitch()).toHaveAccessibleDescription(
+        /The Agent API is deprecated/,
+      );
+    },
+  );
+
+  it("persists opting in to the deprecated Agent API", async () => {
+    await setup({ page: "mcp" });
+
+    await userEvent.click(await deprecatedAgentApiSwitch());
+    await waitForRequest(() =>
+      getLastSettingUpdateCall("deprecated-agent-api-enabled?"),
+    );
+    const call = getLastSettingUpdateCall("deprecated-agent-api-enabled?");
+    expect(call?.options?.body).toBe(JSON.stringify({ value: true }));
+  });
+
+  it("locks the deprecated Agent API opt-in to the value an env var sets", async () => {
+    await setup({
+      page: "mcp",
+      deprecatedAgentApiEnabled: true,
+      deprecatedAgentApiEnvName: "MB_DEPRECATED_AGENT_API_ENABLED",
+    });
+
+    const toggle = await deprecatedAgentApiSwitch();
+    expect(
+      await screen.findByTestId("setting-env-var-message"),
+    ).toHaveTextContent("MB_DEPRECATED_AGENT_API_ENABLED");
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeDisabled();
+    expect(toggle).toHaveAccessibleDescription(
+      /set by the MB_DEPRECATED_AGENT_API_ENABLED environment variable/,
+    );
+  });
+
+  it("hides the deprecated Agent API opt-in while the Agent API is off", async () => {
+    await setup({ page: "mcp", agentApiEnabled: false });
+
+    expect(
+      await screen.findByRole("switch", { name: "Agent API" }),
+    ).not.toBeChecked();
+    expect(
+      screen.queryByRole("switch", { name: DEPRECATED_AGENT_API_LABEL }),
+    ).not.toBeInTheDocument();
   });
 
   it("disables MCP settings when all AI features are disabled", async () => {
