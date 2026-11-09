@@ -50,13 +50,13 @@ export function useColumnFormulaBar({
     open: claimOwnership,
     close: releaseOwnership,
   } = useFormulaBarOwnership();
-  const [editorKey, setEditorKey] = useState<number | null>(null);
-  const nextEditorKey = useRef(0);
+  const [editorKey, setEditorKey] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [shouldRestoreFocus, setShouldRestoreFocus] = useState(false);
   const viewRef = useRef<EditorView | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
-  const shouldRestoreFocus = useRef(false);
   const open = useCallback(() => {
-    if (isOwner && editorKey != null) {
+    if (isOwner && isOpen) {
       viewRef.current?.focus();
       return;
     }
@@ -64,14 +64,14 @@ export function useColumnFormulaBar({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    nextEditorKey.current += 1;
+    setEditorKey((key) => key + 1);
     claimOwnership();
-    setEditorKey(nextEditorKey.current);
-  }, [editorKey, isOwner, claimOwnership]);
+    setIsOpen(true);
+  }, [isOpen, isOwner, claimOwnership]);
   const close = () => {
-    shouldRestoreFocus.current = true;
+    setShouldRestoreFocus(true);
     releaseOwnership();
-    setEditorKey(null);
+    setIsOpen(false);
     viewRef.current = null;
   };
 
@@ -86,20 +86,20 @@ export function useColumnFormulaBar({
 
   useEffect(() => {
     if (!isEnabled || !isOwner) {
-      setEditorKey(null);
+      setIsOpen(false);
       viewRef.current = null;
       releaseOwnership();
     }
   }, [isEnabled, isOwner, releaseOwnership]);
 
   useEffect(() => {
-    if (editorKey == null && shouldRestoreFocus.current) {
-      shouldRestoreFocus.current = false;
+    if (!isOpen && shouldRestoreFocus) {
+      setShouldRestoreFocus(false);
       if (triggerRef.current?.isConnected) {
         triggerRef.current.focus();
       }
     }
-  }, [editorKey]);
+  }, [isOpen, shouldRestoreFocus]);
 
   const query = useMemo(
     () =>
@@ -108,7 +108,7 @@ export function useColumnFormulaBar({
   );
   const databaseId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
-    editorKey != null && databaseId != null ? { id: databaseId } : skipToken,
+    isOpen && databaseId != null ? { id: databaseId } : skipToken,
   );
 
   const handleSubmit = ({ name, clause }: NamedExpression) => {
@@ -122,7 +122,7 @@ export function useColumnFormulaBar({
     formulaBarSlot &&
     createPortal(
       <FormulaBarFrame>
-        {isEnabled && isOwner && editorKey != null ? (
+        {isEnabled && isOwner && isOpen ? (
           <FormulaEditor
             key={editorKey}
             query={query}

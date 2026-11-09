@@ -18,21 +18,21 @@ import {
 } from "../../../FormulaBar";
 import type { SummaryWellId } from "../types";
 
-import type { SummaryFormulaInput } from "./types";
+import type {
+  SummaryFormulaBarOptions,
+  SummaryFormulaDraft,
+  SummaryFormulaInput,
+} from "./types";
 import { addSummaryFormula } from "./utils";
 
-type Options = {
-  query: Lib.Query;
-  stageIndex: number;
-  onAdd: (query: Lib.Query, wellId: SummaryWellId) => void;
-};
-
-type Draft = { key: number; wellId: SummaryWellId; source: string };
-
-export function useSummaryFormulaBar({ query, stageIndex, onAdd }: Options) {
+export function useSummaryFormulaBar({
+  query,
+  stageIndex,
+  onAdd,
+}: SummaryFormulaBarOptions) {
   const slot = useFormulaBarSlot();
   const ownership = useFormulaBarOwnership();
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<SummaryFormulaDraft | null>(null);
   const [draftName, setDraftName] = useState("");
   const viewRef = useRef<EditorView | null>(null);
   const nextKey = useRef(0);

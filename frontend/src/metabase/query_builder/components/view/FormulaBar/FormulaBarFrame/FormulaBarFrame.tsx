@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { Box } from "metabase/ui";
+import { isEmpty } from "metabase/utils/validate";
 
 import S from "./FormulaBarFrame.module.css";
 
@@ -15,7 +16,7 @@ const FORMULA_BAR_FRAME_TRANSITION_MS = 150;
 
 /** Keeps the closing editor mounted until its frame has collapsed. */
 export function FormulaBarFrame({ children }: { children: ReactNode }) {
-  const isOpen = children != null;
+  const isOpen = !isEmpty(children);
   const [lastBar, setLastBar] = useState<ReactNode>(children);
   const [isClosing, setIsClosing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -24,7 +25,7 @@ export function FormulaBarFrame({ children }: { children: ReactNode }) {
   if (isOpen && children !== lastBar) {
     setLastBar(children);
     setIsClosing(false);
-  } else if (!isOpen && lastBar != null && !isClosing) {
+  } else if (!isOpen && !isEmpty(lastBar) && !isClosing) {
     setIsClosing(true);
   }
 
@@ -58,7 +59,7 @@ export function FormulaBarFrame({ children }: { children: ReactNode }) {
         aria-hidden={!isOpen || undefined}
         inert={!isOpen || undefined}
       >
-        {children ?? lastBar}
+        {isOpen ? children : lastBar}
       </Box>
     </Box>
   );

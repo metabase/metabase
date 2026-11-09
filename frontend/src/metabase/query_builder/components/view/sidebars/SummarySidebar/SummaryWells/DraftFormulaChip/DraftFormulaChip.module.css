@@ -3,8 +3,7 @@
   align-items: center;
   gap: 0.25rem;
   max-width: 100%;
-  padding: calc(0.25rem - 1px) calc(0.25rem - 1px) calc(0.25rem - 1px)
-    calc(0.5rem - 1px);
+  padding: 0.1875rem 0.1875rem 0.1875rem 0.4375rem;
   border: 1px dashed var(--mb-color-core-summarize);
   border-radius: var(--mantine-radius-xxs);
   outline: 2px solid var(--mb-color-core-brand);
