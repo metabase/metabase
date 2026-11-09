@@ -3301,7 +3301,7 @@
       },
       "metabase-enterprise.data-testing.schema.data-test-run" : {
         "additionalProperties" : false,
-        "description" : "A persisted execution of a test of any type. `:test_id` is nil for a test that is not saved and for one that was\n  deleted.",
+        "description" : "A persisted execution of a test of any type. `:test_id` is nil for a run of a test that is not saved and for a run\n  of a test that was deleted.",
         "properties" : {
           "end_time" : {
             "anyOf" : [ {
@@ -3550,7 +3550,7 @@
         "type" : "object"
       },
       "metabase-enterprise.data-testing.schema.test-type" : {
-        "description" : "The kind of test a run ran, which names the table `test_id` points into.",
+        "description" : "The kind of test a run ran. It selects the table that `test_id` points into.",
         "enum" : [ "transform" ],
         "type" : "string"
       },

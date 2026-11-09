@@ -20,7 +20,7 @@
   (atom #{}))
 
 (def ^:private run-topics
-  ;; A topic per test type and event, as the audit log records each type's runs under its own topics.
+  ;; The audit topics of each test type's runs.
   {:transform {:start   :event/transform-test-run-start
                :timeout :event/transform-test-run-timeout}})
 
@@ -88,5 +88,5 @@
 
 (defmethod task/init! ::TransformTestRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transform-testing.reaper"
-                        :label   "transform test run"
+                        :label   "test run"
                         :reap-fn #(reap-orphaned-runs! heartbeat-stale-minutes)}))

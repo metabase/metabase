@@ -182,13 +182,13 @@
    :started :passed :failed :error :timeout])
 
 (mr/def ::test-type
-  "The kind of test a run ran, which names the table `test_id` points into."
+  "The kind of test a run ran. It selects the table that `test_id` points into."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
    :transform])
 
 (mr/def ::data-test-run
-  "A persisted execution of a test of any type. `:test_id` is nil for a test that is not saved and for one that was
-  deleted."
+  "A persisted execution of a test of any type. `:test_id` is nil for a run of a test that is not saved and for a run
+  of a test that was deleted."
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:test_type      ::test-type]
