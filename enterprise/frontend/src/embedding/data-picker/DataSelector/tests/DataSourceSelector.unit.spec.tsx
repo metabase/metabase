@@ -73,7 +73,7 @@ const OTHER_DB_ID = 2;
 const OTHER_DB_TABLE_ID = 9001;
 const REVENUE_METRIC_ID = 9002;
 
-const LIBRARY_DATA_SUBFOLDER = createMockCollection({
+const LIBRARY_DATA_SUBCOLLECTION = createMockCollection({
   id: 6468,
   name: "Finance",
   type: "library-data",
@@ -86,7 +86,7 @@ const LIBRARY_DATA_COLLECTION = createMockCollection({
   here: ["table"],
   below: ["table"],
   children: [
-    LIBRARY_DATA_SUBFOLDER,
+    LIBRARY_DATA_SUBCOLLECTION,
     createMockCollection({ id: 6469, name: "Drafts", type: "library-data" }),
   ],
 });
@@ -310,7 +310,7 @@ function setup({
       ],
     });
     setupCollectionItemsEndpoint({
-      collection: LIBRARY_DATA_SUBFOLDER,
+      collection: LIBRARY_DATA_SUBCOLLECTION,
       collectionItems: [
         createMockCollectionItem({
           id: ORDERS_ID,
@@ -1043,10 +1043,12 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
     });
 
-    it("should open on the Library folder holding the table, not Raw Data, when reopened with a published table", async () => {
+    it("should open on the Library collection holding the table, not Raw Data, when reopened with a published table", async () => {
       setup({
         ...setupOpts,
-        databases: createDatabasesWithOrdersPublishedIn(LIBRARY_DATA_SUBFOLDER),
+        databases: createDatabasesWithOrdersPublishedIn(
+          LIBRARY_DATA_SUBCOLLECTION,
+        ),
         libraryCollection: LIBRARY_COLLECTION,
         selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
       });
@@ -1063,7 +1065,7 @@ describe("DataSourceSelector", () => {
       ).toHaveTextContent("Data");
     });
 
-    it("should open on the Library folder holding the table when reopened with a published table and the user can't read Data itself", async () => {
+    it("should open on the Library collection holding the table when reopened with a published table and the user can't read Data itself", async () => {
       setup({
         ...setupOpts,
         databases: createDatabasesWithOrdersPublishedIn(CLIENT_B_COLLECTION),
@@ -1080,10 +1082,12 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
     });
 
-    it("should open the join on the Library folder holding the table when it is reopened with a published table", async () => {
+    it("should open the join on the Library collection holding the table when it is reopened with a published table", async () => {
       setup({
         ...setupOpts,
-        databases: createDatabasesWithOrdersPublishedIn(LIBRARY_DATA_SUBFOLDER),
+        databases: createDatabasesWithOrdersPublishedIn(
+          LIBRARY_DATA_SUBCOLLECTION,
+        ),
         libraryCollection: LIBRARY_COLLECTION,
         isJoinStep: true,
         selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
@@ -1110,11 +1114,11 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Finance Orders")).not.toBeInTheDocument();
     });
 
-    it("should open the tables, as core does, when reopened with a published table whose Library folder the user can't read", async () => {
+    it("should open the tables, as core does, when reopened with a published table whose Library collection the user can't read", async () => {
       setup({
         ...setupOpts,
         databases: createDatabasesWithOrdersPublishedIn(
-          LIBRARY_DATA_SUBFOLDER,
+          LIBRARY_DATA_SUBCOLLECTION,
           { isCollectionReadable: false },
         ),
         libraryCollection: LIBRARY_COLLECTION,
@@ -1129,7 +1133,9 @@ describe("DataSourceSelector", () => {
     it('should open the tables, not the Library, when reopened with a published table and `entityTypes` = ["table"]', async () => {
       setup({
         ...setupOpts,
-        databases: createDatabasesWithOrdersPublishedIn(LIBRARY_DATA_SUBFOLDER),
+        databases: createDatabasesWithOrdersPublishedIn(
+          LIBRARY_DATA_SUBCOLLECTION,
+        ),
         libraryCollection: LIBRARY_COLLECTION,
         entityTypes: ["table"],
         selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
@@ -1139,10 +1145,12 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Finance Orders")).not.toBeInTheDocument();
     });
 
-    it("should go back to the Data and Metrics folders from a reopened Library folder", async () => {
+    it("should go back to the Data and Metrics collections from a reopened Library collection", async () => {
       setup({
         ...setupOpts,
-        databases: createDatabasesWithOrdersPublishedIn(LIBRARY_DATA_SUBFOLDER),
+        databases: createDatabasesWithOrdersPublishedIn(
+          LIBRARY_DATA_SUBCOLLECTION,
+        ),
         libraryCollection: LIBRARY_COLLECTION,
         entityTypes: ["semantic-layer"],
         selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },

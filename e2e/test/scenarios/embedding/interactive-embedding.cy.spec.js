@@ -1261,7 +1261,7 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("data").findByText("Products").should("be.visible");
       });
 
-      it("should reopen a table published in a Library subfolder in the Library", () => {
+      it("should reopen a table published in a Library subcollection in the Library", () => {
         cy.signInAsAdmin();
         cy.request("GET", "/api/ee/library").then(({ body }) => {
           const dataCollection = body.effective_children.find(
@@ -1270,10 +1270,10 @@ describe("scenarios > embedding > full app", () => {
           H.createCollection({
             name: "Finance",
             parent_id: dataCollection.id,
-          }).then(({ body: subfolder }) => {
+          }).then(({ body: subcollection }) => {
             H.publishTables({
               table_ids: [PRODUCTS_ID],
-              collection_id: subfolder.id,
+              collection_id: subcollection.id,
             });
           });
         });
@@ -1345,7 +1345,7 @@ describe("scenarios > embedding > full app", () => {
         });
       });
 
-      it("should offer every Library subfolder the user can read when they can't read Data itself", () => {
+      it("should offer every Library subcollection the user can read when they can't read Data itself", () => {
         cy.signInAsAdmin();
         H.unpublishTables({ table_ids: [ORDERS_ID] });
         cy.request("GET", "/api/ee/library").then(({ body }) => {
