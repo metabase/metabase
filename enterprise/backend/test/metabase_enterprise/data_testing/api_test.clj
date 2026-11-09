@@ -367,10 +367,12 @@
     (mt/with-temp [:model/Transform        {transform-id :id} {}
                    :model/TransformTest    {test-id :id}      {:transform_id transform-id :name "a"}
                    :model/TransformTest    {never-id :id}     {:transform_id transform-id :name "b"}
-                   :model/DataTestRun _                  {:test_id test-id
+                   :model/DataTestRun _                  {:test_type :transform
+                                                          :test_id test-id
                                                           :status            :passed
                                                           :start_time        #t "2026-01-01T10:00:00Z"}
-                   :model/DataTestRun {new-id :id}       {:test_id test-id
+                   :model/DataTestRun {new-id :id}       {:test_type :transform
+                                                          :test_id test-id
                                                           :status            :failed
                                                           :start_time        #t "2026-02-01T10:00:00Z"}]
       (testing "the list carries each test's newest run"

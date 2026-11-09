@@ -119,7 +119,7 @@
                                   :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}]}]
     (binding [api/*current-user-id* (mt/user->id :crowberto)]
       (is (= expected (:status (data-testing.runner/run-saved-test! transform transform-test)))))
-    (let [run (t2/select-one :model/DataTestRun :test_id transform-test-id)]
+    (let [run (t2/select-one :model/DataTestRun :test_type :transform :test_id transform-test-id)]
       (is (= expected (:status run)))
       (is (= (mt/user->id :crowberto) (:initiated_by run)))
       (is (some? (:start_time run)))
@@ -151,7 +151,7 @@
                                         :sql  (str "SELECT * FROM " schema ".people_summary")}]}]
           (is (thrown? ExceptionInfo
                        (data-testing.runner/run-saved-test! transform transform-test)))
-          (let [run (t2/select-one :model/DataTestRun :test_id transform-test-id)]
+          (let [run (t2/select-one :model/DataTestRun :test_type :transform :test_id transform-test-id)]
             (is (= :error (:status run)))
             (is (some? (:end_time run)))))))))
 
@@ -250,6 +250,7 @@
               (is (re-find (re-pattern (str "(?i)" table)) (ex-message ex))))
             (testing "without creating a run"
               (is (false? (t2/exists? :model/DataTestRun
+                                      :test_type :transform
                                       :test_id (:id transform-test)))))))))))
 
 (deftest run-transform-test-rejects-partially-declared-inputs-test

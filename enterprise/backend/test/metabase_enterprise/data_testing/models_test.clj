@@ -248,10 +248,12 @@
 (deftest reap-orphaned-transform-test-runs-test
   (mt/with-temp [:model/Transform        {transform-id :id} {}
                  :model/TransformTest    {transform-test-id :id} {:transform_id transform-id}
-                 :model/DataTestRun {stale-id :id} {:test_id transform-test-id
-                                                         :last_heartbeat    (minutes-ago 10)}
-                 :model/DataTestRun {fresh-id :id} {:test_id transform-test-id
-                                                         :last_heartbeat    (minutes-ago 1)}]
+                 :model/DataTestRun {stale-id :id} {:test_type :transform
+                                                    :test_id transform-test-id
+                                                    :last_heartbeat    (minutes-ago 10)}
+                 :model/DataTestRun {fresh-id :id} {:test_type :transform
+                                                    :test_id transform-test-id
+                                                    :last_heartbeat    (minutes-ago 1)}]
     (testing "only a stale started run is reaped"
       (is (= [stale-id]
              (mapv :id (data-testing.run-tracking/reap-orphaned-runs! 5))))

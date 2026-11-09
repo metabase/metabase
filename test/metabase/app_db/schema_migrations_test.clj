@@ -4713,8 +4713,8 @@
           (is (true? (:collection_preview (card)))))))))
 
 (deftest data-test-run-test
-  (testing "pwaj0l..w3nb6y: transform_test_run becomes data_test_run, and the rollback restores it"
-    (impl/test-migrations ["pwaj0l" "w3nb6y"] [migrate!]
+  (testing "pwaj0l..k4zf7x: transform_test_run becomes data_test_run, and the rollback restores it"
+    (impl/test-migrations ["pwaj0l" "k4zf7x"] [migrate!]
       (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "Test"
                                                               :last_name     "Owner"
                                                               :email         "data-test-owner@test.com"
@@ -4744,7 +4744,8 @@
             run-row      (fn [id] {:transform_test_id id, :initiated_by user-id, :status "passed"})
             kept-run     (t2/insert-returning-pk! :transform_test_run (run-row test-id))
             unsaved-run  (t2/insert-returning-pk! :transform_test_run (run-row nil))
-            ;; Get the boundary before the changesets run, as `deactivate-unused-builtin-transform-jobs-test` does.
+            ;; Read the boundary before the changesets run: on MySQL the marker row that a run writes can share a
+            ;; changeset's position, so a deployment id read after the run can be the changeset's own.
             boundary     (with-open [conn (.getConnection (mdb/data-source))]
                            (liquibase/with-liquibase [liquibase conn]
                              (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
@@ -4767,10 +4768,12 @@
               (t2/delete! :transform_test :id other-test)
               (is (= other-test (t2/select-one-fn :test_id :data_test_run :id run)))
               (t2/delete! :data_test_run :id run)))
-          (testing "a new run is a transform run unless it says otherwise"
-            (let [run (t2/insert-returning-pk! :data_test_run {:test_id test-id, :status "started"})]
-              (is (= "transform" (t2/select-one-fn :test_type :data_test_run :id run)))
-              (t2/delete! :data_test_run :id run)))
+          (testing "a new run must name its test type"
+            (is (thrown? Exception (t2/insert! :data_test_run {:test_id test-id, :status "started"}))))
+          (when (= :postgres (mdb/db-type))
+            (testing "the id sequence follows the table name"
+              (is (= "data_test_run_id_seq"
+                     (:seq (t2/query-one ["SELECT to_regclass('data_test_run_id_seq')::text AS seq"]))))))
           (let [card-run (t2/select-one-pk :data_test_run :test_type "card")]
             (is (some? card-run))
             (with-open [conn (.getConnection (mdb/data-source))]
@@ -4781,7 +4784,10 @@
               (is (=? {:transform_test_id test-id, :status "passed", :initiated_by user-id}
                       (t2/select-one :transform_test_run :id kept-run)))
               (is (not (contains? (t2/select-one :transform_test_run :id kept-run) :test_type)))
-              (is (=? {:transform_test_id nil} (t2/select-one :transform_test_run :id unsaved-run))))
+              (is (=? {:transform_test_id nil} (t2/select-one :transform_test_run :id unsaved-run)))
+              (when (= :postgres (mdb/db-type))
+                (is (= "transform_test_run_id_seq"
+                       (:seq (t2/query-one ["SELECT to_regclass('transform_test_run_id_seq')::text AS seq"]))))))
             (testing "rollback deletes the runs of other test types, and nulls an id that names no transform test"
               (is (= 3 (t2/count :transform_test_run)) "the card run is gone")
               (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id dangling-run))))
