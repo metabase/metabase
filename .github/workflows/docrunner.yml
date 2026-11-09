@@ -1,0 +1,650 @@
+name: Docrunner
+run-name: "Docrunner for #${{ inputs.issue || github.event.issue.number }}"
+
+# A writer reads a GitHub issue, then adds the label `Docrunner`. Docrunner writes the docs change and opens a draft PR.
+# A second job takes the screenshots that the change needs, and pushes them to the PR.
+# Prompt templates: dev/bot/docrunner-agent.md and dev/bot/docrunner-screenshots-agent.md.
+# For a label run, claude-code-action stops if the person who added the label cannot write to the repo.
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Issue number"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run: upload the results as an artifact. Do not open a PR, push, or comment"
+        required: false
+        default: false
+        type: boolean
+
+permissions: {}
+
+# Each label on an issue starts this workflow. A run for another label gets its own group: in a shared group,
+# a new pending run cancels the older pending run, and that run can be the Docrunner run.
+concurrency:
+  group: >-
+    ${{ (github.event_name == 'workflow_dispatch' || github.event.label.name == 'Docrunner')
+    && format('docrunner-{0}', inputs.issue || github.event.issue.number)
+    || format('docrunner-other-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ISSUE: ${{ inputs.issue || github.event.issue.number }}
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  IMAGE_PATH_RE: '^docs/([A-Za-z0-9_-]+/)*images/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.png$'
+  DOCRUNNER_MODEL: claude-opus-5-5
+  DOCRUNNER_MAX_TURNS: "100"
+  SCREENSHOTS_MODEL: claude-sonnet-5-5
+  SCREENSHOTS_MAX_TURNS: "150"
+  # The bot posts the agent text. A zero-width space after each `@` stops the mentions, also in code spans.
+  NOMENTION_JQ: 'def nomention: gsub("(?<a>^|[^A-Za-z0-9_])@(?<n>[A-Za-z0-9])"; "\(.a)@\u200b\(.n)");'
+
+jobs:
+  docrunner:
+    name: Write the docs change
+    if: >-
+      github.repository == 'metabase/metabase' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.label.name == 'Docrunner' && github.event.issue.state == 'open'))
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      status: ${{ steps.status.outputs.status }}
+      images: ${{ steps.status.outputs.images }}
+      pr_number: ${{ steps.pr.outputs.pull-request-number }}
+      pr_branch: ${{ steps.pr.outputs.pull-request-branch }}
+    steps:
+      - name: Check the issue
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! [[ "$ISSUE" =~ ^[0-9]+$ ]]; then
+            echo "::error::The issue must be a number."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/docrunner"
+          gh api -H "Accept: application/vnd.github.full+json" \
+            "repos/$GITHUB_REPOSITORY/issues/$ISSUE" > "$RUNNER_TEMP/docrunner/issue.json"
+          if jq -e '.pull_request' "$RUNNER_TEMP/docrunner/issue.json" > /dev/null; then
+            echo "::error::#$ISSUE is a pull request. Docrunner reads issues only."
+            exit 1
+          fi
+
+      # No `ref`: an `issues` run gets the default branch, and a dispatch run gets the branch of the run.
+      # Thus a test on a branch uses the prompt templates of that branch.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Find an open docrunner PR
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url=$(gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:docrunner/issue-$ISSUE" \
+            --jq '.[0].html_url // ""')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          if [ -n "$url" ]; then
+            echo "This issue has an open docrunner PR: $url"
+          fi
+
+      # Rendered HTML has no hidden text (no HTML comments), thus the agent sees what the writer saw.
+      # The linked PRs also come from the rendered HTML, thus a PR in hidden text does not get to the agent.
+      - name: Write the context for the agent
+        if: steps.existing.outputs.url == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          accept="Accept: application/vnd.github.full+json"
+          mkdir -p .docrunner/prs
+          gh api -H "$accept" --paginate "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" \
+            | jq -s 'add // []' > "$T/comments.json"
+
+          {
+            jq -r '.body_html // ""' "$T/issue.json"
+            jq -r '.[].body_html // ""' "$T/comments.json"
+          } > "$T/body.html"
+          # GitHub renders a full PR link, and a reference like `#12345` to a PR, as a link to `.../pull/<number>`.
+          # A reference to an issue links to `.../issues/<number>`.
+          { grep -oE 'github\.com/metabase/metabase/pull/[0-9]+' "$T/body.html" \
+              | grep -oE '[0-9]+$' | awk '!seen[$0]++' | head -20 > "$T/refs.txt"; } || true
+
+          prs=()
+          while read -r n; do
+            [ "${#prs[@]}" -lt 5 ] || break
+            [ "$n" != "$ISSUE" ] || continue
+            gh api -H "$accept" "repos/$GITHUB_REPOSITORY/pulls/$n" > "$T/pr.json" 2> /dev/null < /dev/null || continue
+            gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$n/files" < /dev/null | jq -s 'add // []' > "$T/files.json"
+            {
+              jq -r '"# Pull request #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\(if .merged then ", merged" else "" end)\nBase branch: \(.base.ref)\n\n## Description (rendered HTML)\n\n\(.body_html // "")\n\n## Changed files\n"' "$T/pr.json"
+              jq -r '.[] | "### \(.filename) (\(.status), +\(.additions) -\(.deletions))\n\n" +
+                (if .patch == null then "No text patch.\n"
+                 elif .changes <= 2000 then "~~~~~diff\n\(.patch)\n~~~~~\n"
+                 else "The patch is not included: \(.changes) changed lines.\n" end)' "$T/files.json"
+            } > ".docrunner/prs/$n.md"
+            prs+=("#$n")
+          done < "$T/refs.txt"
+
+          {
+            jq -r '"# Issue #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\nLabels: \([.labels[].name] | join(", "))\n\n## Issue body (rendered HTML)\n\n\(.body_html // "")\n"' "$T/issue.json"
+            jq -r '.[] | "## Comment by \(.user.login) on \(.created_at)\n\n\(.body_html // "")\n"' "$T/comments.json"
+            echo "## Linked pull requests"
+            echo
+            if [ "${#prs[@]}" -gt 0 ]; then
+              echo "${prs[*]}. See the files in \`.docrunner/prs/\`."
+            else
+              echo "None."
+            fi
+          } > .docrunner/context.md
+          echo "Linked PRs: ${prs[*]:-none}"
+
+      # Tool rules (see https://code.claude.com/docs/en/permissions):
+      # - dontAsk denies each call that no allow rule permits. Reads are permitted only in the working folder,
+      #   because no rule allows a bare Read, Glob, or Grep. Thus no reads of /proc or of the home folder.
+      # - The Bash deny gives back Glob and Grep, and removes the shell. Skill is off, because a skill grants
+      #   its `allowed-tools` (docs-write lists Bash and Write). The agent reads the skill files as text.
+      # - `Edit(docs/**/*.md)` controls the Edit and Write tools. The agent can write only Markdown files in `docs/`.
+      #   Thus it cannot write a config file that a later step runs, for example `docs/.prettierrc.mjs`.
+      # - `Read(./.git/**)`: the action puts the job token in `.git/config`.
+      - name: Run the docs agent
+        id: claude
+        if: steps.existing.outputs.url == ''
+        continue-on-error: true
+        timeout-minutes: 30
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Read and follow `dev/bot/docrunner-agent.md`.
+          claude_args: |
+            --model ${{ env.DOCRUNNER_MODEL }}
+            --max-turns ${{ env.DOCRUNNER_MAX_TURNS }}
+            --permission-mode dontAsk
+            --allowedTools "Edit(docs/**/*.md)"
+            --disallowedTools "Bash,Skill,NotebookEdit,WebFetch,WebSearch,Agent,Monitor,Read(//proc/**),Read(./.git/**)"
+            --json-schema '{"type":"object","additionalProperties":false,"required":["status","title","body","images"],"properties":{"status":{"type":"string","enum":["done","no-change"]},"title":{"type":"string"},"body":{"type":"string"},"images":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["path","shows","steps"],"properties":{"path":{"type":"string","pattern":"^docs/([A-Za-z0-9_-]+/)*images/[A-Za-z0-9_-][A-Za-z0-9_.-]*[.]png$"},"shows":{"type":"string"},"steps":{"type":"string"}}}}}}'
+
+      - name: Remove the token from the git remote
+        if: always() && steps.claude.outcome != 'skipped'
+        run: |
+          git remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
+          git config --unset-all "http.https://github.com/.extraheader" || true
+
+      # The tool rules permit only Markdown files in `docs/`. This step makes sure of it, because a later step can run
+      # code from a file in the workspace (prettier loads a JS config). `--others` without `--exclude-standard` also
+      # lists ignored files, thus a `.gitignore` from the agent cannot hide a file.
+      - name: Remove files that are not Markdown
+        if: always() && steps.claude.outcome != 'skipped'
+        run: |
+          git checkout -- docs ':(exclude)docs/*.md'
+          git ls-files -z --others -- docs | while IFS= read -r -d '' f; do
+            case "$f" in
+              *.md) ;;
+              *) printf 'Removed: %q\n' "$f"; rm -f -- "$f" ;;
+            esac
+          done
+
+      # This rule does not depend on the prompt.
+      - name: Remove changes to generated files
+        if: always() && steps.claude.outcome != 'skipped'
+        run: |
+          grep -E '^/?docs/[^[:space:]]+[[:space:]]+#[[:space:]]*auto-generated' .github/CODEOWNERS \
+            | awk '{ sub(/^\//, "", $1); print $1 }' \
+            | while read -r path; do
+                git checkout -- "$path" 2> /dev/null || true
+                git clean -fdq -- "$path"
+              done
+
+      # The docs-write skill says to run prettier. The agent has no shell, thus the workflow runs it.
+      # 3.3.3 is the version in bun.lock. `--config`: prettier uses only the config of the repo root, and does not
+      # look for a config in the folders of the files.
+      - name: Format the changed Markdown files
+        if: always() && steps.claude.outcome != 'skipped'
+        continue-on-error: true
+        run: |
+          mapfile -t files < <(git ls-files --modified --others --exclude-standard -- 'docs/*.md')
+          if [ "${#files[@]}" -gt 0 ]; then
+            npx --yes prettier@3.3.3 --config .prettierrc --write -- "${files[@]}"
+          fi
+
+      - name: Find the status
+        id: status
+        if: always() && steps.check.outcome == 'success'
+        env:
+          EXISTING_URL: ${{ steps.existing.outputs.url }}
+          AGENT_OUTCOME: ${{ steps.claude.outcome }}
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          out="$T/out"
+          mkdir -p "$out"
+          changed=$(git ls-files --modified --others --exclude-standard -- 'docs/*.md')
+
+          if [ -n "$EXISTING_URL" ]; then
+            status=exists
+          elif [ "$AGENT_OUTCOME" != success ] || ! jq -e 'type == "object"' <<< "$RESULT" > /dev/null 2>&1; then
+            status=failed
+          elif [ "$(jq -r '.status' <<< "$RESULT")" = no-change ]; then
+            status=no-change
+            jq -r "$NOMENTION_JQ"' .body // "" | nomention' <<< "$RESULT" > "$T/agent-body.md"
+          elif [ -z "$changed" ]; then
+            status=no-change
+            {
+              echo "Docrunner did not change a Markdown file in \`docs/\` that it can commit. It removes all changes to generated files."
+              echo
+              echo "The notes of the agent:"
+              echo
+              jq -r "$NOMENTION_JQ"' .body // "" | nomention' <<< "$RESULT"
+            } > "$T/agent-body.md"
+          else
+            status=done
+          fi
+
+          images='[]'
+          if [ "$status" = done ]; then
+            # The JSON schema also has this rule. This filter is a second check.
+            images=$(jq -c --arg re "$IMAGE_PATH_RE" \
+              '[.images // [] | .[] | select((.path | type) == "string" and (.path | test($re)))] | unique_by(.path) | .[:10]' <<< "$RESULT")
+            title=$(jq -r '.title // ""' <<< "$RESULT" | tr '\r\n' '  ' | sed -E 's/ +/ /g; s/^ //; s/ $//' | cut -c1-200)
+            if [ -z "$title" ]; then
+              title="docs: draft for #$ISSUE"
+            fi
+            {
+              jq -r "$NOMENTION_JQ"' .body | nomention' <<< "$RESULT"
+              if [ "$images" != '[]' ]; then
+                printf '\n## Images\n\nThe `screenshots` job tries to add these images in a second commit. Examine each image.\n\n'
+                jq -r "$NOMENTION_JQ"' .[] | "- `\(.path)`: \(.shows | gsub("\\s+"; " ") | nomention)\n  - Steps: \(.steps | gsub("\\s+"; " ") | nomention)"' <<< "$images"
+              fi
+              printf '\n---\n\nResolves #%s\n\n' "$ISSUE"
+              printf 'Check the backport label. For a feature that is only on `master`, change it to `no-backport`.\n\n'
+              printf 'Docrunner made this draft. Run: %s\n' "$RUN_URL"
+            } > "$T/pr-body.md"
+            echo "title=$title" >> "$GITHUB_OUTPUT"
+          fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+          echo "Status: $status"
+
+          # The files for the artifact.
+          echo "$status" > "$out/status.txt"
+          if jq -e . <<< "$RESULT" > /dev/null 2>&1; then
+            jq . <<< "$RESULT" > "$out/agent-result.json"
+          fi
+          for f in pr-body.md agent-body.md; do
+            if [ -f "$T/$f" ]; then cp "$T/$f" "$out/$f"; fi
+          done
+          if [ -d .docrunner ]; then cp -R .docrunner "$out/context"; fi
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$out/transcript.json"; fi
+          git diff -- 'docs/*.md' > "$out/changes.diff"
+          git ls-files -z --others --exclude-standard -- 'docs/*.md' \
+            | while IFS= read -r -d '' f; do git diff --no-index -- /dev/null "$f" >> "$out/changes.diff" || true; done
+
+      # The transcript helps to tune the prompt. For a dry run, the diff and the result JSON are the output.
+      - name: Upload the results
+        if: always() && steps.status.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: docrunner-issue-${{ env.ISSUE }}
+          path: ${{ runner.temp }}/docrunner/out/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # The write token exists only after the agent step.
+      - name: Make the write token
+        id: token
+        if: always() && steps.check.outcome == 'success' && inputs.dry_run != true
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      # The app token, not GITHUB_TOKEN: a PR from GITHUB_TOKEN does not start CI.
+      # `docs/*.md`: in a pathspec, `*` also matches `/`. Thus this is all Markdown files in `docs/`, and no other file.
+      # A draft PR gets no code owner request. GitHub requests @metabase/tech-writers when it is ready for review.
+      - name: Open the draft PR
+        id: pr
+        if: steps.status.outputs.status == 'done' && inputs.dry_run != true
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.token.outputs.token }}
+          branch: docrunner/issue-${{ env.ISSUE }}
+          base: master
+          draft: true
+          add-paths: docs/*.md
+          sign-commits: true
+          commit-message: |
+            ${{ steps.status.outputs.title }}
+
+            Docrunner draft for #${{ env.ISSUE }}.
+          title: ${{ steps.status.outputs.title }}
+          body-path: ${{ runner.temp }}/docrunner/pr-body.md
+          labels: |
+            Type:Documentation
+            single-backport
+          assignees: ${{ github.event.sender.login }}
+
+      - name: Report on the issue
+        if: always() && steps.token.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          STATUS: ${{ steps.status.outputs.status || 'failed' }}
+          IMAGES: ${{ steps.status.outputs.images }}
+          PR_URL: ${{ steps.pr.outputs.pull-request-url }}
+          EXISTING_URL: ${{ steps.existing.outputs.url }}
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          f="$T/comment.md"
+          case "$STATUS" in
+            done)
+              if [ -n "$PR_URL" ]; then
+                echo "Docrunner opened a draft PR: $PR_URL" > "$f"
+                if [ -n "$IMAGES" ] && [ "$IMAGES" != '[]' ]; then
+                  printf '\nThe screenshots job adds the images to the PR in a second commit.\n' >> "$f"
+                fi
+              else
+                echo "Docrunner wrote a change, but it could not open the PR. Run: $RUN_URL" > "$f"
+              fi
+              ;;
+            exists)
+              echo "Docrunner did not run, because this issue has an open docrunner PR: $EXISTING_URL" > "$f"
+              ;;
+            no-change)
+              {
+                if [ -s "$T/agent-body.md" ]; then cat "$T/agent-body.md"; else echo "Docrunner made no change."; fi
+                printf '\n---\n\nDocrunner made no change. Run: %s\n' "$RUN_URL"
+              } > "$f"
+              ;;
+            *)
+              echo "Docrunner failed. Run: $RUN_URL" > "$f"
+              ;;
+          esac
+          if [ "$GITHUB_EVENT_NAME" = issues ] && [ "$STATUS" != done ] && [ "$STATUS" != exists ]; then
+            printf '\nTo run Docrunner again, add the label `Docrunner` again.\n' >> "$f"
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -F body=@"$f" > /dev/null
+
+          # Remove the label, so that a person can add it again.
+          if [ "$GITHUB_EVENT_NAME" = issues ]; then
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$ISSUE/labels/Docrunner" > /dev/null || true
+          fi
+
+  screenshots:
+    name: Take the screenshots
+    needs: docrunner
+    if: >-
+      needs.docrunner.outputs.status == 'done' &&
+      needs.docrunner.outputs.images != '' &&
+      needs.docrunner.outputs.images != '[]' &&
+      (inputs.dry_run == true || needs.docrunner.outputs.pr_number != '')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      IMAGES: ${{ needs.docrunner.outputs.images }}
+      PR_NUMBER: ${{ needs.docrunner.outputs.pr_number }}
+      PR_BRANCH: ${{ needs.docrunner.outputs.pr_branch }}
+      MB_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # The agent gets the image list, not the issue text.
+      - name: Write the image list
+        run: |
+          mkdir -p .docrunner/shots "$RUNNER_TEMP/docrunner/out"
+          jq '[to_entries[] | {index: (.key + 1), path: .value.path, shows: .value.shows, steps: .value.steps}]' \
+            <<< "$IMAGES" > .docrunner/images.json
+          cp .docrunner/images.json "$RUNNER_TEMP/docrunner/out/images.json"
+
+      # metabase-enterprise-head is the build of master. No license token, thus no paid features.
+      - name: Start Metabase
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          docker run --detach --name metabase --publish 127.0.0.1:3000:3000 \
+            --env MB_CHECK_FOR_UPDATES=false --env MB_ANON_TRACKING_ENABLED=false \
+            metabase/metabase-enterprise-head:latest
+          for _ in $(seq 1 90); do
+            if curl --silent --fail "$MB_URL/api/health" | grep -q '"ok"'; then break; fi
+            sleep 5
+          done
+          curl --silent --show-error --fail "$MB_URL/api/health"
+          echo
+
+          setup_token=$(curl --silent --show-error --fail "$MB_URL/api/session/properties" | jq -r '."setup-token"')
+          password="Docs-$(openssl rand -hex 16)"
+          session=$(jq -n --arg t "$setup_token" --arg p "$password" \
+              '{token: $t, user: {email: "docs-writer@example.com", password: $p, first_name: "Docs", last_name: "Writer"},
+                prefs: {site_name: "Metabase", site_locale: "en"}}' \
+            | curl --silent --show-error --fail -X POST "$MB_URL/api/setup" \
+                -H "Content-Type: application/json" --data @- \
+            | jq -r '.id')
+          echo "::add-mask::$session"
+
+          # Wait for the first sync of the Sample Database.
+          synced=false
+          for _ in $(seq 1 24); do
+            if curl --silent --fail -H "X-Metabase-Session: $session" "$MB_URL/api/database" \
+                | jq -e '.data[]? | select(.is_sample and .initial_sync_status == "complete")' > /dev/null; then
+              synced=true
+              break
+            fi
+            sleep 5
+          done
+          if [ "$synced" != true ]; then
+            echo "::warning::The first sync of the Sample Database is not complete after 2 minutes. Screenshots can show missing data."
+          fi
+
+          # The browser starts logged in. The agent does not get the password.
+          jq -n --arg s "$session" \
+            '{cookies: [{name: "metabase.SESSION", value: $s, domain: "localhost", path: "/", expires: -1,
+                         httpOnly: true, secure: false, sameSite: "Lax"}], origins: []}' > "$T/storage-state.json"
+
+      # --allowed-origins "does not serve as a security boundary and does not affect redirects" (Playwright MCP README).
+      # Thus the browser also sends all requests to a proxy that does not exist, except requests to localhost.
+      - name: Install Playwright MCP
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          npm install --prefix "$T/playwright-mcp" --no-save --no-audit --no-fund @playwright/mcp@0.0.83
+          "$T/playwright-mcp/node_modules/.bin/playwright" install --with-deps chromium
+
+          jq -n '{
+            browser: {
+              browserName: "chromium",
+              isolated: true,
+              launchOptions: {
+                headless: true,
+                proxy: {server: "http://127.0.0.1:9", bypass: "localhost,127.0.0.1,[::1]"}
+              },
+              contextOptions: {viewport: {width: 1440, height: 900}, deviceScaleFactor: 2}
+            },
+            network: {allowedOrigins: ["http://localhost:3000"]}
+          }' > "$T/playwright.json"
+
+          jq -n --arg cli "$T/playwright-mcp/node_modules/@playwright/mcp/cli.js" \
+                --arg config "$T/playwright.json" \
+                --arg state "$T/storage-state.json" \
+                --arg outdir "$T/playwright-output" \
+            '{mcpServers: {playwright: {type: "stdio", command: "node",
+               args: [$cli, "--config", $config, "--storage-state", $state, "--output-dir", $outdir]}}}' > "$T/mcp.json"
+
+      # No shell, no file edits, and no Playwright tool that runs code or uploads files.
+      - name: Run the screenshot agent
+        id: claude
+        continue-on-error: true
+        timeout-minutes: 30
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Read and follow `dev/bot/docrunner-screenshots-agent.md`.
+          claude_args: |
+            --model ${{ env.SCREENSHOTS_MODEL }}
+            --max-turns ${{ env.SCREENSHOTS_MAX_TURNS }}
+            --permission-mode dontAsk
+            --mcp-config ${{ runner.temp }}/docrunner/mcp.json
+            --strict-mcp-config
+            --allowedTools "mcp__playwright__browser_navigate,mcp__playwright__browser_navigate_back,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_hover,mcp__playwright__browser_type,mcp__playwright__browser_fill_form,mcp__playwright__browser_press_key,mcp__playwright__browser_select_option,mcp__playwright__browser_drag,mcp__playwright__browser_wait_for,mcp__playwright__browser_resize,mcp__playwright__browser_handle_dialog,mcp__playwright__browser_take_screenshot"
+            --disallowedTools "Bash,Edit,Write,NotebookEdit,Skill,WebFetch,WebSearch,Agent,Monitor,Read(//proc/**),Read(./.git/**),mcp__playwright__browser_evaluate,mcp__playwright__browser_run_code_unsafe,mcp__playwright__browser_file_upload,mcp__playwright__browser_drop,mcp__playwright__browser_tabs"
+            --json-schema '{"type":"object","additionalProperties":false,"required":["images"],"properties":{"images":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["index","saved","note"],"properties":{"index":{"type":"integer"},"saved":{"type":"boolean"},"note":{"type":"string"}}}}}}'
+
+      # Use only the list from the first job, not the files in the workspace: the agent can write files there.
+      # Rules: only paths from the list, only docs/**/images/*.png, only PNG files of 3 MB or less, and only images that
+      # the agent confirmed.
+      - name: Check the screenshots
+        id: check
+        if: always()
+        env:
+          RESULT: ${{ steps.claude.outputs.structured_output }}
+          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          out="$T/out"
+          max=$((3 * 1024 * 1024))
+          rm -rf "$out/shots" "$out/all-shots"
+          mkdir -p "$out/shots" "$out/all-shots"
+          if jq -e 'type == "object"' <<< "$RESULT" > /dev/null 2>&1; then
+            jq . <<< "$RESULT" > "$out/agent-result.json"
+          else
+            echo '{}' > "$out/agent-result.json"
+          fi
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$out/transcript.json"; fi
+
+          results='[]'
+          while IFS= read -r item; do
+            i=$(jq -r '.index' <<< "$item")
+            dest=$(jq -r '.path' <<< "$item")
+            src=".docrunner/shots/$i.png"
+            saved=$(jq -r --argjson i "$i" '[.images[]? | select(.index == $i) | .saved][0] // false' "$out/agent-result.json")
+            note=$(jq -r --argjson i "$i" '[.images[]? | select(.index == $i) | .note][0] // "" | gsub("\\s+"; " ")' "$out/agent-result.json")
+            reason=""
+            if [ -f "$src" ] && [ ! -L "$src" ]; then cp "$src" "$out/all-shots/$i.png"; fi
+            if ! [[ "$dest" =~ $IMAGE_PATH_RE ]]; then
+              reason="the path is not in docs/**/images/*.png"
+            elif [ ! -f "$src" ] || [ -L "$src" ]; then
+              reason="no screenshot"
+            elif [ "$saved" != true ]; then
+              reason="the agent did not confirm the screenshot"
+            elif [ "$(file --brief --mime-type "$src")" != image/png ]; then
+              reason="the file is not a PNG"
+            elif [ "$(stat -c %s "$src")" -gt "$max" ]; then
+              reason="the file is larger than 3 MB"
+            fi
+            if [ -z "$reason" ]; then cp "$src" "$out/shots/$i.png"; fi
+            results=$(jq -c --argjson i "$i" --arg p "$dest" --arg r "$reason" --arg n "$note" \
+              '. + [{index: $i, path: $p, saved: ($r == ""), reason: $r, note: $n}]' <<< "$results")
+          done < <(jq -c 'to_entries[] | {index: (.key + 1), path: .value.path}' <<< "$IMAGES")
+
+          jq . <<< "$results" > "$out/screenshots.json"
+          count=$(jq '[.[] | select(.saved)] | length' <<< "$results")
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Screenshots that pass the checks: $count of $(jq length <<< "$results")"
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docrunner-screenshots-issue-${{ env.ISSUE }}
+          path: ${{ runner.temp }}/docrunner/out/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Make the write token
+        id: token
+        if: always() && inputs.dry_run != true
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      # One commit through the API, on top of the PR branch: GitHub signs it, and no git command runs in the
+      # workspace that the agent used.
+      - name: Push the screenshots to the PR
+        id: push
+        if: steps.check.outputs.count > 0 && steps.token.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          out="$T/out"
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$PR_BRANCH" --jq '.object.sha')
+          base_tree=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$head" --jq '.tree.sha')
+          entries='[]'
+          while IFS= read -r item; do
+            i=$(jq -r '.index' <<< "$item")
+            dest=$(jq -r '.path' <<< "$item")
+            jq -n --rawfile content <(base64 -w0 "$out/shots/$i.png") '{content: $content, encoding: "base64"}' > "$T/blob.json"
+            sha=$(gh api "repos/$GITHUB_REPOSITORY/git/blobs" --input "$T/blob.json" --jq '.sha')
+            entries=$(jq -c --arg p "$dest" --arg s "$sha" '. + [{path: $p, mode: "100644", type: "blob", sha: $s}]' <<< "$entries")
+          done < <(jq -c '.[] | select(.saved)' "$out/screenshots.json")
+
+          tree=$(jq -n --arg b "$base_tree" --argjson t "$entries" '{base_tree: $b, tree: $t}' \
+            | gh api "repos/$GITHUB_REPOSITORY/git/trees" --input - --jq '.sha')
+          commit=$(jq -n --arg m "docs: add screenshots for #$ISSUE" --arg t "$tree" --arg p "$head" \
+              '{message: $m, tree: $t, parents: [$p]}' \
+            | gh api "repos/$GITHUB_REPOSITORY/git/commits" --input - --jq '.sha')
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/$PR_BRANCH" -f sha="$commit" -F force=false > /dev/null
+          echo "sha=$commit" >> "$GITHUB_OUTPUT"
+
+      # optimize-images.yml starts only when a PR gets a label, and only for a PR with `Type:Documentation`.
+      - name: Start the image optimization
+        if: steps.push.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels/Type%3ADocumentation" > /dev/null
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" -f "labels[]=Type:Documentation" > /dev/null
+
+      - name: Report on the PR
+        if: always() && steps.token.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          SHA: ${{ steps.push.outputs.sha }}
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          out="$T/out"
+          f="$T/pr-comment.md"
+          {
+            if [ -f "$out/screenshots.json" ]; then
+              echo "Docrunner screenshots:"
+              echo
+              jq -r "$NOMENTION_JQ"' .[] | if .saved
+                then "- Added `\(.path)`. \(.note | nomention)"
+                else "- Not added: `\(.path)` (\(.reason)). \(.note | nomention)" end' "$out/screenshots.json"
+              echo
+              if [ -n "$SHA" ]; then
+                echo "Commit: $SHA. Examine each image: the state, the crop, and the size."
+              else
+                echo "Docrunner pushed no image."
+              fi
+            else
+              echo "The Docrunner screenshots job failed."
+            fi
+            echo
+            echo "Run: $RUN_URL"
+          } > "$f"
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -F body=@"$f" > /dev/null
