@@ -31,6 +31,7 @@
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.product-analytics.core :as product-analytics]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.pulse.core :as pulse]
    [metabase.queries.cached-result :as cached-result]
@@ -1056,6 +1057,7 @@
         (assoc :metabase_version config/mb-version-string
                :card_schema current-card-schema-version)
         normalize-card
+        (m/update-existing :dataset_query product-analytics/without-outdated-analysis)
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
@@ -1128,6 +1130,8 @@
         (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
+        (cond-> (contains? changes :dataset_query)
+          (update :dataset_query product-analytics/without-outdated-analysis))
         (populate-result-metadata changes verified-result-metadata?)
         ;; populate-query-fields must run before pre-update in case source_card_id should be nilled.
         ;; Only allow it to nil out a stale table_id when the query itself is changing.

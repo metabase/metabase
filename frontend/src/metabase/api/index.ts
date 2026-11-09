@@ -34,6 +34,7 @@ export * from "./pulse";
 export * from "./retry-dropped-refetch";
 export * from "./revision";
 export * from "./search";
+export * from "./product-analytics";
 export * from "./segment";
 export * from "./session";
 export * from "./setup";

@@ -1348,6 +1348,7 @@
    :api #{metabase.lib.schema
           metabase.lib.schema.actions
           metabase.lib.schema.aggregation
+          metabase.lib.schema.analysis
           metabase.lib.schema.binning
           metabase.lib.schema.common
           metabase.lib.schema.constraints
@@ -2092,6 +2093,18 @@
            settings
            util}}
 
+  product-analytics
+  {:team "Querying Platform"
+   :api  #{metabase.product-analytics.api
+           metabase.product-analytics.core}
+   :uses #{api
+           lib
+           lib.be
+           lib.metadata
+           lib.schema
+           util}
+   :model-imports #{:model/Table}}
+
   product-feedback
   {:team "UX West"
    :api  #{metabase.product-feedback.init}
@@ -2223,6 +2236,7 @@
            parameters.schema
            permissions
            premium-features
+           product-analytics
            public-sharing
            pulse
            query-permissions

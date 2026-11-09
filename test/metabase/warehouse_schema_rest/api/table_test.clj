@@ -82,6 +82,8 @@
     {:db          (db-details)
      :db_id       (mt/id)
      :entity_type "entity/GenericTable"
+     ;; read from `metabase_table_user_settings`, which `mt/object-defaults` doesn't see
+     :event_settings nil
      :field_order "database"
      :view_count  0
      :measures    []
@@ -118,7 +120,7 @@
                {:name         (mt/format-name "checkins")
                 :display_name "Checkins"
                 :id           (mt/id :checkins)
-                :entity_type  "entity/EventTable"}
+                :entity_type  "entity/GenericTable"}
                {:name         (mt/format-name "orders")
                 :display_name "Orders"
                 :id           (mt/id :orders)
@@ -666,7 +668,7 @@
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
                                                              :display_name "Checkins"
-                                                             :entity_type  "entity/EventTable"})))
+                                                             :entity_type  "entity/GenericTable"})))
                  :destination    (-> (field-details users-id-field)
                                      (dissoc :target :dimensions :values)
                                      (assoc :table_id         (mt/id :users)
@@ -1429,7 +1431,30 @@
                 (list-tables :term "P" :data-layer "final")))
         (is (=? [{:display_name "People"}
                  {:display_name "Products"}]
-                (list-tables :term "P" :data-layer "internal")))))))
+                (list-tables :term "P" :data-layer "internal")))))
+    (testing "entity type filtering"
+      (mt/with-temp [:model/Table _ {:name         "synced_events"
+                                     :display_name "Synced Events"
+                                     :entity_type  :entity/EventTable
+                                     :db_id        (mt/id)
+                                     :active       true}
+                     :model/Table {user-set-id :id} {:name         "user_set_events"
+                                                     :display_name "User Set Events"
+                                                     :db_id        (mt/id)
+                                                     :active       true}
+                     :model/Table {overridden-id :id} {:name         "overridden_events"
+                                                       :display_name "Overridden Events"
+                                                       :entity_type  :entity/EventTable
+                                                       :db_id        (mt/id)
+                                                       :active       true}]
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" user-set-id) {:entity_type "entity/EventTable"})
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" overridden-id) {:entity_type "entity/GenericTable"})
+        (is (= ["Synced Events" "User Set Events"]
+               (->> (list-tables :entity-type "entity/EventTable")
+                    (map :display_name)
+                    (filter #{"Synced Events" "User Set Events" "Overridden Events"}))))
+        (testing "rejects an unknown entity type"
+          (mt/user-http-request :crowberto :get 400 "table" :entity-type "entity/NotAType"))))))
 
 (deftest ^:parallel update-table-visibility-sync-test
   (testing "PUT /api/table/:id visibility field synchronization"

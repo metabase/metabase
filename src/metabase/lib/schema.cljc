@@ -12,6 +12,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
+   [metabase.lib.schema.analysis :as analysis]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.expression :as expression]
@@ -702,6 +703,8 @@
                                 [false ::id/database]]]
    [:stages   [:ref ::stages]]
    [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
+   ;; the form the stages were built from. Nothing in the query processor reads it.
+   [:analysis {:optional true} [:ref ::analysis/analysis]]
    ;;
    ;; OPTIONS
    ;;

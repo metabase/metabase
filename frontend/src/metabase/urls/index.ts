@@ -28,6 +28,7 @@ export {
   shouldOpenInBlankWindow,
 } from "./open-url";
 export * from "./permissions";
+export * from "./product-analytics";
 export * from "./questions";
 export * from "./timelines";
 export * from "./transforms";
