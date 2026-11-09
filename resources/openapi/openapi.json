@@ -3194,7 +3194,7 @@
       },
       "metabase-enterprise.data-testing.schema..expectation.empty" : {
         "additionalProperties" : false,
-        "description" : "A check that a SQL query over the transform output returns no rows.",
+        "description" : "A check that a SQL query over the output of the query under test returns no rows.",
         "properties" : {
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3212,7 +3212,7 @@
       "metabase-enterprise.data-testing.schema..expectation.equals" : {
         "anyOf" : [ {
           "additionalProperties" : false,
-          "description" : "Test data returned by a SQL query run against the transform's source database.",
+          "description" : "Test data returned by a SQL query run against the Database of the query under test.",
           "properties" : {
             "format" : {
               "const" : "sql"
@@ -3259,7 +3259,7 @@
           "required" : [ "type", "name", "format", "columns", "rows" ],
           "type" : "object"
         } ],
-        "description" : "A check that the transform output holds exactly the declared rows, over exactly the declared columns."
+        "description" : "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns."
       },
       "metabase-enterprise.data-testing.schema..test.definition" : {
         "additionalProperties" : false,
@@ -3310,30 +3310,6 @@
           }
         },
         "required" : [ "transform_id", "name", "inputs", "expectations" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.data-testing.schema..transform-test.definition" : {
-        "additionalProperties" : false,
-        "description" : "A transform test as a client writes it, without the transform it covers.",
-        "properties" : {
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "name", "inputs", "expectations" ],
         "type" : "object"
       },
       "metabase-enterprise.data-testing.schema..transform-test.response" : {
@@ -3539,7 +3515,7 @@
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..expectation.empty"
         } ],
-        "description" : "A check on the output of the transform under test."
+        "description" : "A check on the output of the query under test."
       },
       "metabase-enterprise.data-testing.schema.expectation-result" : {
         "anyOf" : [ {
@@ -3550,7 +3526,7 @@
         "description" : "What one expectation found. Each type owns the schema of its own result, registered under the key\n  named here."
       },
       "metabase-enterprise.data-testing.schema.expectations" : {
-        "description" : "The checks run against the transform's output. Names must be unique within a test,\n  case-sensitively.",
+        "description" : "The checks run against the output of the query under test. Names must be unique within a test,\n  case-sensitively.",
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectation"
         },
@@ -3559,7 +3535,7 @@
       "metabase-enterprise.data-testing.schema.input" : {
         "anyOf" : [ {
           "additionalProperties" : false,
-          "description" : "Test data returned by a SQL query run against the transform's source database.",
+          "description" : "Test data returned by a SQL query run against the Database of the query under test.",
           "properties" : {
             "format" : {
               "const" : "sql"
@@ -3600,10 +3576,10 @@
           "required" : [ "table", "format", "columns", "rows" ],
           "type" : "object"
         } ],
-        "description" : "An input table of the transform under test, replaced with test data."
+        "description" : "An input table of the query under test, replaced with test data."
       },
       "metabase-enterprise.data-testing.schema.inputs" : {
-        "description" : "Test data for the tables the transform reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
+        "description" : "Test data for the tables the query under test reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.input"
         },
@@ -3666,7 +3642,7 @@
       },
       "metabase-enterprise.data-testing.schema.run-result" : {
         "additionalProperties" : false,
-        "description" : "The outcome of a transform test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
+        "description" : "The outcome of a test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
         "properties" : {
           "expectations" : {
             "items" : {
@@ -3694,7 +3670,7 @@
       },
       "metabase-enterprise.data-testing.schema.sql-data" : {
         "additionalProperties" : false,
-        "description" : "Test data returned by a SQL query run against the transform's source database.",
+        "description" : "Test data returned by a SQL query run against the Database of the query under test.",
         "properties" : {
           "format" : {
             "const" : "sql"
@@ -3707,13 +3683,13 @@
         "type" : "object"
       },
       "metabase-enterprise.data-testing.schema.status" : {
-        "description" : "The outcome of a transform test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
+        "description" : "The outcome of a test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
         "enum" : [ "passed", "failed", "error" ],
         "type" : "string"
       },
       "metabase-enterprise.data-testing.schema.table" : {
         "additionalProperties" : false,
-        "description" : "A table read by the transform under test, by schema and name.",
+        "description" : "A table read by the query under test, by schema and name.",
         "properties" : {
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -46799,7 +46775,7 @@
         "tags" : [ "/api/ee/card-test" ]
       },
       "post" : {
-        "description" : "Create a card test.",
+        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit.",
         "operationId" : "post-api-ee-card-test",
         "parameters" : [ ],
         "requestBody" : {
@@ -46948,7 +46924,7 @@
     },
     "/api/ee/card-test/{id}/run" : {
       "post" : {
-        "description" : "Run a card test. Needs read access to the test and native query access to its card's database.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`\n  naming which refusal it was.",
+        "description" : "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the\n  database of that query.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
         "operationId" : "post-api-ee-card-test-id-run",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
