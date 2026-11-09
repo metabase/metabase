@@ -9,7 +9,6 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
   DashboardId,
-  DashboardSubscription,
   DashboardTabId,
 } from "metabase-types/api";
 
@@ -18,8 +17,6 @@ import { appendSlug } from "./utils";
 type DashboardUrlBuilderOpts = {
   addCardWithId?: number;
   editMode?: boolean;
-  /** `true` opens the subscriptions sidebar, a subscription id opens its edit form */
-  openSubscriptions?: boolean | DashboardSubscription["id"];
   tabId?: DashboardTabId | undefined;
   scrollToDashcard?: DashCardId | undefined;
 };
@@ -32,7 +29,6 @@ export function dashboard(
   {
     addCardWithId,
     editMode,
-    openSubscriptions,
     tabId,
     scrollToDashcard,
   }: DashboardUrlBuilderOpts = {},
@@ -50,7 +46,6 @@ export function dashboard(
   const hash = stringifyHashOptions({
     ...(addCardWithId ? { add: addCardWithId } : {}),
     ...(editMode ? { edit: editMode } : {}),
-    ...(openSubscriptions ? { subscriptions: openSubscriptions } : {}),
     ...(scrollToDashcard ? { scrollTo: scrollToDashcard } : {}),
   });
 
@@ -62,24 +57,29 @@ export function publicDashboard(uuid: string) {
   return `${siteUrl}/public/dashboard/${uuid}`;
 }
 
+function getComparisonEntity(query: Lib.Query) {
+  const cardId = Lib.primarySourceCardId(query);
+  return cardId != null
+    ? `question/${cardId}`
+    : `table/${Lib.primarySourceTableId(query)}`;
+}
+
 export function comparisonDashboard(
   question: Question,
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const tableId = Lib.sourceTableOrCardId(question.query());
-  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
-  const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
-  const cellQuery = filter
-    ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
-    : "";
+  const comparisonEntity = getComparisonEntity(question.query());
+  const filter = Lib.xrayCellQuery(questionWithFilters.query());
+  const cellQuery =
+    filter != null ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}` : "";
 
   const query = question.datasetQuery();
   if (questionId != null && !isTransientCardId(questionId)) {
-    return `auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
+    return `auto/dashboard/question/${questionId}${cellQuery}/compare/${comparisonEntity}`;
   } else {
     const adHocQuery = utf8_to_b64url(JSON.stringify(query));
-    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
+    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/${comparisonEntity}`;
   }
 }
 
@@ -88,11 +88,9 @@ export function automaticDashboard(
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
-  const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
-  const cellQuery = filter
-    ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
-    : "";
+  const filter = Lib.xrayCellQuery(questionWithFilters.query());
+  const cellQuery =
+    filter != null ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}` : "";
 
   const query = question.datasetQuery();
   if (questionId != null && !isTransientCardId(questionId)) {

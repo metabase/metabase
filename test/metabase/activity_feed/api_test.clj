@@ -429,12 +429,12 @@
                        :recents
                        (filter #(= (:id %) (:id metric-card)))))))))))
 
-(deftest card-query-collection-context-excluded-from-recents-test
+(deftest card-query-dashboard-context-excluded-from-recents-test
   (testing "A card-query event with a non-question context is not recorded as a recent view (#45003)"
     (mt/with-test-user :crowberto
       (mt/with-model-cleanup [:model/RecentViews]
         (mt/with-temp [:model/Card {card-id :id} {:creator_id (mt/user->id :crowberto)}]
-          (doseq [ctx [:collection :dashboard :dashboard-subscription]]
+          (doseq [ctx [:dashboard :dashboard-subscription]]
             (events/publish-event! :event/card-query {:user-id (mt/user->id :crowberto) :card-id card-id :context ctx}))
           (is (empty? (filter (comp #{card-id} :id)
                               (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))))))))))

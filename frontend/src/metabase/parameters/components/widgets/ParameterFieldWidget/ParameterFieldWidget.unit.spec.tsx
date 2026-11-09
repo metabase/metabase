@@ -11,7 +11,11 @@ import { renderWithProviders, screen } from "__support__/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Field as FieldType, ParameterValues } from "metabase-types/api";
+import type {
+  Field as FieldType,
+  ParameterValue,
+  ParameterValues,
+} from "metabase-types/api";
 import {
   createMockField,
   createMockParameterValues,
@@ -124,6 +128,24 @@ describe("ParameterFieldWidget", () => {
       expect(setValue).toHaveBeenCalledWith([]);
     });
 
+    it("should show all values of a dropdown list (metabase#49577)", async () => {
+      const values: ParameterValue[] = [["foo"], ["bar"], ["baz"]];
+      setup({
+        parameter: {
+          ...parameter,
+          values_source_config: { values },
+        },
+        parameterValues: createMockParameterValues({ values }),
+      });
+
+      expect(
+        await screen.findByPlaceholderText("Search the list"),
+      ).toBeInTheDocument();
+      expect(await screen.findByTestId("foo-filter-value")).toBeVisible();
+      expect(screen.getByTestId("bar-filter-value")).toBeVisible();
+      expect(screen.getByTestId("baz-filter-value")).toBeVisible();
+    });
+
     it("should not allow to submit empty values when the parameter required", async () => {
       const { setValue } = setup({
         parameter: {
@@ -226,6 +248,24 @@ describe("ParameterFieldWidget", () => {
 
       await userEvent.type(input, "{enter}", { skipClick: true });
       expect(setValue).toHaveBeenCalledWith(["foo"]);
+    });
+
+    it("should not show the values before a search term is typed (metabase#49577)", async () => {
+      setup({
+        parameter,
+        parameterValues: createMockParameterValues({
+          values: [["foo"], ["bar"]],
+        }),
+        parameterSearchValues,
+      });
+
+      const input = screen.getByRole("textbox");
+      await userEvent.click(input);
+      expect(screen.queryByText("foo")).not.toBeInTheDocument();
+      expect(screen.queryByText("bar")).not.toBeInTheDocument();
+
+      await userEvent.type(input, "f");
+      expect(await screen.findByText("foo")).toBeInTheDocument();
     });
 
     it("should allow to submit an empty value on enter when the parameter is not required", async () => {

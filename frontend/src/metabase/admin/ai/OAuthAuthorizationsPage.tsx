@@ -34,7 +34,6 @@ import type {
 
 import { useListOAuthAuthorizationsQuery } from "../settings/api/oauth";
 
-import S from "./OAuthAuthorizationsPage.module.css";
 import {
   OAUTH_EVENT_TYPES,
   OAUTH_PAGE_SIZE,
@@ -236,7 +235,7 @@ function AuthorizationsTable({
       <TreeTable
         instance={instance}
         hierarchical={false}
-        classNames={{ row: S.staticRow }}
+        static
         ariaLabel={t`OAuth authorizations`}
         emptyState={
           <Box p="xxl" ta="center" data-testid="oauth-authorizations-empty">

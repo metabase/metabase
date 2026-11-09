@@ -2,13 +2,12 @@ import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
+import type { DatabaseFeature } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
   createMockMeasure,
   createMockSegment,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -23,13 +22,30 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-const database = createSampleDatabase({
-  features: [
-    ...COMMON_DATABASE_FEATURES,
-    "expressions/date",
-    "expressions/integer",
-    "expressions/date",
+const databaseFeatures: DatabaseFeature[] = [
+  ...COMMON_DATABASE_FEATURES,
+  "expressions/date",
+  "expressions/integer",
+  "expressions/date",
+];
+
+const baseDatabase = createSampleDatabase({
+  features: databaseFeatures,
+  tables: [
+    createPeopleTable(),
+    createProductsTable(),
+    createReviewsTable(),
+    createOrdersTable(),
   ],
+});
+
+const baseProvider = createMetadataProvider({
+  databaseId: SAMPLE_DB_ID,
+  metadata: createMockMetadata({ databases: [baseDatabase] }),
+});
+
+const database = createSampleDatabase({
+  features: databaseFeatures,
   tables: [
     createPeopleTable(),
     createProductsTable(),
@@ -40,12 +56,22 @@ const database = createSampleDatabase({
           id: getNextId(),
           name: "Expensive Things",
           table_id: ORDERS_ID,
-          definition: createMockStructuredDatasetQuery({
-            database: 1,
-            query: {
-              "source-table": ORDERS_ID,
-              filter: [">", ["field", ORDERS.TOTAL, null], 30],
-            },
+          definition: Lib.createTestJsQuery(baseProvider, {
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                filters: [
+                  {
+                    type: "operator",
+                    operator: ">",
+                    args: [
+                      { type: "column", name: "TOTAL" },
+                      { type: "literal", value: 30 },
+                    ],
+                  },
+                ],
+              },
+            ],
           }),
         }),
       ],
@@ -55,12 +81,19 @@ const database = createSampleDatabase({
           name: "Foo Metric",
           type: "metric",
           table_id: ORDERS_ID,
-          dataset_query: createMockStructuredDatasetQuery({
-            database: SAMPLE_DB_ID,
-            query: createMockStructuredQuery({
-              "source-table": ORDERS_ID,
-              aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
-            }),
+          dataset_query: Lib.createTestJsQuery(baseProvider, {
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                aggregations: [
+                  {
+                    type: "operator",
+                    operator: "sum",
+                    args: [{ type: "column", name: "TOTAL" }],
+                  },
+                ],
+              },
+            ],
           }),
         }),
       ],
@@ -68,11 +101,7 @@ const database = createSampleDatabase({
   ],
 });
 
-let metadata = createMockMetadata({
-  databases: [database],
-});
-
-metadata = createMockMetadata({
+const metadata = createMockMetadata({
   databases: [database],
 
   measures: [
@@ -80,27 +109,20 @@ metadata = createMockMetadata({
       id: getNextId(),
       name: "Bar Measure",
       table_id: ORDERS_ID,
-      definition: Lib.toJsQuery(
-        Lib.createTestQuery(Lib.metadataProvider(SAMPLE_DB_ID, metadata), {
-          stages: [
-            {
-              source: { type: "table", id: ORDERS_ID },
-              aggregations: [
-                {
-                  type: "operator",
-                  operator: "sum",
-                  args: [
-                    {
-                      type: "column",
-                      name: "TOTAL",
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        }),
-      ),
+      definition: Lib.createTestJsQuery(baseProvider, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL" }],
+              },
+            ],
+          },
+        ],
+      }),
     }),
   ],
 });

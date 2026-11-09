@@ -8,12 +8,10 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import {
-  createMockCard,
-  createMockDatabase,
-  createMockNativeDatasetQuery,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockDatabase } from "metabase-types/api/mocks";
 
 import type { TemplateTagsSidebarProps } from "../../../types";
 
@@ -36,7 +34,11 @@ function setup({
   const metadata = createMockMetadata({ databases: [database] });
   const question = new Question(
     createMockCard({
-      dataset_query: createMockNativeDatasetQuery({ database: database.id }),
+      dataset_query: Lib.createTestJsNativeQuery(
+        createMetadataProvider({ databaseId: database.id, metadata }),
+        { query: "" },
+      ),
+      query_type: "native",
     }),
     metadata,
   );

@@ -1,7 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
   createMetadataProvider,
@@ -12,10 +12,7 @@ import {
   createMockCard,
   createMockDashboardCard,
   createMockField,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
-  createMockTable,
   createMockVirtualCard,
 } from "metabase-types/api/mocks";
 import {
@@ -26,6 +23,8 @@ import {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersIdDatasetColumn,
   createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -45,8 +44,6 @@ const metadata = createMockMetadata({
 });
 const provider = createMetadataProvider({ metadata });
 
-const ordersTable = metadata.table(ORDERS_ID)!;
-
 function structured(spec: TestQuerySpec) {
   return createMockCard({
     dataset_query: Lib.toJsQuery(Lib.createTestQuery(provider, spec)),
@@ -62,37 +59,31 @@ function native(spec: TestNativeQuerySpec) {
 describe("parameters/utils/mapping-options", () => {
   describe("getParameterMappingOptions", () => {
     describe("structured model", () => {
-      const question = ordersTable.question();
-      const dataset = question.setCard({
-        ...question.card(),
+      const modelCard = createMockCard({
         id: 123,
+        name: "Orders Model",
         type: "model",
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(provider, {
+            stages: [{ source: { type: "table", id: ORDERS_ID } }],
+          }),
+        ),
+        result_metadata: [
+          createOrdersCreatedAtDatasetColumn({
+            display_name: "~*~Created At~*~",
+          }),
+        ],
+      });
+      const modelMetadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [modelCard],
       });
 
-      // create a virtual table for the card
-      // that contains fields with custom, model-specific metadata
-      const virtualCardTable = ordersTable?.clone();
-      virtualCardTable.id = `card__123`;
-      virtualCardTable.fields = [
-        metadata.field(ORDERS.CREATED_AT)?.clone({
-          table_id: `card__123`,
-          uniqueId: `card__123:${ORDERS.CREATED_AT}`,
-          display_name: "~*~Created At~*~",
-        }),
-      ].filter(isNotNull);
-
-      // add instances to the `metadata` instance
-      metadata.questions[dataset.id()] = dataset;
-      metadata.tables[virtualCardTable.id] = virtualCardTable;
-      virtualCardTable.fields.forEach((f) => {
-        metadata.fields[f.getUniqueId()] = f;
-      });
-
-      it("should return fields from the model question's virtual card table, as though it is already nested", () => {
+      it("should return fields from the model's result metadata, as though it is already nested", () => {
         const options = getParameterMappingOptions(
-          new Question(dataset.card(), metadata),
+          new Question(modelCard, modelMetadata),
           createMockParameter({ type: "date/single" }),
-          dataset.card(),
+          modelCard,
         );
 
         expect(options).toEqual([
@@ -100,7 +91,7 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             isForeign: false,
             name: "~*~Created At~*~",
-            sectionName: "Orders",
+            sectionName: "Orders Model",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
@@ -114,26 +105,20 @@ describe("parameters/utils/mapping-options", () => {
     describe("native model", () => {
       it("should not return mapping options for native models", () => {
         const card = createMockCard({
+          ...native({ query: "SELECT * FROM ORDERS" }),
           type: "model",
-          dataset_query: createMockNativeDatasetQuery({
-            native: {
-              query: "SELECT * FROM ORDERS",
-            },
-          }),
         });
-        const table = createOrdersTable();
         const metadata = createMockMetadata({
           databases: [createSampleDatabase()],
-          tables: [
-            createMockTable({
-              id: `card__${card.id}`,
-              fields: (table.fields ?? []).map((field) => ({
-                ...field,
-                table_id: `card__${card.id}`,
-              })),
-            }),
+          questions: [
+            {
+              ...card,
+              result_metadata: [
+                createOrdersIdDatasetColumn(),
+                createOrdersCreatedAtDatasetColumn(),
+              ],
+            },
           ],
-          questions: [card],
         });
         const question = new Question(card, metadata);
         const parameter = createMockParameter({ type: "number/=" });
@@ -748,13 +733,7 @@ describe("getMappingOptionByTarget", () => {
   });
 
   describe("structured dashcard", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": 2,
-        },
-      }),
-    });
+    const card = structured(DEFAULT_TEST_QUERY);
     const database = createSampleDatabase();
     const metadata = createMockMetadata({
       questions: [card],
@@ -877,13 +856,7 @@ describe("getMappingOptionByTarget", () => {
     });
 
     it("should return undefined if option is not found", () => {
-      const card = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({
-          query: {
-            "source-table": 2,
-          },
-        }),
-      });
+      const card = structured(DEFAULT_TEST_QUERY);
       const database = createSampleDatabase();
       const metadata = createMockMetadata({
         questions: [card],

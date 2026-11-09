@@ -1,5 +1,6 @@
 ---
 title: Diagnostic information for troubleshooting
+summary: Download diagnostic info and server logs to share when reporting a problem.
 ---
 
 # Diagnostic information for troubleshooting

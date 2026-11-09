@@ -34,7 +34,6 @@ const EMPTY_TABLES: Table[] = [];
 
 const getDatabaseId = (
   props: TableBrowserContainerProps,
-  { includeVirtual = false }: { includeVirtual?: boolean } = {},
 ): DatabaseId | undefined => {
   const { params } = props;
   const dbId =
@@ -44,7 +43,7 @@ const getDatabaseId = (
 
   if (!Number.isSafeInteger(dbId)) {
     return undefined;
-  } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID && !includeVirtual) {
+  } else if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
     return undefined;
   } else {
     return dbId;
@@ -55,7 +54,7 @@ const getSchemaName = (props: TableBrowserContainerProps): string | undefined =>
   props.schemaName || props.params?.schemaName || undefined;
 
 export const TableBrowser = (props: TableBrowserContainerProps) => {
-  const dbId = getDatabaseId(props, { includeVirtual: true });
+  const dbId = getDatabaseId(props);
   const schemaName = getSchemaName(props);
   const { showSchemaInHeader } = props;
   const xraysEnabled = useSelector((state) =>

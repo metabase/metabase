@@ -1,5 +1,6 @@
 ---
 title: My dashboard is slow
+summary: Speed up a slow dashboard by splitting up cards, caching results, and tracking down the real bottleneck.
 ---
 
 # My dashboard is slow

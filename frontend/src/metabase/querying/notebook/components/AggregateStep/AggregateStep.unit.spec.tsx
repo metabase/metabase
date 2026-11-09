@@ -18,14 +18,10 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import {
-  createMockCard,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -40,12 +36,19 @@ function createMetricAggregatedQuery() {
     name: "Revenue",
     type: "metric",
     table_id: ORDERS_ID,
-    dataset_query: createMockStructuredDatasetQuery({
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-      },
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", fieldId: ORDERS.SUBTOTAL }],
+            },
+          ],
+        },
+      ],
     }),
   });
   const metadata = createMockMetadata({

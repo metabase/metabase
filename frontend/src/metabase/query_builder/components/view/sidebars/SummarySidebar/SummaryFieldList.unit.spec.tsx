@@ -19,6 +19,8 @@ function setup({
   const onAdd = jest.fn<void, [SummaryField]>();
   renderWithProviders(
     <SummaryFieldList
+      query={query}
+      stageIndex={-1}
       sections={getFieldSections(query, -1)}
       onSelect={onSelect}
       onAdd={onAdd}
@@ -81,6 +83,19 @@ describe("SummaryFieldList", () => {
     await userEvent.keyboard("{Alt>}{Enter}{/Alt}");
     expect(onAdd).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a column's info when its info icon is hovered", async () => {
+    setup();
+    const id = within(getSection("Orders")).getByRole("button", { name: "ID" });
+    const infoIcon = within(id).getByLabelText("More info");
+    expect(screen.queryByText("Entity Key")).not.toBeInTheDocument();
+
+    fireEvent.mouseEnter(infoIcon);
+
+    expect(
+      await screen.findByText("Entity Key", {}, { timeout: 1200 }),
+    ).toBeInTheDocument();
   });
 
   it("collapses and expands a section from its name", async () => {

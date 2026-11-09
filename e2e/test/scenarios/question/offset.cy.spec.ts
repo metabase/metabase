@@ -2,12 +2,7 @@ const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { uuid } from "metabase/utils/uuid";
-import type {
-  Aggregation,
-  Breakout,
-  FieldReference,
-  StructuredQuery,
-} from "metabase-types/api";
+import type { FieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -17,17 +12,17 @@ const ORDERS_TOTAL_FIELD_REF: FieldReference = [
   { "base-type": "type/Float" },
 ];
 
-const ORDERS_CREATED_AT_BREAKOUT: Breakout = [
+const ORDERS_CREATED_AT_BREAKOUT = [
   "field",
   ORDERS.CREATED_AT,
   { "base-type": "type/DateTime", "temporal-unit": "month" },
 ];
 
-const SUM_TOTAL_AGGREGATION: Aggregation = ["sum", ORDERS_TOTAL_FIELD_REF];
+const SUM_TOTAL_AGGREGATION = ["sum", ORDERS_TOTAL_FIELD_REF];
 
 const OFFSET_SUM_TOTAL_AGGREGATION_NAME = "Offsetted sum of total";
 
-const OFFSET_SUM_TOTAL_AGGREGATION: Aggregation = [
+const OFFSET_SUM_TOTAL_AGGREGATION = [
   "offset",
   createOffsetOptions(OFFSET_SUM_TOTAL_AGGREGATION_NAME),
   SUM_TOTAL_AGGREGATION,
@@ -53,7 +48,7 @@ describe("scenarios > question > offset", () => {
         prefixLength,
       );
       const prefix = expression.substring(0, prefixLength);
-      const query: StructuredQuery = {
+      const query = {
         "source-table": ORDERS_ID,
         limit: 5,
       };
@@ -136,7 +131,7 @@ describe("scenarios > question > offset", () => {
     });
 
     it("works with a single breakout", () => {
-      const query: StructuredQuery = {
+      const query = {
         "source-table": ORDERS_ID,
         aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
         breakout: [ORDERS_CREATED_AT_BREAKOUT],

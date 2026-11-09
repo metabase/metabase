@@ -36,7 +36,8 @@
    "metabase/agent_lib/representations/repair.clj"
    "metabase/agent_lib/representations/resolve.clj"
    "metabase/metabot/tools/construct.clj"
-   "metabase/models/serialization/resolve/mp.clj"])
+   "metabase/serialization/protocol/mp.clj"
+   "metabase/serialization/resolve.clj"])
 
 (def ^:private error-code-pattern
   "Matches `:error :some-code` in ex-data, which is how the pipeline tags an error for its caller."
@@ -283,6 +284,37 @@
           (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
           (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
 
+(def ^:private cross-database-recovery
+  (str "Don't combine data from two databases in Metabase (two different `database_id`s) in one query, in a notebook "
+       "query or in SQL. If you can't read the results of a query on each database, tell the user that you can't "
+       "combine data from these two databases, and say what you can do instead."))
+
+(def ^:private query-per-database-recovery
+  (str "Build one query for each database, run each one with `run_query` at its largest `row_limit`, and match the "
+       "rows on a column that both results have. If a result is truncated, make that query coarser or filter it on "
+       "the keys of the other result and run it again. A result that is still truncated, or filtered on the keys of a "
+       "truncated result, is partial. Combine partial rows only when they answer the question, and say that the "
+       "answer comes from partial data: this is the one case where you may count truncated rows, and the count is a "
+       "lower bound, never the total. Otherwise tell the user that the data is too large to combine."))
+
+(deftest table-in-another-database-recovery-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {other-db :name} {:name "Other Database"}]
+      (let [db           (:name (mt/db))
+            by-user-name (fn [users-db]
+                           {"source-table" [db "PUBLIC" "ORDERS"]
+                            "aggregation"  [["count" {}]]
+                            "breakout"     [["field" {} [users-db "PUBLIC" "USERS" "NAME"]]]})]
+        (testing "a column of a table in another database tells the agent that no query can combine the two"
+          (is (= {:code ::pipeline/cross-database-table
+                  :text (str "Portable table FK " (pr-str [other-db "PUBLIC" "USERS"]) " references database "
+                             (pr-str other-db) ", but this query targets database " (pr-str db) ". "
+                             "Cross-database queries are not supported.\n"
+                             cross-database-recovery)}
+                 (select-keys (construct-failure (by-user-name other-db)) [:code :text]))))
+        (testing "a database name that names no database is an unknown table"
+          (is (= ::pipeline/unknown-table (:code (construct-failure (by-user-name "Othr Database"))))))))))
+
 (deftest both-surfaces-name-the-same-ids-test
   (testing "for every pipeline code, the Agent API hint names an id exactly when Metabot's payload carries it"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -371,7 +403,7 @@
                  :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
                  :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
                  :unknown-segment :unknown-segment-id :unknown-database :ambiguous-database-name
-                 :cross-database-card :cross-database-measure :cross-database-segment
+                 :cross-database-card :cross-database-measure :cross-database-segment :cross-database-table
                  :missing-source-in-first-stage]]
       (doseq [code codes]
         (testing code
@@ -387,12 +419,15 @@
         (is (= #{} (set/difference (set codes) (declared-codes))))))))
 
 (defn- pipeline-error-text!
-  [error]
-  (let [code (keyword declaration-ns (name error))
-        e    (try
-               (tools.error/throw-recoverable! code {:message "Query failed."})
-               (catch clojure.lang.ExceptionInfo e e))]
-    (tools.error/recoverable-text (tools.error/classify e) #{})))
+  "The text that a profile with `tool-names` (default: none) reads for the pipeline error `error`."
+  ([error]
+   (pipeline-error-text! error #{}))
+  ([error tool-names]
+   (let [code (keyword declaration-ns (name error))
+         e    (try
+                (tools.error/throw-recoverable! code {:message "Query failed."})
+                (catch clojure.lang.ExceptionInfo e e))]
+     (tools.error/recoverable-text (tools.error/classify e) tool-names))))
 
 (deftest ^:parallel ambiguous-field-recovery-test
   (is (= (str "Query failed.\n"
@@ -401,13 +436,14 @@
          (pipeline-error-text! :ambiguous-field))))
 
 (deftest ^:parallel cross-database-recovery-test
-  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
+  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment :cross-database-table]]
     (testing error
-      (is (= (str "Query failed.\n"
-                  "A query can only reference saved questions, models, metrics, measures and segments "
-                  "from its own database. Use one from that database, or change the source to a table "
-                  "in the referenced item's database.")
-             (pipeline-error-text! error))))))
+      (testing "a profile without `run_query` reads only the step that names no tool"
+        (is (= (str "Query failed.\n" cross-database-recovery)
+               (pipeline-error-text! error #{}))))
+      (testing "a profile with `run_query` is also told to run one query per database"
+        (is (= (str "Query failed.\n" cross-database-recovery "\n" query-per-database-recovery)
+               (pipeline-error-text! error #{"run_query"})))))))
 
 (deftest ^:parallel ambiguous-database-name-recovery-test
   (is (= "Query failed.\nAsk the user to rename one of the databases."

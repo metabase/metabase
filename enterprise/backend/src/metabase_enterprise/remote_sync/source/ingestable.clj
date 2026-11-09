@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.serialization.core :as serialization]
-   [metabase.models.serialization :as serdes]
+   [metabase-enterprise.serialization.core :as ee.serialization]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
@@ -29,11 +29,13 @@
 
 (defn- ingest-content
   [file-content]
-  (serdes/restore-path
-   (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key}))))
+  (-> (yaml/parse-string file-content {:key-fn ee.serialization/parse-key})
+      ee.serialization/read-timestamps
+      serialization/restore-identity))
 
 (defn- ingest-all
-  "Returns {:entities {stripped-hierarchy {:content <yaml-string> :path <repo-path>}}, :errors [Exception...]}.
+  "Returns {:entities {key {:content <yaml-string> :path <repo-path>}}, :errors [Exception...]}, each key the
+  `[model ref]` of an entity.
   The repo `:path` is the actual file the entity was read from (including any dedup suffix), so callers
   can record where each entity lives without recomputing — recomputation would diverge on name
   collisions and slug changes. Dotfiles are silently skipped (editor temp files, see #41567).
@@ -41,7 +43,7 @@
   [snapshot]
   (let [errors (atom [])]
     {:entities (into {} (for [path (source.p/list-files snapshot)
-                              :when (serialization/entity-file-path? path)
+                              :when (ee.serialization/entity-file-path? path)
                               :let [content (try
                                               (source.p/read-file snapshot path)
                                               (catch Exception e
@@ -51,43 +53,44 @@
                                                 nil))
                                     loaded (try
                                              (when content
-                                               (serdes/path (ingest-content content)))
+                                               (serialization/key-of (ingest-content content)))
                                              (catch Exception e
                                                (log/warn (u/strip-error e "Error parsing file during ingestion"))
                                                (swap! errors conj (ex-info (format "Failed to parse file: %s" path)
                                                                            {:file path :reason (error-reason e)} e))
                                                nil))]
                               :when loaded]
-                          [(serialization/strip-labels loaded) {:content content :path path}]))
+                          [loaded {:content content :path path}]))
      :errors @errors}))
 
 ;; Wraps another Ingestable calling a callback when a file is ingested
 (defrecord CallbackIngestable [ingestable callback]
-  serialization/Ingestable
+  ee.serialization/Ingestable
   (ingest-list [_]
-    (serialization/ingest-list ingestable))
+    (ee.serialization/ingest-list ingestable))
 
-  (ingest-one [_ serdes-path]
-    (u/prog1 (serialization/ingest-one ingestable serdes-path)
-      (callback <> serdes-path)))
+  (ingest-many [_ ks]
+    (u/prog1 (ee.serialization/ingest-many ingestable ks)
+      (callback <> ks)))
 
   (ingest-errors [_]
-    (serialization/ingest-errors ingestable)))
+    (ee.serialization/ingest-errors ingestable)))
 
 (defn wrap-progress-ingestable
-  "Wraps `ingestable` so that ingesting the n-th of its N entities reports the fraction `lo` + n/N * (`hi` - `lo`)
-  through `report`, a fn of a fraction such as one from `make-progress-reporter`.
+  "Wraps `ingestable` so that the n-th entity read reports the fraction `lo` + n/2N * (`hi` - `lo`) through `report`, a
+  fn of a fraction such as one from `make-progress-reporter`, where N is the number of its entities: a load reads each
+  entity twice, once to order the load and once to load it.
 
   A failed report is logged and ignored so it can never abort the load it tracks; a cancellation raised by the
   report (see `update-progress!`) propagates and stops the load."
   [report [lo hi] ingestable]
-  (let [total (max 1 (count (serialization/ingest-list ingestable)))
+  (let [total (max 1 (* 2 (count (ee.serialization/ingest-list ingestable))))
         calls (atom 0)]
-    (letfn [(progress-callback [item _]
-              (when item
+    (letfn [(progress-callback [items _]
+              (when-let [n (not-empty (filterv some? items))]
                 (try
                   ;; counted down from hi so the last entity lands on hi exactly, not a rounding neighbour
-                  (report (- hi (* (- hi lo) (/ (- total (swap! calls inc)) total))))
+                  (report (- hi (* (- hi lo) (/ (max 0 (- total (swap! calls + (count n)))) total))))
                   (catch Exception e
                     (if (:cancelled? (ex-data e))
                       (throw e)
@@ -96,41 +99,49 @@
 
 ;; Wraps another Ingestable and filters the `list-files` content to only content that has the specified
 ;; root-depedencies
-(defrecord RootDependencyIngestable [ingestable root-dependencies dep-cache]
-  serialization/Ingestable
+(defn- reaching
+  "The keys of `ingestable` whose entities refer, directly or through others, to one of `root-dependencies`, or are
+  one, reading the entities a batch at a time."
+  [ingestable root-dependencies]
+  (let [ks         (ee.serialization/ingest-list ingestable)
+        dependents (transduce (comp (partition-all 100)
+                                    (mapcat (fn [batch]
+                                              (for [[model pairs] (group-by ffirst (filter second batch))
+                                                    [[k] deps]    (map vector pairs
+                                                                       (serialization/import-dependencies
+                                                                        model (mapv second pairs)))
+                                                    dep           deps]
+                                                [dep k]))))
+                              (completing (fn [acc [dep k]] (update acc dep (fnil conj []) k)))
+                              {}
+                              (ee.serialization/ingested ingestable ks))]
+    (loop [reached (set root-dependencies) frontier (seq root-dependencies)]
+      (if-let [[k & more] frontier]
+        (let [new (remove reached (get dependents k))]
+          (recur (into reached new) (seq (concat more new))))
+        (filterv reached ks)))))
+
+(defrecord RootDependencyIngestable [ingestable ks]
+  ee.serialization/Ingestable
   (ingest-list [_]
-    (filter (fn [item]
-              (some
-               #(contains? (u/traverse [item]
-                                       (fn [dep]
-                                         (try
-                                           (zipmap (or (get @dep-cache dep)
-                                                       (get (swap! dep-cache assoc dep
-                                                                   (serdes/deserialization-dependencies
-                                                                    (serialization/ingest-one ingestable dep)))
-                                                            dep))
-                                                   (repeat dep))
-                                           (catch Exception _
-                                             nil))))
-                           %)
-               root-dependencies))
-            (serialization/ingest-list ingestable)))
-  (ingest-one [_ serdes-path]
-    (serialization/ingest-one ingestable serdes-path))
+    @ks)
+
+  (ingest-many [_ ks]
+    (ee.serialization/ingest-many ingestable ks))
 
   (ingest-errors [_]
-    (serialization/ingest-errors ingestable)))
+    (ee.serialization/ingest-errors ingestable)))
 
 (defn wrap-root-dep-ingestable
   "Wraps an Ingestable to filter items by root dependencies.
 
-  Takes root-dependencies (a sequence of serdes dependency maps in the format [{:model MODEL_NAME :id ENTITY_ID}])
+  Takes root-dependencies (a sequence of `[model ref]` keys)
   and an ingestable (the source Ingestable object to wrap).
 
   Returns a RootDependencyIngestable instance that filters ingest-list results to only include items sharing one of
   the specified root dependencies."
   [root-dependencies ingestable]
-  (->RootDependencyIngestable ingestable root-dependencies (atom {})))
+  (->RootDependencyIngestable ingestable (delay (reaching ingestable root-dependencies))))
 
 (defn- populate-cache! [cache errors-atom ingest-fn]
   (when-not @cache
@@ -140,20 +151,22 @@
 
 ;; Wraps a snapshot object providing the ingestable interface for serdes
 (defrecord IngestableSnapshot [^SourceSnapshot snapshot cache errors-atom]
-  serialization/Ingestable
+  ee.serialization/Ingestable
   (ingest-list [_]
     (populate-cache! cache errors-atom #(ingest-all snapshot))
     (keys @cache))
 
-  (ingest-one [_ serdes-path]
+  (ingest-many [_ ks]
     (populate-cache! cache errors-atom #(ingest-all snapshot))
-    (when-let [{:keys [content ^String path]} (get @cache (serialization/strip-labels serdes-path))]
-      (try
-        (let [dir (subs path 0 (inc (or (str/last-index-of path "/") -1)))]
-          (serialization/read-resources (ingest-content content)
-                                        #(source.p/read-file snapshot (str dir %))))
-        (catch Exception e
-          (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))
+    (mapv (fn [k]
+            (when-let [{:keys [content ^String path]} (get @cache k)]
+              (try
+                (let [dir (subs path 0 (inc (or (str/last-index-of path "/") -1)))]
+                  (ee.serialization/read-resources (ingest-content content)
+                                                   #(source.p/read-file snapshot (str dir %))))
+                (catch Exception e
+                  (throw (ex-info "Unable to ingest file" {:key k} e))))))
+          ks))
 
   (ingest-errors [_]
     (or @errors-atom [])))
@@ -163,7 +176,6 @@
   {:model_type :entity_id :path} — the actual repo file each entity was read from. Lets the importer
   record `file_path` so later renames and deletes resolve the real file."
   [{:keys [cache]}]
-  (for [[hierarchy {:keys [path]}] @cache
-        :let [{:keys [model id]} (last hierarchy)]
-        :when (and model id path)]
-    {:model_type model :entity_id id :path path}))
+  (for [[[model id] {:keys [path]}] @cache
+        :when (and model (string? id) path)]
+    {:model_type (name model) :entity_id id :path path}))

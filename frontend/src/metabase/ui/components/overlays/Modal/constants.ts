@@ -12,6 +12,11 @@ export const NO_ANIMATION_MODAL_PROPS: Pick<
   },
 };
 
+// Side sheets keep the exit transition that other modals skip.
+export const SIDESHEET_TRANSITION_PROPS = {
+  exitDuration: 200,
+} satisfies ModalProps["transitionProps"];
+
 // Use on modals that embed a CodeMirror native editor (e.g. the action
 // editor). The modal's enter animation leaves a `transform` on the content,
 // which makes CodeMirror switch its autocomplete popup from `position: fixed`

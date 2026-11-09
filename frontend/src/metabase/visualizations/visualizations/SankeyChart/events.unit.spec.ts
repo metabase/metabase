@@ -1,10 +1,9 @@
 import { getDataFromClicked } from "metabase/value-formatting";
 import type { EChartsSeriesMouseEvent } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import {
-  createMockCard,
-  createMockNativeCard,
-} from "metabase-types/api/mocks/card";
+import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -265,7 +264,12 @@ describe("createSankeyClickData", () => {
     const nativeRawSeries = [
       {
         ...rawSeries[0],
-        card: createMockNativeCard(),
+        card: createMockCard({
+          dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+            query: "",
+          }),
+          query_type: "native",
+        }),
       },
     ];
 

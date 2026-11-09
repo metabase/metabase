@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { supportsImplicitActions } from "metabase/actions/utils";
 import {
   useDeleteActionMutation,
   useListActionsQuery,
@@ -61,7 +62,7 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const isAdmin = useSelector(getUserIsAdmin);
   const canWrite = isAdmin && model.canWriteActions();
-  const supportsImplicitActions = model.supportsImplicitActions();
+  const hasImplicitActionsSupport = supportsImplicitActions(model.query());
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
@@ -87,7 +88,7 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
   const hasImplicitActions = implicitActions.length > 0;
-  const hasActionsMenu = hasImplicitActions || supportsImplicitActions;
+  const hasActionsMenu = hasImplicitActions || hasImplicitActionsSupport;
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -170,7 +171,7 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
         </Stack>
       ) : (
         <NoActionsState
-          hasCreateButton={canWrite && supportsImplicitActions}
+          hasCreateButton={canWrite && hasImplicitActionsSupport}
           onCreateClick={onEnableImplicitActions}
         />
       )}

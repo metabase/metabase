@@ -1,5 +1,6 @@
 ---
 title: History
+summary: See what changed in questions, dashboards, metrics, models, transforms, segments, and measures, and revert most of them to an earlier version.
 ---
 
 # History
