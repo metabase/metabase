@@ -22,9 +22,8 @@ export const ExpressionStep = ({
   const { query, stageIndex } = step;
   const tc = useTranslateContent();
 
-  // A new custom column opens its popover as soon as the step appears. The
-  // widget is a separate chunk, so hold the popover shut until it arrives:
-  // `renderPopover` returning null disables it.
+  // A new custom column opens its editor as soon as the step appears. The
+  // widget is a separate chunk, so hold the editor shut until it arrives.
   const isWidgetLoaded = useExpressionWidgetChunk();
 
   const expressions = useMemo(
@@ -60,9 +59,11 @@ export const ExpressionStep = ({
       items={expressions}
       renderName={renderExpressionName}
       readOnly={readOnly}
-      renderPopover={({ item, index: expressionIndex, onClose }) =>
+      renderPopover={() => null}
+      opensInlineEditor={() => true}
+      renderInlineEditor={({ item, index: expressionIndex, onClose }) =>
         !isWidgetLoaded ? null : (
-          <ExpressionPopover
+          <InlineExpressionEditor
             query={query}
             stageIndex={stageIndex}
             expression={item}
@@ -81,7 +82,7 @@ export const ExpressionStep = ({
   );
 };
 
-type ExpressionPopoverProps = {
+type InlineExpressionEditorProps = {
   query: Lib.Query;
   stageIndex: number;
   expression: Lib.ExpressionClause | undefined;
@@ -92,7 +93,7 @@ type ExpressionPopoverProps = {
   readOnly?: boolean;
 };
 
-function ExpressionPopover({
+function InlineExpressionEditor({
   query,
   stageIndex,
   expression,
@@ -101,7 +102,7 @@ function ExpressionPopover({
   updateQuery,
   onClose,
   readOnly,
-}: ExpressionPopoverProps) {
+}: InlineExpressionEditorProps) {
   const expressionInfo = useMemo(
     () =>
       expression ? Lib.displayInfo(query, stageIndex, expression) : undefined,
@@ -145,6 +146,7 @@ function ExpressionPopover({
       availableColumns={availableColumns}
       name={expressionInfo?.displayName}
       clause={expression}
+      variant="inline"
       withName
       onChangeClause={handleChangeClause}
       reportTimezone={reportTimezone}

@@ -1,14 +1,21 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import {
+  FilterPicker,
+  isExpressionEditorInitiallyOpen,
+} from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { memoize } from "metabase/utils/memoize";
 import * as Lib from "metabase-lib";
 
+import {
+  ExpressionWidget,
+  prefetchExpressionWidget,
+} from "../../../components/expressions/ExpressionWidget";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
@@ -23,6 +30,10 @@ export function FilterStep({
   const { stageIndex } = step;
   const tc = useTranslateContent();
   const { locale } = useLocale();
+
+  useEffect(() => {
+    prefetchExpressionWidget();
+  }, []);
 
   const filters = useMemo(
     () => Lib.filters(query, stageIndex),
@@ -82,7 +93,7 @@ export function FilterStep({
         color={color}
         isLastOpened={isLastOpened}
         renderName={renderFilterName}
-        renderPopover={({ item: filter, index, onClose }) => (
+        renderPopover={({ item: filter, index, onClose, openInlineEditor }) => (
           <FilterPopover
             query={query}
             stageIndex={stageIndex}
@@ -91,7 +102,35 @@ export function FilterStep({
             onAddFilter={handleAddFilter}
             onUpdateFilter={handleUpdateFilter}
             onClose={onClose}
+            onOpenExpressionEditor={openInlineEditor}
             readOnly={readOnly}
+          />
+        )}
+        opensInlineEditor={(filter) =>
+          filter != null &&
+          isExpressionEditorInitiallyOpen(query, stageIndex, filter)
+        }
+        renderInlineEditor={({
+          item: filter,
+          initialExpressionClause,
+          onClose,
+        }) => (
+          <ExpressionWidget
+            query={query}
+            stageIndex={stageIndex}
+            availableColumns={Lib.expressionableColumns(query, stageIndex)}
+            clause={filter}
+            expressionMode="filter"
+            variant="inline"
+            onChangeClause={(_name, clause) => {
+              if (filter) {
+                handleUpdateFilter(filter, clause);
+              } else {
+                handleAddFilter(clause);
+              }
+            }}
+            onClose={onClose}
+            initialExpressionClause={initialExpressionClause}
           />
         )}
         onReorder={handleReorderFilter}
@@ -112,6 +151,7 @@ interface FilterPopoverProps {
     nextFilter: Lib.Filterable,
   ) => void;
   onClose?: () => void;
+  onOpenExpressionEditor?: (clause: Lib.DefinedClauseName | null) => void;
   readOnly?: boolean;
 }
 
@@ -123,6 +163,7 @@ function FilterPopover({
   onAddFilter,
   onUpdateFilter,
   onClose,
+  onOpenExpressionEditor,
   readOnly,
 }: FilterPopoverProps) {
   return (
@@ -139,6 +180,7 @@ function FilterPopover({
         }
       }}
       onClose={onClose}
+      onOpenExpressionEditor={onOpenExpressionEditor}
       readOnly={readOnly}
     />
   );

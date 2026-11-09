@@ -3,3 +3,13 @@
   flex: 0 0 auto;
   opacity: 0.6;
 }
+
+/* The expression editor's own box, separate from the coloured pill bar above it.
+   Radius matches the 8px corners of NotebookCell. */
+.inlineEditor {
+  margin-top: var(--mantine-spacing-sm);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--mb-color-background_page-primary);
+}

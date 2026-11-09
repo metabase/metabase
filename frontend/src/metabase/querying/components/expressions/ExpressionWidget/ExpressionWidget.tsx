@@ -35,6 +35,7 @@ export type ExpressionWidgetProps = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   readOnly?: boolean;
+  variant?: "popover" | "inline";
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
@@ -57,7 +58,9 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     onClose,
     initialExpressionClause,
     readOnly,
+    variant = "popover",
   } = props;
+  const isInline = variant === "inline";
 
   const [name, setName] = useState(initialName || "");
   // Unjustified type cast. FIXME
@@ -186,7 +189,11 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   }
 
   return (
-    <Layout data-testid="expression-editor" data-ignore-editor-clicks="true">
+    <Layout
+      data-testid="expression-editor"
+      data-ignore-editor-clicks="true"
+      inline={isInline}
+    >
       {header && <LayoutHeader>{header}</LayoutHeader>}
 
       <Editor
@@ -204,6 +211,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         shortcuts={shortcuts}
         error={error}
         hasHeader={Boolean(header)}
+        inline={isInline}
         onCloseEditor={onClose}
         initialExpressionClause={initialExpressionClause}
         readOnly={readOnly}

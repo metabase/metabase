@@ -34,6 +34,27 @@
   }
 }
 
+/* The editor as part of the notebook layout: fills the step's width and stays
+   in the page flow at every screen size. Must stay below .layout to override it. */
+.inline {
+  position: static;
+  background: none;
+  grid-template-rows: min-content min-content min-content;
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  --sidebar-width: 424px;
+}
+
+.inline .main {
+  width: auto;
+  height: var(--main-height);
+}
+
+.inline .sidebar {
+  width: auto;
+  height: auto;
+}
+
 .header {
   height: var(--header-height);
   grid-row: 1;

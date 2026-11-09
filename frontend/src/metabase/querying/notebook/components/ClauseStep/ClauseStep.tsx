@@ -8,11 +8,13 @@ import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMergedRef } from "@mantine/hooks";
 import type { JSX, ReactNode, Ref } from "react";
-import { forwardRef, useCallback } from "react";
+import { Fragment, forwardRef, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useDndSensors } from "metabase/common/hooks";
 import { Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type * as Lib from "metabase-lib";
 
 import {
   NotebookCell,
@@ -30,10 +32,27 @@ type RenderItemOpts<T> = {
   hasPopover?: boolean;
 };
 
+type OpenInlineEditor = (
+  initialExpressionClause?: Lib.DefinedClauseName | null,
+) => void;
+
 type RenderPopoverOpts<T> = {
   item?: T;
   index?: number;
   onClose: () => void;
+  openInlineEditor?: OpenInlineEditor;
+};
+
+type RenderInlineEditorOpts<T> = {
+  item?: T;
+  index?: number;
+  initialExpressionClause: Lib.DefinedClauseName | null;
+  onClose: () => void;
+};
+
+type InlineEditorTarget = {
+  index?: number;
+  initialExpressionClause: Lib.DefinedClauseName | null;
 };
 
 export type ClauseStepProps<T> = {
@@ -47,6 +66,11 @@ export type ClauseStepProps<T> = {
   hasRemoveButton?: boolean;
   renderName: (item: T, index: number) => JSX.Element | string;
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
+  renderInlineEditor?: (opts: RenderInlineEditorOpts<T>) => JSX.Element | null;
+  /** Whether the item, or the add button when `item` is undefined, skips the popover and opens the inline editor. */
+  opensInlineEditor?: (item?: T) => boolean;
+  /** Where to show the inline editor. Defaults to directly below the pill bar. */
+  inlineEditorContainer?: HTMLElement | null;
   onRemove: (item: T, index: number) => void;
   onReorder: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
@@ -63,10 +87,60 @@ export const ClauseStep = <T,>({
   hasRemoveButton = !readOnly,
   renderName,
   renderPopover,
+  renderInlineEditor,
+  opensInlineEditor,
+  inlineEditorContainer,
   onRemove,
   onReorder,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
+  const canOpenInline = (item?: T) =>
+    !readOnly &&
+    renderInlineEditor != null &&
+    opensInlineEditor?.(item) === true;
+
+  const [inlineEditor, setInlineEditor] = useState<InlineEditorTarget | null>(
+    () =>
+      isLastOpened && hasAddButton && canOpenInline()
+        ? { initialExpressionClause: null }
+        : null,
+  );
+
+  const closeInlineEditor = useCallback(() => setInlineEditor(null), []);
+
+  const getOpenInlineEditor = (
+    index: number | undefined,
+    onClosePopover: () => void,
+  ): OpenInlineEditor | undefined =>
+    renderInlineEditor
+      ? (initialExpressionClause = null) => {
+          onClosePopover();
+          setInlineEditor({ index, initialExpressionClause });
+        }
+      : undefined;
+
+  const inlineItem =
+    inlineEditor?.index != null ? items[inlineEditor.index] : undefined;
+  const isInlineTargetMissing =
+    inlineEditor?.index != null && inlineItem === undefined;
+  const inlineEditorContent =
+    inlineEditor && !isInlineTargetMissing
+      ? (renderInlineEditor?.({
+          item: inlineItem,
+          index: inlineEditor.index,
+          initialExpressionClause: inlineEditor.initialExpressionClause,
+          onClose: closeInlineEditor,
+        }) ?? null)
+      : null;
+  const inlineEditorBox = inlineEditor && inlineEditorContent && (
+    <div
+      key={`${inlineEditor.index ?? "new"}-${inlineEditor.initialExpressionClause ?? ""}`}
+      className={S.inlineEditor}
+    >
+      {inlineEditorContent}
+    </div>
+  );
+
   const renderItem = ({
     item,
     index,
@@ -87,6 +161,7 @@ export const ClauseStep = <T,>({
             name="close"
             onClick={(e) => {
               e.stopPropagation();
+              closeInlineEditor();
               onRemove(item, index);
             }}
           />
@@ -105,27 +180,65 @@ export const ClauseStep = <T,>({
   );
 
   return (
-    <NotebookCell color={color} data-testid={props["data-testid"]}>
-      <ClauseStepDndContext items={items} onReorder={onReorder}>
-        {items.map((item, index) => (
-          <ClausePopover
-            key={index}
-            disabled={readOnly}
-            renderItem={(onOpen, hasPopover) =>
-              renderItem({ item, index, onOpen, hasPopover })
-            }
-            renderPopover={(onClose) => renderPopover({ item, index, onClose })}
-          />
-        ))}
-      </ClauseStepDndContext>
-      {hasAddButton && (
-        <ClausePopover
-          isInitiallyOpen={isLastOpened}
-          renderItem={(onOpen) => renderNewItem({ onOpen })}
-          renderPopover={(onClose) => renderPopover({ onClose })}
-        />
-      )}
-    </NotebookCell>
+    <>
+      <NotebookCell color={color} data-testid={props["data-testid"]}>
+        <ClauseStepDndContext
+          items={items}
+          onReorder={onReorder}
+          onDragStart={closeInlineEditor}
+        >
+          {items.map((item, index) =>
+            canOpenInline(item) ? (
+              <Fragment key={index}>
+                {renderItem({
+                  item,
+                  index,
+                  hasPopover: true,
+                  onOpen: () =>
+                    setInlineEditor({ index, initialExpressionClause: null }),
+                })}
+              </Fragment>
+            ) : (
+              <ClausePopover
+                key={index}
+                disabled={readOnly}
+                renderItem={(onOpen, hasPopover) =>
+                  renderItem({ item, index, onOpen, hasPopover })
+                }
+                renderPopover={(onClose) =>
+                  renderPopover({
+                    item,
+                    index,
+                    onClose,
+                    openInlineEditor: getOpenInlineEditor(index, onClose),
+                  })
+                }
+              />
+            ),
+          )}
+        </ClauseStepDndContext>
+        {hasAddButton &&
+          (canOpenInline() ? (
+            renderNewItem({
+              onOpen: () => setInlineEditor({ initialExpressionClause: null }),
+            })
+          ) : (
+            <ClausePopover
+              isInitiallyOpen={isLastOpened}
+              renderItem={(onOpen) => renderNewItem({ onOpen })}
+              renderPopover={(onClose) =>
+                renderPopover({
+                  onClose,
+                  openInlineEditor: getOpenInlineEditor(undefined, onClose),
+                })
+              }
+            />
+          ))}
+      </NotebookCell>
+      {inlineEditorBox && inlineEditorContainer
+        ? createPortal(inlineEditorBox, inlineEditorContainer)
+        : inlineEditorBox}
+    </>
   );
 };
 
@@ -133,12 +246,14 @@ type ClauseStepDndContextProps<T> = {
   items: T[];
   children: ReactNode;
   onReorder: (sourceItem: T, targetItem: T) => void;
+  onDragStart: () => void;
 };
 
 function ClauseStepDndContext<T>({
   items,
   children,
   onReorder,
+  onDragStart,
 }: ClauseStepDndContextProps<T>) {
   const sensors = useDndSensors({ distance: 15 });
 
@@ -157,6 +272,7 @@ function ClauseStepDndContext<T>({
     <DndContext
       sensors={sensors}
       modifiers={[restrictToParentElement]}
+      onDragStart={onDragStart}
       onDragEnd={handleSortEnd}
     >
       <SortableContext

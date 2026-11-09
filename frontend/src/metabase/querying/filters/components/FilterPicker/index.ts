@@ -1,1 +1,5 @@
-export { FilterPicker, type FilterPickerProps } from "./FilterPicker";
+export {
+  FilterPicker,
+  isExpressionEditorInitiallyOpen,
+  type FilterPickerProps,
+} from "./FilterPicker";

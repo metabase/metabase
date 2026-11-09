@@ -1,14 +1,25 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
-import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
+import {
+  AggregationPicker,
+  isExpressionEditorInitiallyOpen,
+} from "metabase/querying/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
 
+import {
+  ExpressionWidget,
+  prefetchExpressionWidget,
+} from "../../../components/expressions/ExpressionWidget";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
+
+type AggregateStepProps = NotebookStepProps & {
+  inlineEditorContainer?: HTMLElement | null;
+};
 
 export function AggregateStep({
   query,
@@ -17,11 +28,16 @@ export function AggregateStep({
   isLastOpened,
   readOnly,
   updateQuery,
-}: NotebookStepProps) {
+  inlineEditorContainer,
+}: AggregateStepProps) {
   const { question, stageIndex } = step;
   const isMetric = question.type() === "metric";
   const tc = useTranslateContent();
   const { locale } = useLocale();
+
+  useEffect(() => {
+    prefetchExpressionWidget();
+  }, []);
 
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
@@ -66,7 +82,12 @@ export function AggregateStep({
       hasAddButton={hasAddButton}
       hasRemoveButton={hasRemoveButton}
       renderName={renderAggregationName}
-      renderPopover={({ item: aggregation, index, onClose }) => (
+      renderPopover={({
+        item: aggregation,
+        index,
+        onClose,
+        openInlineEditor,
+      }) => (
         <AggregationPopover
           query={query}
           stageIndex={stageIndex}
@@ -74,9 +95,40 @@ export function AggregateStep({
           clauseIndex={index}
           onQueryChange={updateQuery}
           onClose={onClose}
+          onOpenExpressionEditor={openInlineEditor}
           readOnly={readOnly}
         />
       )}
+      opensInlineEditor={(aggregation) =>
+        aggregation != null &&
+        isExpressionEditorInitiallyOpen({
+          query,
+          stageIndex,
+          clause: aggregation,
+          operators: Lib.selectedAggregationOperators(
+            Lib.availableAggregationOperators(query, stageIndex),
+            aggregation,
+          ),
+          readOnly,
+        })
+      }
+      renderInlineEditor={({
+        item: aggregation,
+        index,
+        initialExpressionClause,
+        onClose,
+      }) => (
+        <InlineAggregationEditor
+          query={query}
+          stageIndex={stageIndex}
+          clause={aggregation}
+          clauseIndex={index}
+          initialExpressionClause={initialExpressionClause}
+          onQueryChange={updateQuery}
+          onClose={onClose}
+        />
+      )}
+      inlineEditorContainer={inlineEditorContainer}
       onReorder={handleReorderAggregation}
       onRemove={handleRemoveAggregation}
       data-testid="aggregate-step"
@@ -91,7 +143,66 @@ interface AggregationPopoverProps {
   clauseIndex?: number;
   onQueryChange: (query: Lib.Query) => void;
   onClose: () => void;
+  onOpenExpressionEditor?: (clause: Lib.DefinedClauseName | null) => void;
   readOnly?: boolean;
+}
+
+interface InlineAggregationEditorProps {
+  query: Lib.Query;
+  stageIndex: number;
+  clause?: Lib.AggregationClause;
+  clauseIndex?: number;
+  initialExpressionClause: Lib.DefinedClauseName | null;
+  onQueryChange: (query: Lib.Query) => void;
+  onClose: () => void;
+}
+
+function InlineAggregationEditor({
+  query,
+  stageIndex,
+  clause,
+  clauseIndex,
+  initialExpressionClause,
+  onQueryChange,
+  onClose,
+}: InlineAggregationEditorProps) {
+  const availableColumns = useMemo(
+    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
+    [query, stageIndex, clauseIndex],
+  );
+  const availableMetrics = useMemo(
+    () => Lib.availableMetrics(query, stageIndex),
+    [query, stageIndex],
+  );
+
+  const handleChangeClause = (
+    name: string,
+    nextClause: Lib.AggregationClause | Lib.ExpressionClause,
+  ) => {
+    const namedClause = Lib.withExpressionName(nextClause, name);
+    const nextQuery = clause
+      ? Lib.replaceClause(query, stageIndex, clause, namedClause)
+      : Lib.aggregate(query, stageIndex, namedClause);
+    onQueryChange(nextQuery);
+  };
+
+  return (
+    <ExpressionWidget
+      query={query}
+      stageIndex={stageIndex}
+      availableColumns={availableColumns}
+      availableMetrics={availableMetrics}
+      name={clause && Lib.displayInfo(query, stageIndex, clause).displayName}
+      clause={clause}
+      withName
+      expressionMode="aggregation"
+      expressionIndex={clauseIndex}
+      variant="inline"
+      onChangeClause={handleChangeClause}
+      onClose={onClose}
+      initialExpressionClause={initialExpressionClause}
+    />
+  );
 }
 
 function AggregationPopover({
@@ -101,6 +212,7 @@ function AggregationPopover({
   clauseIndex,
   onQueryChange,
   onClose,
+  onOpenExpressionEditor,
   readOnly,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
@@ -122,6 +234,7 @@ function AggregationPopover({
       allowCustomExpressions
       onQueryChange={onQueryChange}
       onClose={onClose}
+      onOpenExpressionEditor={onOpenExpressionEditor}
       readOnly={readOnly}
     />
   );

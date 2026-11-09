@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex } from "metabase/ui";
@@ -18,34 +19,44 @@ export function SummarizeStep({
 
   const hasBreakouts = Lib.breakouts(step.query, step.stageIndex).length > 0;
   const showBreakouts = !isMetric && (!readOnly || hasBreakouts);
+  const [editorContainer, setEditorContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
 
   return (
-    <Flex
-      align={{ md: "center" }}
-      direction={{ base: "column", md: "row" }}
-      gap={{ base: "sm", md: isMetric ? "lg" : "sm" }}
-    >
-      <Box w={{ base: "100%", md: isMetric ? "100%" : "50%" }} flex="1 1 auto">
-        <AggregateStep
-          step={step}
-          color={color}
-          isLastOpened={isLastOpened}
-          readOnly={readOnly}
-          {...props}
-        />
-      </Box>
-      {showBreakouts && <Box c={color} fw="bold">{t`by`}</Box>}
-      {showBreakouts && (
-        <Box w={{ base: "100%", md: "50%" }}>
-          <BreakoutStep
+    <>
+      <Flex
+        align={{ md: "center" }}
+        direction={{ base: "column", md: "row" }}
+        gap={{ base: "sm", md: isMetric ? "lg" : "sm" }}
+      >
+        <Box
+          w={{ base: "100%", md: isMetric ? "100%" : "50%" }}
+          flex="1 1 auto"
+        >
+          <AggregateStep
             step={step}
             color={color}
-            isLastOpened={false}
+            isLastOpened={isLastOpened}
             readOnly={readOnly}
+            inlineEditorContainer={editorContainer}
             {...props}
           />
         </Box>
-      )}
-    </Flex>
+        {showBreakouts && <Box c={color} fw="bold">{t`by`}</Box>}
+        {showBreakouts && (
+          <Box w={{ base: "100%", md: "50%" }}>
+            <BreakoutStep
+              step={step}
+              color={color}
+              isLastOpened={false}
+              readOnly={readOnly}
+              {...props}
+            />
+          </Box>
+        )}
+      </Flex>
+      <div ref={setEditorContainer} />
+    </>
   );
 }

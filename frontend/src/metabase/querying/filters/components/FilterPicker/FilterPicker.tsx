@@ -37,6 +37,8 @@ export type FilterPickerProps = {
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
   onBack?: () => void;
+  /** Called instead of showing the expression editor inside the picker. */
+  onOpenExpressionEditor?: (clause: Lib.DefinedClauseName | null) => void;
   readOnly?: boolean;
 } & Pick<
   FilterColumnPickerProps,
@@ -52,6 +54,7 @@ export function FilterPicker({
   onSelect,
   onClose,
   onBack,
+  onOpenExpressionEditor,
   withColumnItemIcon,
   withColumnGroupIcon,
   withCustomExpression,
@@ -107,6 +110,10 @@ export function FilterPicker({
   }, []);
 
   const handleExpressionSelect = (clause?: Lib.DefinedClauseName) => {
+    if (onOpenExpressionEditor) {
+      onOpenExpressionEditor(clause ?? null);
+      return;
+    }
     setInitialExpressionClause(clause ?? null);
     startTransition(() => {
       openExpressionEditor();
@@ -189,7 +196,7 @@ function getInitialColumn(
     : undefined;
 }
 
-function isExpressionEditorInitiallyOpen(
+export function isExpressionEditorInitiallyOpen(
   query: Lib.Query,
   stageIndex: number,
   filter?: Lib.FilterClause,

@@ -49,6 +49,8 @@ export interface AggregationPickerProps {
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
+  /** Called instead of showing the expression editor inside the picker. */
+  onOpenExpressionEditor?: (clause: Lib.DefinedClauseName | null) => void;
   readOnly?: boolean;
 }
 
@@ -97,6 +99,7 @@ export function AggregationPicker({
   onClose,
   onQueryChange,
   onBack,
+  onOpenExpressionEditor,
   readOnly,
 }: AggregationPickerProps) {
   const tc = useTranslateContent();
@@ -267,6 +270,10 @@ export function AggregationPicker({
 
   const handleExpressionSelect = useCallback(
     (clause?: Lib.DefinedClauseName) => {
+      if (onOpenExpressionEditor) {
+        onOpenExpressionEditor(clause ?? null);
+        return;
+      }
       if (clause) {
         setInitialExpressionClause(clause);
       }
@@ -274,7 +281,7 @@ export function AggregationPicker({
         openExpressionEditor();
       });
     },
-    [openExpressionEditor],
+    [onOpenExpressionEditor, openExpressionEditor],
   );
 
   const handleResetOperator = useCallback(() => {
@@ -348,12 +355,10 @@ export function AggregationPicker({
   const handleSectionChange = useCallback(
     (section: Section) => {
       if (section.key === "custom-expression") {
-        startTransition(() => {
-          openExpressionEditor();
-        });
+        handleExpressionSelect();
       }
     },
-    [openExpressionEditor],
+    [handleExpressionSelect],
   );
 
   const handleClauseChange = useCallback(
@@ -523,7 +528,7 @@ function getInitialOperator(
   return operator ?? null;
 }
 
-function isExpressionEditorInitiallyOpen({
+export function isExpressionEditorInitiallyOpen({
   query,
   stageIndex,
   clause,

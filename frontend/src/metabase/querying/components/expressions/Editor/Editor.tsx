@@ -58,6 +58,7 @@ export type EditorProps = {
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
   hasHeader?: boolean;
+  inline?: boolean;
   onCloseEditor?: () => void;
   initialExpressionClause?: Lib.DefinedClauseName | null;
 
@@ -85,6 +86,7 @@ export function Editor(props: EditorProps) {
     reportTimezone,
     shortcuts,
     hasHeader,
+    inline,
     onCloseEditor,
     initialExpressionClause,
   } = props;
@@ -112,7 +114,7 @@ export function Editor(props: EditorProps) {
   });
 
   const { showModal, closeModal } = useCloseModal({
-    allowPopoverExit: source === "" || !hasSourceChanged,
+    allowPopoverExit: inline || source === "" || !hasSourceChanged,
   });
 
   const [customTooltip, portal] = useCustomTooltip({
