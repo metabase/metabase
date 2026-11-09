@@ -1,8 +1,17 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  DOCUMENT_WITH_SUPPORTING_TEXT,
   DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
   DOCUMENT_WITH_TWO_CARDS,
 } from "e2e/support/document-initial-data";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers/api";
+import {
+  ACCOUNTS_COUNT_BY_CREATED_AT,
+  PRODUCTS_COUNT_BY_CATEGORY_PIE,
+} from "e2e/support/test-visualization-data";
 
 const { H } = cy;
 
@@ -149,7 +158,7 @@ describe("documents card embed node custom logic", () => {
       H.visitDocument("@documentId");
     });
 
-    it("should add a third card to an existing flexContainer with 2 cards", () => {
+    it("should add a third card to an existing flexContainer with 2 cards, resize it, and delete cards with Backspace", () => {
       // Wait for all cards to load
       H.getDocumentCard("Orders")
         .should("be.visible")
@@ -291,90 +300,6 @@ describe("documents card embed node custom logic", () => {
           });
         });
       });
-    });
-
-    it("should disable 'Add supporting text', prevent adding a fourth card, and delete cards with Backspace when a flexContainer has 3 cards", () => {
-      // Wait for all cards to load
-      H.getDocumentCard("Orders")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-      H.getDocumentCard("Orders, Count")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-
-      cy.log("'Add supporting text' is enabled with 2 cards");
-      H.openDocumentCardMenu("Orders");
-      H.popover()
-        .findByText("Add supporting text")
-        .closest("button")
-        .should("be.enabled");
-      cy.realPress("Escape");
-      cy.get(H.POPOVER_ELEMENT).should("not.exist");
-
-      cy.log("a standalone card dropped onto a 2-card flexContainer joins it");
-      H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
-        .should("be.visible")
-        .closest('[data-type="flexContainer"]')
-        .should("not.exist");
-      H.dragAndDropCardOnAnotherCard(
-        "Orders, Count, Grouped by Created At (year)",
-        "Orders",
-        { side: "right" },
-      );
-
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("have.length", 1)
-        .within(() => {
-          assertFlexContainerCardsOrder([
-            "Orders",
-            "Orders, Count, Grouped by Created At (year)",
-            "Orders, Count",
-          ]);
-        });
-
-      cy.log("a fourth card is rejected");
-      addNewStandaloneCard("Orders Model");
-      H.getDocumentCard("Orders Model")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-      H.getDocumentCard("Orders Model")
-        .closest('[data-type="flexContainer"]')
-        .should("not.exist");
-
-      H.dragAndDropCardOnAnotherCard("Orders Model", "Orders", {
-        side: "left",
-      });
-
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("have.length", 1)
-        .within(() => {
-          assertFlexContainerCardsOrder([
-            "Orders",
-            "Orders, Count, Grouped by Created At (year)",
-            "Orders, Count",
-          ]);
-        });
-      H.getDocumentCard("Orders Model")
-        .should("be.visible")
-        .closest('[data-type="flexContainer"]')
-        .should("not.exist");
-      H.documentContent()
-        .findAllByTestId("document-card-embed")
-        .should("have.length", 4);
-
-      cy.log("'Add supporting text' is disabled with 3 cards");
-      H.openDocumentCardMenu("Orders");
-      H.popover()
-        .findByText("Add supporting text")
-        .closest("button")
-        .should("have.attr", "data-disabled");
-      cy.realPress("Escape");
-      cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
       cy.log("Backspace deletes a selected card from the flexContainer");
       H.getDocumentCard("Orders").realClick({ position: "top" });
@@ -386,7 +311,7 @@ describe("documents card embed node custom logic", () => {
         .should("not.exist");
       H.documentContent()
         .findAllByTestId("document-card-embed")
-        .should("have.length", 3);
+        .should("have.length", 2);
       H.documentContent().find('[data-type="flexContainer"]').should("exist");
 
       cy.log("deleting down to 1 card unwraps the flexContainer");
@@ -398,11 +323,10 @@ describe("documents card embed node custom logic", () => {
         .should("not.exist");
       H.documentContent()
         .findAllByTestId("document-card-embed")
-        .should("have.length", 2);
+        .should("have.length", 1);
       H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
         "exist",
       );
-      H.getDocumentCard("Orders Model").should("exist");
     });
 
     it("should reorder cards within the same flexContainer and preserve resized widths when swapping", () => {
@@ -623,6 +547,545 @@ describe("documents card embed node custom logic", () => {
           .should("exist")
           .invoke("height")
           .should("be.greaterThan", 60);
+      });
+    });
+  });
+
+  describe("supporting text", () => {
+    it("should add supporting text to a standalone card, remove, edit and resize it, and persist width after save", () => {
+      H.createDocument({
+        name: "Resize Supporting Text Test Document",
+        document: DOCUMENT_WITH_TWO_CARDS,
+        collection_id: null,
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      // Wait for cards to load
+      H.getDocumentCard("Orders")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      cy.log("add supporting text to a standalone card");
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .should("not.exist");
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("not.exist");
+
+      // The menu item is rendered disabled while the node view can't resolve its
+      // position, and a click on the label of a disabled button is dropped
+      // without an error, so click the button itself and wait for it to be enabled.
+      H.openDocumentCardMenu("Orders");
+      H.popover()
+        .findByText("Add supporting text")
+        .closest("button")
+        .should("be.enabled")
+        .click();
+
+      // Verify a flexContainer was created
+      H.documentContent().find('[data-type="flexContainer"]').should("exist");
+
+      // Verify supporting text was added with its placeholder text
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .should("contain.text", "Write whatever you'd like to");
+
+      // Verify the flexContainer contains both supporting text and the card.
+      // Kept as two re-queried chains: `.within()` freezes its subject, and the
+      // card's node view is recreated when it moves into the new flexContainer.
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .findByTestId("document-card-supporting-text")
+        .should("exist");
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .findByTestId("document-card-embed")
+        .should("exist");
+
+      cy.log("empty supporting text is removed on Backspace");
+      // Click into the supporting text
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .within(() => cy.get(".node-paragraph").click());
+
+      // Press Backspace to delete the empty supporting text
+      cy.realPress("Backspace");
+
+      // Verify supporting text was removed
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .should("not.exist");
+
+      // Verify the flexContainer was also removed (unwrapped)
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("not.exist");
+
+      // Verify the card is still there as a standalone card
+      H.getDocumentCard("Orders").should("exist");
+
+      cy.log("add supporting text again and edit it");
+      H.openDocumentCardMenu("Orders");
+      H.popover()
+        .findByText("Add supporting text")
+        .closest("button")
+        .should("be.enabled")
+        .click();
+
+      // Verify flexContainer and supporting text were created
+      H.documentContent().find('[data-type="flexContainer"]').should("exist");
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .should("exist");
+
+      // Type some content
+      cy.realType("# Hdg{enter}Lorem ipsum");
+
+      // Verify the text was added
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .contains("h1", "Hdg")
+        .should("exist");
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .contains("p", "Lorem ipsum")
+        .should("exist");
+
+      cy.log("resize supporting text and persist width after save");
+      // Get initial widths of supporting text and card
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .then(($supportingText) => {
+          // Unjustified type cast. FIXME
+          const initialSupportingTextWidth = $supportingText.width() as number;
+          cy.wrap(initialSupportingTextWidth).as("initialSupportingTextWidth");
+
+          H.getDocumentCard("Orders").then(($card) => {
+            // Unjustified type cast. FIXME
+            const initialCardWidth = $card.width() as number;
+            cy.wrap(initialCardWidth).as("initialCardWidth");
+          });
+        });
+
+      // Get the flex container and resize handles
+      const flexContainer = H.documentContent().find(
+        '[data-type="flexContainer"]',
+      );
+      const handles = H.getResizeHandlesForFlexContianer(flexContainer);
+
+      // Drag the handle to resize (increase supporting text width, decrease card width)
+      H.documentDoDrag(handles.eq(0), { x: 150 });
+
+      // Verify the widths changed
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .then(($supportingText) => {
+          // Unjustified type cast. FIXME
+          const newSupportingTextWidth = $supportingText.width() as number;
+          cy.wrap(newSupportingTextWidth).as("newSupportingTextWidth");
+
+          H.getDocumentCard("Orders").then(($card) => {
+            // Unjustified type cast. FIXME
+            const newCardWidth = $card.width() as number;
+            cy.wrap(newCardWidth).as("newCardWidth");
+
+            cy.get<number>("@initialSupportingTextWidth").then(
+              (initialWidth) => {
+                // Supporting text should be wider
+                expect(newSupportingTextWidth).to.be.greaterThan(initialWidth);
+                // The change should be close to the drag distance
+                expect(newSupportingTextWidth).to.be.closeTo(
+                  initialWidth + 150,
+                  10,
+                );
+              },
+            );
+
+            cy.get<number>("@initialCardWidth").then((initialWidth) => {
+              // Card should be narrower
+              expect(newCardWidth).to.be.lessThan(initialWidth);
+              // The change should be close to the drag distance
+              expect(newCardWidth).to.be.closeTo(initialWidth - 150, 10);
+            });
+          });
+        });
+
+      // Click into the supporting text to edit it
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .within(() => cy.get(".node-paragraph").click());
+
+      // Type some content
+      const testText = "Supporting text for Orders chart";
+      cy.realType(testText);
+      cy.realPress("Tab");
+
+      // Verify the text was added
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .should("contain.text", testText);
+
+      // Save the document
+      H.documentSaveButton().should("not.be.disabled").click();
+
+      // Wait for save confirmation
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Document saved");
+
+      // Reload the page to verify persistence
+      cy.intercept({
+        method: "GET",
+        path: "/api/document/*",
+      }).as("documentGet");
+      cy.reload();
+      H.closeNavigationSidebar();
+
+      cy.wait("@documentGet");
+
+      // Wait for the document to load
+      H.getDocumentCard("Orders")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      // Verify the widths are still the same after reload
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .then(($supportingText) => {
+          // Unjustified type cast. FIXME
+          const reloadedSupportingTextWidth = $supportingText.width() as number;
+
+          H.getDocumentCard("Orders").then(($card) => {
+            // Unjustified type cast. FIXME
+            const reloadedCardWidth = $card.width() as number;
+
+            cy.get<number>("@newSupportingTextWidth").then((savedWidth) => {
+              // Supporting text width should be preserved
+              expect(reloadedSupportingTextWidth).to.be.closeTo(savedWidth, 10);
+            });
+
+            cy.get<number>("@newCardWidth").then((savedWidth) => {
+              // Card width should be preserved
+              expect(reloadedCardWidth).to.be.closeTo(savedWidth, 10);
+            });
+          });
+        });
+    });
+
+    describe("supporting text drag and drop", () => {
+      beforeEach(() => {
+        H.createDocument({
+          name: "DnD Test Document",
+          document: DOCUMENT_WITH_SUPPORTING_TEXT,
+          collection_id: null,
+          idAlias: "documentId",
+        });
+        H.visitDocument("@documentId");
+      });
+
+      const getSupportingText = (contents: string = "Lorem ipsum") => {
+        const testId = "document-card-supporting-text";
+        return cy
+          .findAllByTestId(testId)
+          .contains(contents)
+          .closest(`[data-testid="${testId}"]`);
+      };
+
+      const assertHorizontalLayout = (
+        c1: Cypress.Chainable<JQuery<HTMLElement>>,
+        c2: Cypress.Chainable<JQuery<HTMLElement>>,
+      ) => {
+        c1.then(($c1) => {
+          c2.then(($c2) => {
+            const rect1 = $c1[0].getBoundingClientRect();
+            const rect2 = $c2[0].getBoundingClientRect();
+            expect(rect2.left).to.gte(rect1.right);
+            expect(rect1.top).to.be.closeTo(rect2.top, 2);
+          });
+        });
+      };
+
+      const assertVerticalLayout = (
+        c1: Cypress.Chainable<JQuery<HTMLElement>>,
+        c2: Cypress.Chainable<JQuery<HTMLElement>>,
+      ) => {
+        c1.then(($c1) => {
+          c2.then(($c2) => {
+            const rect1 = $c1[0].getBoundingClientRect();
+            const rect2 = $c2[0].getBoundingClientRect();
+            expect(rect2.top).to.gte(rect1.bottom);
+            expect(rect1.left).to.be.closeTo(rect2.left, 2);
+          });
+        });
+      };
+
+      it("should do nothing when dropping a supporting text block outside of a group, and reorder when dropping it onto a card", () => {
+        H.getDocumentCard("Orders").should("exist");
+        H.documentsDragAndDrop({
+          getSource: () => getSupportingText().find("[data-drag-handle]"),
+          getTarget: () => H.getDocumentCard("Orders, Count"),
+        });
+
+        assertHorizontalLayout(
+          getSupportingText(),
+          H.getDocumentCard("Orders"),
+        );
+        assertVerticalLayout(
+          getSupportingText(),
+          H.getDocumentCard("Orders, Count"),
+        );
+
+        cy.log("drop supporting text onto a card");
+        H.getDocumentCard("Orders").should("exist");
+        H.documentsDragAndDrop({
+          getSource: () => getSupportingText().find("[data-drag-handle]"),
+          getTarget: () => H.getDocumentCard("Orders"),
+          side: "right",
+        });
+
+        assertHorizontalLayout(
+          H.getDocumentCard("Orders"),
+          getSupportingText(),
+        );
+        assertVerticalLayout(
+          H.getDocumentCard("Orders"),
+          H.getDocumentCard("Orders, Count"),
+        );
+      });
+
+      it("should reorder when dropping a card onto a supporting text block", () => {
+        H.getDocumentCard("Orders").should("exist");
+        H.documentsDragAndDrop({
+          getSource: () => H.getDocumentCard("Orders"),
+          getTarget: () => getSupportingText(),
+          side: "left",
+        });
+
+        assertHorizontalLayout(
+          H.getDocumentCard("Orders"),
+          getSupportingText(),
+        );
+        assertVerticalLayout(
+          H.getDocumentCard("Orders"),
+          H.getDocumentCard("Orders, Count"),
+        );
+      });
+
+      it("should insert a card when dropped onto a supporting text block", () => {
+        H.getDocumentCard("Orders").should("exist");
+        H.documentsDragAndDrop({
+          getSource: () => H.getDocumentCard("Orders, Count"),
+          getTarget: () => getSupportingText(),
+          side: "left",
+        });
+
+        assertHorizontalLayout(
+          H.getDocumentCard("Orders, Count"),
+          getSupportingText(),
+        );
+        assertHorizontalLayout(
+          getSupportingText(),
+          H.getDocumentCard("Orders"),
+        );
+      });
+    });
+  });
+
+  describe("flex chart widths", () => {
+    const PADDING_CARD = 1;
+    type ChartCard =
+      | (StructuredQuestionDetails & { name: string })
+      | (NativeQuestionDetails & { name: string });
+    type ChartSpec = {
+      label: string;
+      card: ChartCard;
+      paddingX: number;
+      selector: string;
+    };
+
+    const isNativeQuestion = (
+      question: ChartCard,
+    ): question is NativeQuestionDetails & { name: string } =>
+      "native" in question;
+
+    const createQuestionForCard = (
+      question: ChartCard,
+      nameOverride?: string,
+    ) => {
+      const details = nameOverride
+        ? { ...question, name: nameOverride }
+        : question;
+      return isNativeQuestion(details)
+        ? H.createNativeQuestion(details)
+        : H.createQuestion(details);
+    };
+
+    const chartTypes: ChartSpec[] = [
+      {
+        label: "line",
+        card: ACCOUNTS_COUNT_BY_CREATED_AT,
+        paddingX: 16 + PADDING_CARD,
+        selector: "[data-testid='chart-container'] > :first-child",
+      },
+      {
+        label: "pie",
+        card: PRODUCTS_COUNT_BY_CATEGORY_PIE,
+        paddingX: 14 + PADDING_CARD,
+        selector: "[data-testid='chart-with-legend']",
+      },
+    ];
+
+    const assertChartMatchesContainerWidth = (
+      cardName: string,
+      paddingX: number,
+      selector: string,
+    ) => {
+      H.getDocumentCard(cardName).then(($card) => {
+        const cardWidth = $card.width()!;
+        cy.wrap($card).find(selector).as("chart");
+
+        cy.get("@chart")
+          .should("exist")
+          .then(($chart) => {
+            const width = $chart.width()!;
+            expect(width + paddingX * 2).to.equal(cardWidth);
+          });
+      });
+    };
+
+    it("keeps chart widths in sync during flex resize", () => {
+      const cardIds: Record<string, { firstId: number; secondId: number }> = {};
+
+      // Create all questions first
+      chartTypes.forEach(({ label, card }) => {
+        const secondCardName = `${card.name} (copy)`;
+
+        cy.then(() =>
+          createQuestionForCard(card).then(({ body }) => {
+            cardIds[label] = { firstId: body.id, secondId: 0 };
+          }),
+        );
+
+        cy.then(() =>
+          createQuestionForCard(card, secondCardName).then(({ body }) => {
+            cardIds[label].secondId = body.id;
+          }),
+        );
+      });
+
+      cy.then(() => {
+        const content = chartTypes.map(({ label }) => ({
+          type: "resizeNode",
+          attrs: {
+            height: 350,
+            minHeight: 280,
+            _id: `flex-${label}`,
+          },
+          content: [
+            {
+              type: "flexContainer",
+              attrs: {
+                _id: `flex-${label}-container`,
+                columnWidths: [50, 50],
+              },
+              content: [
+                {
+                  type: "cardEmbed",
+                  attrs: {
+                    id: cardIds[label].firstId,
+                    name: null,
+                    _id: `flex-${label}-card-1`,
+                  },
+                },
+                {
+                  type: "cardEmbed",
+                  attrs: {
+                    id: cardIds[label].secondId,
+                    name: null,
+                    _id: `flex-${label}-card-2`,
+                  },
+                },
+              ],
+            },
+          ],
+        }));
+
+        return H.createDocument({
+          name: "Flex chart width document",
+          document: {
+            type: "doc",
+            content,
+          },
+          collection_id: null,
+          idAlias: "flexDocumentId",
+        });
+      });
+
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      H.visitDocument("@flexDocumentId");
+
+      // Wait for all cards to load (2 cards per chart type)
+      for (let i = 0; i < chartTypes.length * 2; i++) {
+        cy.wait("@cardQuery", { timeout: 15000 });
+      }
+
+      chartTypes.forEach(({ card, paddingX, selector }) => {
+        const firstCardName = card.name;
+        const secondCardName = `${card.name} (copy)`;
+
+        const firstCardChart = H.getDocumentCard(firstCardName).find(selector);
+        const secondCardChart =
+          H.getDocumentCard(secondCardName).find(selector);
+
+        firstCardChart.should("exist");
+        secondCardChart.should("exist");
+
+        const flexContainer = H.getFlexContainerForCard(firstCardName);
+        const handles = H.getResizeHandlesForFlexContianer(flexContainer);
+
+        H.getDocumentCard(firstCardName).then(($card) => {
+          cy.wrap($card.width()).as("initialCardWidth");
+        });
+
+        handles.eq(0).then(($handle) => {
+          cy.wrap($handle).realMouseDown({
+            button: "left",
+            position: "center",
+          });
+
+          const steps = [10, 40, 60, -100, -10, -40, -60];
+          steps.forEach((deltaX, index) => {
+            cy.wrap($handle).realMouseMove(deltaX, 0, {
+              position: "center",
+            });
+
+            if (index === 0) {
+              cy.get<number>("@initialCardWidth").then((initialWidth) => {
+                H.getDocumentCard(firstCardName).should(($card) => {
+                  expect($card.width()).not.to.equal(initialWidth);
+                });
+              });
+            }
+
+            assertChartMatchesContainerWidth(firstCardName, paddingX, selector);
+            assertChartMatchesContainerWidth(
+              secondCardName,
+              paddingX,
+              selector,
+            );
+          });
+
+          cy.wrap($handle).realMouseUp({
+            button: "left",
+            position: "center",
+          });
+        });
       });
     });
   });
