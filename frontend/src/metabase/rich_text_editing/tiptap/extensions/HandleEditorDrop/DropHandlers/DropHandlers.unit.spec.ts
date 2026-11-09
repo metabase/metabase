@@ -187,7 +187,7 @@ describe("card drop handlers", () => {
     editor.destroy();
   });
 
-  it("does not move a card into a flexContainer from another one that already has 3 cards", () => {
+  it("does not move a card from another flexContainer into one that already has 3 cards", () => {
     const editor = makeEditor([
       resizeNode(flexContainer([card(1), card(2), card(3)])),
       resizeNode(flexContainer([card(4), card(5)])),

@@ -92,6 +92,8 @@ function findCard(editor: Editor, cardId: number) {
   return result;
 }
 
+let editor: Editor | undefined;
+
 function setup({ content, cardId }: SetupOpts) {
   setupLastDownloadFormatEndpoints();
   setupCardQueryMetadataEndpoint(
@@ -99,7 +101,7 @@ function setup({ content, cardId }: SetupOpts) {
     createMockCardQueryMetadata(),
   );
 
-  const editor = new Editor({
+  editor = new Editor({
     element: document.createElement("div"),
     extensions: [
       StarterKit,
@@ -129,8 +131,6 @@ function setup({ content, cardId }: SetupOpts) {
       />
     </DocumentEditorHostProvider>,
   );
-
-  return { editor };
 }
 
 async function getAddSupportingTextItem() {
@@ -139,38 +139,37 @@ async function getAddSupportingTextItem() {
 }
 
 describe("CardEmbed 'Add supporting text' menu item", () => {
+  afterEach(() => {
+    editor?.destroy();
+    editor = undefined;
+  });
+
   it("is enabled for a standalone card", async () => {
-    const { editor } = setup({ content: [resizeNode(card(1))], cardId: 1 });
+    setup({ content: [resizeNode(card(1))], cardId: 1 });
 
     expect(await getAddSupportingTextItem()).toBeEnabled();
-
-    editor.destroy();
   });
 
   it("is enabled for a card in a flexContainer with 2 cards", async () => {
-    const { editor } = setup({
+    setup({
       content: [resizeNode(flexContainer([card(1), card(2)]))],
       cardId: 1,
     });
 
     expect(await getAddSupportingTextItem()).toBeEnabled();
-
-    editor.destroy();
   });
 
   it("is disabled for a card in a flexContainer with 3 cards", async () => {
-    const { editor } = setup({
+    setup({
       content: [resizeNode(flexContainer([card(1), card(2), card(3)]))],
       cardId: 1,
     });
 
     expect(await getAddSupportingTextItem()).toBeDisabled();
-
-    editor.destroy();
   });
 
   it("is disabled for a card whose flexContainer already has supporting text", async () => {
-    const { editor } = setup({
+    setup({
       content: [
         resizeNode(flexContainer([supportingText("Lorem ipsum"), card(1)])),
       ],
@@ -178,7 +177,5 @@ describe("CardEmbed 'Add supporting text' menu item", () => {
     });
 
     expect(await getAddSupportingTextItem()).toBeDisabled();
-
-    editor.destroy();
   });
 });
