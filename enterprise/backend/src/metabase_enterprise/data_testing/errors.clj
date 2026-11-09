@@ -76,11 +76,8 @@
   (get error-types error-type 500))
 
 (mu/defn refusing
-  "Call `thunk`, rethrowing a typed refusal as the status and the `:error-code` under `prefix` that it publishes.
-
-  400 — the test is wrong, and its author can fix it.
-  422 — the test is fine; its subject or the subject's database prevents a run here.
-  501 — the test asks for something not built yet."
+  "Call `thunk`, rethrowing a typed refusal with the status of its type and its `:error-code` under `prefix`. Any other
+  exception passes through unchanged."
   [prefix :- :string
    thunk  :- ifn?]
   (try
