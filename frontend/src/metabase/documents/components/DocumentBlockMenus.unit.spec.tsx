@@ -122,16 +122,19 @@ describe("document block menus", () => {
     const { content } = await setup();
     const writeText = jest.spyOn(navigator.clipboard, "writeText");
 
+    // Hover the second heading, so a menu that ignores hover copies the wrong URL
     await userEvent.hover(
-      within(content).getByRole("heading", { name: "First Heading" }),
+      within(content).getByRole("heading", { name: "Second Heading" }),
     );
-    const [anchorMenu] = getVisibleMenus("anchor-link-menu");
+    const visibleAnchorMenus = getVisibleMenus("anchor-link-menu");
+    expect(visibleAnchorMenus).toHaveLength(1);
+
     await userEvent.click(
-      within(anchorMenu).getByRole("button", { name: /copy link/i }),
+      within(visibleAnchorMenus[0]).getByRole("button", { name: /copy link/i }),
     );
 
     expect(writeText).toHaveBeenCalledWith(
-      `${SITE_URL}/document/${DOCUMENT_ID}#heading-block-1`,
+      `${SITE_URL}/document/${DOCUMENT_ID}#heading-block-2`,
     );
     expect(await screen.findByText("Copied!")).toBeInTheDocument();
   });
