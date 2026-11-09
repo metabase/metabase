@@ -183,7 +183,7 @@
              :entity_local_id [:in [:auto/param (vec local-ids)]]))
 
 (mu/defn insert-rows! :- [:sequential ::row]
-  "Insert `rows` of `model`, running its hooks, and return the inserted instances."
+  "Insert `rows` of `model`, running its hooks, and return the inserted instances in no particular order."
   [model :- :keyword
    rows  :- [:sequential ::row]]
   (t2/insert-returning-instances! model rows))
