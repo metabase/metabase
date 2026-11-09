@@ -2110,13 +2110,15 @@
 
   prototype
   {:team "Gadget"
-   :api  #{metabase.prototype.init}
-   :uses #{app-db
+   :api  #{metabase.prototype.api metabase.prototype.init}
+   :uses #{api
+           app-db
            events
            lib
            lib.be
            lib.metadata
            lib.schema
+           metabot
            settings
            startup
            sync

@@ -1,3 +1,4 @@
+import { unifiedMergeView } from "@codemirror/merge";
 import { EditorSelection, type EditorState } from "@codemirror/state";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
@@ -32,6 +33,8 @@ import { ActionIcon, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import { DiffControls } from "../../CodeMirrorEditor/DiffControls";
+import { useDiffControls } from "../../CodeMirrorEditor/use-diff-controls";
 import { AvailableColumnsBrowser } from "../AvailableColumnsBrowser";
 import type { ExpressionSidebarName } from "../ExpressionSidebar";
 import {
@@ -78,7 +81,7 @@ export type EditorProps = {
   inline?: boolean;
 
   /** Rendered in the inline toolbar. */
-  shortcutsMenu?: ReactNode;
+  renderShortcutsMenu?: (helpers: ShortcutsMenuHelpers) => ReactNode;
   initialSource?: string;
 
   onChange: (
@@ -87,6 +90,12 @@ export type EditorProps = {
     meta: EditorChangeMeta,
   ) => void;
   shortcuts?: Shortcut[];
+};
+
+export type ShortcutsMenuHelpers = {
+  getSource: () => string;
+  /** Show `source` as a diff against the current text, to accept or reject. */
+  proposeSource: (source: string) => void;
 };
 
 export type EditorChangeMeta = {
@@ -116,7 +125,7 @@ export function Editor(props: EditorProps) {
     onCloseEditor,
     initialExpressionClause,
     inline = false,
-    shortcutsMenu,
+    renderShortcutsMenu,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -147,6 +156,7 @@ export function Editor(props: EditorProps) {
     formatExpression,
     isFormatting,
     isValidated,
+    acceptSource,
   } = useExpression({
     ...props,
     database,
@@ -171,7 +181,7 @@ export function Editor(props: EditorProps) {
     ),
   });
 
-  const extensions = useExtensions({
+  const baseExtensions = useExtensions({
     expressionMode,
     query,
     stageIndex,
@@ -180,6 +190,63 @@ export function Editor(props: EditorProps) {
     database,
     extensions: [customTooltip],
   });
+
+  // An AI suggestion, shown as a diff against `source` until accepted or rejected.
+  const [proposedSource, setProposedSource] = useState<string | null>(null);
+  const isProposing = proposedSource != null;
+
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const getSource = useCallback(() => sourceRef.current, []);
+
+  const proposeSource = useCallback((nextSource: string) => {
+    setProposedSource(nextSource);
+    requestAnimationFrame(() => ref.current?.view?.focus());
+  }, []);
+
+  const handleAcceptProposed = useCallback(() => {
+    if (proposedSource != null) {
+      setProposedSource(null);
+      acceptSource(proposedSource);
+    }
+  }, [proposedSource, acceptSource]);
+
+  const handleRejectProposed = useCallback(() => {
+    setProposedSource(null);
+  }, []);
+
+  const {
+    extensions: diffControlsExtensions,
+    portalTarget,
+    shortcuts: diffShortcuts,
+  } = useDiffControls({
+    isEnabled: isProposing,
+    onAcceptProposed: handleAcceptProposed,
+    onRejectProposed: handleRejectProposed,
+  });
+
+  const extensions = useMemo(
+    () =>
+      isProposing
+        ? [
+            ...baseExtensions,
+            unifiedMergeView({ original: source, mergeControls: false }),
+            ...diffControlsExtensions,
+          ]
+        : baseExtensions,
+    [isProposing, baseExtensions, source, diffControlsExtensions],
+  );
+
+  const handleSourceChange = useCallback(
+    (nextSource: string) => {
+      if (isProposing) {
+        setProposedSource(nextSource);
+      } else {
+        onSourceChange(nextSource);
+      }
+    },
+    [isProposing, onSourceChange],
+  );
 
   const handleFunctionBrowserClauseClick = useCallback((name: string) => {
     const view = ref.current?.view;
@@ -274,9 +341,9 @@ export function Editor(props: EditorProps) {
           className={S.editor}
           extensions={extensions}
           readOnly={readOnly || isFormatting}
-          value={source}
-          onChange={onSourceChange}
-          onBlur={onBlur}
+          value={proposedSource ?? source}
+          onChange={handleSourceChange}
+          onBlur={isProposing ? undefined : onBlur}
           height="100%"
           width="100%"
           indentWithTab={false}
@@ -286,12 +353,23 @@ export function Editor(props: EditorProps) {
           autoCorrect="off"
           tabIndex={0}
           onFormat={
-            error === null && isValidated && !isSnippetActive
+            error === null && isValidated && !isSnippetActive && !isProposing
               ? formatExpression
               : undefined
           }
         />
-        <Errors error={isSnippetActive ? null : error} source={source} />
+        {isProposing && (
+          <DiffControls
+            portalTarget={portalTarget}
+            shortcuts={diffShortcuts}
+            onAcceptProposed={handleAcceptProposed}
+            onRejectProposed={handleRejectProposed}
+          />
+        )}
+        <Errors
+          error={isSnippetActive || isProposing ? null : error}
+          source={source}
+        />
 
         {!inline && source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
@@ -303,10 +381,11 @@ export function Editor(props: EditorProps) {
               source.trim() !== "" &&
               error == null &&
               (isValidated || !hasSourceChanged) &&
-              !isFormatting
+              !isFormatting &&
+              !isProposing
             }
             openSidebar={openSidebar}
-            shortcutsMenu={shortcutsMenu}
+            shortcutsMenu={renderShortcutsMenu?.({ getSource, proposeSource })}
             onFormat={formatExpression}
             onToggleSidebar={toggleSidebar}
           />
@@ -562,6 +641,11 @@ function useExpression({
     formatExpression({ initial: false });
   }, [formatExpression]);
 
+  const acceptSource = useCallback(
+    (source: string) => handleUpdate(source, true),
+    [handleUpdate],
+  );
+
   return {
     source,
     initialSource,
@@ -571,6 +655,7 @@ function useExpression({
     formatExpression: handleFormatExpression,
     isFormatting,
     isValidated,
+    acceptSource,
   };
 }
 

@@ -1,0 +1,27 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 5.5rem;
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
+}
+
+.inputContainer {
+  flex: 1;
+  min-height: 1.5rem;
+}
+
+.inputContainer :global(.ProseMirror) {
+  font-family: var(--mb-default-font-family);
+  font-size: var(--mantine-font-size-md);
+  min-height: 1.25rem;
+  padding: 0.25rem 0.125rem;
+}
+
+.cancelButton {
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-text-brand);
+  }
+}

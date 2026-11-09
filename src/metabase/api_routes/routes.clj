@@ -53,6 +53,7 @@
    [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
    [metabase.premium-features.rest.api]
+   [metabase.prototype.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
    [metabase.queries-rest.api]
@@ -119,6 +120,7 @@
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
          metabase.permissions-rest.api/keep-me
+         metabase.prototype.api/keep-me
          metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
@@ -272,6 +274,7 @@
    "/osi"                  {"/ai-context" (+auth 'metabase.osi.ai-context.api)}
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
+   "/prototype"            (+auth 'metabase.prototype.api)
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/public"               (+public-exceptions (+without-current-user metabase.public-sharing-rest.api/routes))

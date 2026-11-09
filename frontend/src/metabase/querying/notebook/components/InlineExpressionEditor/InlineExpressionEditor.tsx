@@ -124,16 +124,20 @@ export function InlineExpressionEditor({
         reportTimezone={reportTimezone}
         error={error}
         readOnly={readOnly}
-        shortcutsMenu={
-          expressionMode === "expression" &&
-          !readOnly && (
-            <ShortcutsMenu
-              query={query}
-              stageIndex={stageIndex}
-              availableColumns={availableColumns}
-              onSubmit={applyShortcut}
-            />
-          )
+        renderShortcutsMenu={
+          readOnly
+            ? undefined
+            : ({ getSource, proposeSource }) => (
+                <ShortcutsMenu
+                  query={query}
+                  stageIndex={stageIndex}
+                  expressionMode={expressionMode}
+                  availableColumns={availableColumns}
+                  getSource={getSource}
+                  onSubmit={applyShortcut}
+                  onGenerate={proposeSource}
+                />
+              )
         }
         inline
       />

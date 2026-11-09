@@ -18,26 +18,34 @@ import {
 } from "../../../analytics";
 import { CombineColumns, hasCombinations } from "../CombineColumns";
 import { ExtractColumn, hasExtractions } from "../ExtractColumn";
+import { GenerateExpressionPrompt } from "../GenerateExpressionPrompt";
 
 const SCREEN_WIDTH = 472;
 
-type Screen = "combine" | "extract";
+type Screen = "generate" | "combine" | "extract";
 
 type ShortcutsMenuProps = {
   query: Lib.Query;
   stageIndex: number;
+  expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
+  getSource: () => string;
   onSubmit: (clause: Lib.ExpressionClause, name: string) => void;
+  onGenerate: (expression: string) => void;
 };
 
 export function ShortcutsMenu({
   query,
   stageIndex,
+  expressionMode,
   availableColumns,
+  getSource,
   onSubmit,
+  onGenerate,
 }: ShortcutsMenuProps) {
   const [screen, setScreen] = useState<Screen | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [prompt, setPrompt] = useState("");
 
   // Mantine closes a popover on any click outside its own DOM, which includes
   // the portaled column pickers inside it. The overlay stack knows they are on top.
@@ -47,24 +55,25 @@ export function ShortcutsMenu({
     closeOnEscape: true,
   });
 
-  const items: { screen: Screen; name: string; icon: IconName }[] = [];
-  if (hasCombinations(availableColumns)) {
+  const items: { screen: Screen; name: string; icon: IconName }[] = [
+    { screen: "generate", name: t`Generate with AI`, icon: "metabot" },
+  ];
+  if (expressionMode === "expression" && hasCombinations(availableColumns)) {
     items.push({
       screen: "combine",
       name: t`Combine columns`,
       icon: "combine",
     });
   }
-  if (hasExtractions(query, availableColumns)) {
+  if (
+    expressionMode === "expression" &&
+    hasExtractions(query, availableColumns)
+  ) {
     items.push({
       screen: "extract",
       name: t`Extract part of a column`,
       icon: "extract",
     });
-  }
-
-  if (items.length === 0) {
-    return null;
   }
 
   const close = () => setScreen(null);
@@ -92,6 +101,11 @@ export function ShortcutsMenu({
     trackColumnExtractViaShortcut(query, stageIndex, extraction);
     close();
     onSubmit(clause, name);
+  };
+
+  const handleGenerate = (expression: string) => {
+    close();
+    onGenerate(expression);
   };
 
   return (
@@ -133,6 +147,19 @@ export function ShortcutsMenu({
         </div>
       </Popover.Target>
       <Popover.Dropdown w={SCREEN_WIDTH} data-testid="expression-shortcut">
+        {screen === "generate" && (
+          <GenerateExpressionPrompt
+            query={query}
+            stageIndex={stageIndex}
+            expressionMode={expressionMode}
+            availableColumns={availableColumns}
+            value={prompt}
+            getSource={getSource}
+            onValueChange={setPrompt}
+            onGenerate={handleGenerate}
+            onClose={close}
+          />
+        )}
         {screen === "combine" && (
           <CombineColumns
             query={query}
