@@ -198,6 +198,17 @@
     (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil])
     #{}))
 
+(mu/defn metric-cards
+  "The non-archived metric Cards with `card-ids`, in name then id order."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card {:where    [:and
+                                       [:= :type "metric"]
+                                       [:= :archived false]
+                                       [:in :id card-ids]]
+                            :order-by [[:name :asc] [:id :asc]]})
+    []))
+
 (mu/defn metric-cards-in-collections
   "The non-archived metric Cards in `collection-ids`, in name then id order."
   [collection-ids :- [:set ::lib.schema.id/collection]]

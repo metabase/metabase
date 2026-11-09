@@ -224,11 +224,16 @@
     (data-app-response (data-apps.db/data-app (:id app)))))
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
-  "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and
-  measures, and its metrics. Superusers only."
-  []
+  "The `src/metabase.schema.ts` file of a data app: the tables with `table-ids`, or the Library's published tables
+  without it, with their fields, segments and measures, and the metrics with `metric-ids`, or the Library's metrics
+  without it. Superusers only."
+  [_route-params
+   {:keys [table-ids metric-ids]} :- [:map {:closed true}
+                                      [:table-ids  {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+                                      [:metric-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
   (api/check-superuser)
-  (generate.schema/generate))
+  (generate.schema/generate {:table-ids  (some-> table-ids set)
+                             :metric-ids (some-> metric-ids set)}))
 
 (api.macros/defendpoint :post "/generate/queries" :- GeneratedFiles
   "The YAML files of the questions a data app defines, one per `defineQuery` export in `queries`, in its collection with

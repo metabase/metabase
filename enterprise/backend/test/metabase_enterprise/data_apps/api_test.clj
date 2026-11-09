@@ -342,7 +342,37 @@
           (is (str/includes? contents "export const schema = {"))
           (is (re-find #"\n    venues[,\n]" contents)))
         (testing "and no actions"
-          (is (not (str/includes? contents "actions"))))))))
+          (is (not (str/includes? contents "actions")))))
+      (testing "`table-ids` replaces the published tables"
+        (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
+                                                         :table-ids (mt/id :checkins)
+                                                         :table-ids (mt/id :users))]
+          (is (str/includes? contents "export const checkins = {"))
+          (is (str/includes? contents "export const users = {"))
+          (is (not (str/includes? contents "export const venues = {"))))))))
+
+(deftest generate-schema-metric-ids-test
+  (mt/with-premium-features #{:data-apps}
+    (data-apps.tu/do-with-sources!
+     (fn [{library-metric-id :metric-id}]
+       (let [mp            (mt/metadata-provider)
+             checkins      (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+             schema-metric (fn [contents metric-id]
+                             (re-find (re-pattern (str "type: \"metric\",\n  id: " metric-id ",\n")) contents))]
+         (mt/with-temp [:model/Card {metric-id :id} {:name          "Checkin count"
+                                                     :type          :metric
+                                                     :database_id   (mt/id)
+                                                     :dataset_query (lib/aggregate checkins (lib/count))}]
+           (testing "without `metric-ids` the schema holds the Library's metrics"
+             (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema")]
+               (is (schema-metric contents library-metric-id))
+               (is (not (schema-metric contents metric-id)))))
+           (testing "`metric-ids` replaces them with any metric, with the tables it is backed by"
+             (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
+                                                              :metric-ids metric-id)]
+               (is (schema-metric contents metric-id))
+               (is (not (schema-metric contents library-metric-id)))
+               (is (str/includes? contents "export const checkins = {"))))))))))
 
 (deftest generate-queries-test
   (mt/with-premium-features #{:data-apps}
