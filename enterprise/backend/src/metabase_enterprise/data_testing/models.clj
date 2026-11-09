@@ -47,8 +47,8 @@
   (if-not (seq transform-tests)
     transform-tests
     (let [id->run (into {}
-                        (map (juxt :transform_test_id identity))
-                        (data-testing.db/latest-transform-test-runs (into #{} (map :id) transform-tests)))]
+                        (map (juxt :test_id identity))
+                        (data-testing.db/latest-test-runs :transform (into #{} (map :id) transform-tests)))]
       (for [transform-test transform-tests]
         (assoc transform-test :last_run (get id->run (:id transform-test)))))))
 
@@ -78,6 +78,17 @@
   [transform-id :- ::lib.schema.id/transform]
   (let [transform (data-testing.db/transform transform-id)]
     (can-save-for-transform? transform (some-> transform mi/can-write?) can-run-native-query?)))
+
+(mu/defn can-run-test? :- :boolean
+  "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
+  a test against its source Database."
+  [transform-id :- ::lib.schema.id/transform]
+  (let [transform (data-testing.db/transform transform-id)]
+    (boolean
+     (and transform
+          (mi/can-read? transform)
+          (or (mi/superuser?)
+              (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
 
 (defmethod mi/can-read? :model/TransformTest
   ([instance]
@@ -165,6 +176,9 @@
   (data-testing.db/delete-transform-tests! transform-id))
 
 (t2/define-before-delete :model/TransformTest [transform-test]
+  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
+  ;; delete's transaction. Toucan 2 has no after-delete hook.
+  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/transform-test-delete {:object transform-test}))
   transform-test)

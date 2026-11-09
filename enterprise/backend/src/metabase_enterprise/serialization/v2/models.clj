@@ -183,7 +183,7 @@
    :model/TransformJobRun
    :model/TransformRun
    :model/TransformRunCancelation
-   :model/TransformTestRun
+   :model/DataTestRun
    :model/Undo
    :model/User
    :model/UserKeyValue

@@ -294,7 +294,7 @@
    {:keys [inputs expectations] :as transform-test} :- ::data-testing.schema/transform-test]
   (let [{:keys [driver database input->table output-table labels replacements compiled]}
         (validated-plan :transform (transforms.u/->definition transform) inputs expectations)
-        {run-id :id} (data-testing.run-tracking/start-run! (:id transform-test) api/*current-user-id*)
+        {run-id :id} (data-testing.run-tracking/start-run! :transform (:id transform-test) api/*current-user-id*)
         final-status (atom :error)]
     (try
       (let [result

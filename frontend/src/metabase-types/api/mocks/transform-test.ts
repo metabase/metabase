@@ -63,7 +63,8 @@ export function createMockTransformTestRun(
 ): TransformTestRun {
   return {
     id: 1,
-    transform_test_id: 1,
+    test_type: "transform",
+    test_id: 1,
     initiated_by: 1,
     start_time: "2026-01-01T00:00:00Z",
     end_time: "2026-01-01T00:00:02Z",

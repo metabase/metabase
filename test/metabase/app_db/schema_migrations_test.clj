@@ -4712,6 +4712,93 @@
           (migrate! :down 64)
           (is (true? (:collection_preview (card)))))))))
 
+(deftest data-test-run-test
+  (testing "pwaj0l..k4zf7x: transform_test_run becomes data_test_run, and the rollback restores it"
+    (impl/test-migrations ["pwaj0l" "k4zf7x"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                              :last_name     "Owner"
+                                                              :email         "data-test-owner@test.com"
+                                                              :entity_id     (u/generate-nano-id)
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            transform-id (t2/insert-returning-pk! :transform {:name        (mt/random-name)
+                                                              :source      "{}"
+                                                              :target      "{}"
+                                                              :source_type "native"
+                                                              :creator_id  user-id
+                                                              :entity_id   (u/generate-nano-id)
+                                                              :created_at  :%now
+                                                              :updated_at  :%now})
+            insert-test  (fn []
+                           (t2/insert-returning-pk! :transform_test {:entity_id    (u/generate-nano-id)
+                                                                     :transform_id transform-id
+                                                                     :creator_id   user-id
+                                                                     :name         (mt/random-name)
+                                                                     :inputs       "[]"
+                                                                     :expectations "[]"
+                                                                     :created_at   :%now
+                                                                     :updated_at   :%now}))
+            test-id      (insert-test)
+            deleted-id   (insert-test)
+            run-row      (fn [id] {:transform_test_id id, :initiated_by user-id, :status "passed"})
+            kept-run     (t2/insert-returning-pk! :transform_test_run (run-row test-id))
+            deleted-run  (t2/insert-returning-pk! :transform_test_run (run-row deleted-id))
+            ;; Read the boundary before the changesets run: on MySQL the marker row that a run writes can share a
+            ;; changeset's position, so a deployment id read after the run can be the changeset's own.
+            boundary     (with-open [conn (.getConnection (mdb/data-source))]
+                           (liquibase/with-liquibase [liquibase conn]
+                             (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+        (t2/delete! :transform_test :id deleted-id)
+        (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id deleted-run))
+            "before the migration, deleting a test nulls the test id of its runs")
+        (is (thrown? Exception (t2/insert! :transform_test_run (run-row Integer/MAX_VALUE)))
+            "before the migration a run must name a test that exists")
+        (migrate!)
+        (let [dangling-run (t2/insert-returning-pk! :data_test_run {:test_type "transform", :test_id deleted-id, :status "passed"})]
+          (testing "the runs keep their test, and are transform runs"
+            (is (=? {:test_id test-id, :test_type "transform", :status "passed", :initiated_by user-id}
+                    (t2/select-one :data_test_run :id kept-run)))
+            (is (=? {:test_id nil, :test_type "transform"}
+                    (t2/select-one :data_test_run :id deleted-run))))
+          (testing "the old table is gone"
+            (is (thrown? Exception (t2/select :transform_test_run))))
+          (testing "test_id has no foreign key any more"
+            (is (some? (t2/insert-returning-pk! :data_test_run {:test_type "card", :test_id Integer/MAX_VALUE, :status "passed"})))
+            (let [other-test (insert-test)
+                  run        (t2/insert-returning-pk! :data_test_run {:test_type "transform", :test_id other-test, :status "passed"})]
+              (t2/delete! :transform_test :id other-test)
+              (is (= other-test (t2/select-one-fn :test_id :data_test_run :id run)))
+              (t2/delete! :data_test_run :id run)))
+          (testing "a new run must name its test type"
+            (is (thrown? Exception (t2/insert! :data_test_run {:test_id test-id, :status "started"}))))
+          (when (= :postgres (mdb/db-type))
+            (testing "the id sequence follows the table name"
+              (is (= "data_test_run_id_seq"
+                     (:seq (t2/query-one ["SELECT to_regclass('data_test_run_id_seq')::text AS seq"]))))))
+          (let [card-run (t2/select-one-pk :data_test_run :test_type "card")]
+            (is (some? card-run))
+            (with-open [conn (.getConnection (mdb/data-source))]
+              (liquibase/with-liquibase [liquibase conn]
+                (rollback/rollback-to-deployment! conn liquibase boundary)))
+            (testing "rollback restores transform_test_run"
+              (is (thrown? Exception (t2/select :data_test_run)))
+              (is (=? {:transform_test_id test-id, :status "passed", :initiated_by user-id}
+                      (t2/select-one :transform_test_run :id kept-run)))
+              (is (not (contains? (t2/select-one :transform_test_run :id kept-run) :test_type)))
+              (is (=? {:transform_test_id nil} (t2/select-one :transform_test_run :id deleted-run)))
+              (when (= :postgres (mdb/db-type))
+                (is (= "transform_test_run_id_seq"
+                       (:seq (t2/query-one ["SELECT to_regclass('transform_test_run_id_seq')::text AS seq"]))))))
+            (testing "rollback deletes the runs of other test types, and nulls an id that names no transform test"
+              (is (= 3 (t2/count :transform_test_run)) "the card run is gone")
+              (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id dangling-run))))
+            (testing "rollback restores the foreign key"
+              (is (thrown? Exception (t2/insert! :transform_test_run (run-row Integer/MAX_VALUE))))
+              (t2/delete! :transform_test :id test-id)
+              (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id kept-run))))
+            (is (nil? (t2/select-one :transform_test_run :id card-run)))))))))
+
 (deftest sync-library-collection-test
   (doseq [[label settings synced?] [["read-write instance syncing a repository syncs the Library"
                                      {"remote-sync-url" "https://example.com/repo.git" "remote-sync-type" "read-write"}

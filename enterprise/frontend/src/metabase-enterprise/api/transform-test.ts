@@ -43,8 +43,8 @@ export const transformTestApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ id, ...params }) => ({
         method: "GET",
-        url: `/api/ee/transform-test/${id}/run`,
-        params,
+        url: "/api/ee/data-test-run",
+        params: { "test-type": "transform", "test-id": id, ...params },
       }),
       providesTags: (response) =>
         provideTransformTestRunListTags(response?.data ?? []),
