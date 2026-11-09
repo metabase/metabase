@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 
 import { skipToken, useGetPrototypeSamplesQuery } from "metabase/api";
-import { useIsSlowData } from "metabase/prototype";
+import { getPrimarySourceTableId, useIsSlowData } from "metabase/prototype";
 import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
 
@@ -87,7 +87,7 @@ export function useStatsSource(query: Lib.Query): StatsSource {
     }
     // A sample joined to another sample has almost no matching rows, so only
     // a query that reads one table can use its sample.
-    const sourceTableId = Lib.sourceTableOrCardId(query);
+    const sourceTableId = getPrimarySourceTableId(query);
     const sample = samples?.tables.find(
       (table) => table.table_id === sourceTableId,
     );

@@ -14,3 +14,4 @@ export {
   getPrototypeSetting,
   usePrototypeSetting,
 } from "./use-prototype-setting";
+export { getPrimarySourceTableId } from "./source-table";

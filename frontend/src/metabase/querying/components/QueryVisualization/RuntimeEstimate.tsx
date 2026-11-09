@@ -6,8 +6,7 @@ import {
   skipToken,
   useGetPrototypeRuntimeEstimateQuery,
 } from "metabase/api";
-import { useIsSlowData } from "metabase/prototype";
-import * as Lib from "metabase-lib";
+import { getPrimarySourceTableId, useIsSlowData } from "metabase/prototype";
 import type Question from "metabase-lib/v1/Question";
 
 /** Below this, a query is fast enough that the user does not need a hint. */
@@ -25,8 +24,7 @@ export function useRuntimeEstimateHint(
 ): string | null {
   const isEnabled = useIsSlowData();
   const cardId = question.id() ?? question.card().original_card_id;
-  const sourceId = Lib.sourceTableOrCardId(question.query());
-  const tableId = typeof sourceId === "number" ? sourceId : undefined;
+  const tableId = getPrimarySourceTableId(question.query());
   const hasSource = cardId != null || tableId != null;
   const { data, refetch } = useGetPrototypeRuntimeEstimateQuery(
     isEnabled && hasSource
