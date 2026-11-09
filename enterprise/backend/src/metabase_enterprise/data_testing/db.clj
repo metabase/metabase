@@ -169,6 +169,32 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/CardTest :id id))
 
+(mu/defn card-tests :- [:sequential ::data-testing.schema/card-test]
+  "The CardTests in name order, only those of the Card with `:card-id` when it is given."
+  [{:keys [card-id]} :- [:map {:closed true}
+                         [:card-id {:optional true} [:maybe ::lib.schema.id/card]]]]
+  (t2/select :model/CardTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
+                               card-id (assoc :where [:= :card_id card-id]))))
+
+(mu/defn insert-card-test! :- ::data-testing.schema/card-test
+  "Insert the CardTest `card-test` and return the inserted instance."
+  [card-test :- [:merge
+                 ::data-testing.schema/card-test.create
+                 [:map {:closed true}
+                  [:creator_id ::lib.schema.id/user]]]]
+  (t2/insert-returning-instance! :model/CardTest card-test))
+
+(mu/defn update-card-test!
+  "Apply `updates` to the CardTest with `id`."
+  [id      :- ms/PositiveInt
+   updates :- ::data-testing.schema/card-test.update]
+  (t2/update! :model/CardTest :id id updates))
+
+(mu/defn delete-card-test!
+  "Delete the CardTest with `id`."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/CardTest :id id))
+
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]

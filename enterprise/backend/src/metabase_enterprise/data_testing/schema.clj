@@ -226,11 +226,6 @@
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
    :transform :card])
 
-(mr/def ::saved-test-type
-  "The kinds of test that can be saved."
-  [:enum {:decode/normalize lib.schema.common/normalize-keyword}
-   :transform])
-
 (mr/def ::data-test-run
   "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete
   that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test."
@@ -279,6 +274,13 @@
   "A transform test as the read endpoints return it, with its newest run."
   [:merge
    ::transform-test
+   [:map {:closed true}
+    [:last_run [:maybe ::data-test-run]]]])
+
+(mr/def ::card-test.response
+  "A card test as the read endpoints return it, with its newest run."
+  [:merge
+   ::card-test
    [:map {:closed true}
     [:last_run [:maybe ::data-test-run]]]])
 

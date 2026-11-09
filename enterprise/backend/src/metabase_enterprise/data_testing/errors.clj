@@ -75,6 +75,24 @@
   [error-type :- [:maybe :keyword]]
   (get error-types error-type 500))
 
+(mu/defn refusing
+  "Call `thunk`, rethrowing a typed refusal as the status and the `:error-code` under `prefix` that it publishes.
+
+  400 — the test is wrong, and its author can fix it.
+  422 — the test is fine; its subject or the subject's database prevents a run here.
+  501 — the test asks for something not built yet."
+  [prefix :- :string
+   thunk  :- ifn?]
+  (try
+    (thunk)
+    (catch clojure.lang.ExceptionInfo e
+      (if-let [error-type (:error-type (ex-data e))]
+        (throw (ex-info (ex-message e)
+                        (assoc (dissoc (ex-data e) :error-type)
+                               :status-code (status-code error-type)
+                               :error-code  (code prefix error-type))))
+        (throw e)))))
+
 (mu/defn remap-message :- [:maybe :string]
   "`message` with every temp-table name in `temp->logical` replaced by the name the author wrote.
 

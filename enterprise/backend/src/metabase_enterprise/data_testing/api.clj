@@ -17,21 +17,9 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn- refusing :- [:maybe ::data-testing.schema/run-result]
-  "Call `thunk`, rethrowing a typed transform-test refusal as the status and `:error-code` it publishes.
-
-  400 — the test is wrong, and its author can fix it.
-  422 — the test is fine; the transform or its database prevents a run here.
-  501 — the test asks for something not built yet."
+  "Call `thunk`, rethrowing a typed refusal as [[data-testing.errors/refusing]] does, under the `transform-test` prefix."
   [thunk :- ifn?]
-  (try
-    (thunk)
-    (catch clojure.lang.ExceptionInfo e
-      (if-let [error-type (:error-type (ex-data e))]
-        (throw (ex-info (ex-message e)
-                        (assoc (dissoc (ex-data e) :error-type)
-                               :status-code (data-testing.errors/status-code error-type)
-                               :error-code  (data-testing.errors/code "transform-test" error-type))))
-        (throw e)))))
+  (data-testing.errors/refusing "transform-test" thunk))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/transform-test.response]
   "List the transform tests with their newest runs, optionally only those of one transform."
