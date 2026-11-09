@@ -151,3 +151,27 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (true? (boolean (mi/can-update? card-test {:name "renamed"}))))
         (is (false? (boolean (mi/can-update? card-test {:card_id other-id}))))))))
+
+(deftest permissions-take-the-database-of-the-card-query-test
+  ;; Card hooks set `database_id` from the query on every insert and update, so only a direct row update makes the
+  ;; column name another database.
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Database   {other-db :id}  {:engine :h2 :details {}}
+                   :model/Collection {coll-id :id}   {}
+                   :model/Card       {card-id :id}   {:collection_id coll-id
+                                                      :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                   :model/CardTest   card-test       {:card_id card-id}]
+      (perms.tu/with-no-data-perms-for-all-users!
+        (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                      :perms/create-queries :query-builder-and-native}
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+          (t2/query-one {:update :report_card :set {:database_id other-db} :where [:= :id card-id]})
+          (testing "premise: the card's database_id names a database other than its query's"
+            (is (= other-db (t2/select-one-fn :database_id :model/Card :id card-id))))
+          (testing "native queries on the query's database are enough to run and save the test"
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (= {:run true :create true :update true :write true}
+                     {:run    (boolean (data-testing.models.card-test/can-run? card-test))
+                      :create (boolean (mi/can-create? :model/CardTest {:card_id card-id}))
+                      :update (boolean (mi/can-update? card-test {:name "renamed"}))
+                      :write  (boolean (mi/can-write? card-test))})))))))))

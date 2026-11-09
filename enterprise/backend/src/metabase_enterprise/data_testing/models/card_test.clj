@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -52,26 +53,31 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
+(defn- query-database-id
+  "The id of the Database the query of `card` runs on."
+  [card]
+  (lib/database-id (:dataset_query card)))
+
 (mu/defn- can-save-test? :- :boolean
   "Whether the current user may save or delete a test of the Card `card-id`: they may edit the card, and write the
-  native SQL of a test against its Database."
+  native SQL of a test against the Database of its query."
   [card-id :- ::lib.schema.id/card]
   (boolean
    (when-let [card (data-testing.db/card card-id)]
      (and (mi/can-write? card)
           (or (mi/superuser?)
-              (some-> (:database_id card) data-testing.models/can-run-native-query?))))))
+              (some-> (query-database-id card) data-testing.models/can-run-native-query?))))))
 
 (mu/defn can-run? :- :boolean
   "Whether the current user may run the saved `card-test`: they may read it, and write the native SQL of a test against
-  its card's Database."
+  the Database of its card's query."
   [card-test :- ::data-testing.schema/card-test]
   ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
   (boolean
    (when-let [card (data-testing.db/card (:card_id card-test))]
      (and (mi/can-read? card)
           (or (mi/superuser?)
-              (some-> (:database_id card) data-testing.models/can-run-native-query?))))))
+              (some-> (query-database-id card) data-testing.models/can-run-native-query?))))))
 
 (defmethod mi/can-read? :model/CardTest
   ([instance]
