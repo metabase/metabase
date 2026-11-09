@@ -5,11 +5,12 @@ import {
   type MeasureGroupProposal,
   createMeasureGroupId,
   getMeasureGroupProposals,
-  getMeasureGroupSourceLabel,
   useMeasureGroups,
 } from "metabase/metadata/measure-groups";
 import { Button, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import type { Measure, Table } from "metabase-types/api";
+
+import { GroupMemberPills } from "../GroupMemberList";
 
 import S from "./MeasureItem/MeasureItem.module.css";
 
@@ -69,7 +70,6 @@ export function MeasureGroupItem({
   onOpen?: () => void;
 }) {
   const memberNames = getMemberNames(group.measureIds, measures);
-  const sourceLabel = getMeasureGroupSourceLabel(group.source);
   return (
     <Card
       className={onOpen ? S.card : undefined}
@@ -84,20 +84,15 @@ export function MeasureGroupItem({
       shadow="none"
       withBorder
     >
-      <Stack gap="xxs">
+      <Stack gap="xs">
         <Flex align="center" gap="sm">
           <Icon name="folder" c="core-brand" />
           <Text fw="bold">{group.name}</Text>
         </Flex>
         {memberNames.length > 0 ? (
-          <Text lh="lg">{memberNames.join(" · ")}</Text>
+          <GroupMemberPills labels={memberNames} />
         ) : (
           <Text lh="lg" c="text-disabled">{t`No measures`}</Text>
-        )}
-        {sourceLabel && (
-          <Text size="sm" c="text-secondary">
-            {sourceLabel}
-          </Text>
         )}
       </Stack>
     </Card>

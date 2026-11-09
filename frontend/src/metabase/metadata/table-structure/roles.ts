@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import type { IconName } from "metabase-types/api";
+
 export const TABLE_ROLES = [
   "role/Fact",
   "role/TransactionFact",
@@ -300,6 +302,51 @@ export function isTableRole(value: unknown): value is TableRole {
 
 export function getTableRoleLabel(role: TableRole): string {
   return ROLE_DEFINITIONS[role].label();
+}
+
+// What each role holds, as a glance: facts by what they record, dimensions by
+// what they describe, and the plumbing roles by how they connect tables
+const ROLE_ICONS: Record<TableRole, IconName> = {
+  "role/Fact": "sum",
+  "role/TransactionFact": "receipt",
+  "role/EventFact": "bolt",
+  "role/PeriodicSnapshotFact": "calendar",
+  "role/AccumulatingSnapshotFact": "progress",
+  "role/FactlessFact": "check",
+  "role/AggregateFact": "bar",
+  "role/SessionFact": "hourglass",
+  "role/UserDayFact": "event",
+  "role/CohortSnapshot": "group",
+  "role/ActivityStream": "pulse",
+  "role/Dimension": "label",
+  "role/EntityDimension": "person",
+  "role/DateDimension": "calendar",
+  "role/TimeDimension": "clock",
+  "role/LookupDimension": "list",
+  "role/HistoryDimension": "history",
+  "role/MiniDimension": "label",
+  "role/JunkDimension": "archive",
+  "role/OutriggerDimension": "corner_down_right",
+  "role/Bridge": "connections",
+  "role/HierarchyBridge": "network",
+  "role/ArrayChild": "ordered_list",
+  "role/CustomPropertyTable": "sliders",
+  "role/TranslationTable": "globe",
+  "role/ConfigurationTable": "gear",
+  "role/SystemTable": "audit",
+  "role/OneBigTable": "table2",
+  "role/Hub": "key",
+  "role/Link": "link",
+  "role/Satellite": "lines",
+  "role/PointInTime": "time_history",
+  "role/Anchor": "pin",
+  "role/Attribute": "string",
+  "role/Tie": "join_inner",
+  "role/Knot": "list",
+};
+
+export function getTableRoleIcon(role: TableRole): IconName {
+  return ROLE_ICONS[role];
 }
 
 export function getTableRoleRowDescription(role: TableRole): string {

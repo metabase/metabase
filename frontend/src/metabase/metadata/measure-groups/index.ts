@@ -2,7 +2,6 @@ export {
   type MeasureGroupProposal,
   type MeasureKind,
   getMeasureGroupProposals,
-  getMeasureGroupSourceLabel,
   getMeasureKindGroupName,
   inferMeasureKind,
 } from "./inference";

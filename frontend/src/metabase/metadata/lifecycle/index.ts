@@ -40,6 +40,7 @@ export {
   VALUE_BUCKETS,
   type ValueBucket,
   type ValueOrderInference,
+  getEnumKindDescription,
   getEnumKindLabel,
   getValueBucketLabel,
   inferEnumKind,

@@ -81,7 +81,7 @@ export function FieldSemanticsSection({
           }
         />
         <DetailsRow
-          label={t`Also`}
+          label={t`Additional semantic types`}
           fillValue
           value={
             <FacetsSelect
@@ -221,7 +221,7 @@ function FacetsSelect({
 
   return (
     <MultiSelect
-      aria-label={t`Also`}
+      aria-label={t`Additional semantic types`}
       classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
       data={options}
       value={value}

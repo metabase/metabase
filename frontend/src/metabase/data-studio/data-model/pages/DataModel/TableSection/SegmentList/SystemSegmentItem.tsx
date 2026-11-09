@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { Card, Flex, Icon, Stack, Text, rem } from "metabase/ui";
 
+import { ClausePills } from "../ClausePills";
 import type { ResolvedSystemSegment } from "../table-segments";
 
 import { DefaultSegmentBadge } from "./SegmentItem";
@@ -38,7 +39,7 @@ export function SystemSegmentItem({
       shadow="none"
       withBorder
     >
-      <Stack gap="xxs">
+      <Stack gap="xs">
         <Flex align="center" gap="sm">
           <Icon name="segment" c="core-brand" />
           <Text fw="bold">{segment.label}</Text>
@@ -47,11 +48,18 @@ export function SystemSegmentItem({
             <Text size="sm" c="text-secondary">{t`Edited`}</Text>
           )}
         </Flex>
-        <Text lh="lg" c={hasFilters ? "text-primary" : "text-secondary"}>
-          {hasFilters
-            ? segment.filterNames.join(t` and `)
-            : t`No matching column found. Open it to set it up.`}
-        </Text>
+        {hasFilters ? (
+          <ClausePills
+            clauses={segment.filterNames.map((name) => ({
+              kind: "filter",
+              name,
+            }))}
+          />
+        ) : (
+          <Text lh="lg" c="text-secondary">
+            {t`No matching column found. Open it to set it up.`}
+          </Text>
+        )}
       </Stack>
     </Card>
   );

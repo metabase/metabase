@@ -1,5 +1,1 @@
-export {
-  InferredActions,
-  InferredIcon,
-  InferredValue,
-} from "./InferenceReview";
+export { InferredIcon, InferredValue } from "./InferenceReview";

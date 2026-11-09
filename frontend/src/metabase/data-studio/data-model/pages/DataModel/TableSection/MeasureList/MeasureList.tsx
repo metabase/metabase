@@ -1,23 +1,23 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMeasureGroups } from "metabase/metadata/measure-groups";
 import { useSelector } from "metabase/redux";
-import { Button, type ButtonProps, Icon, Stack } from "metabase/ui";
+import { Button, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Table } from "metabase-types/api";
+import type { ConcreteTableId, Measure, Table } from "metabase-types/api";
 
+import { getQueryClauses } from "../ClausePills";
 import {
   ListSearchBar,
   ListSearchEmptyState,
   matchesListSearch,
 } from "../ListSearchBar";
 import { ListEmptyItem, ListSection } from "../ListSection";
-import S from "../TableSection.module.css";
+import { useTableQuery } from "../table-segments";
 
 import { MeasureGroupModal } from "./MeasureGroupModal";
 import {
@@ -38,6 +38,16 @@ type MeasureListProps = {
  */
 export function MeasureList({ table }: MeasureListProps) {
   const measures = table.measures ?? [];
+  const { fromDefinition } = useTableQuery(table);
+  // Each aggregation and filter of a measure's definition, for its card's pills
+  const getMeasureClauses = (measure: Measure) => {
+    try {
+      return getQueryClauses(fromDefinition(measure.definition));
+    } catch {
+      // A definition the query library can't read keeps its server description
+      return undefined;
+    }
+  };
   const [query, setQuery] = useState("");
   // `null` is a new group; `undefined` means the editor is closed
   const [editingGroupId, setEditingGroupId] = useState<string | null>();
@@ -88,52 +98,13 @@ export function MeasureList({ table }: MeasureListProps) {
     tableId: table.id,
   });
 
-  const renderNewMeasureButton = (variant?: ButtonProps["variant"]) =>
-    canWriteMeasures && (
-      <Button
-        variant={variant}
-        component={ForwardRefLink}
-        leftSection={<Icon name="add" />}
-        onAuxClick={onNewMeasureClick}
-        onClickCapture={onNewMeasureClick}
-        to={newMeasureUrl}
-      >
-        {t`New measure`}
-      </Button>
-    );
-
-  // The action sits under the message, centered and blue, as the next step
-  if (measures.length === 0) {
-    return (
-      <Stack
-        align="center"
-        gap="lg"
-        mt={80}
-        className={S.EmptyState}
-        data-testid="table-measures-page"
-      >
-        <EmptyState
-          spacing="sm"
-          illustrationElement={
-            <Icon name="ruler" size={32} c="text-secondary" />
-          }
-          title={t`No measures yet`}
-          message={t`Create a measure to define a reusable aggregation for this table.`}
-        />
-        {renderNewMeasureButton("filled")}
-      </Stack>
-    );
-  }
-
   return (
     <Stack gap="xl" data-testid="table-measures-page">
       <ListSearchBar
         value={query}
         placeholder={t`Search measures`}
         onChange={setQuery}
-      >
-        {renderNewMeasureButton()}
-      </ListSearchBar>
+      />
 
       {isSearching && !hasMatches && (
         <ListSearchEmptyState>{t`No measures match "${query}"`}</ListSearchEmptyState>
@@ -142,7 +113,7 @@ export function MeasureList({ table }: MeasureListProps) {
       {(!isSearching || measureGroups.length > 0) && (
         <ListSection
           title={t`Measure groups`}
-          description={t`Named sets of measures, listed together under a heading. They don't change what a measure computes.`}
+          description={t`Group similar or related measures together to help your users find them when they're querying.`}
           action={
             canWriteMeasures && (
               <Button
@@ -175,15 +146,37 @@ export function MeasureList({ table }: MeasureListProps) {
         </ListSection>
       )}
 
-      {matchingMeasures.length > 0 && (
-        <ListSection title={t`Measures`}>
-          {matchingMeasures.map((measure) => (
-            <MeasureItem
-              key={measure.id}
-              measure={measure}
-              href={getMeasureHref(measure.id)}
-            />
-          ))}
+      {(!isSearching || matchingMeasures.length > 0) && (
+        <ListSection
+          title={t`Measures`}
+          action={
+            canWriteMeasures && (
+              <Button
+                component={ForwardRefLink}
+                to={newMeasureUrl}
+                size="compact-sm"
+                variant="subtle"
+                leftSection={<Icon name="add" />}
+                onAuxClick={onNewMeasureClick}
+                onClickCapture={onNewMeasureClick}
+              >
+                {t`New measure`}
+              </Button>
+            )
+          }
+        >
+          {matchingMeasures.length > 0 ? (
+            matchingMeasures.map((measure) => (
+              <MeasureItem
+                key={measure.id}
+                measure={measure}
+                href={getMeasureHref(measure.id)}
+                clauses={getMeasureClauses(measure)}
+              />
+            ))
+          ) : (
+            <ListEmptyItem>{t`No measures yet`}</ListEmptyItem>
+          )}
         </ListSection>
       )}
 

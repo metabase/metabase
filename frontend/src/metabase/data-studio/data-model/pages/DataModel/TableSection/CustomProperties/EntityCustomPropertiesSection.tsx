@@ -16,7 +16,7 @@ import {
   useTableStructures,
 } from "metabase/metadata/table-structure";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Button, Text } from "metabase/ui";
+import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, Table } from "metabase-types/api";
@@ -69,12 +69,12 @@ function EntityCustomProperties({
           {t`Review properties`}
         </Button>
       }
-    >
-      <Text size="sm" c="text-secondary">
-        {sample
+      description={
+        sample
           ? t`${sample.propertyCount} properties from ${valueTable.display_name}. Values shown for ${sample.entityName}.`
-          : t`From ${valueTable.display_name}.`}
-      </Text>
+          : t`From ${valueTable.display_name}.`
+      }
+    >
       {sample && (
         <DetailsTable>
           {sample.rows.map(({ key, label, value }) => (

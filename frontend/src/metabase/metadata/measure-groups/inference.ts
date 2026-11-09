@@ -166,16 +166,3 @@ export function getMeasureGroupProposals(
     ];
   });
 }
-
-export function getMeasureGroupSourceLabel(
-  source: MeasureGroup["source"],
-): string | null {
-  switch (source) {
-    case "suggestion":
-      return t`Suggested from what the measures measure`;
-    case "pack":
-      return t`From a domain pack`;
-    case "admin":
-      return null;
-  }
-}

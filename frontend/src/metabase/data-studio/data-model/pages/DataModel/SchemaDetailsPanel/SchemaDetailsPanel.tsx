@@ -272,10 +272,8 @@ function SchemaDetails({
             {t`Manage layers`}
           </Button>
         }
+        description={t`Tables in this schema use this layer unless a table overrides it.`}
       >
-        <Text size="sm" c="text-secondary">
-          {t`Tables in this schema use this layer unless a table overrides it.`}
-        </Text>
         <DetailsTable>
           <DetailsRow
             label={t`Layer`}

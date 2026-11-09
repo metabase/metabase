@@ -1,12 +1,7 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
-import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  DetailsRow,
-  DetailsTable,
-  SidebarSection,
-} from "metabase/common/components/DetailSidebar";
+import { SidebarSection } from "metabase/common/components/DetailSidebar";
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import {
   ENUM_KINDS,
@@ -14,6 +9,7 @@ import {
   type OrderedValue,
   type ResolvedValueOrder,
   VALUE_BUCKETS,
+  getEnumKindDescription,
   getEnumKindLabel,
   getValueBucketLabel,
   inferEnumKind,
@@ -24,12 +20,22 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Card, Group, Icon, Loader, Select, Stack, Text } from "metabase/ui";
 import type { Field, Table } from "metabase-types/api";
 
-import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../DetailPanel";
-import { InferredValue } from "../TableSection/InferenceReview";
+import { InferredIcon } from "../TableSection/InferenceReview";
 
 interface ValueOrderSectionProps {
   field: Field;
   table: Table;
+}
+
+/** Whether a column's values have a kind worth setting, so the section shows */
+export function useHasValueKind(field: Field): boolean {
+  const { getFieldLifecycle } = useLifecycle();
+  // Free-text columns don't need this; lifecycle-like and listed ones do
+  return (
+    getFieldLifecycle(getRawTableFieldId(field)).enumKind != null ||
+    inferEnumKind(field).kind !== "nominal" ||
+    field.has_field_values === "list"
+  );
 }
 
 /**
@@ -46,13 +52,9 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
   const enumKind = overrides.enumKind ?? kindInference.kind;
   const isOrdinal = enumKind === "ordinal";
   const order = useValueOrder(isOrdinal ? field : undefined);
+  const hasValueKind = useHasValueKind(field);
 
-  // Free-text columns don't need this; lifecycle-like and listed ones do
-  const isRelevant =
-    overrides.enumKind != null ||
-    kindInference.kind !== "nominal" ||
-    field.has_field_values === "list";
-  if (!isRelevant) {
+  if (!hasValueKind) {
     return null;
   }
 
@@ -60,49 +62,32 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
 
   return (
     <SidebarSection title={t`Values`}>
-      <DetailsTable>
-        <DetailsRow
-          label={t`Kind`}
-          fillValue
-          value={
-            <EnumKindValue
-              kind={enumKind}
-              isInferred={
-                overrides.enumKind == null && kindInference.kind !== "nominal"
-              }
-              inference={t`Inferred: ${kindInference.signal}`}
-              disabled={readOnly}
-              onChange={(kind) => setEnumKind(fieldId, kind)}
-            />
-          }
-        />
-        {isOrdinal && (
-          <DetailsRow
-            label={t`Order`}
-            value={
-              <OrderSummary
-                order={order}
-                readOnly={readOnly}
-                onConfirm={() => saveOrder(order.values)}
-              />
-            }
-          />
-        )}
-      </DetailsTable>
-      {isOrdinal && order.values.length > 0 && (
-        <OrderedValueList
-          values={order.values}
-          // Editable even while it's a guess: a drag or a bucket change saves
-          // the order, which confirms the rest of the guess with it
-          isEditable={!readOnly}
+      <EnumKindSelect
+        kind={enumKind}
+        isInferred={
+          overrides.enumKind == null && kindInference.kind !== "nominal"
+        }
+        inference={t`Inferred: ${kindInference.signal}`}
+        disabled={readOnly}
+        onChange={(kind) => setEnumKind(fieldId, kind)}
+      />
+      {isOrdinal && (
+        <ValueOrder
+          order={order}
+          readOnly={readOnly}
           onChange={saveOrder}
+          onConfirm={() => saveOrder(order.values)}
         />
       )}
     </SidebarSection>
   );
 }
 
-function EnumKindValue({
+/**
+ * How the values relate. Each option explains itself in the dropdown; a
+ * guess carries the AI icon, and picking any option, even the guess, saves it.
+ */
+function EnumKindSelect({
   kind,
   isInferred,
   inference,
@@ -115,28 +100,9 @@ function EnumKindValue({
   disabled: boolean;
   onChange: (kind: EnumKind) => void;
 }) {
-  const [isSelectOpenOnMount, setIsSelectOpenOnMount] = useState(false);
-
-  if (isInferred) {
-    return (
-      <InferredValue
-        value={getEnumKindLabel(kind)}
-        inference={inference}
-        readOnly={disabled}
-        onConfirm={() => onChange(kind)}
-        onChange={() => {
-          setIsSelectOpenOnMount(true);
-          onChange(kind);
-        }}
-        data-testid="field-enum-kind-review"
-      />
-    );
-  }
-
   return (
     <Select
-      aria-label={t`Kind`}
-      classNames={DETAILS_CELL_INPUT_CLASS_NAMES}
+      label={t`Kind`}
       data={ENUM_KINDS.map((value) => ({
         value,
         label: getEnumKindLabel(value),
@@ -144,9 +110,31 @@ function EnumKindValue({
       value={kind}
       allowDeselect={false}
       disabled={disabled}
-      autoFocus={isSelectOpenOnMount}
-      defaultDropdownOpened={isSelectOpenOnMount}
-      onChange={(value) => {
+      leftSection={
+        isInferred ? (
+          <InferredIcon
+            description={inference}
+            onConfirm={disabled ? undefined : () => onChange(kind)}
+          />
+        ) : undefined
+      }
+      // "all" lets the AI icon be clicked and show its tooltip
+      leftSectionPointerEvents="all"
+      renderOption={({ option }) => {
+        const optionKind = ENUM_KINDS.find((known) => known === option.value);
+        return (
+          <Stack gap={2} py={2}>
+            <Text>{option.label}</Text>
+            {optionKind && (
+              <Text size="sm" c="text-secondary">
+                {getEnumKindDescription(optionKind)}
+              </Text>
+            )}
+          </Stack>
+        );
+      }}
+      // Fires for the current value too, so picking sync's guess confirms it
+      onOptionSubmit={(value) => {
         const option = ENUM_KINDS.find((known) => known === value);
         if (option) {
           onChange(option);
@@ -157,49 +145,50 @@ function EnumKindValue({
   );
 }
 
-function OrderSummary({
+/**
+ * The values in lifecycle order, right under the Kind row. While it's sync's
+ * guess, a line below says so, with the AI icon to confirm it; dragging a
+ * value or changing a bucket also saves it.
+ */
+function ValueOrder({
   order,
   readOnly,
+  onChange,
   onConfirm,
 }: {
   order: ResolvedValueOrder;
   readOnly: boolean;
+  onChange: (values: OrderedValue[]) => void;
   onConfirm: () => void;
 }) {
-  if (order.isLoading) {
-    return <Loader size="xs" />;
-  }
-  if (order.values.length === 0) {
-    return (
-      <Text c="text-secondary">
-        {t`No cached values. Re-scan this column's values to order them.`}
-      </Text>
-    );
-  }
-  const openCount = order.values.filter(
-    ({ bucket }) => bucket === "open",
-  ).length;
-  const summary = t`${order.values.length} values, ${openCount} open`;
-  if (order.isInferred) {
-    // Confirming saves the guess as is; editing the list below saves it too
-    return (
-      <InferredValue
-        value={summary}
-        inference={t`Inferred: ${order.inference.signal}`}
-        readOnly={readOnly}
-        isInset={false}
-        onConfirm={onConfirm}
-        onChange={onConfirm}
-        data-testid="field-value-order-review"
-      />
-    );
-  }
+  const hasValues = order.values.length > 0;
   return (
-    <Text>
-      {order.isSaved
-        ? summary
-        : t`${summary}. Drag values below to put them in lifecycle order.`}
-    </Text>
+    <Stack gap="sm">
+      {order.isLoading ? (
+        <Loader size="xs" />
+      ) : !hasValues ? (
+        <Text c="text-secondary">
+          {t`No cached values. Re-scan this column's values to order them.`}
+        </Text>
+      ) : (
+        <OrderedValueList
+          values={order.values}
+          isEditable={!readOnly}
+          onChange={onChange}
+        />
+      )}
+      {hasValues && order.isInferred && (
+        <Group gap="xs" wrap="nowrap">
+          <Text size="sm" c="text-secondary">
+            {t`Guessed order`}
+          </Text>
+          <InferredIcon
+            description={t`Inferred: ${order.inference.signal}`}
+            onConfirm={readOnly ? undefined : onConfirm}
+          />
+        </Group>
+      )}
+    </Stack>
   );
 }
 

@@ -55,6 +55,20 @@ export function getEnumKindLabel(kind: EnumKind): string {
   }
 }
 
+/** What a kind means, in a phrase, with an example */
+export function getEnumKindDescription(kind: EnumKind): string {
+  switch (kind) {
+    case "nominal":
+      return t`No order, like countries or colors.`;
+    case "ordinal":
+      return t`A set order, like deal stages or priorities.`;
+    case "cyclic":
+      return t`An order that loops back, like days of the week.`;
+    case "boolean":
+      return t`Two values: true and false.`;
+  }
+}
+
 export function getValueBucketLabel(bucket: ValueBucket): string {
   switch (bucket) {
     case "open":

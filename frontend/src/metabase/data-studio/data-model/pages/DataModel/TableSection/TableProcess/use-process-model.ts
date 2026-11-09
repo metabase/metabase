@@ -53,8 +53,6 @@ export type ProcessModel = {
   historyTable: Table | undefined;
   encoding: ProcessEncoding;
   transitions: TransitionRow[];
-  /** Unexpected transitions seen in the history, most common first */
-  unexpectedSeen: TransitionRow[];
 };
 
 /**
@@ -115,9 +113,6 @@ export function useProcessModel(table: Table): ProcessModel {
     historyTable,
     encoding: getProcessEncoding(history != null, milestones.length),
     transitions,
-    unexpectedSeen: transitions
-      .filter((row) => row.resolvedKind === "unexpected" && row.count > 0)
-      .sort((a, b) => b.count - a.count),
   };
 }
 

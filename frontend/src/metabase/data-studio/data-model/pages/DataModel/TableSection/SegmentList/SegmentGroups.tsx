@@ -29,6 +29,7 @@ import { Button, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field, Segment, Table } from "metabase-types/api";
 
+import { GroupMemberPills } from "../GroupMemberList";
 import { matchesListSearch } from "../ListSearchBar";
 import { applyConditions } from "../table-segments";
 
@@ -161,9 +162,10 @@ export function SegmentGroupItem({
     group.kind === "overlapping" ? t`Members can overlap` : null,
   ].filter(Boolean);
   const segments = table.segments ?? [];
-  const hasMembers = group.members.some(({ segmentId }) =>
-    segments.some(({ id }) => id === segmentId),
-  );
+  // A deleted segment drops out of its groups
+  const memberLabels = group.members
+    .filter(({ segmentId }) => segments.some(({ id }) => id === segmentId))
+    .map(({ label }) => label);
 
   return (
     <Card
@@ -179,13 +181,13 @@ export function SegmentGroupItem({
       shadow="none"
       withBorder
     >
-      <Stack gap="xxs">
+      <Stack gap="xs">
         <Flex align="center" gap="sm">
-          <Icon name="pie" c="core-brand" />
+          <Icon name="segment_group" c="core-brand" />
           <Text fw="bold">{group.name}</Text>
         </Flex>
-        {hasMembers ? (
-          <Text lh="lg">{getMemberLabels(group, segments).join(" · ")}</Text>
+        {memberLabels.length > 0 ? (
+          <GroupMemberPills labels={memberLabels} hasOther={group.other} />
         ) : (
           <Text lh="lg" c="text-disabled">{t`No segments yet`}</Text>
         )}
@@ -227,7 +229,7 @@ export function SegmentGroupProposalItem({
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Stack gap="xxs" miw={0}>
           <Flex align="center" gap="sm">
-            <Icon name="pie" c="text-secondary" />
+            <Icon name="segment_group" c="text-secondary" />
             <Text fw="bold">{proposal.name}</Text>
           </Flex>
           <Text lh="lg">{memberLabels.join(" · ")}</Text>

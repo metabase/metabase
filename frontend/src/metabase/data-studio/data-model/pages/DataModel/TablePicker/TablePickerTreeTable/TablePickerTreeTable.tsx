@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import type { ExpandedState, OnChangeFn, Row } from "@tanstack/react-table";
 import {
   type MouseEvent,
@@ -16,9 +17,9 @@ import {
   useDataLayers,
 } from "metabase/metadata/data-layers";
 import {
+  getTableRoleIcon,
   getTableRoleLabel,
   useCustomPropertyParents,
-  useHistoryReviewStatus,
   useTableFields,
   useTableStructures,
 } from "metabase/metadata/table-structure";
@@ -30,7 +31,6 @@ import {
   Group,
   Icon,
   Text,
-  Tooltip,
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
@@ -67,10 +67,14 @@ import {
   transformToTreeTableFormat,
 } from "../utils";
 
-import S from "./TablePickerTreeTable.module.css";
 import { TableSubjectCell } from "./TableSubjectCell";
 
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
+
+// The fixed columns (Role, Subject, Owner, Data layer) take about 790px; past
+// them, names keep about 240px before Published, then Rows, give way
+const MIN_WIDTH_WITH_PUBLISHED = 1280;
+const MIN_WIDTH_WITH_ROWS = 1160;
 
 interface Props {
   tree: RootNode;
@@ -234,6 +238,12 @@ export function TablePickerTreeTable({
     [handleCheckboxToggle],
   );
 
+  const { ref: frameRef, width: frameWidth } = useElementSize();
+  // Names need room first: Published goes, then Rows. Shown until measured
+  const isMeasured = frameWidth > 0;
+  const showPublished = !isMeasured || frameWidth >= MIN_WIDTH_WITH_PUBLISHED;
+  const showRows = !isMeasured || frameWidth >= MIN_WIDTH_WITH_ROWS;
+
   const columns: TreeTableColumnDef<TablePickerTreeNode>[] = useMemo(() => {
     const columnDefs: TreeTableColumnDef<TablePickerTreeNode>[] = [
       {
@@ -314,7 +324,10 @@ export function TablePickerTreeTable({
           );
         },
       },
-      {
+    ];
+
+    if (showRows) {
+      columnDefs.push({
         id: "rows",
         header: t`Rows`,
         width: "auto",
@@ -329,10 +342,10 @@ export function TablePickerTreeTable({
             </Box>
           ) : null;
         },
-      },
-    ];
+      });
+    }
 
-    if (isLibraryEnabled) {
+    if (isLibraryEnabled && showPublished) {
       columnDefs.push({
         id: "published",
         header: t`Published`,
@@ -355,7 +368,14 @@ export function TablePickerTreeTable({
     }
 
     return columnDefs;
-  }, [isLibraryEnabled, ownerNameById, formatNumber, getTableDataLayer]);
+  }, [
+    isLibraryEnabled,
+    ownerNameById,
+    formatNumber,
+    getTableDataLayer,
+    showRows,
+    showPublished,
+  ]);
 
   const expandedState = useMemo(
     () => Object.fromEntries([...expandedIds].map((id) => [id, true])),
@@ -493,65 +513,46 @@ export function TablePickerTreeTable({
   );
 
   return (
-    <TreeTable
-      instance={instance}
-      showCheckboxes
-      onRowClick={handleRowClick}
-      getSelectionState={getSelectionState}
-      onCheckboxClick={handleCheckboxClick}
-      isChildrenLoading={isChildrenLoading}
-      isRowDisabled={isRowDisabled}
-      getRowProps={getRowProps}
-      classNames={{ cell: S.cell }}
-      ariaLabel={t`Tables`}
-    />
+    // Stands in for the card as the table's flex parent, so it still fills it
+    <Box ref={frameRef} display="flex" flex={1} miw={0} mih={0}>
+      <TreeTable
+        instance={instance}
+        showCheckboxes
+        onRowClick={handleRowClick}
+        getSelectionState={getSelectionState}
+        onCheckboxClick={handleCheckboxClick}
+        isChildrenLoading={isChildrenLoading}
+        isRowDisabled={isRowDisabled}
+        getRowProps={getRowProps}
+        ariaLabel={t`Tables`}
+      />
+    </Box>
   );
 }
 
-/** PROTOTYPE: mocked. The table's role, flagged when it needs an admin's review. */
+/** PROTOTYPE: mocked. The table's role, with an icon for what kind it is. */
 function TableRoleCell({ table }: { table: Table }) {
   const fields = useTableFields(table);
   const { getTableStructure } = useTableStructures();
-  const historyReview = useHistoryReviewStatus({
-    ...table,
-    fields,
-  });
 
   if (fields == null) {
     return null;
   }
 
-  const { role, needsReview, inference } = getTableStructure({
-    ...table,
-    fields,
-  });
-  const reviewReason = needsReview
-    ? inference.signal
-    : historyReview?.needsReview && historyReview.issue;
+  const { role } = getTableStructure({ ...table, fields });
 
   return (
-    <Box className={S.role} data-testid="table-role">
-      {reviewReason && (
-        <Tooltip label={t`Needs review. ${reviewReason}`}>
-          <Icon
-            name="flag"
-            c="icon-secondary"
-            className={S.flag}
-            aria-label={t`Needs review`}
-          />
-        </Tooltip>
+    <Group gap="xs" wrap="nowrap" miw={0} data-testid="table-role">
+      {role ? (
+        <Group gap="sm" wrap="nowrap" flex="0 0 auto">
+          <Icon name={getTableRoleIcon(role)} c="text-secondary" />
+          <Text truncate>{getTableRoleLabel(role)}</Text>
+        </Group>
+      ) : (
+        <Text c="text-secondary">{t`No role`}</Text>
       )}
-      <Group gap="xs" wrap="nowrap">
-        {role ? (
-          <Text truncate flex="0 0 auto">
-            {getTableRoleLabel(role)}
-          </Text>
-        ) : (
-          <Text c="text-secondary">{t`No role`}</Text>
-        )}
-        <HistoryListSummary table={{ ...table, fields }} />
-      </Group>
-    </Box>
+      <HistoryListSummary table={{ ...table, fields }} />
+    </Group>
   );
 }
 

@@ -15,9 +15,10 @@ export {
   isBinnableField,
 } from "./inference";
 export {
-  type GroupingSummaryContext,
+  type GroupingDescriptionContext,
   getElapsedUnitLabel,
-  getGroupingSummary,
+  getGroupingBucketCount,
+  getGroupingStrategy,
   getTimeExtractLabel,
   getTimeUnitLabel,
 } from "./labels";

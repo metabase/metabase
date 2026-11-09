@@ -98,10 +98,8 @@ export function DataLayersSection({
           {t`Add layer`}
         </Button>
       }
+      description={t`Ordered from source to presentation. Each schema uses one of these layers, and a table can override its schema's.`}
     >
-      <Text size="sm" c="text-secondary">
-        {t`Ordered from source to presentation. Each schema uses one of these layers, and a table can override its schema's.`}
-      </Text>
       <DetailsTable>
         <Flex align="stretch" bg="background_page-secondary">
           <Text flex={1} px="lg" py="xs" size="sm" fw="bold" c="text-secondary">

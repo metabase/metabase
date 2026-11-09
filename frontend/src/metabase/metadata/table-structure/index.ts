@@ -21,6 +21,7 @@ export {
 } from "./labels";
 export {
   type TableRole,
+  getTableRoleIcon,
   getTableRoleLabel,
   getTableRoleOptions,
   getTableRoleRowDescription,

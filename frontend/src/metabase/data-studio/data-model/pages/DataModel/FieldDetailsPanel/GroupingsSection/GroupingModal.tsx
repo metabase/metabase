@@ -29,9 +29,11 @@ import {
   Button,
   Group,
   Icon,
+  Input,
   Loader,
   Modal,
   NumberInput,
+  Radio,
   ScrollArea,
   SegmentedControl,
   type SegmentedControlItem,
@@ -97,6 +99,8 @@ interface GroupingModalProps {
   takenNames: string[];
   context: GroupingInferenceContext;
   onSave: (grouping: Grouping) => void;
+  /** Removes the grouping being edited; absent for a new one */
+  onRemove?: () => void;
   onClose: () => void;
 }
 
@@ -112,6 +116,7 @@ export function GroupingModal({
   takenNames,
   context,
   onSave,
+  onRemove,
   onClose,
 }: GroupingModalProps) {
   const kind = getGroupingKind(field);
@@ -157,7 +162,7 @@ export function GroupingModal({
       title={grouping ? t`Edit grouping` : t`New grouping`}
       onClose={onClose}
     >
-      <Stack gap="lg">
+      <Stack gap="xl">
         <TextInput
           label={t`Name`}
           description={t`People see this name in Group by.`}
@@ -200,6 +205,17 @@ export function GroupingModal({
         )}
       </Stack>
       <Modal.Footer>
+        {onRemove && (
+          // Pushed to the left, away from Save
+          <Button
+            variant="subtle"
+            color="negative"
+            mr="auto"
+            onClick={onRemove}
+          >
+            {t`Remove this group`}
+          </Button>
+        )}
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button variant="filled" disabled={!canSave} onClick={handleSave}>
           {t`Save`}
@@ -464,14 +480,19 @@ function TimeEditor({
   );
 
   return (
-    <Stack gap="md">
-      <SegmentedControl<TimeMode>
-        fullWidth
+    <Stack gap="xl">
+      <ModeControl<TimeMode>
+        label={t`Group dates by`}
         data={[
           { value: "unit", label: t`Period` },
           { value: "extract", label: t`Part of` },
           { value: "elapsed", label: t`Time since` },
         ]}
+        descriptions={{
+          unit: t`Rounds each date down to a period, like March 2024 or the week of March 4. Good for trends over time.`,
+          extract: t`Takes one part of each date, like the day of the week or the month, whatever the year. Good for comparing cycles, like weekdays and weekends.`,
+          elapsed: t`Counts the time from each date to now, or to another date column, like days since signup or days to close.`,
+        }}
         value={draft.mode}
         onChange={(mode) => onChange({ ...draft, mode })}
       />
@@ -551,14 +572,19 @@ function BinsEditor({
     });
 
   return (
-    <Stack gap="md">
-      <SegmentedControl<BinsMode>
-        fullWidth
+    <Stack gap="xl">
+      <ModeControl<BinsMode>
+        label={t`Group numbers into`}
         data={[
           { value: "count", label: t`Equal ranges` },
           { value: "quantile", label: t`Quantiles` },
           { value: "edges", label: t`Custom ranges` },
         ]}
+        descriptions={{
+          count: t`Splits the span from the lowest to the highest value into ranges of the same width. Some ranges may hold far more rows than others.`,
+          quantile: t`Splits the rows into groups of about the same size, like quartiles. The ranges' widths vary to fit.`,
+          edges: t`Your own ranges and names, like Small, Medium, and Large. Each range starts at its number and runs up to the next one.`,
+        }}
         value={draft.mode}
         onChange={(mode) => onChange({ ...draft, mode })}
       />
@@ -678,8 +704,14 @@ function PartitionEditor({
   const partitions = context.segmentGroups.filter((group) =>
     isPartitionOnField(group, fieldId, segments),
   );
-  const modes: SegmentedControlItem<PartitionMode>[] = [
-    { value: "value-map", label: t`Value groups` },
+  const descriptions: Record<PartitionMode, string> = {
+    related: t`Groups rows by a column of the table this key points to, like deals by their account's plan.`,
+    "value-map": t`Name and pick a group for each value.`,
+    "segment-group": t`Values are grouped into exclusive segments.`,
+    process: t`Group values by status states, or by outcome buckets.`,
+  };
+  const modes: { value: PartitionMode; label: string }[] = [
+    { value: "value-map", label: t`Custom named groups` },
     { value: "segment-group", label: t`Segment group` },
   ];
   if (isRelatable(field)) {
@@ -690,13 +722,40 @@ function PartitionEditor({
   }
 
   return (
-    <Stack gap="md">
-      <SegmentedControl<PartitionMode>
-        fullWidth
-        data={modes}
+    <Stack gap="xl">
+      {/* Every option's explanation shows at once, so the choice is informed */}
+      <Radio.Group
+        label={t`Group values by`}
         value={draft.mode}
-        onChange={(mode) => onChange({ ...draft, mode })}
-      />
+        onChange={(value) => {
+          const mode = modes.find((option) => option.value === value)?.value;
+          if (!mode) {
+            return;
+          }
+          // Start with the first group that fits, so Save works right away
+          const isPicking =
+            mode === "segment-group" &&
+            !partitions.some(({ id }) => id === draft.segmentGroupId);
+          onChange({
+            ...draft,
+            mode,
+            segmentGroupId: isPicking
+              ? (partitions[0]?.id ?? null)
+              : draft.segmentGroupId,
+          });
+        }}
+      >
+        <Stack gap="md" mt="sm">
+          {modes.map(({ value, label }) => (
+            <Radio
+              key={value}
+              value={value}
+              label={label}
+              description={descriptions[value]}
+            />
+          ))}
+        </Stack>
+      </Radio.Group>
       {draft.mode === "related" && field.target != null && (
         <RelatedEditor
           targetTableId={field.target.table_id}
@@ -714,9 +773,6 @@ function PartitionEditor({
           </Text>
         ) : (
           <Stack gap="sm">
-            <Text size="sm" c="text-secondary">
-              {t`Values with the same label form one group. Values left blank go in Other.`}
-            </Text>
             <ScrollArea.Autosize mah={320}>
               <Stack gap="xs">
                 {values.map((value) => (
@@ -748,12 +804,12 @@ function PartitionEditor({
       {draft.mode === "segment-group" &&
         (partitions.length === 0 ? (
           <Text c="text-secondary">
-            {t`No partitions on this column yet. In Segments, make a partition whose segments filter on ${field.display_name}.`}
+            {t`There's no segment group to use yet. In the Segments tab, make one set to Partition, with segments that only filter on ${field.display_name}.`}
           </Text>
         ) : (
           <Select<string | null>
             label={t`Segment group`}
-            description={t`Partitions whose segments filter on ${field.display_name}.`}
+            description={t`Each segment in the group becomes one bucket. We only list groups with segments that exclusively filter on this column, without overlapping.`}
             data={partitions.map(({ id, name }) => ({
               value: id,
               label: name,
@@ -767,14 +823,18 @@ function PartitionEditor({
           />
         ))}
       {draft.mode === "process" && (
-        <Select<PartitionDraft["processLevel"]>
+        // Always exactly two levels, so a switch rather than a dropdown
+        <ModeControl<PartitionDraft["processLevel"]>
           label={t`Groups`}
           data={[
             { value: "order", label: t`All states` },
             { value: "buckets", label: t`Outcome buckets` },
           ]}
+          descriptions={{
+            order: t`One group per status, in the order set in the Values tab.`,
+            buckets: t`Statuses combined by outcome: Open, Won, Lost, and Cancelled.`,
+          }}
           value={draft.processLevel}
-          allowDeselect={false}
           onChange={(processLevel) => onChange({ ...draft, processLevel })}
         />
       )}
@@ -810,7 +870,7 @@ function RelatedEditor({
   );
 
   return (
-    <Stack gap="md">
+    <Stack gap="xl">
       <Select<string | null>
         label={t`Column of ${targetTable.display_name}`}
         description={t`Rows group by this column of the row they point to.`}
@@ -882,5 +942,41 @@ function TargetGroupingSelect({
       allowDeselect={false}
       onChange={(next) => onChange(next === BY_VALUES ? null : next)}
     />
+  );
+}
+
+/**
+ * A choice of how to group, with a label saying what's being picked and,
+ * under it, what the picked way does.
+ */
+function ModeControl<Mode extends string>({
+  label,
+  data,
+  descriptions,
+  value,
+  onChange,
+}: {
+  label: string;
+  data: SegmentedControlItem<Mode>[];
+  descriptions: Record<Mode, string>;
+  value: Mode;
+  onChange: (value: Mode) => void;
+}) {
+  return (
+    <Input.Wrapper
+      label={label}
+      description={descriptions[value]}
+      // The explanation follows the choice it explains
+      inputWrapperOrder={["label", "input", "description"]}
+    >
+      <SegmentedControl<Mode>
+        fullWidth
+        data={data}
+        value={value}
+        onChange={onChange}
+        mt="xs"
+        mb="xs"
+      />
+    </Input.Wrapper>
   );
 }

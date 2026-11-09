@@ -13,6 +13,8 @@ type GroupMemberListProps<T> = {
   getName: (item: T) => string;
   /** The row's middle: a name, or an input for the member's label */
   renderContent: (item: T) => ReactNode;
+  /** Column headings over the rows' middles, laid out like `renderContent` */
+  header?: ReactNode;
   onReorder: (items: T[]) => void;
   onRemove: (item: T) => void;
 };
@@ -26,6 +28,7 @@ export function GroupMemberList<T>({
   getId,
   getName,
   renderContent,
+  header,
   onReorder,
   onRemove,
 }: GroupMemberListProps<T>) {
@@ -35,6 +38,21 @@ export function GroupMemberList<T>({
 
   return (
     <Box role="list" aria-label={t`Members in order`}>
+      {header != null && (
+        // The rows' layout with the handle and remove button held as space,
+        // so the headings sit over their columns
+        <Group gap="sm" wrap="nowrap" px="sm" pb="xs" aria-hidden>
+          <Box display="flex" style={{ visibility: "hidden" }}>
+            <Icon name="grabber" />
+          </Box>
+          <Box flex={1} miw={0}>
+            {header}
+          </Box>
+          <ActionIcon tabIndex={-1} style={{ visibility: "hidden" }}>
+            <Icon name="close" />
+          </ActionIcon>
+        </Group>
+      )}
       <SortableList<T>
         items={items}
         getId={getId}
@@ -50,7 +68,7 @@ export function GroupMemberList<T>({
           >
             {({ dragHandleRef, dragHandleListeners }) => (
               <Card
-                withBorder
+                bg="background_page-secondary"
                 shadow="none"
                 radius="md"
                 px="sm"

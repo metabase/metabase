@@ -20,6 +20,15 @@ export const TitledSection = ({ children, title }: Props) => {
       </Text>
     ) : null;
 
+  if (variant === "plain") {
+    return (
+      <Stack gap="lg">
+        {titleText}
+        {children}
+      </Stack>
+    );
+  }
+
   if (variant === "outlined") {
     return (
       <Box className={S.outlined}>

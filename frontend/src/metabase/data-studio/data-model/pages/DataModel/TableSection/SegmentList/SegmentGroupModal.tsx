@@ -11,6 +11,7 @@ import {
 import {
   Button,
   Group,
+  Icon,
   Modal,
   Radio,
   Select,
@@ -44,6 +45,10 @@ export function SegmentGroupModal({
   onClose,
 }: SegmentGroupModalProps) {
   const [name, setName] = useState(group?.name ?? "");
+  // Required: an empty name turns red once someone has been in it and left
+  const [isNameFocused, setIsNameFocused] = useState(false);
+  const [isNameTouched, setIsNameTouched] = useState(false);
+  const isNameMissing = isNameTouched && !isNameFocused && name.trim() === "";
   const [kind, setKind] = useState<SegmentGroupKind>(
     group?.kind ?? "partition",
   );
@@ -89,7 +94,14 @@ export function SegmentGroupModal({
           label={t`Name`}
           placeholder={t`Deal outcome`}
           value={name}
+          required
+          error={isNameMissing}
           onChange={(event) => setName(event.target.value)}
+          onFocus={() => setIsNameFocused(true)}
+          onBlur={() => {
+            setIsNameFocused(false);
+            setIsNameTouched(true);
+          }}
           data-autofocus
         />
 
@@ -154,21 +166,43 @@ export function SegmentGroupModal({
               items={members}
               getId={({ segmentId }) => segmentId}
               getName={(member) => getSegmentName(segments, member)}
+              header={
+                <Group gap="sm" wrap="nowrap">
+                  <Text size="sm" fw="bold" c="text-secondary" flex={1}>
+                    {t`Segment`}
+                  </Text>
+                  <Text size="sm" fw="bold" c="text-secondary" flex={1}>
+                    {t`Label`}
+                  </Text>
+                </Group>
+              }
               renderContent={(member) => (
-                <TextInput
-                  aria-label={t`Label for ${getSegmentName(segments, member)}`}
-                  value={member.label}
-                  placeholder={getSegmentName(segments, member)}
-                  onChange={(event) =>
-                    setMembers(
-                      members.map((known) =>
-                        known.segmentId === member.segmentId
-                          ? { ...known, label: event.target.value }
-                          : known,
-                      ),
-                    )
-                  }
-                />
+                // The segment as it's named everywhere, and what this group
+                // calls it in Group by, filters, and comparisons
+                <Group gap="sm" wrap="nowrap">
+                  <Group gap="xs" wrap="nowrap" flex={1} miw={0}>
+                    <Icon name="segment" c="core-filter" flex="0 0 auto" />
+                    <Text truncate title={getSegmentName(segments, member)}>
+                      {getSegmentName(segments, member)}
+                    </Text>
+                  </Group>
+                  <TextInput
+                    flex={1}
+                    miw={0}
+                    aria-label={t`Label for ${getSegmentName(segments, member)}`}
+                    value={member.label}
+                    placeholder={getSegmentName(segments, member)}
+                    onChange={(event) =>
+                      setMembers(
+                        members.map((known) =>
+                          known.segmentId === member.segmentId
+                            ? { ...known, label: event.target.value }
+                            : known,
+                        ),
+                      )
+                    }
+                  />
+                </Group>
               )}
               onReorder={setMembers}
               onRemove={(member) =>
