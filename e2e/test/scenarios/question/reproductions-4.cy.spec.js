@@ -1003,12 +1003,10 @@ describe("issue 57697", () => {
 
   it("should not show the binning in the name of the column when binning in the summarize sidebar  (metabase#57697)", () => {
     H.summarize();
-    H.sidebar()
-      .filter(":visible")
-      .within(() => {
-        cy.findByText("Price").should("be.visible");
-        cy.findByText("Price: Auto binned").should("not.exist");
-      });
+    H.summaryFieldList().within(() => {
+      cy.findByText("Price").should("be.visible");
+      cy.findByText("Price: Auto binned").should("not.exist");
+    });
   });
 });
 

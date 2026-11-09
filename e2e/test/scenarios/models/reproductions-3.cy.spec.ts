@@ -97,7 +97,7 @@ describe("issue 22518", () => {
 
     H.summarize();
 
-    H.sidebar()
+    H.summaryFieldList()
       .should("contain", "ID")
       .and("contain", "FOO")
       .and("contain", "BAR");
@@ -369,10 +369,11 @@ describe("issues 31905 and 32963", () => {
       .click();
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.rightSidebar().within(() => {
-      cy.findAllByText("Created At").eq(0).click();
-      cy.button("Done").click();
-    });
+    // the model's own "Created At" comes before the linked tables'
+    H.summaryFieldList()
+      .findAllByRole("button", { name: "Created At" })
+      .first()
+      .click();
     cy.wait("@dataset");
     assertLineChart();
 

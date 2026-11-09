@@ -268,7 +268,7 @@ describe("issues 56698 and 57557", () => {
     cy.get("@modelId").then((modelId) => H.visitModel(Number(modelId)));
     H.assertQueryBuilderRowCount(2);
     H.summarize();
-    H.rightSidebar().button("Done").click();
+    H.addSummaryValue("Count of rows");
     H.assertQueryBuilderRowCount(1);
 
     cy.log(

@@ -336,7 +336,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // Removing the comparison column ("Sum of Total") from the query
     // The comparison should be reset to "previous period"
     H.summarize();
-    H.rightSidebar().findByLabelText("Sum of Total").icon("close").click();
+    H.removeSummaryItem("Sum of Total");
     cy.wait("@dataset");
 
     cy.findByTestId("scalar-value").should("have.text", "3,440,000");
@@ -348,10 +348,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // Removing the remaining numeric column, so only Count is left
     // to ensure we no longer offer the "Value from another column…" option
-    H.rightSidebar().within(() => {
-      cy.findByLabelText("Count").icon("close").click();
-      cy.button("Done").click();
-    });
+    H.removeSummaryItem("Count");
     cy.wait("@dataset");
 
     H.openVizSettingsSidebar();
