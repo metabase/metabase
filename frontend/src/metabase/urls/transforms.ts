@@ -3,6 +3,7 @@ import _ from "underscore";
 import type {
   CardId,
   CollectionId,
+  DataTestRunStatus,
   DatabaseId,
   SortDirection,
   TableId,
@@ -17,7 +18,6 @@ import type {
   TransformRunStatus,
   TransformTagId,
   TransformTestId,
-  TransformTestRunStatus,
 } from "metabase-types/api";
 
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
@@ -95,7 +95,7 @@ export function transformTest(
 
 export type TransformTestRunListParams = {
   page?: number;
-  statuses?: TransformTestRunStatus[];
+  statuses?: DataTestRunStatus[];
   startTime?: string;
   endTime?: string;
 };

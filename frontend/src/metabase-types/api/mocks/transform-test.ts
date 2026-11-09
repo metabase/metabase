@@ -1,12 +1,8 @@
 import type {
-  ListTransformTestRunsResponse,
   TransformTest,
   TransformTestEmptyExpectation,
   TransformTestEqualsExpectation,
   TransformTestRowsData,
-  TransformTestRun,
-  TransformTestRunUser,
-  TransformTestRunWithUser,
   TransformTestSqlData,
 } from "metabase-types/api";
 
@@ -54,57 +50,6 @@ export function createMockTransformTestEmptyExpectation(
     type: "empty",
     name: "no rows",
     sql: "SELECT * FROM output WHERE id IS NULL",
-    ...opts,
-  };
-}
-
-export function createMockTransformTestRun(
-  opts?: Partial<TransformTestRun>,
-): TransformTestRun {
-  return {
-    id: 1,
-    test_type: "transform",
-    test_id: 1,
-    initiated_by: 1,
-    start_time: "2026-01-01T00:00:00Z",
-    end_time: "2026-01-01T00:00:02Z",
-    status: "passed",
-    last_heartbeat: "2026-01-01T00:00:02Z",
-    ...opts,
-  };
-}
-
-export function createMockTransformTestRunUser(
-  opts?: Partial<TransformTestRunUser>,
-): TransformTestRunUser {
-  return {
-    id: 1,
-    email: "user@example.com",
-    first_name: "Test",
-    last_name: "User",
-    common_name: "Test User",
-    ...opts,
-  };
-}
-
-export function createMockTransformTestRunWithUser(
-  opts?: Partial<TransformTestRunWithUser>,
-): TransformTestRunWithUser {
-  return {
-    ...createMockTransformTestRun(),
-    initiated_by_user: createMockTransformTestRunUser(),
-    ...opts,
-  };
-}
-
-export function createMockListTransformTestRunsResponse(
-  opts?: Partial<ListTransformTestRunsResponse>,
-): ListTransformTestRunsResponse {
-  return {
-    data: [],
-    limit: 20,
-    offset: 0,
-    total: 0,
     ...opts,
   };
 }
