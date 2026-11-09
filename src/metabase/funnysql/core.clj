@@ -930,6 +930,25 @@
 (defn- current-timestamp! [context]
   (append-sql! context "current_timestamp"))
 
+(defn- current-timestamp-plus-ms!
+  "The database's current timestamp plus a whole number of milliseconds: `[:current-timestamp-plus-ms 5000]`.
+  Reads the database clock, unlike a timestamp the app server computes and binds as a parameter."
+  [[millis :as args] context]
+  (when-not (and (= 1 (count args)) (int? millis))
+    (throw (ex-info "`:current-timestamp-plus-ms` takes one integer number of milliseconds" {:args args})))
+  ;; Spliced, never bound, so it can sit inside the Postgres interval literal.
+  (case (engine context)
+    :postgres (do (append-sql! context "(current_timestamp + interval '")
+                  (splice-number! millis context)
+                  (append-sql! context " millisecond')"))
+    ;; MySQL and MariaDB have no millisecond unit for TIMESTAMPADD.
+    :mysql    (do (append-sql! context "timestampadd(microsecond, ")
+                  (splice-number! (* 1000 millis) context)
+                  (append-sql! context ", current_timestamp)"))
+    :h2       (do (append-sql! context "dateadd(millisecond, ")
+                  (splice-number! millis context)
+                  (append-sql! context ", current_timestamp)"))))
+
 (defn- over! [[expr m & more :as args] context]
   ;; Honey SQL also accepts an alias inside the `:over` form, `[:over [expr window alias]]`. Don't silently drop it --
   ;; the query would fail later with a confusing `column "alias" does not exist`.
@@ -1117,6 +1136,9 @@
     :param             (param! (first args) context)
     :position          (position! args context)
     :timestampdiff     (timestamp-diff! args context)
+
+    :current-timestamp-plus-ms
+    (current-timestamp-plus-ms! args context)
 
     (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
     (binary-operator! f args context)

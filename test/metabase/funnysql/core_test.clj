@@ -1192,6 +1192,27 @@
       1
       nil)))
 
+(deftest ^:parallel current-timestamp-plus-ms-test
+  (are [engine expected] (= [expected]
+                            (funnysql/format [:current-timestamp-plus-ms 1500] engine))
+    :postgres "(current_timestamp + interval '1500 millisecond')"
+    :mysql    "timestampadd(microsecond, 1500000, current_timestamp)"
+    :h2       "dateadd(millisecond, 1500, current_timestamp)")
+  (testing "a negative offset reaches into the past"
+    (is (= ["dateadd(millisecond, -1500, current_timestamp)"]
+           (funnysql/format [:current-timestamp-plus-ms -1500] :h2))))
+  (testing "the offset is spliced, so it has to be one integer"
+    (are [args] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"takes one integer number of milliseconds"
+                 (funnysql/format (into [:current-timestamp-plus-ms] args) :postgres))
+      []
+      [1.5]
+      ["1500"]
+      ["1' millisecond') OR 1 = 1; --"]
+      [:col_a]
+      [1500 1500])))
+
 (deftest ^:parallel h2x-timestamp-diff-test
   (testing (str "metabase.util.honey-sql-2 is shared by Funny SQL (the app DB) and Honey SQL (warehouses, pgvector), "
                 "so its helpers have to produce working SQL under both")
