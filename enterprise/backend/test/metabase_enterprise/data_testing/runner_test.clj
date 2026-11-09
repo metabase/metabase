@@ -107,6 +107,22 @@
         (testing "fails when the query returns rows"
           (check-empty-expectation! schema table transform "rows returned" "name = 'abc'" :failed))))))
 
+(deftest run-transform-test-expectation-after-a-warehouse-error-test
+  (testing "an expectation whose query fails at the warehouse does not change the result of the next one"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+      (with-people-transform
+        (fn [schema table transform]
+          (let [output   (str schema ".people_summary")
+                result   (run-test! schema table transform one-row
+                                    [{:type :empty :name "broken" :sql (str "SELECT no_such_column FROM " output)}
+                                     {:type :empty :name "passes" :sql (str "SELECT * FROM " output " WHERE id <> 1")}])
+                statuses (into {} (map (juxt :name :status)) (:expectations result))]
+            (testing "the broken expectation is an error"
+              (is (= :error (statuses "broken"))))
+            (testing "the next expectation reports its own result"
+              (is (= :passed (statuses "passes"))
+                  (pr-str (:expectations result))))))))))
+
 (defn- check-persisted-run!
   [schema table transform where expected]
   (mt/with-temp [:model/TransformTest {transform-test-id :id :as transform-test}
