@@ -31,10 +31,12 @@
     (refusing #(data-testing.runner/validate-test :card card inputs expectations))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
-  "List the card tests the caller can read, with their newest runs, optionally only those of one card."
+  "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio
+  access."
   [_route-params
    {:keys [card-id]} :- [:map {:closed true}
                          [:card-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (api/check-data-studio-access)
   (-> (filter mi/can-read? (data-testing.db/card-tests {:card-id card-id}))
       (t2/hydrate :last_run)))
 

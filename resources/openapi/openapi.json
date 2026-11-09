@@ -46758,7 +46758,7 @@
     },
     "/api/ee/card-test" : {
       "get" : {
-        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card.",
+        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio\n  access.",
         "operationId" : "get-api-ee-card-test",
         "parameters" : [ {
           "in" : "query",

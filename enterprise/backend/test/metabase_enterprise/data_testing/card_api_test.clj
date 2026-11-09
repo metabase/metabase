@@ -2,6 +2,7 @@
   "`/api/ee/card-test`."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -144,6 +145,25 @@
         (testing "the read check follows the card"
           (mt/user-http-request :rasta :get 403 "ee/data-test-run" :test-type "card" :test-id test-id))))))
 
+(deftest list-needs-data-studio-access-test
+  (mt/with-premium-features data-testing.test-util/data-analyst-features
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id}        {}
+                     :model/Collection {hidden-coll-id :id} {}
+                     :model/Card       {card-id :id}        (card coll-id)
+                     :model/Card       {hidden-card-id :id} (card hidden-coll-id)
+                     :model/CardTest   {test-id :id}        {:card_id card-id}
+                     :model/CardTest   {hidden-test-id :id} {:card_id hidden-card-id}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+        (testing "a user who can read the card but not enter Data Studio cannot list card tests"
+          (is (= test-id (:id (mt/user-http-request :rasta :get 200 (str "ee/card-test/" test-id)))))
+          (mt/user-http-request :rasta :get 403 "ee/card-test"))
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (testing "a user who can enter Data Studio lists the tests of the cards they can read, and only those"
+            (let [listed (set (map :id (mt/user-http-request :lucky :get 200 "ee/card-test")))]
+              (is (contains? listed test-id))
+              (is (not (contains? listed hidden-test-id))))))))))
+
 (deftest permissions-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -157,8 +177,7 @@
                                                                             :perms/create-queries :query-builder-and-native}
                 (testing "no collection access to the card: 403 on get and on run"
                   (mt/user-http-request :rasta :get 403 path)
-                  (mt/user-http-request :rasta :post 403 (str path "/run"))
-                  (is (not (some #{test-id} (map :id (mt/user-http-request :rasta :get 200 "ee/card-test"))))))
+                  (mt/user-http-request :rasta :post 403 (str path "/run")))
                 (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
                 (testing "collection read: get and run, but not create, update or delete"
                   (is (= test-id (:id (mt/user-http-request :rasta :get 200 path))))
