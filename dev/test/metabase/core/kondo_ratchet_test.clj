@@ -627,6 +627,34 @@
         (is (= {:a/x 2} (:discouraged-var-counts (kondo-ratchet/read-ratchets)))
             "seeding the alias raises its source's budget, and the alias's own budget is dropped")))))
 
+(deftest ^:synchronized fix-names-aliases-when-an-alias-seed-has-nothing-to-seed-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts          {}
+                                                    :discouraged-var-counts {:a/x 1, :b/y 1}
+                                                    :config-counts          {}
+                                                    :comment-exempt         #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:discouraged-var})
+                                  kondo-ratchet/discouraged-symbols   (constantly '#{a/x b/y})
+                                  kondo-ratchet/scan                  (constantly [])
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (is (= ["WARNING: :a/x (also counts :b/y) has no inline ignores -- dropping its policy"
+                "dropped :b/y (no ignores left)"
+                "WARNING: :a/x (also counts :b/y) has no inline ignores -- nothing to seed"
+                (str "wrote " (.getPath budgets))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed    ":discouraged-var/b/y"
+                                                                   :aliases (constantly {:b/y :a/x})}))))
+            "a seed that follows an alias names the alias on its warning, in both files")))))
+
 (deftest ^:synchronized fix-refuses-colliding-symbols-test
   (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
                                "kondo-ratchet-test"

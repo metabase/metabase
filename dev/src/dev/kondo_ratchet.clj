@@ -1024,14 +1024,14 @@
 (defn- seed-lines
   "[[fix!]]'s report lines for `seeded` keys in one count field: seeded at its actual count, or a warning
   when there's nothing to seed.
-  A seeded entry is named by what `label` returns for it."
+  Each line names its entry by what `label` returns for it."
   [recorded actual seeded label]
   (for [name seeded
         :let [n (get actual name 0)]]
     (cond
       (pos? n)                  (format "seeded %s at %d" (label name) n)
-      (contains? recorded name) (format "WARNING: %s has no inline ignores -- dropping its policy" name)
-      :else                     (format "WARNING: %s has no inline ignores -- nothing to seed" name))))
+      (contains? recorded name) (format "WARNING: %s has no inline ignores -- dropping its policy" (label name))
+      :else                     (format "WARNING: %s has no inline ignores -- nothing to seed" (label name)))))
 
 (defn- budget-lines
   "[[fix!]]'s report lines for bounded (non-`:unlimited`), non-seeded entries in one count field: dropped
