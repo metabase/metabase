@@ -10,7 +10,6 @@
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.embedding-rest.api.preview-embed :as api.preview-embed]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
@@ -504,7 +503,7 @@
                                                                                                  :display-name "Name"
                                                                                                  :id           "_name_"
                                                                                                  :type         :dimension
-                                                                                                 :dimension    [:field (mt/id :people :name) nil]
+                                                                                                 :field-id     (mt/id :people :name)
                                                                                                  :widget-type  :string/=
                                                                                                  :default      nil}}})
                                                             :enable_embedding true
@@ -612,19 +611,19 @@
                                                   :display-name "Internal"
                                                   :type         :dimension
                                                   :widget-type  :number/=
-                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :orders :quantity)))}
+                                                  :field-id     (mt/id :orders :quantity)}
                                  "product_id_fk" {:id           "product_id_fk"
                                                   :name         "product_id_fk"
                                                   :display-name "FK"
                                                   :type         :dimension
                                                   :widget-type  :id
-                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :orders :product_id)))}
+                                                  :field-id     (mt/id :orders :product_id)}
                                  "user_id_pk"    {:id           "user_id_pk"
                                                   :name         "user_id_pk"
                                                   :display-name "PK->Name"
                                                   :type         :dimension
                                                   :widget-type  :id
-                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :people :id)))}}))
+                                                  :field-id     (mt/id :people :id)}}))
                           :parameters [{:id "quantity", :name "Internal", :slug "quantity", :type "number/="
                                         :target ["dimension" ["template-tag" "quantity"]]}
                                        {:id "product_id_fk", :name "FK", :slug "product_id_fk", :type "id"
@@ -701,7 +700,7 @@
                                                                :name         "LIKED"
                                                                :type         :dimension
                                                                :id           "LIKED"
-                                                               :dimension    [:field (mt/id :places :liked) nil]
+                                                               :field-id     (mt/id :places :liked)
                                                                :display-name "Liked"
                                                                :options      nil
                                                                :required     true}}

@@ -19,7 +19,6 @@ import type {
   SchemaId,
   TableId,
 } from "metabase-types/api";
-import { isRealTable, isRealTableField } from "metabase-types/guards";
 
 import type {
   DataSelectorDatabase,
@@ -75,20 +74,13 @@ export const selectEntityLookups = createSelector(
   ): EntityLookups => ({
     database: (id) => (id != null ? databases[id] : undefined),
     schema: (id) => (id != null ? schemas[id] : undefined),
-    table: (id) => {
-      const table = id != null ? tables[id] : undefined;
-      return table != null && isRealTable(table) ? table : undefined;
-    },
-    field: (fieldId) => {
-      const result = field(fieldId);
-      return result != null && isRealTableField(result) ? result : undefined;
-    },
+    table: (id) => (id != null ? tables[id] : undefined),
+    field,
     databaseSchemas,
-    databaseTables: (databaseId) =>
-      databaseTables(databaseId).filter(isRealTable),
-    schemaTables: (schemaId) => schemaTables(schemaId).filter(isRealTable),
+    databaseTables,
+    schemaTables,
     tableSchema,
-    tableFields: (tableId) => tableFields(tableId).filter(isRealTableField),
+    tableFields,
     fieldName,
   }),
 );

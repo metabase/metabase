@@ -11,6 +11,7 @@ import {
 import {
   ORDERS_ID,
   PRODUCTS_ID,
+  createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -83,7 +84,7 @@ describe("ObjectDetail utils", () => {
 
   describe("getObjectName", () => {
     const question = new Question(card, metadata);
-    const table = metadata.table(ORDERS_ID);
+    const table = createOrdersTable();
 
     it("should get an entity name when there is an entity name column", () => {
       const name = getObjectName({

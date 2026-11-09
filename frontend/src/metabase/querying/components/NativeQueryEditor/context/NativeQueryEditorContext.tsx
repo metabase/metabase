@@ -2,8 +2,8 @@ import { createContext, useContext } from "react";
 
 import type { DataSelectorDatabase } from "metabase/querying/common/components/DataSelector";
 import type { QueryModalType } from "metabase/redux/store";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Collection,
   DatabaseId,
@@ -19,8 +19,8 @@ import type {
  */
 export interface NativeQueryEditorContextValue {
   question: Question;
-  query: NativeQuery;
-  setDatasetQuery: (query: NativeQuery) => void;
+  query: Lib.Query;
+  setQuery: (query: Lib.Query) => void;
 
   focusEditor: () => void;
   onFormatQuery: () => void;

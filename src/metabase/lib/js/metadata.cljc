@@ -294,7 +294,7 @@
   [dimensions]
   (when-let [dimension (m/find-first (fn [dimension]
                                        (#{"external" "internal"} (get dimension "type")))
-                                     dimensions)]
+                                     #?(:cljs (js->clj dimensions) :clj dimensions))]
     (let [dimension-type (keyword (get dimension "type"))]
       (merge
        {:id   (get dimension "id")

@@ -1,6 +1,5 @@
 (ns metabase.queries.metadata
   (:require
-   [clojure.edn :as edn]
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -84,16 +83,8 @@
          :when   (:template_tags snippet)
          tag     (vals (:template_tags snippet))
          :when   (#{:dimension :temporal-unit} (:type tag))
-         :let    [dimension (:dimension tag)
-                  ;; Handle both keyword and string field references
-                  [dim-type field-id] (cond
-                                        (vector? dimension) dimension
-                                        (string? dimension) (try
-                                                              (edn/read-string dimension)
-                                                              (catch Exception _ nil))
-                                        :else               nil)]
-         :when   (and (#{:field "field"} dim-type)
-                      (integer? field-id))]
+         :let    [field-id (:field-id tag)]
+         :when   (some? field-id)]
      field-id)))
 
 (mu/defn- get-cards :- [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]

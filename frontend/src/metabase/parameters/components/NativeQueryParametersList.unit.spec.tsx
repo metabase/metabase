@@ -3,11 +3,9 @@ import {
   NativeQueryEditorContextProvider,
   type NativeQueryEditorContextValue,
 } from "metabase/querying/components/NativeQueryEditor/context/NativeQueryEditorContext";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { NativeQueryParametersList } from "./NativeQueryParametersList";
@@ -36,12 +34,12 @@ function setup() {
   const question = new Question(card, SAMPLE_METADATA).setParameterValues({
     [TAG_ID]: DEFAULT_VALUE,
   });
-  const query: NativeQuery = checkNotNull(question.legacyNativeQuery());
+  const query = question.query();
 
   const context: NativeQueryEditorContextValue = {
     question,
     query,
-    setDatasetQuery: jest.fn(),
+    setQuery: jest.fn(),
     focusEditor: jest.fn(),
     onFormatQuery: jest.fn(),
     isNativeEditorOpen: true,

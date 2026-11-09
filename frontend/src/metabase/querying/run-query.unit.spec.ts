@@ -43,8 +43,7 @@ type DashboardAwareCard = Card & {
 
 function createMockSavedQuestion(card?: Partial<DashboardAwareCard>) {
   const savedCard = createMockCard({ dataset_query: MOCK_QUERY, ...card });
-  // Unjustified type cast. FIXME
-  return createMockMetadata(savedCard).question(savedCard.id) as Question;
+  return new Question(savedCard, createMockMetadata(savedCard));
 }
 
 function createMockAdHocQuestion(card?: Partial<UnsavedCard>) {
