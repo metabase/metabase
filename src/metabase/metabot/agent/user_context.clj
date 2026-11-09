@@ -285,7 +285,9 @@
   ;; column of a card or of an earlier stage is referred to by its name, so it gets no portable FK.
   (when (and (#{:source/table-defaults :source/joins} (:lib/source column))
              (nil? (:lib/card-id column)))
-    (:portable_fk (metabot.tools.u/->result-column query column))))
+    ;; Catch per column, as [[metabot.tools.u/->result-column]] does: a failed lookup drops this FK, not the list.
+    (try (metabot.tools.u/column-portable-fk query column)
+         (catch Exception _ nil))))
 
 (defn- column-ref-name
   "The name by which a ref in the last stage of the query refers to `column`.
