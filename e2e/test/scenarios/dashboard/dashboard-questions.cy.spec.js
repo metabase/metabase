@@ -322,6 +322,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.queryBuilderHeader()
         .button(/Summarize/)
         .click();
+      H.removeSummaryItem("Count");
       H.addSummaryValue("Total");
       H.openSummaryValueMenu("Sum of Total");
       cy.findByRole("menuitem", { name: "Average of ..." }).click();
