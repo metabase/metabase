@@ -3983,6 +3983,7 @@
            lib.schema
            models
            premium-features
+           queries
            query-permissions
            query-processor
            remote-sync
