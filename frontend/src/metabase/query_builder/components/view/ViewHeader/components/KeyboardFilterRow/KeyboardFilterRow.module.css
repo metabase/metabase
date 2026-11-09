@@ -43,9 +43,7 @@
   & .removeIcon {
     box-sizing: content-box;
     margin-right: 2px;
-    margin-left: 0;
-    padding-left: 0.375rem;
-    border-left: 0.5px solid var(--mb-color-border-neutral);
+    margin-left: 0.125rem;
   }
 }
 
@@ -519,7 +517,7 @@
 .removeIcon {
   flex-shrink: 0;
   margin-left: 0.25rem;
-  color: var(--mb-color-text-primary);
+  color: var(--mb-color-icon-secondary);
   cursor: pointer;
 }
 
@@ -730,12 +728,7 @@
     }
 
     & .removeIcon {
-      color: var(--mb-color-text-primary-inverse);
-      border-left-color: color-mix(
-        in srgb,
-        var(--mb-color-text-primary-inverse),
-        transparent 25%
-      );
+      color: var(--mb-color-icon-secondary-inverse);
     }
   }
 
@@ -783,12 +776,7 @@
     }
 
     & .removeIcon {
-      color: var(--expression-pill-color);
-      border-left-color: color-mix(
-        in srgb,
-        var(--expression-pill-color),
-        transparent 75%
-      );
+      color: color-mix(in srgb, var(--expression-pill-color), transparent 35%);
     }
   }
 

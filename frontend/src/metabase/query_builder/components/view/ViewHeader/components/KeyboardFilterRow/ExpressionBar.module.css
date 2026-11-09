@@ -300,6 +300,13 @@
   height: 0;
 }
 
+/* Keeps the empty bottom row as tall as the row a new group opens on, with
+   the caret's draft pill in it, so adding the group keeps the bar's height. */
+.emptyRowStrut {
+  width: 0;
+  min-height: 2.25rem;
+}
+
 /* The summary's bar after the rows', spaced like pills joined by an implicit AND. */
 .trailing {
   display: inline-flex;
@@ -406,6 +413,11 @@
   & .caretSlot:has(> :not(.typingIdle)),
   & .caretSlot:has(> .typingIdle:focus-within) {
     padding: 0 0.5rem;
+  }
+
+  /* Measured: 16px over a pill, as a new group's row is here. */
+  & .emptyRowStrut {
+    min-height: calc(var(--expression-pill-height) + 1rem);
   }
 
   & .input {

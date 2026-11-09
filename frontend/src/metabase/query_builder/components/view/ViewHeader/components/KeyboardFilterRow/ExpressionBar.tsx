@@ -256,11 +256,14 @@ type PillEdit = {
 function useConnectors({
   tokens,
   isExpanded,
+  isRowLayoutOn,
   setTokens,
   setCaret,
 }: {
   tokens: Token[];
   isExpanded: boolean;
+  /** The rows show every connector, also the ANDs that are implicit otherwise. */
+  isRowLayoutOn: boolean;
   setTokens: (tokens: Token[]) => void;
   setCaret: (caret: number) => void;
 }) {
@@ -283,7 +286,7 @@ function useConnectors({
   }
   const hasOr = tokens.some((token) => isOpToken(token, "or"));
   return {
-    areAndsVisible: hasOr || hasTypedAnd,
+    areAndsVisible: hasOr || hasTypedAnd || isRowLayoutOn,
     onTypeAnd: () => setHasTypedAnd(true),
   };
 }
@@ -297,6 +300,7 @@ function useConnectors({
 function useRowLayout({
   hasGroups,
   hasFilters,
+  isExpanded,
   trailingHasGroups = false,
   isRowLayoutOn,
   onRowLayoutChange,
@@ -304,6 +308,7 @@ function useRowLayout({
 }: {
   hasGroups: boolean;
   hasFilters: boolean;
+  isExpanded: boolean;
   trailingHasGroups?: boolean;
   isRowLayoutOn?: boolean;
   onRowLayoutChange?: (isOn: boolean) => void;
@@ -327,6 +332,14 @@ function useRowLayout({
       setIsOn(false);
     }
   }, [isOn, wasNesting, isNesting, hasFilters, setIsOn]);
+  // Prototype: rows with no nesting are only for editing. Leaving the bar
+  // goes back to one line, as it is before Shift+Enter.
+  const wasExpanded = usePrevious(isExpanded);
+  useEffect(() => {
+    if (isOn && wasExpanded && !isExpanded && !isNesting) {
+      setIsOn(false);
+    }
+  }, [isOn, wasExpanded, isExpanded, isNesting, setIsOn]);
 
   // In the capture phase, so that no input or popover in the bar, also those
   // in a portal or the summary's bar, takes it as a plain Enter.
@@ -542,6 +555,7 @@ export function ExpressionBar({
     hasGroups,
     hasFilters:
       trailing != null || tokens.some((token) => token.type === "filter"),
+    isExpanded,
     trailingHasGroups,
     isRowLayoutOn: isRowLayoutOnProp,
     onRowLayoutChange,
@@ -551,6 +565,7 @@ export function ExpressionBar({
   const { areAndsVisible, onTypeAnd } = useConnectors({
     tokens,
     isExpanded,
+    isRowLayoutOn: rowLayout.isOn,
     setTokens: setTokensSilently,
     setCaret,
   });
@@ -585,6 +600,26 @@ export function ExpressionBar({
     }
     return [];
   };
+
+  // Prototype: with no parentheses the rows would be one line, as before the
+  // toggle. An empty row at the bottom shows the switch. It is only room: the
+  // caret stays on the row above, and a parenthesis makes the real rows. The
+  // "Add a filter…" placeholder goes after it, as after a group.
+  const emptyRow = () =>
+    rowLayout.layout === "rows" &&
+    isExpanded &&
+    !isNested &&
+    !trailingHasGroups &&
+    tokens.length > 0 &&
+    !tokens.some((token) => isParenToken(token))
+      ? [
+          <RowBreak key="row-empty" isBreak indent={0} />,
+          <span key="row-empty-strut" className={S.emptyRowStrut} />,
+          // A group at the end ends its row, and the end of the bar takes the
+          // empty line after it: the same here, so adding the group keeps the height.
+          <RowBreak key="row-empty-end" isBreak indent={0} />,
+        ]
+      : [];
 
   // Two operands with no connector between them, like after an AND was
   // removed: the slot there keeps them apart until one is typed.
@@ -1787,6 +1822,7 @@ export function ExpressionBar({
                 </Box>,
               ]
             : []),
+          ...emptyRow(),
         ]}
         {tokens.length === 0 &&
           !trailing &&
@@ -1854,7 +1890,7 @@ function RowLayoutButton({
     return null;
   }
   return (
-    <Tooltip label={t`Show on multiple rows`}>
+    <Tooltip label={t`Show on multiple rows (Shift+Enter)`}>
       <ActionIcon
         className={cx({ [S.barActionButton]: !isOn })}
         variant={isOn ? "filled" : "subtle"}
