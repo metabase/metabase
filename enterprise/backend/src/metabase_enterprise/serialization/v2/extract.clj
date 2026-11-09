@@ -174,10 +174,16 @@
   [model ids opts]
   (eduction (mapcat #(export-rows model (assoc opts :ids (vec %)))) (partition-all serialization/batch-size ids)))
 
+(defn- export-card-tests
+  "The CardTests of the Cards with `card-ids` that `opts` select, exported a batch of Cards at a time."
+  [card-ids opts]
+  (eduction (mapcat #(export-rows :model/CardTest (assoc opts :card-ids (vec %))))
+            (partition-all serialization/batch-size card-ids)))
+
 (defn extract
   "A reducible of the exported entities an export of `opts` takes: the content of the Collections it selects (see
   [[selection]]) with the content it depends on, the published Tables of those Collections with their data model
-  when it has `:targets`, and every row of the other models it takes. Reduce it within [[metabase.serialization.core/with-export-transaction]] for a
+  when it has `:targets`, the CardTests of its Cards, and every row of the other models it takes. Reduce it within [[metabase.serialization.core/with-export-transaction]] for a
   consistent snapshot."
   [{:keys [targets] :as opts}]
   (log/tracef "Extracting with options: %s" (pr-str opts))
@@ -196,4 +202,5 @@
     (eduction cat
               [(eduction (mapcat (fn [[model ids]] (export-ids model ids opts))) by-model)
                (eduction (mapcat #(export-rows % (assoc opts :table-ids table-ids))) table-dm)
+               (export-card-tests (get by-model :model/Card) opts)
                (eduction (mapcat #(export-rows % opts)) (set/difference models (set serdes.models/content)))])))

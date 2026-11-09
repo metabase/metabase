@@ -330,3 +330,11 @@
     [:select-keys ::transform-test [:entity_id :name :description :inputs :expectations :transform_id :creator_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::external-card-test
+  "A CardTest as serialization writes it, with references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::card-test [:entity_id :name :description :inputs :expectations :card_id :creator_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

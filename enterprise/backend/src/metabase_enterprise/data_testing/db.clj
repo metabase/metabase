@@ -227,3 +227,10 @@
   [eids :- [:sequential :string]]
   (when (seq eids)
     (t2/select [:model/Transform :entity_id :name :collection_id] :entity_id [:in [:auto/param eids]])))
+
+(mu/defn cards-by-entity-ids
+  "The entity id, name, and Collection, Dashboard and Document ids of the Cards with `eids`."
+  [eids :- [:sequential :string]]
+  (when (seq eids)
+    (t2/select [:model/Card :entity_id :name :collection_id :dashboard_id :document_id]
+               :entity_id [:in [:auto/param eids]])))
