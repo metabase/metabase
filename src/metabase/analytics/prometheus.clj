@@ -846,6 +846,19 @@
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   ;; Tool executor: one fixed pool of virtual threads, shared by every metabot conversation on the instance.
+   ;; The gauges are refreshed at scrape time by the `pull-collector` in `metabase.metabot.self.core`.
+   (prometheus/gauge :metabase-metabot/tool-executor-pool-size
+                     {:description "Maximum number of metabot tool calls that run at once on this instance."})
+   (prometheus/gauge :metabase-metabot/tool-executor-active
+                     {:description "Metabot tool calls running now."})
+   (prometheus/gauge :metabase-metabot/tool-executor-queued
+                     {:description "Metabot tool calls waiting for a free tool executor thread."})
+   (prometheus/histogram :metabase-metabot/tool-executor-wait-ms
+                         {:description (str "Time in milliseconds from a metabot tool call's submission to its start: "
+                                            "the wait on the calls it must run after, then the wait for a free thread.")
+                          ;; 1ms -> 5 minutes
+                          :buckets [1 10 50 100 250 500 1000 2500 5000 10000 30000 60000 120000 300000]})
    ;; messaging metrics
    (prometheus/gauge :metabase-mq/queue-depth
                      {:description "Batch count per queue by status, across all queue backends."

@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
@@ -2211,6 +2212,32 @@
               (is (= 1 (count (filter #(= :start (:type %)) @seen)))))))))))
 
 ;;; ===================== Prometheus Metrics Tests =====================
+
+(deftest tool-executor-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (testing "every tool call observes its wait time, the wait on calls it runs after included"
+      (analytics/clear! :metabase-metabot/tool-executor-wait-ms)
+      (let [slow-ms 50
+            tools   (assoc test-util/TOOLS
+                           "slow" {:tool-name   "slow"
+                                   :doc         "Sleeps, and runs alone."
+                                   :schema      [:=> [:cat [:map {:closed true}]] :any]
+                                   :runs-alone? true
+                                   :fn          (fn [_] (Thread/sleep ^long slow-ms) "done")})
+            chunks  (test-util/parts->aisdk-chunks
+                     [{:type :start :id "msg-1"}
+                      {:type :tool-input :id "call-1" :function "slow" :arguments {}}
+                      {:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
+            result  (into [] (self.core/tool-executor-xf tools) chunks)
+            wait    (mt/metric-value system :metabase-metabot/tool-executor-wait-ms)]
+        (is (= #{"call-1" "call-2"} (set (map :toolCallId (take-last 2 result)))))
+        (is (== 2 (:count wait)))
+        (is (<= slow-ms (:sum wait)) "call-2 waits for the slow call it runs after")))
+    (testing "the pull collector publishes the pool's size, active count, and queue length"
+      ((:f (analytics.core/pull-collector ::self.core/tool-executor)))
+      (is (== 20 (mt/metric-value system :metabase-metabot/tool-executor-pool-size)))
+      (is (<= 0 (mt/metric-value system :metabase-metabot/tool-executor-active)))
+      (is (<= 0 (mt/metric-value system :metabase-metabot/tool-executor-queued))))))
 
 (deftest call-llm-prometheus-test
   (llm.tu/with-default-connections
