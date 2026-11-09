@@ -129,6 +129,9 @@ export {
 } from "./oss/permissions";
 export {
   PLUGIN_REMOTE_SYNC,
+  type RemoteSyncChangesArea,
+  type RemoteSyncChangesBadgeProps,
+  type RemoteSyncChangesTarget,
   type RemoteSyncSettingsModalProps,
   type RemoteSyncSetupMenuItemProps,
 } from "./oss/remote-sync";

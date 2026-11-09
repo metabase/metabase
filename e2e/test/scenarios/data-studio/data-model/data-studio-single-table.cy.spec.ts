@@ -197,7 +197,7 @@ describe("Table editing", () => {
     },
   );
 
-  describe.skip("with remote sync enabled", () => {
+  describe("with remote sync enabled", () => {
     it(
       "should update the tree after publishing, unpublishing, and renaming a table (metabase#69554)",
       { tags: ["@external"] },
