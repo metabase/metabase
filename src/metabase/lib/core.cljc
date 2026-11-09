@@ -335,7 +335,11 @@
   join-strategy
   joinable-columns
   joins
+  maybe-resolve-join
   raw-join-strategy
+  standard-join-condition?
+  standard-join-condition-lhs
+  standard-join-condition-rhs
   suggested-join-conditions
   with-join-alias
   with-join-fields
