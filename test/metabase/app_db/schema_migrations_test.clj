@@ -4887,8 +4887,8 @@
           (is (thrown? Exception (t2/select :card_test))))))))
 
 (deftest create-search-index-lease-table-test
-  (testing "v65.2026-08-18: search reindexes get a granular renewable lease table"
-    (impl/test-migrations ["v65.2026-08-18T13:57:56" "v65.2026-08-18T13:57:57"] [migrate!]
+  (testing "search reindexes get a granular renewable lease table"
+    (impl/test-migrations ["r428su" "cw6hb9"] [migrate!]
       (migrate!)
       (let [row {:engine          "appdb"
                  :version         "test-version"
