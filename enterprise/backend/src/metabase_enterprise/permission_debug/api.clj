@@ -77,6 +77,20 @@
     :model-id model_id
     :action-type action_type}))
 
+(api.macros/defendpoint :post "/preview/card/:card-id" :- :map
+  "Run the Card with `card-id` as the User with `user_id` would see it: their permissions, attributes, sandboxes,
+  connection impersonation and database routing apply. The caller's own session is untouched, and the preview is
+  recorded in the audit log with the caller as the actor and the previewed user as the target.
+
+  Returns the query results, in the same shape as `POST /api/card/:card-id/query`."
+  [{:keys [card-id]} :- [:map {:closed true}
+                         [:card-id ms/PositiveInt]]
+   _query-params
+   {:keys [user_id]} :- [:map {:closed true}
+                         [:user_id ms/PositiveInt]]]
+  (permission-debug.impl/preview-card-query {:user-id user_id
+                                             :card-id card-id}))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/permission_debug` routes."
   (api.macros/ns-handler *ns* api/+check-superuser +auth))

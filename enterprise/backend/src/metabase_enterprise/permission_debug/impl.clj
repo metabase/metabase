@@ -14,10 +14,14 @@
    [clojure.set :as set]
    [metabase-enterprise.permission-debug.db :as permission-debug.db]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]))
@@ -239,3 +243,37 @@
                      (not-empty limited-by-group) (assoc :download-limited-tables (format-blocked limited-by-group))
                      (not-empty blocked-by-group) (assoc :download-no-tables (format-blocked blocked-by-group)))
       :suggestions {}})))
+
+;;; ------------------------------------------------ Preview as user ------------------------------------------------
+
+(mu/defn preview-card-query :- :map
+  "Run the Card with `card-id` as the User with `user-id` would run it: their permissions, attributes (including tenant
+  attributes), sandboxes, connection impersonation and database routing all apply, because the whole request binding is
+  swapped for theirs, as alerts and subscriptions already do for their creator. The calling admin's binding is back in
+  place once this returns, and the preview is recorded in the audit log under the admin."
+  [{:keys [user-id card-id]} :- [:map {:closed true}
+                                 [:user-id ::lib.schema.id/user]
+                                 [:card-id ::lib.schema.id/card]]]
+  ;; TODO (proof of concept): inactive users can't be previewed; assumes previewing a deactivated user isn't needed.
+  (api/check-404 (permission-debug.db/active-user-exists? user-id))
+  (let [admin-id api/*current-user-id*
+        card     (api/check-404 (permission-debug.db/card card-id))
+        results  (request/with-current-user user-id
+                   ;; TODO (proof of concept): the query execution log and the view log record the previewed user as
+                   ;; the actor, so the preview shows up in their recents and usage analytics. Assumes that's
+                   ;; acceptable for a proof of concept.
+                   (qp.card/process-query-for-card
+                    card :api
+                    ;; a cached result from someone else's run (the admin's own, against the router database) must not
+                    ;; be served as the previewed user's.
+                    :ignore-cache true
+                    ;; run inside the binding and return the results, rather than a streaming response that runs later
+                    :make-run (fn [qp _export-format]
+                                (fn [query info]
+                                  (qp (update query :info merge info) nil)))))]
+    (events/publish-event! :event/permissions-preview
+                           {:user-id  admin-id
+                            :model    :model/User
+                            :model-id user-id
+                            :details  {:card-id card-id}})
+    results))

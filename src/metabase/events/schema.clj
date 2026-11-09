@@ -128,6 +128,15 @@
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
+(mr/def :event/permissions-preview
+  [:map {:closed true}
+   ;; the admin who previewed, and the user whose view they previewed
+   [:user-id  pos-int?]
+   [:model    [:= :model/User]]
+   [:model-id pos-int?]
+   [:details  [:map {:closed true}
+               [:card-id pos-int?]]]])
+
 ;; action events
 
 (mr/def ::action

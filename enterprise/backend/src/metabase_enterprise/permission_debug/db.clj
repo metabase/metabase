@@ -12,6 +12,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :is_superuser :model/User :id user-id))
 
+(mu/defn active-user-exists?
+  "Whether an active User with `user-id` exists."
+  [user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/User :id user-id :is_active true))
+
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]

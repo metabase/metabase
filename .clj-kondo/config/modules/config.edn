@@ -4352,11 +4352,13 @@
    :ns-prefix "metabase-enterprise.permission-debug"
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
+           events
            lib
            lib.schema
            models
            permissions
            query-processor
+           request
            util}
    :model-imports #{:model/Card :model/Table :model/User}}
 
