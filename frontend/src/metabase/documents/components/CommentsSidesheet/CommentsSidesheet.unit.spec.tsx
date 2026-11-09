@@ -498,8 +498,9 @@ describe("CommentsSidesheet", () => {
       });
     });
 
-    it("lets a user resolve a thread created by another user", async () => {
+    it("lets a user resolve a thread created by another user from the all comments sidebar", async () => {
       setup({
+        childTargetId: "all",
         comments: [
           commentWithText("Test resolving", { id: 1, is_resolved: true }),
           commentWithText("Main comment", { id: 2 }),
