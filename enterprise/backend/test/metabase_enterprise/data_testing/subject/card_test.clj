@@ -73,11 +73,9 @@
             (is (= [{:schema nil :name data-testing.compile/output-name}] (:output-tables plan))))
           (testing "messages name the output by the card's name"
             (is (= "Total revenue" (:output-label plan)))))
-        (testing "a card definition with only its query has the same plan, and messages name the output by its token"
-          (let [saved   (data-testing.subject/subject-plan :card (saved-card card-id))
-                unsaved (data-testing.subject/subject-plan :card {:dataset_query (:dataset_query (saved-card card-id))})]
-            (is (= (dissoc saved :output-label) (dissoc unsaved :output-label)))
-            (is (= "{{output}}" (:output-label unsaved)))))))))
+        (testing "a card that is not saved is not a subject"
+          (is (thrown-with-msg? ExceptionInfo #"Invalid input"
+                                (data-testing.subject/subject-plan :card {:dataset_query (:dataset_query (saved-card card-id))}))))))))
 
 (deftest mbql-card-implicit-join-plan-test
   (mt/test-driver :h2

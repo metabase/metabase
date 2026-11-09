@@ -1,5 +1,5 @@
 (ns ^:mb/driver-tests metabase-enterprise.data-testing.card-runner-test
-  "Runs of tests whose subject is a card, through the path for a test that is not saved."
+  "Runs of saved card tests."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -46,7 +46,7 @@
     (m/find-first #(= field-id (:id %)) (lib/visible-columns query))))
 
 (defn- native-card
-  "A card that is not saved, running `sql`."
+  "The columns of a card running `sql`."
   [sql]
   {:dataset_query (lib/native-query (mt/metadata-provider) sql)})
 
@@ -70,23 +70,18 @@
     [{:name "id" :cast_type int-type}
      {:name "name" :cast_type text-type}]))
 
-(def ^:private stand-in-test-id
-  "The id of the card test [[run-card-test!]] runs. No CardTest table exists yet, so no row has it."
-  1)
-
 (defn- run-card-test!
-  "Run a test with `inputs` and `expectations` against `card`, started by crowberto."
+  "Save `card`, a map of Card columns, and a CardTest of it with `inputs` and `expectations`, and run the test, started
+  by crowberto."
   [card inputs expectations]
-  (binding [api/*current-user-id* (mt/user->id :crowberto)]
-    (data-testing.runner/run-test! :card card {:id           stand-in-test-id
-                                               :entity_id    "card-test-stand-in"
-                                               :card_id      (or (:id card) 1)
-                                               :creator_id   (mt/user->id :crowberto)
-                                               :created_at   (t/offset-date-time)
-                                               :updated_at   (t/offset-date-time)
-                                               :name         "card test"
-                                               :inputs       inputs
-                                               :expectations expectations})))
+  (mt/with-temp [:model/Card     {card-id :id} card
+                 :model/CardTest {test-id :id} {:card_id      card-id
+                                                :inputs       inputs
+                                                :expectations expectations}]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (data-testing.runner/run-test! :card
+                                     (t2/select-one :model/Card :id card-id)
+                                     (t2/select-one :model/CardTest :id test-id)))))
 
 (defn- refusal
   "The `:error-type` and message of the refusal `thunk` throws, or nil when it does not throw."
@@ -128,26 +123,26 @@
     (let [[int-type]  (data-testing.test-util/cast-types)
           orders      (table-query :orders)
           two-orders  {:table (table-ref :orders) :format :sql
-                       :sql   "SELECT 1 AS id, 7 AS user_id UNION ALL SELECT 2 AS id, 8 AS user_id"}]
-      (mt/with-temp [:model/Card {model-id :id}  {:type          :model
-                                                  :dataset_query (lib/with-fields orders [(column orders :orders :id)
-                                                                                          (column orders :orders :user_id)])}
-                     :model/Card {metric-id :id} {:type          :metric
-                                                  :dataset_query (lib/aggregate orders (lib/count))}]
-        (testing "a model is the subject: its result set is the rows of its query"
-          (is (= :passed
-                 (:status (run-card-test! (t2/select-one :model/Card :id model-id)
-                                          [two-orders]
-                                          [{:type :equals :name "the input rows" :format :rows
-                                            :columns [{:name "id" :cast_type int-type} {:name "user_id" :cast_type int-type}]
-                                            :rows    [{"id" 1 "user_id" 7} {"id" 2 "user_id" 8}]}])))))
-        (testing "a metric is the subject: its result set is its aggregation"
-          (is (= :passed
-                 (:status (run-card-test! (t2/select-one :model/Card :id metric-id)
-                                          [two-orders]
-                                          [{:type :equals :name "two orders" :format :rows
-                                            :columns [{:name "count" :cast_type int-type}]
-                                            :rows    [{"count" 2}]}])))))))))
+                       :sql   "SELECT 1 AS id, 7 AS user_id UNION ALL SELECT 2 AS id, 8 AS user_id"}
+          model       {:type          :model
+                       :dataset_query (lib/with-fields orders [(column orders :orders :id)
+                                                               (column orders :orders :user_id)])}
+          metric      {:type          :metric
+                       :dataset_query (lib/aggregate orders (lib/count))}]
+      (testing "a model is the subject: its result set is the rows of its query"
+        (is (= :passed
+               (:status (run-card-test! model
+                                        [two-orders]
+                                        [{:type :equals :name "the input rows" :format :rows
+                                          :columns [{:name "id" :cast_type int-type} {:name "user_id" :cast_type int-type}]
+                                          :rows    [{"id" 1 "user_id" 7} {"id" 2 "user_id" 8}]}])))))
+      (testing "a metric is the subject: its result set is its aggregation"
+        (is (= :passed
+               (:status (run-card-test! metric
+                                        [two-orders]
+                                        [{:type :equals :name "two orders" :format :rows
+                                          :columns [{:name "count" :cast_type int-type}]
+                                          :rows    [{"count" 2}]}]))))))))
 
 (defn- category-count-card
   "An MBQL card counting orders by the category of their product, through an implicit join to products."
@@ -245,28 +240,38 @@
 
 (deftest card-run-is-persisted-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
-    (doseq [[outcome where expected] [["a pass" "id <> 1" :passed]
-                                      ["a failure" "id = 1" :failed]]]
-      (testing (str "the run of " outcome)
-        (let [runs-before (card-run-ids)]
-          (is (= expected (:status (run-card-test! (people-card)
-                                                   [(people-input one-person)]
-                                                   [{:type :empty :name "check" :sql (str "SELECT * FROM {{output}} WHERE " where)}]))))
-          (is (=? {:test_type    :card
-                   :test_id      stand-in-test-id
-                   :status       expected
-                   :initiated_by (mt/user->id :crowberto)
-                   :start_time   some?
-                   :end_time     some?}
-                  (new-card-run runs-before))))))
-    (testing "a refusal after the checks is recorded as an error"
-      (let [runs-before (card-run-ids)]
-        (is (= ::data-testing.errors/setup-failed
-               (:error-type (refusal #(run-card-test! (people-card)
-                                                      [(people-input "SELECT * FROM card_test_input_that_does_not_exist")]
-                                                      [{:type :empty :name "never reached" :sql "SELECT * FROM {{output}}"}])))))
-        (is (=? {:test_type :card :test_id stand-in-test-id :status :error :end_time some?}
-                (new-card-run runs-before)))))))
+    (mt/with-temp [:model/Card {card-id :id} (people-card)]
+      (let [card (t2/select-one :model/Card :id card-id)
+            run-saved (fn [inputs expectations]
+                        (mt/with-temp [:model/CardTest {test-id :id} {:card_id      card-id
+                                                                      :inputs       inputs
+                                                                      :expectations expectations}]
+                          (let [runs-before (card-run-ids)
+                                result      (try
+                                              (binding [api/*current-user-id* (mt/user->id :crowberto)]
+                                                (data-testing.runner/run-test! :card card (t2/select-one :model/CardTest :id test-id)))
+                                              (catch ExceptionInfo e
+                                                (:error-type (ex-data e))))]
+                            [test-id result (new-card-run runs-before)])))]
+        (doseq [[outcome where expected] [["a pass" "id <> 1" :passed]
+                                          ["a failure" "id = 1" :failed]]]
+          (testing (str "the run of " outcome " is recorded under its test")
+            (let [[test-id result run] (run-saved [(people-input one-person)]
+                                                  [{:type :empty :name "check" :sql (str "SELECT * FROM {{output}} WHERE " where)}])]
+              (is (= expected (:status result)))
+              (is (=? {:test_type    :card
+                       :test_id      test-id
+                       :status       expected
+                       :initiated_by (mt/user->id :crowberto)
+                       :start_time   some?
+                       :end_time     some?}
+                      run)))))
+        (testing "a refusal after the checks is recorded as an error"
+          (let [[test-id error-type run] (run-saved [(people-input "SELECT * FROM card_test_input_that_does_not_exist")]
+                                                    [{:type :empty :name "never reached" :sql "SELECT * FROM {{output}}"}])]
+            (is (= ::data-testing.errors/setup-failed error-type))
+            (is (=? {:test_type :card :test_id test-id :status :error :end_time some?}
+                    run))))))))
 
 (deftest temp-tables-are-dropped-after-the-card-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)

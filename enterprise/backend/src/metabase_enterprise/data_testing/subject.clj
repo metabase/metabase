@@ -22,10 +22,12 @@
   [:enum :transform :card])
 
 (mr/def ::card
-  "A card a test can run: a saved Card, or a card that is not saved, which needs only its `:dataset_query`."
+  "A saved Card a test can run, with its MBQL 5 query."
   [:merge
    ::queries.schema/card
    [:map {:closed true}
+    [:id            ::lib.schema.id/card]
+    [:name          :string]
     [:dataset_query ::lib.schema/query]]])
 
 (mr/def ::subject

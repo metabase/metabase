@@ -1,7 +1,6 @@
 (ns metabase-enterprise.data-testing.subject.card
   "The `:card` subject: a question, model or metric, whose result set expectation SQL names as `{{output}}`."
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
@@ -37,4 +36,4 @@
      ;; [[data-testing.compile/replace-tables]] turns into this reserved name.
      :output-tables [{:schema nil :name data-testing.compile/output-name}]
      :output-token  output-token
-     :output-label  (if (str/blank? card-name) output-token card-name)}))
+     :output-label  card-name}))
