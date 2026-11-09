@@ -103,16 +103,15 @@
                        :title title}))
 
 (defn- query-delivery
-  "Returns how a query reaches the user: `:editor`, proposed in the open SQL editor buffer `buffer-id`; `:hidden`,
-   not shown at all, when `show-chart` is false and `hideable?` says the query may go unseen; `:link`, shown as a
-   chart. A query may go unseen when run_query can read its results and it is not the user's own query."
-  [buffer-id show-chart hideable?]
+  "Returns how a query reaches the user.
+   That is `:hidden` when `hide?`, so the user is not shown it at all.
+   Otherwise it is `:editor`, proposed in the open SQL editor buffer `buffer-id`, or else `:link`, shown as a chart."
+  [buffer-id hide?]
   (cond
-    ;; A query built only to be read is not proposed over the user's buffer when it may go unseen.
-    (and (false? show-chart) hideable?) :hidden
-    buffer-id                           :editor
-    ;; Where the model cannot read the results, the chart is the one way the user sees anything.
-    :else                               :link))
+    ;; A query built only to be read is not proposed over the user's buffer.
+    hide?     :hidden
+    buffer-id :editor
+    :else     :link))
 
 (defn- delivery-parts
   "Returns the data parts that deliver `action-result` by `delivery`, as [[query-delivery]] returns it, or nil for
@@ -158,7 +157,8 @@
           query-id      (:query-id action-result)
           structured    (assoc action-result :result-type :query)
           readable?     (and (not code-edit?) (tools.run-query/sql-results-readable?))
-          delivery      (query-delivery buffer-id show_chart readable?)
+          ;; Where the model cannot read the results, the chart is the one way the user sees anything.
+          delivery      (query-delivery buffer-id (and (false? show_chart) readable?))
           instr         (case delivery
                           :editor instructions/query-loaded-in-editor-instructions
                           :hidden (instructions/query-hidden-instructions-for query-id)
@@ -193,23 +193,23 @@
 (defn- sql-edit-result!
   "The result of an edit or replace, delivered to the user as [[query-delivery]] decides."
   [operation-result title show-chart instruction-fn ctx & {:keys [edit?]}]
-  (let [{:keys [query-id query] :as action-result} (sql.common/validated-sql-action! operation-result {:edit? edit?})
-        structured                                  (assoc action-result :result-type :query)
-        buffer-id                                   (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+  (let [action-result (sql.common/validated-sql-action! operation-result {:edit? edit?})
+        query-id      (:query-id action-result)
+        structured    (assoc action-result :result-type :query)
+        buffer-id     (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
+        hide-asked?   (false? show-chart)
         ;; The user's own query is always shown: the edit is stored under its ID, which stands for what is on their
         ;; screen, so a hidden edit would change it unseen.
-        client-query?                               (contains? (shared/current-client-ids) (str query-id))
-        hide-asked?                                 (false? show-chart)
+        client-query? (contains? (shared/current-client-ids) query-id)
         ;; Readability reads the app DB, so it is checked only when it can change the delivery.
-        delivery                                    (query-delivery buffer-id show-chart
-                                                                    (and hide-asked?
-                                                                         (not client-query?)
-                                                                         (tools.run-query/sql-results-readable?)))
-        instr                                       (cond-> (instruction-fn query-id delivery)
-                                                      (and hide-asked? client-query?)
-                                                      (str "\n\n" instructions/client-query-shown-instruction))]
+        delivery      (query-delivery buffer-id (and hide-asked?
+                                                     (not client-query?)
+                                                     (tools.run-query/sql-results-readable?)))
+        instr         (cond-> (instruction-fn query-id delivery)
+                        (and hide-asked? client-query?)
+                        (str "\n\n" instructions/client-query-shown-instruction))]
     ;; The calls after this one in the same model response read this query before the agent loop stores the results
-    (some-> (:memory-atom ctx) (swap! memory/set-query query-id query))
+    (some-> (:memory-atom ctx) (swap! memory/set-query query-id (:query action-result)))
     (m/assoc-some {:output            (format-query-output structured instr)
                    :structured-output structured}
                   :data-parts (delivery-parts delivery buffer-id action-result title))))

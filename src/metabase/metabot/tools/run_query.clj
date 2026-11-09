@@ -316,9 +316,9 @@
       (shared-conversation! {}))))
 
 (defn results-readable?
-  "Whether `run_query` would let the model read a notebook query's results in this session, the query's own checks
-   aside: the session offers the tool, query execution is allowed, and the conversation belongs to the current user
-   alone. The turn starts with these true whenever run_query is offered; this checks them again at the call."
+  "Whether `run_query` would let the model read a notebook query's results in this session.
+   That holds, the query's own checks aside, when the session offers the tool, query execution is allowed, and the
+   conversation belongs to the current user alone."
   []
   (let [conversation-id (shared/current-conversation-id)]
     (boolean (and (shared/tool-offered? "run_query")
@@ -328,8 +328,8 @@
                   (not (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*))))))
 
 (defn sql-results-readable?
-  "Whether `run_query` would let the model read a SQL query's results in this session: [[results-readable?]], and
-   SQL execution is allowed."
+  "Whether `run_query` would let the model read a SQL query's results in this session.
+   That holds when [[results-readable?]] does and SQL execution is allowed."
   []
   (and (scope/sql-execution-allowed?) (results-readable?)))
 
