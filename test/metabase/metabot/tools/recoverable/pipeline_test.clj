@@ -291,7 +291,8 @@
 
 (def ^:private query-per-database-recovery
   (str "Build one query for each database, run each one with `run_query` at its largest `row_limit`, and compare the "
-       "rows in your answer. If a result is truncated, tell the user that the data is too large to combine."))
+       "rows in your answer. If a result is truncated, make that query coarser or filter it on the keys of the other "
+       "result and run it again. If it is still truncated, tell the user that the data is too large to combine."))
 
 (deftest table-in-another-database-recovery-test
   (mt/with-current-user (mt/user->id :crowberto)
