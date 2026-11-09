@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
-import { Box, Icon } from "metabase/ui";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 import type {
   Collection,
   DatabaseId,
@@ -81,14 +81,14 @@ export function LibraryPicker({
   return (
     <Box>
       {onBack && (
-        <a
+        <UnstyledButton
           className={SavedEntityPickerS.BackButton}
           onClick={onBack}
           data-testid="library-picker-back-navigation"
         >
-          <Icon name="chevronleft" className={CS.mr1} />
+          <Icon name="chevronleft" className={CS.mr1} aria-hidden />
           {libraryCollection.name}
-        </a>
+        </UnstyledButton>
       )}
       <Box p="sm">
         <DataSelectorDataBucketPicker

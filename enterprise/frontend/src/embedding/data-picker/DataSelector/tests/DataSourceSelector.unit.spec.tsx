@@ -12,7 +12,13 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { reinitialize } from "metabase/plugins";
@@ -1045,6 +1051,40 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Raw Data")).toBeInTheDocument();
       expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("library-picker-back-navigation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should name the Library back link by its label only", async () => {
+      setup({
+        libraryCollection: LIBRARY_COLLECTION,
+        availableModels: ["table", "card"],
+        entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+
+      expect(
+        await screen.findByRole("button", { name: "Library" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should return to the bucket step when pressing Enter on the Library back link", async () => {
+      setup({
+        libraryCollection: LIBRARY_COLLECTION,
+        availableModels: ["table", "card"],
+        entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
+      });
+
+      await userEvent.click(await screen.findByText("Library"));
+      const backLink = await screen.findByTestId(
+        "library-picker-back-navigation",
+      );
+      act(() => backLink.focus());
+      await userEvent.keyboard("{Enter}");
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
       expect(
         screen.queryByTestId("library-picker-back-navigation"),
       ).not.toBeInTheDocument();
