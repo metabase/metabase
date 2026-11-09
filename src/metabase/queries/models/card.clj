@@ -1154,7 +1154,8 @@
   [{:keys [id] :as card}]
   (pre-delete-check-sandbox-constraints card)
   ;; The `card_test.card_id` FK is ON DELETE CASCADE, but a cascade runs no hook, and the CardTest hook is what sets the
-  ;; test id of the test's runs to null.
+  ;; test id of the test's runs to null. A delete of cards that skips this hook leaves those runs' test id naming no
+  ;; test.
   (delete-card-tests! id)
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)

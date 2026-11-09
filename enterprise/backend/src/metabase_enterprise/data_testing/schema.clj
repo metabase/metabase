@@ -220,7 +220,8 @@
 
 (mr/def ::data-test-run
   "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete
-  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test."
+  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test; such a run is never
+  listed or shown as `last_run`."
   [:map {:closed true}
    [:id             ms/PositiveInt]
    [:test_type      ::test-type]

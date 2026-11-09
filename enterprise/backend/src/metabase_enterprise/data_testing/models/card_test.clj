@@ -42,7 +42,9 @@
 
 (t2/define-before-delete :model/CardTest [card-test]
   ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook.
+  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a Database deleted by
+  ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
+  ;; runs are never listed or shown as `last_run`.
   (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
   card-test)
 
