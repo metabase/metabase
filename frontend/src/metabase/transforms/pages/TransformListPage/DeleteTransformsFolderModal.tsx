@@ -2,8 +2,14 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useDeleteTransformsFolderMutation } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
 import { deleteTransformsFolderAndTrack } from "metabase/transforms/analytics";
 import {
   Button,
@@ -36,7 +42,7 @@ export function DeleteTransformsFolderModal({
   onClose,
 }: DeleteTransformsFolderModalProps) {
   const [deleteTransformsFolder] = useDeleteTransformsFolderMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendSuccessToast } = useMetadataToasts();
   const [shouldDeleteTables, setShouldDeleteTables] = useState(false);
   const count = transforms.length;
   const hasTransforms = count > 0;
@@ -52,14 +58,19 @@ export function DeleteTransformsFolderModal({
         collectionId: collection.id,
         deleteTables: shouldDeleteTables,
       });
-      sendSuccessToast(
-        getSuccessMessage(collection, count, shouldDeleteTables),
-      );
     } catch (error) {
-      sendErrorToast(getErrorMessage(collection, error));
-    } finally {
-      onClose();
+      // the form shows the message under the footer, so the user can fix the cause or change the table choice and retry
+      throw new Error(
+        is403Error(error)
+          ? t`You can’t delete "${collection.name}": it holds a transform you can’t edit, or whose type is not enabled on this instance.`
+          : getErrorMessage(
+              error,
+              t`"${collection.name}" could not be deleted`,
+            ),
+      );
     }
+    sendSuccessToast(getSuccessMessage(collection, count, shouldDeleteTables));
+    onClose();
   };
 
   return (
@@ -104,6 +115,7 @@ export function DeleteTransformsFolderModal({
             )}
           </Stack>
           <Modal.Footer>
+            <FormErrorMessage flex={1} />
             <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={getSubmitButtonLabel(hasTransforms, shouldDeleteTables)}
@@ -184,12 +196,6 @@ function getSuccessMessage(
     `Deleted "${name}" and ${count} transforms`,
     count,
   );
-}
-
-function getErrorMessage(collection: Collection, error: unknown) {
-  return is403Error(error)
-    ? t`You can’t delete "${collection.name}": it holds a transform you can’t edit, or whose type is not enabled on this instance.`
-    : t`"${collection.name}" could not be deleted`;
 }
 
 function getSubmitButtonLabel(

@@ -192,7 +192,7 @@ describe("DeleteTransformsFolderModal", () => {
     expect(lastDeleteCall()).toBeUndefined();
   });
 
-  it("explains a 403 in an error toast and closes", async () => {
+  it("explains a 403 in the dialog and stays open", async () => {
     const { onClose } = setup({
       transforms: TRANSFORMS,
       response: {
@@ -211,13 +211,41 @@ describe("DeleteTransformsFolderModal", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^Deleted "Folder"/)).not.toBeInTheDocument();
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("reports any other failure in an error toast and closes", async () => {
+  it("shows the server's message in the dialog when a table cannot be dropped", async () => {
     const { onClose } = setup({
       transforms: TRANSFORMS,
-      response: { status: 500, body: "Something went wrong" },
+      response: {
+        status: 500,
+        body: "cannot drop table public.orders_by_day because other objects depend on it",
+      },
+    });
+
+    await userEvent.click(
+      screen.getByRole("radio", {
+        name: "Delete the transforms and their tables",
+      }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete transforms and tables" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "cannot drop table public.orders_by_day because other objects depend on it",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a generic message when the failure has none", async () => {
+    const { onClose } = setup({
+      transforms: TRANSFORMS,
+      response: { status: 500, body: {} },
     });
 
     await userEvent.click(
@@ -227,6 +255,6 @@ describe("DeleteTransformsFolderModal", () => {
     expect(
       await screen.findByText('"Folder" could not be deleted'),
     ).toBeInTheDocument();
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
