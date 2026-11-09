@@ -89,7 +89,7 @@
 
 (mu/defn test-runs :- [:sequential ::data-testing.schema/data-test-run]
   "A page of the DataTestRuns matching `filters`, newest first. Only the runs of the tests in `:test-ids` match, and
-  only those that started after their test was created."
+  only those that started no earlier than their test was created."
   [filters :- RunFilters
    limit   :- ms/PositiveInt
    offset  :- ms/IntGreaterThanOrEqualToZero]
@@ -104,8 +104,8 @@
   (t2/count :model/DataTestRun {:where (run-filter-clause filters)}))
 
 (mu/defn latest-test-runs :- [:sequential ::data-testing.schema/data-test-run]
-  "The newest DataTestRun of each of the `test-type` tests with `test-ids`, among the runs that started after their test
-  was created."
+  "The newest DataTestRun of each of the `test-type` tests with `test-ids`, among the runs that started no earlier than
+  their test was created."
   [test-type :- ::data-testing.schema/test-type
    test-ids  :- [:set ms/PositiveInt]]
   (t2/select :model/DataTestRun
