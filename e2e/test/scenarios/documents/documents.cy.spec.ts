@@ -59,6 +59,8 @@ describe("documents", () => {
       .should("contain.text", "This is a paragraph")
       .and("contain.text", "And this is another");
 
+    // The reload reopens the navbar, which hides the breadcrumbs
+    H.closeNavigationSidebar();
     H.appBar()
       .findByRole("link", { name: /First collection/ })
       .click();
