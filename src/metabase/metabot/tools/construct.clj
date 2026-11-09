@@ -334,14 +334,16 @@
     (get node k)))
 
 (defn- fk-table-name
-  "The table name in `x` when it is a portable table or field FK into the database named `db-name`, or nil."
+  "The table name in `x`, without surrounding double quotes, when `x` is a portable table or field FK into the database
+  named `db-name`, or nil."
   [db-name x]
   (when (and (vector? x)
              (>= (count x) 3)
              (= db-name (nth x 0))
              (let [schema (nth x 1)] (or (nil? schema) (string? schema)))
              (every? string? (subvec x 2)))
-    (nth x 2)))
+    ;; Repair strips the quotes from field targets later, after the permission sweep this has to run before.
+    (repr.repair/dequote-identifier (nth x 2))))
 
 (defn- inferred-schema
   "The schema to fill in for a null-schema reference to one of `tables`, which share a name, or nil to keep the null.
@@ -361,16 +363,16 @@
       pick)))
 
 (defn- inferred-schemas
-  "A map from each table name that `fks` give a null schema to the schema [[inferred-schema]] picks for it, for the
+  "A map from each table name that `refs` give a null schema to the schema [[inferred-schema]] picks for it, for the
   names it picks one for.
-  The `fks` are portable FKs into the database with `database-id`, and the candidates are the tables there that the
-  current user can query."
-  [database-id default-schema fks]
-  (let [table-names (into #{} (keep (fn [[_ schema table-name]] (when (nil? schema) table-name))) fks)
-        named       (reduce (fn [m [_ schema table-name]]
+  The `refs` are `[schema table-name]` pairs naming tables in the database with `database-id`, and the candidates are
+  the tables there that the current user can query."
+  [database-id default-schema refs]
+  (let [table-names (into #{} (keep (fn [[schema table-name]] (when (nil? schema) table-name))) refs)
+        named       (reduce (fn [m [schema table-name]]
                               (cond-> m schema (update table-name (fnil conj #{}) schema)))
                             {}
-                            fks)
+                            refs)
         tables      (when (seq table-names)
                       (->> (metabot.db/active-visible-tables-named database-id (vec table-names))
                            ;; A MySQL app DB compares names without case.
@@ -389,12 +391,15 @@
   picks one for."
   [metadata-provider parsed-query]
   (let [{database-id :id, db-name :name, :keys [default-schema]} (lib.metadata/database metadata-provider)
-        fks     (filter #(fk-table-name db-name %) (fk-slot-values parsed-query))
-        schemas (inferred-schemas database-id default-schema fks)
+        refs    (for [x     (fk-slot-values parsed-query)
+                      :let  [table-name (fk-table-name db-name x)]
+                      :when table-name]
+                  [(nth x 1) table-name])
+        schemas (inferred-schemas database-id default-schema refs)
         fill-in (fn [x]
-                  (if-let [schema (and (fk-table-name db-name x)
-                                       (nil? (nth x 1))
-                                       (get schemas (nth x 2)))]
+                  (if-let [schema (when-let [table-name (fk-table-name db-name x)]
+                                    (when (nil? (nth x 1))
+                                      (get schemas table-name)))]
                     (assoc x 1 schema)
                     x))]
     (if (empty? schemas)

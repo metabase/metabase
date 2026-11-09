@@ -278,6 +278,8 @@
                             (:error (ex-data e)))))]
         (is (=? {:lone       {"source-table" [db-name "lever_data" "user"]
                               "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
+                 :quoted     {"source-table" [db-name "lever_data" "user"]
+                              "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
                  :default    {"source-table" [db-name "clean" "orders"]}
                  :named-only :unknown-table
                  :conflict   :unknown-table
@@ -287,6 +289,7 @@
                  :no-perms   :unknown-table}
                 (mt/with-current-user (mt/user->id :crowberto)
                   {:lone       (construct [nil "user"] [nil "user" "email"])
+                   :quoted     (construct [nil "user"] [nil "\"user\"" "email"])
                    :default    (construct [nil "orders"])
                    :named-only (construct ["staging" "events"] [nil "events" "kind"])
                    :conflict   (construct ["raw" "orders"] [nil "orders" "status"])
