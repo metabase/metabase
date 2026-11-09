@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
@@ -13,7 +14,7 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
-import { PLUGIN_DATA_APPS } from "metabase/plugins";
+import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -38,6 +39,8 @@ export function DataStudioLayout() {
   const canAccessDataModel = useSelector(canAccessDataModelSelector);
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
   const isAdmin = useSelector(getUserIsAdmin);
+  const [isRemoteSyncSettingsOpen, setIsRemoteSyncSettingsOpen] =
+    useState(false);
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
@@ -81,6 +84,11 @@ export function DataStudioLayout() {
             to={Urls.transformList()}
             isSelected={currentTab === "transforms"}
             showLabel={isNavbarOpened}
+            rightSection={
+              <PLUGIN_REMOTE_SYNC.ChangesBadge
+                target={{ type: "area", area: "transforms" }}
+              />
+            }
           />
         )}
       </AreaTabGroup>
@@ -92,6 +100,13 @@ export function DataStudioLayout() {
           to={Urls.dataStudioLibrary()}
           isSelected={currentTab === "library"}
           showLabel={isNavbarOpened}
+          rightSection={
+            hasLibraryFeature ? (
+              <PLUGIN_REMOTE_SYNC.ChangesBadge
+                target={{ type: "area", area: "library" }}
+              />
+            ) : undefined
+          }
           isGated={!hasLibraryFeature}
         />
         <AreaTab
@@ -100,6 +115,11 @@ export function DataStudioLayout() {
           to={Urls.dataStudioSnippets()}
           isSelected={currentTab === "snippets"}
           showLabel={isNavbarOpened}
+          rightSection={
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "snippets" }}
+            />
+          }
         />
         <AreaTab
           label={t`Data actions`}
@@ -107,6 +127,11 @@ export function DataStudioLayout() {
           to={Urls.dataStudioActions()}
           isSelected={currentTab === "actions"}
           showLabel={isNavbarOpened}
+          rightSection={
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "data-actions" }}
+            />
+          }
         />
         {isAdmin && (
           <AreaTab
@@ -129,6 +154,11 @@ export function DataStudioLayout() {
           to={Urls.dataStudioGlossary()}
           isSelected={currentTab === "glossary"}
           showLabel={isNavbarOpened}
+          rightSection={
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "area", area: "glossary" }}
+            />
+          }
         />
       </AreaTabGroup>
 
@@ -155,7 +185,18 @@ export function DataStudioLayout() {
 
   const lowerNav = (
     <>
-      {!hasRemoteSyncFeature && (
+      {hasRemoteSyncFeature ? (
+        <>
+          <PLUGIN_REMOTE_SYNC.SetupMenuItem
+            isNavbarOpened={isNavbarOpened}
+            onClick={() => setIsRemoteSyncSettingsOpen(true)}
+          />
+          <PLUGIN_REMOTE_SYNC.SettingsModal
+            opened={isRemoteSyncSettingsOpen}
+            onClose={() => setIsRemoteSyncSettingsOpen(false)}
+          />
+        </>
+      ) : (
         <AreaTab
           label={t`Remote sync`}
           icon="git_branch"
@@ -192,6 +233,7 @@ export function DataStudioLayout() {
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
+      headerControls={<PLUGIN_REMOTE_SYNC.AppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
     >

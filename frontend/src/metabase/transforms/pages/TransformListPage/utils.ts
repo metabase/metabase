@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { getCollectionIcon } from "metabase/common/collections/utils";
 import { useMetadataProviderFactory } from "metabase/metadata-store";
+import type { RemoteSyncChangesTarget } from "metabase/plugins";
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type {
@@ -189,4 +190,19 @@ export function getDescendantCollectionIds(node: TreeNode): Set<number> {
   };
   visit(node);
   return ids;
+}
+
+export function getRemoteSyncChangesTarget(
+  node: TreeNode,
+): RemoteSyncChangesTarget | undefined {
+  if (node.nodeType === "transform" && node.transformId != null) {
+    return { type: "transform", id: node.transformId };
+  }
+  if (node.nodeType === "library") {
+    return { type: "area", area: "python-library" };
+  }
+  if (isCollectionNode(node)) {
+    return { type: "collection", id: node.collection.id };
+  }
+  return undefined;
 }

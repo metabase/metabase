@@ -15,6 +15,7 @@ import {
   SidebarCollectionLink,
   SidebarLink,
 } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
@@ -103,6 +104,13 @@ export const MainNavSharedCollections = ({
             TreeNode={SidebarCollectionLink}
             role="tree"
             aria-label="tenant-collection-tree"
+            rightSection={(item) =>
+              typeof item.id === "number" && (
+                <PLUGIN_REMOTE_SYNC.ChangesBadge
+                  target={{ type: "collection", id: item.id }}
+                />
+              )
+            }
           />
           {canAccessTenantSpecificCollections && (
             <SidebarLink icon="group" url={tenantSpecificCollections()}>

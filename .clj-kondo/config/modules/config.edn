@@ -4371,8 +4371,9 @@
   enterprise/remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{metabase-enterprise.remote-sync.init}
-   :uses #{app-db
+   :api  #{metabase-enterprise.remote-sync.api metabase-enterprise.remote-sync.init}
+   :uses #{api
+           app-db
            collections
            events
            lib.schema
