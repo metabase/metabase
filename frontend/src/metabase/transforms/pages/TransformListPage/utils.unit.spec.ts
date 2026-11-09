@@ -15,6 +15,7 @@ import {
   buildTreeData,
   getDescendantCollectionIds,
   getIncrementalWarning,
+  getRemoteSyncChangesTarget,
 } from "./utils";
 
 jest.mock("metabase/transforms/utils", () => ({
@@ -162,6 +163,27 @@ describe("getDescendantCollectionIds", () => {
     const [folderNode] = buildTreeData(collections, transforms);
 
     expect(getDescendantCollectionIds(folderNode)).toEqual(new Set([10]));
+  });
+});
+
+describe("getRemoteSyncChangesTarget", () => {
+  it("targets folder collections and transforms", () => {
+    const collections = [createMockCollection({ id: 1, name: "Folder" })];
+    const transforms = [
+      createMockTransform({ id: 7, name: "Transform", collection_id: 1 }),
+    ];
+
+    const [folderNode] = buildTreeData(collections, transforms);
+    const [transformNode] = folderNode.children ?? [];
+
+    expect(getRemoteSyncChangesTarget(folderNode)).toEqual({
+      type: "collection",
+      id: 1,
+    });
+    expect(getRemoteSyncChangesTarget(transformNode)).toEqual({
+      type: "transform",
+      id: 7,
+    });
   });
 });
 
