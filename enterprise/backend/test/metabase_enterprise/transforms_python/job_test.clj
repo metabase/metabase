@@ -11,7 +11,11 @@
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.quartz Scheduler)))
+
+(set! *warn-on-reflection* true)
 
 (deftest python-transform-scheduled-job-test
   (mt/test-helpers-set-global-values!
@@ -39,14 +43,20 @@
                  :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
                 (transforms.schedule/initialize-job! job)
                 (transforms.schedule/update-job! job-id "* * * * * ? *")
-                (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target))
-                                    :done?   true?
-                                    :timeout-ms 20000
-                                    :interval-ms 1000})))
-                (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
-                                    :done?   true?
-                                    :timeout-ms 10000
-                                    :interval-ms 1000})))))))))))
+                (try
+                  (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target))
+                                      :done?   true?
+                                      :timeout-ms 20000
+                                      :interval-ms 1000})))
+                  (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
+                                      :done?   true?
+                                      :timeout-ms 10000
+                                      :interval-ms 1000})))
+                  (finally
+                    ;; The synced Table appears before the run writes the transform row, so a run can still be
+                    ;; writing when cleanup deletes the transform, and the two app DB transactions can deadlock.
+                    ;; Stop the schedule and wait for the running job to end before cleanup.
+                    (.shutdown ^Scheduler (task/scheduler) true)))))))))))
 
 (def ^:private python-source {:type :python :source-tables [] :body "pass"})
 
