@@ -169,7 +169,11 @@
 }
 
 .markdown :global(.text-card-markdown) tr:nth-of-type(even) {
-  background-color: var(--text-card-stripe);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-background_page-primary-inverse) 5%,
+    transparent
+  );
 }
 
 .markdown :global(.text-card-markdown) th,

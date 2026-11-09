@@ -16,8 +16,7 @@ import { updateParameterMappingsForDashcardText } from "metabase/dashboard/actio
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Box, Flex, useMantineTheme } from "metabase/ui";
-import { alpha } from "metabase/ui/colors";
+import { Box, Flex } from "metabase/ui";
 import { isEmpty } from "metabase/utils/validate";
 import {
   DATA_IMAGE_URI_PATTERN,
@@ -74,7 +73,6 @@ export function Text({
   isMobile = false,
 }: TextProps) {
   const dispatch = useDispatch();
-  const theme = useMantineTheme();
   const parameterValues = useSelector(getParameterValues);
   const settingsText = typeof settings.text === "string" ? settings.text : "";
 
@@ -135,13 +133,6 @@ export function Text({
     },
     className,
   );
-  // a custom property, which CSSProperties does not type
-  const markdownStyle = {
-    "--text-card-stripe": alpha(
-      theme.fn.themeColor("background_page-primary-inverse"),
-      0.05,
-    ),
-  } as React.CSSProperties;
 
   const isTyping = isEditing && !isPreviewing;
 
@@ -184,7 +175,6 @@ export function Text({
           w="100%"
           h="100%"
           pl="xxxs"
-          style={markdownStyle}
           onMouseDown={isEditing ? preventDragging : undefined}
         >
           <ReactMarkdown
