@@ -105,8 +105,8 @@
 
 (def ^:private sql-card-step
   "Build a notebook query from tables after a saved SQL question is refused."
-  (str "To get values, build the question from tables with `construct_notebook_query` (pass `show_chart: false`)"
-       " instead."))
+  (str "To get values, build the question from tables with `construct_notebook_query` (pass `show_chart: false`),"
+       " then run that query with `run_query`."))
 
 (def ^:private sql-query-step
   "Recover from a refusal by writing SQL in the SQL-only profile."

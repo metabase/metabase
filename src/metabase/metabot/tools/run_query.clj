@@ -61,9 +61,9 @@
                     :text (str "To get values, build the question with `construct_notebook_query` (pass"
                                " `show_chart: false`), then run that query with `run_query`.")}
    ;; A notebook query over the same SQL question would be refused again
-   :sql-card       {:uses #{"construct_notebook_query"}
+   :sql-card       {:uses #{"construct_notebook_query" "run_query"}
                     :text (str "To get values, build the question from tables with `construct_notebook_query` (pass"
-                               " `show_chart: false`) instead.")}
+                               " `show_chart: false`), then run that query with `run_query`.")}
    :sql-query      {:uses #{"create_sql_query" "run_query"}
                     :text (str "To get values, write the question as SQL with `create_sql_query` (pass"
                                " `show_chart: false`), then run that query with `run_query`.")}
@@ -315,18 +315,23 @@
       (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)
       (shared-conversation! {}))))
 
-(defn sql-results-readable?
-  "Whether `run_query` would let the model read a SQL query's results in this session, the query's own checks aside:
-   the session offers the tool, query execution and SQL execution are allowed, and the conversation belongs to the
-   current user alone."
+(defn results-readable?
+  "Whether `run_query` would let the model read a notebook query's results in this session, the query's own checks
+   aside: the session offers the tool, query execution is allowed, and the conversation belongs to the current user
+   alone. The turn starts with these true whenever run_query is offered; this checks them again at the call."
   []
   (let [conversation-id (shared/current-conversation-id)]
     (boolean (and (shared/tool-offered? "run_query")
                   (metabot.settings/metabot-query-execution-enabled?)
-                  (scope/sql-execution-allowed?)
                   (some? conversation-id)
                   (some? api/*current-user-id*)
                   (not (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*))))))
+
+(defn sql-results-readable?
+  "Whether `run_query` would let the model read a SQL query's results in this session: [[results-readable?]], and
+   SQL execution is allowed."
+  []
+  (and (scope/sql-execution-allowed?) (results-readable?)))
 
 (defn- existing-database?
   "Return whether `database-id` names an existing database."

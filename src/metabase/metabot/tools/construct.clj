@@ -25,6 +25,7 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -1445,9 +1446,10 @@
           ;; Declared pipeline errors and refusals are recoverable; anything else is `:internal`.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))
-          ;; A query built only to be read needs run_query, so without it the chart is the one way
-          ;; the user sees anything and is always shown.
-          show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+          ;; A query built only to be read needs run_query to read it, so without that the chart is the one way
+          ;; the user sees anything and is always shown. Readability reads the app DB, so it is checked only when
+          ;; it can change the delivery.
+          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))]
       (if-not show-chart?
         (let [instruction-text (te/lines
                                 "Your query has been created."
