@@ -477,14 +477,8 @@
   converting JDBC time types."
   [conn            :- (ms/InstanceOfClass java.sql.Connection)
    duration-millis :- :int]
-  (t2/query-one conn
-                (case (mdb/db-type)
-                  :postgres ["SELECT CURRENT_TIMESTAMP AS now, CURRENT_TIMESTAMP + (? * INTERVAL '1 millisecond') AS expires_at"
-                             duration-millis]
-                  :mysql    ["SELECT CURRENT_TIMESTAMP AS now, TIMESTAMPADD(MICROSECOND, ?, CURRENT_TIMESTAMP) AS expires_at"
-                             (* duration-millis 1000)]
-                  :h2       ["SELECT CURRENT_TIMESTAMP AS now, DATEADD('MILLISECOND', ?, CURRENT_TIMESTAMP) AS expires_at"
-                             duration-millis])))
+  (t2/query-one conn {:select [[[:current-timestamp] :now]
+                               [[:current-timestamp-plus-ms duration-millis] :expires_at]]}))
 
 (def ^:private LeaseCoordinate
   [:map {:closed true}
@@ -524,25 +518,14 @@
    claim      :- LeaseClaimUpdate]
   (t2/update! :conn conn :search_index_lease (assoc coordinate :expires_at [:<= now]) claim))
 
-(def ^:private db-now-expr
-  ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"])
-
 (mu/defn live-lease? :- :boolean
   "Whether `owner` still owns an unexpired lease at `coordinate`, using current database time."
   [conn :- (ms/InstanceOfClass java.sql.Connection)
    {:keys [engine lang_code version]} :- LeaseCoordinate
    owner :- :string]
   (t2/exists? :conn conn :search_index_lease
-              :engine engine :lang_code lang_code :version version :owner owner :expires_at [:> db-now-expr]))
-
-(defn- db-expiry-expr
-  "Honey SQL expression for the lease expiry `duration-millis` after the app database's current time."
-  [duration-millis]
-  ^:allow-raw-sql
-  [:raw (case (mdb/db-type)
-          :postgres (format "CURRENT_TIMESTAMP + (%d * INTERVAL '1 millisecond')" duration-millis)
-          :mysql    (format "TIMESTAMPADD(MICROSECOND, %d, CURRENT_TIMESTAMP)" (* duration-millis 1000))
-          :h2       (format "DATEADD('MILLISECOND', %d, CURRENT_TIMESTAMP)" duration-millis))])
+              :engine engine :lang_code lang_code :version version :owner owner
+              :expires_at [:> [:current-timestamp]]))
 
 (mu/defn renew-lease!
   "Extend the unexpired lease at `coordinate` held by `owner` by `duration-millis`, on `conn`.
@@ -553,8 +536,9 @@
    duration-millis :- :int]
   ;; One statement, so a per-batch fence costs a single round trip.
   (t2/update! :conn conn :search_index_lease
-              (assoc coordinate :owner owner :expires_at [:> db-now-expr])
-              {:last_renewed_at db-now-expr, :expires_at (db-expiry-expr duration-millis)}))
+              (assoc coordinate :owner owner :expires_at [:> [:current-timestamp]])
+              {:last_renewed_at [:current-timestamp]
+               :expires_at      [:current-timestamp-plus-ms duration-millis]}))
 
 (mu/defn delete-lease!
   "Delete the lease of `engine`, `version`, and `lang-code` on `conn`, if `owner` still holds it.
