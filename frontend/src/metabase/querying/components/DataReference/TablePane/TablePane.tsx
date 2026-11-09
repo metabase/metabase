@@ -11,11 +11,11 @@ import {
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { isConcreteTableId } from "metabase-types/api";
 
-import { ConnectedTableList } from "./ConnectedTableList";
-import { FieldList } from "./FieldList";
+import { ConnectedTableList } from "../ConnectedTableList";
+import { FieldList } from "../FieldList";
 import {
   NodeListIcon,
   NodeListItemIcon,
@@ -24,12 +24,9 @@ import {
   NodeListItemName,
   NodeListTitle,
   NodeListTitleText,
-} from "./NodeList";
-import type {
-  DataReferencePaneProps,
-  DataReferenceTableItem,
-  UniqueFieldId,
-} from "./types";
+} from "../NodeList";
+import type { DataReferencePaneProps, DataReferenceTableItem } from "../types";
+import { getTableColumnListInfo } from "../utils";
 
 export function TablePane({
   id,
@@ -42,6 +39,7 @@ export function TablePane({
     isLoading,
     error,
   } = useGetTableQueryMetadataQuery({ id });
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const {
     data: foreignKeys,
     isLoading: isLoadingForeignKeys,
@@ -56,6 +54,20 @@ export function TablePane({
       />
     );
   }
+
+  const columnListInfo = getTableColumnListInfo(metadataProvider, table.id);
+  const hasColumns =
+    columnListInfo != null && columnListInfo.columns.length > 0;
+  const metrics = table.metrics ?? [];
+
+  const handleColumnClick = (columnIndex: number) => {
+    onItemClick({
+      type: "field",
+      kind: "table",
+      tableId: id,
+      columnIndex,
+    });
+  };
 
   const connectedTables = foreignKeys
     .map((foreignKey) => foreignKey.origin?.table)
@@ -77,23 +89,13 @@ export function TablePane({
           )}
         </div>
         <div className={CS.my2}>
-          {table.fields?.length ? (
+          {hasColumns ? (
             <>
               <FieldList
-                table={table}
-                fields={table.fields}
-                onFieldClick={(field) => {
-                  onItemClick({
-                    type: "field",
-                    id:
-                      typeof field.id === "number"
-                        ? field.id
-                        : // `getUniqueFieldId` returns the same synthetic string
-                          // key the field list renders with, which is what a
-                          // non-numeric field id means here.
-                          (getUniqueFieldId(field) as UniqueFieldId),
-                  });
-                }}
+                query={columnListInfo.query}
+                stageIndex={columnListInfo.stageIndex}
+                columns={columnListInfo.columns}
+                onColumnClick={handleColumnClick}
               />
               <ConnectedTableList
                 tables={connectedTables}
@@ -105,20 +107,20 @@ export function TablePane({
               />
             </>
           ) : null}
-          {table.metrics?.length ? (
+          {metrics.length > 0 ? (
             <>
               <NodeListTitle>
                 <NodeListIcon name="metric" />
                 <NodeListTitleText>
                   {ngettext(
-                    msgid`${table.metrics.length} metric`,
-                    `${table.metrics.length} metrics`,
-                    table.metrics.length,
+                    msgid`${metrics.length} metric`,
+                    `${metrics.length} metrics`,
+                    metrics.length,
                   )}
                 </NodeListTitleText>
               </NodeListTitle>
               <ul>
-                {table.metrics.map((metric) => (
+                {metrics.map((metric) => (
                   <li key={metric.id}>
                     <NodeListItemLink
                       onClick={() =>
