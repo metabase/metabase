@@ -1,8 +1,8 @@
 import { devDiagnostics } from "../components/DevToolbar/diagnostics";
-import { MAX_INSPECTED_BODY_CHARS } from "../constants/diagnostics-channel";
-
-/** Where the dev server relays the instance's API; see `config/dev-instance-relay.ts`. */
-const INSTANCE_API_PATH = "/api/";
+import {
+  DATA_APP_DEV_INSTANCE_API_PATH,
+  MAX_INSPECTED_BODY_CHARS,
+} from "../constants/diagnostics-channel";
 
 /**
  * Records every request the preview makes to the instance's API — method,
@@ -23,7 +23,7 @@ export class SdkCallCapture {
 
       if (
         url?.origin !== window.location.origin ||
-        !url.pathname.startsWith(INSTANCE_API_PATH)
+        !url.pathname.startsWith(DATA_APP_DEV_INSTANCE_API_PATH)
       ) {
         return originalFetch(input, init);
       }

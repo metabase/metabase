@@ -65,6 +65,7 @@ function dataAppVitePlugin(): PluginOption[] {
             proxy: buildDevInstanceRelay({
               instanceUrl,
               apiKey: vars[DATA_APP_MB_API_KEY_ENV],
+              appSlug,
             }),
           },
         };

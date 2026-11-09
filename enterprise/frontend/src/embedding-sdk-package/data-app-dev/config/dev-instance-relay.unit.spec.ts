@@ -15,6 +15,7 @@ import {
 
 const INSTANCE_URL = "http://localhost:3000";
 const API_KEY = "mb_dev_key";
+const APP_SLUG = "sales-overview";
 
 /** What the browser sends the dev server; Vite's proxy copies it onto the request to the instance. */
 const PAGE_REQUEST_HEADERS = {
@@ -22,9 +23,10 @@ const PAGE_REQUEST_HEADERS = {
   "content-type": "application/json",
   "content-length": "42",
   accept: "application/json",
+  "accept-encoding": "gzip, br",
+  "if-none-match": 'W/"bundle-etag"',
+  "if-modified-since": "Mon, 09 Nov 2026 10:00:00 GMT",
   "x-metabase-client-version": "0.66.0",
-  "x-metabase-data-app-dev": "true",
-  "x-metabase-embedded-preview": "true",
   traceparent: "00-trace-span-01",
   // Everything below is the page's or the browser's, and none of it is the dev server's to pass on.
   cookie: "metabase.SESSION=developer-session",
@@ -34,6 +36,10 @@ const PAGE_REQUEST_HEADERS = {
   "x-metabase-client": "embedding-sdk-react",
   "x-metabase-session": "forged",
   authorization: "Bearer forged",
+  // Which app's rules the instance applies, and whether as a preview, is the dev server's to say too.
+  "x-metabase-client-identifier": "another-app",
+  "x-metabase-data-app-dev": "false",
+  "x-metabase-embedded-preview": "false",
 };
 
 interface SetupOpts {
@@ -41,7 +47,11 @@ interface SetupOpts {
 }
 
 const setup = ({ apiKey = API_KEY }: SetupOpts = {}) => {
-  const routes = buildDevInstanceRelay({ instanceUrl: INSTANCE_URL, apiKey });
+  const routes = buildDevInstanceRelay({
+    instanceUrl: INSTANCE_URL,
+    apiKey,
+    appSlug: APP_SLUG,
+  });
 
   const listen = (route: DevInstanceRelayRoute) => {
     const proxy = new EventEmitter();
@@ -65,17 +75,18 @@ const setup = ({ apiKey = API_KEY }: SetupOpts = {}) => {
 };
 
 describe("buildDevInstanceRelay", () => {
-  it("relays nothing without a usable instance URL", () => {
-    expect(
-      buildDevInstanceRelay({ instanceUrl: undefined, apiKey: API_KEY }),
-    ).toEqual({});
-    expect(buildDevInstanceRelay({ instanceUrl: "", apiKey: API_KEY })).toEqual(
-      {},
-    );
-    expect(
-      buildDevInstanceRelay({ instanceUrl: "metabase.local", apiKey: API_KEY }),
-    ).toEqual({});
-  });
+  it.each([undefined, "", "metabase.local", "localhost:3000", "ftp://host"])(
+    "relays nothing to %p, which isn't an http(s) URL",
+    (instanceUrl) => {
+      expect(
+        buildDevInstanceRelay({
+          instanceUrl,
+          apiKey: API_KEY,
+          appSlug: APP_SLUG,
+        }),
+      ).toEqual({});
+    },
+  );
 
   it("relays the API, the SDK bundle and the ping to the instance", () => {
     const { routes } = setup();
@@ -95,7 +106,7 @@ describe("buildDevInstanceRelay", () => {
     ).toBe("/");
   });
 
-  it("sends API requests with the dev server's key and the data-app client marker, and nothing of the page's credentials", () => {
+  it("sends API requests as this app's preview, with the dev server's key, whatever the page claims", () => {
     const { relayedHeaders } = setup();
 
     expect(relayedHeaders("/api/")).toEqual({
@@ -103,12 +114,16 @@ describe("buildDevInstanceRelay", () => {
       "content-type": "application/json",
       "content-length": "42",
       accept: "application/json",
+      "accept-encoding": "gzip, br",
+      "if-none-match": 'W/"bundle-etag"',
+      "if-modified-since": "Mon, 09 Nov 2026 10:00:00 GMT",
       "x-metabase-client-version": "0.66.0",
-      "x-metabase-data-app-dev": "true",
-      "x-metabase-embedded-preview": "true",
       traceparent: "00-trace-span-01",
       "x-api-key": API_KEY,
       "x-metabase-client": "data-app",
+      "x-metabase-client-identifier": APP_SLUG,
+      "x-metabase-data-app-dev": "true",
+      "x-metabase-embedded-preview": "true",
     });
   });
 
@@ -130,7 +145,11 @@ describe("buildDevInstanceRelay", () => {
 
       expect(headers).not.toHaveProperty("x-api-key");
       expect(headers).not.toHaveProperty("x-metabase-client");
+      expect(headers).not.toHaveProperty("x-metabase-client-identifier");
       expect(headers).not.toHaveProperty("cookie");
+      // A revalidated, compressed SDK bundle: it's several MB.
+      expect(headers).toHaveProperty("accept-encoding", "gzip, br");
+      expect(headers).toHaveProperty("if-none-match", 'W/"bundle-etag"');
     }
   });
 
@@ -150,6 +169,16 @@ describe("buildDevInstanceRelay", () => {
       // `curl`, the CLI, a test runner: they could read `.env.local` anyway.
       expect(
         route.bypass({ headers: { host: "localhost:5174" } }),
+      ).toBeUndefined();
+      // Behind a tunnel that rewrites `Host`: the browser's own same-origin verdict holds.
+      expect(
+        route.bypass({
+          headers: {
+            host: "localhost:5174",
+            origin: "https://preview.tunnel.example",
+            "sec-fetch-site": "same-origin",
+          },
+        }),
       ).toBeUndefined();
     }
   });
@@ -244,6 +273,39 @@ describe("dropInstanceOrigin", () => {
         "https://metabase.example.com",
       ),
     ).toEqual(["https://*.other.test"]);
+  });
+
+  it("drops the entries a published app can't have, which could cover the instance in ways the check doesn't read", () => {
+    expect(
+      dropInstanceOrigin(
+        [
+          "http://localhost:*",
+          "localhost:3000",
+          "http://*:3000",
+          "*",
+          // Two CSP sources in one entry: the second is the instance.
+          "https://api.example.com http://localhost:3000",
+          // Spelled differently, but what the backend accepts.
+          " HTTPS://API.EXAMPLE.COM/ ",
+        ],
+        INSTANCE_URL,
+      ),
+    ).toEqual([" HTTPS://API.EXAMPLE.COM/ "]);
+  });
+
+  it("treats a port-less entry and the scheme's default port as the same port", () => {
+    expect(
+      dropInstanceOrigin(
+        ["http://metabase.example.com:443", "https://metabase.example.com:443"],
+        "https://metabase.example.com",
+      ),
+    ).toEqual([]);
+    expect(
+      dropInstanceOrigin(
+        ["https://metabase.example.com"],
+        "https://metabase.example.com:8443",
+      ),
+    ).toEqual(["https://metabase.example.com"]);
   });
 
   it("drops an http entry for an https instance, which CSP also lets through", () => {

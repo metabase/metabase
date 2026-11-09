@@ -90,7 +90,7 @@ describe("Embedding SDK: data-app dev preview", () => {
         Authorization: "Bearer forged",
       };
 
-      // The query strings of past Vite CVEs that read files Vite refuses to serve.
+      // The file itself, and with the query strings of past Vite CVEs that read files Vite refuses to serve.
       const ENV_FILE_REQUESTS = [
         "/.env.local",
         "/.env.local?raw",
@@ -119,12 +119,17 @@ describe("Embedding SDK: data-app dev preview", () => {
         attack: (win: Cypress.AUTWindow) => Promise<T>,
       ) => cy.window().then({ timeout: TIMEOUT_MS }, attack);
 
-      const importedPaths = (source: string) =>
+      // The dev server's own modules import by absolute path; the chunks of the pre-bundled dependencies, relatively.
+      const importedPaths = (source: string, importer: string) =>
         Array.from(
           source.matchAll(
-            /(?:\bsrc=|\bfrom\s*|\bimport\s*\(?\s*)["'](\/[^"']+)["']/g,
+            /(?:\bsrc=|\bfrom\s*|\bimport\s*\(?\s*)["']((?:\.{0,2}\/)[^"']+)["']/g,
           ),
-          (match) => match[1],
+          (match) => {
+            const url = new URL(match[1], new URL(importer, CLIENT_HOST));
+
+            return `${url.pathname}${url.search}`;
+          },
         );
 
       /** The page and every module it imports from the dev server, as the page can read them. */
@@ -133,7 +138,7 @@ describe("Embedding SDK: data-app dev preview", () => {
           await win.fetch("/", { headers: { Accept: "text/html" } })
         ).text();
         const sources = [page];
-        const queue = importedPaths(page);
+        const queue = importedPaths(page, "/");
         const seen = new Set<string>();
 
         while (queue.length > 0 && seen.size < MAX_MODULES) {
@@ -143,7 +148,7 @@ describe("Embedding SDK: data-app dev preview", () => {
             seen.add(path);
             const source = await (await win.fetch(path)).text();
             sources.push(source);
-            queue.push(...importedPaths(source));
+            queue.push(...importedPaths(source, path));
           }
         }
 
@@ -157,19 +162,26 @@ describe("Embedding SDK: data-app dev preview", () => {
           inPreviewPage(async (win) => {
             const modules = await readServedModules(win);
             const envFiles = await Promise.all(
-              ENV_FILE_REQUESTS.map((path) =>
-                win.fetch(path).then((response) => response.text()),
-              ),
+              ENV_FILE_REQUESTS.map(async (path) => {
+                const response = await win.fetch(path);
+
+                return { status: response.status, text: await response.text() };
+              }),
             );
 
             return {
               moduleCount: modules.length,
-              holdsKey: [...modules, ...envFiles].some((text) =>
-                text.includes(apiKey),
+              envFileStatuses: envFiles.map(({ status }) => status),
+              holdsKey: [...modules, ...envFiles.map(({ text }) => text)].some(
+                (text) => text.includes(apiKey),
               ),
             };
-          }).then(({ moduleCount, holdsKey }) => {
+          }).then(({ moduleCount, envFileStatuses, holdsKey }) => {
             expect(moduleCount, "modules read").to.be.greaterThan(3);
+            // The file is there, in the dev server's root: a 403 is Vite refusing it, where a 404 would be a miss.
+            expect(envFileStatuses, ".env.local").to.deep.equal(
+              ENV_FILE_REQUESTS.map(() => 403),
+            );
             expect(
               holdsKey,
               "something the page can read holds the key",
@@ -237,18 +249,22 @@ describe("Embedding SDK: data-app dev preview", () => {
     });
 
     it("refuses requests from other pages, which it would otherwise sign with the key", () => {
-      for (const headers of [
-        { Origin: "https://attacker.example" },
-        { "Sec-Fetch-Site": "cross-site" },
-      ]) {
-        cy.request({
-          url: `${CLIENT_HOST}/api/user/current`,
-          headers,
-          failOnStatusCode: false,
-        })
-          .its("status")
-          .should("eq", 404);
-      }
+      const requestCurrentUser = (headers: Record<string, string> = {}) =>
+        cy
+          .request({
+            url: `${CLIENT_HOST}/api/user/current`,
+            headers,
+            failOnStatusCode: false,
+          })
+          .its("status");
+
+      // A client outside a browser gets through, so the 404s below are the relay refusing, not a missing route.
+      requestCurrentUser().should("eq", 200);
+      requestCurrentUser({ Origin: "https://attacker.example" }).should(
+        "eq",
+        404,
+      );
+      requestCurrentUser({ "Sec-Fetch-Site": "cross-site" }).should("eq", 404);
     });
   });
 

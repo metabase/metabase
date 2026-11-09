@@ -48,18 +48,16 @@ export function dataAppSandboxDevPlugin(
     load: (id) =>
       loadDataAppVirtualModule(id, {
         appSlug,
-        allowedHosts: dropInstanceOrigin(
-          allowedHosts,
-          instanceUrl ?? undefined,
-        ),
+        allowedHosts: dropInstanceOrigin(allowedHosts, instanceUrl),
         instanceUrl,
       }),
 
     async configureServer(server) {
-      const { root, mode } = server.config;
+      const { root, envDir, mode } = server.config;
 
       const bundle = createAppBundle({
         root,
+        envDir,
         mode,
         onError: (message) => server.config.logger.error(message),
       });

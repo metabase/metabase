@@ -10,24 +10,26 @@ import type { ProxyOptions } from "vite";
 import type { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 import {
+  DATA_APP_DEV_INSTANCE_API_PATH,
   DATA_APP_DEV_INSTANCE_PING_URL,
   DATA_APP_DEV_RELAY_ERROR_HEADER,
 } from "../constants/diagnostics-channel";
+import { parseInstanceUrl } from "../constants/env";
 
 /**
- * Request headers the dev server passes from the preview to the instance. Credentials, cookies and the client marker
- * aren't among them: the dev server sets its own.
+ * Request headers the dev server passes from the preview to the instance. Credentials, cookies and who the request is
+ * from aren't among them: the dev server sets its own.
  */
 const FORWARDED_REQUEST_HEADERS = new Set([
   "content-type",
   "accept",
+  // Let the instance compress and revalidate what it sends, the multi-MB SDK bundle included.
+  "accept-encoding",
+  "if-none-match",
+  "if-modified-since",
   "x-metabase-locale",
   "x-metabase-client-version",
-  "x-metabase-client-identifier",
   "x-metabase-embed-referrer",
-  "x-metabase-data-app-dev",
-  // Keeps the preview's traffic out of the app's usage analytics and view log.
-  "x-metabase-embedded-preview",
   "traceparent",
 ]);
 
@@ -42,6 +44,15 @@ const TRANSPORT_HEADERS = new Set([
 /** Matches `metabase.analytics.sdk/data-app-client`; typed off the SDK config so a typo can't compile. */
 const DATA_APP_CLIENT: (typeof EMBEDDING_SDK_CONFIG)["metabaseClientRequestHeader"] =
   "data-app";
+
+const DEFAULT_PORTS: Record<string, string> = {
+  "http:": "80",
+  "https:": "443",
+};
+
+/** An `allowed_hosts` entry a published app can have, once normalized: `::allowed-host` in `metabase.data-apps.schema`. */
+const ALLOWED_HOST_PATTERN =
+  /^(https?):\/\/((?:\*\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*)(?::(\d+))?$/;
 
 type RelayedRequest = Pick<
   OutgoingMessage,
@@ -78,18 +89,22 @@ interface DevInstanceRelayOptions {
   instanceUrl: string | undefined;
   /** `DATA_APP_MB_API_KEY`. */
   apiKey: string | undefined;
+  /** The app the preview runs, whose rules the instance applies to its requests. */
+  appSlug: string;
 }
 
 /**
- * Whether `req` comes from the preview page itself, or from outside a browser (which could read `.env.local` anyway).
- * Any other page in the developer's browser could otherwise make the relay send its requests with the key: a site
- * they visit, or a data app on their own Metabase, which is same-site with the dev server on localhost.
+ * Whether the relay takes `req`: from the preview page itself, or from outside a browser, which could read
+ * `.env.local` anyway. Any other page in the developer's browser could otherwise make the relay send its requests with
+ * the key: a site they visit, or a data app on their own Metabase, which is same-site with the dev server on
+ * localhost. A browser that sends `Sec-Fetch-Site` says itself whether the request is same-origin, even behind a
+ * tunnel that rewrites `Host`; `Origin` decides for one that doesn't.
  */
-const isFromPreviewPage = ({ headers }: RelayedRequestSource): boolean => {
+const mayRelay = ({ headers }: RelayedRequestSource): boolean => {
   const fetchSite = headers["sec-fetch-site"];
 
-  if (fetchSite !== undefined && fetchSite !== "same-origin") {
-    return false;
+  if (fetchSite !== undefined) {
+    return fetchSite === "same-origin";
   }
 
   const { origin, host } = headers;
@@ -101,14 +116,14 @@ const isFromPreviewPage = ({ headers }: RelayedRequestSource): boolean => {
 };
 
 const route = (
-  instanceUrl: string,
+  target: string,
   headers: Record<string, string>,
   rewrite?: (path: string) => string,
 ): DevInstanceRelayRoute => ({
-  target: instanceUrl,
+  target,
   changeOrigin: true,
   rewrite,
-  bypass: (req) => (isFromPreviewPage(req) ? undefined : false),
+  bypass: (req) => (mayRelay(req) ? undefined : false),
   configure: (proxy) => {
     proxy.on("proxyReq", (proxyReq) => {
       proxyReq
@@ -142,65 +157,79 @@ const route = (
 });
 
 /**
- * `allowedHosts` without the entries that cover the instance at `instanceUrl`, as the instance drops them for a
- * published app. The preview reaches the instance only through the relay; a direct request would carry the
- * developer's own Metabase cookies.
- */
-export function dropInstanceOrigin(
-  allowedHosts: string[],
-  instanceUrl: string | undefined,
-): string[] {
-  if (!instanceUrl || !URL.canParse(instanceUrl)) {
-    return allowedHosts;
-  }
-
-  const instance = new URL(instanceUrl);
-
-  return allowedHosts.filter((host) => !coversInstance(host, instance));
-}
-
-/**
- * Whether the `allowed_hosts` entry `host` lets a request reach `instance`, as the preview's CSP and sandbox match it:
- * `*.example.com` covers subdomains, and an `http:` entry also covers the same host over `https:`.
+ * Whether the `allowed_hosts` entry `host` lets a request reach `instance`, as the browser's CSP matcher reads it:
+ * `*.domain` covers its subdomains, `http` also covers `https`, and a port-less entry means the instance scheme's
+ * default port. An entry a published app can't have counts as covering the instance: what it covers isn't read here.
  */
 const coversInstance = (host: string, instance: URL): boolean => {
-  if (!URL.canParse(host.trim())) {
-    return false;
+  const match = host
+    .trim()
+    .toLowerCase()
+    .replace(/\/+$/, "")
+    .match(ALLOWED_HOST_PATTERN);
+
+  if (!match) {
+    return true;
   }
 
-  const entry = new URL(host.trim());
-  const isWildcard = entry.hostname.startsWith("*.");
-  const coversHost = isWildcard
-    ? instance.hostname.endsWith(entry.hostname.slice(1))
-    : instance.hostname === entry.hostname;
-  const coversProtocol =
-    entry.protocol === instance.protocol ||
-    (entry.protocol === "http:" && instance.protocol === "https:");
+  const [, scheme, name, port] = match;
+  const instanceScheme = instance.protocol.slice(0, -1);
+  const defaultPort = DEFAULT_PORTS[instance.protocol];
 
-  return coversHost && coversProtocol && entry.port === instance.port;
+  const coversHost = name.startsWith("*.")
+    ? instance.hostname.endsWith(name.slice(1))
+    : instance.hostname === name;
+  const coversScheme =
+    scheme === instanceScheme ||
+    (scheme === "http" && instanceScheme === "https");
+  const coversPort = (port ?? defaultPort) === (instance.port || defaultPort);
+
+  return coversHost && coversScheme && coversPort;
 };
 
 /**
- * The dev server's relay to the instance, as Vite `server.proxy` routes. The preview reaches the instance only through
- * it: `/api/` requests get the API key and the data-app client marker here, which confines them to the endpoints a data
- * app may call, so the key never reaches the page and the developer's own Metabase session never reaches the instance.
- * No routes without a usable `instanceUrl`.
+ * `allowedHosts` without the entries that cover the instance at `instanceUrl`, as the instance drops them for a
+ * published app, or that a published app can't have. The preview's requests reach the instance through the relay; a
+ * direct one would carry the developer's own Metabase cookies.
+ */
+export function dropInstanceOrigin(
+  allowedHosts: string[],
+  instanceUrl: string | null | undefined,
+): string[] {
+  const instance = parseInstanceUrl(instanceUrl);
+
+  return instance
+    ? allowedHosts.filter((host) => !coversInstance(host, instance))
+    : allowedHosts;
+}
+
+/**
+ * The dev server's relay to the instance, as Vite `server.proxy` routes. The preview reaches the instance's API only
+ * through it: `/api/` requests get the API key there, and are marked as this app's preview, which confines them to the
+ * endpoints a data app may call. So the key never reaches the page, and the relay never passes on the developer's own
+ * Metabase session. No routes without an `http(s)` `instanceUrl`.
  */
 export function buildDevInstanceRelay({
   instanceUrl,
   apiKey,
+  appSlug,
 }: DevInstanceRelayOptions): Record<string, DevInstanceRelayRoute> {
-  if (!instanceUrl || !URL.canParse(instanceUrl)) {
+  if (!instanceUrl || !parseInstanceUrl(instanceUrl)) {
     return {};
   }
 
+  // Who the request is from is the dev server's to say: the instance takes from these the endpoints it may reach, the
+  // app whose rules apply, and that it's a preview, which also keeps it out of the app's usage analytics and view log.
   const apiHeaders: Record<string, string> = {
     ...(apiKey ? { "x-api-key": apiKey } : {}),
     "x-metabase-client": DATA_APP_CLIENT,
+    "x-metabase-client-identifier": appSlug,
+    "x-metabase-data-app-dev": "true",
+    "x-metabase-embedded-preview": "true",
   };
 
   return {
-    "/api/": route(instanceUrl, apiHeaders),
+    [DATA_APP_DEV_INSTANCE_API_PATH]: route(instanceUrl, apiHeaders),
     // The SDK bundle and its assets.
     "/app/": route(instanceUrl, {}),
     [DATA_APP_DEV_INSTANCE_PING_URL]: route(instanceUrl, {}, () => "/"),

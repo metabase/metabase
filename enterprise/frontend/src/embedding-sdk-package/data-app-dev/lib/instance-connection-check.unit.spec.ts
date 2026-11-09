@@ -8,7 +8,7 @@ import { instanceConnectionCheck } from "./instance-connection-check";
 
 const METABASE_URL = "http://localhost:3000";
 
-const run = (fetchFn: jest.Mock, metabaseUrl: string | undefined) => {
+const run = (fetchFn: jest.Mock, metabaseUrl: string | null) => {
   window.fetch = fetchFn;
 
   return instanceConnectionCheck.install({ metabaseUrl, sdkVersion: "0.64.0" });
@@ -88,7 +88,7 @@ describe("InstanceConnectionCheck", () => {
   it("reports an unset URL without probing anything", async () => {
     const fetchFn = jest.fn();
 
-    await run(fetchFn, undefined);
+    await run(fetchFn, null);
 
     expect(fetchFn).not.toHaveBeenCalled();
     expect(devDiagnostics.getConnectionStatus()?.error).toContain(
@@ -96,18 +96,26 @@ describe("InstanceConnectionCheck", () => {
     );
   });
 
-  it("rejects a URL without a scheme instead of probing the preview origin", async () => {
-    const fetchFn = jest.fn();
+  it.each([
+    "metabase.local",
+    // `URL` reads `localhost:` as the scheme here.
+    "localhost:3000",
+    "ftp://metabase.local",
+  ])(
+    "rejects %s, which isn't an http(s) URL, instead of probing anything",
+    async (metabaseUrl) => {
+      const fetchFn = jest.fn();
 
-    // The dev server can't relay to it, so nothing would answer for the instance.
-    await run(fetchFn, "metabase.local");
+      // The dev server can't relay to it, so nothing would answer for the instance.
+      await run(fetchFn, metabaseUrl);
 
-    expect(fetchFn).not.toHaveBeenCalled();
-    expect(devDiagnostics.getConnectionStatus()).toMatchObject({
-      reachable: false,
-    });
-    expect(devDiagnostics.getConnectionStatus()?.error).toContain(
-      "must be an absolute URL",
-    );
-  });
+      expect(fetchFn).not.toHaveBeenCalled();
+      expect(devDiagnostics.getConnectionStatus()).toMatchObject({
+        reachable: false,
+      });
+      expect(devDiagnostics.getConnectionStatus()?.error).toContain(
+        "must be an http(s) URL",
+      );
+    },
+  );
 });

@@ -34,7 +34,7 @@ import "metabase-enterprise/data-apps/sandbox/iframe-baseline.css";
 
 // The dev server relays the instance's `/api/` and `/app/` and adds the API key
 // there, so the key never reaches this page. The SDK still needs a key to use
-// API-key auth; the dev server replaces this one.
+// API-key auth: the dev server drops this one and sends its own.
 const authConfig = {
   metabaseInstanceUrl: window.location.origin,
   apiKey: "set-by-the-dev-server",
@@ -42,10 +42,7 @@ const authConfig = {
 
 devDiagnostics.install();
 
-instanceConnectionCheck.install({
-  metabaseUrl: instanceUrl ?? undefined,
-  sdkVersion,
-});
+instanceConnectionCheck.install({ metabaseUrl: instanceUrl, sdkVersion });
 
 sdkCallCapture.install();
 

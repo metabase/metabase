@@ -3,11 +3,12 @@ import {
   DATA_APP_DEV_INSTANCE_PING_URL,
   DATA_APP_DEV_RELAY_ERROR_HEADER,
 } from "../constants/diagnostics-channel";
-import { DATA_APP_MB_URL_ENV } from "../constants/env";
+import { DATA_APP_MB_URL_ENV, parseInstanceUrl } from "../constants/env";
 import type { InstanceConnectionStatus } from "../types/diagnostics-channel";
 
 export interface InstanceConnectionCheckOptions {
-  metabaseUrl: string | undefined;
+  /** `DATA_APP_MB_URL`, or null when it's unset. */
+  metabaseUrl: string | null;
   sdkVersion: string | null;
 }
 
@@ -37,10 +38,9 @@ export class InstanceConnectionCheck {
       return;
     }
 
-    // Without a scheme the browser resolves it against the preview origin, so
-    // the dev server would answer and the instance would look reachable.
-    if (!URL.canParse(base)) {
-      status.error = `${DATA_APP_MB_URL_ENV} must be an absolute URL like http://localhost:3000, not "${base}".`;
+    // The dev server relays only to an http(s) URL, so nothing would answer for any other.
+    if (!parseInstanceUrl(base)) {
+      status.error = `${DATA_APP_MB_URL_ENV} must be an http(s) URL like http://localhost:3000, not "${base}".`;
       devDiagnostics.setConnectionStatus(status);
 
       return;
