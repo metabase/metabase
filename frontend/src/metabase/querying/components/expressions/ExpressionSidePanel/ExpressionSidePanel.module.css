@@ -1,0 +1,192 @@
+/* The whole panel. Its 320px width is set by --sidebar-width in Layout.module.css */
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--mb-color-background_surface-primary);
+  border-right: 1px solid var(--mb-color-border-neutral);
+}
+
+/* The search bar, which stays put while the list scrolls */
+.searchBar {
+  flex: 0 0 48px;
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: 0 var(--mantine-spacing-xl);
+  color: var(--mb-color-text-primary);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.22;
+  color: var(--mb-color-text-primary);
+
+  &::placeholder {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* Everything below the search bar */
+.scrollArea {
+  flex: 1;
+  min-height: 0;
+}
+
+/* The grey band between sections */
+.divider {
+  height: 8px;
+  background-color: var(--mb-color-background_page-secondary);
+
+  &:not(:first-child) {
+    border-top: 1px solid var(--mb-color-border-neutral);
+  }
+}
+
+/* Tools: 16px above and below the section */
+.tools {
+  padding: var(--mantine-spacing-lg) 0;
+}
+
+/* Popular: sits right under Tools, 24px below the section */
+.popular {
+  padding-bottom: var(--mantine-spacing-xl);
+}
+
+/* "Tools", "Popular", "Templates", "Functions" labels */
+.subheading {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.15;
+  color: var(--mb-color-text-secondary);
+}
+
+/* A stack of rows. The 16px side padding plus the row's 8px lines up with the 24px headings */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 var(--mantine-spacing-lg);
+}
+
+/* A tool, template or function row */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.22;
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+
+  &.disabled {
+    cursor: default;
+    color: var(--mb-color-text-disabled);
+    background-color: transparent;
+
+    .icon {
+      filter: grayscale(1);
+      opacity: 0.5;
+    }
+
+    .parentheses {
+      color: inherit;
+    }
+  }
+}
+
+.icon {
+  flex: 0 0 auto;
+}
+
+/* The search and chevron icons, which follow the text colour */
+.themedIcon {
+  flex: 0 0 auto;
+
+  path {
+    fill: currentcolor;
+  }
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* Function name in a row, such as case() */
+.functionName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 13.5px;
+}
+
+.parentheses {
+  color: var(--mb-color-text-disabled);
+}
+
+/* A group's clickable header */
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.22;
+  color: var(--mb-color-text-primary);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+}
+
+/* An open group's contents */
+.groupBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+  padding: var(--mantine-spacing-lg) 0 var(--mantine-spacing-xxl);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+/* The popover shown when hovering a function */
+.details {
+  width: 280px;
+  padding: var(--mantine-spacing-md);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.4;
+  color: var(--mb-color-text-primary);
+}
+
+.signature {
+  margin-bottom: var(--mantine-spacing-xs);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mb-color-text-secondary);
+}

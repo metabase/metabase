@@ -40,19 +40,29 @@
   position: static;
   background: none;
   grid-template-rows: min-content min-content min-content;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
 
-  --sidebar-width: 424px;
+  --main-height: 400px; /* Editor box + 46px footer = Figma's 446px */
+  --sidebar-width: 320px;
 }
 
 .inline .main {
+  grid-column: 2;
   width: auto;
   height: var(--main-height);
 }
 
+.inline .footer {
+  grid-column: 2;
+}
+
+/* The side panel: left column, as tall as the editor and footer together */
 .inline .sidebar {
-  width: auto;
-  height: auto;
+  grid-column: 1;
+  width: var(--sidebar-width);
+  max-width: none;
+  height: calc(var(--main-height) + var(--footer-height));
+  min-height: 0;
 }
 
 .header {

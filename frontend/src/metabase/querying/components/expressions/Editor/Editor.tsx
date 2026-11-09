@@ -30,6 +30,7 @@ import {
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import { ExpressionSidePanel } from "../ExpressionSidePanel";
 import { FunctionBrowser } from "../FunctionBrowser";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
@@ -207,16 +208,18 @@ export function Editor(props: EditorProps) {
         )}
 
         <Flex className={S.toolbar} gap="sm" pt="sm" pr="sm" direction="column">
-          <ButtonTooltip label={t`Function browser`}>
-            <Button
-              aria-label={t`Function browser`}
-              onClick={toggleFunctionBrowser}
-              size="sm"
-              variant={isFunctionBrowserOpen ? "filled" : "subtle"}
-              className={S.toolbarButton}
-              leftSection={<Icon name="function" />}
-            />
-          </ButtonTooltip>
+          {!inline && (
+            <ButtonTooltip label={t`Function browser`}>
+              <Button
+                aria-label={t`Function browser`}
+                onClick={toggleFunctionBrowser}
+                size="sm"
+                variant={isFunctionBrowserOpen ? "filled" : "subtle"}
+                className={S.toolbarButton}
+                leftSection={<Icon name="function" />}
+              />
+            </ButtonTooltip>
+          )}
           {source.trim() !== "" && error == null && isValidated && (
             <ButtonTooltip label={t`Auto-format`}>
               <ActionIcon
@@ -235,7 +238,18 @@ export function Editor(props: EditorProps) {
         {portal}
       </LayoutMain>
 
-      {isFunctionBrowserOpen && (
+      {inline && (
+        <LayoutSidebar>
+          <ExpressionSidePanel
+            expressionMode={expressionMode}
+            reportTimezone={reportTimezone}
+            query={query}
+            onClauseClick={handleFunctionBrowserClauseClick}
+          />
+        </LayoutSidebar>
+      )}
+
+      {!inline && isFunctionBrowserOpen && (
         <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
           <FunctionBrowser
             expressionMode={expressionMode}
