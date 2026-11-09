@@ -46,7 +46,7 @@
                                        :type     "native"
                                        :native   {:query "SELECT 2 --comment"}}}}]
         (push-transform-revision! transform-id true :crowberto)
-        (t2/update! :model/Transform transform-id
+        (t2/update! :model/Transform :id transform-id
                     {:source {:type  "query"
                               :query {:database y-db-id
                                       :type     "native"

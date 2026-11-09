@@ -23,7 +23,7 @@
         (mt/with-temp [:model/Collection c {:name       "No Entity ID Collection"
                                             :slug       "no_entity_id_collection"
                                             :created_at now}]
-          (t2/update! :model/Collection (:id c) {:entity_id nil})
+          (t2/update! :model/Collection :id (:id c) {:entity_id nil})
           (letfn [(entity-id []
                     (some-> (t2/select-one-fn :entity_id :model/Collection :id (:id c)) str/trim))]
             (is (= nil
@@ -37,7 +37,7 @@
               (mt/with-temp [:model/Collection c2 {:name       "No Entity ID Collection"
                                                    :slug       "no_entity_id_collection"
                                                    :created_at now}]
-                (t2/update! :model/Collection (:id c2) {:entity_id nil})
+                (t2/update! :model/Collection :id (:id c2) {:entity_id nil})
                 (letfn [(entity-id []
                           (some-> (t2/select-one-fn :entity_id :model/Collection :id (:id c2)) str/trim))]
                   (is (= nil
@@ -51,7 +51,7 @@
             (mt/with-temp [:model/Collection c3 {:name      "error collection"
                                                  :entity_id nil}]
               ;; update table directly so checks for collection existence don't trigger
-              (t2/update! :collection (:id c3) {:location "/13371338/"})
+              (t2/update! :collection :id (:id c3) {:location "/13371338/"})
               (mt/with-log-messages-for-level [messages [metabase-enterprise :error]]
                 (is (= false
                        (v2.entity-ids/seed-entity-ids!)))

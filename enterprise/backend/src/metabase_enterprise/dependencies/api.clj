@@ -133,7 +133,7 @@
        [:name {:optional true} native-query-snippets/NativeQuerySnippetName]
        [:content {:optional true} :string]]]
   (api/read-check :model/NativeQuerySnippet id)
-  (let [original (t2/select-one :model/NativeQuerySnippet id)
+  (let [original (t2/select-one :model/NativeQuerySnippet :id id)
         _ (when (and snippet-name
                      (not= snippet-name (:name original))
                      (t2/exists? :model/NativeQuerySnippet :name snippet-name))

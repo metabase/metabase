@@ -86,7 +86,7 @@
 (defn get-notification
   "Get a notification by id."
   [id]
-  (-> (t2/select-one :model/Notification id)
+  (-> (t2/select-one :model/Notification :id id)
       api/check-404
       models.notification/hydrate-notification))
 
@@ -196,7 +196,7 @@
        (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
        (map (fn [recipient]
               (if (= :notification-recipient/user ((comp keyword :type) recipient))
-                (or (-> recipient :user :email) (t2/select-one-fn :email :model/User (:user_id recipient)))
+                (or (-> recipient :user :email) (t2/select-one-fn :email :model/User :id (:user_id recipient)))
                 (-> recipient :details :value))))
        (remove nil?)
        set))

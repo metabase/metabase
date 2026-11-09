@@ -949,7 +949,7 @@
                                (cond-> (seq remap-via-path) (assoc :via-path remap-via-path)))]
         (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)
                                         relax-fk-requirement?)
-                               (t2/select-one-fn :fk_target_field_id :model/Field field-id))]
+                               (t2/select-one-fn :fk_target_field_id :model/Field :id field-id))]
           (unremapped-chain-filter the-remapped-field-id
                                    (map #(cond-> %
                                            (= (:field-id %) field-id) (assoc :field-id pk-field-id))

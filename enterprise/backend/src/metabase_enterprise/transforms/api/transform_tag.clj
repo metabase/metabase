@@ -43,7 +43,7 @@
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transform-tag/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
-  (t2/update! :model/TransformTag tag-id {:name name})
+  (t2/update! :model/TransformTag :id tag-id {:name name})
   (t2/select-one :model/TransformTag :id tag-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

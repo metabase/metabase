@@ -311,7 +311,7 @@
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task)
+        (t2/update! :model/RemoteSyncTask :id (:id task)
                     {:last_progress_report_at old-time})
         (let [stale-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
           (is (true? (rst/timed-out? stale-task))))
@@ -332,7 +332,7 @@
   (testing "timed-out? returns false for completed task even with old last_progress_report_at"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
-      (t2/update! :model/RemoteSyncTask (:id task)
+      (t2/update! :model/RemoteSyncTask :id (:id task)
                   {:last_progress_report_at old-time})
       (rst/complete-sync-task! (:id task))
       (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
@@ -342,7 +342,7 @@
   (testing "timed-out? returns false for failed task even with old last_progress_report_at"
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           old-time (t/minus (t/offset-date-time) (t/hours 2))]
-      (t2/update! :model/RemoteSyncTask (:id task)
+      (t2/update! :model/RemoteSyncTask :id (:id task)
                   {:last_progress_report_at old-time})
       (rst/fail-sync-task! (:id task) "Task failed")
       (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
@@ -353,7 +353,7 @@
     (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))
           boundary-time (t/minus (t/offset-date-time) (t/minutes 4))]
       (try
-        (t2/update! :model/RemoteSyncTask (:id task)
+        (t2/update! :model/RemoteSyncTask :id (:id task)
                     {:last_progress_report_at boundary-time})
         (let [boundary-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
           (is (false? (rst/timed-out? boundary-task))))

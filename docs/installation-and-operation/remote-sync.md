@@ -11,7 +11,7 @@ description: Version control your dashboards, questions, and models with Git. Sy
 
 Remote Sync lets you develop analytics content in a special collection in a development Metabase and automatically deploy it to a read-only production Metabase through Git. If you use [Tenants](../embedding/tenants.md), you can also sync shared collections.
 
-**Remote Sync only syncs your dashboards, questions, and models—not your data or query results.** What gets stored in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never goes to GitHub.
+**Remote Sync only syncs your dashboards, questions, and models—not your data or query results.** All Metabase stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never goes to GitHub.
 
 ### How Remote Sync works
 
@@ -24,6 +24,12 @@ Here's a basic remote-sync workflow:
 5. Your **Metabase configured in Read-only mode** automatically pulls in the changes.
 
 We'll cover [setting up Remote Sync](#setting-up-remote-sync), an [example dev-to-production workflow](#an-example-dev-to-production-workflow), [branch management](#branch-management), and some other odds and ends.
+
+### Treat write access to your repository like admin access
+
+When a Metabase pulls from your repository, it loads the YAML files on its branch _without_ checking who wrote them. Anyone who can push to that branch can change that Metabase's synced content. If you turn on [auto-sync](#pulling-changes-automatically), changes merged to the branch show up in your Metabase within minutes, and no one in Metabase approves them first.
+
+Your repository can't change users, groups, or permissions, because those [don't sync](#what-metabase-syncs). But when a pull creates a new collection, that collection gets the same permissions as its parent. A new top-level collection gets the same permissions as **Our analytics**.
 
 ### Key concepts
 
@@ -55,6 +61,8 @@ You'll need to be an admin to set up Remote Sync.
 ### 1. Set up a repository to store your content
 
 Before you connect Metabase to your Git repository, create a [new GitHub repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-new-repository). Initialize the repo with a README.md.
+
+Anyone who can push to this repository can change content in your synced Metabases, so [limit who has write access](#treat-write-access-to-your-repository-like-admin-access).
 
 ### 2. Create a personal access token for development
 
@@ -337,6 +345,8 @@ If changes don't appear after switching modes: Hard refresh your browser (Cmd/Ct
 - **The current branch is instance-wide**. This means that everyone on the same Metabase is on the same branch at the same time. You can't have different people working on different branches in a single Metabase.
 
 Limiting a Metabase to a single branch at a time means that the typical Git feature-branch workflow is a bit different here: only admins can switch branches, create new branches, or push and pull changes. If you need multiple branches worked on simultaneously, the workaround is to spin up multiple Metabases in Read-write mode, one Metabase per branch.
+
+These limits only apply in Metabase. In your Git repository, anyone with write access can create branches and push changes, and Metabase loads those changes when it pulls. See [Treat write access to your repository like admin access](#treat-write-access-to-your-repository-like-admin-access).
 
 ## Pushing changes to Git
 

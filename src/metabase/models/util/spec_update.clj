@@ -139,7 +139,7 @@
 
     ;; Update the parent row if needed
     (when (or force-update? updates-needed?)
-      (t2/update! model (id-col row) (sanitize-row row-with-refs)))
+      (t2/update! model :toucan/pk (id-col row) (sanitize-row row-with-refs)))
 
     ;; Handle non-ref nested models
     (when nested-specs
@@ -228,7 +228,7 @@
       (nil? new-data)
       (do
         (log/debugf "%s Deleting" (format-path (conj path existing-id)))
-        (t2/delete! model existing-id)
+        (t2/delete! model :toucan/pk existing-id)
         (handle-nested! existing-data new-data existing-id)
         nil)
 
@@ -245,7 +245,7 @@
       (do
         (log/debugf "%s ID changed from %s to %s - deleting and recreating"
                     (format-path path) existing-id (id-col new-data))
-        (t2/delete! model existing-id)
+        (t2/delete! model :toucan/pk existing-id)
         (let [parent-id (t2/insert-returning-pk! model new-data-sanitized)
               path      (conj path parent-id)]
           (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
@@ -256,7 +256,7 @@
       (not= (compare-row new-data-sanitized) (compare-row existing-data-sanitized))
       (do
         (log/debugf "%s Updating" (format-path (conj path existing-id)))
-        (t2/update! model existing-id new-data-sanitized)
+        (t2/update! model :toucan/pk existing-id new-data-sanitized)
         (handle-nested! existing-data new-data existing-id)
         existing-id)
 

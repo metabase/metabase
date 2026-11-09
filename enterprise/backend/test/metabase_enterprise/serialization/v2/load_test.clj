@@ -1247,9 +1247,9 @@
             (serdes.load/load-metabase! (ingestion-in-memory extract1))
             (ts/with-db source-db
               ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
-              (t2/delete! :model/DashboardCardSeries (:id series1s))
-              (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
-              (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
+              (t2/delete! :model/DashboardCardSeries :id (:id series1s))
+              (t2/update! :model/DashboardCardSeries :id (:id series3s) {:position 0})
+              (t2/update! :model/DashboardCardSeries :id (:id series2s) {:position 1})
               (let [extract2 (into [] (serdes.extract/extract {:no-settings true :no-data-model true}))]
                 (ts/with-db dest-db
                   (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
@@ -1664,12 +1664,12 @@
                              {:model "Field" :id "field"}]}
               (ts/extract-one "Field" (:id f3))))
 
-      (t2/update! :model/Field (:id f3) {:description "some new one"})
+      (t2/update! :model/Field :id (:id f3) {:description "some new one"})
 
       (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
 
       (is (= "desc"
-             (t2/select-one-fn :description :model/Field (:id f3)))))))
+             (t2/select-one-fn :description :model/Field :id (:id f3)))))))
 
 (deftest blank-eid-creates-new-entity-test
   (mt/with-empty-h2-app-db!

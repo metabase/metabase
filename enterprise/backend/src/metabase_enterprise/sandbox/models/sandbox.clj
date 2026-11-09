@@ -258,7 +258,7 @@
        (do
          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
            (t2/update! :model/Sandbox
-                       id
+                       :id id
                        (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
          (let [updated-sandbox (t2/select-one :model/Sandbox :id id)]
            (events/publish-event! :event/sandbox-update

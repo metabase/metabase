@@ -11,7 +11,7 @@
 
 (defn- checked-card-dataset-query
   [card-id]
-  (-> (t2/select-one [:model/Card :collection_id :dataset_query] card-id)
+  (-> (t2/select-one [:model/Card :collection_id :dataset_query] :id card-id)
       api/read-check
       :dataset_query))
 

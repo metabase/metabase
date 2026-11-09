@@ -135,7 +135,7 @@
             (is (= #{pc} @sent-channel-ids)))
 
           (testing "channels that has no recipients are deleted"
-            (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
+            (is (false? (t2/exists? :model/PulseChannel :id pc-no-recipient)))))))))
 
 (deftest send-pulse!*-skips-archived-dashboard-test
   (testing "a trigger firing for a trashed Dashboard sends nothing"
@@ -148,11 +148,11 @@
                                                                   :channel_type :slack
                                                                   :details      {:channel "#random"}}
                                                                  daily-at-1am)]
-          (t2/update! :model/Dashboard dash-id {:archived true})
+          (t2/update! :model/Dashboard :id dash-id {:archived true})
           (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
           (is (= #{} @sent-channel-ids))
           (testing "once the Dashboard is restored, the same fire sends"
-            (t2/update! :model/Dashboard dash-id {:archived false})
+            (t2/update! :model/Dashboard :id dash-id {:archived false})
             (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
             (is (= #{pc-id} @sent-channel-ids))))))))
 

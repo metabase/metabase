@@ -63,7 +63,7 @@
     (eduction
      (mapcat (fn [table-id]
                (try
-                 (let [table (t2/select-one :model/Table table-id)
+                 (let [table (t2/select-one :model/Table :id table-id)
                        table-fields (table-fields-metadata database table)]
                   ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
                   ;; connection is closed before moving to the next table.

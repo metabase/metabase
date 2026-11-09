@@ -94,7 +94,7 @@
             (is (= config/mb-version-string (:metabase_version revision))))))
 
       (testing "Multiple revisions are returned in correct order"
-        (t2/update! :model/Document doc-id {:name "Updated Document"})
+        (t2/update! :model/Document :id doc-id {:name "Updated Document"})
         (create-document-revision! doc-id false :rasta)
 
         (let [revisions (get-document-revisions doc-id)]
@@ -113,8 +113,8 @@
       (create-document-revision! doc-id true :rasta)
 
       (testing "Document can be updated and reverted"
-        (t2/update! :model/Document doc-id {:name "Updated Document"
-                                            :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
+        (t2/update! :model/Document :id doc-id {:name "Updated Document"
+                                                :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
         (create-document-revision! doc-id false :rasta)
 
         (let [revisions (revision/revisions :model/Document doc-id)
@@ -151,7 +151,7 @@
                                                :document {:type "doc" :content []}
                                                :creator_id (mt/user->id :crowberto)}]
         (create-document-revision! (:id document) true :crowberto)
-        (t2/update! :model/Document (:id document) {:name "Updated Private Document"})
+        (t2/update! :model/Document :id (:id document) {:name "Updated Private Document"})
         (create-document-revision! (:id document) false :crowberto)
 
         (let [document-id (u/the-id document)
@@ -190,7 +190,7 @@
           (is (every? #(contains? % :description) revisions-response))))
 
       (testing "Document reversion integrates with OSS revert endpoint"
-        (t2/update! :model/Document doc-id {:name "Modified Document"})
+        (t2/update! :model/Document :id doc-id {:name "Modified Document"})
         (create-document-revision! doc-id false :rasta)
 
         (let [[_ {original-rev-id :id}] (revision/revisions :model/Document doc-id)
@@ -241,7 +241,7 @@
       (create-document-revision! doc-id true :rasta)
 
       (testing "Name change produces correct diff and description"
-        (t2/update! :model/Document doc-id {:name "Updated Title"})
+        (t2/update! :model/Document :id doc-id {:name "Updated Title"})
         (create-document-revision! doc-id false :rasta)
 
         (let [revisions (get-document-revisions doc-id)
@@ -251,7 +251,7 @@
           (is (str/includes? (:description update-revision) "renamed"))))
 
       (testing "Content change produces diff"
-        (t2/update! :model/Document doc-id {:document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "New content"}]}]}})
+        (t2/update! :model/Document :id doc-id {:document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "New content"}]}]}})
         (create-document-revision! doc-id false :rasta)
 
         (let [revisions (get-document-revisions doc-id)
@@ -269,8 +269,8 @@
                                                    :creator_id (mt/user->id :crowberto)}]
         (let [public-uuid (str (random-uuid))]
           ;; an admin publishes the document, then it is edited
-          (t2/update! :model/Document doc-id {:public_uuid       public-uuid
-                                              :made_public_by_id (mt/user->id :crowberto)})
+          (t2/update! :model/Document :id doc-id {:public_uuid       public-uuid
+                                                  :made_public_by_id (mt/user->id :crowberto)})
           (create-document-revision! doc-id true :crowberto)
           (testing "the stored revision does not carry the public sharing columns"
             (let [object (t2/select-one-fn :object :model/Revision :model "Document" :model_id doc-id)]
@@ -289,9 +289,9 @@
                                                                      :made_public_by_id (mt/user->id :crowberto))
                                                 :is_creation  false
                                                 :is_reversion false)]
-            (t2/update! :model/Document doc-id {:name              "Unshared Document"
-                                                :public_uuid       nil
-                                                :made_public_by_id nil})
+            (t2/update! :model/Document :id doc-id {:name              "Unshared Document"
+                                                    :public_uuid       nil
+                                                    :made_public_by_id nil})
             (create-document-revision! doc-id false :crowberto)
             (testing "reverting restores the content but leaves the link revoked"
               (is (:is_reversion (mt/user-http-request :rasta :post "revision/revert"

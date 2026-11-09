@@ -31,7 +31,7 @@
    {:keys [login_attributes]} :- [:map
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]
   (api/check-404 (t2/select-one :model/User :id id))
-  (pos? (t2/update! :model/User id {:login_attributes login_attributes})))
+  (pos? (t2/update! :model/User :id id {:login_attributes login_attributes})))
 
 (def ^:private max-login-attributes 5000)
 

@@ -64,7 +64,7 @@
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     ;; cool, now we should be ok to update the model
     (when values-to-set
-      (t2/update! (mi/model original-model) (u/the-id original-model)
+      (t2/update! (mi/model original-model) :toucan/pk (u/the-id original-model)
                   values-to-set)
       true)))
 

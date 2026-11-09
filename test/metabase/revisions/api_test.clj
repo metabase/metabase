@@ -75,7 +75,7 @@
   (mt/with-temp [:model/Card {:keys [id] :as card} {:name "A card"}]
     (create-card-revision! (:id card) true :rasta)
     (doseq [i (range (inc revision/max-revisions))]
-      (t2/update! :model/Card (:id card) {:name (format "New name %d" i)})
+      (t2/update! :model/Card :id (:id card) {:name (format "New name %d" i)})
       (create-card-revision! (:id card) false :rasta))
 
     (is (= ["renamed this Card from \"New name 14\" to \"New name 15\"."
@@ -937,7 +937,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         (update-dashcards! dash-id [])
-        (t2/update! :model/Card dq-id {:dashboard_id other-dash-id})
+        (t2/update! :model/Card :id dq-id {:dashboard_id other-dash-id})
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= #{card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
         (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))))
@@ -950,7 +950,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         ;; make it a non-DQ before removing it, otherwise it will be auto-archived
-        (t2/update! :model/Card dq-id {:dashboard_id nil})
+        (t2/update! :model/Card :id dq-id {:dashboard_id nil})
         (update-dashcards! dash-id [])
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= #{dq-id card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
@@ -965,7 +965,7 @@
                      :model/Card {card-id :id} {}]
         (update-dashcards! dash-id [card-id dq-id])
         (update-dashcards! dash-id [])
-        (t2/update! :model/Card card-id {:dashboard_id other-dash-id})
+        (t2/update! :model/Card :id card-id {:dashboard_id other-dash-id})
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))
         (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
         (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))))
@@ -989,7 +989,7 @@
                                                             :breakout     [!month.orders.created_at]}})}]
         (update-dashcards! dash-id [dq-id])
         ;; turn it into a model outside the DQ
-        (t2/update! :model/Card dq-id {:dashboard_id nil :type :model})
+        (t2/update! :model/Card :id dq-id {:dashboard_id nil :type :model})
         ;; remove it from the dashboard
         (update-dashcards! dash-id [])
         (revert-dashboard-api! dash-id (:id (second (dashboard-revisions-api dash-id))))

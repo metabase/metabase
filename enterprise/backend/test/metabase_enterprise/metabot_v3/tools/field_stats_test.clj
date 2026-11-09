@@ -191,7 +191,7 @@
           (is (> full-distinct-count 0)))
         (try
           ;; Clear the fingerprint to force re-fingerprinting via get-or-create-fingerprint!
-          (t2/update! :model/Field field-id {:fingerprint nil :fingerprint_version 0})
+          (t2/update! :model/Field :id field-id {:fingerprint nil :fingerprint_version 0})
           (let [mp             (mt/metadata-provider)
                 tq             (table-query mp table-id)
                 agent-field-id (visible-field-id tq (metabot-v3.tools.u/table-field-id-prefix table-id) "Name")]
@@ -203,7 +203,7 @@
               (testing "fingerprint reflects full table data, not the sandboxed subset"
                 (is (= full-distinct-count (get-in new-fp [:global :distinct-count]))))))
           (finally
-            (t2/update! :model/Field field-id {:fingerprint original-fp})))))))
+            (t2/update! :model/Field :id field-id {:fingerprint original-fp})))))))
 
 ;;; permission gates on the table a drilled-into column actually belongs to
 

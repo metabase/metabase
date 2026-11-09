@@ -131,7 +131,7 @@
   This is the handler for the /get-tables tool endpoint."
   [{:keys [database-id]}]
   {:structured-output
-   {:database (t2/select-one [:model/Database :id :name :description :engine] database-id)
+   {:database (t2/select-one [:model/Database :id :name :description :engine] :id database-id)
     :tables   (database-tables database-id)}})
 
 (defn similar?

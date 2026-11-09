@@ -1057,7 +1057,7 @@
             (is (= nil (search-for-pulses pulse))))
           (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp [:model/Dashboard dashboard {}]
-              (t2/update! :model/Pulse (:id pulse) {:dashboard_id (:id dashboard)})
+              (t2/update! :model/Pulse :id (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest filter-by-creator-test

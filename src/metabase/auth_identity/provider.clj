@@ -361,13 +361,13 @@
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
                              (not (t2/select-one-fn :is_active :model/User :id user-id)))]
-      (t2/update! :model/User user-id
+      (t2/update! :model/User :id user-id
                   (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
                     reactivating? (assoc :is_superuser false))))
     (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (name provider))
       (t2/insert! :model/AuthIdentity (cond-> {:user_id user-id :provider (name provider)}
                                         (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
-    (t2/select-one [:model/User :id :is_active :last_login] user-id)))
+    (t2/select-one [:model/User :id :is_active :last_login] :id user-id)))
 
 (mu/defn- create-user!
   "Create a user from user-data in the request "
@@ -397,7 +397,7 @@
         (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
                                           (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
         (notification/with-skip-sending-notification true
-          (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
+          (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User :id (:id <>))
                                                                      :sso_source (name provider))}))))))
 
 (methodical/defmethod login! ::create-user-if-not-exists

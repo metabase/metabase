@@ -70,8 +70,8 @@
                                                                :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Original content"}]}]}
                                                                :creator_id (mt/user->id :crowberto)}]
       (let [original-serialized (revision/serialize-instance :model/Document doc-id document)
-            _ (t2/update! :model/Document doc-id {:name "Updated Document"
-                                                  :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
+            _ (t2/update! :model/Document :id doc-id {:name "Updated Document"
+                                                      :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
             updated-document (t2/select-one :model/Document :id doc-id)]
 
         (testing "document was updated"
@@ -112,17 +112,17 @@
                                                    :document {:type "doc" :content []}
                                                    :creator_id (mt/user->id :crowberto)}]
         (let [public-uuid (str (random-uuid))
-              _           (t2/update! :model/Document doc-id {:public_uuid       public-uuid
-                                                              :made_public_by_id (mt/user->id :crowberto)})
+              _           (t2/update! :model/Document :id doc-id {:public_uuid       public-uuid
+                                                                  :made_public_by_id (mt/user->id :crowberto)})
               serialized  (revision/serialize-instance :model/Document doc-id
                                                        (t2/select-one :model/Document :id doc-id))]
           (testing "the snapshot does not capture the public sharing columns"
             (is (not (contains? serialized :public_uuid)))
             (is (not (contains? serialized :made_public_by_id))))
           ;; an admin revokes the public link, then the document is edited
-          (t2/update! :model/Document doc-id {:name              "Private Document"
-                                              :public_uuid       nil
-                                              :made_public_by_id nil})
+          (t2/update! :model/Document :id doc-id {:name              "Private Document"
+                                                  :public_uuid       nil
+                                                  :made_public_by_id nil})
           (testing "reverting to the snapshot restores content but leaves the link revoked"
             (revision/revert-to-revision! :model/Document doc-id (mt/user->id :rasta) serialized)
             (let [reverted (t2/select-one :model/Document :id doc-id)]

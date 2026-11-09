@@ -217,7 +217,7 @@
   (or (when (= (count (:stages query)) 1)
         (let [first-stage (lib.util/query-stage query 0)]
           (when (and (lib.util/native-stage? first-stage)
-                     (not (:lib/stage-metadata first-stage)))
+                     (empty? (get-in first-stage [:lib/stage-metadata :columns])))
             (when-let [cols (not-empty (native-query-metadata query))]
               (when card-id
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
@@ -227,7 +227,7 @@
                 ;; `cols` come from running the Card's own query, not from the caller, so this is a server-side write
                 ;; and must not trip the guard that refuses non-admin edits to a sandbox's result metadata.
                 (request/as-admin
-                  (t2/update! :model/Card card-id {:result_metadata cols})))
+                  (t2/update! :model/Card :id card-id {:result_metadata cols})))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 

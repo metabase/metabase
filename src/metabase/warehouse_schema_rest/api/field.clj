@@ -183,7 +183,7 @@
                          :coercion_strategy coercion-strategy)]
          (schema.field-user-settings/upsert-user-settings field body)
          (t2/update! :model/Field
-                     id
+                     :id id
                      (u/select-keys-when body
                                          {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
                                                      :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
@@ -240,7 +240,7 @@
                                (:human_readable_field_id existing-dimension)
                                :human_readable_field_id)
     (if-let [dimension existing-dimension]
-      (t2/update! :model/Dimension (u/the-id dimension)
+      (t2/update! :model/Dimension :id (u/the-id dimension)
                   {:type                    dimension-type
                    :name                    dimension-name
                    :human_readable_field_id human-readable-field-id})

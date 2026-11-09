@@ -153,7 +153,7 @@
                          (t/minus (t/local-date) (t/months 6)))
         collection     (if (= id :root)
                          collection/root-collection
-                         (t2/select-one :model/Collection id))
+                         (t2/select-one :model/Collection :id id))
         _              (api/read-check collection)
         collection-ids (->> (if is_recursive
                               (conj (effective-children-ids collection @api/*current-user-permissions-set*)

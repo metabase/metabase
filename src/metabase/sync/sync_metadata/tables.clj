@@ -97,7 +97,7 @@
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
-  (t2/update! :model/Database (u/the-id database)
+  (t2/update! :model/Database :id (u/the-id database)
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
@@ -160,20 +160,20 @@
                                          :schema schema
                                          :name table-name
                                          :active false)]
-    (let [table (t2/select-one :model/Table existing-id)]
+    (let [table (t2/select-one :model/Table :id existing-id)]
       ;; if the table already exists but is marked *inactive*, mark it as *active*
-      (t2/update! :model/Table existing-id (cond-> (cruft-dependent-cols table database ::reactivate)
+      (t2/update! :model/Table :id existing-id (cond-> (cruft-dependent-cols table database ::reactivate)
 
                                              ;; do not unhide tables w/ cruft settings
-                                             (some? (:visibility_type table))
-                                             (dissoc :visibility_type)
+                                                 (some? (:visibility_type table))
+                                                 (dissoc :visibility_type)
 
-                                             true
-                                             (assoc :active true)
+                                                 true
+                                                 (assoc :active true)
 
-                                             (:is_sample database)
-                                             (assoc :data_authority :ingested
-                                                    :data_source    :ingested))))
+                                                 (:is_sample database)
+                                                 (assoc :data_authority :ingested
+                                                        :data_source    :ingested))))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -239,7 +239,7 @@
                  (get metabase-table k)
                  v))
     (when (seq changes)
-      (t2/update! :model/Table (:id metabase-table) changes))))
+      (t2/update! :model/Table :id (:id metabase-table) changes))))
 
 (mu/defn- update-tables-metadata-if-needed!
   [table-metadatas :- [:set i/DatabaseMetadataTable]

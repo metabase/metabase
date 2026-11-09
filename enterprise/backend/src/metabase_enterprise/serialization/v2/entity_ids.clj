@@ -7,6 +7,7 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -87,7 +88,7 @@
                          :error       ::missing-pk})))
       (let [new-hash (serdes/identity-hash instance)]
         (log/infof "Update %s %s entity ID => %s" (name model) (pr-str pk-value) (pr-str new-hash))
-        (t2/update! model pk-value {:entity_id new-hash}))
+        (t2/update! model :toucan/pk pk-value {:entity_id new-hash}))
       {:update-count 1}
       (catch Throwable e
         (let [data (ex-data e)]
@@ -135,7 +136,7 @@
 (defn- drop-entity-ids-for-model! [model]
   (log/infof "Dropping Entity IDs for model %s" (name model))
   (try
-    (let [update-count (t2/update! model (drop-entity-id-conditions-for-model model) {:entity_id nil})]
+    (let [update-count (t2/update! model (h2x/assert-map-or-nil! (drop-entity-id-conditions-for-model model)) {:entity_id nil})]
       (when (pos? update-count)
         (log/infof "Updated %d %s instance(s) successfully." update-count (name model)))
       {:update-count update-count})

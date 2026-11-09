@@ -165,7 +165,7 @@
     (t2/delete! (case (:payload_type instance)
                   :notification/card
                   :model/NotificationCard)
-                payload-id))
+                :toucan/pk payload-id))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -298,7 +298,7 @@
   [notification-handler]
   (when-let [template-id (:template_id notification-handler)]
     (let [channel-type  (keyword (:channel_type notification-handler))
-          template-type (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id)]
+          template-type (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] :id template-id)]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
                         {:status-code   400
@@ -562,7 +562,7 @@
     (current-user-is-creator? notification)
     (current-user-is-recipient? notification)))
   ([_ pk]
-   (mi/can-read? (t2/select-one :model/Notification pk))))
+   (mi/can-read? (t2/select-one :model/Notification :id pk))))
 
 (defmethod mi/can-create? :model/Notification
   [_ notification]
@@ -604,7 +604,7 @@
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? notification))))
   ([_model pk]
-   (mi/can-write? (t2/select-one :model/Notification pk))))
+   (mi/can-write? (t2/select-one :model/Notification :id pk))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;

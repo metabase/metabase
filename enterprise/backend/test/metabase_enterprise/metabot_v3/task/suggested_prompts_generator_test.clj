@@ -39,14 +39,14 @@
                                :metric_questions []}))]
 
               (testing "Non-verified card with use_verified_content=false generates prompts"
-                (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
+                (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
                 (#'metabot-v3.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                 (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                   (is (seq prompts))))
 
               (testing "Non-verified card with use_verified_content=true generates no prompts"
                 (t2/delete! :model/MetabotPrompt)
-                (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
+                (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content true})
                 (#'metabot-v3.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                 (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                   (is (empty? prompts))))
@@ -63,17 +63,17 @@
 
                   (testing "with use_verified_content=true"
                     (t2/delete! :model/MetabotPrompt)
-                    (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
+                    (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content true})
                     (#'metabot-v3.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                     (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                       (is (seq prompts))))
 
                   (testing "with use_verified_content=false"
                     (t2/delete! :model/MetabotPrompt)
-                    (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
+                    (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
                     (#'metabot-v3.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                     (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                       (is (seq prompts))))))
 
             ;; Reset metabot state
-              (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false}))))))))
+              (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false}))))))))

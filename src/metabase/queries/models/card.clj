@@ -461,7 +461,7 @@
   changes)
 
 (defn- check-dashboard-internal-card-insert [card]
-  (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
+  (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
                      (not (contains? #{:question "question" nil} (:type card)))
@@ -548,7 +548,7 @@
                                       parameter))
                                   parameters)]
           (when-not (= parameters new-parameters)
-            (t2/update! model po-id {:parameters new-parameters})))))))
+            (t2/update! model :toucan/pk po-id {:parameters new-parameters})))))))
 
 (mu/defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
@@ -674,7 +674,7 @@
 (defmethod upgrade-card-schema-to 22
   [card _schema-version]
   (update card :result_metadata (fn [cols]
-                                  (mapv #(dissoc % :ident :model/inner_ident) cols))))
+                                  (some->> cols (mapv #(dissoc % :ident :model/inner_ident))))))
 
 ;; Schema upgrade: 22 to 23 ==========================================================================================
 ;; #66199 shows a customer upgrading to 57 breaking certain cards
@@ -856,7 +856,7 @@
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
 (defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card]
-  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
+  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard :id dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
@@ -887,7 +887,7 @@
                                                            [:= :dc.dashboard_id dashboard-id]
                                                            [:= :dcs.card_id card-id]]})))]
     (t2/delete! :model/DashboardCardSeries :id [:in (set dashcard-ids)]))
-  (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
+  (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard :id dashboard-id)
                                                   :user-id api/*current-user-id*}))
 
 (defn- autoplace-or-remove-dashcards-for-card!
@@ -1197,7 +1197,7 @@
       (cache/invalidate-config! {:questions [(:id card-before-update)]
                                  :with-overrides? true})
       ;; ok, now save the Card
-      (t2/update! :model/Card (:id card-before-update) updated-fields))
+      (t2/update! :model/Card :id (:id card-before-update) updated-fields))
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)

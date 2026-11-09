@@ -225,7 +225,7 @@
           updates   (shallow-updates (select-keys dashboard-card update-ks)
                                      (select-keys old-dashboard-card update-ks))]
       (when (seq updates)
-        (t2/update! :model/DashboardCard dashcard-id updates))
+        (t2/update! :model/DashboardCard :id dashcard-id updates))
       (when (not= (:series dashboard-card [])
                   (:series old-dashboard-card []))
         (update-dashboard-cards-series! {dashcard-id series}))
@@ -288,7 +288,7 @@
                                       current-params)]
 
           (when (not= (count current-params) (count cleaned-params))
-            (t2/update! :model/Dashboard dashboard-id {:parameters cleaned-params})
+            (t2/update! :model/Dashboard :id dashboard-id {:parameters cleaned-params})
             (count orphaned-param-ids)))))))
 
 (defn delete-dashboard-cards!

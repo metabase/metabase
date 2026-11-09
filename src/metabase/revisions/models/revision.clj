@@ -42,7 +42,7 @@
         ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
         ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
         revert-instance (select-keys serialized-instance valid-columns)]
-    (t2/update! model id revert-instance)))
+    (t2/update! model :toucan/pk id revert-instance)))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."

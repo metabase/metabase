@@ -85,7 +85,7 @@
       (throw (ex-info (tru "Grant is already revoked")
                       {:status-code 400})))
     (let [now (t/instant)]
-      (t2/update! :model/SupportAccessGrantLog grant-id
+      (t2/update! :model/SupportAccessGrantLog :id grant-id
                   {:revoked_at now
                    :revoked_by_user_id user-id})
       (-> (t2/select-one :model/SupportAccessGrantLog :id grant-id)

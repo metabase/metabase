@@ -58,4 +58,4 @@
     (let [id (app-db/update-or-insert! :model/PythonLibrary
                                        {:path normalized-path}
                                        (constantly {:path normalized-path :source source}))]
-      (t2/select-one :model/PythonLibrary id))))
+      (t2/select-one :model/PythonLibrary :id id))))

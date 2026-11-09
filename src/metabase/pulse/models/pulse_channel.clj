@@ -159,7 +159,7 @@
   (when *archive-parent-pulse-when-last-channel-is-deleted*
     (let [other-channels-count (t2/count :model/PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
-        (t2/update! :model/Pulse pulse-id {:archived true}))))
+        (t2/update! :model/Pulse :id pulse-id {:archived true}))))
   ;; it's best if this is done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
   ;; remove this pulse from its existing trigger
   (update-send-pulse-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
@@ -269,7 +269,7 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (t2/update! :model/PulseChannel id
+    (t2/update! :model/PulseChannel :id id
                 {:details        (cond-> details
                                    (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
                  :enabled        enabled

@@ -334,14 +334,14 @@
     (testing "updating a User"
       (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
         (testing "valid locale"
-          (t2/update! :model/User user-id {:locale "en_GB"})
+          (t2/update! :model/User :id user-id {:locale "en_GB"})
           (is (= "en_GB"
                  (t2/select-one-fn :locale :model/User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
                #"Assert failed: Invalid locale: \"en_XX\""
-               (t2/update! :model/User user-id {:locale "en_XX"}))))))))
+               (t2/update! :model/User :id user-id {:locale "en_XX"}))))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
@@ -350,7 +350,7 @@
         (is (= "en_US"
                (t2/select-one-fn :locale :model/User :id user-id))))
       (testing "updating a User"
-        (t2/update! :model/User user-id {:locale "en-GB"})
+        (t2/update! :model/User :id user-id {:locale "en-GB"})
         (is (= "en_GB"
                (t2/select-one-fn :locale :model/User :id user-id)))))))
 
@@ -365,10 +365,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (t2/update! :model/User user-id {:is_active true :first_name "New name"})))
+          (is (pos? (t2/update! :model/User :id user-id {:is_active true :first_name "New name"})))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+          (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -405,18 +405,18 @@
                                      :last_name  "Smith"
                                      :email      "john.smith@gmail.com"}]
       (is (= "John Smith"
-             (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user)))))
+             (:common_name (t2/select-one [:model/User :first_name :last_name] :id (:id user)))))
       (is (= "John Smith"
-             (:common_name (t2/select-one :model/User (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :first_name :email] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :email] (:id user)))))))
+             (:common_name (t2/select-one :model/User :id (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :first_name :email] :id (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :email] :id (:id user)))))))
   (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
     (mt/with-temp [:model/User user {:first_name nil
                                      :last_name  nil
                                      :email      "john.smith@gmail.com"}]
       (is (= "john.smith@gmail.com"
-             (:common_name (t2/select-one [:model/User :email :first_name :last_name] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user))))))))
+             (:common_name (t2/select-one [:model/User :email :first_name :last_name] :id (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :first_name :last_name] :id (:id user))))))))
 
 (deftest block-sso-provisioning-if-instance-not-set-up
   (testing "SSO users should not be created if an admin user has not already been created (metabase-private#201)"
@@ -436,11 +436,11 @@
   (testing "deactivated_at is set when a user is deactivated and unset when reactivated (#51728)"
     (mt/with-temp [:model/User {user-id :id :as user} {}]
       (is (nil? (:deactivated_at user)))
-      (t2/update! :model/User user-id {:is_active false})
-      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
+      (t2/update! :model/User :id user-id {:is_active false})
+      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User :id user-id)]
         (is (instance? java.time.OffsetDateTime deactivated-at)))
-      (t2/update! :model/User user-id {:is_active true})
-      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
+      (t2/update! :model/User :id user-id {:is_active true})
+      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User :id user-id)]
         (is (nil? deactivated-at))))))
 
 (deftest add-attributes-merges-login-and-jwt-attributes-test

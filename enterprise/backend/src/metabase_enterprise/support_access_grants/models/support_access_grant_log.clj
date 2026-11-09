@@ -26,7 +26,7 @@
   []
   (if-let [user (t2/select-one :model/User :email (sag.settings/support-access-grant-email))]
     (do
-      (t2/update! :model/User (:id user) {:is_active true :is_superuser true})
+      (t2/update! :model/User :id (:id user) {:is_active true :is_superuser true})
       (assoc user :is_active true :is_superuser true))
     (t2/insert-returning-instance! :model/User
                                    {:email (sag.settings/support-access-grant-email)
@@ -55,7 +55,7 @@
         (let [support-user-id (:id support-user)
               auth-identity-ids (t2/select-pks-vec :model/AuthIdentity :user_id support-user-id)]
           (try
-            (t2/update! :model/User support-user-id {:is_superuser false})
+            (t2/update! :model/User :id support-user-id {:is_superuser false})
             (catch Exception e
               ;; If the support user is somehow the last admin, we can't remove superuser via model hooks.
               ;; Sessions and auth identities are still cleaned up below, preventing further access.

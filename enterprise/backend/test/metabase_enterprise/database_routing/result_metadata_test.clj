@@ -39,7 +39,7 @@
       (met/with-user-attributes! :crowberto {"db_name" "__METABASE_ROUTER__"}
         (met/with-user-attributes! :rasta {"db_name" "destination-db"}
           (e2e/with-temp-dbs! [router-db destination-db]
-            (t2/update! :model/Database (u/the-id destination-db)
+            (t2/update! :model/Database :id (u/the-id destination-db)
                         {:name "destination-db" :router_database_id (u/the-id router-db)})
             (sync/sync-database! router-db)
             (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)

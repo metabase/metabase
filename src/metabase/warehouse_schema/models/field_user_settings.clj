@@ -30,9 +30,9 @@
   "Upsert FieldUserSettings"
   [{:keys [id]} settings]
   (let [filtered-settings (u/select-keys-when settings :present field/field-user-settings)]
-    (when-not (t2/exists? :model/FieldUserSettings id)
+    (when-not (t2/exists? :model/FieldUserSettings :field_id id)
       (t2/insert! :model/FieldUserSettings {:field_id id}))
-    (t2/update! :model/FieldUserSettings id filtered-settings)))
+    (t2/update! :model/FieldUserSettings :field_id id filtered-settings)))
 
 (defmethod serdes/hash-fields :model/FieldUserSettings
   [_field-values]

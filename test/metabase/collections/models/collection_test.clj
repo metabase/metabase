@@ -173,7 +173,7 @@
     (mt/with-temp [:model/Collection collection]
       (is (thrown?
            Exception
-           (t2/update! :model/Collection (u/the-id collection)
+           (t2/update! :model/Collection :id (u/the-id collection)
                        {:name ""}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -459,12 +459,12 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Collection location: path is invalid"
-           (t2/update! :model/Collection (u/the-id collection) {:location "/a/"})))))
+           (t2/update! :model/Collection :id (u/the-id collection) {:location "/a/"})))))
 
   (testing "We should be able to UPDATE a Collection and give it a new, *valid* location"
     (mt/with-temp [:model/Collection collection-1 {}
                    :model/Collection collection-2 {}]
-      (is (pos? (t2/update! :model/Collection (u/the-id collection-1) {:location (collection/location-path collection-2)}))))))
+      (is (pos? (t2/update! :model/Collection :id (u/the-id collection-1) {:location (collection/location-path collection-2)}))))))
 
 (deftest crud-validate-ancestors-test
   (testing "Make sure we can't INSERT a Collection with an non-existent ancestors"
@@ -478,7 +478,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Collection location: some or all ancestors do not exist"
-           (t2/update! :model/Collection (u/the-id collection) {:location (collection/location-path (nonexistent-collection-id))}))))))
+           (t2/update! :model/Collection :id (u/the-id collection) {:location (collection/location-path (nonexistent-collection-id))}))))))
 
 (deftest delete-descendant-collections-test
   (testing "When we delete a Collection do its descendants get deleted as well?"
@@ -1071,7 +1071,7 @@
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
     (with-collection-hierarchy! [{:keys [e], :as collections}]
-      (t2/update! :model/Collection (u/the-id e) {:archived true})
+      (t2/update! :model/Collection :id (u/the-id e) {:archived true})
       (is (= {"A" {"B" {}
                    "C" {"D" {}
                         "F" {"G" {}}}}}
@@ -1279,7 +1279,7 @@
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
         (is (thrown?
              Exception
-             (t2/update! :model/Collection (u/the-id personal-collection) {:archived true}))))))
+             (t2/update! :model/Collection :id (u/the-id personal-collection) {:archived true}))))))
 
   (testing "Make sure we're not allowed to *move* a Personal Collection"
     (mt/with-temp [:model/User       my-cool-user          {}
@@ -1287,7 +1287,7 @@
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
         (is (thrown?
              Exception
-             (t2/update! :model/Collection (u/the-id personal-collection)
+             (t2/update! :model/Collection :id (u/the-id personal-collection)
                          {:location (collection/location-path some-other-collection)}))))))
 
   (testing "Make sure we're not allowed to change the owner of a Personal Collection"
@@ -1295,7 +1295,7 @@
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
         (is (thrown?
              Exception
-             (t2/update! :model/Collection (u/the-id personal-collection) {:personal_owner_id (mt/user->id :crowberto)}))))))
+             (t2/update! :model/Collection :id (u/the-id personal-collection) {:personal_owner_id (mt/user->id :crowberto)}))))))
 
   (testing "We are not allowed to change the authority_level of a Personal Collection"
     (mt/with-temp [:model/User my-cool-user]
@@ -1303,7 +1303,7 @@
         (is (thrown-with-msg?
              Exception
              #"You are not allowed to change the authority level of a Personal Collection."
-             (t2/update! :model/Collection (u/the-id personal-collection) {:authority_level "official"}))))))
+             (t2/update! :model/Collection :id (u/the-id personal-collection) {:authority_level "official"}))))))
 
   (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"
     (mt/with-temp [:model/User temp-user]
@@ -1326,7 +1326,7 @@
        :model/Collection {sneaky-coll :id}           {:location (format "/%d/%d/" top-level-coll personal-coll)}]
       (let [check-is-personal (fn [id-or-ids]
                                 (if (int? id-or-ids)
-                                  (-> (t2/select-one :model/Collection id-or-ids)
+                                  (-> (t2/select-one :model/Collection :id id-or-ids)
                                       (t2/hydrate :is_personal)
                                       :is_personal)
                                   (as-> (t2/select :model/Collection :id [:in id-or-ids] {:order-by [:id]}) collections
@@ -1343,7 +1343,7 @@
                    (check-is-personal [deep-personal-coll sneaky-coll])))))
         (testing "root collection shouldn't be hydrated"
           (is (= nil (t2/hydrate nil :is_personal)))
-          (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))
+          (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection :id personal-coll)] :is_personal)))))))))
 
 (deftest hydrate-is-personal-without-any-personal-collections-test
   (testing "batched hydration works on a fresh instance where no Personal Collection has been created yet"
@@ -1389,7 +1389,7 @@
         ;; Root Collection                  Root Collection > A
         (with-personal-and-impersonal-collections [group {[a] :personal}]
           (perms/grant-collection-read-permissions! group collection/root-collection)
-          (t2/update! :model/Collection (u/the-id a) {:location (collection/children-location collection/root-collection)})
+          (t2/update! :model/Collection :id (u/the-id a) {:location (collection/children-location collection/root-collection)})
           (is (= #{"/collection/root/read/"
                    "/collection/A/read/"}
                  (group->perms [a] group)))))
@@ -1401,7 +1401,7 @@
         ;; Root Collection > B             Root Collection > B > A
         (with-personal-and-impersonal-collections [group {[a] :personal, [b] :root}]
           (perms/grant-collection-read-permissions! group b)
-          (t2/update! :model/Collection (u/the-id a) {:location (collection/children-location b)})
+          (t2/update! :model/Collection :id (u/the-id a) {:location (collection/children-location b)})
           (is (= #{"/collection/A/read/"
                    "/collection/B/read/"}
                  (group->perms [a b] group))))))
@@ -1414,7 +1414,7 @@
         ;; Root Collection                     Root Collection > B
         (with-personal-and-impersonal-collections [group {[a b] :personal}]
           (perms/grant-collection-readwrite-permissions! group collection/root-collection)
-          (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location collection/root-collection)})
+          (t2/update! :model/Collection :id (u/the-id b) {:location (collection/children-location collection/root-collection)})
           (is (= #{"/collection/root/"
                    "/collection/B/"}
                  (group->perms [a b] group)))))
@@ -1426,7 +1426,7 @@
         ;; Root Collection > C                 Root Collection > C > B
         (with-personal-and-impersonal-collections [group {[a b] :personal, [c] :root}]
           (perms/grant-collection-readwrite-permissions! group c)
-          (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location c)})
+          (t2/update! :model/Collection :id (u/the-id b) {:location (collection/children-location c)})
           (is (= #{"/collection/B/"
                    "/collection/C/"}
                  (group->perms [a b c] group)))))))
@@ -1437,7 +1437,7 @@
     ;; Root Collection > C                 Root Collection > C > A > B
     (with-personal-and-impersonal-collections [group {[a b] :personal, [c] :root}]
       (perms/grant-collection-readwrite-permissions! group c)
-      (t2/update! :model/Collection (u/the-id a) {:location (collection/children-location c)})
+      (t2/update! :model/Collection :id (u/the-id a) {:location (collection/children-location c)})
       (is (= #{"/collection/A/"
                "/collection/B/"
                "/collection/C/"}
@@ -1454,7 +1454,7 @@
         ;; Root Collection > A        Root Collection
         (with-personal-and-impersonal-collections [group {[a] :root}]
           (perms/grant-collection-readwrite-permissions! group a)
-          (t2/update! :model/Collection (u/the-id a) {:location (lucky-collection-children-location)})
+          (t2/update! :model/Collection :id (u/the-id a) {:location (lucky-collection-children-location)})
           (is (= #{}
                  (group->perms [a] group)))))
       (testing "to a descendant of a Personal Collection, we should *delete* perms entries for it"
@@ -1463,7 +1463,7 @@
         ;; Root Collection > B            Root Collection
         (with-personal-and-impersonal-collections [group {[a] :personal, [b] :root}]
           (perms/grant-collection-readwrite-permissions! group b)
-          (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location a)})
+          (t2/update! :model/Collection :id (u/the-id b) {:location (collection/children-location a)})
           (is (= #{}
                  (group->perms [a b] group))))))
 
@@ -1475,7 +1475,7 @@
         (with-personal-and-impersonal-collections [group {[a b] :root}]
           (perms/grant-collection-readwrite-permissions! group a)
           (perms/grant-collection-readwrite-permissions! group b)
-          (t2/update! :model/Collection (u/the-id b) {:location (lucky-collection-children-location)})
+          (t2/update! :model/Collection :id (u/the-id b) {:location (lucky-collection-children-location)})
           (is (= #{"/collection/A/"}
                  (group->perms [a b] group)))))
 
@@ -1486,7 +1486,7 @@
         (with-personal-and-impersonal-collections [group {[a] :personal, [b c] :root}]
           (perms/grant-collection-readwrite-permissions! group b)
           (perms/grant-collection-readwrite-permissions! group c)
-          (t2/update! :model/Collection (u/the-id c) {:location (collection/children-location a)})
+          (t2/update! :model/Collection :id (u/the-id c) {:location (collection/children-location a)})
           (is (= #{"/collection/B/"}
                  (group->perms [a b c] group)))))))
 
@@ -1497,7 +1497,7 @@
     (with-personal-and-impersonal-collections [group {[a] :personal, [b c] :root}]
       (perms/grant-collection-readwrite-permissions! group b)
       (perms/grant-collection-readwrite-permissions! group c)
-      (t2/update! :model/Collection (u/the-id b) {:location (collection/children-location a)})
+      (t2/update! :model/Collection :id (u/the-id b) {:location (collection/children-location a)})
       (is (= #{}
              (group->perms [a b c] group))))))
 
@@ -1549,7 +1549,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"You cannot move a Collection to a different namespace once it has been created"
-             (t2/update! :model/Collection (:id parent-collection) {:namespace child-namespace})))))))
+             (t2/update! :model/Collection :id (:id parent-collection) {:namespace child-namespace})))))))
 
 (deftest check-special-collection-namespace-cannot-be-personal-collection
   (testing "You should not be able to create a Personal Collection with a non-nil `:namespace`."
@@ -2952,7 +2952,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection"
-               (t2/update! :model/Collection (:id remote-synced-collection)
+               (t2/update! :model/Collection :id (:id remote-synced-collection)
                            {:location (format "/%d/" (:id regular-parent))}))))))))
 
 (deftest moving-into-remote-synced-enhanced-test
@@ -3350,6 +3350,6 @@
 (deftest update-sets-remote-sync-test
   (mt/with-temp [:model/Collection {id :id} {}]
     (t2/update! :model/Collection :id id {:type "remote-synced"})
-    (let [collection (t2/select-one :model/Collection id)]
+    (let [collection (t2/select-one :model/Collection :id id)]
       (is (nil? (:type collection)))
       (is (true? (:is_remote_synced collection))))))

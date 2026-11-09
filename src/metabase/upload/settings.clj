@@ -16,7 +16,7 @@
   [db-id]
   (or (not-handling-api-request?)
       (mi/can-write? :model/Database db-id)
-      (t2/select-one-fn :is_attached_dwh :model/Database db-id)
+      (t2/select-one-fn :is_attached_dwh :model/Database :id db-id)
       (api/throw-403)))
 
 (defsetting uploads-settings
@@ -38,9 +38,9 @@
                                                                      :uploads_table_prefix nil})
                   (do
                     (check-required-perms! db_id)
-                    (t2/update! :model/Database db_id {:uploads_enabled      true
-                                                       :uploads_schema_name  schema_name
-                                                       :uploads_table_prefix table_prefix})))))
+                    (t2/update! :model/Database :id db_id {:uploads_enabled      true
+                                                           :uploads_schema_name  schema_name
+                                                           :uploads_table_prefix table_prefix})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

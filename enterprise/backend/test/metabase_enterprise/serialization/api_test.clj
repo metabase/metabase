@@ -310,7 +310,7 @@
 
                   (testing "POST /api/ee/serialization/import"
                     (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
-                    (t2/delete! :model/Card (:id card))
+                    (t2/delete! :model/Card :id (:id card))
 
                     (let [re-indexed? (atom false)
                           res         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]

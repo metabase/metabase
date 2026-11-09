@@ -484,7 +484,7 @@
                                                                  :template-tags {}})}
                      :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                              :dashboard_id dashboard-id}]
-        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)]
           (mt/with-temporary-setting-values [synchronous-batch-updates true]
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
             (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))

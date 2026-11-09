@@ -24,7 +24,7 @@
                        :model/Card {model-name :name} {:name "Dedicated Tenant Model"
                                                        :type :model
                                                        :collection_id tenant-collection-id}]
-          (t2/select-one :model/Collection tenant-collection-id)
+          (t2/select-one :model/Collection :id tenant-collection-id)
           (let [results (->> (mt/user-http-request :crowberto :get 200 "search" :q "Dedicated Tenant Model")
                              :data
                              (filter #(= (:model %) "dataset"))

@@ -158,7 +158,7 @@
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/download-results :one-million-rows)
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/manage-table-metadata :yes)
     (is (true? (t2/exists? :model/DataPermissions :table_id table-id-1)))
-    (t2/delete! :model/Table table-id-1)
+    (t2/delete! :model/Table :id table-id-1)
     (testing "Table-level permissions are deleted when we delete the table"
       (is (false? (t2/exists? :model/DataPermissions :table_id table-id-1))))))
 
@@ -170,13 +170,13 @@
 
   (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
-          (-> (t2/select-one :model/Table (mt/id :venues))
+          (-> (t2/select-one :model/Table :id (mt/id :venues))
               (t2/hydrate :field_values)
               :field_values))))
 
 (deftest pk-field-hydration-test
   (is (= (mt/id :venues :id)
-         (-> (t2/select-one :model/Table (mt/id :venues))
+         (-> (t2/select-one :model/Table :id (mt/id :venues))
              (t2/hydrate :pk_field)
              :pk_field))))
 
@@ -498,12 +498,12 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :transform}))))
+             (t2/update! :model/Table :id table-id {:data_source :transform}))))
       (testing "to nil"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source nil}))))))
+             (t2/update! :model/Table :id table-id {:data_source nil}))))))
 
   (testing "Cannot change data_source to metabase-transform"
     (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
@@ -511,12 +511,12 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot set data_source to metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+             (t2/update! :model/Table :id table-id {:data_source :metabase-transform}))))
       (testing "but can change to other non-metabase-transform values"
-        (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
+        (is (some? (t2/update! :model/Table :id table-id {:data_source :ingested})))
         (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
       (testing "can also change it to nil"
-        (is (some? (t2/update! :model/Table table-id {:data_source nil})))
+        (is (some? (t2/update! :model/Table :id table-id {:data_source nil})))
         (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
 
 (deftest is-published-and-collection-id-test

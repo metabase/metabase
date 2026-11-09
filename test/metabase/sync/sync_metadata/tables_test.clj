@@ -72,7 +72,7 @@
     (let [dbdef (mt/dataset-definition "sync-retired-table"
                                        [["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]]])]
       (mt/dataset dbdef
-        (t2/update! :model/Table (mt/id :user) {:active false})
+        (t2/update! :model/Table :id (mt/id :user) {:active false})
         ;; table description is changed
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        [(sql.tx/standalone-table-comment-sql
@@ -82,7 +82,7 @@
         (sync/sync-database! (mt/db) {:sync :schema})
         (is (=? {:active true
                  :description "added comment"}
-                (t2/select-one :model/Table (mt/id :user))))))))
+                (t2/select-one :model/Table :id (mt/id :user))))))))
 
 (deftest sync-estimated-row-count-test
   (mt/test-driver :postgres
@@ -97,7 +97,7 @@
            (next.jdbc/execute! conn ["VACUUM;"])))
         (sync/sync-database! (mt/db) {:scan :schema})
         (is (= 100
-               (t2/select-one-fn :estimated_row_count :model/Table (mt/id :venues))))))))
+               (t2/select-one-fn :estimated_row_count :model/Table :id (mt/id :venues))))))))
 
 (defmacro ^:private run-twice
   "Run body twice. In this case, we are checking that creating and updating syncs the tables correctly w.r.t.
@@ -195,17 +195,17 @@
       (#'sync-tables/archive-tables! db)
 
       (testing "Old deactivated table is archived with suffix"
-        (let [archived-table (t2/select-one :model/Table (:id table-1))]
+        (let [archived-table (t2/select-one :model/Table :id (:id table-1))]
           (is (some? (:archived_at archived-table)))
           (is (str/starts-with? (:name archived-table) "old_table__mbarchiv__"))))
 
       (testing "Recently deactivated table is not archived"
-        (let [recent-table (t2/select-one :model/Table (:id table-2))]
+        (let [recent-table (t2/select-one :model/Table :id (:id table-2))]
           (is (nil? (:archived_at recent-table)))
           (is (= "recent_table" (:name recent-table)))))
 
       (testing "Active table is not affected"
-        (let [active-table (t2/select-one :model/Table (:id table-3))]
+        (let [active-table (t2/select-one :model/Table :id (:id table-3))]
           (is (nil? (:archived_at active-table)))
           (is (= "active_table" (:name active-table)))
           (is (true? (:active active-table))))))))
@@ -222,7 +222,7 @@
             original-archived-at (:archived_at table)]
         (#'sync-tables/archive-tables! db)
 
-        (let [updated-table (t2/select-one :model/Table (:id table))]
+        (let [updated-table (t2/select-one :model/Table :id (:id table))]
           (is (= original-name (:name updated-table)))
           (is (= original-archived-at (:archived_at updated-table))))))))
 
@@ -233,19 +233,19 @@
                                        :db_id (u/the-id db)
                                        :active true}]
       (testing "Initially active table has no deactivated_at"
-        (is (nil? (:deactivated_at (t2/select-one :model/Table (:id table))))))
+        (is (nil? (:deactivated_at (t2/select-one :model/Table :id (:id table))))))
 
       (testing "Setting active to false sets deactivated_at"
-        (t2/update! :model/Table (:id table) {:active false})
-        (let [updated-table (t2/select-one :model/Table (:id table))]
+        (t2/update! :model/Table :id (:id table) {:active false})
+        (let [updated-table (t2/select-one :model/Table :id (:id table))]
           (is (some? (:deactivated_at updated-table)))
           (is (false? (:active updated-table)))))
 
       (testing "Reactivating table clears deactivated_at and archived_at"
-        (t2/update! :model/Table (:id table) {:archived_at (t/offset-date-time)})
+        (t2/update! :model/Table :id (:id table) {:archived_at (t/offset-date-time)})
 
-        (t2/update! :model/Table (:id table) {:active true})
-        (let [reactivated-table (t2/select-one :model/Table (:id table))]
+        (t2/update! :model/Table :id (:id table) {:active true})
+        (let [reactivated-table (t2/select-one :model/Table :id (:id table))]
           (is (nil? (:deactivated_at reactivated-table)))
           (is (nil? (:archived_at reactivated-table)))
           (is (true? (:active reactivated-table))))))))
@@ -260,7 +260,7 @@
       (#'sync-tables/archive-tables! db)
 
       (testing "the original table was archived and renamed"
-        (let [archived-table (t2/select-one :model/Table (:id original-table))]
+        (let [archived-table (t2/select-one :model/Table :id (:id original-table))]
           (is (some? (:archived_at archived-table)))
           (is (str/starts-with? (:name archived-table) "sensitive_table__mbarchiv__"))))
 
@@ -294,6 +294,6 @@
                                                       :active         false
                                                       :data_authority :computed}]
             (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table"})
-            (let [updated-table (t2/select-one :model/Table (:id existing-table))]
+            (let [updated-table (t2/select-one :model/Table :id (:id existing-table))]
               (is (= :ingested (:data_authority updated-table)))
               (is (:active updated-table)))))))))
