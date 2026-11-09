@@ -137,10 +137,7 @@ export function setupDatabaseListEndpointError({
   );
 }
 
-export function setupDatabasesEndpoints(
-  databases: Database[],
-  query?: object,
-) {
+export function setupDatabasesEndpoints(databases: Database[], query?: object) {
   if (query) {
     fetchMock.get({
       url: "path:/api/database",
