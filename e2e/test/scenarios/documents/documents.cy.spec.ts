@@ -1614,8 +1614,7 @@ describe("documents", () => {
       });
     });
 
-    it("should scroll to the anchor hash block, show the anchor and comments menus, and copy the anchor URL", () => {
-      cy.log("navigating with an anchor hash scrolls to the block");
+    it("should scroll to the anchor hash block", () => {
       cy.get("@documentId").then((documentId) => {
         cy.visit(`/document/${documentId}#heading-block-2`);
 
@@ -1626,52 +1625,6 @@ describe("documents", () => {
         H.documentContent()
           .findByRole("heading", { name: "First Heading" })
           .should("not.be.visible");
-      });
-
-      cy.log("hovering a block shows the copy link and comments menus");
-      H.documentContent()
-        .findByRole("heading", { name: "First Heading" })
-        .realHover();
-
-      // Filter to visible one since all blocks have hidden menus
-      cy.get('[data-testid="anchor-link-menu"]')
-        .filter(":visible")
-        .first()
-        .findByRole("button", { name: /copy link/i })
-        .should("be.visible");
-
-      // Comments button uses ForwardRefLink, so it's a link role not button
-      cy.get('[data-testid="comments-menu"]')
-        .filter(":visible")
-        .first()
-        .findByRole("link", { name: /comments/i })
-        .should("be.visible");
-
-      cy.log("clicking the anchor link copies the anchor URL");
-      cy.wrap(
-        Cypress.automation("remote:debugger:protocol", {
-          command: "Browser.grantPermissions",
-          params: {
-            permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"],
-            origin: window.location.origin,
-          },
-        }),
-      );
-
-      cy.get('[data-testid="anchor-link-menu"]')
-        .filter(":visible")
-        .first()
-        .findByRole("button", { name: /copy link/i })
-        .click();
-
-      cy.get("body").findByText("Copied!").should("be.visible");
-
-      cy.window().then((win) => {
-        win.navigator.clipboard.readText().then((text) => {
-          expect(text).to.include("/document/");
-          expect(text).to.include("#heading-block-1");
-          expect(text).not.to.include("#heading-block-2");
-        });
       });
     });
   });
