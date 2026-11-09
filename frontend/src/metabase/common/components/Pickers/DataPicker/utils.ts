@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import type { OmniPickerItem } from "../EntityPicker";
@@ -37,7 +36,7 @@ export const getDataPickerValue = (
           ? "metric"
           : "card",
       database_id: pickerInfo.databaseId,
-      schema: getSchemaName(displayInfo.schema), // for compatibility with MiniPicker for now
+      schema: displayInfo.schema ?? undefined, // for compatibility with MiniPicker for now
     };
   }
 
@@ -46,7 +45,7 @@ export const getDataPickerValue = (
     model: "table",
     database_id: pickerInfo.databaseId,
     db_id: pickerInfo.databaseId, // for compatibility with MiniPicker for now
-    schema: getSchemaName(displayInfo.schema), // for compatibility with MiniPicker for now
+    schema: displayInfo.schema ?? undefined, // for compatibility with MiniPicker for now
   };
 };
 

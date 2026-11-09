@@ -619,13 +619,7 @@
      :system-msg    (messages/build-system-message context profile tools)
      :context       context
      :memory-atom   memory-atom
-     :tracking-opts (merge {:profile-id          profile-id
-                            :request-id          (str (random-uuid))
-                            :source              "metabot_agent"
-                            :tag                 "agent"
-                            :required-permission (or (profile-id->required-permission profile-id)
-                                                     :permission/metabot)}
-                           tracking-opts)}))
+     :tracking-opts tracking-opts}))
 
 (defn- stop-recording-rf
   "Wrap `rf` so that `stopped?` turns true once `rf` returns `reduced`.
@@ -836,6 +830,35 @@
                                       (when-not reply? (step-limit-message))))
                   (ended-loop-state loop-state result' reason nil))))))))))
 
+(def ^:private failing-finish-reasons
+  "The finish reasons that make the top-level `result` of an agent_turn_finished event an error, so a fleet query
+  that filters `ai_service_event` on `result` counts failed turns the way it counts failed tool calls. A turn
+  fails when the user got no answer, or an incomplete one:
+  - `:error`           the LLM call failed, or an exception escaped the loop
+  - `:terminal-error`  a tool failed unrecoverably, only the user can act
+  - `:max-iterations`  the step cap was reached with tool calls still pending
+  - `:empty-response`  the model returned nothing
+  - `:length`          the provider cut the answer at its output-token limit
+
+  Every other reason is a success, the user got what the turn could give:
+  - `:stop`           the model ended its answer
+  - `:terminal-tool`  a terminal tool completed the turn
+  - `:reduced`        the client cancelled or disconnected; the server did not fail"
+  #{:error :terminal-error :max-iterations :empty-response :length})
+
+(defn- report-turn-finished!
+  "Fires one agent_turn_finished :snowplow/ai_service_event per turn through [[self/track-ai-service-event!]], so
+  it shares the envelope and the request id of the turn's agent_used_tool events and the fleet view can join a
+  turn to its tool calls. `result` is error for a reason in [[failing-finish-reasons]], else success. The details carry the finish
+  reason and the number of steps (LLM calls) the turn took, which on an exception is the step it died on; `steps`
+  is absent when the turn died before the loop started."
+  [tracking-opts finish-reason steps duration-ms]
+  (self/track-ai-service-event! tracking-opts "agent_turn_finished"
+                                {:duration-ms   (long duration-ms)
+                                 :result        (if (contains? failing-finish-reasons finish-reason) "error" "success")
+                                 :event-details (cond-> {"finish_reason" (name finish-reason)}
+                                                  (some? steps) (assoc "steps" steps))}))
+
 ;;; Public API
 
 (def ^:private debug-log-file
@@ -922,7 +945,19 @@
                           :profile-id profile-id
                           :msg-count  (count (:messages opts))}
           (analytics/inc! :metabase-metabot/agent-requests labels)
-          (let [start-ms (u/start-timer)]
+          (let [start-ms      (u/start-timer)
+                ;; The turn's tracking opts, the caller's over the defaults, among them the request id that ties
+                ;; the turn's analytics events together. Built here, before the agent, and the step in progress
+                ;; kept outside the loop state, so a turn that dies on an exception still reports its finish and
+                ;; the step it died on.
+                turn-tracking (merge {:profile-id          profile-id
+                                      :request-id          (str (random-uuid))
+                                      :source              "metabot_agent"
+                                      :tag                 "agent"
+                                      :required-permission (or (profile-id->required-permission profile-id)
+                                                               :permission/metabot)}
+                                     (:tracking-opts opts))
+                turn-step     (atom nil)]
             (binding [*debug-log*                              (when debug? (atom []))
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms
@@ -945,11 +980,13 @@
                                               :ai/messages   (:messages opts)
                                               :ai/context    (:context opts)
                                               :ai/state      (:state opts)}
-                          (let [agent      (init-agent opts)
+                          (let [agent      (init-agent (assoc opts :tracking-opts turn-tracking))
                                 usage-atom (atom {})
                                 {:keys [result iteration finish-reason consumer-stopped?]}
                                 (->> (initial-loop-state agent rf init usage-atom)
-                                     (iterate loop-step)
+                                     (iterate (fn [loop-state]
+                                                (reset! turn-step (:iteration loop-state))
+                                                (loop-step loop-state)))
                                      (drop-while #(= :continue (:status %)))
                                      first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
@@ -970,16 +1007,21 @@
                             ;; in-process `capture-reducible`/`capturing` path is capture-active but
                             ;; deliberately file-less (session id nil, read `:trace`), so emitting a
                             ;; pointer there would name a `<nil>.jsonl` that never exists.
-                            (if @consumer-stopped?
-                              (unreduced result)
-                              (-> result
-                                  (cond->
-                                   (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
-                                   (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
-                                  (rf {:type :finish :finish-reason finish-reason})))))]
+                            (let [result' (if @consumer-stopped?
+                                            (unreduced result)
+                                            (-> result
+                                                (cond->
+                                                 (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
+                                                 (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
+                                                (rf {:type :finish :finish-reason finish-reason})))]
+                              ;; Report last, after the trailing parts: a throw anywhere above reaches only
+                              ;; the catch below, so a turn is reported once, never as both stop and error.
+                              (report-turn-finished! turn-tracking finish-reason iteration (u/since-ms start-ms))
+                              result')))]
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
+                  (report-turn-finished! turn-tracking :error @turn-step (u/since-ms start-ms))
                   (let [{:keys [api-error status provider]} (ex-data e)
                         msg (ex-message e)]
                     (cond

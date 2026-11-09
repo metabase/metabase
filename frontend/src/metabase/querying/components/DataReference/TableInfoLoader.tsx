@@ -8,6 +8,7 @@ import {
   fetchTableMetadata,
 } from "metabase/redux/tables";
 import type Table from "metabase-lib/v1/metadata/Table";
+import type { TableId } from "metabase-types/api";
 
 type OwnProps = {
   table: Table;
@@ -15,10 +16,9 @@ type OwnProps = {
 };
 
 const mapDispatchToProps = (dispatch: Dispatch) => ({
-  fetchForeignKeys: (args: { id: Table["id"] }) =>
+  fetchForeignKeys: (args: { id: TableId }) =>
     dispatch(fetchTableForeignKeys(args)),
-  fetchMetadata: (args: { id: Table["id"] }) =>
-    dispatch(fetchTableMetadata(args)),
+  fetchMetadata: (args: { id: TableId }) => dispatch(fetchTableMetadata(args)),
 });
 
 type AllProps = OwnProps & ReturnType<typeof mapDispatchToProps>;
@@ -35,6 +35,9 @@ function useDependentTableMetadata({
     useState(!shouldFetchMetadata);
   const tableId = table.id;
   const [, fetchDependentData] = useAsyncFn(() => {
+    if (typeof tableId !== "number") {
+      return Promise.resolve([]);
+    }
     return Promise.all([
       isMissingFields && fetchMetadata({ id: tableId }),
       isMissingFks && fetchForeignKeys({ id: tableId }),

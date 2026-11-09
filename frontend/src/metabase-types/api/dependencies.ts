@@ -4,7 +4,7 @@
 // (See entity-select-fields map)
 
 import type { WritebackActionBase, WritebackActionType } from "./actions";
-import type { Card, CardType } from "./card";
+import type { Card, CardQueryType, CardType } from "./card";
 import type { Collection } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { DataApp } from "./data-app";
@@ -14,7 +14,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
-import type { ConcreteTableId, Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { Transform } from "./transform";
 
 export type GetDependencyCountsRequest = {
@@ -91,7 +91,7 @@ export type TableDependencyNodeData = Pick<
   | "fields"
   | "transform"
   | "owner"
-> & { table_id?: ConcreteTableId };
+> & { table_id?: TableId };
 
 export type TransformDependencyNodeData = Pick<
   Transform,
@@ -117,7 +117,7 @@ export type CardDependencyNodeData = Pick<
   | "last-edit-info"
 > & {
   view_count?: number | null;
-  query_type?: "native" | "query";
+  query_type?: CardQueryType;
 };
 
 export type SnippetDependencyNodeData = Pick<
@@ -155,7 +155,7 @@ export type DocumentDependencyNodeData = Pick<
 >;
 
 export type SandboxDependencyNodeData = {
-  table_id: ConcreteTableId;
+  table_id: TableId;
   table?: Table | null;
 };
 

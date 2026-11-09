@@ -221,7 +221,7 @@ function getSegmentEditorProps(
       tableIdProps.onChange({
         target: {
           name: tableIdProps.name,
-          value: Lib.sourceTableOrCardId(query),
+          value: Lib.primarySourceTableId(query),
         },
       });
     },

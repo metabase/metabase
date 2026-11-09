@@ -73,7 +73,7 @@ function setup(opts?: SetupOpts) {
     <SimpleDataPicker
       entityTypes={opts?.entityTypes ?? ["model", "table"]}
       isInitiallyOpen={true}
-      setSourceTableFn={onClick}
+      setSourceFn={onClick}
       filterByDatabaseId={opts?.filterByDatabaseId ?? null}
       isJoinStep={opts?.isJoinStep ?? false}
       triggerElement={<div>data picker trigger</div>}
@@ -163,10 +163,10 @@ describe("SimpleDataPicker", () => {
      * data source that it's the one with ID 1.
      */
     await userEvent.click(dataSources[0]);
-    expect(onClick).toHaveBeenCalledWith("card__2");
+    expect(onClick).toHaveBeenCalledWith({ type: "card", id: 2 });
   });
 
-  it("should pick a metric by its card id (card__5), like a model", async () => {
+  it("should pick a metric as card 5, like a model", async () => {
     const { onClick } = setup({
       searchResults: [
         ...SEARCH_RESULTS,
@@ -176,7 +176,7 @@ describe("SimpleDataPicker", () => {
     });
 
     await userEvent.click(await screen.findByRole("link", { name: "Revenue" }));
-    expect(onClick).toHaveBeenCalledWith("card__5");
+    expect(onClick).toHaveBeenCalledWith({ type: "card", id: 5 });
   });
 
   it("should show the metric icon for metrics and the table icon for the rest", async () => {
@@ -225,7 +225,7 @@ describe("SimpleDataPicker", () => {
       await userEvent.click(
         await screen.findByRole("link", { name: "Published Orders" }),
       );
-      expect(onClick).toHaveBeenCalledWith(10);
+      expect(onClick).toHaveBeenCalledWith({ type: "table", id: 10 });
     });
 
     it("should only list tables from the current database, and no metrics, when joining", async () => {

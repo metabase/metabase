@@ -18,12 +18,9 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { reinitialize } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { defer } from "metabase/utils/promise";
-import {
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
-  getQuestionVirtualTableId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
+  CardId,
   Collection,
   Database,
   SearchModel,
@@ -165,6 +162,7 @@ interface SetupOpts {
     id: TableId;
     databaseId: number;
   };
+  selectedCardId?: CardId;
   entityTypes: EmbeddingEntityType[];
   libraryCollection?: Collection;
   hasNestedQueriesEnabled?: boolean;
@@ -176,6 +174,7 @@ function setup({
   querySourceType,
   availableModels,
   selectedTable,
+  selectedCardId,
   entityTypes,
   libraryCollection,
   hasNestedQueriesEnabled = true,
@@ -276,13 +275,14 @@ function setup({
       canChangeDatabase={!isJoinStep}
       selectedDatabaseId={selectedTable ? selectedTable.databaseId : null}
       selectedTableId={selectedTable ? selectedTable.id : undefined}
+      selectedCardId={selectedCardId}
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
       canSelectMetric={entityTypes.includes("metric")}
       canSelectSemanticLayer={entityTypes.includes("semantic-layer")}
       triggerElement={<div>Click me to open or close data picker</div>}
-      setSourceTableFn={jest.fn()}
+      setSourceFn={jest.fn()}
     />,
     {
       storeInitialState: createMockState({ settings }),
@@ -467,20 +467,11 @@ describe("DataSourceSelector", () => {
         type: "model",
       });
       setupCardEndpoints(model);
-      setupTableQueryMetadataEndpoint(
-        createMockTable({
-          id: getQuestionVirtualTableId(model.id),
-          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-        }),
-      );
 
       setup({
         ...setupOpts,
         entityTypes: ["table"],
-        selectedTable: {
-          id: getQuestionVirtualTableId(model.id),
-          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-        },
+        selectedCardId: model.id,
       });
 
       expect(await screen.findByText("Models")).toBeInTheDocument();
@@ -500,19 +491,10 @@ describe("DataSourceSelector", () => {
       });
       const cardResponse = defer<Card>();
       fetchMock.get(`path:/api/card/${model.id}`, () => cardResponse.promise);
-      setupTableQueryMetadataEndpoint(
-        createMockTable({
-          id: getQuestionVirtualTableId(model.id),
-          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-        }),
-      );
 
       setup({
         ...setupOpts,
-        selectedTable: {
-          id: getQuestionVirtualTableId(model.id),
-          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-        },
+        selectedCardId: model.id,
       });
 
       await waitFor(() =>
@@ -538,19 +520,10 @@ describe("DataSourceSelector", () => {
         { status: 500 },
         { delay: 500 },
       );
-      setupTableQueryMetadataEndpoint(
-        createMockTable({
-          id: getQuestionVirtualTableId(cardId),
-          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-        }),
-      );
 
       setup({
         ...setupOpts,
-        selectedTable: {
-          id: getQuestionVirtualTableId(cardId),
-          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-        },
+        selectedCardId: cardId,
       });
 
       expect(await screen.findByText("Saved Questions")).toBeInTheDocument();
@@ -626,7 +599,7 @@ describe("DataSourceSelector", () => {
       ).toBeTruthy();
       expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByText("Raw Data"));
+      await userEvent.click(rawData);
       expect(await screen.findByText("Models")).toBeInTheDocument();
       expect(screen.getByText("Raw Data")).toBeInTheDocument();
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
@@ -1017,7 +990,7 @@ describe("DataSourceSelector", () => {
           canSelectMetric
           canSelectSemanticLayer
           triggerElement={<div>Click me to open or close data picker</div>}
-          setSourceTableFn={jest.fn()}
+          setSourceFn={jest.fn()}
         />,
         {
           storeInitialState: createMockState({

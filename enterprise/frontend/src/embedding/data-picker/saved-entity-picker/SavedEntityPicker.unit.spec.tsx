@@ -1,3 +1,4 @@
+import { QueryStatus } from "@reduxjs/toolkit/query";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -5,7 +6,15 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { defer } from "metabase/utils/promise";
 import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
@@ -83,24 +92,69 @@ function mockCollectionItemsEndpoint() {
   });
 }
 
-interface SetupOpts {
+type SetupOpts = {
   type?: SavedEntityType;
   collections?: Collection[];
+  rootCollectionRequest?: "loads-after-collections" | "fails";
+  collectionsTreeRequest?: "fails";
+};
+
+function mockRootCollectionRequest(
+  rootCollectionRequest: NonNullable<SetupOpts["rootCollectionRequest"]>,
+) {
+  const rootCollection = defer<Collection>();
+  fetchMock.removeRoutes({ names: ["collection-root"] });
+  fetchMock.get(
+    "path:/api/collection/root",
+    rootCollectionRequest === "fails" ? 403 : () => rootCollection.promise,
+  );
+  return () => rootCollection.resolve(createMockCollection(ROOT_COLLECTION));
 }
 
 async function setup({
   type = "question",
   collections = [COLLECTIONS.PERSONAL, COLLECTIONS.REGULAR],
+  rootCollectionRequest,
+  collectionsTreeRequest,
 }: SetupOpts = {}) {
+  // registered before setupCollectionsEndpoints, so it answers first
+  if (collectionsTreeRequest === "fails") {
+    fetchMock.get("path:/api/collection/tree", 500);
+  }
   setupCollectionsEndpoints({ collections });
 
   mockCollectionItemsEndpoint();
 
-  renderWithProviders(
+  let resolveRootCollection = () => {};
+  if (rootCollectionRequest) {
+    resolveRootCollection = mockRootCollectionRequest(rootCollectionRequest);
+    setupCollectionItemsEndpoint({
+      collection: COLLECTIONS.PERSONAL,
+      collectionItems: [
+        createMockCollectionItem({ id: 4, name: "personal item" }),
+      ],
+    });
+  }
+
+  const { store } = renderWithProviders(
     <SavedEntityPicker type={type} onSelect={jest.fn()} onBack={jest.fn()} />,
   );
-  // The picker renders nothing, not a loader, until its collections load
-  await screen.findByTestId("saved-entity-collection-tree");
+  // a held "Our analytics" keeps the loader up until the test releases it
+  if (rootCollectionRequest !== "loads-after-collections") {
+    await waitForLoaderToBeRemoved();
+  }
+
+  return { store, resolveRootCollection };
+}
+
+function hasLoadedCollectionsTree(
+  store: Awaited<ReturnType<typeof setup>>["store"],
+) {
+  return Object.values(store.getState()["metabase-api"].queries).some(
+    (query) =>
+      query?.endpointName === "listCollectionsTree" &&
+      query.status === QueryStatus.fulfilled,
+  );
 }
 
 describe("SavedEntityPicker", () => {
@@ -144,5 +198,47 @@ describe("SavedEntityPicker", () => {
     await userEvent.click(within(tree).getByText("Library"));
 
     expect(await screen.findByText("Revenue")).toBeInTheDocument();
+  });
+
+  it("shows a loader while Our analytics is still loading after the collections", async () => {
+    const { store, resolveRootCollection } = await setup({
+      rootCollectionRequest: "loads-after-collections",
+    });
+
+    await waitFor(() => expect(hasLoadedCollectionsTree(store)).toBe(true));
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+
+    resolveRootCollection();
+    await waitForLoaderToBeRemoved();
+  });
+
+  it("opens on Our analytics when the root collection loads after the collections", async () => {
+    const { store, resolveRootCollection } = await setup({
+      rootCollectionRequest: "loads-after-collections",
+    });
+
+    // answer "Our analytics" only once the collections tree has loaded
+    await waitFor(() => expect(hasLoadedCollectionsTree(store)).toBe(true));
+    resolveRootCollection();
+
+    await screen.findByText("Our analytics");
+    const options = await screen.findAllByTestId("option-text");
+    expect(options.map((node) => node.textContent)).toEqual(["a", "A", "B"]);
+  });
+
+  it("opens on the first collection when the root collection request fails", async () => {
+    await setup({ rootCollectionRequest: "fails" });
+
+    const options = await screen.findAllByTestId("option-text");
+    expect(options.map((node) => node.textContent)).toEqual(["personal item"]);
+    expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+  });
+
+  it("shows an error instead of the loader when the collections request fails", async () => {
+    await setup({ collectionsTreeRequest: "fails" });
+
+    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 });

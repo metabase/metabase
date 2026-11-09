@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import NativeQuery, {
@@ -58,15 +59,15 @@ function makeDatasetQuery(
   queryText: string,
   templateTags: TemplateTags | undefined,
   databaseId: DatabaseId,
+  metadata: Metadata,
 ): DatasetQuery {
-  return {
-    type: "native",
-    database: databaseId,
-    native: {
-      query: queryText,
-      "template-tags": templateTags,
-    },
-  };
+  const query = Lib.createTestNativeQuery(
+    createMetadataProvider({ databaseId, metadata }),
+    { query: queryText },
+  );
+  return Lib.toJsQuery(
+    templateTags ? Lib.withTemplateTags(query, templateTags) : query,
+  );
 }
 
 function makeQuery(
@@ -76,14 +77,14 @@ function makeQuery(
 ) {
   return new NativeQuery(
     Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
-    makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
+    makeDatasetQuery(query, templateTags, SAMPLE_DB_ID, metadata),
   );
 }
 
 function makeMongoQuery(query: string) {
   return new NativeQuery(
     Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata: METADATA }),
-    makeDatasetQuery(query, undefined, MONGO_DB_ID),
+    makeDatasetQuery(query, undefined, MONGO_DB_ID, METADATA),
   );
 }
 
@@ -176,6 +177,15 @@ describe("NativeQuery", () => {
       it("returns null for a non-mongo query", () => {
         expect(query.table()).toBe(null);
         expect(query.setQueryText("SELECT * FROM ORDERS").table()).toBe(null);
+      });
+    });
+
+    describe("setDatabaseId()", () => {
+      it("switches a SQL query to a Mongo database (metabase#53299)", () => {
+        const mongoQuery = makeQuery("SELECT 1").setDatabaseId(MONGO_DB_ID);
+        expect(mongoQuery.engine()).toBe("mongo");
+        expect(mongoQuery.requiresTable()).toBe(true);
+        expect(mongoQuery.queryText()).toBe("SELECT 1");
       });
     });
   });
@@ -533,15 +543,9 @@ describe("NativeQuery", () => {
       });
 
       it("should update snippet names that differ on spacing", () => {
-        const q = makeQuery("{{ snippet: foo }} {{snippet:  foo  }}", {
-          " snippet: foo ": createMockTemplateTag({
-            name: " snippet: foo ",
-            type: "snippet",
-            "snippet-id": SNIPPET_ID,
-            "snippet-name": "foo",
-          }),
-          "snippet:  foo  ": createMockTemplateTag({
-            name: "snippet:  foo  ",
+        const q = makeQuery("{{ snippet: foo }} {{snippet: foo}}", {
+          "snippet: foo": createMockTemplateTag({
+            name: "snippet: foo",
             type: "snippet",
             "snippet-id": SNIPPET_ID,
             "snippet-name": "foo",
@@ -595,6 +599,20 @@ describe("NativeQuery", () => {
       expect(oldQuery.templateTags()).toEqual(newQuery.templateTags());
     });
 
+    it("should preserve the order of template tags when the type of a tag changes (metabase#11580)", () => {
+      const oldQuery = makeQuery().setQueryText("SELECT {{foo}} {{bar}}");
+      const newQuery = oldQuery.setTemplateTag("foo", {
+        ...oldQuery.templateTagsMap()["foo"],
+        type: "number",
+      });
+
+      expect(newQuery.templateTags().map((tag) => tag.name)).toEqual([
+        "foo",
+        "bar",
+      ]);
+      expect(newQuery.templateTagsMap()["foo"].type).toBe("number");
+    });
+
     it("should allow setting source settings for tags", () => {
       const oldQuery = makeQuery().setQueryText(
         "SELECT * FROM PRODUCTS WHERE {{t1}} AND {{t2}}",
@@ -613,6 +631,25 @@ describe("NativeQuery", () => {
       expect(newParameters[0].values_query_type).toEqual("search");
       expect(newParameters[0].values_source_type).toEqual("static-list");
       expect(newParameters[0].values_source_config).toEqual({ values: ["A"] });
+    });
+
+    it("should use the default value of a required tag as the parameter default", () => {
+      const oldQuery = makeQuery().setQueryText(
+        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{cat}}",
+      );
+      const newQuery = oldQuery.setTemplateTag("cat", {
+        ...oldQuery.templateTagsMap()["cat"],
+        required: true,
+        default: "Gizmo",
+      });
+
+      const newParameters = newQuery.question().parameters();
+      expect(newParameters).toHaveLength(1);
+      expect(newParameters[0]).toMatchObject({
+        slug: "cat",
+        required: true,
+        default: "Gizmo",
+      });
     });
   });
 

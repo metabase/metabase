@@ -17,7 +17,9 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { TransformTest } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { QueryTransformSource, TransformTest } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -31,6 +33,11 @@ import {
 } from "metabase-types/api/mocks";
 
 import { TransformTestOverviewPage } from "./TransformTestOverviewPage";
+
+const QUERY_SOURCE: QueryTransformSource = {
+  type: "query",
+  query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+};
 
 type SetupOpts = {
   test?: TransformTest;
@@ -49,6 +56,7 @@ function setup({
   const transform = createMockTransform({
     id: 1,
     name: "Customer revenue",
+    source: QUERY_SOURCE,
     target: {
       type: "table",
       schema: "analytics",

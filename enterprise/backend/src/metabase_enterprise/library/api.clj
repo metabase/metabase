@@ -33,8 +33,7 @@
                                                              (collection/visible-collection-filter-clause
                                                               :id
                                                               {:include-archived-items :exclude})))
-        ;; Library questions are only ever dashboard questions, which aren't collection items
-        below-card-types (disj (library.db/card-types-in-collections descendent-ids) :question)
+        below-card-types (library.db/card-types-in-collections descendent-ids)
         below-tables? (library.db/published-table-in-collections? descendent-ids)
         below-dashboards? (library.db/dashboard-in-collections? descendent-ids)]
     ;; This function is only used on the root Library which cannot have items directly in it
@@ -43,6 +42,8 @@
            :below (cond-> below-card-types
                     (contains? below-card-types :model)
                     (-> (disj :model) (conj :dataset))
+                    (contains? below-card-types :question)
+                    (-> (disj :question) (conj :card))
                     below-tables? (conj :table)
                     below-dashboards? (conj :dashboard)
                     true sort

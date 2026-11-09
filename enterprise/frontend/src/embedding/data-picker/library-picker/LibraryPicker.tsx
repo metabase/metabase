@@ -2,12 +2,12 @@ import { useState } from "react";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { Box, Icon } from "metabase/ui";
 import type {
   Collection,
   DatabaseId,
   LibraryCollection,
-  TableId,
 } from "metabase-types/api";
 
 import { DataSelectorDataBucketPicker } from "../DataSelectorDataBucketPicker";
@@ -25,8 +25,8 @@ interface LibraryPickerProps {
   libraryCollection: LibraryCollection;
   canSelectMetric: boolean;
   databaseId?: DatabaseId | null;
-  tableId?: TableId;
-  onSelect: (tableId: TableId) => void;
+  selectedSource?: DataSource;
+  onSelect: (source: DataSource) => void;
   /** Without it, there's no link back to the bucket step. */
   onBack?: () => void;
 }
@@ -40,7 +40,7 @@ export function LibraryPicker({
   libraryCollection,
   canSelectMetric,
   databaseId,
-  tableId,
+  selectedSource,
   onSelect,
   onBack,
 }: LibraryPickerProps) {
@@ -68,7 +68,7 @@ export function LibraryPicker({
       <SavedEntityPicker
         type={selectedFolder.type}
         libraryFolder={selectedFolder.collection}
-        tableId={tableId}
+        selectedSource={selectedSource}
         databaseId={databaseId}
         onSelect={onSelect}
         onBack={

@@ -9,11 +9,13 @@
    [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
-   [metabase-enterprise.serialization.core :as serialization]
-   [metabase.models.serialization :as serdes]
+   [metabase-enterprise.serialization.core :as ee.serialization]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -80,13 +82,13 @@
   `:resources` holds the `{:path :content}` specs of its resource files."
   [path entity]
   {:path      path
-   :content   (serialization/entity-yaml entity)
+   :content   (ee.serialization/entity-yaml entity)
    :resources (vec (resource-specs path entity))})
 
 (defn entity->file-spec
-  "[[entity->file-spec-at]] the path storage context `opts` (from [[serdes/storage-base-context]]) gives `entity`."
-  [opts entity]
-  (entity->file-spec-at (serialization/entity-file-path opts entity) entity))
+  "[[entity->file-spec-at]] the path `namer` (from [[ee.serialization/file-namer]]) gives `entity`."
+  [namer entity]
+  (entity->file-spec-at (ee.serialization/entity-file-path namer entity) entity))
 
 (defn file-specs
   "The `{:path :content}` specs of every file a `file-spec` from [[entity->file-spec]] writes."
@@ -103,13 +105,37 @@
   [{:keys [content resources]}]
   (content-hash (apply str content (mapcat (juxt :path :content) resources))))
 
+(defn- model-type-file-infos
+  "The `[[model_type id] {:path :content-hash}]` of each of the `model-type` rows with `ids` that exports, its path
+  given out by `namer`."
+  [namer model-type ids]
+  (let [model     (keyword "model" model-type)
+        pk        (first (t2/primary-keys model))
+        instances (into [] (ee.serialization/select-rows model (assoc spec/git-sync-extract-opts :ids (vec ids))))
+        exported  (serialization/export-batch model instances)
+        found     (into [] (remove (comp #(instance? Exception %) second)) (map vector instances exported))
+        paths     (ee.serialization/entity-file-paths namer (mapv second found))]
+    (map (fn [[instance entity] path]
+           (let [fspec (entity->file-spec-at path entity)]
+             [[model-type (get instance pk)] {:path (:path fspec) :content-hash (file-spec-hash fspec)}]))
+         found
+         paths)))
+
+(defn rows->file-infos
+  "The repo `:path` and the SHA-256 (hex) `:content-hash` of the serialized YAML of the entity each of `rows`
+  ({:model_type :model_id}) names, or nil for one that can't be extracted, as a vector aligned with `rows`."
+  [rows]
+  (let [namer (ee.serialization/file-namer)
+        infos (into {}
+                    (mapcat (fn [[model-type ids]] (model-type-file-infos namer model-type ids)))
+                    (u/group-by :model_type :model_id conj #{} rows))]
+    (mapv #(get infos [(:model_type %) (:model_id %)]) rows)))
+
 (defn row->file-info
   "The repo `:path` and the SHA-256 (hex) `:content-hash` of the serialized YAML for the entity named by `row`
   ({:model_type :model_id}), or nil if it can't be extracted."
   [row]
-  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-    (let [fspec (entity->file-spec (serdes/storage-base-context) entity)]
-      {:path (:path fspec), :content-hash (file-spec-hash fspec)})))
+  (first (rows->file-infos [row])))
 
 (defn row->content-hash
   "SHA-256 (hex) of the serialized YAML for the entity named by `row` ({:model_type :model_id}), or nil if it
@@ -128,7 +154,7 @@
 
   Throws Exception if any entity in the stream is an Exception instance."
   [stream task-id & {:keys [total]}]
-  (let [opts   (serdes/storage-base-context)
+  (let [opts   (ee.serialization/file-namer)
         stream (if (or (nil? task-id) total (counted? stream)) stream (vec stream))
         total  (or total (when task-id (count stream)))
         report (if (and task-id (pos? total))
@@ -136,22 +162,25 @@
                    (remote-sync.task/update-progress! task-id (-> n (/ total) (min 1) (* 0.65) (+ 0.3))))
                  (constantly nil))]
     (into []
-          (comp (map-indexed (fn [idx entity]
-                               (when (instance? Exception entity)
-                                 (throw entity))
-                               (let [spec (entity->file-spec opts entity)]
-                                 (report (inc idx))
-                                 (file-specs spec))))
+          (comp (partition-all serialization/batch-size)
+                (map (fn [batch]
+                       (when-let [e (some #(when (instance? Exception %) %) batch)]
+                         (throw e))
+                       (map vector batch (ee.serialization/entity-file-paths opts batch))))
+                cat
+                (map-indexed (fn [idx [entity path]]
+                               (report (inc idx))
+                               (file-specs (entity->file-spec-at path entity))))
                 cat)
           stream)))
 
 (defn- managed-path? [^String path]
   (when-let [idx (str/index-of path "/")]
-    (contains? serialization/legal-top-level-paths (subs path 0 idx))))
+    (contains? ee.serialization/legal-top-level-paths (subs path 0 idx))))
 
 (defn- shared-path? [^String path]
   (when-let [idx (str/index-of path "/")]
-    (contains? serialization/shared-top-level-paths (subs path 0 idx))))
+    (contains? ee.serialization/shared-top-level-paths (subs path 0 idx))))
 
 (defn- parent-dir [^String path]
   (when-let [idx (str/last-index-of path "/")]
@@ -161,12 +190,12 @@
   "The paths of the resource files that the entity YAML files directly in directory `dir` of `snapshot` declare."
   [snapshot dir]
   (into #{}
-        (comp (filter serialization/entity-file-path?)
+        (comp (filter ee.serialization/entity-file-path?)
               (mapcat (fn [path]
                         (try
                           (let [entity (yaml/parse-string (source.p/read-file snapshot path)
-                                                          {:key-fn serialization/parse-key})]
-                            (map #(str dir "/" %) (serdes/resource-paths entity)))
+                                                          {:key-fn ee.serialization/parse-key})]
+                            (map #(str dir "/" %) (serialization/resource-paths entity)))
                           (catch Exception _
                             nil)))))
         (source.p/list-dir snapshot dir)))
@@ -178,14 +207,14 @@
   (let [resources (memoize #(declared-resources snapshot %))]
     (filterv (fn [path]
                (and (managed-path? path)
-                    (or (serialization/entity-file-path? path)
+                    (or (ee.serialization/entity-file-path? path)
                         (some #(contains? (resources %) path)
                               (take-while some? (iterate parent-dir (parent-dir path)))))))
              paths)))
 
 (defn replace-managed-files!
   "Stage the removal of every file serialization owns in `snapshot` into `commit`, so the files staged next replace
-  them wholesale; files in [[serialization/shared-top-level-paths]] that serialization does not own are kept."
+  them wholesale; files in [[ee.serialization/shared-top-level-paths]] that serialization does not own are kept."
   [commit snapshot]
   (source.p/replace-all! commit)
   (run! #(source.p/stage-delete! commit %)
@@ -266,6 +295,6 @@
     (setting/get :remote-sync-url)
     (or branch (setting/get :remote-sync-branch))
     (setting/get :remote-sync-token)
-    serialization/replaced-top-level-paths))
+    ee.serialization/replaced-top-level-paths))
   ([]
    (source-from-settings (setting/get :remote-sync-branch))))

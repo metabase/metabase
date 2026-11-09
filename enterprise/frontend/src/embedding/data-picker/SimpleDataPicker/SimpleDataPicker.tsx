@@ -3,12 +3,12 @@ import { useMemo } from "react";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { PLUGIN_LIBRARY, type SimpleDataPickerProps } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { useSetting } from "metabase/settings";
 import { Box, Popover } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
+import type { SearchModel, SearchResult } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
@@ -16,9 +16,9 @@ import { SimpleDataPickerView } from "./SimpleDataPickerView";
 export function SimpleDataPicker({
   filterByDatabaseId,
   isJoinStep,
-  selectedEntity,
+  selectedSource,
   isInitiallyOpen,
-  setSourceTableFn,
+  setSourceFn,
   triggerElement,
   entityTypes,
 }: SimpleDataPickerProps) {
@@ -48,18 +48,15 @@ export function SimpleDataPicker({
   const options = useMemo(() => {
     const entities = [...(data?.data ?? []), ...(libraryData?.data ?? [])];
 
-    return sortEntities(
-      entities.map((entity) => {
-        return {
-          ...entity,
-          id:
-            entity.model === "dataset" || entity.model === "metric"
-              ? getQuestionVirtualTableId(entity.id)
-              : entity.id,
-        };
-      }),
-      { sort_column: "name", sort_direction: "asc" },
-    );
+    return sortEntities(entities, {
+      sort_column: "name",
+      sort_direction: "asc",
+    }).flatMap((entity) => {
+      const source = getEntitySource(entity);
+      return source != null
+        ? [{ name: entity.name, source, model: entity.model }]
+        : [];
+    });
   }, [data, libraryData]);
 
   return (
@@ -87,10 +84,10 @@ export function SimpleDataPicker({
           error={error ?? libraryError}
         >
           <SimpleDataPickerView
-            selectedEntity={selectedEntity}
-            onClick={(tableId) => {
+            selectedSource={selectedSource}
+            onClick={(source) => {
               close();
-              setSourceTableFn(tableId);
+              setSourceFn(source);
             }}
             options={options}
           />
@@ -145,8 +142,18 @@ function useLibrarySearch({
 
 type SortColumn = keyof SearchResult;
 
+function getEntitySource(entity: SearchResult): DataSource | undefined {
+  const { id, model } = entity;
+  if (typeof id !== "number") {
+    return undefined;
+  }
+  return model === "dataset" || model === "metric"
+    ? { type: "card", id }
+    : { type: "table", id };
+}
+
 function sortEntities(
-  entities: SearchResult<TableId>[],
+  entities: SearchResult[],
   sort: SortingOptions<SortColumn>,
 ) {
   const { sort_column, sort_direction } = sort;

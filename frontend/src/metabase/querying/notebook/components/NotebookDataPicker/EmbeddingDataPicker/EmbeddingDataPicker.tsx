@@ -1,6 +1,7 @@
 import { useContext } from "react";
 
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { EmbeddingDataPickerContext } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import { useSelector } from "metabase/redux";
@@ -12,8 +13,6 @@ import {
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 
@@ -25,7 +24,7 @@ type EmbeddingDataPickerProps = {
   placeholder: string;
   canChangeDatabase: boolean;
   isDisabled: boolean;
-  onChange: (tableId: TableId) => void;
+  onChange: (source: DataSource) => void;
 };
 export function EmbeddingDataPicker({
   query,
@@ -46,6 +45,7 @@ export function EmbeddingDataPicker({
 
   const databaseId = Lib.databaseID(query);
   const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
+  const selectedSource = getSelectedSource(pickerInfo);
   const { data: card } = useGetCardQuery(
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
   );
@@ -71,7 +71,7 @@ export function EmbeddingDataPicker({
   const forceMultiStagedDataPicker = dataPicker === "staged";
 
   const {
-    sourceId,
+    sourceCardId,
     sourceType,
     collectionId: sourceModelCollectionId,
     isFetching: isSourceModelFetching,
@@ -105,7 +105,7 @@ export function EmbeddingDataPicker({
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
         isJoinStep={isJoinStep}
-        selectedEntity={pickerInfo?.tableId}
+        selectedSource={selectedSource}
         isInitiallyOpen={!table}
         triggerElement={
           <DataPickerTarget
@@ -123,25 +123,29 @@ export function EmbeddingDataPicker({
             isDisabled={isDisabled}
           />
         }
-        setSourceTableFn={onChange}
+        setSourceFn={onChange}
         entityTypes={simpleDataPickerEntityTypes}
       />
     );
   }
 
-  const isSourceSelected = Boolean(pickerInfo?.tableId);
   return (
     <PLUGIN_EMBEDDING.DataSourceSelector
       key={
-        isSourceSelected
-          ? pickerInfo?.tableId
-          : `${sourceId}:${isSourceModelFetching}`
+        selectedSource != null
+          ? `${selectedSource.type}:${selectedSource.id}`
+          : `${sourceCardId}:${isSourceModelFetching}`
       }
       isInitiallyOpen={isSourceModelFetching ? false : !table}
       querySourceType={sourceType}
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
-      selectedTableId={pickerInfo?.tableId}
+      selectedTableId={
+        selectedSource?.type === "table" ? selectedSource.id : undefined
+      }
+      selectedCardId={
+        selectedSource?.type === "card" ? selectedSource.id : undefined
+      }
       selectedCollectionId={
         normalizedCard?.collection_id ?? sourceModelCollectionId
       }
@@ -163,25 +167,32 @@ export function EmbeddingDataPicker({
           isDisabled={isDisabled}
         />
       }
-      setSourceTableFn={onChange}
+      setSourceFn={onChange}
     />
   );
 }
 
-/**
- * The query's source, which is either a table or a card behind a virtual table
- * id. Only a card has a type and a collection.
- */
+function getSelectedSource(
+  pickerInfo: Lib.PickerInfo | null | undefined,
+): DataSource | undefined {
+  if (pickerInfo?.cardId != null) {
+    return { type: "card", id: pickerInfo.cardId };
+  }
+  if (pickerInfo?.tableId != null) {
+    return { type: "table", id: pickerInfo.tableId };
+  }
+  return undefined;
+}
+
 function useSourceEntity(query: Lib.Query) {
-  const sourceId = Lib.sourceTableOrCardId(query);
-  const cardId = getQuestionIdFromVirtualTableId(sourceId);
+  const sourceCardId = Lib.primarySourceCardId(query);
   const { data: card, isFetching } = useGetCardQuery(
-    cardId != null ? { id: cardId } : skipToken,
+    sourceCardId != null ? { id: sourceCardId } : skipToken,
   );
   const isModelOrQuestion = card?.type === "model" || card?.type === "question";
 
   return {
-    sourceId,
+    sourceCardId,
     sourceType: card?.type,
     collectionId: isModelOrQuestion ? card.collection_id : undefined,
     isFetching,

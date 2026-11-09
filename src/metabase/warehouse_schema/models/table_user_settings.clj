@@ -2,7 +2,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -174,66 +174,52 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/extract-query "TableUserSettings" [_model-name {:keys [filter-ids]}]
-  (warehouse-schema.db/table-user-settings-for-tables filter-ids))
+(def ^:private table-user-settings-slug "___tableusersettings")
 
-(defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
-
-(defmethod serdes/generate-path "TableUserSettings" [_ {:keys [table_id]}]
-  (conj (serdes/table->path (serdes/*export-table-fk* table_id))
-        {:model "TableUserSettings" :id "1"}))
-
-(defmethod serdes/deserialization-dependencies "TableUserSettings" [{:keys [collection_id]}]
-  (when collection_id
-    [[{:model "Collection" :id collection_id}]]))
-
-(defmethod serdes/load-find-local "TableUserSettings" [path]
-  (let [found-table (serdes/load-find-local (pop path))]
-    (warehouse-schema.db/table-user-settings (:id found-table))))
-
-(def ^:private legacy-fields
-  "The FieldUserSettings a settings file carried before they got files of their own."
-  (serdes/nested :model/FieldUserSettings :table_id
-                 {:delete-children! field-user-settings/delete-field-user-settings-for-table!}))
-
-(defmethod serdes/load-one! "TableUserSettings" [ingested maybe-local]
-  (t2/with-transaction [_]
-    (let [settings (serdes/default-load-one! ingested maybe-local)
-          table-id (serdes/*import-table-fk* (serdes/table-path->table-ref (pop (serdes/path ingested))))]
-      (let [settings (warehouse-schema.db/table-user-settings table-id)]
-        (warehouse-schema.db/update-table! table-id (without-derived-half
-                                                     (select-keys settings (user-settings/user-set-table-columns settings)))))
-      (when (contains? ingested :fields)
-        ((:import-with-context legacy-fields)
-         (t2/instance :model/TableUserSettings {:table_id table-id}) :fields (:fields ingested)))
-      (when (:field_order ingested)
-        (table/update-field-positions! (warehouse-schema.db/table table-id)))
-      settings)))
-
-(defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
+(defmethod serialization/spec :model/TableUserSettings [_]
   {:schema    ::warehouse-schema.schema/external-table-user-settings
+   :identity  [:table_id]
+   :primary-key :table_id
    :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
                :show_in_getting_started :data_authority :data_source :owner_email :is_published
                :description_set :visibility_type_set :data_layer_set :data_source_set]
    :skip      [:caveats_set :points_of_interest_set]
-   :defaults  {:description_set        false
-               :visibility_type_set    false
-               :data_layer_set         false
-               :data_source_set        false}
-   :transform {:collection_id (serdes/fk :model/Collection)
-               :owner_user_id (serdes/fk :model/User)
-               :data_layer    (serdes/optional-kw)
-               :table_id      {::serdes/fk true
-                               :export     #(serdes/*export-table-fk* %)
-                               :import-with-context (fn [current _ _]
-                                                      (serdes/*import-table-fk* (serdes/table-path->table-ref (pop (serdes/path current)))))}}})
+   :defaults  {:description_set     false
+               :visibility_type_set false
+               :data_layer_set      false
+               :data_source_set     false}
+   :transform {:collection_id (serialization/fk-transform :model/Collection)
+               :owner_user_id serialization/user-transform
+               :data_layer    serialization/keyword-transform
+               :table_id      serialization/table-transform}})
 
-(defmethod serdes/ingested-path "TableUserSettings" [_ {:keys [table_id]}]
-  (conj (serdes/table->path table_id) {:model "TableUserSettings" :id "1"}))
+(defmethod serialization/storage-paths :model/TableUserSettings [_ entities _ctx]
+  (mapv (fn [{:keys [table_id]}]
+          (conj (serialization/storage-path-prefixes table_id)
+                {:label (nth table_id 2) :suffix table-user-settings-slug}))
+        entities))
 
-(def ^:private table-user-settings-slug "___tableusersettings")
+(defmethod serialization/import-dependencies :model/TableUserSettings [_ entities]
+  (mapv (fn [{:keys [collection_id]}]
+          (cond-> #{} collection_id (conj [:model/Collection collection_id])))
+        entities))
 
-(defmethod serdes/storage-path "TableUserSettings" [tus _ctx]
-  (let [table-path (pop (serdes/path tus))]
-    (conj (serdes/storage-path-prefixes table-path)
-          {:label (:id (peek table-path)) :suffix table-user-settings-slug})))
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defn- load-legacy-fields!
+  "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
+  FieldUserSettings of their Tables."
+  [items]
+  (doseq [{{:keys [table_id]} :instance {:keys [fields]} :entity} (filter #(contains? (:entity %) :fields) items)]
+    (let [kept (into #{} (map :field_id)
+                     (serialization/load :model/FieldUserSettings (mapv serialization/restore-identity fields)))]
+      (warehouse-schema.db/delete-field-user-settings!
+       (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
+
+(defmethod serialization/after-load :model/TableUserSettings [_ items]
+  (load-legacy-fields! items)
+  (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items]
+    (warehouse-schema.db/update-table! table_id (without-derived-half
+                                                 (select-keys settings (user-settings/user-set-table-columns settings))))
+    (when (:field_order entity)
+      (table/update-field-positions! (warehouse-schema.db/table table_id)))))

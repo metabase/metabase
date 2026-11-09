@@ -12,10 +12,12 @@ import {
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
 import { getUser } from "metabase/current-user";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { useSelector } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
 import { mergeLazily } from "metabase/utils/merge-lazily";
@@ -23,7 +25,6 @@ import type {
   Collection,
   CollectionId,
   DatabaseId,
-  TableId,
   User,
 } from "metabase-types/api";
 
@@ -39,9 +40,9 @@ interface SavedEntityPickerProps {
   /** Lists only this Library folder and its subcollections. */
   libraryFolder?: Collection;
   collectionId?: CollectionId | null;
-  tableId?: TableId;
+  selectedSource?: DataSource;
   databaseId?: DatabaseId | null;
-  onSelect: (tableId: TableId) => void;
+  onSelect: (source: DataSource) => void;
   /** Without it, the title shows without a back link. */
   onBack?: () => void;
 }
@@ -65,14 +66,16 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = mergeLazily(
 ) as Collection;
 
 export function SavedEntityPicker(props: SavedEntityPickerProps) {
-  const { data: collections } = useListCollectionsTreeQuery(
-    COLLECTION_TREE_REQUEST,
-  );
-  const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
+  const { data: collections, error: collectionsError } =
+    useListCollectionsTreeQuery(COLLECTION_TREE_REQUEST);
+  const { data: rootCollection, isLoading: isRootCollectionLoading } =
+    useGetCollectionQuery({ id: "root" });
   const currentUser = useSelector(getUser);
 
-  if (!collections || !currentUser) {
-    return null;
+  // The starting collection is picked once, so wait for "Our analytics" to load
+  // or fail: users without access to it still get the picker.
+  if (!collections || isRootCollectionLoading || !currentUser) {
+    return <DelayedLoadingAndErrorWrapper loading error={collectionsError} />;
   }
 
   return (
@@ -94,7 +97,7 @@ interface InnerSavedEntityPickerProps extends SavedEntityPickerProps {
 function InnerSavedEntityPicker({
   collectionId,
   type,
-  tableId,
+  selectedSource,
   databaseId,
   onSelect,
   onBack,
@@ -197,7 +200,7 @@ function InnerSavedEntityPicker({
       <SavedEntityList
         type={type}
         collectionId={selectedCollectionId}
-        selectedId={tableId}
+        selectedSource={selectedSource}
         databaseId={databaseId}
         onSelect={onSelect}
       />

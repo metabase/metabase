@@ -1,6 +1,15 @@
 import type { JSX } from "react";
 
-import type { CardType, CollectionId, TableId } from "metabase-types/api";
+import type {
+  CardId,
+  CardType,
+  CollectionId,
+  TableId,
+} from "metabase-types/api";
+
+export type DataSource =
+  | { type: "table"; id: TableId }
+  | { type: "card"; id: CardId };
 
 export interface DataSourceSelectorProps {
   isInitiallyOpen: boolean;
@@ -14,6 +23,7 @@ export interface DataSourceSelectorProps {
   canChangeDatabase: boolean;
   selectedDatabaseId: number | null;
   selectedTableId?: TableId;
+  selectedCardId?: CardId;
   selectedCollectionId?: CollectionId | null;
   canSelectModel: boolean;
   canSelectTable: boolean;
@@ -21,7 +31,7 @@ export interface DataSourceSelectorProps {
   canSelectMetric: boolean;
   canSelectSemanticLayer: boolean;
   triggerElement: JSX.Element;
-  setSourceTableFn: (tableId: TableId) => void;
+  setSourceFn: (source: DataSource) => void;
   /**
    * Accessible name applied to the popover dropdown. Lets consumers that
    * render more than one picker (e.g. the notebook's data and join steps)

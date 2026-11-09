@@ -6,7 +6,6 @@ import type {
   CollectionItem,
   Dashboard,
   FieldValue,
-  Filter,
   GetFieldValuesResponse,
   ParameterValue,
   ParameterValues,
@@ -63,7 +62,7 @@ const baseQuery = {
   limit: 20,
 };
 
-const gizmoFilter: Filter = ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"];
+const gizmoFilter = ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"];
 
 export const questionCustomView: StructuredQuestionDetails = {
   name: "Question showing the products whose category is Gizmo (custom view)",

@@ -150,6 +150,24 @@ describe("QueryBuilder", () => {
         expect(executionTime).toHaveTextContent("123ms");
       });
     });
+
+    it("renders the database error of a failed native query", async () => {
+      const message = 'Table "NOT_A_TABLE" not found';
+      await setup({
+        card: TEST_NATIVE_CARD,
+        dataset: createMockDataset({ status: "failed", error: message }),
+      });
+
+      const visualization = await screen.findByTestId(
+        "query-visualization-root",
+      );
+      expect(
+        await within(visualization).findByText(
+          "An error occurred in your query",
+        ),
+      ).toBeInTheDocument();
+      expect(within(visualization).getByText(message)).toBeInTheDocument();
+    });
   });
 
   describe("downloading results", () => {
