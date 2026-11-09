@@ -397,6 +397,10 @@
        (pos-int? window)
        (>= context-tokens window)))
 
+(def ^:private large-message-warn-bytes
+  "Stored message content of this many JSON bytes (1 MiB) or more logs a warn."
+  1048576)
+
 (defn finalize-assistant-turn!
   "UPDATE the placeholder assistant row created by [[start-turn!]] with the final
   streamed parts.
@@ -410,7 +414,12 @@
   `finish_reason` column, and whether a `length` stop filled the context window
   into `context_window_full`.
 
+  When the stored content is [[large-message-warn-bytes]] or more JSON bytes, logs one
+  warn with the ids, the role and the byte count. The warn has no content.
+
   Keyword args:
+  - `:conversation-id` — the turn's conversation id. Used only in the large-message
+     warn; nil when not given.
   - `:profile-id` — same value passed to [[start-turn!]]; tags the
      `message-persist-bytes` histogram. Defaults to `\"unknown\"` so callers
      without a profile (e.g. test helpers) don't fail.
@@ -426,7 +435,7 @@
      stopped at `length` with its context at or past it, `context_window_full` is
      set, so the turn reads as full later whatever model is configured then."
   [assistant-msg-id parts
-   & {:keys [profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens]
+   & {:keys [conversation-id profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens]
       :or   {finished? true}}]
   (let [turn-state     (not-empty turn-state)
         usage          (extract-usage parts)
@@ -437,10 +446,16 @@
         kept-parts     (->> parts
                             (remove #(#{:start :usage :finish :error} (:type %)))
                             (filter streaming/persistable-data-part?))
-        content        (parts->storable-content parts)]
+        content        (parts->storable-content parts)
+        content-bytes  (u/string-byte-count (json/encode content))
+        profile-tag    (or profile-id "unknown")]
     (analytics/observe! :metabase-metabot/message-persist-bytes
-                        {:profile-id (or profile-id "unknown")}
-                        (u/string-byte-count (json/encode content)))
+                        {:profile-id profile-tag}
+                        content-bytes)
+    (when (>= content-bytes large-message-warn-bytes)
+      ;; Log ids and the size only. The content can hold user data.
+      (log/warnf "Metabot message to store is large. conversation-id: %s, message-id: %s, profile-id: %s, role: assistant, bytes: %d"
+                 conversation-id assistant-msg-id profile-tag content-bytes))
     (metabot.db/update-message! assistant-msg-id
                                 (cond-> {:data           content
                                          :data_version   schema.v2/current-data-version
