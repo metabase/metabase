@@ -465,15 +465,16 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn active-tables-named
-  "The ID, Database ID, schema, name, and visibility type of the active Tables in the Database with `database-id` whose
-  name is one of `table-names`."
+(mu/defn active-visible-tables-named
+  "The ID, schema, and name of the active, unhidden Tables in the Database with `database-id` whose name is one of
+  `table-names`."
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential {:min 1} :string]]
-  (t2/select [:model/Table :id :db_id :schema :name :visibility_type]
+  (t2/select [:model/Table :id :schema :name]
              :db_id database-id
              :name [:in table-names]
-             :active true))
+             :active true
+             :visibility_type nil))
 
 (mu/defn active-table-with-columns
   "The `columns` of the active Table with `table-id`, or nil."

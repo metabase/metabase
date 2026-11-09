@@ -94,7 +94,8 @@
                                                            :maxItems    3
                                                            :items       {}
                                                            :description (str "Portable FK `[<db-name>, <schema>, <table-name>]`. "
-                                                                             "Use `null` as the schema only in a database without schemas.")}
+                                                                             "Use `null` as the schema only in a "
+                                                                             "database without schemas.")}
                                            "source-card"  {:type        "string"
                                                            :description "entity_id of a saved question/model used as the source."}
                                            ;; Each clause is itself a `["<op>", {opts}, ...args]` array; the inner
@@ -309,72 +310,98 @@
         (comp (mapcat node-table-fks) (distinct))
         (tree-seq coll? seq parsed-query)))
 
-(defn- null-schema-table-names
-  "The names of the tables in the database named `db-name` that `parsed-query` references with a null schema."
-  [db-name parsed-query]
-  (into #{}
-        (keep (fn [table-fk]
-                (when (and (vector? table-fk)
-                           (= db-name (nth table-fk 0 nil))
-                           (nil? (nth table-fk 1 nil))
-                           (string? (nth table-fk 2 nil)))
-                  (nth table-fk 2))))
-        (referenced-table-fks parsed-query)))
+(defn- field-ref?
+  [x]
+  (and (vector? x)
+       (not (map-entry? x))
+       (= "field" (nth x 0 nil))))
+
+(defn- fk-slots
+  "The keys or indexes of `node` that can hold a portable table or field FK: `source-table` and `source-field` in a
+  map, and slots 1 and 2 of a field ref."
+  [node]
+  (cond
+    (map? node)       (filter #(contains? node %) ["source-table" "source-field"])
+    ;; Repair inserts the options map later, so an LLM-authored ref can still carry its FK in slot 1.
+    (field-ref? node) (filter #(< % (count node)) [1 2])
+    :else             nil))
+
+(defn- fk-slot-values
+  "Every value in an FK slot of `parsed-query`, as [[fk-slots]] defines them."
+  [parsed-query]
+  (for [node (tree-seq coll? seq parsed-query)
+        k    (fk-slots node)]
+    (get node k)))
+
+(defn- fk-table-name
+  "The table name in `x` when it is a portable table or field FK into the database named `db-name`, or nil."
+  [db-name x]
+  (when (and (vector? x)
+             (>= (count x) 3)
+             (= db-name (nth x 0))
+             (let [schema (nth x 1)] (or (nil? schema) (string? schema)))
+             (every? string? (subvec x 2)))
+    (nth x 2)))
 
 (defn- inferred-schema
-  "The schema to put in a null-schema reference to one of `tables`, which share a name, or nil to leave the null.
+  "The schema to fill in for a null-schema reference to one of `tables`, which share a name, or nil to keep the null.
 
   A lone table decides it.
-  Among several, the one in `default-schema` wins, as it does for an unqualified name in SQL.
+  Among several, a schema in `named`, the schemas the query gives that name elsewhere, wins when there is one.
+  Otherwise the one in `default-schema` wins, as it does for an unqualified name in SQL.
   When a table without a schema is among them, the null already matches it exactly, so the null stays."
-  [default-schema tables]
+  [named default-schema tables]
   (let [schemas (map :schema tables)]
     (when (every? some? schemas)
-      (if (next schemas)
-        (some #{default-schema} schemas)
-        (first schemas)))))
+      (if-not (next schemas)
+        (first schemas)
+        (let [in-query (filter #(contains? named %) schemas)]
+          (case (count in-query)
+            0 (some #{default-schema} schemas)
+            1 (first in-query)
+            nil))))))
 
 (defn- inferred-schemas
-  "A map from each of `table-names` to the schema [[inferred-schema]] picks among the tables by that name that the
-  current user can query in the database with `database-id`, for the names it picks one for.
-
-  Only tables the user can query count, so a filled-in schema never names a table the permission sweep would reject,
-  and whether a name gets one says nothing about tables the user cannot use."
-  [database-id default-schema table-names]
-  (into {}
-        (for [[table-name tables] (->> (metabot.db/active-tables-named database-id (vec table-names))
-                                       ;; A MySQL app DB compares names without case.
-                                       (filter #(contains? table-names (:name %)))
-                                       (filter #(not (contains? #{:hidden :technical :cruft} (:visibility_type %))))
-                                       (filter mi/can-query?)
-                                       (group-by :name))
-              :let  [schema (inferred-schema default-schema tables)]
-              :when schema]
-          [table-name schema])))
+  "A map from each table name that `fks` give a null schema to the schema [[inferred-schema]] picks for it, for the
+  names it picks one for.
+  The `fks` are portable FKs into the database with `database-id`, and the candidates are the tables there that the
+  current user can query."
+  [database-id default-schema fks]
+  (let [table-names (into #{} (keep (fn [[_ schema table-name]] (when (nil? schema) table-name))) fks)
+        named       (reduce (fn [m [_ schema table-name]]
+                              (cond-> m schema (update table-name (fnil conj #{}) schema)))
+                            {}
+                            fks)
+        tables      (when (seq table-names)
+                      (->> (metabot.db/active-visible-tables-named database-id (vec table-names))
+                           ;; A MySQL app DB compares names without case.
+                           (filter #(contains? table-names (:name %)))))
+        ;; Only tables the user can query count, so a filled-in schema never names a table the permission sweep would
+        ;; reject, and whether a name gets one says nothing about tables the user cannot use.
+        queryable   (when (seq tables)
+                      (metabot.perms/queryable-table-ids (map :id tables)))]
+    (u/for-map [[table-name tables] (group-by :name (filter #(contains? queryable (:id %)) tables))
+                :let  [schema (inferred-schema (get named table-name) default-schema tables)]
+                :when schema]
+      [table-name schema])))
 
 (defn- fill-in-null-schemas
-  "`parsed-query` with a schema in place of the null in each portable table or field FK that names a table living in a
-  schema.
-
-  Models read the null in `[db schema table]` as \"schema unknown\" and write it for a table that has one, and an
-  exact lookup then finds nothing.
-  A null schema is left alone when [[inferred-schema]] picks no schema, so the exact lookup still decides those."
-  [metadata-provider database-id parsed-query]
-  (let [{db-name :name, :keys [default-schema]} (lib.metadata/database metadata-provider)
-        schemas (some->> (not-empty (null-schema-table-names db-name parsed-query))
-                         (inferred-schemas database-id default-schema))]
+  "`parsed-query` with a schema in place of the null in each portable table or field FK that [[inferred-schemas]]
+  picks one for."
+  [metadata-provider parsed-query]
+  (let [{database-id :id, db-name :name, :keys [default-schema]} (lib.metadata/database metadata-provider)
+        fks     (filter #(fk-table-name db-name %) (fk-slot-values parsed-query))
+        schemas (inferred-schemas database-id default-schema fks)
+        fill-in (fn [x]
+                  (if-let [schema (and (fk-table-name db-name x)
+                                       (nil? (nth x 1))
+                                       (get schemas (nth x 2)))]
+                    (assoc x 1 schema)
+                    x))]
     (if (empty? schemas)
       parsed-query
-      (walk/postwalk (fn [x]
-                       (if (and (vector? x)
-                                (not (map-entry? x))
-                                (>= (count x) 3)
-                                (= db-name (nth x 0))
-                                (nil? (nth x 1))
-                                (every? string? (subvec x 2))
-                                (contains? schemas (nth x 2)))
-                         (assoc x 1 (get schemas (nth x 2)))
-                         x))
+      (walk/postwalk (fn [node]
+                       (reduce #(update %1 %2 fill-in) node (fk-slots node)))
                      parsed-query))))
 
 (def ^:private unresolved-table-fk-errors
@@ -1298,7 +1325,7 @@
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
         mp          (lib-be/application-database-metadata-provider database-id)
-        parsed      (fill-in-null-schemas mp database-id parsed)
+        parsed      (fill-in-null-schemas mp parsed)
         ;; Numeric ids are LLM-authored integers rather than resolved names, so establish that
         ;; each one actually denotes something this query may reference before the permission
         ;; sweep runs against it. No-op on the portable-only surface.

@@ -245,45 +245,55 @@
             (is (true? (:agent-error? d)))
             (is (= :unknown-table (:error d)))))))))
 
-(deftest null-schema-names-the-one-queryable-table-test
-  (testing "a null schema finds the table by that name the user can query, preferring the default schema"
+(deftest null-schema-resolves-to-a-queryable-table-test
+  (testing "a null schema is filled in from the tables by that name the user can query, or left alone"
     (mt/with-temp [:model/Database db         {:name           (str "Analytics " (random-uuid))
                                                :engine         :h2
                                                :default_schema "clean"}
                    :model/Table    user-table {:name "user" :schema "lever_data" :db_id (:id db)}
                    :model/Field    _          {:name "email" :table_id (:id user-table) :base_type :type/Text}
-                   :model/Table    _          {:name "orders" :schema "raw" :db_id (:id db)}
+                   :model/Table    raw-orders {:name "orders" :schema "raw" :db_id (:id db)}
+                   :model/Field    _          {:name "status" :table_id (:id raw-orders) :base_type :type/Text}
                    :model/Table    _          {:name "orders" :schema "clean" :db_id (:id db)}
                    :model/Table    _          {:name "events" :schema "raw" :db_id (:id db)}
-                   :model/Table    _          {:name "events" :schema "staging" :db_id (:id db)}]
-      (let [construct (fn [table-name]
+                   :model/Table    _          {:name "events" :schema "staging" :db_id (:id db)}
+                   :model/Table    _          {:name "items" :schema nil :db_id (:id db)}
+                   :model/Table    _          {:name "items" :schema "clean" :db_id (:id db)}
+                   :model/Table    _          {:name "secrets" :schema "raw" :db_id (:id db) :visibility_type :hidden}]
+      (let [db-name   (:name db)
+            construct (fn [source-table & [breakout-field]]
                         (try
                           (-> (construct/execute-representations-query
                                (query-data
                                 {"lib/type" "mbql/query"
                                  "stages"   [(cond-> {"lib/type"     "mbql.stage/mbql"
-                                                      "source-table" [(:name db) nil table-name]
+                                                      "source-table" (into [db-name] source-table)
                                                       "aggregation"  [["count" {}]]}
-                                               (= "user" table-name)
-                                               (assoc "breakout" [["field" {} [(:name db) nil "user" "email"]]]))]}))
+                                               breakout-field
+                                               (assoc "breakout" [["field" {} (into [db-name] breakout-field)]]))]}))
                               (get-in [:structured-output :query-json "stages" 0])
                               (select-keys ["source-table" "breakout"]))
                           (catch clojure.lang.ExceptionInfo e
                             (:error (ex-data e)))))]
-        (is (=? {:admin     {"source-table" [(:name db) "lever_data" "user"]
-                             "breakout"     [["field" {} [(:name db) "lever_data" "user" "email"]]]}
-                 :default   {"source-table" [(:name db) "clean" "orders"]}
-                 :ambiguous :unknown-table
-                 :no-perms  :unknown-table}
-                {:admin     (mt/with-current-user (mt/user->id :crowberto)
-                              (construct "user"))
-                 :default   (mt/with-current-user (mt/user->id :crowberto)
-                              (construct "orders"))
-                 :ambiguous (mt/with-current-user (mt/user->id :crowberto)
-                              (construct "events"))
-                 :no-perms  (mt/with-no-data-perms-for-all-users!
-                              (mt/with-current-user (mt/user->id :rasta)
-                                (construct "user")))}))))))
+        (is (=? {:lone       {"source-table" [db-name "lever_data" "user"]
+                              "breakout"     [["field" {} [db-name "lever_data" "user" "email"]]]}
+                 :default    {"source-table" [db-name "clean" "orders"]}
+                 :named      {"source-table" [db-name "raw" "orders"]
+                              "breakout"     [["field" {} [db-name "raw" "orders" "status"]]]}
+                 :ambiguous  :unknown-table
+                 :schemaless {"source-table" [db-name nil "items"]}
+                 :hidden     :unknown-table
+                 :no-perms   :unknown-table}
+                (mt/with-current-user (mt/user->id :crowberto)
+                  {:lone       (construct [nil "user"] [nil "user" "email"])
+                   :default    (construct [nil "orders"])
+                   :named      (construct ["raw" "orders"] [nil "orders" "status"])
+                   :ambiguous  (construct [nil "events"])
+                   :schemaless (construct [nil "items"])
+                   :hidden     (construct [nil "secrets"])
+                   :no-perms   (mt/with-no-data-perms-for-all-users!
+                                 (mt/with-current-user (mt/user->id :rasta)
+                                   (construct [nil "user"])))})))))))
 
 (defn- metadata-lookup-failures []
   (let [message    "SELECT private_metadata failed: connection unavailable"
