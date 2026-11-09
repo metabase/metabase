@@ -129,8 +129,13 @@
 (defn- exec!
   "Execute a sequence of statements against the database whose spec is passed as the first param."
   [spec statements]
-  (doseq [statement statements]
-    (jdbc/execute! spec [statement])))
+  ;; `Statement.execute` rather than `jdbc/execute!`'s `executeUpdate`: MotherDuck returns a result set for DROP.
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver/*driver* spec {:write? true}
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (doseq [^String statement statements]
+         (.execute stmt statement))))))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -214,45 +219,48 @@
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
 (deftest ^:synchronized edge-case-identifiers-test
-  (mt/test-driver :postgres
-    (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
-      (mt/dataset dots-in-names
-        (is (= {:columns ["id" "dotted.name"]
-                :rows    [[1 "toucan_cage"]
-                          [2 "four_loko"]
-                          [3 "ouija_board"]]}
-               (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
-    (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        ;; create the postgres DB
-        (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
-        ;; create the DB object
-        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
-          (let [sync! #(sync/sync-database! (:id database))]
-            ;; populate the DB and create a view
-            (exec! spec ["CREATE SCHEMA \"x-mas\";"
-                         "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
-                         "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
-            (sync!)
-            (is (= [["Bird Hat"]]
+  (mt/test-drivers #{:postgres :motherduck}
+    ;; Each section queries another database as Rasta, and dev mode limits the permission cache misses in one user scope.
+    ;; Start a new scope for each driver.
+    (mt/with-test-user :rasta
+      (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
+        (mt/dataset dots-in-names
+          (is (= {:columns ["id" "dotted.name"]
+                  :rows    [[1 "toucan_cage"]
+                            [2 "four_loko"]
+                            [3 "ouija_board"]]}
+                 (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
+      (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "hyphen-names-test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          ;; create the postgres DB
+          (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
+          ;; create the DB object
+          (mt/with-temp [:model/Database database {:engine driver/*driver*, :details details}]
+            (let [sync! #(sync/sync-database! (:id database))]
+              ;; populate the DB and create a view
+              (exec! spec ["CREATE SCHEMA \"x-mas\";"
+                           "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
+                           "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
+              (sync!)
+              (is (= [["Bird Hat"]]
+                     (mt/rows (qp/process-query
+                               {:database (u/the-id database)
+                                :type     :query
+                                :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
+      (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
+        (mt/with-empty-db
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+            (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
+                          "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
+                          "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
+              (jdbc/execute! conn-spec stmt))
+            (sync/sync-database! (mt/id) {:scan :schema})
+            (is (= [[42]]
                    (mt/rows (qp/process-query
-                             {:database (u/the-id database)
+                             {:database (mt/id)
                               :type     :query
-                              :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
-    (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
-      (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
-          (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
-                        "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
-                        "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
-            (jdbc/execute! conn-spec stmt))
-          (sync/sync-database! (mt/id) {:scan :schema})
-          (is (= [[42]]
-                 (mt/rows (qp/process-query
-                           {:database (mt/id)
-                            :type     :query
-                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}})))))))))
+                              :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -265,7 +273,7 @@
     [["Cam" 1]]]])
 
 (deftest duplicate-names-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "Make sure that duplicate column names (e.g. caused by using a FK) still return both columns"
       (mt/dataset duplicate-names
         (is (= {:columns ["name" "name_2"]
@@ -696,7 +704,7 @@
                    (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
 
 (deftest nested-field-pivot-e2e-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (mt/dataset json
       (testing "pivot with a nested-field (JSON-unfolded) breakout executes end-to-end and the native path agrees with the multi-query path"
         (let [mp        (mt/metadata-provider)
@@ -835,7 +843,7 @@
      [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
 (deftest uuid-columns-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (mt/dataset with-uuid
       (testing "Check that we can load a Postgres Database with a :type/UUID"
         (is (= [{:name "id", :base_type :type/Integer}
@@ -1532,10 +1540,33 @@
                                                                   :filter       [:= $mytable.id 2]}
                                                      :type       :query}))))))))))))
 
+(deftest ^:parallel float-special-values-test
+  ;; MotherDuck's endpoint sends infinities as `+Inf` and `-Inf`, which pgjdbc can't parse (QUE-1013).
+  (mt/test-drivers #{:postgres :motherduck}
+    (let [values ["Infinity" "-Infinity" "NaN" "1.5"]
+          query  (mt/native-query
+                  {:query (str "SELECT "
+                               (str/join ", " (for [[i v] (map-indexed vector values)
+                                                    [prefix db-type] [["d" "DOUBLE PRECISION"] ["r" "REAL"]]]
+                                                (format "CAST('%s' AS %s) AS %s%d" v db-type prefix i)))
+                               ", ARRAY[CAST('Infinity' AS DOUBLE PRECISION), CAST('-Infinity' AS DOUBLE PRECISION), 1.5]"
+                               " AS a")})
+          row    (first (mt/rows (qp/process-query query)))]
+      ;; Compare classes and strings, since NaN isn't equal to itself.
+      (is (= [[Double "Infinity"]  [Float "Infinity"]
+              [Double "-Infinity"] [Float "-Infinity"]
+              [Double "NaN"]       [Float "NaN"]
+              [Double "1.5"]       [Float "1.5"]]
+             (mapv (juxt class str) (butlast row))))
+      (is (= [Double Double Double]
+             (map class (last row))))
+      (is (= "[##Inf ##-Inf 1.5]"
+             (str (last row)))))))
+
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
 (deftest timezone-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (letfn [(get-timezone-with-report-timezone [report-timezone]
               (mt/with-temporary-setting-values [report-timezone report-timezone]
                 (ffirst
@@ -1554,20 +1585,51 @@
         (is (= (get-timezone-with-report-timezone nil)
                (get-timezone-with-report-timezone "Crunk Burger")))))))
 
+(deftest timetz-values-test
+  ;; MotherDuck's endpoint sends TIMETZ values in its own format (QUE-969). Metabase shows every time with an offset in
+  ;; the results time zone, so both drivers must give the same output for the same values.
+  (mt/test-drivers #{:postgres :motherduck}
+    (let [literals ["12:34:56+05"
+                    "12:34:56.123456+05:30"
+                    "20:00:00-05"
+                    "00:00:00+15:59"
+                    "23:59:59-15:59"
+                    "12:00:00+05:30:15"]
+          query    (mt/native-query
+                    {:query (str "SELECT "
+                                 (str/join ", " (map-indexed #(format "CAST('%s' AS TIMETZ) AS t%d" %2 %1) literals)))})]
+      (testing "in UTC"
+        (is (= [["07:34:56Z"
+                 "07:04:56.123456Z"
+                 "01:00:00Z"
+                 "08:01:00Z"
+                 "15:58:59Z"
+                 "06:29:45Z"]]
+               (mt/rows (qp/process-query query)))))
+      (testing "in another report time zone"
+        (mt/with-temporary-setting-values [report-timezone "Asia/Tokyo"]
+          (is (= [["16:34:56+09:00"
+                   "16:04:56.123456+09:00"
+                   "10:00:00+09:00"
+                   "17:01:00+09:00"
+                   "00:58:59+09:00"
+                   "15:29:45+09:00"]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest fingerprint-time-fields-test
-  (mt/test-driver :postgres
+  (mt/test-drivers #{:postgres :motherduck}
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"
       (tx/drop-if-exists-and-create-db! driver/*driver* "time_field_test")
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
-        (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
-                       [(str "CREATE TABLE toucan_sleep_schedule ("
-                             "  start_time TIME WITHOUT TIME ZONE NOT NULL, "
-                             "  end_time TIME WITHOUT TIME ZONE NOT NULL, "
-                             "  reason VARCHAR(256) NOT NULL"
-                             ");"
-                             "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
-                             "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
-        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
+      (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "time_field_test"})]
+        (exec! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+               [(str "CREATE TABLE toucan_sleep_schedule ("
+                     "  start_time TIME WITHOUT TIME ZONE NOT NULL, "
+                     "  end_time TIME WITHOUT TIME ZONE NOT NULL, "
+                     "  reason VARCHAR(256) NOT NULL"
+                     ");")
+                (str "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
+                     "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
+        (mt/with-temp [:model/Database database {:engine driver/*driver*, :details details}]
           (sync/sync-database! (:id database))
           (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
                                                 :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
@@ -1752,20 +1814,19 @@
 
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (tx/drop-if-exists-and-create-db! driver/*driver* "composite-pks-test")
       (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
-          (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
-                                    (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
-                                                                     [2 2 "{\"int_turn_string\":2}"]
-                                                                     [3 3 "{\"int_turn_string\":3}"]
-                                                                     [4 4 "{\"int_turn_string\":4}"]
-                                                                     [4 5 "{\"int_turn_string\":\"x\"}"]
-                                                                     [4 6 "{\"int_turn_string\":5}"]]]
-                                      (format "INSERT INTO PUBLIC.json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
-            (jdbc/execute! spec [statement]))
+          (exec! spec (concat ["CREATE TABLE json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
+                              (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
+                                                               [2 2 "{\"int_turn_string\":2}"]
+                                                               [3 3 "{\"int_turn_string\":3}"]
+                                                               [4 4 "{\"int_turn_string\":4}"]
+                                                               [4 5 "{\"int_turn_string\":\"x\"}"]
+                                                               [4 6 "{\"int_turn_string\":5}"]]]
+                                (format "INSERT INTO json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json))))
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
             (mt/with-db database
               (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
@@ -1777,7 +1838,7 @@
                         :visibility-type   :normal
                         :nfc-path          [:json_val "int_turn_string"]}}
                      (sql-jdbc.sync/describe-nested-field-columns
-                      :postgres
+                      driver/*driver*
                       (driver.u/lib-database (:id database))
                       (t2/select-one :model/Table :db_id (mt/id) :name "json_table")))))))))))
 
@@ -1900,21 +1961,23 @@
     [base ist-expr]))
 
 (defn- assert-now-wrapped-in-target-timezone
-  "Compile `query` and assert that every `NOW()` in the SQL is wrapped in `TIMEZONE(?, NOW())`."
+  "Compile `query` and assert that every `NOW()` in the SQL is wrapped in `TIMEZONE(zone, NOW())`, with the zone as a
+  parameter or, as MotherDuck emits it, an inlined literal. Then run `query`, to check the database accepts that SQL."
   [query]
   (let [sql       (:query (qp.compile/compile query))
         bare-nows (count (re-seq #"(?i)\bNOW\(\)" sql))
-        wrapped   (count (re-seq #"(?i)TIMEZONE\(\s*\?\s*,\s*NOW\(\)\s*\)" sql))]
+        wrapped   (count (re-seq #"(?i)TIMEZONE\(\s*(?:\?|'[^']*')\s*,\s*NOW\(\)\s*\)" sql))]
     (is (pos? bare-nows)
         "sanity: the compiled SQL uses NOW() as a filter boundary")
     (is (= bare-nows wrapped)
-        (str "Every NOW() must be wrapped in TIMEZONE(?, NOW()) so it lands in the"
-             " target timezone of the convertTimezone LHS.\nSQL:\n" sql))))
+        (str "Every NOW() must be wrapped in TIMEZONE(zone, NOW()) so it lands in the"
+             " target timezone of the convertTimezone LHS.\nSQL:\n" sql))
+    (is (=? {:status :completed} (qp/process-query query)))))
 
 (deftest ^:parallel convert-timezone-relative-datetime-filter-test
   ;; Regression for #80155.
   (testing "Relative-datetime filter on a convertTimezone expression compiles LHS and RHS in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         (let [[base ist-expr] (ist-convert-timezone-expression)]
           (assert-now-wrapped-in-target-timezone
@@ -1923,7 +1986,7 @@
 (deftest ^:parallel convert-timezone-bucketed-lhs-filter-test
   ;; Regression for #80155.
   (testing "A bucketed convertTimezone LHS still compiles LHS and RHS in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         ;; Field bucket (week) and relative-datetime bucket (month) are incompatible, so
         ;; `optimize-temporal-clauses` (an index-friendliness rewrite that otherwise unbuckets the LHS)
@@ -1936,7 +1999,7 @@
 (deftest ^:parallel convert-timezone-now-filter-test
   ;; Regression for #80155.
   (testing "A :now filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         (let [[base ist-expr] (ist-convert-timezone-expression)]
           (assert-now-wrapped-in-target-timezone
@@ -1945,7 +2008,7 @@
 (deftest ^:parallel convert-timezone-today-filter-test
   ;; Regression for #80155.
   (testing "A :today filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         (let [[base ist-expr] (ist-convert-timezone-expression)]
           (assert-now-wrapped-in-target-timezone
@@ -1954,7 +2017,7 @@
 (deftest ^:parallel convert-timezone-wrapped-in-datetime-add-filter-test
   ;; Regression for #80155.
   (testing "A convertTimezone nested inside datetime-add still compiles LHS and RHS in the same wall-clock frame"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset attempted-murders
         (let [mp       (mt/metadata-provider)
               datetime (lib.metadata/field mp (mt/id :attempts :datetime))
@@ -2356,7 +2419,7 @@
 
 (deftest ^:parallel arrays-have-base-type
   (testing "queries with pg arrays have a base type on column metadata (#63909)"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (is (=? [{:name "id"
                 :database_type "int4"
                 :base_type :type/Integer}
@@ -2491,7 +2554,7 @@
 
 (deftest bytea-column-not-truncated-test
   (testing "fix for #30671"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:postgres :motherduck}
       (mt/dataset (mt/dataset-definition
                    "bytea_dataset"
                    [["bytea_table"

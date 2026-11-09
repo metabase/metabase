@@ -49,6 +49,7 @@ export const engineKeys = [
   "druid-jdbc",
   "druid",
   "mongo",
+  "motherduck",
   "mysql",
   "oracle",
   "postgres",

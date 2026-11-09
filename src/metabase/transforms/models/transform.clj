@@ -363,8 +363,8 @@
   Toucan, so that each one's own delete hook runs. The database would take them with the transform either way -- the
   `transform_test.transform_id` FK is `ON DELETE CASCADE` -- but a cascade runs no hook, and remote sync learns a
   test is gone only from the event that hook publishes, so it would go on serving a test whose transform no longer
-  exists. OSS is a no-op (no transform-testing module)."
-  metabase-enterprise.transform-testing.models
+  exists. OSS is a no-op (no data-testing module)."
+  metabase-enterprise.data-testing.models
   [_transform-id]
   nil)
 

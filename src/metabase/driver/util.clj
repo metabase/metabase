@@ -813,6 +813,7 @@
     "druid-jdbc"
     "h2"
     "mongo"
+    "motherduck"
     "mysql"
     "oracle"
     "postgres"

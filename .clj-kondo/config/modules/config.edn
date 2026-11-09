@@ -3967,6 +3967,37 @@
                     :model/Table
                     :model/User}}
 
+  enterprise/data-testing
+  {:team "Graphy"
+   :api #{metabase-enterprise.data-testing.api metabase-enterprise.data-testing.init}
+   :uses #{api
+           audit-app
+           driver
+           events
+           lib
+           lib.be
+           lib.schema
+           models
+           premium-features
+           query-permissions
+           query-processor
+           remote-sync
+           request
+           revisions
+           run-tracking
+           serialization
+           sql-tools
+           sql-tools.parsing
+           task
+           transforms
+           transforms.base
+           util}
+   :model-exports #{:model/TransformTest}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Transform
+                    :model/User}}
+
   enterprise/database-routing
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
@@ -4640,37 +4671,6 @@
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}
-
-  enterprise/transform-testing
-  {:team "Graphy"
-   :api #{metabase-enterprise.transform-testing.api metabase-enterprise.transform-testing.init}
-   :uses #{api
-           audit-app
-           driver
-           events
-           lib
-           lib.be
-           lib.schema
-           models
-           premium-features
-           query-permissions
-           query-processor
-           remote-sync
-           request
-           revisions
-           run-tracking
-           serialization
-           sql-tools
-           sql-tools.parsing
-           task
-           transforms
-           transforms.base
-           util}
-   :model-exports #{:model/TransformTest}
-   :model-imports #{:model/Collection
-                    :model/Database
-                    :model/Transform
-                    :model/User}}
 
   enterprise/transforms
   {:team "Graphy"
