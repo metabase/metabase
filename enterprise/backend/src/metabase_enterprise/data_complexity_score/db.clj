@@ -66,7 +66,8 @@
 (mu/defn universe-tables
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :description :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
+  (t2/select [:model/Table :id :name :description :collection_id :is_published :visibility_type :db_id :data_layer
+              :data_authority]
              :active true
              :db_id  [:not= audit-database-id]))
 

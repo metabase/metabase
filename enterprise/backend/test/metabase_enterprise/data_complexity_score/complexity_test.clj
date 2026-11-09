@@ -1442,12 +1442,28 @@
   {:measurement 0.0 :score 0})
 
 (def ^:private zero-catalog
-  "A minimal, schema-valid `::data-complexity-score.catalog` with all sub-scores zeroed out."
+  "A minimal, schema-valid `::data-complexity-score.catalog` with all sub-scores zeroed out, as level 1 computes it (no
+  `:synonym` sub-group or `:embedding-coverage`)."
   {:score 0
-   :components {:size      {:score 0 :components {:entity-count zero-leaf :field-count zero-leaf}}
-                :ambiguity {:score 0 :components {:name-collisions   zero-leaf
-                                                  :synonym-pairs     zero-leaf
-                                                  :repeated-measures zero-leaf}}}})
+   :components {:size      {:score      0
+                            :components {:entity-count         zero-leaf
+                                         :field-count          zero-leaf
+                                         :collection-tree-size zero-leaf
+                                         :fields-per-entity    zero-leaf
+                                         :measure-to-dim-ratio zero-leaf}}
+                :ambiguity {:score      0
+                            :components {:name {:score      0
+                                                :components {:collisions         zero-leaf
+                                                             :collisions-density zero-leaf
+                                                             :concentration      zero-leaf
+                                                             :field-collisions   zero-leaf
+                                                             :repeated-measures  zero-leaf}}}}
+                :metadata  {:score      0
+                            :components {:description-coverage       zero-leaf
+                                         :field-description-coverage zero-leaf
+                                         :semantic-type-coverage     zero-leaf
+                                         :curated-metric-coverage    zero-leaf
+                                         :description-quality        zero-leaf}}}})
 
 (defn- labeled-score
   "A full, valid `score-data` map carrying `label` in `:text-variant` so a test can tell rows apart."
@@ -1478,14 +1494,13 @@
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
 
 (deftest ^:synchronized record-score-persists-an-appdb-score-test
-  (testing "the score `complexity-scores` computes against the app DB, whose `:meta` carries no `:weights`, persists"
+  (testing "the score `complexity-scores` computes against the app DB persists"
     (mt/initialize-if-needed! :db)
     (let [fingerprint "record-score-appdb-test/current"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
         (let [result (complexity/complexity-scores :embedder nil :emit-snowplow? false)
               stored (data-complexity-score/record-score! fingerprint "appdb" result)]
-          (is (not (contains? (:meta result) :weights)))
           (is (= (select-keys result [:library :universe :metabot])
                  (select-keys stored [:library :universe :metabot])))
           (is (= (:meta result) (dissoc (:meta stored) :calculated-at))))
