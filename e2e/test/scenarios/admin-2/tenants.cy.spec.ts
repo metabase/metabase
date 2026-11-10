@@ -475,6 +475,15 @@ describe("Tenants - management", () => {
   it("should show 'All tenant users' in permission warning tooltip and modal for tenant groups on data permissions (UXW-2624)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
 
+    cy.updatePermissionsGraph({
+      [ALL_EXTERNAL_USERS_GROUP_ID!]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
+
     cy.request("POST", "/api/permissions/group", {
       name: "Test Tenant Group",
       is_tenant_group: true,
