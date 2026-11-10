@@ -360,14 +360,18 @@
   [tx table-name]
   ;; Read rather than rebuilt from the table name: older versions counted characters, not bytes, when deciding
   ;; to hash a long index name, so a multibyte table name can have its B-tree under a name Postgres truncated.
-  (let [[schema bare] (semantic.util/qualified-table-parts table-name)]
-    (->> (jdbc/execute! tx
-                        [(str "SELECT indexname FROM pg_indexes"
-                              " WHERE schemaname = coalesce(?::text, current_schema()) AND tablename = ?"
-                              " AND indexdef LIKE '%USING btree (content)'")
-                         schema bare]
-                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-         (map :indexname))))
+  ;; Matched on the catalog's structure, not on index definition text, whose quoting depends on session settings.
+  (->> (jdbc/execute! tx
+                      [(str "SELECT i.relname AS indexname"
+                            " FROM pg_index x"
+                            " JOIN pg_class i ON i.oid = x.indexrelid"
+                            " JOIN pg_am am ON am.oid = i.relam"
+                            " JOIN pg_attribute a ON a.attrelid = x.indrelid AND a.attnum = x.indkey[0]"
+                            " WHERE x.indrelid = to_regclass(?) AND am.amname = 'btree'"
+                            " AND x.indnkeyatts = 1 AND a.attname = 'content'")
+                       (semantic.util/quote-table table-name)]
+                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+       (map :indexname)))
 
 (defn- replace-content-btree-with-hash-index!
   "Migration 6: replace the B-tree index on `content` with a hash index.
