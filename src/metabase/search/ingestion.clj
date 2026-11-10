@@ -268,8 +268,9 @@
 
        :and (first (keep (partial extract-model-and-id model) values))
 
-       ;; Any other operator names rows without naming a document, so there is nothing to purge. Returning nil
-       ;; rather than throwing lets callers enqueue re-derivations under selectors like `:in`.
+       ;; Any other operator yields no single document id, so ingestion purges nothing for it, not even the `:in` of
+       ;; [[doc-id-selector]], which names documents by their ids. Returning nil rather than throwing lets callers
+       ;; enqueue re-derivations under such selectors.
        nil))))
 
 ;; Only `:this.id` yields a document id, so a search-model reached through a join on another column, or one whose
@@ -283,8 +284,8 @@
 ;; and this enumeration happens on the caller's thread inside its transaction, so past the ceiling the documents are
 ;; left to the convergence backstop rather than held in heap.
 (def max-enumerated-documents
-  "Ceiling on how many documents one statement may enumerate before it runs.
-  A batched delete also stops enumerating further batches once it holds this many."
+  "Ceiling on how many documents one statement may enumerate for each search-model before it runs.
+  A batched delete also stops enumerating further batches once it holds this many across all search-models."
   10000)
 
 (defn doc-ids
@@ -295,9 +296,7 @@
   ;; full document build.
   ;; The LIMIT stops the database sending ids past the ceiling; buffering JDBC drivers otherwise read them all first.
   (let [fetch-limit (inc max-enumerated-documents)
-        ids         (into []
-                          (comp (map :id) (take fetch-limit))
-                          (search.db/spec-index-doc-ids-reducible search-model where-clause fetch-limit))]
+        ids         (into [] (map :id) (search.db/spec-index-doc-ids-reducible search-model where-clause fetch-limit))]
     (if (< max-enumerated-documents (count ids))
       (do (log/warnf "Skipping cascade enumeration for %s: statement reaches more than %d documents"
                      search-model max-enumerated-documents)
@@ -316,8 +315,9 @@
 (defn existing-doc-ids
   "Which of `ids` `search-model` still produces a document for, or nil past [[max-enumerated-documents]]."
   [search-model ids]
-  (when (seq ids)
-    (doc-ids search-model (doc-id-selector search-model ids))))
+  (if (seq ids)
+    (doc-ids search-model (doc-id-selector search-model ids))
+    #{}))
 
 ;; Tombstones share ingestion's single worker with re-index messages, so an update that read a row before its delete
 ;; committed is applied before, never after, the removal.
