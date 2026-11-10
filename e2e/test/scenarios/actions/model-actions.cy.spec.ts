@@ -1,14 +1,23 @@
-const { H } = cy;
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { IMPERSONATED_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import type { CreateActionOpts } from "e2e/support/helpers/api/createAction";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
-import { createMockActionParameter } from "metabase-types/api/mocks";
+import type { CardId, WritebackActionId } from "metabase-types/api";
+import {
+  createMockActionParameter,
+  createMockFieldSettings,
+} from "metabase-types/api/mocks";
+import { DataPermissionValue } from "metabase-types/api/permissions";
+
+const { H } = cy;
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
+const DIALECTS = ["postgres", "mysql"] as const;
+type Dialect = (typeof DIALECTS)[number];
 
 const TEST_PARAMETER = createMockActionParameter({
   id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
@@ -26,43 +35,42 @@ const TEST_TEMPLATE_TAG = {
   slug: TEST_PARAMETER.slug,
 };
 
-const SAMPLE_QUERY_ACTION = {
-  name: "Demo Action",
-  type: "query",
-  parameters: [TEST_PARAMETER],
-  database_id: WRITABLE_DB_ID,
-  dataset_query: {
-    type: "native",
-    native: {
-      query: `UPDATE ORDERS SET TOTAL = TOTAL WHERE ID = {{ ${TEST_TEMPLATE_TAG.name} }}`,
-      "template-tags": {
-        [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
+function getQueryAction(query: string) {
+  return {
+    name: "Demo Action",
+    type: "query",
+    parameters: [TEST_PARAMETER],
+    database_id: WRITABLE_DB_ID,
+    dataset_query: {
+      type: "native",
+      native: {
+        query,
+        "template-tags": {
+          [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
+        },
+      },
+      database: WRITABLE_DB_ID,
+    },
+    visualization_settings: {
+      fields: {
+        [TEST_PARAMETER.id]: createMockFieldSettings({
+          id: TEST_PARAMETER.id,
+          required: true,
+          fieldType: "number",
+          inputType: "number",
+        }),
       },
     },
-    database: WRITABLE_DB_ID,
-  },
-  visualization_settings: {
-    fields: {
-      [TEST_PARAMETER.id]: {
-        id: TEST_PARAMETER.id,
-        required: true,
-        fieldType: "number",
-        inputType: "number",
-      },
-    },
-  },
-};
+  } satisfies CreateActionOpts & { database_id: number };
+}
 
-const SAMPLE_WRITABLE_QUERY_ACTION = {
-  ...SAMPLE_QUERY_ACTION,
-  dataset_query: {
-    ...SAMPLE_QUERY_ACTION.dataset_query,
-    native: {
-      ...SAMPLE_QUERY_ACTION.dataset_query.native,
-      query: `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
-    },
-  },
-};
+const SAMPLE_QUERY_ACTION = getQueryAction(
+  `UPDATE ORDERS SET TOTAL = TOTAL WHERE ID = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+);
+
+const SAMPLE_WRITABLE_QUERY_ACTION = getQueryAction(
+  `UPDATE ${WRITABLE_TEST_TABLE} SET score = 22 WHERE id = {{ ${TEST_TEMPLATE_TAG.name} }}`,
+);
 
 describe(
   "scenarios > actions > model actions",
@@ -91,19 +99,19 @@ describe(
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
           [WRITABLE_DB_ID]: {
-            "view-data": "blocked",
-            "create-queries": "no",
+            "view-data": DataPermissionValue.BLOCKED,
+            "create-queries": DataPermissionValue.NO,
           },
         },
         [USER_GROUPS.DATA_GROUP]: {
           [WRITABLE_DB_ID]: {
-            "view-data": "unrestricted",
-            "create-queries": "query-builder-and-native",
+            "view-data": DataPermissionValue.UNRESTRICTED,
+            "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
           },
         },
       });
 
-      cy.get("@modelId").then((modelId) => {
+      cy.get<CardId>("@modelId").then((modelId) => {
         cy.request("POST", "/api/action", {
           ...SAMPLE_QUERY_ACTION,
           model_id: modelId,
@@ -169,7 +177,7 @@ describe(
   },
 );
 
-["postgres", "mysql"].forEach((dialect) => {
+DIALECTS.forEach((dialect) => {
   describe(
     `Write actions on model detail page (${dialect})`,
     { tags: "@external" },
@@ -202,7 +210,7 @@ describe(
       it("should allow anonymous execution of public actions", () => {
         const IMPLICIT_ACTION_NAME = "Update";
 
-        cy.get("@writableModelId").then((modelId) => {
+        cy.get<CardId>("@writableModelId").then((modelId) => {
           H.createAction({
             ...SAMPLE_WRITABLE_QUERY_ACTION,
             model_id: modelId,
@@ -222,7 +230,7 @@ describe(
 
         cy.signOut();
 
-        cy.get("@queryActionPublicUrl").then((url) => {
+        cy.get<string>("@queryActionPublicUrl").then((url) => {
           cy.visit(url);
           cy.findByLabelText(TEST_PARAMETER.name).type("1");
 
@@ -234,7 +242,7 @@ describe(
           verifyScoreValue(22, dialect);
         });
 
-        cy.get("@implicitActionPublicUrl").then((url) => {
+        cy.get<string>("@implicitActionPublicUrl").then((url) => {
           cy.visit(url);
 
           // team 2 has 10 points, let's give them more
@@ -250,29 +258,29 @@ describe(
           H.queryWritableDB(
             `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 2`,
             dialect,
-          ).then((result) => {
-            const row = result.rows[0];
-
-            expect(row.score).to.equal(16);
-            expect(row.team_name).to.equal("Bouncy Bears");
+          )
+            .its("rows.0")
+            .should("include", { score: 16, team_name: "Bouncy Bears" })
             // should not mutate form fields that we don't touch
-            expect(row.status).to.not.be.a("null");
-          });
+            .and("have.property", "status")
+            .and("not.be.null");
         });
 
         cy.signInAsAdmin();
-        cy.get("@queryActionId").then(disablePublicSharing);
-        cy.get("@implicitActionId").then(disablePublicSharing);
+        cy.get<WritebackActionId>("@queryActionId").then(disablePublicSharing);
+        cy.get<WritebackActionId>("@implicitActionId").then(
+          disablePublicSharing,
+        );
         cy.signOut();
 
-        cy.get("@queryActionPublicUrl").then((url) => {
+        cy.get<string>("@queryActionPublicUrl").then((url) => {
           cy.visit(url);
           cy.findByText("Not found").should("be.visible");
           cy.findByRole("form").should("not.exist");
           cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
         });
 
-        cy.get("@implicitActionPublicUrl").then((url) => {
+        cy.get<string>("@implicitActionPublicUrl").then((url) => {
           cy.visit(url);
           cy.findByText("Not found").should("be.visible");
           cy.findByRole("form").should("not.exist");
@@ -281,7 +289,7 @@ describe(
       });
 
       it("should run implicit and query actions from the model detail page", () => {
-        cy.get("@writableModelId").then((modelId) => {
+        cy.get<CardId>("@writableModelId").then((modelId) => {
           H.createImplicitAction({ model_id: modelId, kind: "create" });
           H.createAction({
             ...SAMPLE_WRITABLE_QUERY_ACTION,
@@ -308,13 +316,11 @@ describe(
         H.queryWritableDB(
           `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE team_name = 'Zebras'`,
           dialect,
-        ).then((result) => {
-          expect(result.rows.length).to.equal(1);
-
-          const row = result.rows[0];
-
-          expect(row.score).to.equal(1);
-        });
+        )
+          .its("rows")
+          .should("have.length", 1)
+          .its("0.score")
+          .should("equal", 1);
 
         cy.log("Query action");
         verifyScoreValue(0, dialect);
@@ -351,14 +357,15 @@ describe(
             {
               [USER_GROUPS.ALL_USERS_GROUP]: {
                 [WRITABLE_DB_ID]: {
-                  "view-data": "impersonated",
-                  "create-queries": "query-builder-and-native",
+                  "view-data": DataPermissionValue.IMPERSONATED,
+                  "create-queries":
+                    DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
                 },
               },
               // By default, all groups get `unrestricted` access that will override the impersonation.
               [USER_GROUPS.COLLECTION_GROUP]: {
                 [WRITABLE_DB_ID]: {
-                  "view-data": "blocked",
+                  "view-data": DataPermissionValue.BLOCKED,
                 },
               },
             },
@@ -371,17 +378,9 @@ describe(
             ],
           );
 
-          H.queryWritableDB(
-            `SELECT *
-           FROM ${WRITABLE_TEST_TABLE}
-           WHERE id = 1`,
-            dialect,
-          ).then((result) => {
-            const row = result.rows[0];
-            expect(row.score).to.equal(0);
-          });
+          verifyScoreValue(0, dialect);
 
-          cy.get("@writableModelId").then((modelId) => {
+          cy.get<CardId>("@writableModelId").then((modelId) => {
             H.createAction({
               ...SAMPLE_WRITABLE_QUERY_ACTION,
               model_id: modelId,
@@ -406,29 +405,21 @@ describe(
             );
           });
 
-          H.queryWritableDB(
-            `SELECT *
-           FROM ${WRITABLE_TEST_TABLE}
-           WHERE id = 1`,
-            dialect,
-          ).then((result) => {
-            const row = result.rows[0];
-            expect(row.score).to.equal(0);
-          });
+          verifyScoreValue(0, dialect);
         });
       }
     },
   );
 });
 
-function runActionFor(actionName) {
+function runActionFor(actionName: string) {
   cy.findByRole("listitem", { name: actionName }).within(() => {
     cy.icon("play").click();
   });
   cy.wait("@getAction");
 }
 
-function openActionMenuFor(actionName) {
+function openActionMenuFor(actionName: string) {
   cy.findByRole("listitem", { name: actionName }).within(() => {
     cy.icon("ellipsis").click();
   });
@@ -445,23 +436,27 @@ function assertQueryEditorDisabled() {
   cy.findByText("QWERTY").should("not.exist");
 }
 
-function enablePublicSharing(actionId, { publicUrlAlias }) {
-  cy.request("POST", `/api/action/${actionId}/public_link`).then(({ body }) => {
+function enablePublicSharing(
+  actionId: WritebackActionId,
+  { publicUrlAlias }: { publicUrlAlias: string },
+) {
+  cy.request<{ uuid: string }>(
+    "POST",
+    `/api/action/${actionId}/public_link`,
+  ).then(({ body }) => {
     cy.wrap(`/public/action/${body.uuid}`).as(publicUrlAlias);
   });
 }
 
-function disablePublicSharing(actionId) {
+function disablePublicSharing(actionId: WritebackActionId) {
   cy.request("DELETE", `/api/action/${actionId}/public_link`);
 }
 
-function verifyScoreValue(value, dialect) {
+function verifyScoreValue(value: number, dialect: Dialect) {
   H.queryWritableDB(
     `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
     dialect,
-  ).then((result) => {
-    const row = result.rows[0];
-
-    expect(row.score).to.equal(value);
-  });
+  )
+    .its("rows.0.score")
+    .should("equal", value);
 }
