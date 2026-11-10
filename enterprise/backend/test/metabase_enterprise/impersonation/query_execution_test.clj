@@ -7,7 +7,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase.actions.execution :as actions.execution]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]

@@ -16,7 +16,7 @@ export function useRouteDataAppAction() {
     error: appError,
   } = useGetDataAppQuery(name);
   const {
-    currentData,
+    currentData: action,
     isFetching: isFetchingAction,
     error: actionFetchError,
   } = useGetActionQuery(actionId != null ? { id: actionId } : skipToken);
@@ -26,11 +26,7 @@ export function useRouteDataAppAction() {
     error: databasesError,
   } = useActionDatabases();
 
-  const action =
-    currentData?.type === "query" || currentData?.type === "implicit"
-      ? currentData
-      : undefined;
-  const isLoadingAction = currentData === undefined && isFetchingAction;
+  const isLoadingAction = action === undefined && isFetchingAction;
   const isActionNotFound =
     !isLoadingAction && actionFetchError === undefined && action === undefined;
   const actionError = isActionNotFound

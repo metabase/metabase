@@ -134,11 +134,16 @@
            search
            serialization
            settings
+           startup
            users.schema
            util
            warehouses
            workspaces}
-   :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
+   :model-exports #{:model/Action
+                    :model/ActionSecret
+                    :model/HttpAction
+                    :model/ImplicitAction
+                    :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -151,7 +156,7 @@
   actions.rest
   {:team "Gadget"
    :ns-prefix "metabase.actions-rest"
-   :api  #{metabase.actions-rest.api}
+   :api  #{metabase.actions-rest.api metabase.actions-rest.secret-api}
    :uses #{actions
            analytics
            api
@@ -1832,6 +1837,7 @@
            util
            util.classloader}
    :model-imports #{:model/Action
+                    :model/ActionSecret
                     :model/Card
                     :model/Channel
                     :model/ChannelTemplate
@@ -1851,6 +1857,7 @@
                     :model/FieldUserSettings
                     :model/FieldValues
                     :model/Glossary
+                    :model/HttpAction
                     :model/ImplicitAction
                     :model/Measure
                     :model/Metabot
@@ -2686,6 +2693,7 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
+                    :model/HttpAction
                     :model/ImplicitAction
                     :model/Measure
                     :model/MetabotPrompt

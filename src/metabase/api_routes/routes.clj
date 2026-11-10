@@ -2,6 +2,7 @@
   (:require
    [compojure.route :as route]
    [metabase.actions-rest.api]
+   [metabase.actions-rest.secret-api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
    [metabase.agent-api.query-guards :as agent-api.query-guards]
@@ -84,6 +85,7 @@
    [metabase.xrays.api]))
 
 (comment metabase.actions-rest.api/keep-me
+         metabase.actions-rest.secret-api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.ai-tracing.api/keep-me
@@ -204,6 +206,7 @@
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
+   "/action-secret"        (+auth 'metabase.actions-rest.secret-api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
    "/alert"                (+auth metabase.pulse.api/alert-routes)

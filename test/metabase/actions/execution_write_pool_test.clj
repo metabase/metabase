@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.execution :as actions.execution]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))

@@ -172,6 +172,11 @@
   [action :- ::actions.schema/implicit-action.update]
   (t2/insert! :model/ImplicitAction action))
 
+(mu/defn insert-http-action!
+  "Insert the HttpAction `action`, returning the number inserted."
+  [action :- ::actions.schema/http-action.update]
+  (t2/insert! :model/HttpAction action))
+
 (mu/defn update-query-action!
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
@@ -184,6 +189,12 @@
    changes   :- ::actions.schema/implicit-action.update]
   (t2/update! :model/ImplicitAction :action_id action-id changes))
 
+(mu/defn update-http-action!
+  "Apply `changes` to the HttpAction with `action-id`, returning the number updated."
+  [action-id :- ::lib.schema.id/action
+   changes   :- ::actions.schema/http-action.update]
+  (t2/update! :model/HttpAction :action_id action-id changes))
+
 (mu/defn delete-query-action!
   "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
@@ -193,6 +204,16 @@
   "Delete the ImplicitAction of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/ImplicitAction :action_id action-id))
+
+(mu/defn delete-http-action!
+  "Delete the HttpAction of the Action with `action-id`, returning the number deleted."
+  [action-id :- ::lib.schema.id/action]
+  (t2/delete! :model/HttpAction :action_id action-id))
+
+(mu/defn http-actions
+  "The HttpActions of the Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select :model/HttpAction :action_id [:in action-ids]))
 
 (mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."
@@ -279,3 +300,43 @@
   "Whether the Database with `database-id` has a Table whose writability is unknown."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Table :db_id database-id :is_writable nil))
+
+(mu/defn action-secrets :- [:sequential ::actions.schema/action-secret]
+  "Every ActionSecret, without its value, by name."
+  []
+  (t2/select :model/ActionSecret {:order-by [[:name :asc]]}))
+
+(mu/defn action-secret :- [:maybe ::actions.schema/action-secret]
+  "The ActionSecret with `secret-id`, without its value, or nil."
+  [secret-id :- pos-int?]
+  (t2/select-one :model/ActionSecret :id [:auto/param secret-id]))
+
+(mu/defn action-secret-with-name-exists? :- :boolean
+  "Whether an ActionSecret other than the one with `except-id` has `secret-name`."
+  [secret-name :- :string
+   except-id   :- [:maybe pos-int?]]
+  (t2/exists? :model/ActionSecret {:where [:and
+                                           [:= :name [:auto/param secret-name]]
+                                           (when except-id
+                                             [:not= :id [:auto/param except-id]])]}))
+
+(mu/defn insert-action-secret! :- pos-int?
+  "Insert the ActionSecret `row` and return its id."
+  [row :- ::actions.schema/action-secret.update]
+  (t2/insert-returning-pk! :model/ActionSecret row))
+
+(mu/defn update-action-secret!
+  "Apply `changes` to the ActionSecret with `secret-id`, returning the number updated."
+  [secret-id :- pos-int?
+   changes   :- ::actions.schema/action-secret.update]
+  (t2/update! :model/ActionSecret :id [:auto/param secret-id] changes))
+
+(mu/defn delete-action-secret!
+  "Delete the ActionSecret with `secret-id`, returning the number deleted."
+  [secret-id :- pos-int?]
+  (t2/delete! :model/ActionSecret :id [:auto/param secret-id]))
+
+(mu/defn action-secrets-with-values :- [:sequential ::actions.schema/action-secret.with-value]
+  "The name, value and allowed hosts of the ActionSecrets with `secret-names`."
+  [secret-names :- [:set {:min 1} :string]]
+  (t2/select [:model/ActionSecret :name :value :allowed_hosts] :name [:in [:auto/param (vec secret-names)]]))

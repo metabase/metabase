@@ -24,6 +24,7 @@ import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { ActionsTabs } from "../../components/ActionsTabs";
 import { ImplicitActionTablePickerModal } from "../../components/ImplicitActionTablePickerModal";
 import {
   ACTION_COLLECTION_NAMESPACES,
@@ -72,6 +73,7 @@ export function ActionListPage() {
   return (
     <LibraryTreePage
       title={t`Data actions`}
+      tabs={isAdmin ? <ActionsTabs /> : undefined}
       tree={visibleTree}
       isLoading={isLoadingActions || isLoadingDatabases}
       isSearchActive={isSearchActive}
@@ -153,10 +155,17 @@ function ActionsCreateMenu() {
           </Menu.Item>
           <Menu.Item
             component={ForwardRefLink}
-            to={Urls.newDataStudioAction()}
+            to={Urls.newDataStudioAction("query")}
             leftSection={<FixedSizeIcon name="sql" />}
           >
             {t`SQL query`}
+          </Menu.Item>
+          <Menu.Item
+            component={ForwardRefLink}
+            to={Urls.newDataStudioAction("http")}
+            leftSection={<FixedSizeIcon name="globe" />}
+          >
+            {t`HTTP request`}
           </Menu.Item>
           <Menu.Divider />
           <Menu.Item

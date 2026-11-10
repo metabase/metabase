@@ -38,7 +38,8 @@ export function ActionRunPage() {
     );
   }
 
-  const disabledReason = getRunDisabledReason(database);
+  const disabledReason =
+    action.type === "http" ? undefined : getRunDisabledReason(database);
 
   return (
     <PageContainer data-testid="action-run">

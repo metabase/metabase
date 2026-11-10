@@ -1,3 +1,5 @@
+import { match } from "ts-pattern";
+
 import { Code, type CodeProps } from "metabase/ui";
 
 import type { ActionFieldSource } from "../hooks";
@@ -12,7 +14,14 @@ export function ActionFieldSourceCode({
 }: ActionFieldSourceCodeProps) {
   return (
     <Code {...codeProps}>
-      {source.type === "variable" ? `{{ ${source.name} }}` : source.name}
+      {match(source)
+        .with({ type: "column" }, ({ name }) => name)
+        .with(
+          { type: "variable" },
+          { type: "request-variable" },
+          ({ name }) => `{{ ${name} }}`,
+        )
+        .exhaustive()}
     </Code>
   );
 }

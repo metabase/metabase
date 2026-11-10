@@ -1,9 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useUpdateActionMutation } from "metabase/api";
 import { findErrorMessage, getErrorMessage } from "metabase/api/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
@@ -11,27 +14,30 @@ import { useMetadataToasts } from "metabase/common/hooks";
 import { hasNativeWritePermissions } from "metabase/common/utils/database";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { type Location, useLocation, useNavigate } from "metabase/router";
-import { Center } from "metabase/ui";
+import { Button, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   Database,
   ImplicitActionKind,
   TableId,
   UpdateImplicitActionRequest,
+  WritebackHttpAction,
   WritebackImplicitQueryAction,
   WritebackQueryAction,
 } from "metabase-types/api";
 
 import { trackDataActionQueryUpdated } from "../../analytics";
 import { ActionHeader } from "../../components/ActionHeader";
+import { HttpActionEditor } from "../../components/HttpActionEditor";
 import { ImplicitActionDefinitionContent } from "../../components/ImplicitActionDefinitionContent";
 import { QueryActionDefinitionContent } from "../../components/QueryActionDefinitionContent";
 import { QueryActionEditor } from "../../components/QueryActionEditor";
 import { QueryActionEditorPane } from "../../components/QueryActionEditorPane";
 import { useActionDatabases } from "../../hooks/use-action-databases";
+import { useHttpActionDraft } from "../../hooks/use-http-action-draft";
 import { useQueryActionDraft } from "../../hooks/use-query-action-draft";
 import { useRouteAction } from "../../hooks/use-route-action";
-import { canEditActionQuery } from "../../utils";
+import { canEditActionQuery, getHttpActionRequest } from "../../utils";
 
 export function ActionDefinitionPage() {
   const { action, isLoading, error } = useRouteAction();
@@ -44,11 +50,17 @@ export function ActionDefinitionPage() {
     );
   }
 
-  return action.type === "implicit" ? (
-    <ImplicitActionDefinitionPage key={action.id} action={action} />
-  ) : (
-    <QueryActionDefinitionPage key={action.id} action={action} />
-  );
+  return match(action)
+    .with({ type: "implicit" }, (action) => (
+      <ImplicitActionDefinitionPage key={action.id} action={action} />
+    ))
+    .with({ type: "query" }, (action) => (
+      <QueryActionDefinitionPage key={action.id} action={action} />
+    ))
+    .with({ type: "http" }, (action) => (
+      <HttpActionDefinitionPage key={action.id} action={action} />
+    ))
+    .exhaustive();
 }
 
 type QueryActionDefinitionPageProps = {
@@ -252,5 +264,107 @@ function ImplicitActionDefinitionPage({
         onChangeKind={handleKindChange}
       />
     </PageContainer>
+  );
+}
+
+type HttpActionDefinitionPageProps = {
+  action: WritebackHttpAction;
+};
+
+function HttpActionDefinitionPage({ action }: HttpActionDefinitionPageProps) {
+  const { pathname } = useLocation();
+  const isEditRoute = pathname.endsWith("/edit");
+
+  return isEditRoute && action.can_write ? (
+    <HttpActionEditPage action={action} />
+  ) : (
+    <HttpActionViewPage action={action} />
+  );
+}
+
+function HttpActionViewPage({ action }: HttpActionDefinitionPageProps) {
+  const request = useMemo(() => getHttpActionRequest(action), [action]);
+
+  return (
+    <PageContainer data-testid="action-definition">
+      <ActionHeader action={action} />
+      <HttpActionEditor
+        request={request}
+        requestActions={
+          action.can_write && (
+            <Button component={Link} to={Urls.dataStudioActionEdit(action.id)}>
+              {t`Edit definition`}
+            </Button>
+          )
+        }
+        readOnly
+        onChange={_.noop}
+      />
+    </PageContainer>
+  );
+}
+
+function HttpActionEditPage({ action }: HttpActionDefinitionPageProps) {
+  const initialRequest = useMemo(() => getHttpActionRequest(action), [action]);
+  const draft = useHttpActionDraft({
+    initialRequest,
+    parameters: action.parameters,
+    formSettings: action.visualization_settings,
+  });
+  const [updateAction, { isLoading: isSaving }] = useUpdateActionMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const navigate = useNavigate();
+  const isSavedRef = useRef(false);
+  const isLocationAllowed = useCallback(
+    (location?: Location) => !location || isSavedRef.current,
+    [],
+  );
+
+  const handleSave = async () => {
+    if (draft.definition == null) {
+      return;
+    }
+    const { error } = await updateAction({
+      id: action.id,
+      ...draft.definition,
+    });
+    if (error) {
+      const message = getErrorMessage(error);
+      sendErrorToast(
+        message
+          ? t`Failed to update action: ${message}`
+          : t`Failed to update action`,
+      );
+      return;
+    }
+    sendSuccessToast(t`Action updated`);
+    isSavedRef.current = true;
+    navigate(Urls.dataStudioAction(action.id));
+  };
+
+  return (
+    <>
+      <PageContainer data-testid="action-request-editor">
+        <ActionHeader
+          action={action}
+          isEditMode
+          actions={
+            <PaneHeaderActions
+              isValid={draft.isValid}
+              isDirty={draft.isDirty}
+              isSaving={isSaving}
+              alwaysVisible
+              onSave={handleSave}
+              onCancel={() => navigate(Urls.dataStudioAction(action.id))}
+            />
+          }
+        />
+        <HttpActionEditor request={draft.request} onChange={draft.setRequest} />
+      </PageContainer>
+      <LeaveRouteConfirmModal
+        isEnabled={draft.isDirty}
+        isLocationAllowed={isLocationAllowed}
+      />
+    </>
   );
 }

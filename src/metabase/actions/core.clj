@@ -7,8 +7,10 @@
    [metabase.actions.events]
    [metabase.actions.execution]
    [metabase.actions.hierarchy]
-   [metabase.actions.models]
+   [metabase.actions.http]
+   [metabase.actions.models.action]
    [metabase.actions.scope]
+   [metabase.actions.secrets]
    [potemkin :as p]))
 
 (comment
@@ -16,8 +18,10 @@
   metabase.actions.error/keep-me
   metabase.actions.execution/keep-me
   metabase.actions.hierarchy/keep-me
-  metabase.actions.models/keep-me
-  metabase.actions.scope/keep-me)
+  metabase.actions.http/keep-me
+  metabase.actions.models.action/keep-me
+  metabase.actions.scope/keep-me
+  metabase.actions.secrets/keep-me)
 
 (p/import-vars
  [metabase.actions.actions
@@ -48,11 +52,13 @@
   violate-unique-constraint]
  [metabase.actions.hierarchy
   derive!]
+ [metabase.actions.http
+  check-http-action]
  [metabase.actions.execution
   execute-action!
   execute-dashcard!
   fetch-values]
- [metabase.actions.models
+ [metabase.actions.models.action
   adhoc-action
   check-action-databases-enabled
   check-implicit-action-table-pk
@@ -67,4 +73,10 @@
   publish-action-success!]
  [metabase.actions.scope
   hydrate-scope
-  normalize-scope])
+  normalize-scope]
+ [metabase.actions.secrets
+  create-secret!
+  delete-secret!
+  secret
+  secrets
+  update-secret!])

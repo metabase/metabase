@@ -1,12 +1,16 @@
-(ns metabase.actions.models
+(ns metabase.actions.models.action
+  "The Action model, and the selection, insertion and update of actions with the row of their type."
   (:require
    [medley.core :as m]
    [metabase.actions.actions :as actions]
    [metabase.actions.db :as actions.db]
+   [metabase.actions.models.action-secret]
+   [metabase.actions.models.http-action]
+   [metabase.actions.models.implicit-action]
+   [metabase.actions.models.query-action]
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -30,10 +34,6 @@
 ;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Action [_model] :action)
-(methodical/defmethod t2/table-name :model/QueryAction [_model] :query_action)
-(methodical/defmethod t2/table-name :model/ImplicitAction [_model] :implicit_action)
-
-(def ^:private action-sub-models [:model/QueryAction :model/ImplicitAction])
 
 (doto :model/Action
   (derive :metabase/model)
@@ -41,18 +41,6 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
   (derive :hook/dependencies))
-
-(doseq [model action-sub-models]
-  (derive model :metabase/model))
-
-(doto :model/QueryAction
-  (derive :hook/search-index)
-  (derive :hook/dependencies))
-
-(derive :model/ImplicitAction :hook/dependencies)
-
-(methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
-(methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
 
 (def ^:private transform-action-visualization-settings
   {:in  mi/json-in
@@ -74,12 +62,6 @@
    :parameter_mappings     parameters/transform-parameter-mappings
    :parameters             transform-action-parameters
    :visualization_settings transform-action-visualization-settings})
-
-(t2/deftransforms :model/QueryAction
-  {:dataset_query lib-be/transform-query})
-
-(t2/deftransforms :model/ImplicitAction
-  {:kind mi/transform-keyword})
 
 (methodical/defmethod t2/batched-hydrate [:model/Action :model]
   [_model k actions]
@@ -161,12 +143,12 @@
   (ex-info message {:status-code 400}))
 
 (defn- check-data-app-action
-  "Throws unless `action`, when it is in a data app's collection, is an implicit action on a table, of no model, that is
-  neither archived nor public and whose parameters take no values from a card."
+  "Throws unless `action`, when it is in a data app's collection, is an HTTP action or an implicit action on a table, of
+  no model, that is neither archived nor public and whose parameters take no values from a card."
   [{collection-id :collection_id, :as action}]
   (when (and (some? collection-id) (perms/data-app-collection? collection-id))
-    (when (or (not= :implicit (keyword (:type action))) (:model_id action))
-      (throw (data-app-action-error (tru "An action in a data app''s collection must be an implicit action on a table."))))
+    (when (or (not (#{:http :implicit} (keyword (:type action)))) (:model_id action))
+      (throw (data-app-action-error (tru "An action in a data app''s collection must be an HTTP action or an implicit action on a table."))))
     (when (:archived action)
       (throw (data-app-action-error (tru "An action in a data app''s collection can''t be archived."))))
     (when (:public_uuid action)
@@ -201,44 +183,6 @@
       (when (some #(contains? (t2/changes <>) %) [:collection_id :type :model_id :archived :public_uuid :parameters])
         (check-data-app-action <>)))))
 
-(defn- set-query-database
-  "`query-action` with the `:database_id` of its query, when it has one, as a row copied whole may hold its query
-  undecoded."
-  [{query :dataset_query, :as query-action}]
-  (if-let [database-id (when (map? query) (:database query))]
-    (assoc query-action :database_id database-id)
-    query-action))
-
-(defn- check-query
-  "Throws a 400 unless the query of `query-action` is empty or native."
-  [{query :dataset_query}]
-  (when (and (map? query)
-             (seq query)
-             (not (lib/native-only-query? (lib-be/normalize-query query))))
-    (throw (ex-info (tru "An action''s query has to be a native query.") {:status-code 400}))))
-
-(t2/define-before-insert :model/QueryAction
-  [query-action]
-  (check-query query-action)
-  (set-query-database query-action))
-
-(t2/define-before-update :model/QueryAction
-  [query-action]
-  (when (contains? (t2/changes query-action) :dataset_query)
-    (check-query query-action))
-  (set-query-database query-action))
-
-(defn- check-implicit-action-table
-  "Throws a 400 unless `implicit-action` has a Table exactly when its Action has no model, as an action of a model writes
-  to the table its model reads when it runs."
-  [{table-id :table_id, action-id :action_id}]
-  (if (actions.db/action-model-id action-id)
-    (when (some? table-id)
-      (throw (ex-info (tru "An action of a model writes to the model''s table, so it can''t be given one.")
-                      {:status-code 400})))
-    (when (nil? table-id)
-      (throw (ex-info (tru "An implicit action needs a table.") {:status-code 400})))))
-
 (defn table-action-fields
   "The fields of `table` that an implicit action without a model uses, those a new model on it returns, which leaves out
   sensitive and retired fields."
@@ -253,17 +197,6 @@
     (let [fields (table-action-fields (first (actions.db/tables-with-fields [table-id])))]
       (when-not (= 1 (count (filter #(isa? (:semantic_type %) :type/PK) fields)))
         (throw (ex-info (tru "An implicit action needs a table with exactly one primary key.") {:status-code 400}))))))
-
-(t2/define-before-update :model/ImplicitAction
-  [implicit-action]
-  (u/prog1 implicit-action
-    (when (contains? (t2/changes implicit-action) :table_id)
-      (check-implicit-action-table implicit-action))))
-
-(t2/define-before-insert :model/ImplicitAction
-  [implicit-action]
-  (u/prog1 implicit-action
-    (check-implicit-action-table implicit-action)))
 
 (defn- action-database-ids
   "The ids of the Databases `action` runs against: its query's, or for an implicit action its model's or its table's."
@@ -351,10 +284,11 @@
     (let [action (actions.db/insert-action! (select-keys action-data action-columns))
           row    (-> (apply dissoc action-data action-columns)
                      (assoc :action_id (:id action))
-                     (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
+                     (cond-> (not= (:type action) :query) (dissoc :database_id)))]
       (case (:type action)
         :query    (actions.db/insert-query-action! row)
-        :implicit (actions.db/insert-implicit-action! row))
+        :implicit (actions.db/insert-implicit-action! row)
+        :http     (actions.db/insert-http-action! row))
       (:id action))))
 
 (mu/defn insert! :- ::actions.schema/id
@@ -369,21 +303,24 @@
     (t2/with-transaction [_conn]
       ;; the query row first: a move into a data app's collection checks the query the action then holds
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
-                                       (= (or (:type updates) (:type existing-action))
-                                          :implicit)
+                                       (not= (or (:type updates) (:type existing-action))
+                                             :query)
                                        (dissoc :database_id)))]
         (let [type-row (assoc type-row :action_id id)]
           (if (and (:type updates) (not= (:type updates) (:type existing-action)))
             (do
               (case (:type existing-action)
                 :query    (actions.db/delete-query-action! id)
-                :implicit (actions.db/delete-implicit-action! id))
+                :implicit (actions.db/delete-implicit-action! id)
+                :http     (actions.db/delete-http-action! id))
               (case (:type updates)
                 :query    (actions.db/insert-query-action! type-row)
-                :implicit (actions.db/insert-implicit-action! type-row)))
+                :implicit (actions.db/insert-implicit-action! type-row)
+                :http     (actions.db/insert-http-action! type-row)))
             (case (:type existing-action)
               :query    (actions.db/update-query-action! id type-row)
-              :implicit (actions.db/update-implicit-action! id type-row)))))
+              :implicit (actions.db/update-implicit-action! id type-row)
+              :http     (actions.db/update-http-action! id type-row)))))
       (when-let [action-row (not-empty (select-keys updates action-columns))]
         (actions.db/update-action! id action-row))
       (when (and (:archived updates) (not (:archived existing-action)))
@@ -419,6 +356,12 @@
                       (select-keys implicit-action [:kind :table_id]))))
            actions))))
 
+(defn- normalize-http-actions [actions]
+  (when (seq actions)
+    (let [http-actions (m/index-by :action_id (actions.db/http-actions (map :id actions)))]
+      (for [action actions]
+        (merge action (-> action :id http-actions (dissoc :action_id)))))))
+
 (defn- select-actions-matching-options
   "Interprets the fixed set of kv-arg shapes [[select-action]]/[[select-actions]] callers use (also a bare id, Toucan's
    primary-key shorthand), and returns the matching Actions."
@@ -437,10 +380,11 @@
 (defn- normalize-actions-by-type
   "Groups `actions` by `:type` and fills in each subtype's sub type information."
   [actions]
-  (let [{:keys [query implicit]} (group-by :type actions)
-        query-actions            (normalize-query-actions query)
-        implicit-actions         (normalize-implicit-actions implicit)]
-    (sort-by :updated_at (concat query-actions implicit-actions))))
+  (let [{:keys [query implicit http]} (group-by :type actions)
+        query-actions                 (normalize-query-actions query)
+        implicit-actions              (normalize-implicit-actions implicit)
+        http-actions                  (normalize-http-actions http)]
+    (sort-by :updated_at (concat query-actions implicit-actions http-actions))))
 
 (defn- select-actions-without-implicit-params
   "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
@@ -467,8 +411,8 @@
                         :text)
    :required          (:database_required field)
    :is-auto-increment (:database_is_auto_increment field)
-   ::field-id         (:id field)
-   ::pk?              (isa? (:semantic_type field) :type/PK)})
+   :metabase.actions.models/field-id         (:id field)
+   :metabase.actions.models/pk?              (isa? (:semantic_type field) :type/PK)})
 
 (def ^:private unwritable-field?
   "Whether an implicit action can't write `field`: an unfolded JSON field, a structured or JSON parent field, or a field of
@@ -529,20 +473,20 @@
                (merge param saved-param'))))
 
       (= action-kind :row/delete)
-      (filter ::pk?)
+      (filter :metabase.actions.models/pk?)
 
       (= action-kind :row/create)
       (remove #(or (:is-auto-increment %)
                    ;; non-required PKs like column with default is uuid_generate_v4()
-                   (and (::pk? %) (not (:required %)))))
+                   (and (:metabase.actions.models/pk? %) (not (:required %)))))
 
       (contains? #{:row/update :row/delete} action-kind)
-      (map (fn [param] (cond-> param (::pk? param) (assoc :required true)))))))
+      (map (fn [param] (cond-> param (:metabase.actions.models/pk? param) (assoc :required true)))))))
 
 (defn- implicit-parameters->viz-fields [implicit-parameters]
   (let [field-ids (into #{}
                         (comp cat
-                              (keep ::field-id))
+                              (keep :metabase.actions.models/field-id))
                         implicit-parameters)]
     (when (seq field-ids)
       (into {}
@@ -580,7 +524,7 @@
                                        (assoc acc param-id {:id param-id, :hidden false})))
                                    viz-fields
                                    param-ids)
-        param-id->field-id (into {} (map (juxt :id ::field-id)) implicit-params)]
+        param-id->field-id (into {} (map (juxt :id :metabase.actions.models/field-id)) implicit-params)]
     (update-vals viz-fields (fn [{param-id :id, :as viz-field}]
                               (let [field-id (get param-id->field-id param-id)]
                                 (merge viz-field
@@ -682,25 +626,6 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serialization/spec :model/QueryAction [_]
-  {:schema    ::actions.schema/external-query-action
-   :identity  [:action_id]
-   :primary-key :action_id
-   :skip      [:legacy_query]
-   :parent    {:model :model/Action :key :action_id}
-   :transform {:action_id     serialization/import-only-transform
-               :database_id   serialization/database-transform
-               :dataset_query serialization/mbql-transform}})
-
-(defmethod serialization/spec :model/ImplicitAction [_]
-  {:schema    ::actions.schema/external-implicit-action
-   :identity  [:action_id]
-   :primary-key :action_id
-   :copy      [:kind]
-   :parent    {:model :model/Action :key :action_id}
-   :transform {:action_id serialization/import-only-transform
-               :table_id serialization/table-transform}})
-
 (defmethod serialization/spec :model/Action [_]
   {:schema    ::actions.schema/external-action
    :copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
@@ -714,7 +639,8 @@
                :parameter_mappings     serialization/parameter-mappings-transform
                :visualization_settings serialization/visualization-settings-transform}
    :children  {:query    :model/QueryAction
-               :implicit :model/ImplicitAction}
+               :implicit :model/ImplicitAction
+               :http     :model/HttpAction}
    :defaults  {:archived false, :archived_directly false}})
 
 (defmethod serialization/storage-paths :model/Action [_ entities ctx]
@@ -771,18 +697,16 @@
 
 ;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
 
+(defn- removed-http-action?
+  "Whether the serialized `action` is one of the HTTP actions removed in v65, whose request has no `:url`."
+  [action]
+  (and (= "http" (some-> action :type name))
+       (not (some :url (:http action)))))
+
 (defmethod serialization/before-load :model/Action [_ items]
-  (filterv #(not= "http" (some-> % :entity :type name)) items))
+  (filterv (comp not removed-http-action? :entity) items))
 
 (defmethod remote-sync/spec :model/Action
   [_model]
   {:parent               (fn [{:keys [model_id]}] (some->> model_id (vector :model/Card)))
    :synced-filter-clause actions.db/synced-actions-clause})
-
-(defmethod remote-sync/spec :model/QueryAction
-  [_model]
-  {:synced-filter-clause actions.db/synced-action-details-clause})
-
-(defmethod remote-sync/spec :model/ImplicitAction
-  [_model]
-  {:synced-filter-clause actions.db/synced-action-details-clause})

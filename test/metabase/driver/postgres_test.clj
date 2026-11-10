@@ -12,7 +12,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.actions.error :as actions.error]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]

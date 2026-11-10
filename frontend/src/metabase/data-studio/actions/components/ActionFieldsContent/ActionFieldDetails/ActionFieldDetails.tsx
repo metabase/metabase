@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
@@ -67,7 +68,11 @@ export function ActionFieldDetails({
         />
         <Stack gap="xs">
           <Text fw="bold">
-            {source.type === "variable" ? t`SQL variable` : t`Column`}
+            {match(source.type)
+              .with("variable", () => t`SQL variable`)
+              .with("request-variable", () => t`Request variable`)
+              .with("column", () => t`Column`)
+              .exhaustive()}
           </Text>
           <ActionFieldSourceCode source={source} w="fit-content" />
         </Stack>

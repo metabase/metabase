@@ -10,6 +10,7 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 import {
+  createMockHttpAction,
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
@@ -33,6 +34,9 @@ function setupActionPostEndpoint() {
       }
       if (data.type === "query") {
         return createMockQueryAction(data);
+      }
+      if (data.type === "http") {
+        return createMockHttpAction(data);
       }
       throw new Error(`Unknown action type: ${data.type}`);
     },

@@ -10,7 +10,7 @@
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.actions.error :as actions.error]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mysql :as mysql]

@@ -1,6 +1,9 @@
+import { match } from "ts-pattern";
+
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
+  HttpActionFieldsContent,
   ImplicitActionFieldsContent,
   QueryActionFieldsContent,
 } from "metabase/data-studio/actions/components/ActionFieldsContent";
@@ -27,24 +30,36 @@ export function DataAppActionFieldsPage() {
   return (
     <PageContainer data-testid="data-app-action-fields" gap="lg" px={0} pb={0}>
       <DataAppActionHeader app={app} action={action} px="3.5rem" />
-      {action.type === "implicit" ? (
-        <ImplicitActionFieldsContent
-          action={action}
-          fieldId={fieldId}
-          getFieldsUrl={(fieldId) =>
-            Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
-          }
-        />
-      ) : (
-        <QueryActionFieldsContent
-          action={action}
-          fieldId={fieldId}
-          canChangeFieldType={canEditActionQuery(action, databases)}
-          getFieldsUrl={(fieldId) =>
-            Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
-          }
-        />
-      )}
+      {match(action)
+        .with({ type: "implicit" }, (action) => (
+          <ImplicitActionFieldsContent
+            action={action}
+            fieldId={fieldId}
+            getFieldsUrl={(fieldId) =>
+              Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
+            }
+          />
+        ))
+        .with({ type: "query" }, (action) => (
+          <QueryActionFieldsContent
+            action={action}
+            fieldId={fieldId}
+            canChangeFieldType={canEditActionQuery(action, databases)}
+            getFieldsUrl={(fieldId) =>
+              Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
+            }
+          />
+        ))
+        .with({ type: "http" }, (action) => (
+          <HttpActionFieldsContent
+            action={action}
+            fieldId={fieldId}
+            getFieldsUrl={(fieldId) =>
+              Urls.dataStudioDataAppActionFields(app.name, action.id, fieldId)
+            }
+          />
+        ))
+        .exhaustive()}
     </PageContainer>
   );
 }

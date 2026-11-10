@@ -9,7 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
 import * as Lib from "metabase-lib";
@@ -20,6 +20,7 @@ import {
   createMockCollection,
   createMockDatabase,
   createMockFieldSettings,
+  createMockHttpAction,
   createMockImplicitQueryAction,
   createMockQueryAction,
   createMockTable,
@@ -284,5 +285,61 @@ describe("ActionFieldsPage", () => {
     expect(
       await screen.findByText("See the action's fields"),
     ).toBeInTheDocument();
+  });
+
+  describe("HTTP actions", () => {
+    const HTTP_ACTION = createMockHttpAction({
+      id: 2,
+      url: "https://crm.example.com/deals/{{deal_id}}",
+      can_write: true,
+      parameters: [
+        createMockActionParameter({
+          id: "deal_id",
+          slug: "deal_id",
+          name: "Deal ID",
+          type: "string/=",
+          required: true,
+        }),
+      ],
+    });
+
+    it("shows field per request variable", async () => {
+      setup({
+        action: HTTP_ACTION,
+        database: createMockDatabase(),
+        fieldId: "deal_id",
+      });
+
+      expect(
+        await screen.findByText("One field per {{variable}} in the request."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Request variable")).toBeInTheDocument();
+      expect(screen.getAllByText("{{ deal_id }}")).not.toHaveLength(0);
+    });
+
+    it("saves field type to parameter", async () => {
+      setup({
+        action: HTTP_ACTION,
+        database: createMockDatabase(),
+        fieldId: "deal_id",
+      });
+
+      await userEvent.click(
+        await screen.findByRole("radio", { name: "Number" }),
+      );
+
+      await waitFor(() =>
+        expect(fetchMock.callHistory.called("action-2-put")).toBe(true),
+      );
+      const update = await fetchMock.callHistory
+        .lastCall("action-2-put")
+        ?.request?.json();
+      expect(update).toMatchObject({
+        parameters: [{ id: "deal_id", type: "number/=", required: true }],
+        visualization_settings: {
+          fields: { deal_id: { fieldType: "number" } },
+        },
+      });
+    });
   });
 });

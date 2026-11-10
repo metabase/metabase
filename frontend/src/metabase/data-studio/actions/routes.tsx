@@ -24,6 +24,11 @@ const newActionPage = () =>
     ({ NewActionPage }) => ({ Component: NewActionPage }),
   );
 
+const secretListPage = () =>
+  import(/* webpackChunkName: "data-actions" */ "./pages/SecretListPage").then(
+    ({ SecretListPage }) => ({ Component: SecretListPage }),
+  );
+
 const actionQueryPage = () =>
   import(
     /* webpackChunkName: "data-actions" */ "./pages/ActionDefinitionPage"
@@ -59,6 +64,9 @@ export function getDataStudioActionRoutes(IsAdmin: ComponentType) {
         <Route index lazy={newActionPage} />
       </Route>
       <Route path="archived" lazy={archivedActionListPage} />
+      <Route path="secrets" element={<IsAdmin />}>
+        <Route index lazy={secretListPage} />
+      </Route>
       <Route path=":actionId" lazy={actionQueryPage} />
       <Route path=":actionId/edit" lazy={actionQueryPage} />
       <Route path=":actionId/fields" lazy={actionFieldsPage} />

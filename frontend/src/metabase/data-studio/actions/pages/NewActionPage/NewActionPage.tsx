@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
@@ -26,13 +27,19 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
+import { HttpActionEditor } from "../../components/HttpActionEditor";
 import { ImplicitActionDefinitionContent } from "../../components/ImplicitActionDefinitionContent";
 import { QueryActionEditor } from "../../components/QueryActionEditor";
 import { QueryActionEditorPane } from "../../components/QueryActionEditorPane";
 import { ACTION_NAME_MAX_LENGTH } from "../../constants";
 import { useActionDatabases } from "../../hooks/use-action-databases";
+import { useHttpActionDraft } from "../../hooks/use-http-action-draft";
 import { useQueryActionDraft } from "../../hooks/use-query-action-draft";
-import { getImplicitActionName, hasSinglePrimaryKey } from "../../utils";
+import {
+  getHttpActionRequest,
+  getImplicitActionName,
+  hasSinglePrimaryKey,
+} from "../../utils";
 
 import { CreateActionModal } from "./CreateActionModal";
 
@@ -40,11 +47,18 @@ export function NewActionPage() {
   const [searchParams] = useSearchParams();
   const tableId = Urls.extractEntityId(searchParams.get("table") ?? undefined);
 
-  return tableId != null ? (
-    <NewImplicitActionPage key={tableId} initialTableId={tableId} />
-  ) : (
-    <NewQueryActionPage />
-  );
+  return match(searchParams.get("type"))
+    .with("implicit", () =>
+      tableId != null ? (
+        <NewImplicitActionPage key={tableId} initialTableId={tableId} />
+      ) : (
+        <Center h="100%">
+          <LoadingAndErrorWrapper error={t`Pick a table for this action.`} />
+        </Center>
+      ),
+    )
+    .with("http", () => <NewHttpActionPage />)
+    .otherwise(() => <NewQueryActionPage />);
 }
 
 function NewQueryActionPage() {
@@ -236,6 +250,74 @@ function NewImplicitActionPage({ initialTableId }: NewImplicitActionPageProps) {
         <CreateActionModal
           definition={{ type: "implicit", kind, table_id: tableId }}
           defaultName={name.trim() || defaultName}
+          defaultCollectionId={null}
+          onCreate={handleCreate}
+          onClose={closeModal}
+        />
+      )}
+      <LeaveRouteConfirmModal
+        isEnabled={isDirty}
+        isLocationAllowed={isLocationAllowed}
+      />
+    </>
+  );
+}
+
+function NewHttpActionPage() {
+  const initialRequest = useMemo(() => getHttpActionRequest(), []);
+  const draft = useHttpActionDraft({ initialRequest });
+  const [name, setName] = useState("");
+  const [isModalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure();
+  const navigate = useNavigate();
+  const isSavedRef = useRef(false);
+  const isDirty = draft.isDirty || name.trim().length > 0;
+
+  const handleCreate = (action: WritebackAction) => {
+    isSavedRef.current = true;
+    navigate(Urls.dataStudioAction(action.id));
+  };
+
+  const isLocationAllowed = useCallback(
+    (location?: Location) => !location || isSavedRef.current,
+    [],
+  );
+
+  return (
+    <>
+      <PageContainer data-testid="new-http-action">
+        <PaneHeader
+          title={
+            <PaneHeaderInput
+              initialValue={name}
+              placeholder={t`New action`}
+              maxLength={ACTION_NAME_MAX_LENGTH}
+              isOptional
+              onChange={setName}
+            />
+          }
+          icon="bolt"
+          actions={
+            <PaneHeaderActions
+              isValid={draft.isValid}
+              isDirty
+              onSave={openModal}
+              onCancel={() => navigate(Urls.dataStudioActions())}
+            />
+          }
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link to={Urls.dataStudioActions()}>{t`Data actions`}</Link>
+              {t`New action`}
+            </DataStudioBreadcrumbs>
+          }
+        />
+        <HttpActionEditor request={draft.request} onChange={draft.setRequest} />
+      </PageContainer>
+      {isModalOpened && draft.definition != null && (
+        <CreateActionModal
+          definition={draft.definition}
+          defaultName={name}
           defaultCollectionId={null}
           onCreate={handleCreate}
           onClose={closeModal}

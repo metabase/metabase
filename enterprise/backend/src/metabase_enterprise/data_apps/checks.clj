@@ -123,12 +123,17 @@
   nil)
 
 (defenterprise-schema check-adhoc-action :- :nil
-  "Throws a 400 unless `data-app` is a dev preview and the ad-hoc `action` is an implicit action of no model on a table."
+  "Throws a 400 unless `data-app` is a dev preview and the ad-hoc `action` is an HTTP action of no model or an implicit
+  action of no model on a table."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    action   :- ::actions.schema/action.adhoc]
   (when-not (preview? data-app)
     (throw (data-app-error (tru "A data app can run only the actions in its own collection, not ad-hoc ones."))))
-  (when-not (and (= :implicit (keyword (:type action))) (nil? (:model_id action)) (:table_id action))
-    (throw (data-app-error (tru "A data app''s dev preview can run only implicit actions on a table."))))
+  (when-not (and (nil? (:model_id action))
+                 (case (keyword (:type action))
+                   :http     true
+                   :implicit (some? (:table_id action))
+                   false))
+    (throw (data-app-error (tru "A data app''s dev preview can run only HTTP actions and implicit actions on a table."))))
   nil)

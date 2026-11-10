@@ -11,7 +11,7 @@
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]

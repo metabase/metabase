@@ -173,6 +173,12 @@
    columns    :- ::columns]
   (t2/select (selected :model/ImplicitAction columns) :action_id [:in [:auto/param (vec action-ids)]]))
 
+(mu/defn http-actions-by-action-ids :- [:sequential ::row]
+  "The HttpActions of the Actions with `action-ids`, with only `columns` unless nil."
+  [action-ids :- [:sequential {:min 1} :int]
+   columns    :- ::columns]
+  (t2/select (selected :model/HttpAction columns) :action_id [:in [:auto/param (vec action-ids)]]))
+
 (mu/defn osi-ai-contexts-by-local-ids :- [:sequential ::row]
   "The OsiAiContexts, with only `columns` unless nil, of the entities of type `entity-type` with `local-ids`."
   [entity-type :- :string

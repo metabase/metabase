@@ -11,7 +11,7 @@
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
    [metabase.actions.execution :as actions.execution]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]

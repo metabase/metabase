@@ -1,10 +1,10 @@
-(ns ^:mb/driver-tests metabase.actions.models-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.models-test]}}}}}}
+(ns ^:mb/driver-tests metabase.actions.models.action-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.models.action-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.actions.models :as action]
+   [metabase.actions.models.action :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -318,7 +318,7 @@
                      :model/Collection {other-id :id} {:namespace "data-actions"}]
         (mt/with-model-cleanup [:model/Action]
           (doseq [[label action-type columns message]
-                  [["a query action" :query nil #"must be an implicit action on a table"]
+                  [["a query action" :query nil #"must be an HTTP action or an implicit action on a table"]
                    ["archived" :implicit {:archived true} #"can't be archived"]
                    ["public" :implicit {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :crowberto)}
                     #"can't be made public"]

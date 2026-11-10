@@ -1,0 +1,117 @@
+## HTTP actions: an action that sends an HTTP request built from templates filled with its parameters
+
+databaseChangeLog:
+  - changeSet:
+      id: s06gqz
+      author: ranquild
+      comment: Add http_action
+      changes:
+        - createTable:
+            tableName: http_action
+            remarks: The HTTP request of an action of type http
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The action this request belongs to
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_http_action
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_http_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: method
+                  type: varchar(16)
+                  remarks: The HTTP method, such as POST
+                  constraints:
+                    nullable: false
+              - column:
+                  name: url
+                  type: ${text.type}
+                  remarks: The URL template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query_params
+                  type: ${text.type}
+                  remarks: JSON object of query parameter names to value templates
+              - column:
+                  name: headers
+                  type: ${text.type}
+                  remarks: JSON object of header names to value templates
+              - column:
+                  name: body
+                  type: ${text.type}
+                  remarks: JSON template of the request body
+
+  - changeSet:
+      id: k8vq3t
+      author: ranquild
+      comment: Add action_secret
+      changes:
+        - createTable:
+            tableName: action_secret
+            remarks: A named secret that HTTP actions can send to its allowed hosts
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: The secret id
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name templates refer to the secret by
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: idx_action_secret_name
+              - column:
+                  name: value
+                  type: ${text.type}
+                  remarks: The secret, encrypted when an encryption key is set
+                  constraints:
+                    nullable: false
+              - column:
+                  name: allowed_hosts
+                  type: ${text.type}
+                  remarks: JSON array of the hosts the secret may be sent to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who created the secret
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the secret was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the secret was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: r2mx9d
+      author: ranquild
+      comment: Add FK constraint on action_secret.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action_secret
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_action_secret_creator_id
+            onDelete: SET NULL
