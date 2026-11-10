@@ -282,6 +282,12 @@
   [instances]
   (enqueue-hook-selectors! instances true))
 
+(defn feeds-documents?
+  "Whether [[bulk-update!]] would enqueue anything for `instances`.
+  A superseded revision or review, for one, feeds no document: every hook it would trigger requires `most_recent`."
+  [instances]
+  (boolean (seq (hook-selectors instances true))))
+
 (defn- cascading-selectors
   "Hook selectors for `instances` naming documents ingestion could not purge on its own, by search-model."
   [instances]

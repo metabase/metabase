@@ -71,7 +71,14 @@
   (when (= op :delete)
     ;; Do not hand the re-derivation off until the outer transaction commits; Metabase discards the callback on
     ;; rollback.
-    (let [instances (rows->instances model rows)]
-      (search/after-commit! (format "%s %s" model op)
-                            (fn [] (search/bulk-update! instances))
-                            (fn [] (search/reconcile-cascading-documents! dependents))))))
+    ;; A step with nothing to do is left out, and so is the whole handoff, so a revision or review prune that feeds
+    ;; no document neither holds its rows until commit nor starts a thread.
+    (let [instances (rows->instances model rows)
+          steps     (cond-> []
+                      (search/feeds-documents? instances)
+                      (conj (fn [] (search/bulk-update! instances)))
+
+                      (seq dependents)
+                      (conj (fn [] (search/reconcile-cascading-documents! dependents))))]
+      (when (seq steps)
+        (apply search/after-commit! (format "%s %s" model op) steps)))))

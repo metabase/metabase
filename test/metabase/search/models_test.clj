@@ -168,6 +168,29 @@
         (t2/delete! :model/Revision :id old-id)
         (is (= 1 (indexed-count "card" card-id)))))))
 
+(deftest superseded-delete-starts-no-handoff-test
+  (testing "a delete whose rows feed no document and cascade to none registers no post-commit handoff"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card     {card-id :id} {:name "Pruned Revisions Card"}
+                     :model/Revision {old-id :id}  {:model    "Card"
+                                                    :model_id card-id
+                                                    :user_id  (mt/user->id :crowberto)
+                                                    :object   {}}
+                     :model/Revision {new-id :id}  {:model    "Card"
+                                                    :model_id card-id
+                                                    :user_id  (mt/user->id :crowberto)
+                                                    :object   {}}]
+        (let [handoffs      (atom 0)
+              after-commit! (mt/original-fn #'search/after-commit!)]
+          (mt/with-dynamic-fn-redefs [search/after-commit! (fn [& args]
+                                                             (swap! handoffs inc)
+                                                             (apply after-commit! args))]
+            (t2/delete! :model/Revision :id old-id)
+            (is (= 0 @handoffs))
+            (testing "while deleting the most recent revision still hands off its card"
+              (t2/delete! :model/Revision :id new-id)
+              (is (= 1 @handoffs)))))))))
+
 ;;; Database cascades
 
 (deftest purge-cascaded-action-on-model-delete-test
