@@ -27,7 +27,12 @@
          │                                                │
          │                                       failure  │
          │                                                ▼
-         └──────────────────────────────────────── provisioned"
+         └──────────────────────────────────────── provisioned
+
+   Deleting a workspace tears down each database from any state. A teardown that
+   fails leaves the row `teardown_failed`: warehouse objects may remain, the row
+   keeps blocking deletion of its Database, and a retried delete tears it down
+   again."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.workspaces.db :as ws.db]
@@ -383,7 +388,8 @@
    database is torn down. When the cleanup removes everything, the Workspace
    row is deleted and the provisioning error is rethrown with its own
    `:status-code` (500 when it has none). When the cleanup itself fails, the
-   workspace is kept with the failed rows (`:unprovisioned`), so the leak stays
+   workspace is kept with the failed rows (`:teardown_failed`, with the
+   identifiers the teardown used), so the leak stays
    visible and the teardown can be retried via delete, and the error is a 500,
    as it is when the cleanup succeeds but deleting the Workspace row fails.
    Either way the error's `:cleanup_required` says whether the workspace was kept
@@ -431,6 +437,15 @@
                                      kept-error (-> (assoc :workspace_id (:id ws))
                                                     (update :response/keys conj :workspace_id)))))))
     (workspace/get-workspace (:id ws))))
+
+(defn abandon-teardown-failed-databases!
+  "Delete every `:teardown_failed` WorkspaceDatabase of workspace `id` without a
+  warehouse teardown, logging the identifiers of what may remain (see
+  [[provisioning/abandon-teardown-failed-workspace-database!]]). Use it when the
+  warehouse is gone for good and the teardown can never succeed. Returns nil."
+  [id]
+  (assert-workspace-exists id)
+  (run! provisioning/abandon-teardown-failed-workspace-database! (ws.db/workspace-databases id)))
 
 (defn delete-workspace!
   "Tear down every database's warehouse isolation (any state, blocking), then
