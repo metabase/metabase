@@ -17,6 +17,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -149,6 +150,17 @@
   "The ids in `ids`, joined for a sentence."
   [ids]
   (str/join ", " ids))
+
+(tools/defrecoverable cards-not-curated!
+  "This Metabot only uses curated content, and the ops add or place questions that aren't curated.
+  The `:card-ids` are those questions, each one the user can read."
+  {:payload [:map {:closed true} [:card-ids [:sequential {:min 1} :int]]]}
+  [{:keys [card-ids]}]
+  {:message  (str (if (next card-ids) "Questions " "Question ") (ids-text card-ids)
+                  " can't be added: this Metabot only uses curated content (verified, official, or Library"
+                  " content). Nothing was saved.")
+   :recovery [{:uses #{"search"}
+               :text "Call `search` to find curated questions, models, or metrics and add one of those instead."}]})
 
 (defn- quoted-list
   "The strings in `values`, quoted and joined for a sentence."
@@ -387,6 +399,34 @@
                                      :op-name  op-name}
                               dashboard-id (assoc :dashboard-id dashboard-id)))))
 
+(defn- placed-card-ids
+  "The ids of the saved questions `ops` put on the dashboard, as cards or as series, each once."
+  [ops]
+  (into []
+        (comp (mapcat (fn [{op-name :op :keys [card_id series card_ids]}]
+                        (case op-name
+                          ("add_card" "replace_card") (cons card_id series)
+                          "set_series"                card_ids
+                          nil)))
+              (remove nil?)
+              (distinct))
+        ops))
+
+(defn- check-cards-curated!
+  "Under [[shared/curated-only?]], throws [[cards-not-curated!]] unless every saved question `ops` place is curated.
+  The dashboard itself is a destination, so it needn't be curated. A question the user can't read is left to the ops
+  compiler, which reports it as unknown, so the refusal doesn't reveal whether it is curated."
+  [ops]
+  (when (shared/curated-only?)
+    (when-let [card-ids (seq (placed-card-ids ops))]
+      (let [curated (curation/curated-ids (map #(vector "card" %) card-ids))
+            refused (into []
+                          (filter #(and (not (contains? curated ["card" %]))
+                                        (some-> (metabot.db/card %) mi/can-read?)))
+                          card-ids)]
+        (when (seq refused)
+          (cards-not-curated! {:card-ids refused}))))))
+
 ;;; --------------------------------------------------- Charts -----------------------------------------------------
 
 (defn- requested-charts
@@ -502,10 +542,27 @@
                   :when (some? v)]
               (str " " (name k) "=\"" (llm-shape/escape-xml (str v)) "\""))))
 
+(defn- card-shown-fn
+  "A predicate on the cards of `dashcards`: whether the result may show a card's id, name and display.
+  The user must be able to read it. Under [[shared/curated-only?]] it must also be curated, or saved from a chart in
+  `saved-charts`, which come from queries already held to curated sources."
+  [dashcards saved-charts]
+  (if-not (shared/curated-only?)
+    mi/can-read?
+    (let [card-ids (into #{} (keep (comp :id :card)) dashcards)
+          curated  (if (seq card-ids)
+                     (curation/curated-ids (map #(vector "card" %) card-ids))
+                     #{})
+          charts   (into #{} (map :card-id) saved-charts)]
+      (fn [{card-id :id :as card}]
+        (and (mi/can-read? card)
+             (or (contains? charts card-id)
+                 (contains? curated ["card" card-id])))))))
+
 (defn- dashcard-xml
-  "One dashcard of a saved dashboard. A card the user can't read shows its slot only."
-  [{:keys [id card row col size_x size_y visualization_settings]}]
-  (let [readable (when (and card (mi/can-read? card)) card)]
+  "One dashcard of a saved dashboard. A card that `card-shown?` refuses shows its slot only."
+  [card-shown? {:keys [id card row col size_x size_y visualization_settings]}]
+  (let [readable (when (and card (card-shown? card)) card)]
     (str "<dashcard"
          (xml-attrs :id id
                     :card_id (:id readable)
@@ -518,14 +575,15 @@
 
 (defn- dashboard-lines
   "The lines of the saved dashboard `dash`: its tabs, dashcards with their layout, and filters with the dashcards
-  they connect to."
-  [{:keys [id name description tabs dashcards parameters]}]
+  they connect to. The `saved-charts` are the charts this call saved, which [[card-shown-fn]] shows."
+  [{:keys [id name description tabs dashcards parameters]} saved-charts]
   (let [by-tab      (group-by :dashboard_tab_id (sort-by (juxt :row :col) dashcards))
         connections (fn [parameter-id]
                       (not-empty (for [dc dashcards
                                        :when (some #(= parameter-id (:parameter_id %)) (:parameter_mappings dc))]
                                    (:id dc))))
-        card-lines  (fn [indent dcs] (for [dc dcs] (str indent (dashcard-xml dc))))]
+        card-shown? (card-shown-fn dashcards saved-charts)
+        card-lines  (fn [indent dcs] (for [dc dcs] (str indent (dashcard-xml card-shown? dc))))]
     [(str "  <dashboard" (xml-attrs :id id :name name) ">")
      (when description
        (str "    <description>" (llm-shape/escape-xml-content description) "</description>"))
@@ -581,7 +639,7 @@
                           (str "    <chart" (xml-attrs :chart_id chart_id :card_id card_id) "/>"))
                         "  </saved_charts>"])
                      (when layout?
-                       (dashboard-lines dashboard))
+                       (dashboard-lines dashboard saved-charts))
                      "</dashboard_saved>"
                      (case action
                        "trashed"  "Tell the user you moved it to the trash, and that they can restore it from there."
@@ -642,6 +700,7 @@
         (check-collection-writable! (:collection_id attrs)))
       (check-request! args)
       (check-op-sources! dashboard_id ops)
+      (check-cards-curated! ops)
       (let [charts (requested-charts ops)
             {saved :dashboard :keys [before saved-charts]}
             (save-entity/do-with-save-rejections

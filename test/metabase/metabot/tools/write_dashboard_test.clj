@@ -427,6 +427,128 @@
           (testing "nothing is created"
             (is (= before (t2/count :model/Dashboard)))))))))
 
+;;; --------------------------------------------- Curated content --------------------------------------------------
+
+(defn- curated-dashboard!
+  "Calls `f` with an uncurated dashboard holding one uncurated question, a question in an official collection, and
+  Metabots with `use_verified_content` on and off, as crowberto with the curation features granted."
+  [f]
+  (mt/with-additional-premium-features #{:content-verification :official-collections :library}
+    (mt/with-temp [:model/Collection    {official :id}    {:name "Official", :authority_level "official"}
+                   :model/Collection    {plain :id}       {:name "Plain"}
+                   :model/Card          {curated-id :id}  {:name          "Curated revenue"
+                                                           :collection_id official
+                                                           :dataset_query (venues-query)}
+                   :model/Card          {plain-id :id}    {:name          "Plain revenue"
+                                                           :collection_id plain
+                                                           :dataset_query (venues-query)}
+                   :model/Dashboard     {dash-id :id}     {:name "Plain dashboard", :collection_id plain}
+                   :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id
+                                                           :card_id      plain-id
+                                                           :row          0
+                                                           :col          0
+                                                           :size_x       12
+                                                           :size_y       6}
+                   :model/Metabot       curated-metabot   {:name "curated", :use_verified_content true}
+                   :model/Metabot       open-metabot      {:name "open", :use_verified_content false}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (f {:curated-id      curated-id
+            :plain-id        plain-id
+            :dash-id         dash-id
+            :dashcard-id     dashcard-id
+            :curated-metabot curated-metabot
+            :open-metabot    open-metabot})))))
+
+(defn- as-metabot
+  "Calls `thunk` as a tool of `metabot` under the internal profile."
+  [metabot thunk]
+  (binding [shared/*metabot*    metabot
+            shared/*profile-id* :internal]
+    (thunk)))
+
+(deftest curated-only-cards-test
+  (curated-dashboard!
+   (fn [{:keys [curated-id plain-id dash-id curated-metabot]}]
+     (as-metabot
+      curated-metabot
+      (fn []
+        (testing "an uncurated question is refused, and nothing is saved"
+          (let [before (dashcards dash-id)]
+            (is (= {:class :recoverable
+                    :code  ::write-dashboard/cards-not-curated
+                    :text  (str "Question " plain-id " can't be added: this Metabot only uses curated content"
+                                " (verified, official, or Library content). Nothing was saved.\n"
+                                "Call `search` to find curated questions, models, or metrics and add one of those"
+                                " instead.")}
+                   (failure {:dashboard_id dash-id
+                             :name         "Renamed"
+                             :ops          [{:op "add_card", :id -1, :card_id plain-id}]})))
+            (is (= before (dashcards dash-id)))
+            (is (= "Plain dashboard" (t2/select-one-fn :name :model/Dashboard :id dash-id)))))
+        (testing "an uncurated series is refused, and so is an uncurated question set as a series"
+          (is (=? {:code ::write-dashboard/cards-not-curated
+                   :text (re-pattern (str "(?s)\\QQuestion " plain-id " can't be added\\E.*"))}
+                  (failure {:dashboard_id dash-id
+                            :ops          [{:op "add_card", :id -1, :card_id curated-id, :series [plain-id]}]})))
+          (is (=? {:code ::write-dashboard/cards-not-curated}
+                  (failure {:dashboard_id dash-id
+                            :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                           {:op "set_series", :dashcard_id -1, :card_ids [plain-id]}]})))
+          (is (= [plain-id] (map :card_id (dashcards dash-id)))))
+        (testing "a missing question reads as unknown, not as uncurated"
+          (is (=? {:code ::write-dashboard/dashboard-op-rejected}
+                  (failure {:dashboard_id dash-id
+                            :ops          [{:op "add_card", :id -1, :card_id Integer/MAX_VALUE}]}))))
+        (testing "a curated question is added to the uncurated dashboard"
+          (call {:dashboard_id dash-id, :ops [{:op "add_card", :id -1, :card_id curated-id}]} :internal)
+          (is (= #{plain-id curated-id} (set (map :card_id (dashcards dash-id)))))))))))
+
+(deftest curated-only-result-test
+  (curated-dashboard!
+   (fn [{:keys [curated-id dash-id dashcard-id curated-metabot open-metabot]}]
+     (let [slot-only (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"0\" col=\"0\" size_x=\"12\""
+                                      " size_y=\"6\"/>"))]
+       (testing "with curation on, the uncurated dashboard is edited"
+         (let [output (as-metabot
+                       curated-metabot
+                       #(:output (call {:dashboard_id dash-id
+                                        :name         "Renamed"
+                                        :ops          [{:op "add_card", :id -1, :card_id curated-id}]}
+                                       :internal)))]
+           (is (= "Renamed" (t2/select-one-fn :name :model/Dashboard :id dash-id)))
+           (testing "and its uncurated question shows its slot only"
+             (is (re-find slot-only output))
+             (is (not (re-find #"Plain revenue" output))))
+           (testing "and its curated question shows in full"
+             (is (re-find #"name=\"Curated revenue\"" output)))))
+       (testing "with curation off, the uncurated question shows in full"
+         (let [output (as-metabot open-metabot
+                                  #(:output (call {:dashboard_id dash-id, :name "Renamed again"} :internal)))]
+           (is (not (re-find slot-only output)))
+           (is (re-find #"name=\"Plain revenue\"" output))))))))
+
+(deftest curated-only-chart-test
+  (curated-dashboard!
+   (fn [{:keys [dash-id curated-metabot]}]
+     (mt/with-model-cleanup [:model/Card]
+       (testing "a chart from the conversation is added and shown, though its question isn't curated"
+         (let [output (as-metabot
+                       curated-metabot
+                       #(binding [shared/*memory-atom* (chart-memory)]
+                          (:output (call {:dashboard_id dash-id
+                                          :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]}
+                                         :internal))))]
+           (is (= 2 (count (dashcards dash-id))))
+           (is (re-find #"name=\"Venues\" display=\"bar\"" output))))))))
+
+(deftest curation-off-test
+  (curated-dashboard!
+   (fn [{:keys [plain-id dash-id open-metabot]}]
+     (testing "with curation off, an uncurated question is added"
+       (as-metabot open-metabot
+                   #(call {:dashboard_id dash-id, :ops [{:op "add_card", :id -1, :card_id plain-id}]} :internal))
+       (is (= [plain-id plain-id] (map :card_id (dashcards dash-id))))))))
+
 ;;; ------------------------------------------------ Arguments -----------------------------------------------------
 
 (deftest invalid-request-test
