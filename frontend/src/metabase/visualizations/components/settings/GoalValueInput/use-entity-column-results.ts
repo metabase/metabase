@@ -12,7 +12,7 @@ import type {
 
 type ResolveColumn = (column: string) => GoalValueResult;
 
-export function useEntityColumnValues(
+export function useEntityColumnResults(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   entity: GoalForeignEntityRef | null,

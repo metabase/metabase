@@ -381,8 +381,8 @@
   (boolean (some (fn [v]
                    (cond
                      (nil? v)     false
-                     (string? v)  (not (str/blank? v))
-                     (seqable? v) (boolean (seq v))
+                     (string? v)  (valid-param-value? v)
+                     (seqable? v) (seq v)
                      :else        true))
                  (vals token-params))))
 

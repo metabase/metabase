@@ -1,6 +1,7 @@
 (ns metabase.query-processor.template-tags
   "Which template tags become parameters, and whether a card's query reads any. Kept apart from
-  [[metabase.query-processor.card]] so the referenced-entity runner, which that namespace requires, can use them too."
+  [[metabase.query-processor.card]] so the referenced-entity runner, which that namespace requires, can use them too,
+  and out of the Card model so the QP can use them without depending on it."
   (:require
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -9,8 +10,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
-;;; These live here rather than in [[metabase.queries.models.card]] so the QP can use them without
-;;; depending on the Card model.
 (mu/defn parameter-template-tag? :- :boolean
   "Whether a parameter is created for this template tag, as opposed to tags that splice content into the query itself,
   like snippets, card references, and tables."

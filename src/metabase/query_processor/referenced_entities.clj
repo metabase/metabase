@@ -3,7 +3,7 @@
   keyed by entity type and then by id.
 
   An entity that returns more rows than its caller asked for fails that entity, never the main query. So does one whose
-  query reads parameters: it runs with no values for them.
+  query reads parameters, since it would run with no values for them.
 
   Each referenced query runs under its own QP store ([[qp.store/with-fresh-store]]): otherwise a nested run reuses
   the main query's store and can't resolve tables on a different database.
@@ -155,17 +155,22 @@
                             (apply max ms))})
              (group-by (juxt :type :id) specs)))
 
-(defn- referenced-entities-result
-  "Run each spec and return `{type-string {id-string result}}`, nil when there are none."
-  [specs max-rows]
+(defn- specs-result
+  "`(entity-result spec)` for each spec, as `{type-string {id-string result}}`; nil when there are none."
+  [specs entity-result]
   (when (seq specs)
     (perf/not-empty
      (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
                ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
-               (assoc-in acc [entity-type (str id)] (run-referenced-entity spec max-rows)))
+               (assoc-in acc [entity-type (str id)] (entity-result spec)))
              {}
              ;; don't start the next one if the client already hung up
              (take-while (fn [_] (not (qp.pipeline/canceled?))) (dedupe-specs specs))))))
+
+(defn- referenced-entities-result
+  "Run each spec and return `{type-string {id-string result}}`, nil when there are none."
+  [specs max-rows]
+  (specs-result specs #(run-referenced-entity % max-rows)))
 
 (defn- inject-referenced-entities
   [rff result]
@@ -177,11 +182,7 @@
   "A failed entry per spec, `{type-string {id-string result}}`, running nothing. Failed rather than left out: a client
   takes a missing entry as unanswered and asks for it again."
   [specs]
-  (when (seq specs)
-    (reduce (fn [acc {entity-type :type, :keys [id]}]
-              (assoc-in acc [entity-type (str id)] {:status "failed", :error_type "withheld"}))
-            {}
-            (dedupe-specs specs))))
+  (specs-result specs (constantly {:status "failed", :error_type "withheld"})))
 
 (defn- maybe-wrap-qp
   "Wrap a qp fn `(fn [query rff])` to inject `(result-fn specs)` under `data.referenced_entities`. It's called when

@@ -55,7 +55,7 @@ import { GoalValuePill } from "./GoalValuePill";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
 import type { ColumnOption, PickedItem } from "./types";
 import { useDynamicGoalSource } from "./use-dynamic-goal-source";
-import { useEntityColumnValues } from "./use-entity-column-values";
+import { useEntityColumnResults } from "./use-entity-column-results";
 import { useReferencedEntity } from "./use-referenced-entity";
 import { getCardGoalColumnOptions, getNumericColumnOptions } from "./utils";
 
@@ -132,7 +132,7 @@ export const GoalValueInput = ({
   const sourceInfo = useReferencedEntity(foreignRef);
   const currentSource = useDynamicGoalSource(value);
   const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
-  const resolveEntityColumn = useEntityColumnValues(
+  const resolveEntityColumn = useEntityColumnResults(
     datasetQuery,
     data,
     entity,

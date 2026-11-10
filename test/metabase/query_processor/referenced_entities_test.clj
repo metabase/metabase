@@ -738,7 +738,7 @@
         (is (re-find #"more rows than the requested maximum" (:error result)))))))
 
 (defn- native-card
-  "With-temp attributes of a native card counting venues; `tag` is merged into a `tenant` variable when given."
+  "With-temp attributes of a native card running `sql`; `tag` is merged into a `tenant` variable when given."
   ([sql]
    {:dataset_query (mt/native-query {:query sql})})
   ([sql tag]
@@ -805,9 +805,8 @@
           (is (= [[100]] rows)))
         (doseq [[label id] refused]
           (testing label
-            (is (= {:status "failed" :error_type "has-parameters"}
-                   (select-keys (get goals id) [:status :error_type])))
-            (is (string? (:error (get goals id))))))))))
+            (is (=? {:status "failed" :error_type "has-parameters" :error string?}
+                    (get goals id)))))))))
 
 (deftest referenced-card-without-parameters-runs-test
   (testing "snippets and `{{#id}}` tags splice content in, so they don't count as parameters"
@@ -825,8 +824,8 @@
       (let [{:keys [goals]} (dataset-referenced-entities [referencing snippet])]
         ;; the `{{#id}}` card counts the plain card's single row
         (doseq [[id rows] {referencing [[1]], snippet [[100]]}]
-          (is (= {:status "completed" :rows rows}
-                 {:status (get-in goals [id :status]) :rows (get-in goals [id :data :rows])})))))))
+          (is (=? {:status "completed" :data {:rows rows}}
+                  (get goals id))))))))
 
 (deftest referenced-card-with-parameters-is-refused-on-card-endpoints-test
   (testing "a saved goal on a card with variables fails that goal only, on the card and public endpoints"
@@ -839,11 +838,11 @@
                                   "public"    (client/client :get 202 (str "public/card/" uuid "/query"))}]
           (testing label
             (is (= [[100]] (get-in response [:data :rows])))
-            (is (= {:status "failed" :error_type "has-parameters"}
-                   (select-keys (ref-entity response :card source-id) [:status :error_type])))))))))
+            (is (=? {:status "failed" :error_type "has-parameters"}
+                    (ref-entity response :card source-id)))))))))
 
 (deftest referenced-card-reference-cycle-test
-  (testing "a reference cycle between saved cards, which only writes that skip the API can make, ends the walk"
+  (testing "a reference cycle between saved cards, which only writes that skip the API can make, still returns"
     (mt/with-temp [:model/Card {a :id} (native-card "SELECT 1 AS \"count\"")
                    :model/Card {b :id} (card-on a)
                    :model/Card {c :id} (card-referencing b)
@@ -867,10 +866,10 @@
         (when (map? result)
           (testing "the main query is unaffected"
             (is (= [[100]] (:rows result))))
-          (testing "without a variable, the QP refuses the cycle"
+          (testing "without a variable, the cycle fails that goal"
             (doseq [id [a self]]
               (is (= "failed" (get-in result [:goals id :status])))
               (is (not= "has-parameters" (get-in result [:goals id :error_type])))))
           (testing "with a variable in the cycle, the goal is refused for it"
-            (is (= {:status "failed" :error_type "has-parameters"}
-                   (select-keys (get-in result [:goals with-variable]) [:status :error_type])))))))))
+            (is (=? {:status "failed" :error_type "has-parameters"}
+                    (get-in result [:goals with-variable])))))))))

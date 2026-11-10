@@ -153,6 +153,6 @@
                                                                                 "/query"))}]
             (testing label
               (is (= [[100]] (mt/rows response)))
-              (is (= {:status "failed" :error "An error occurred while running the query."}
-                     (select-keys (goal-result response goal-id) [:status :error])))
+              (is (=? {:status "failed" :error "An error occurred while running the query."}
+                      (goal-result response goal-id)))
               (is (not (re-find #"(?i)no_such_table" (pr-str response)))))))))))

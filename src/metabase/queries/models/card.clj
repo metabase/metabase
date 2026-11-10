@@ -1023,8 +1023,8 @@
 
 (defn check-new-goal-references!
   "Throws if a goal in `viz-settings` reads a column no `previous-viz-settings` reads, and the card or measure that
-  column belongs to is malformed, missing, or unreadable by the current user. A measure also needs query access to its
-  table. Does nothing when no user is bound."
+  column belongs to is malformed, missing, or unreadable by the current user, or is a card whose query reads parameters.
+  A measure also needs query access to its table. Does nothing when no user is bound."
   [viz-settings & previous-viz-settings]
   ;; Public and embedded pages resolve goals as admin, so this is their only check. A missing entity is refused
   ;; because a not-yet-issued id would point at whatever gets created next. No bound user means an internal write
