@@ -193,38 +193,53 @@
       (and about-value? (= texts ["missing required key"]))
       {:one "is required." :many "are required."}
 
-      (= texts ["disallowed key"])
-      (let [text (str "unsupported fields: " (field-names in errors) ".")]
-        {:one (str "has " text) :many (str "have " text)})
-
-      (= texts ["missing required key"])
-      ;; The alternatives of an `:or` each need some of these fields, not all of them.
-      (let [text (str "missing required fields, from among " (field-names in errors) ".")]
-        {:one (str "is " text) :many (str "are " text)})
+      about-value?
+      (let [text (str (str/join "; " texts) "; received " (json-type-name (get-in arguments in)) ".")]
+        {:one  text
+         :many (str/replace-first text #"^is " "are ")})
 
       :else
-      (let [text (str (str/join "; " texts)
-                      (when about-value?
-                        (str "; received " (json-type-name (get-in arguments in))))
-                      ".")]
-        {:one  text
-         :many (str/replace-first text #"^is " "are ")}))))
+      ;; One clause per kind of error, naming the fields that missing and unsupported keys are about.
+      (let [clauses (for [text texts
+                          :let [text-errors (filter #(= text (:text %)) errors)]]
+                      (case text
+                        ;; The alternatives of an `:or` each need some of these fields, not all of them.
+                        "missing required key"
+                        (let [fields (str "missing required fields, from among " (field-names in text-errors))]
+                          {:one (str "is " fields) :many (str "are " fields)})
+
+                        "disallowed key"
+                        (let [fields (str "unsupported fields: " (field-names in text-errors))]
+                          {:one (str "has " fields) :many (str "have " fields)})
+
+                        {:one text :many (str/replace-first text #"^is " "are ")}))]
+        {:one  (str (str/join "; " (map :one clauses)) ".")
+         :many (str (str/join "; " (map :many clauses)) ".")}))))
 
 (defn- problem-sentences
   "One sentence per problem in `problems`, each a map of an argument path `:in` and its [[problem]].
 
-  The same problem in several elements of one list is one sentence, such as \"`ids[0]`, `[1]`, `[2]` and 7 more should
-  be an integer; received a string.\", so a mistake the model repeated across a long list does not crowd out the others."
+  The same problem at the same place in several elements of a list is one sentence, such as \"`ids[0]`, `[1]`, `[2]`
+  and 7 more should be an integer; received a string.\" or \"`ops[0].card_id`, `ops[1].card_id` and `ops[4].card_id`
+  should be an integer; received a string.\", so a mistake the model repeated across a long list does not crowd out
+  the others."
   [problems]
-  (let [list-key (fn [{:keys [in problem]}]
-                   (if (int? (peek in)) [(pop in) problem] [in]))]
+  (let [group-key (fn [{:keys [in problem]}]
+                    (if (some int? in)
+                      [(mapv #(if (int? %) ::index %) in) problem]
+                      [in]))]
     (for [[{:keys [in problem]} & more :as group] (sort-by (comp :in first) compare-paths
-                                                           (vals (group-by list-key problems)))]
+                                                           (vals (group-by group-key problems)))]
       (if (empty? more)
         (str "`" (argument-path in) "` " (:one problem))
-        ;; The first element by its full path, the rest by index alone.
-        (let [names (cons (str "`" (argument-path in) "`")
-                          (for [p more] (str "`[" (peek (:in p)) "]`")))
+        ;; The first by its full path. The rest by index alone when they are elements of the same list, and by full
+        ;; path when the problem is inside each element.
+        (let [same-list? (and (int? (peek in)) (apply = (map (comp pop :in) group)))
+              names      (cons (str "`" (argument-path in) "`")
+                               (for [p more]
+                                 (if same-list?
+                                   (str "`[" (peek (:in p)) "]`")
+                                   (str "`" (argument-path (:in p)) "`"))))
               names (if (< 3 (count group))
                       (str (str/join ", " (take 3 names)) " and " (- (count group) 3) " more")
                       (str (str/join ", " (butlast names)) " and " (last names)))]
@@ -240,7 +255,8 @@
   [argument sentences]
   (let [[kept dropped] (split-at max-sentences-per-argument sentences)]
     (cond-> (vec kept)
-      (seq dropped) (conj (str "And " (count dropped) " more problems in `" (argument-path [argument]) "`.")))))
+      (seq dropped) (conj (str "And " (count dropped) (if (= 1 (count dropped)) " more problem" " more problems")
+                               " in `" (argument-path [argument]) "`.")))))
 
 (defn- reported-path
   "The argument path to report the Malli `error` under: the data path of the outermost `:or` the error is inside, with

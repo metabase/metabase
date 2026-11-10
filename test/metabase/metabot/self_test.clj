@@ -1036,7 +1036,8 @@
                   [:ops [:sequential [:or
                                       [:map {:closed true} [:card_id :int]]
                                       [:map {:closed true} [:text :string]]]]]]]
-      (is (= "Invalid tool arguments: `ops[1]` and `[3]` missing required key; disallowed key."
+      (is (= (str "Invalid tool arguments: `ops[1]` and `[3]` are missing required fields, from among `card_id`, `text`;"
+                  " have unsupported fields: `nope`.")
              (validation-error schema {:ops [{:card_id 1} {:nope 1} {:text "ok"} {:nope 2}]}))))))
 
 (deftest ^:parallel alternative-tool-argument-received-test
@@ -1048,7 +1049,7 @@
                                                      [:map {:closed true} [:card_id :int]]
                                                      [:map {:closed true} [:text :string]]]]]]]
     (testing "a value of the right type with errors inside it does not say what it received"
-      (is (= "Invalid tool arguments: `schedule` should be \"hourly\"; disallowed key; should be at most 23."
+      (is (= "Invalid tool arguments: `schedule` should be \"hourly\"; has unsupported fields: `hour`; should be at most 23."
              (validation-error schema {:schedule {:frequency "daily" :hour 25}}))))
     (testing "a value of the wrong type says what it received"
       (is (= "Invalid tool arguments: `schedule` invalid type; received a string."
@@ -1082,15 +1083,19 @@
       (is (= (str "Invalid tool arguments: `ids[0]`, `[1]`, `[2]` and 197 more should be an integer;"
                   " received a string. `name` should be a string; received a number.")
              (validation-error schema {:ids (vec (repeat 200 "x")) :name 5}))))
+    (testing "the same error inside several elements of a list is one sentence, naming each by its full path"
+      (is (= (str "Invalid tool arguments: `ops[0].card_id`, `ops[1].card_id`, `ops[2].card_id` and 4 more should be"
+                  " an integer; received a string. `tag` should be a string; received a number.")
+             (validation-error schema {:ops (vec (repeat 7 {:card_id "x"})) :tag 5}))))
     (testing "an argument gets at most five sentences, so a later argument is still reported"
       (is (= (str "Invalid tool arguments: `ops[0].card_id` should be an integer; received a string."
-                  " `ops[1].card_id` should be an integer; received a string."
-                  " `ops[2].card_id` should be an integer; received a string."
-                  " `ops[3].card_id` should be an integer; received a string."
-                  " `ops[4].card_id` should be an integer; received a string."
-                  " And 2 more problems in `ops`."
+                  " `ops[1].card_id` should be an integer; received a boolean."
+                  " `ops[2].card_id` should be an integer; received a number."
+                  " `ops[3].card_id` should be an integer; received an object."
+                  " `ops[4].card_id` should be an integer; received an array."
+                  " And 1 more problem in `ops`."
                   " `tag` should be a string; received a number.")
-             (validation-error schema {:ops (vec (repeat 7 {:card_id "x"})) :tag 5}))))))
+             (validation-error schema {:ops (mapv #(hash-map :card_id %) ["x" true 1.5 {} [] nil]) :tag 5}))))))
 
 (deftest ^:parallel qualified-tool-argument-validation-test
   (testing "a qualified key is named with its namespace, so the model can find the key it sent"
