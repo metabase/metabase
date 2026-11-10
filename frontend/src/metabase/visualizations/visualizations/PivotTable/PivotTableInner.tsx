@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { DndContext } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import { useMergedRef } from "@mantine/hooks";
 import cx from "classnames";
 import type * as React from "react";
 import {
   forwardRef,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -23,6 +25,7 @@ import { useMantineTheme } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
 import { getCspNonce } from "metabase/utils/csp";
 import { getScrollBarSize } from "metabase/utils/dom";
+import { DashboardAutoHeightContext } from "metabase/visualizations/components/DashboardAutoHeight";
 import {
   COLUMN_SHOW_TOTALS,
   isPivotGroupColumn,
@@ -75,6 +78,8 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     },
     ref,
   ) {
+    const rootRef = useRef<HTMLDivElement>(null);
+    const mergedRef = useMergedRef(ref, rootRef);
     const [viewPortWidth, setViewPortWidth] = useState(width);
     const [shouldOverflow, setShouldOverflow] = useState(false);
     const columnWidthSettings = settings["pivot_table.column_widths"];
@@ -312,13 +317,42 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       leftHeaderWidth,
     ]);
 
+    const reportAutoHeight = useContext(DashboardAutoHeightContext);
+    const autoHeightEnabled = isDashboard && settings["pivot.auto_height"];
+    const contentHeight = pivoted
+      ? (getTopHeaderRowsCount(pivoted.columnIndexes, pivoted.valueIndexes) +
+          pivoted.rowCount) *
+          CELL_HEIGHT +
+        // Leave room for both the body and outer horizontal scrollbars.
+        2 * getScrollBarSize()
+      : null;
+
+    useEffect(() => {
+      // Read both DOM sizes in the same frame: ExplicitSize's height prop is
+      // debounced and can lag behind a dashboard resize.
+      reportAutoHeight?.(
+        autoHeightEnabled ? contentHeight : null,
+        rootRef.current?.clientHeight ?? 0,
+      );
+    }, [
+      reportAutoHeight,
+      autoHeightEnabled,
+      contentHeight,
+      height,
+      width,
+      columnsChanged,
+      leftHeaderWidths,
+    ]);
+
+    useEffect(() => () => reportAutoHeight?.(null), [reportAutoHeight]);
+
     if (
       pivoted === null ||
       !leftHeaderWidths ||
       (leftHeaderWidths?.length && columnsChanged)
     ) {
       // We have to return an element to assign the ref to it
-      return <div ref={ref} />;
+      return <div ref={mergedRef} />;
     }
 
     const {
@@ -393,7 +427,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     return (
       <DndContext modifiers={[restrictToHorizontalAxis]}>
         <PivotTableRoot
-          ref={ref}
+          ref={mergedRef}
           shouldOverflow={shouldOverflow}
           shouldHideScrollbars={isEditing && isDashboard}
           isDashboard={isDashboard}
