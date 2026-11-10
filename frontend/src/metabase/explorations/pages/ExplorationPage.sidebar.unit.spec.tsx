@@ -1,7 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import type { ComponentProps } from "react";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import {
   createBlock,
   createExploration,
@@ -12,31 +19,42 @@ import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Exploration } from "metabase-types/api";
 
+import type { ExplorationGroupVisualization } from "../components/ExplorationVisualization";
+import { ActionToolbar } from "../components/ExplorationVisualization/ActionToolbar";
+
 import { ExplorationPage } from "./ExplorationPage";
 
-let explorationData: Exploration;
+type GroupVisualizationProps = ComponentProps<
+  typeof ExplorationGroupVisualization
+>;
 
-jest.mock("metabase/api", () => {
-  const actual = jest.requireActual("metabase/api");
-  return {
-    ...actual,
-    useGetExplorationQuery: () => ({
-      data: explorationData,
-      isLoading: false,
-      error: undefined,
-    }),
-    useListCommentsQuery: () => ({ data: { comments: [] } }),
-    useListTimelinesQuery: () => ({ data: [] }),
-  };
-});
-
+// The chart needs query results and ECharts; the page toolbar is what issues
+// the star and hide writes, so render only the real toolbar and a page marker.
 jest.mock("../components/ExplorationVisualization", () => ({
-  ExplorationGroupVisualization: ({ page }: { page: { id: number } }) => (
-    <div data-testid="group-viz">{`Chart for page ${page.id}`}</div>
+  ExplorationGroupVisualization: (props: GroupVisualizationProps) => (
+    <>
+      <div data-testid="group-viz">{`Chart for page ${props.page.id}`}</div>
+      <ActionToolbar
+        explorationId={props.explorationId}
+        page={props.page}
+        charts={[]}
+        canAddToSummary={false}
+        setSelectedSummary={props.setSelectedSummary}
+        commentDrafts={props.commentDrafts}
+        setCommentDrafts={props.setCommentDrafts}
+        showTimelineDropdown={false}
+        availableTimelines={props.availableTimelines}
+        selectedTimelineId={props.selectedTimelineId}
+        onSelectTimelineId={props.onSelectTimelineId}
+        onPreviousPage={props.onPreviousPage}
+        onNextPage={props.onNextPage}
+      />
+    </>
   ),
   ExplorationChartAreaSkeleton: () => null,
 }));
 
+const EXPLORATION_ID = 1;
 const METRIC_NAME = "Count of orders";
 
 function makeExploration({
@@ -76,13 +94,18 @@ function makeExploration({
 interface SetupOpts {
   exploration?: Exploration;
   initialRoute?: string;
+  writeStatus?: number;
 }
 
 function setup({
   exploration = makeExploration(),
-  initialRoute,
+  initialRoute = Urls.exploration(EXPLORATION_ID),
+  writeStatus = 204,
 }: SetupOpts = {}) {
-  explorationData = exploration;
+  fetchMock.removeRoutes().clearHistory();
+  fetchMock.get(`path:/api/exploration/${exploration.id}`, exploration);
+  fetchMock.get("path:/api/comment", { comments: [] });
+  fetchMock.get("path:/api/timeline", []);
   fetchMock.get("express:/api/exploration/query/:id", {
     data: { rows: [], cols: [] },
   });
@@ -91,16 +114,15 @@ function setup({
     tables: [],
     fields: [],
   });
+  fetchMock.put("path:/api/exploration/pages/hidden", writeStatus);
+  fetchMock.put("express:/api/exploration/page/:id/starred", writeStatus);
 
   const { router, unmount } = renderWithProviders(
     <Route
       path={`/${Urls.EXPLORATION_BASE_PATH}/:id/page?/:pageId?`}
       element={<ExplorationPage />}
     />,
-    {
-      withRouter: true,
-      initialRoute: initialRoute ?? Urls.exploration(exploration.id),
-    },
+    { withRouter: true, withUndos: true, initialRoute },
   );
   if (!router) {
     throw new Error("expected router");
@@ -118,8 +140,18 @@ function getPageRowNames() {
     .map((row) => row.textContent?.trim() ?? "");
 }
 
+async function waitForPageRows(names: string[]) {
+  await waitFor(() => {
+    expect(getPageRowNames()).toEqual(names);
+  });
+}
+
 function filterToggle() {
   return screen.getByTestId("exploration-show-hidden-toggle");
+}
+
+function writeCalls(url: string) {
+  return fetchMock.callHistory.calls(url, { method: "PUT" });
 }
 
 describe("ExplorationPage sidebar", () => {
@@ -129,8 +161,9 @@ describe("ExplorationPage sidebar", () => {
 
   it("selects a clicked page, shows its chart, and keeps the timeline param", async () => {
     const { router } = setup({
-      initialRoute: `${Urls.exploration(1)}/page/1?timeline=7`,
+      initialRoute: `${Urls.exploration(EXPLORATION_ID)}/page/1?timeline=7`,
     });
+    await waitForPageRows(["Zebra", "Aardvark"]);
 
     expect(getPageRow("Zebra")).toHaveAttribute("aria-selected", "true");
     expect(getPageRow("Aardvark")).toHaveAttribute("aria-selected", "false");
@@ -139,7 +172,9 @@ describe("ExplorationPage sidebar", () => {
 
     expect(getPageRow("Aardvark")).toHaveAttribute("aria-selected", "true");
     expect(getPageRow("Zebra")).toHaveAttribute("aria-selected", "false");
-    expect(router.location.pathname).toBe(`${Urls.exploration(1)}/page/2`);
+    expect(router.location.pathname).toBe(
+      `${Urls.exploration(EXPLORATION_ID)}/page/2`,
+    );
     expect(new URLSearchParams(router.location.search).get("timeline")).toBe(
       "7",
     );
@@ -150,6 +185,7 @@ describe("ExplorationPage sidebar", () => {
 
   it("switches to the Stars and Discussions tabs through the URL and shows their empty messages", async () => {
     const { router } = setup();
+    await waitForPageRows(["Zebra", "Aardvark"]);
 
     await userEvent.click(screen.getByRole("radio", { name: /Stars/ }));
 
@@ -174,8 +210,7 @@ describe("ExplorationPage sidebar", () => {
 
   it("remembers the alphabetical sort order for the exploration across a reload", async () => {
     const { unmount } = setup();
-
-    expect(getPageRowNames()).toEqual(["Zebra", "Aardvark"]);
+    await waitForPageRows(["Zebra", "Aardvark"]);
 
     await userEvent.click(filterToggle());
     await userEvent.click(
@@ -188,7 +223,7 @@ describe("ExplorationPage sidebar", () => {
     unmount();
     setup();
 
-    expect(getPageRowNames()).toEqual(["Aardvark", "Zebra"]);
+    await waitForPageRows(["Aardvark", "Zebra"]);
     expect(filterToggle()).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(filterToggle());
     expect(
@@ -198,8 +233,8 @@ describe("ExplorationPage sidebar", () => {
 
   it("reveals hidden pages with a Hidden marker from the Show hidden items toggle", async () => {
     setup({ exploration: makeExploration({ hiddenPageIds: [1] }) });
+    await waitForPageRows(["Aardvark"]);
 
-    expect(getPageRowNames()).toEqual(["Aardvark"]);
     expect(filterToggle()).toHaveAttribute("aria-pressed", "false");
 
     await userEvent.click(filterToggle());
@@ -224,5 +259,75 @@ describe("ExplorationPage sidebar", () => {
 
     expect(filterToggle()).toHaveAttribute("aria-pressed", "false");
     expect(getPageRowNames()).toEqual(["Aardvark"]);
+  });
+
+  describe("optimistic star and hide updates", () => {
+    const pageRoute = `${Urls.exploration(EXPLORATION_ID)}/page/1`;
+
+    it("removes a page hidden with the h shortcut from the sidebar tree", async () => {
+      setup({ initialRoute: pageRoute });
+      await waitForPageRows(["Zebra", "Aardvark"]);
+
+      fireEvent.keyDown(document.body, { key: "h" });
+
+      await waitForPageRows(["Aardvark"]);
+      expect(writeCalls("path:/api/exploration/pages/hidden")).toHaveLength(1);
+    });
+
+    it("removes every page of a group hidden from its menu from the sidebar tree", async () => {
+      setup({ initialRoute: pageRoute });
+      await waitForPageRows(["Zebra", "Aardvark"]);
+
+      const heading = screen.getByRole("group", {
+        name: new RegExp(METRIC_NAME),
+      });
+      await userEvent.click(
+        within(heading).getByRole("button", { name: "Group actions" }),
+      );
+      await userEvent.click(screen.getByRole("menuitem", { name: /Hide/ }));
+
+      await waitFor(() => {
+        expect(screen.queryAllByRole("treeitem")).toHaveLength(0);
+      });
+      expect(screen.getByText(`${METRIC_NAME} hidden`)).toBeInTheDocument();
+    });
+
+    it("shows Remove star after starring a page with the s shortcut", async () => {
+      setup({ initialRoute: pageRoute });
+      expect(
+        await screen.findByRole("button", { name: "Star" }),
+      ).toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: "s" });
+
+      expect(
+        await screen.findByRole("button", { name: "Remove star" }),
+      ).toBeInTheDocument();
+      expect(
+        writeCalls("express:/api/exploration/page/:id/starred"),
+      ).toHaveLength(1);
+    });
+
+    it("undoes the optimistic hide and star when the write fails", async () => {
+      setup({ initialRoute: pageRoute, writeStatus: 500 });
+      expect(
+        await screen.findByRole("button", { name: "Star" }),
+      ).toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: "s" });
+      expect(
+        await screen.findByText("Failed to update star"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Star" })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Remove star" }),
+      ).not.toBeInTheDocument();
+
+      fireEvent.keyDown(document.body, { key: "h" });
+      expect(
+        await screen.findByText("Failed to update visibility"),
+      ).toBeInTheDocument();
+      expect(getPageRowNames()).toEqual(["Zebra", "Aardvark"]);
+    });
   });
 });
