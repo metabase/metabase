@@ -203,8 +203,10 @@
    ctx       :- ActionContext
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential ::actions.args/any-arg-map]]
-  ;; writes here skip the QP's workspace SQL remapping, so they would hit production table names. Every entry point
-  ;; comes through here, data-grid editing included, which never reaches [[metabase.actions.execution/execute-action!]]
+  ;; writes here skip the QP's workspace SQL remapping, so they would hit production table names. Every implicit
+  ;; and data-grid entry point comes through here; data-grid editing never reaches
+  ;; [[metabase.actions.execution/execute-action!]]. Saved query actions never come through here: the check in
+  ;; `execute-action!` is their only gate, so do not remove it as a duplicate of this one.
   (workspaces/check-not-in-workspace-mode! "Actions")
   (driver.conn/with-write-connection
     (lib-be/with-metadata-provider-cache
