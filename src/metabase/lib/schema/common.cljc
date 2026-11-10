@@ -158,13 +158,6 @@
     :json-schema   {:type "number" :exclusiveMinimum 0}}
    (every-pred number? pos?)])
 
-(mr/def ::visualization-settings
-  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
-  the keys are whatever the visualization the user picked needs. This is the `.cljc` equivalent
-  of [[metabase.util.malli.schema/VisualizationSettings]], which we cannot use here because that namespace is `.clj`
-  only."
-  [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
-
 (mr/def ::clause-options
   "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."
   [:map {:closed false, ::mr/deliberately-open true, :description "options map of any MBQL clause"}])

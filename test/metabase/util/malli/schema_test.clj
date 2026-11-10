@@ -31,9 +31,6 @@
            {:schema        ms/FieldTypeKeywordOrString
             :failed-cases  [1 :type/FK]
             :success-cases [:type/Float "type/Float"]}
-           {:schema        ms/VisualizationSettings
-            :failed-cases  [[] 1 "a"]
-            :success-cases [{} {:a :b}]}
            {:schema        ms/DatabaseDetails
             :failed-cases  [[] 1 "a"]
             :success-cases [{} {:a :b}]}

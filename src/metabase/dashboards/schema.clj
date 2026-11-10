@@ -7,6 +7,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
@@ -93,7 +94,7 @@
 
 (mr/def ::dashboard-card.visualization-settings
   "The `:visualization_settings` column of a DashboardCard, decoded."
-  ::models.schema/visualization-settings)
+  ::lib.schema.visualization-settings/visualization-settings)
 
 (mr/def ::dashboard-card
   "A DashboardCard as selected from the app DB: every column of `:report_dashboardcard`, plus the keys some callers

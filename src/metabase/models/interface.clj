@@ -16,14 +16,13 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.dependencies.hooks :as dependencies.hooks]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.db :as models.db]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
@@ -425,109 +424,6 @@
   {:in  encryption/maybe-encrypt
    :out (decrypt-error-context source encryption/maybe-decrypt)})
 
-;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
-;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
-(mr/def ::viz-settings-ref
-  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
-
-    [:ref [:field 1 nil]]"
-  [:tuple
-   {:decode/normalize vec}
-   [:= {:decode/normalize keyword} :ref]
-   [:ref ::mbql.s/Reference]])
-
-(mr/def ::viz-settings-name
-  "Apparently in some cases legacy viz settings keys can be wrapped in `[:ref ...]` e.g.
-
-    [:ref [:field 1 nil]]"
-  [:tuple
-   {:decode/normalize vec}
-   [:= {:decode/normalize keyword} :name]
-   :string])
-
-;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
-;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
-;;; also [[metabase.models.visualization-settings]].
-(defn normalize-visualization-settings
-  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
-   to MBQL 4 clauses so things work correctly."
-  [viz-settings]
-  (letfn [(normalize-column-settings-key [k]
-            (some-> k
-                    u/qualified-name
-                    json/decode
-                    ((fn [x]
-                       (cond
-                         (not (sequential? x)) x
-                         (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
-                         (= (first x) "name")  (lib/normalize ::viz-settings-name x)
-                         :else                 (try
-                                                 (mbql.normalize/normalize x)
-                                                 (catch Throwable e
-                                                   (log/debugf "Error normalizing column settings key %s: %s" (pr-str x) (ex-message e))
-                                                   nil)))))
-                    json/encode))
-          (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings
-                           ;; remove nil (bad) keys
-                           :let  [k (normalize-column-settings-key k)]
-                           :when (some? k)]
-                       [k (walk/keywordize-keys v)])))
-          (mbql-field-clause? [form]
-            (and (vector? form)
-                 (#{"field-id"
-                    "fk->"
-                    "datetime-field"
-                    "joined-field"
-                    "binning-strategy"
-                    "field"
-                    "aggregation"
-                    "expression"}
-                  (first form))))
-          (normalize-mbql-clauses [form]
-            (cond
-              (mbql-field-clause? form)
-              (try
-                (mbql.normalize/normalize form)
-                (catch Exception e
-                  (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                             (pr-str form)
-                             (ex-message e))
-                  form))
-
-              (sequential? form)
-              (into (empty form) (map normalize-mbql-clauses) form)
-
-              (map? form)
-              (into (empty form)
-                    (map (fn [[k v]]
-                           ;; don't recurse into `:columns` if they are COLUMN NAMES! -- if the first column name is
-                           ;; something like "expression" then we don't want to accidentally treat it as an
-                           ;; `:expression` ref. Some `:columns` lists is viz settings do contain MBQL clauses
-                           ;; tho :unamused:
-                           (let [column-names? (and (= k :columns)
-                                                    (sequential? v)
-                                                    (every? (complement mbql-field-clause?) v))]
-                             [k (cond-> v
-                                  (not column-names?) normalize-mbql-clauses)])))
-                    form)
-
-              :else
-              form))]
-    (->
-     viz-settings
-     (dissoc "column_settings" "graph.metrics")
-     walk/keywordize-keys
-     ;; "key" is an old unused value
-     (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
-     (cond-> (get viz-settings "column_settings")
-       (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings"))))
-     normalize-mbql-clauses
-     ;; exclude graph.metrics from normalization as it may start with the word "expression" but it is not
-     ;; MBQL (metabase#15882)
-     (cond-> (get viz-settings "graph.metrics")
-       (assoc :graph.metrics (get viz-settings "graph.metrics"))))))
-
 (jm/def-json-migration migrate-viz-settings*)
 
 (def ^:private viz-settings-current-version 2)
@@ -557,12 +453,9 @@
 (def transform-visualization-settings
   "Transform for viz-settings."
   {:in  (comp json-in migrate-viz-settings)
-   :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
-
-(defn stored-visualization-settings
-  "The `viz-settings` as a visualization settings column stores them and reads them back."
-  [viz-settings]
-  ((:out transform-visualization-settings) ((:in transform-visualization-settings) viz-settings)))
+   :out (comp migrate-viz-settings
+              #(lib/normalize ::lib.schema.visualization-settings/visualization-settings %)
+              json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mr/validator u.cron/CronScheduleString)]

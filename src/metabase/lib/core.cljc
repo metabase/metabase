@@ -113,6 +113,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.util]
+   [metabase.lib.schema.visualization-settings]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.serialize]
    [metabase.lib.stage :as lib.stage]
@@ -205,6 +206,7 @@
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
+         metabase.lib.schema.visualization-settings/keep-me
          lib.options/keep-me
          lib.order-by/keep-me
          metabase.lib.parameters/keep-me

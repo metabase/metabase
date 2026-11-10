@@ -3,6 +3,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -29,7 +30,7 @@
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
-  ms/VisualizationSettings)
+  ::lib.schema.visualization-settings/visualization-settings)
 
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
@@ -87,7 +88,7 @@
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
-  ms/VisualizationSettings)
+  ::lib.schema.visualization-settings/visualization-settings)
 
 (mr/def ::field-user-settings
   "A FieldUserSettings as selected from the app DB: every column of `:metabase_field_user_settings`."
@@ -244,7 +245,7 @@
                            :database_indexed :database_is_auto_increment :database_is_generated
                            :database_is_nullable :database_is_pk :database_partitioned :database_position
                            :database_required :database_type :description :display_name :effective_type
-                           :has_field_values :is_defective_duplicate :json_unfolding :name :nfc_path
+                           :has_field_values :json_unfolding :name :nfc_path
                            :points_of_interest :position :preview_display :semantic_type :settings
                            :visibility_type :table_id :fk_target_field_id :parent_id]]
     [:map {:closed true}
@@ -289,7 +290,7 @@
    [:merge
     [:select-keys ::table [:name :description :entity_type :active :display_name :visibility_type :schema
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
-                           :database_require_filter :is_defective_duplicate :is_writable
+                           :database_require_filter :is_writable
                            :data_authority :data_source :owner_email :is_published :data_layer :db_id
                            :collection_id :transform_id :owner_user_id]]
     [:map {:closed true}

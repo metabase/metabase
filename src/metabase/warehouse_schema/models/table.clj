@@ -157,7 +157,7 @@
 
 (t2/define-after-select :model/Table
   [table]
-  (dissoc table :unique_table_helper))
+  (dissoc table :is_defective_duplicate :unique_table_helper))
 
 (defn validate-user-changes!
   "Throw a 400 for a change in `changes` a user is not allowed to make to `original-table`."
@@ -557,17 +557,17 @@
    :identity  [:db_id :schema :name]
    :copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
-               :database_require_filter :is_defective_duplicate :is_writable :data_authority :data_source :data_layer
+               :database_require_filter :is_writable :data_authority :data_source :data_layer
                :owner_email :is_published]
-   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target :unique_table_helper]
+   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target :is_defective_duplicate
+               :unique_table_helper]
    :transform {:archived_at    serialization/date-transform
                :deactivated_at serialization/date-transform
                :db_id          serialization/database-transform
                :collection_id  (serialization/fk-transform :model/Collection)
                :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
                :transform_id   (serialization/fk-transform :model/Transform)}
-   :defaults  {:is_defective_duplicate  false
-               :is_published            false
+   :defaults  {:is_published            false
                :is_upload               false
                :show_in_getting_started false}})
 

@@ -7,6 +7,7 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.interface :as mi]
    [metabase.parameters.field :as parameters.field]
    [metabase.request.core :as request]
@@ -166,7 +167,7 @@
                   [:visibility_type    {:optional true} FieldVisibilityType]
                   [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
                   [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
-                  [:settings           {:optional true} [:maybe ms/VisualizationSettings]]
+                  [:settings           {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
                   [:json_unfolding     {:optional true} :boolean]]]
   (let [field             (-> (warehouse-schema-rest.db/field id)
                               api/write-check

@@ -729,7 +729,7 @@
    [:pivot_measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
    [:show_row_totals    {:optional true} [:maybe :boolean]]
    [:show_column_totals {:optional true} [:maybe :boolean]]
-   [:viz-settings {:optional true} [:maybe [:ref ::common/visualization-settings]]]
+   [:viz-settings {:optional true} [:maybe [:ref :metabase.lib.schema.visualization-settings/visualization-settings]]]
    [:user-parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib.convert/converted? {:optional true} :boolean]
    [:qp/compiled        {:optional true} [:ref ::compiled-native-query]]

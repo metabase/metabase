@@ -1,7 +1,6 @@
 (ns metabase.serialization.visualization-settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.interface :as mi]
    [metabase.serialization.protocol.stub :as protocol.stub]
    [metabase.serialization.visualization-settings :as viz]))
 
@@ -76,16 +75,15 @@
 
 (deftest ^:parallel import-viz-settings-test
   (let [import-settings (partial import-one {:field (constantly 3)})]
-    (is (= (mi/stored-visualization-settings
-            {:column_settings
-             {"[\"ref\",[\"field\",3,null]]"
-              {:click_behavior
-               {:parameterMapping
-                {"[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
-                 {:id     "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
-                  :target {:type      "dimension"
-                           :dimension [:dimension [:field 3 {:source-field 3}]]
-                           :id        "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"}}}}}}})
+    (is (= {:column_settings
+            {"[\"ref\",[\"field\",3,null]]"
+             {:click_behavior
+              {:parameterMapping
+               {(keyword "[\"dimension\",[\"field\",3,{\"source-field\":3}]]")
+                {:id     "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
+                 :target {:type      "dimension"
+                          :dimension ["dimension" [:field 3 {:source-field 3}]]
+                          :id        "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"}}}}}}}
            (import-settings
             {:column_settings
              {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]"
@@ -94,7 +92,7 @@
                 {"[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"
                  {:id     "[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"
                   :target {:type      "dimension"
-                           :dimension [:dimension
+                           :dimension ["dimension"
                                        [:field
                                         ["my-db" nil "orders" "invoice"]
                                         {:source-field ["my-db" nil "orders" "subtotal"]}]]

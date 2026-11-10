@@ -570,7 +570,6 @@
    [:database-partitioned       {:optional true} [:maybe :boolean]]
    [:database-required          {:optional true} [:maybe :boolean]]
    [:json-unfolding             {:optional true} [:maybe :boolean]]
-   [:is-defective-duplicate     {:optional true} [:maybe :boolean]]
    [:preview-display            {:optional true} [:maybe :boolean]]
    [:fingerprint-version        {:optional true} [:maybe :int]]
    [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
@@ -619,7 +618,7 @@
    ;;
    ;; populated by the `metabase_field.settings` column in the application database; I'm not really sure what goes in
    ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
-   [:settings {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:settings {:optional true} [:maybe [:ref :metabase.lib.schema.visualization-settings/visualization-settings]]]
    ;;
    ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
    ;; legacy viz settings. This should not be used for anything other than that.
@@ -865,7 +864,7 @@
    [:entity-id              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:created-at             {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
    [:card-schema            {:optional true} [:maybe :int]]
-   [:visualization-settings {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:visualization-settings {:optional true} [:maybe [:ref :metabase.lib.schema.visualization-settings/visualization-settings]]]
    [:description            {:optional true} [:maybe :string]]
    [:display                {:optional true} [:maybe [:or :keyword :string]]]
    [:archived               {:optional true} [:maybe :boolean]]
@@ -1063,7 +1062,6 @@
    [:initial-sync-status     {:optional true} [:maybe [:or :string :keyword]]]
    [:show-in-getting-started {:optional true} [:maybe :boolean]]
    [:is-upload               {:optional true} [:maybe :boolean]]
-   [:is-defective-duplicate  {:optional true} [:maybe :boolean]]
    [:entity-id               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:created-at              {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
    [:updated-at              {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
@@ -1104,7 +1102,7 @@
    [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
    [:is-audit        {:optional true} :boolean]
    [:is-attached-dwh {:optional true} :boolean]
-   [:settings        {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+   [:settings        {:optional true} [:maybe [:ref ::lib.schema.common/database-settings]]]
    [:name                        {:optional true} [:maybe :string]]
    [:description                 {:optional true} [:maybe :string]]
    [:timezone                    {:optional true} [:maybe :string]]

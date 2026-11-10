@@ -5,6 +5,7 @@
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -64,7 +65,7 @@
   string (hex or `rgba()`) or nil for cells no rule matches. The coloring rules come from `:table.column_formatting`
   in `viz-settings` (row-highlight rules are disabled when `:table.pivot` is set)."
   [{:keys [cols rows]} :- QueryResults
-   viz-settings :- [:maybe ms/VisualizationSettings]
+   viz-settings :- [:maybe ::lib.schema.visualization-settings/visualization-settings]
    cells :- [:sequential Cell]]
   (if (or (empty? cells)
           (empty? (or (:table.column_formatting viz-settings)

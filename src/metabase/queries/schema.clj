@@ -8,6 +8,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.schema :as permissions.schema]
@@ -51,7 +52,7 @@
    [:display_name            {:optional true} [:maybe :string]]
    [:semantic_type           {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:fk_target_field_id      {:optional true} [:maybe ::lib.schema.id/field]]
-   [:settings                {:optional true} [:maybe ms/VisualizationSettings]]
+   [:settings                {:optional true} [:maybe ::lib.schema.visualization-settings/visualization-settings]]
    [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:lib/source_display_name {:optional true} [:maybe :string]]])
 
@@ -154,7 +155,7 @@
 
 (mr/def ::card.visualization-settings
   "The `:visualization_settings` column of a Card, decoded."
-  ::models.schema/visualization-settings)
+  ::lib.schema.visualization-settings/visualization-settings)
 
 (mr/def ::card.parameter
   "One entry of the `:parameters` column of a Card, decoded."

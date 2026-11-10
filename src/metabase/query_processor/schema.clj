@@ -75,7 +75,7 @@
    [:native_form             {:optional true} :metabase.query-processor.compile/compiled]
    [:dataset                 {:optional true} :boolean]
    [:model                   {:optional true} :boolean]
-   [:viz-settings            {:optional true} :metabase.lib.schema.common/visualization-settings]
+   [:viz-settings            {:optional true} :metabase.lib.schema.visualization-settings/visualization-settings]
    [:format-rows?            {:optional true} :boolean]
    [:csv-include-bom?        {:optional true} :boolean]
    [:results_timezone        {:optional true} [:maybe :string]]

@@ -113,9 +113,9 @@
         (let [hashed   (atom 0)
               original cache/bytes-hash]
           (mt/with-dynamic-fn-redefs [cache/bytes-hash (fn [b] (swap! hashed inc) (original b))]
-            (t2/update! :model/CustomVizPlugin id {:enabled false})
+            (t2/update! :model/CustomVizPlugin :id id {:enabled false})
             (is (zero? @hashed))
-            (t2/update! :model/CustomVizPlugin id {:bundle (bundle "new")})
+            (t2/update! :model/CustomVizPlugin :id id {:bundle (bundle "new")})
             (is (= 1 @hashed))))
         (is (= (cache/bytes-hash (bundle "new"))
                (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :id id)))))))

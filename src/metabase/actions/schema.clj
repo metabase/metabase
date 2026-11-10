@@ -6,6 +6,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.users.schema :as users.schema]
@@ -146,7 +147,7 @@
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
                                [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
-                               [:visualization_settings {:optional true}    [:maybe ::models.schema/visualization-settings]]]
+                               [:visualization_settings {:optional true}    [:maybe ::lib.schema.visualization-settings/visualization-settings]]]
                               (when-not request?
                                 [[:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
                                  [:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]

@@ -1,7 +1,6 @@
 (ns metabase.models.schema
   "Malli schemas shared by the serialized forms of models."
   (:require
-   [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -21,8 +20,3 @@
 (mr/def ::external-date
   "A timestamp as serialization exports it, or as ingestion parses it back from an `_at` key."
   [:or :string ms/TemporalInstant])
-
-(mr/def ::visualization-settings
-  "Visualization settings, normalized to the shape a visualization settings column stores and reads them back in."
-  [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings"
-         :decode/normalize #(some-> % mi/stored-visualization-settings)}])
