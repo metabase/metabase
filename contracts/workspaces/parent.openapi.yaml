@@ -23,6 +23,7 @@ info:
     the `:workspaces` premium feature (402 otherwise), and a superuser (403 otherwise).
 
     Contract version (hardening, #86790): every 2xx response (and the 401) carries `X-Metabase-Workspaces-Version: 2`; errors thrown by an endpoint (400-500) and the 402 do not.
+    Version 2 means every hardening PR in this contract has landed: #86790 sets it, so it merges last.
     master sends no such header; a client that does not see it must assume master's behavior everywhere.
 
     Request bodies are marked `additionalProperties: false`, but the server ignores unknown keys (it strips
