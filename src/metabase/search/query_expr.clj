@@ -66,10 +66,48 @@
             (and child (ops "or"))  (conj (branch "or" 2 nil))
             (and child (ops "not")) (conj (branch "not" 1 1))))))
 
+(defn- json-schema
+  "The JSON Schema a model sees for a query that uses only `ops`.
+
+  Malli's own rendering repeats the level below inside each of `and`, `or` and `not`, so it grows as 3^[[max-depth]]
+  and reaches 30k characters for every operator. Here each level offers one node whose `op` is any of them, and only
+  the top level carries descriptions, so the size grows linearly. The arg counts per operator and the leaf limit are
+  stated in prose; validation against [[schema]] still enforces them. No `$ref`, since not every provider resolves it."
+  [ops]
+  (let [node-ops (filterv ops ["and" "or" "not"])
+        leaf-ops (filterv ops ["phrase" "prefix"])
+        object   (fn [props]
+                   {:type                 "object"
+                    :properties           props
+                    :required             (vec (keys props))
+                    :additionalProperties false})
+        level    (fn level [n]
+                   {:anyOf (cond-> (into [{:type "string" :pattern "^\\S+$"}]
+                                         (map #(object {"op" {:const %} "text" {:type "string"}}))
+                                         leaf-ops)
+                             (and (pos? n) (seq node-ops))
+                             (conj (object {"op"   {:enum node-ops}
+                                            "args" {:type "array" :minItems 1 :items (level (dec n))}})))})]
+    (assoc (level max-depth)
+           :description
+           (str/join
+            " "
+            (cond-> ["A term is a string with no spaces."]
+              (ops "phrase") (conj "`{\"op\": \"phrase\", \"text\": \"gross margin\"}` matches words together, in order.")
+              (ops "prefix") (conj "`{\"op\": \"prefix\", \"text\": \"cust\"}` matches a word that starts with the text.")
+              (seq node-ops) (conj (str "A node is `{\"op\": ..., \"args\": [...]}` with op "
+                                        (str/join ", " (map #(str "`" % "`") node-ops)) "."
+                                        (when (some #{"and" "or"} node-ops) " `and` and `or` take two or more args.")
+                                        (when (some #{"not"} node-ops) " `not` takes exactly one.")
+                                        " Nodes nest at most " max-depth " deep, over at most " max-leaves
+                                        " leaves in all.")))))))
+
 (def ^{:arglists '([ops])} schema
   "The malli schema for a query that uses only `ops` (a subset of [[all-ops]]), nested at most [[max-depth]] levels.
-  The levels are written out rather than recursive, so the JSON Schema a model sees needs no `$ref`."
-  (memoize (fn [ops] (level-schema (set ops) max-depth))))
+  The levels are written out rather than recursive. What a model sees is the smaller [[json-schema]]."
+  (memoize (fn [ops]
+             (let [ops (set ops)]
+               (update (level-schema ops max-depth) 1 assoc :json-schema (json-schema ops))))))
 
 (defn- leaf?
   [expr]

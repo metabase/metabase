@@ -1144,7 +1144,12 @@
 
 (defn- keyword-query-schema
   [ops description]
-  (mut/update-properties (search/query-expr-schema ops) assoc :description description))
+  (mut/update-properties (search/query-expr-schema ops)
+                         (fn [props]
+                           (-> props
+                               (assoc :description description)
+                               ;; `:json-schema` replaces malli's rendering, `:description` included.
+                               (update-in [:json-schema :description] #(str description " " %))))))
 
 (def ^:private fulltext-query-schema
   (keyword-query-schema

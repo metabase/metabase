@@ -40,13 +40,30 @@
     (is (not (valid? #{"or"} {:op "and" :args ["revenue" "income"]})))
     (is (not (valid? #{"and"} {:op "phrase" :text "gross margin"})))))
 
+(defn- offered-ops
+  "Every `op` value a rendered schema lets a model pick."
+  [js]
+  (->> (tree-seq coll? seq js)
+       (keep #(when (map? %) (get-in % [:properties "op"])))
+       (mapcat #(or (:enum %) [(:const %)]))
+       set))
+
+(defn- node-depth
+  "How many levels of `args` a rendered schema nests."
+  [js]
+  (if-let [items (some #(get-in % [:properties "args" :items]) (:anyOf js))]
+    (inc (node-depth items))
+    0))
+
 (deftest ^:parallel json-schema-test
-  (testing "the schema renders without $ref, with a const per operator the model can pick"
-    (let [js (mjs/transform (query-expr/schema query-expr/all-ops))
-          s  (pr-str js)]
-      (is (not (str/includes? s "$ref")))
-      (doseq [op query-expr/all-ops]
-        (is (str/includes? s (pr-str {:const op})) op)))))
+  (testing "the schema renders without $ref, offering exactly the backend's operators, max-depth levels deep"
+    (doseq [ops [query-expr/all-ops #{"or"} #{"and"} #{"and" "or" "not" "phrase"}]]
+      (let [js (mjs/transform (query-expr/schema ops))]
+        (is (not (str/includes? (pr-str js) "$ref")))
+        (is (= (set ops) (offered-ops js)))
+        (is (= query-expr/max-depth (node-depth js))))))
+  (testing "levels share one node shape, so the size grows linearly with depth rather than 3^depth"
+    (is (< (count (pr-str (mjs/transform (query-expr/schema query-expr/all-ops)))) 4000))))
 
 (deftest ^:parallel leaves-and-strings-test
   (is (= ["revenue" "forecast" "projection" {:op "phrase" :text "gross margin"}]
