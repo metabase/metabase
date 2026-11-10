@@ -246,20 +246,23 @@
               (remove (comp search.util/impossible-condition? second)))
         instances))
 
+(defn- enqueue-hook-selectors!
+  "Queue the [[hook-selectors]] of `instances` for ingestion, when the index is supported."
+  [instances always?]
+  (when (supports-index?)
+    (when-let [updates (seq (hook-selectors instances always?))]
+      (search.ingestion/ingest-maybe-async! updates))))
+
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]
-  (when (supports-index?)
-    (when-let [updates (seq (hook-selectors [instance] always?))]
-      (search.ingestion/ingest-maybe-async! updates))))
+  (enqueue-hook-selectors! [instance] always?))
 
 ;; Ingestion re-derives what these messages name, and purges a document named by its own id once its row is gone.
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows."
   [instances]
-  (when (supports-index?)
-    (when-let [updates (seq (hook-selectors instances true))]
-      (search.ingestion/ingest-maybe-async! updates))))
+  (enqueue-hook-selectors! instances true))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."
