@@ -115,7 +115,7 @@ describe("DeleteTransformsFolderModal", () => {
     const { onClose } = await setup({ transforms: TRANSFORMS });
 
     expect(
-      screen.getByText("Delete Folder and its contents?"),
+      screen.getByText('Delete "Folder" and its contents?'),
     ).toBeInTheDocument();
     expect(
       screen.getByText(

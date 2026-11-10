@@ -90,7 +90,7 @@ export function DeleteTransformsFolderModal({
 
   return (
     <Modal
-      title={t`Delete ${collection.name} and its contents?`}
+      title={t`Delete "${collection.name}" and its contents?`}
       opened
       onClose={onClose}
     >

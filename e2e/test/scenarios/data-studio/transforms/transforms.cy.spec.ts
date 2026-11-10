@@ -2063,7 +2063,7 @@ LIMIT
       });
 
       H.modal().within(() => {
-        cy.findByText("Delete Delete Me and its contents?").should(
+        cy.findByText('Delete "Delete Me" and its contents?').should(
           "be.visible",
         );
         cy.findByText(
@@ -2114,7 +2114,7 @@ LIMIT
       H.popover().findByText("Delete").click();
 
       H.modal().within(() => {
-        cy.findByText("Delete Delete Tables Too and its contents?").should(
+        cy.findByText('Delete "Delete Tables Too" and its contents?').should(
           "be.visible",
         );
         cy.findByLabelText(
