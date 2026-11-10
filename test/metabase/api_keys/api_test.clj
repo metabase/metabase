@@ -350,6 +350,16 @@
             (is (= #{:name :group :key_prefix :user_id}
                    (-> (mt/latest-audit-log-entry :api-key-create id) :details keys set)))))))))
 
+(deftest workspace-manager-api-key-creation-audit-logs-its-scope-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-empty-h2-app-db!
+      (let [{id :id} (mt/user-http-request :crowberto :post 200 "api-key"
+                                           {:group_id (:id (perms-group/admin))
+                                            :name     "CI workspaces"
+                                            :scope    "workspace-manager"})]
+        (is (=? {:details {:name "CI workspaces", :scope "workspace-manager"}}
+                (mt/latest-audit-log-entry :api-key-create id)))))))
+
 (deftest api-key-operations-are-audit-logged-2
   (mt/with-premium-features #{:audit-app}
     (mt/with-empty-h2-app-db!

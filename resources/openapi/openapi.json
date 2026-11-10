@@ -34444,7 +34444,7 @@
     },
     "/api/api-key" : {
       "get" : {
-        "description" : "Get a list of API keys with the default scope. Non-paginated.",
+        "description" : "Get a list of API keys with the default or the `workspace-manager` scope. Non-paginated.",
         "operationId" : "get-api-api-key",
         "parameters" : [ ],
         "responses" : {
@@ -34462,7 +34462,7 @@
         "tags" : [ "/api/api-key" ]
       },
       "post" : {
-        "description" : "Create a new API key (and an associated `User`) with the provided name and group ID.",
+        "description" : "Create a new API key (and an associated `User`) with the provided name and group ID. With `scope`\n  `workspace-manager`, the key authenticates only on the workspace manager endpoints, which also need its group to be\n  Administrators.",
         "operationId" : "post-api-api-key",
         "parameters" : [ ],
         "requestBody" : {
@@ -34478,6 +34478,14 @@
                     "description" : "value must be a non-blank string.",
                     "minLength" : 1,
                     "type" : "string"
+                  },
+                  "scope" : {
+                    "anyOf" : [ {
+                      "enum" : [ "workspace-manager" ],
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "group_id", "name" ],
@@ -34503,7 +34511,7 @@
     },
     "/api/api-key/count" : {
       "get" : {
-        "description" : "Get the count of API keys in the DB with the default scope.",
+        "description" : "Get the count of API keys in the DB with the default or the `workspace-manager` scope.",
         "operationId" : "get-api-api-key-count",
         "parameters" : [ ],
         "responses" : {

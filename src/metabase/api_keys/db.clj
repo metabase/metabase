@@ -15,7 +15,7 @@
 (def ^:private admin-listed
   "The ApiKeys an admin lists and manages through the API keys endpoints: unscoped keys and `:workspace-manager` keys.
   SCIM keys are managed by the SCIM endpoints."
-  [:or [:= :scope nil] [:= :scope [:auto/param "workspace-manager"]]])
+  [:or [:= :scope nil] [:= :scope "workspace-manager"]])
 
 (mu/defn admin-listed-api-key-count
   "The number of ApiKeys without a scope or with the `:workspace-manager` scope."
