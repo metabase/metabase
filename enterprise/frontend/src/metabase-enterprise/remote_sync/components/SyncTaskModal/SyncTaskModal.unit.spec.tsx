@@ -64,9 +64,7 @@ describe("SyncTaskModal", () => {
     });
 
     expect(await screen.findByText("Exporting content…")).toBeInTheDocument();
-    expect(
-      screen.getByText(/^Started by Test User at /),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/^Started by Test User at /)).toBeInTheDocument();
     expect(
       screen.getByText(
         "Please wait until this finishes before editing content.",
