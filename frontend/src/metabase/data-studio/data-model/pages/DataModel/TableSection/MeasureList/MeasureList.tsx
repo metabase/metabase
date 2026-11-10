@@ -6,7 +6,13 @@ import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics
 import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMeasureGroups } from "metabase/metadata/measure-groups";
 import { useSelector } from "metabase/redux";
-import { Button, Icon, Stack } from "metabase/ui";
+import {
+  Button,
+  Icon,
+  SegmentedControl,
+  type SegmentedControlItem,
+  Stack,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   ConcreteTableId,
@@ -32,6 +38,13 @@ import {
   useMeasureGroupProposals,
 } from "./MeasureGroups";
 import { MeasureItem } from "./MeasureItem";
+
+type MeasureView = "custom" | "proposed";
+
+const getViewOptions = (): SegmentedControlItem<MeasureView>[] => [
+  { value: "custom", label: t`Custom` },
+  { value: "proposed", label: t`Proposed` },
+];
 
 export type MeasureListUrls = {
   measure: (measureId: MeasureId) => string;
@@ -76,6 +89,7 @@ export function MeasureList({
     }
   };
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<MeasureView>("custom");
   // `null` is a new group; `undefined` means the editor is closed
   const [editingGroupId, setEditingGroupId] = useState<string | null>();
   const { getMeasureGroups, saveMeasureGroup, deleteMeasureGroup } =
@@ -104,6 +118,9 @@ export function MeasureList({
     editingGroupId != null
       ? getMeasureGroups(table).find(({ id }) => id === editingGroupId)
       : undefined;
+  // A search looks through every view at once, each in its own section
+  const showsView = (viewToShow: MeasureView) =>
+    !isSearching && view === viewToShow;
 
   const canWriteMeasures = useSelector((state) =>
     getUserCanWriteMeasures(state, table.is_published),
@@ -116,17 +133,28 @@ export function MeasureList({
 
   return (
     <Stack gap="xl" data-testid="table-measures-page">
-      <ListSearchBar
-        value={query}
-        placeholder={t`Search measures`}
-        onChange={setQuery}
-      />
+      {/* The view control belongs to the search, so it sits closer than the lists */}
+      <Stack gap="md">
+        <ListSearchBar
+          value={query}
+          placeholder={t`Search all measures and groups`}
+          onChange={setQuery}
+        />
+        {!isSearching && (
+          <SegmentedControl<MeasureView>
+            fullWidth
+            data={getViewOptions()}
+            value={view}
+            onChange={setView}
+          />
+        )}
+      </Stack>
 
       {isSearching && !hasMatches && (
         <ListSearchEmptyState>{t`No measures match "${query}"`}</ListSearchEmptyState>
       )}
 
-      {(!isSearching || measureGroups.length > 0) && (
+      {(showsView("custom") || (isSearching && measureGroups.length > 0)) && (
         <ListSection
           title={t`Measure groups`}
           description={t`Group similar or related measures together to help your users find them when they're querying.`}
@@ -162,7 +190,8 @@ export function MeasureList({
         </ListSection>
       )}
 
-      {(!isSearching || matchingMeasures.length > 0) && (
+      {(showsView("custom") ||
+        (isSearching && matchingMeasures.length > 0)) && (
         <ListSection
           title={t`Measures`}
           action={
@@ -196,21 +225,26 @@ export function MeasureList({
         </ListSection>
       )}
 
-      {matchingProposals.length > 0 && (
+      {(showsView("proposed") ||
+        (isSearching && matchingProposals.length > 0)) && (
         <ListSection
           title={t`Proposed groups`}
           description={t`Measures grouped by what they measure. Accept one to make it a group.`}
         >
-          {matchingProposals.map((proposal) => (
-            <MeasureGroupProposalItem
-              key={proposal.key}
-              proposal={proposal}
-              measures={measures}
-              canAccept={canWriteMeasures}
-              onAccept={() => groupProposals.accept(proposal)}
-              onDismiss={() => groupProposals.dismiss(proposal)}
-            />
-          ))}
+          {matchingProposals.length > 0 ? (
+            matchingProposals.map((proposal) => (
+              <MeasureGroupProposalItem
+                key={proposal.key}
+                proposal={proposal}
+                measures={measures}
+                canAccept={canWriteMeasures}
+                onAccept={() => groupProposals.accept(proposal)}
+                onDismiss={() => groupProposals.dismiss(proposal)}
+              />
+            ))
+          ) : (
+            <ListEmptyItem>{t`No proposed groups`}</ListEmptyItem>
+          )}
         </ListSection>
       )}
 

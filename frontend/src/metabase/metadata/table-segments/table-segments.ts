@@ -23,6 +23,8 @@ export type TableSegmentsOverrides = {
   defaultSegment?: DefaultSegment;
   /** `null` means an admin said the table has no required filter */
   requiredFilter?: DatasetQuery | null;
+  /** A system segment an admin made the required filter */
+  requiredSystemSegment?: SystemSegmentRole;
   /** Proposed cohorts already accepted or dismissed */
   resolvedCohortKeys: string[];
 };
@@ -128,6 +130,7 @@ function parseOverrides(value: unknown): TableSegmentsOverrides {
       value.requiredFilter === null
         ? null
         : parseDatasetQuery(value.requiredFilter),
+    requiredSystemSegment: parseSystemSegmentRole(value.requiredSystemSegment),
     resolvedCohortKeys: Array.isArray(value.resolvedCohortKeys)
       ? value.resolvedCohortKeys.filter(
           (key): key is string => typeof key === "string",
@@ -250,7 +253,21 @@ export function useTableSegments() {
       table: Pick<Table, "db_id" | "id">,
       requiredFilter: DatasetQuery | null | undefined,
     ) =>
-      updateOverrides(table, (overrides) => ({ ...overrides, requiredFilter })),
+      updateOverrides(table, (overrides) => ({
+        ...overrides,
+        requiredFilter,
+        requiredSystemSegment: undefined,
+      })),
+    [updateOverrides],
+  );
+
+  const setRequiredSystemSegment = useCallback(
+    (table: Pick<Table, "db_id" | "id">, role: SystemSegmentRole) =>
+      updateOverrides(table, (overrides) => ({
+        ...overrides,
+        requiredFilter: undefined,
+        requiredSystemSegment: role,
+      })),
     [updateOverrides],
   );
 
@@ -273,6 +290,7 @@ export function useTableSegments() {
     setSystemSegmentApplicable,
     setDefaultSegment,
     setRequiredFilter,
+    setRequiredSystemSegment,
     resolveCohort,
   };
 }

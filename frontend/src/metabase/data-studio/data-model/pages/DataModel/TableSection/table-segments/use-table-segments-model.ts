@@ -93,6 +93,7 @@ export type TableSegmentsModel = {
   setDefaultSegment: (segment: DefaultSegment) => void;
   /** `null` sets no required filter */
   setRequiredFilterQuery: (query: Lib.Query | null) => void;
+  setRequiredSystemSegment: (role: SystemSegmentRole) => void;
 };
 
 export type ResolvedRequiredFilter = {
@@ -103,6 +104,8 @@ export type ResolvedRequiredFilter = {
   inferredQuery: Lib.Query | null | undefined;
   inferredFilterName: string | null;
   isOverridden: boolean;
+  /** Set when the required filter is one of the table's system segments */
+  systemSegmentRole: SystemSegmentRole | undefined;
 };
 
 function findColumn(
@@ -247,6 +250,7 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     setSystemSegmentApplicable,
     setDefaultSegment,
     setRequiredFilter,
+    setRequiredSystemSegment,
   } = useTableSegments();
   const { getTableStructure } = useTableStructures();
   const { query: baseQuery, fromDefinition } = useTableQuery(table);
@@ -358,23 +362,34 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     requiredInference.condition == null
       ? null
       : baseQuery && applyConditions(baseQuery, [requiredInference.condition]);
-  const requiredQuery =
-    overrides.requiredFilter === undefined
+  // A required system segment that filters nothing falls back like no choice
+  const requiredSystemSegment = systemSegments.find(
+    (segment) =>
+      segment.role === overrides.requiredSystemSegment &&
+      isUsableSystemSegment(segment),
+  );
+  const requiredQuery = requiredSystemSegment
+    ? requiredSystemSegment.query
+    : overrides.requiredFilter === undefined
       ? inferredRequiredQuery
       : overrides.requiredFilter === null
         ? null
         : fromDefinition(overrides.requiredFilter);
   const requiredFilter: ResolvedRequiredFilter = {
     query: requiredQuery,
-    filterName: requiredQuery
-      ? (getFilterNames(requiredQuery)[0] ?? null)
-      : null,
+    filterName: requiredSystemSegment
+      ? requiredSystemSegment.label
+      : requiredQuery
+        ? (getFilterNames(requiredQuery)[0] ?? null)
+        : null,
     inference: requiredInference,
     inferredQuery: inferredRequiredQuery,
     inferredFilterName: inferredRequiredQuery
       ? (getFilterNames(inferredRequiredQuery)[0] ?? null)
       : null,
-    isOverridden: overrides.requiredFilter !== undefined,
+    isOverridden:
+      overrides.requiredFilter !== undefined || requiredSystemSegment != null,
+    systemSegmentRole: requiredSystemSegment?.role,
   };
 
   return {
@@ -411,5 +426,7 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     /** `null` sets no required filter */
     setRequiredFilterQuery: (query: Lib.Query | null) =>
       setRequiredFilter(table, query ? Lib.toJsQuery(query) : null),
+    setRequiredSystemSegment: (role: SystemSegmentRole) =>
+      setRequiredSystemSegment(table, role),
   };
 }

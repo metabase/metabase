@@ -14,9 +14,12 @@ import type {
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import {
   ActionIcon,
+  Box,
+  Divider,
   Icon,
   Input,
   Menu,
+  NavLink,
   Popover,
   Stack,
   Text,
@@ -74,7 +77,13 @@ export function TableFiltering({ table, readOnly }: TableFilteringProps) {
         <DetailsRow
           label={t`Required filter`}
           fillValue
-          value={<RequiredFilterValue model={model} disabled={readOnly} />}
+          value={
+            <RequiredFilterValue
+              table={table}
+              model={model}
+              disabled={readOnly}
+            />
+          }
         />
       </DetailsTable>
     </SidebarSection>
@@ -316,9 +325,11 @@ function DefaultSegmentPicker({
 
 /** The required filter, or sync's proposal to confirm or change */
 function RequiredFilterValue({
+  table,
   model,
   disabled,
 }: {
+  table: Table;
   model: TableSegmentsModel;
   disabled: boolean;
 }) {
@@ -345,6 +356,7 @@ function RequiredFilterValue({
 
   return (
     <RequiredFilterPicker
+      table={table}
       model={model}
       disabled={disabled}
       isOpenOnMount={isPickerOpenOnMount}
@@ -353,24 +365,51 @@ function RequiredFilterValue({
 }
 
 /**
- * Blank until set: a click opens the standard filter picker on the table's
- * columns. The ✕ clears it.
+ * Blank until set: a click opens the table's system segments over the
+ * standard filter picker on its columns. The ✕ clears it.
  */
 function RequiredFilterPicker({
+  table,
   model,
   disabled,
   isOpenOnMount,
 }: {
+  table: Table;
   model: TableSegmentsModel;
   disabled: boolean;
   isOpenOnMount: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(isOpenOnMount);
-  const { baseQuery, requiredFilter, setRequiredFilterQuery } = model;
-  const filterQuery = requiredFilter.query ?? baseQuery;
-  const filter = requiredFilter.query
-    ? Lib.filters(requiredFilter.query, STAGE_INDEX)[0]
-    : undefined;
+  // A system segment that isn't set up yet, while its setup is open
+  const [settingUpRole, setSettingUpRole] = useState<SystemSegmentRole>();
+  const {
+    baseQuery,
+    requiredFilter,
+    systemSegments,
+    setRequiredFilterQuery,
+    setRequiredSystemSegment,
+  } = model;
+  const isSystemSegment = requiredFilter.systemSegmentRole != null;
+  // A system segment's filter isn't edited here; picking a column replaces it
+  const filterQuery = isSystemSegment
+    ? baseQuery
+    : (requiredFilter.query ?? baseQuery);
+  const filter =
+    requiredFilter.query && !isSystemSegment
+      ? Lib.filters(requiredFilter.query, STAGE_INDEX)[0]
+      : undefined;
+  const settingUpSegment = systemSegments.find(
+    ({ role }) => role === settingUpRole,
+  );
+
+  const handlePickSystemSegment = (segment: ResolvedSystemSegment) => {
+    setIsOpen(false);
+    if (segment.status === "not-set-up") {
+      setSettingUpRole(segment.role);
+    } else {
+      setRequiredSystemSegment(segment.role);
+    }
+  };
 
   const handleSelect = (newFilter: Lib.Filterable) => {
     if (requiredFilter.query && filter) {
@@ -424,6 +463,11 @@ function RequiredFilterPicker({
         </Input>
       </Popover.Target>
       <Popover.Dropdown p={0}>
+        <SystemSegmentChoices
+          systemSegments={systemSegments}
+          selectedRole={requiredFilter.systemSegmentRole}
+          onPick={handlePickSystemSegment}
+        />
         {filterQuery && (
           <FilterPicker
             query={filterQuery}
@@ -435,6 +479,79 @@ function RequiredFilterPicker({
           />
         )}
       </Popover.Dropdown>
+      {settingUpSegment && (
+        <SystemSegmentSetupModal
+          table={table}
+          segment={settingUpSegment}
+          baseQuery={baseQuery}
+          saveLabel={t`Save and make required`}
+          onSave={(condition) => {
+            model.setSystemSegmentCondition(settingUpSegment.role, condition);
+            setRequiredSystemSegment(settingUpSegment.role);
+            setSettingUpRole(undefined);
+          }}
+          onClose={() => setSettingUpRole(undefined)}
+        />
+      )}
     </Popover>
+  );
+}
+
+function SystemSegmentChoiceLabel({
+  segment,
+}: {
+  segment: ResolvedSystemSegment;
+}) {
+  const hint = getSystemSegmentHint(segment);
+  return (
+    <Stack gap={2}>
+      <Text c="inherit">{segment.label}</Text>
+      {hint != null && (
+        <Text size="sm" c="text-secondary">
+          {hint}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+/** The table's system segments, above the column filters */
+function SystemSegmentChoices({
+  systemSegments,
+  selectedRole,
+  onPick,
+}: {
+  systemSegments: ResolvedSystemSegment[];
+  selectedRole: SystemSegmentRole | undefined;
+  onPick: (segment: ResolvedSystemSegment) => void;
+}) {
+  const choices = systemSegments.filter(
+    ({ status }) => status !== "not-applicable",
+  );
+  if (choices.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <Box p="sm">
+        <Text size="sm" fw="bold" c="text-secondary" px="sm" pb="xs">
+          {t`System segments`}
+        </Text>
+        {choices.map((segment) => (
+          <NavLink
+            key={segment.role}
+            label={<SystemSegmentChoiceLabel segment={segment} />}
+            leftSection={<Icon name="segment" />}
+            rightSection={
+              segment.role === selectedRole ? <Icon name="check" /> : null
+            }
+            active={segment.role === selectedRole}
+            onClick={() => onPick(segment)}
+          />
+        ))}
+      </Box>
+      <Divider />
+    </>
   );
 }
