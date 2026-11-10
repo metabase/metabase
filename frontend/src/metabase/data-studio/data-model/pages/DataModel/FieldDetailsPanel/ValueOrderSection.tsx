@@ -65,7 +65,7 @@ export function ValueOrderSection({ field, table }: ValueOrderSectionProps) {
       <EnumKindSelect
         kind={enumKind}
         isInferred={
-          overrides.enumKind == null && kindInference.kind !== "nominal"
+          overrides.enumKind == null && kindInference.kind === "ordinal"
         }
         inference={t`Inferred: ${kindInference.signal}`}
         disabled={readOnly}

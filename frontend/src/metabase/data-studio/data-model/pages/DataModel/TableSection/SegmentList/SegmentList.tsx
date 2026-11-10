@@ -5,6 +5,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useSegmentGroups } from "metabase/metadata/segment-groups";
+import type { SystemSegmentRole } from "metabase/metadata/table-segments";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { useSelector } from "metabase/redux";
 import {
@@ -15,7 +16,7 @@ import {
   Stack,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Segment, Table } from "metabase-types/api";
+import type { Segment, SegmentId, Table } from "metabase-types/api";
 
 import { getQueryClauses } from "../ClausePills";
 import {
@@ -43,9 +44,31 @@ import {
 import { SegmentItem } from "./SegmentItem";
 import { SystemSegmentItem } from "./SystemSegmentItem";
 
+export type SegmentListUrls = {
+  segment: (segmentId: SegmentId) => string;
+  newSegment: string;
+  systemSegment: (role: SystemSegmentRole) => string;
+};
+
 type SegmentListProps = {
   table: Table;
+  urls?: SegmentListUrls;
 };
+
+function getDataModelSegmentUrls(table: Table): SegmentListUrls {
+  const tablePath = {
+    databaseId: table.db_id,
+    schemaName: table.schema,
+    tableId: table.id,
+  };
+  return {
+    segment: (segmentId) =>
+      Urls.dataStudioDataModelSegment({ ...tablePath, segmentId }),
+    newSegment: Urls.newDataStudioDataModelSegment(tablePath),
+    systemSegment: (role) =>
+      Urls.dataStudioDataModelSystemSegment({ ...tablePath, role }),
+  };
+}
 
 type SegmentView = "system" | "custom" | "proposed";
 
@@ -59,7 +82,10 @@ const getViewOptions = (): SegmentedControlItem<SegmentView>[] => [
  * The table's segments, one view at a time: the system segments every table
  * has, the ones people made with the groups they form, and what sync proposes.
  */
-export function SegmentList({ table }: SegmentListProps) {
+export function SegmentList({
+  table,
+  urls = getDataModelSegmentUrls(table),
+}: SegmentListProps) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<SegmentView>("custom");
   // `null` is a new group; `undefined` means the editor is closed
@@ -126,14 +152,6 @@ export function SegmentList({ table }: SegmentListProps) {
       ? getSegmentGroups(table).find(({ id }) => id === editingGroupId)
       : undefined;
 
-  const getSegmentHref = (segmentId: number) =>
-    Urls.dataStudioDataModelSegment({
-      databaseId: table.db_id,
-      schemaName: table.schema,
-      tableId: table.id,
-      segmentId,
-    });
-
   return (
     <Stack gap="xl" data-testid="table-segments-page">
       {/* The view control belongs to the search, so it sits closer than the lists */}
@@ -165,12 +183,7 @@ export function SegmentList({ table }: SegmentListProps) {
             <SystemSegmentItem
               key={segment.role}
               segment={segment}
-              href={Urls.dataStudioDataModelSystemSegment({
-                databaseId: table.db_id,
-                schemaName: table.schema,
-                tableId: table.id,
-                role: segment.role,
-              })}
+              href={urls.systemSegment(segment.role)}
               isDefault={
                 defaultSegment.type === "system" &&
                 defaultSegment.role === segment.role
@@ -223,11 +236,7 @@ export function SegmentList({ table }: SegmentListProps) {
             canCreateSegment && (
               <Button
                 component={ForwardRefLink}
-                to={Urls.newDataStudioDataModelSegment({
-                  databaseId: table.db_id,
-                  schemaName: table.schema,
-                  tableId: table.id,
-                })}
+                to={urls.newSegment}
                 size="compact-sm"
                 variant="subtle"
                 leftSection={<Icon name="add" />}
@@ -248,7 +257,7 @@ export function SegmentList({ table }: SegmentListProps) {
               <SegmentItem
                 key={segment.id}
                 segment={segment}
-                href={getSegmentHref(segment.id)}
+                href={urls.segment(segment.id)}
                 clauses={getSegmentClauses(segment)}
                 isDefault={
                   defaultSegment.type === "custom" &&

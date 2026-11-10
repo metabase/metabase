@@ -8,7 +8,12 @@ import { useMeasureGroups } from "metabase/metadata/measure-groups";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { ConcreteTableId, Measure, Table } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  Measure,
+  MeasureId,
+  Table,
+} from "metabase-types/api";
 
 import { getQueryClauses } from "../ClausePills";
 import {
@@ -28,15 +33,37 @@ import {
 } from "./MeasureGroups";
 import { MeasureItem } from "./MeasureItem";
 
+export type MeasureListUrls = {
+  measure: (measureId: MeasureId) => string;
+  newMeasure: string;
+};
+
 type MeasureListProps = {
   table: Table;
+  urls?: MeasureListUrls;
 };
+
+function getDataModelMeasureUrls(table: Table): MeasureListUrls {
+  const tablePath = {
+    databaseId: table.db_id,
+    schemaName: table.schema,
+    tableId: table.id,
+  };
+  return {
+    measure: (measureId) =>
+      Urls.dataStudioDataModelMeasure({ ...tablePath, measureId }),
+    newMeasure: Urls.newDataStudioDataModelMeasure(tablePath),
+  };
+}
 
 /**
  * The table's measure groups, its measures, and groups sync suggests. Groups
  * only organize measures; they don't change what they compute.
  */
-export function MeasureList({ table }: MeasureListProps) {
+export function MeasureList({
+  table,
+  urls = getDataModelMeasureUrls(table),
+}: MeasureListProps) {
   const measures = table.measures ?? [];
   const { fromDefinition } = useTableQuery(table);
   // Each aggregation and filter of a measure's definition, for its card's pills
@@ -78,13 +105,6 @@ export function MeasureList({ table }: MeasureListProps) {
       ? getMeasureGroups(table).find(({ id }) => id === editingGroupId)
       : undefined;
 
-  const getMeasureHref = (measureId: number) =>
-    Urls.dataStudioDataModelMeasure({
-      databaseId: table.db_id,
-      schemaName: table.schema,
-      tableId: table.id,
-      measureId,
-    });
   const canWriteMeasures = useSelector((state) =>
     getUserCanWriteMeasures(state, table.is_published),
   );
@@ -92,11 +112,7 @@ export function MeasureList({ table }: MeasureListProps) {
     // Unjustified type cast. FIXME
     trackMeasureCreateStarted(table.id as ConcreteTableId);
   };
-  const newMeasureUrl = Urls.newDataStudioDataModelMeasure({
-    databaseId: table.db_id,
-    schemaName: table.schema,
-    tableId: table.id,
-  });
+  const newMeasureUrl = urls.newMeasure;
 
   return (
     <Stack gap="xl" data-testid="table-measures-page">
@@ -170,7 +186,7 @@ export function MeasureList({ table }: MeasureListProps) {
               <MeasureItem
                 key={measure.id}
                 measure={measure}
-                href={getMeasureHref(measure.id)}
+                href={urls.measure(measure.id)}
                 clauses={getMeasureClauses(measure)}
               />
             ))

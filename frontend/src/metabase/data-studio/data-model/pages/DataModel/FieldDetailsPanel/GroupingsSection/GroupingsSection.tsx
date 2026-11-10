@@ -91,8 +91,13 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
     ({ name }) => name,
   );
   const defaultName = resolved.defaultName;
+  const isDecidedByType = isBoolean(field);
+  const hasDefaultChoice = allNames.length > 1;
   const defaultInference =
-    resolved.isDefaultInferred && resolved.defaultInference
+    !isDecidedByType &&
+    hasDefaultChoice &&
+    resolved.isDefaultInferred &&
+    resolved.defaultInference
       ? t`Inferred: ${resolved.defaultInference.signal}`
       : null;
   const isBuiltInDefault = resolved.builtIns.some(
@@ -139,6 +144,7 @@ export function GroupingsSection({ field, table }: GroupingsSectionProps) {
             grouping={grouping}
             context={resolved.context}
             isDefault={grouping.name === defaultName}
+            isDecidedByType={isDecidedByType}
             defaultInference={defaultInference}
             readOnly={readOnly}
             onOpen={() => setEditor({ grouping })}
@@ -195,6 +201,7 @@ function GroupingCard({
   grouping,
   context,
   isDefault,
+  isDecidedByType,
   defaultInference,
   readOnly,
   onOpen,
@@ -205,6 +212,7 @@ function GroupingCard({
   grouping: ResolvedGrouping;
   context: GroupingInferenceContext;
   isDefault: boolean;
+  isDecidedByType: boolean;
   /** Why sync picked the default, while it's still a guess */
   defaultInference: string | null;
   readOnly: boolean;
@@ -235,6 +243,17 @@ function GroupingCard({
       : t`Segment group not found`);
   const bucketCount = getGroupingBucketCount(grouping, descriptionContext);
   const isDefaultGuess = isDefault && defaultInference != null;
+  const isGroupingGuess =
+    grouping.isInferred &&
+    grouping.signal != null &&
+    !isDecidedByType &&
+    !isDefaultGuess;
+  const confirmDefault = () => {
+    onMakeDefault();
+    if (grouping.isInferred) {
+      onConfirm();
+    }
+  };
   // Confirming is the AI icons' job; the menu only makes it the default
   const hasActions = !readOnly && !isDefault;
 
@@ -263,7 +282,7 @@ function GroupingCard({
             <Text fw="bold" truncate>
               {grouping.name}
             </Text>
-            {grouping.isInferred && grouping.signal != null && (
+            {isGroupingGuess && (
               <InferredIcon
                 description={t`Inferred: ${grouping.signal}`}
                 onConfirm={readOnly ? undefined : onConfirm}
@@ -272,7 +291,7 @@ function GroupingCard({
             {isDefault && (
               <DefaultBadge
                 inference={isDefaultGuess ? defaultInference : null}
-                onConfirm={readOnly ? undefined : onMakeDefault}
+                onConfirm={readOnly ? undefined : confirmDefault}
               />
             )}
           </Flex>
