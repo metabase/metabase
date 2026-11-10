@@ -1,8 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import type { ExpressionError } from "metabase/querying/expressions";
-import { Button, Flex } from "metabase/ui";
+import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { isMac } from "metabase/utils/browser";
 import type * as Lib from "metabase-lib";
 
 import { Editor } from "../../../components/expressions/Editor";
@@ -10,6 +11,7 @@ import type { EditorChangeMeta } from "../../../components/expressions/Editor/Ed
 import { Layout, LayoutFooter } from "../../../components/expressions/Layout";
 import { ShortcutsMenu } from "../../../components/expressions/ShortcutsMenu";
 
+import { ExpressionPreview } from "./ExpressionPreview";
 import S from "./InlineExpressionEditor.module.css";
 
 export type InlineExpressionEditorProps = {
@@ -42,6 +44,8 @@ export type InlineExpressionEditorProps = {
   onDiscard: () => void;
 };
 
+const PREVIEW_SHORTCUT = isMac() ? "⌘ Enter" : "Ctrl Enter";
+
 export function InlineExpressionEditor({
   query,
   stageIndex,
@@ -61,6 +65,26 @@ export function InlineExpressionEditor({
   onDiscard,
 }: InlineExpressionEditorProps) {
   const [error, setError] = useState<ExpressionError | null>(null);
+  // The last valid clause, for the preview. The editor reports the opened
+  // clause when it validates it.
+  const [previewClause, setPreviewClause] = useState<Lib.ExpressionClause>();
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+
+  // Cmd/Ctrl+Enter opens the preview, or runs it again. The capture phase
+  // comes before the keymap of the code editor.
+  const handleKeyDownCapture = (event: KeyboardEvent) => {
+    if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (isPreviewOpen) {
+      setPreviewRefreshKey((key) => key + 1);
+    } else if (previewClause != null) {
+      setIsPreviewOpen(true);
+    }
+  };
   const [hasExpression, setHasExpression] = useState(clause != null);
 
   // Used to remount the editor, which re-formats from `editorClause`.
@@ -83,6 +107,9 @@ export function InlineExpressionEditor({
       { hasSourceChanged, source }: EditorChangeMeta,
     ) => {
       const isValid = !error && clause != null;
+      if (isValid) {
+        setPreviewClause(clause);
+      }
       setError(error);
       setHasExpression(clause != null);
       onSourceChange?.(source, isValid);
@@ -126,6 +153,7 @@ export function InlineExpressionEditor({
       className={S.panel}
       data-testid="expression-editor"
       data-ignore-editor-clicks="true"
+      onKeyDownCapture={handleKeyDownCapture}
     >
       <Editor
         key={revertCount}
@@ -167,9 +195,32 @@ export function InlineExpressionEditor({
         inline
       />
 
+      {isPreviewOpen && previewClause != null && (
+        <ExpressionPreview
+          query={query}
+          stageIndex={stageIndex}
+          expressionIndex={expressionIndex}
+          clause={previewClause}
+          name={name ?? t`New column`}
+          refreshKey={previewRefreshKey}
+          onClose={() => setIsPreviewOpen(false)}
+        />
+      )}
+
       {!readOnly && (
-        <LayoutFooter>
+        <LayoutFooter className={S.footer}>
           <Flex p="sm" gap="sm" justify="end" align="center">
+            {!isPreviewOpen && (
+              <Tooltip label={t`Preview (${PREVIEW_SHORTCUT})`}>
+                <Button
+                  variant="subtle"
+                  mr="auto"
+                  leftSection={<Icon name="play" />}
+                  disabled={previewClause == null}
+                  onClick={() => setIsPreviewOpen(true)}
+                >{t`Preview`}</Button>
+              </Tooltip>
+            )}
             {!isValid &&
               (isSaved ? (
                 <Button

@@ -93,7 +93,9 @@ export function NotebookStep({
 
   const { title, color, Step, StepHeader } = getStepConfig(step.type);
 
-  const canPreview = step.previewQuery != null && !readOnly;
+  // The custom column editor has its own preview of the columns it uses.
+  const canPreview =
+    step.previewQuery != null && !readOnly && step.type !== "expression";
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = step.revert != null && !readOnly;
 

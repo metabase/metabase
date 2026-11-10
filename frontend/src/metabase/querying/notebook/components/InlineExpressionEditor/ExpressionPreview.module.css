@@ -1,0 +1,8 @@
+/* Between the code and the footer of the editor layout. */
+.preview {
+  grid-row: 3;
+  grid-column: 1;
+  min-width: 0;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-top: 1px solid var(--mb-color-border-neutral);
+}

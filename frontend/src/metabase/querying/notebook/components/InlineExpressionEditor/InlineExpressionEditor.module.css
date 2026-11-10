@@ -4,3 +4,8 @@
   border-radius: 8px;
   overflow: hidden;
 }
+
+/* The preview takes the row above the footer. */
+.footer {
+  grid-row: 4;
+}
