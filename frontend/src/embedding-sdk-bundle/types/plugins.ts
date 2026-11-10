@@ -1,10 +1,7 @@
 import type { DashboardCardMenu } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
+import type { MetabaseClickAction } from "metabase/embedding-sdk/types/plugins";
 
 import type { MetabaseQuestion } from "./question";
-
-export type MetabaseClickAction = {
-  name: string;
-} & Record<string, any>;
 
 export type MetabaseDataPointObject = {
   value?: string | number | null | boolean | object;
