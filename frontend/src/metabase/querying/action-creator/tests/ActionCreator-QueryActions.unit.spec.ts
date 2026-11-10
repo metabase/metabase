@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupActionsEndpoints } from "__support__/server-mocks";
 import { getIcon, queryIcon, screen, waitFor, within } from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { WritebackAction } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockCard,
@@ -139,9 +144,60 @@ describe("ActionCreator > Query Actions", () => {
         );
       });
     });
+
+    it("creates the action with the name given in the save form and closes the editor", async () => {
+      const model = createMockCard({ type: "model", can_write: true });
+      const onSubmit = jest.fn<void, [WritebackAction]>();
+      const onClose = jest.fn<void, []>();
+      setupActionsEndpoints([]);
+      await setup({ model, onSubmit, onClose });
+
+      const view = screen.getByTestId("mock-native-query-editor");
+      await userEvent.click(within(view).getByRole("textbox"));
+      await userEvent.paste("DELETE FROM orders WHERE id = {{ id }}");
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("My new fantastic action"),
+        "Delete Order",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      const [createCall] = fetchMock.callHistory.calls("path:/api/action", {
+        method: "POST",
+      });
+      const body: unknown = JSON.parse(String(createCall.options.body));
+      expect(body).toMatchObject({
+        name: "Delete Order",
+        type: "query",
+        model_id: model.id,
+      });
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("Editing Action", () => {
+    it("updates the action and closes the editor", async () => {
+      const action = createMockQueryAction({
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+          query: "SELECT 1",
+        }),
+      });
+      const onClose = jest.fn<void, []>();
+      await setup({ action, onClose });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Update" }),
+      );
+
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      expect(
+        fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
     it("renders correctly", async () => {
       const action = createMockQueryAction();
       await setup({ action });

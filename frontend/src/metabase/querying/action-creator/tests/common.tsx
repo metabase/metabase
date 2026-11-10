@@ -29,6 +29,8 @@ export type SetupOpts = {
   isAdmin?: boolean;
   isPublicSharingEnabled?: boolean;
   model?: Card | null;
+  onSubmit?: (action: WritebackAction) => void;
+  onClose?: () => void;
 };
 
 export async function setup({
@@ -38,6 +40,8 @@ export async function setup({
   isAdmin = true,
   isPublicSharingEnabled = false,
   model,
+  onSubmit,
+  onClose,
 }: SetupOpts = {}) {
   if (model === undefined) {
     model = createMockCard({
@@ -61,6 +65,11 @@ export async function setup({
         name: `action-${action.id}-get`,
       },
     );
+    fetchMock.put(
+      `path:/api/action/${action.id}`,
+      { ...action, can_write: canWrite },
+      { name: `action-${action.id}-put` },
+    );
     fetchMock.delete(`path:/api/action/${action.id}/public_link`, 204, {
       name: `public-link-${action.id}-delete`,
     });
@@ -78,6 +87,8 @@ export async function setup({
       actionId={action?.id}
       modelId={model?.id}
       databaseId={database.id}
+      onSubmit={onSubmit}
+      onClose={onClose}
     />,
     {
       storeInitialState: createMockState({
