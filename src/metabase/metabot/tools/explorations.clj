@@ -147,7 +147,8 @@
                   " metrics that you have already chosen.")
    :recovery (into [{:uses #{"list_research_metrics"}
                      :text "Call `list_research_metrics` to choose metric IDs."}]
-                   (tools/search-steps #(str "Call `" % "` with `entity_types` [\"metric\"] to find metrics by topic.")))})
+                   (tools/search-steps
+                    #(str "Call `" % "` with `entity_types` [\"metric\"] to find metrics by topic.")))})
 
 (defrecord GetResearchCandidatesTool []
   tools/Tool

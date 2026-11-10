@@ -136,7 +136,8 @@
        :messages                    (metabot-persistence/messages->threaded-client-messages
                                      all-messages {:include-rewound-errors? true})
        :queries                     (analytics.queries/messages->generated-queries all-messages)
-       :search_count                (analytics.queries/count-tool-invocations all-messages metabot.tools/search-tool-names)
+       :search_count                (analytics.queries/count-tool-invocations
+                                     all-messages metabot.tools/search-tool-names)
        :query_count                 (analytics.queries/count-tool-invocations
                                      all-messages metabot.tools/query-generation-tool-names)
        :ip_address                  (:ip_address conversation)

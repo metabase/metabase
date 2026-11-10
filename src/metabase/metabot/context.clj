@@ -393,8 +393,9 @@
   "Profiles for which recent views are never injected.
 
   The nlq profile prefers curated library data, so arbitrary recently-viewed items (which may not be curated) would
-  undermine that preference. The slackbot and document-generate-content profiles historically did not include recent views,
-  so we preserve that behavior."
+  undermine that preference.
+  The slackbot and document-generate-content profiles historically did not include recent views, so we preserve that
+  behavior."
   #{:nlq :slackbot :document-generate-content})
 
 (defn- add-recent-views

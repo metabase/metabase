@@ -304,7 +304,7 @@
 ;;; agent cannot tell the two apart from the wording, only from where it appears. Tool code does not
 ;;; call these; the framework does.
 
-(def ^:private agent-loop-search-tool-names
+(def agent-loop-search-tool-names
   "The tools that search Metabase content in the Metabot agent loop, one per matcher."
   ["semantic_search" "fulltext_search" "substring_search"])
 

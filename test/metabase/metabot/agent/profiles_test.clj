@@ -234,7 +234,7 @@
             (is (contains? tools (keyword-search-tool-name)))
             (is (=? [{:name "retrieve_library_entities" :reason "library search isn't set up on this instance"}]
                     (filter #(= "retrieve_library_entities" (:name %))
-                            (profiles/unavailable-tools profile []))))))))))
+                            (:unavailable-tools (profiles/resolve-tools profile [] {})))))))))))
 
 (deftest library-withheld-where-it-cannot-honour-limits-test
   (testing "library retrieval is withheld from a metabot confined to a collection, and offered to a curated-only one"
@@ -328,11 +328,11 @@
                   :reason     "semantic search isn't set up on this instance"
                   :workaround string?}]
                 (filter #(= "semantic_search" (:name %))
-                        (profiles/unavailable-tools (profiles/get-profile :internal) []))))))
+                        (:unavailable-tools (profiles/resolve-tools (profiles/get-profile :internal) [] {})))))))
     (testing "an available tool, or a keyword variant whose sibling serves, is not listed"
       (mt/with-dynamic-fn-redefs [search.engine/engine-status (constantly :ok)]
         (is (not-any? #(#{"semantic_search" "fulltext_search" "substring_search"} (:name %))
-                      (profiles/unavailable-tools (profiles/get-profile :internal) [])))))))
+                      (:unavailable-tools (profiles/resolve-tools (profiles/get-profile :internal) [] {}))))))))
 
 (deftest register-profile-alternatives-test
   (testing "tools may share a name only as alternatives that each declare :available?"

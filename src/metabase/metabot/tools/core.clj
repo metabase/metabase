@@ -120,16 +120,16 @@
    ;; `:any` rather than a schema-of-schemas: this is a Malli schema in any of its forms — a
    ;; registry keyword, a vector form, or a compiled Schema. `validate-tool!` checks it compiles.
    [:args         :any]
-   [:scope                  {:optional true} [:maybe :string]]
-   [:metabot/capabilities   {:optional true} [:maybe [:set :keyword]]]
-   [:metabot/title-fn       {:optional true} [:maybe fn?]]
+   [:scope                    {:optional true} [:maybe :string]]
+   [:metabot/capabilities     {:optional true} [:maybe [:set :keyword]]]
+   [:metabot/title-fn         {:optional true} [:maybe fn?]]
    ;; Set by a tool that saves something. A failure it did not declare may have come after the save,
    ;; so `metabase.metabot.tools.runtime/invoke` ends the turn instead of letting the model try again.
-   [:metabot/writes?        {:optional true} [:maybe :boolean]]
+   [:metabot/writes?          {:optional true} [:maybe :boolean]]
    ;; Set by a tool whose call changes state that other calls read, such as a stored query. In one model response,
    ;; `metabase.metabot.self.core/tool-executor-xf` starts its call once the calls before it have finished, and the
    ;; calls after it once it has finished.
-   [:metabot/runs-alone?    {:optional true} [:maybe :boolean]]
+   [:metabot/runs-alone?      {:optional true} [:maybe :boolean]]
    ;; Whether the tool can serve this turn, as a function of `{:metabot ... :profile-id ...}`. Missing means always.
    ;; `metabase.metabot.agent.profiles/resolve-tools` offers only the tools whose check passes, so several tools can
    ;; share a name when at most one of them is available at a time.

@@ -16,6 +16,7 @@
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.metadata :as tools.metadata]
@@ -140,10 +141,7 @@
 (def search-tool-names
   "Tool names that search Metabase content: one per matcher, plus `search`, the single tool they replaced, which
   older conversations still record."
-  #{"search"
-    "semantic_search"
-    "fulltext_search"
-    "substring_search"})
+  (into #{"search"} tools.error/agent-loop-search-tool-names))
 
 (defn query-result-tool?
   "Whether the tool named `tool-name` returns query results, which may reach the model only while query execution

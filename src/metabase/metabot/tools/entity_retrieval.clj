@@ -228,7 +228,7 @@
        (not (confined-discovery? ctx))))
 
 (defn- library-unavailable-note
-  "What the prompt says about library retrieval when it isn't offered. Nothing here is sensitive."
+  "What the prompt says about library retrieval when it isn't offered, as text safe to show any user."
   [ctx]
   {:purpose    "finds curated data published to the library, by what it means"
    :missing    "curator usage instructions, and a signal for how well the library covers a request"

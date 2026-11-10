@@ -166,9 +166,9 @@
             ;; matcher the model wasn't given. `substring_search` has a variant per engine (in-place ORs its terms,
             ;; app-db on H2 ANDs them), told apart by the same keyword flavour that chose the variant.
             flavour              (search.engine/keyword-flavour)
-            has-substring-search? (contains? tools "substring_search")
-            has-semantic-search? (contains? tools "semantic_search")
-            has-fulltext-search? (contains? tools "fulltext_search")
+            has-semantic?        (contains? tools "semantic_search")
+            has-fulltext?        (contains? tools "fulltext_search")
+            has-substring?       (contains? tools "substring_search")
             has-library?         (contains? tools "retrieve_library_entities")
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
@@ -191,11 +191,11 @@
                                   ;; true when a SQL-writing tool is active.
                                   :sql_dialect_loaded       (and (sql-generation-tools? tools)
                                                                  (some? (skills/dialect-skill sql-dialect)))
-                                  :has_semantic_search      has-semantic-search?
-                                  :has_fulltext_search      has-fulltext-search?
-                                  :has_substring_or_search  (and has-substring-search? (= :substring-or flavour))
-                                  :has_substring_and_search (and has-substring-search? (= :substring-and flavour))
-                                  :has_keyword_search       (or has-fulltext-search? has-substring-search?)
+                                  :has_semantic_search      has-semantic?
+                                  :has_fulltext_search      has-fulltext?
+                                  :has_substring_or_search  (and has-substring? (= :substring-or flavour))
+                                  :has_substring_and_search (and has-substring? (= :substring-and flavour))
+                                  :has_keyword_search       (or has-fulltext? has-substring?)
                                   :has_library_retrieval    has-library?
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
                                   ;; an empty vector as truthy, which would render the "# Available

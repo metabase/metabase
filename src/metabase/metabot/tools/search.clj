@@ -676,10 +676,11 @@
 (defn search-by-query
   "The Metabot search tools' search: one query, run on one engine, with results shaped and enriched for the model.
 
-  `engine` is the engine to run, by default the keyword engine. `query` is a plain string, such as a natural-language
-  description for the semantic engine. `search-expr` is a structured keyword query (see `metabase.search.query-expr`):
-  engines that compile it match on it, and the others match its leaves as a plain string. `vector-only?` asks the
-  semantic engine for meaning alone, and `max-semantic-distance` overrides its distance cutoff.
+  Runs on `engine`, by default the keyword engine.
+  Takes either `query`, a plain string such as a natural-language description for the semantic engine, or
+  `search-expr`, a structured keyword query (see `metabase.search.query-expr`).
+  Engines that compile a structured query match on it, and the others match its leaves as a plain string.
+  Set `vector-only?` to ask the semantic engine for meaning alone, and `max-semantic-distance` to override its cutoff.
 
   The result carries the size of the whole match set as `:total` metadata, so the caller can tell that `limit`
   cut it short. `:collection-id` metadata is the collection the search ran in, after [[scoped-collection-id]]."
@@ -701,33 +702,34 @@
         collection-id  (scoped-collection-id collection-id (confined-collection-id metabot profile-id))
         limit          (or limit 50)
         picked-engine  (or engine (search.engine/keyword-engine))
-        run-engine     (fn [search-string]
-                         (search/search
-                          (search/search-context
-                           (cond-> {:search-string                       search-string
-                                    :models                              search-models
-                                    :search-engine                       (name picked-engine)
-                                    :table-db-id                         database-id
-                                    :created-at                          created-at
-                                    :last-edited-at                      last-edited-at
-                                    :current-user-id                     api/*current-user-id*
-                                    :is-impersonated-user?               (perms/impersonated-user?)
-                                    :is-sandboxed-user?                  (perms/sandboxed-user?)
-                                    :is-routed-user?                     (perms/routed-user?)
-                                    :is-superuser?                       api/*is-superuser?*
-                                    :current-user-perms                  @api/*current-user-permissions-set*
-                                    :filter-items-in-personal-collection "exclude-others"
-                                    :context                             :metabot
-                                    :archived                            false
-                                    :limit                               limit
-                                    :offset                              0}
-                             weights               (assoc :weights weights)
-                             use-verified?         (assoc :curated true)
-                             collection-id         (assoc :collection collection-id)
-                             search-expr           (assoc :search-expr search-expr)
-                             vector-only?          (assoc :vector-only? true)
-                             max-semantic-distance (assoc :max-semantic-distance max-semantic-distance)))))
-        {:keys [data total]} (run-engine (if search-expr (search/query-expr-search-string search-expr) query))]
+        found          (search/search
+                        (search/search-context
+                         (cond-> {:search-string                       (if search-expr
+                                                                         (search/query-expr-search-string search-expr)
+                                                                         query)
+                                  :models                              search-models
+                                  :search-engine                       (name picked-engine)
+                                  :table-db-id                         database-id
+                                  :created-at                          created-at
+                                  :last-edited-at                      last-edited-at
+                                  :current-user-id                     api/*current-user-id*
+                                  :is-impersonated-user?               (perms/impersonated-user?)
+                                  :is-sandboxed-user?                  (perms/sandboxed-user?)
+                                  :is-routed-user?                     (perms/routed-user?)
+                                  :is-superuser?                       api/*is-superuser?*
+                                  :current-user-perms                  @api/*current-user-permissions-set*
+                                  :filter-items-in-personal-collection "exclude-others"
+                                  :context                             :metabot
+                                  :archived                            false
+                                  :limit                               limit
+                                  :offset                              0}
+                           weights               (assoc :weights weights)
+                           use-verified?         (assoc :curated true)
+                           collection-id         (assoc :collection collection-id)
+                           search-expr           (assoc :search-expr search-expr)
+                           vector-only?          (assoc :vector-only? true)
+                           max-semantic-distance (assoc :max-semantic-distance max-semantic-distance))))
+        {:keys [data total]} found]
     (log/info "[METABOT-SEARCH] Search finished" {:engine       picked-engine
                                                   :query-shape  (if search-expr :expression :string)
                                                   :result-count (count data)
@@ -928,9 +930,9 @@
      "<instructions>"
      instructions/search-result-instructions "</instructions>")))
 
-;; Field-level descriptions surface to the model as JSON-Schema `description`s on the
-;; tool's input parameters (via `malli.json-schema` in `metabase.metabot.self.claude`).
-;; Each matcher's `query` describes itself; see [[matchers]].
+;; Field-level descriptions surface to the model as JSON-Schema `description`s on the tool's input parameters, through
+;; `metabase.metabot.self.schema/tool-function` for every provider. Each matcher's `query` describes itself, through
+;; its own `:json-schema`; see [[matchers]].
 
 (def ^:private entity-types-desc
   "Restrict results to these entity types. Omit to search across all types this tool supports.")
@@ -1058,7 +1060,7 @@
                :text "Use `substring_search` instead, with the likely words."}]})
 
 (tools/defrecoverable query-too-large!
-  "A structured query has more leaves than [[metabase.search.core/query-expr-limit-error]] allows."
+  "A structured query has more leaves than [[metabase.search.query-expr/max-leaves]] allows."
   {:payload [:map {:closed true} [:message :string]]}
   [{:keys [message]}]
   {:message  message
@@ -1080,13 +1082,12 @@
   [_]
   {:message  "This query would match almost everything: a `not` inside an `or` excludes one thing from everything else."
    :recovery [{:uses #{"fulltext_search"}
-               :text "Put each `not` inside an `and` with a term that has to match, then call `fulltext_search` again."}]})
+               :text (str "Put each `not` inside an `and` with a term that has to match, then call `fulltext_search` "
+                          "again.")}]})
 
 (defn- do-search
   [default-types search-opts {:keys [query entity_types limit collection_id] :as args}]
-  ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the user that
-  ;; search failed. `read_resource` does not use the search index.
-  (let [limit        (min max-search-limit (or limit default-search-limit))
+  (let [limit       (min max-search-limit (or limit default-search-limit))
         opts         (merge {:query        (when (string? query) query)
                              :entity-types (or (seq entity_types) (vec default-types))
                              :limit        limit}
@@ -1096,7 +1097,9 @@
         results      (try
                        (search-by-query opts)
                        (catch Exception e
-                         ;; The runtime logs a recoverable error at debug level, without its cause.
+                         ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the
+                         ;; user that search failed. `read_resource` does not use the search index. The runtime
+                         ;; logs a recoverable error at debug level, without its cause, so log it here.
                          (log/error e "Metabot search failed")
                          (if (= :semantic-search-error (:type (ex-data e)))
                            (semantic-search-failed! {})
@@ -1122,13 +1125,15 @@
 ;; types and scope arguments.
 
 (defn- semantic-available? [_ctx] (= :ok (search.engine/engine-status :search.engine/semantic)))
-(defn- fulltext-available? [_ctx] (= :fulltext (search.engine/keyword-flavour)))
-(defn- substring-or-available? [_ctx] (= :substring-or (search.engine/keyword-flavour)))
-(defn- substring-and-available? [_ctx] (= :substring-and (search.engine/keyword-flavour)))
+
+(defn- keyword-flavour?
+  "An availability check: whether the keyword engine matches the way `flavour` names."
+  [flavour]
+  (fn [_ctx] (= flavour (search.engine/keyword-flavour))))
 
 (defn- semantic-unavailable-note
-  "What the prompt says about `semantic_search` when it isn't offered. Nothing here is sensitive: it names the kind of
-  thing that is missing, never configuration details."
+  "What the prompt says about `semantic_search` when it isn't offered, as text safe to show any user.
+  It names the kind of thing that is missing, never configuration details."
   [_ctx]
   {:purpose    "finds data by what it means, even when its name and description use different words"
    :missing    "matching by meaning, so synonyms and paraphrases only match when they share words"
@@ -1176,8 +1181,11 @@
 (def ^:private metabot-max-semantic-distance 0.8)
 
 (def ^:private matchers
-  "How each matcher runs and how it is offered: its tool name, the engine it pins, whether its `query` is a structured
-  query, the query's schema, and its availability check."
+  "How each matcher runs and how it is offered, keyed by matcher.
+  Each entry holds the tool name, a function returning the engine to pin, the `query` schema and the availability
+  check.
+  Optional keys: `:expr?` when `query` is a structured query, `:validate-tsquery?` to check it on Postgres,
+  `:vector-only?` and `:max-semantic-distance` for the semantic engine, and `:unavailable-note` for the prompt."
   {:semantic      {:tool-name             "semantic_search"
                    :engine                (constantly :search.engine/semantic)
                    :vector-only?          true
@@ -1190,17 +1198,17 @@
                    :expr?             true
                    :validate-tsquery? true
                    :query-schema      fulltext-query-schema
-                   :available?        fulltext-available?}
+                   :available?        (keyword-flavour? :fulltext)}
    :substring-or  {:tool-name    "substring_search"
                    :engine       search.engine/keyword-engine
                    :expr?        true
                    :query-schema substring-or-query-schema
-                   :available?   substring-or-available?}
+                   :available?   (keyword-flavour? :substring-or)}
    :substring-and {:tool-name    "substring_search"
                    :engine       search.engine/keyword-engine
                    :expr?        true
                    :query-schema substring-and-query-schema
-                   :available?   substring-and-available?}})
+                   :available?   (keyword-flavour? :substring-and)}})
 
 (def ^:private general-entity-types
   "The entity types the general and NLQ search tools accept."
@@ -1219,23 +1227,23 @@
   The entity types each variant accepts are in its schema; see [[tool-schema]]."
   {:general {:default-types general-entity-types}
    :sql     {:default-types (sorted-set "model" "table")}
-   :nlq     {:default-types ["collection" "metric" "measure" "segment" "model" "question" "table"]
+   :nlq     {:default-types (sorted-set "collection" "measure" "metric" "model" "question" "segment" "table")
              :opts          {:profile-id "nlq"}}})
 
 (defn- tool-schema
   [profile query-schema]
   (case profile
     (:general :nlq) [:map {:closed true}
-                     [:query query-schema]
-                     [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
+                     [:query                          query-schema]
+                     [:entity_types  {:optional true} (apply entity-types-schema general-entity-types)]
                      [:database_id   {:optional true} [:maybe :int]]
                      [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                     [:limit {:optional true} limit-schema]]
+                     [:limit         {:optional true} limit-schema]]
     :sql            [:map {:closed true}
-                     [:query query-schema]
-                     [:database_id :int]
+                     [:query                         query-schema]
+                     [:database_id                   :int]
                      [:entity_types {:optional true} (entity-types-schema "table" "model")]
-                     [:limit {:optional true} limit-schema]]))
+                     [:limit        {:optional true} limit-schema]]))
 
 (defn- check-keyword-query!
   "Reject a structured query the engine would run in a way the model didn't mean: too many leaves, and on Postgres,
@@ -1290,67 +1298,67 @@
                :metabot/replaces    #{"search"}}
         unavailable-note (assoc :metabot/unavailable-note unavailable-note))))
   (handle [_ {:keys [database_id query] :as args} {:keys [metabot]}]
-    (let [{:keys [default-types opts]}                                    (profiles profile)
-          {:keys [engine expr? vector-only? max-semantic-distance] :as m} (matchers matcher)]
+    (let [{:keys [default-types opts]} (profiles profile)
+          {:keys [engine expr?] :as m}  (matchers matcher)]
       (when (some? database_id)
         (check-search-database! database_id))
       (when expr?
         (check-keyword-query! m query))
       (do-search default-types
-                 (cond-> (merge opts {:metabot metabot :engine (engine)})
-                   vector-only?          (assoc :vector-only? true)
-                   max-semantic-distance (assoc :max-semantic-distance max-semantic-distance)
-                   expr?                 (assoc :search-expr query)
-                   (some? database_id)   (assoc :database-id database_id))
+                 (cond-> (merge opts
+                                (select-keys m [:vector-only? :max-semantic-distance])
+                                {:metabot metabot, :engine (engine)})
+                   expr?               (assoc :search-expr query)
+                   (some? database_id) (assoc :database-id database_id))
                  args))))
 
 ;;; general profiles (internal, Slackbot, Explorations)
 
+(def ^:private general-entity-types-sentence
+  "The general tools' sentence naming what they search."
+  "Searches tables, models, metrics, measures, segments, dashboards, documents, saved questions, and collections.")
+
 (def semantic-search-tool
-  "`semantic_search` for the general profiles."
+  "The `semantic_search` tool for the general profiles."
   (->SearchTool
    :general :semantic
    (str "Find data and content by meaning: describe what you want in plain words, and it finds matches even when "
         "their names use different words. It can return only a few matches, so pair it with the keyword search tool, "
-        "which also finds exact names and codes and can exclude things. Searches tables, models, metrics, measures, "
-        "segments, dashboards, documents, saved questions, and collections.")))
+        "which also finds exact names and codes and can exclude things. " general-entity-types-sentence)))
 
 (def fulltext-search-tool
-  "`fulltext_search` for the general profiles."
+  "The `fulltext_search` tool for the general profiles."
   (->SearchTool
    :general :fulltext
    (str "Find data and content by the words in its name and description, or in a document's body. Matches whole "
         "words (stemmed). Join the key words of one idea with `and` or a `phrase`, use `or` only for other words for "
-        "the same idea, and exclude with `not`. Searches tables, models, metrics, measures, segments, dashboards, "
-        "documents, saved questions, and collections.")))
+        "the same idea, and exclude with `not`. " general-entity-types-sentence)))
 
 (def substring-or-search-tool
-  "`substring_search` for the general profiles, on the in-place engine."
+  "The `substring_search` tool for the general profiles, on the in-place engine."
   (->SearchTool
    :general :substring-or
    (str "Find data and content whose name or description contains the given text. Give alternatives with `or`. "
-        "Searches tables, models, metrics, measures, segments, dashboards, documents, saved questions, and "
-        "collections.")))
+        general-entity-types-sentence)))
 
 (def substring-and-search-tool
-  "`substring_search` for the general profiles, on app-db over H2."
+  "The `substring_search` tool for the general profiles, on app-db over H2."
   (->SearchTool
    :general :substring-and
    (str "Find data and content whose name or description contains the given text. Require several terms with `and`. "
-        "Searches tables, models, metrics, measures, segments, dashboards, documents, saved questions, and "
-        "collections.")))
+        general-entity-types-sentence)))
 
 ;;; SQL profile: tables and models in the database the user has open
 
 (def sql-semantic-search-tool
-  "`semantic_search` for the SQL profile."
+  "The `semantic_search` tool for the SQL profile."
   (->SearchTool
    :sql :semantic
    (str "Find SQL-queryable tables and models in a database by meaning: describe what you want in plain words. Use "
         "it for concepts; use the keyword search tool for exact table names.")))
 
 (def sql-fulltext-search-tool
-  "`fulltext_search` for the SQL profile."
+  "The `fulltext_search` tool for the SQL profile."
   (->SearchTool
    :sql :fulltext
    (str "Find SQL-queryable tables and models in a database by the words in their names and descriptions. Matches "
@@ -1358,14 +1366,14 @@
         "words for the same idea.")))
 
 (def sql-substring-or-search-tool
-  "`substring_search` for the SQL profile, on the in-place engine."
+  "The `substring_search` tool for the SQL profile, on the in-place engine."
   (->SearchTool
    :sql :substring-or
    (str "Find SQL-queryable tables and models in a database whose name or description contains the given text. "
         "Give alternatives with `or`.")))
 
 (def sql-substring-and-search-tool
-  "`substring_search` for the SQL profile, on app-db over H2."
+  "The `substring_search` tool for the SQL profile, on app-db over H2."
   (->SearchTool
    :sql :substring-and
    (str "Find SQL-queryable tables and models in a database whose name or description contains the given text. "
@@ -1374,7 +1382,7 @@
 ;;; NLQ profiles (NLQ, embedded): queryable data by default, dashboards and documents as save destinations
 
 (def nlq-semantic-search-tool
-  "`semantic_search` for the NLQ profiles."
+  "The `semantic_search` tool for the NLQ profiles."
   (->SearchTool
    :nlq :semantic
    (str "Find data to answer a question by meaning: describe what you want in plain words, and it finds tables, "
@@ -1382,7 +1390,7 @@
         "Can also find dashboards and documents as save destinations.")))
 
 (def nlq-fulltext-search-tool
-  "`fulltext_search` for the NLQ profiles."
+  "The `fulltext_search` tool for the NLQ profiles."
   (->SearchTool
    :nlq :fulltext
    (str "Find data to answer a question by the words in its name and description: tables, models, metrics, "
@@ -1391,7 +1399,7 @@
         "`phrase`, and use `or` only for other words for the same idea.")))
 
 (def nlq-substring-or-search-tool
-  "`substring_search` for the NLQ profiles, on the in-place engine."
+  "The `substring_search` tool for the NLQ profiles, on the in-place engine."
   (->SearchTool
    :nlq :substring-or
    (str "Find data to answer a question whose name or description contains the given text: tables, models, metrics, "
@@ -1399,7 +1407,7 @@
         "alternatives with `or`.")))
 
 (def nlq-substring-and-search-tool
-  "`substring_search` for the NLQ profiles, on app-db over H2."
+  "The `substring_search` tool for the NLQ profiles, on app-db over H2."
   (->SearchTool
    :nlq :substring-and
    (str "Find data to answer a question whose name or description contains the given text: tables, models, metrics, "

@@ -304,7 +304,7 @@
    ;; semantic engine: match by meaning alone, with no keyword branch and no fallback to a keyword engine
    [:vector-only?                        {:optional true} [:maybe boolean?]]
    ;; semantic engine: the widest cosine distance a vector match may have; the engine's own cutoff when unset
-   [:max-semantic-distance               {:optional true} [:maybe [:and number? [:> 0] [:<= 2]]]]
+   [:max-semantic-distance               {:optional true} [:maybe search.config/MaxSemanticDistance]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    ;; a structured keyword query; engines that compile it use it in place of `:search-string` for matching
    [:search-expr                         {:optional true} [:maybe (query-expr/schema query-expr/all-ops)]]
@@ -559,22 +559,20 @@
                                                :search/model-count  (count (:models search-ctx))}
     (search-results search-ctx search.engine/model-set (ranked-results search-ctx))))
 
+;; A leaf that normalizes to nothing vanishes silently: `revenue AND NOT phrase("the and")` would search just
+;; `revenue`. So would-be stopword leaves are reported rather than run.
 (defn query-expr-problems
   "What's wrong with `expr` as a full-text query under the Postgres text-search configuration `lang` (default: the
-  one the index uses), found in one round trip without searching anything:
-
-  - `:empty-leaves`, the texts of the leaves that normalize to nothing (stopwords such as `the`, or a phrase made only of them).
-    Left in, they vanish silently: `revenue AND NOT phrase(\"the and\")` would search just `revenue`.
-  - `:unrestricted?`, true when the whole query can't restrict the index, for example `revenue OR NOT archive`,
-    which matches nearly everything."
+  one the index uses), found in one round trip without searching anything.
+  Returns `:empty-leaves`, the texts of the leaves that normalize to nothing (stopwords such as `the`, or a phrase
+  made only of them), and `:unrestricted?`, true when the whole query can't restrict the index, for example
+  `revenue OR NOT archive`."
   ([expr]
    (query-expr-problems expr (search.util/tsv-language)))
   ([expr lang]
-   (let [leaves (vec (query-expr/leaves expr))
-         row    (search.db/tsquery-shape-row (mapv #(query-expr/->tsquery % lang) leaves)
-                                             (query-expr/->tsquery expr lang))]
-     {:empty-leaves  (into [] (keep-indexed (fn [i leaf]
-                                              (when (zero? (get row (keyword (str "leaf_" i))))
-                                                (query-expr/leaf-text leaf))))
-                           leaves)
-      :unrestricted? (contains? #{"" "T"} (str/trim (str (:querytree row))))})))
+   (let [leaves                         (vec (query-expr/leaves expr))
+         {:keys [leaf-nodes querytree]} (search.db/tsquery-shape (mapv #(query-expr/->tsquery % lang) leaves)
+                                                                 (query-expr/->tsquery expr lang))]
+     {:empty-leaves  (into [] (keep (fn [[leaf nodes]] (when (zero? nodes) (query-expr/leaf-text leaf))))
+                           (map vector leaves leaf-nodes))
+      :unrestricted? (contains? #{"" "T"} (str/trim (str querytree)))})))

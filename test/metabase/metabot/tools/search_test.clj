@@ -1601,7 +1601,8 @@
                    ["a confined collection" (keyword-tool :nlq) {} {:collection_id 42} "nlq"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
                    ;; a collection outside the confined one is ignored, as it is for the search itself
-                   ["a confined collection" (keyword-tool :general) {:collection_id Integer/MAX_VALUE} confined "internal"
+                   ["a confined collection" (keyword-tool :general) {:collection_id Integer/MAX_VALUE}
+                    confined "internal"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
                    ;; `read_resource` shows only verified content here too, so the browse step stays
                    ["verified content" (keyword-tool :general) {} {:use_verified_content true} "internal" instance-step]
@@ -1917,7 +1918,8 @@
           (is (=? {:error  {:class :recoverable :code ::search/query-matches-nothing}
                    :output #"(?s)`the and` can't match anything.*"}
                   (invoke-search [#'search/fulltext-search-tool]
-                                 {:query {:op "and" :args ["revenue" {:op "not" :args [{:op "phrase" :text "the and"}]}]}}))))
+                                 {:query {:op   "and"
+                                          :args ["revenue" {:op "not" :args [{:op "phrase" :text "the and"}]}]}}))))
         (testing "a query that can't restrict the index is rejected"
           (is (=? {:error  {:class :recoverable :code ::search/query-matches-everything}
                    :output #"(?s)This query would match almost everything.*"}
@@ -1941,7 +1943,8 @@
               (is (= #{revenue-id income-id}
                      (found {:op "and" :args ["zf8" {:op "or" :args ["revenue" "income"]}]})))
               (is (= #{margin-id}
-                     (found {:op "and" :args ["zf8" {:op "not" :args [{:op "or" :args ["revenue" "income"]}]}]}))))))))))
+                     (found {:op   "and"
+                             :args ["zf8" {:op "not" :args [{:op "or" :args ["revenue" "income"]}]}]}))))))))))
 
 (deftest semantic-search-tool-runs-the-vector-arm-test
   (testing "semantic_search asks for meaning alone, with Metabot's wider distance cutoff"

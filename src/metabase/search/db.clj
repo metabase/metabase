@@ -94,15 +94,17 @@
    layer-count   :- [:maybe nat-int?]]
   (t2/query-one (appdb.query/probe-query index-table search-ctx search-string model id layer-count)))
 
-(mu/defn tsquery-shape-row
-  "One row describing tsquery expressions without searching anything: `:leaf_<i>` is `numnode` of the i-th of
-  `leaf-queries` (0 when it normalized to nothing), and `:querytree` is `querytree` of `whole` (`T` or empty when
-  it can't restrict the index)."
+(mu/defn tsquery-shape
+  "Describes tsquery expressions in one round trip, without searching anything.
+  Returns `:leaf-nodes`, the `numnode` of each of `leaf-queries` in order (0 when it normalized to nothing), and
+  `:querytree`, the `querytree` of `whole` (`T` or empty when it can't restrict the index)."
   [leaf-queries :- [:sequential vector?]
    whole        :- vector?]
-  (t2/query-one {:select (into [[[:querytree whole] :querytree]]
-                               (map-indexed (fn [i q] [[:numnode q] (keyword (str "leaf_" i))]))
-                               leaf-queries)}))
+  (let [leaf-cols (mapv #(keyword (str "leaf_" %)) (range (count leaf-queries)))
+        row       (t2/query-one {:select (into [[[:querytree whole] :querytree]]
+                                               (map (fn [q col] [[:numnode q] col]) leaf-queries leaf-cols))})]
+    {:leaf-nodes (mapv row leaf-cols)
+     :querytree  (:querytree row)}))
 
 (defn- index-search-query
   "The Honey SQL query selecting `select-items` from the search index `table-name`, matching `search-term` (or every

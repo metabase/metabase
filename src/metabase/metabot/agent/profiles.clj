@@ -8,6 +8,7 @@
   when the feature is not available."
   (:require
    [malli.error :as me]
+   [medley.core :as m]
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
@@ -53,6 +54,13 @@
                        :scope    required-scope}))))
   true)
 
+;; The declaration, not the var's metadata: a converted tool is a record held by a var and carries no `:tool-name`
+;; meta, so reading meta made every converted tool in a profile report `nil` and look like duplicates.
+(defn- tool-name
+  "The model-facing name of `tool`, a converted record or a var still in the old shape."
+  [tool]
+  (:name (tools.legacy/declaration-of tool)))
+
 (mu/defn ^:private register-profile!
   "Register new profile configuration.
 
@@ -91,20 +99,17 @@
                [:required-tool-call? {:optional true} :boolean]
                [:terminal-tools {:optional true} [:set :string]]
                [:system-prompt-context {:optional true} [:fn ifn?]]]]
-  (let [tool-vars     (:tools profile)
-        ;; The declaration, not the var's metadata: a converted tool is a record held by a var and
-        ;; carries no `:tool-name` meta, so reading meta made every converted tool in a profile
-        ;; report `nil` and the second one look like a duplicate of the first.
-        tool-name-seq (map #(:name (tools.legacy/declaration-of %)) tool-vars)
-        tool-names    (set tool-name-seq)]
+  (let [tool-vars  (:tools profile)
+        decls      (mapv tools.legacy/declaration-of tool-vars)
+        tool-names (into #{} (map :name) decls)]
     (doseq [tool-var tool-vars]
       (validate-tool-var! tool-var))
     ;; A name may repeat only across alternatives: tools that each declare `:metabot/available?`, of which
     ;; [[resolve-tools]] serves at most one (e.g. the `substring_search` variants for in-place and for app-db on H2).
-    (let [dups (->> (group-by #(:name (tools.legacy/declaration-of %)) tool-vars)
-                    (filter (fn [[_ vs]]
-                              (and (< 1 (count vs))
-                                   (not-every? #(:metabot/available? (tools.legacy/declaration-of %)) vs)))))]
+    (let [dups (->> (group-by :name decls)
+                    (filter (fn [[_ ds]]
+                              (and (< 1 (count ds))
+                                   (not-every? :metabot/available? ds)))))]
       (when (seq dups)
         (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)}))))
     (when (and (false? (:skills? profile)) (seq (:always-on-skills profile)))
@@ -332,16 +337,14 @@
 
 (defn- tool-map
   "Create a map of model-facing tool name -> tool from a sequence of tools.
-
-  A tool is a converted record or a var that is still the old shape; its declaration answers either way, which is why
-  this doesn't read var metadata. Of alternatives sharing a name, at most one may be available (see
-  [[register-profile!]]); two at once is a configuration bug, so it throws."
+  Of alternatives sharing a name, at most one may be available (see [[register-profile!]]).
+  Throws when two are, which is a configuration bug."
   [tools]
   (reduce (fn [acc tool]
-            (let [tool-name (:name (tools.legacy/declaration-of tool))]
-              (when (contains? acc tool-name)
-                (throw (ex-info "Two available tools share a name" {:tool-name tool-name})))
-              (assoc acc tool-name tool)))
+            (let [name' (tool-name tool)]
+              (when (contains? acc name')
+                (throw (ex-info "Two available tools share a name" {:tool-name name'})))
+              (assoc acc name' tool)))
           {}
           tools))
 
@@ -388,30 +391,30 @@
 (defn resolve-tools
   "The tools an ALREADY-RESOLVED profile offers this turn, and the ones it can't, from one availability check per tool.
 
-  `:tools` is the registry of tool-name -> tool, filtered by capabilities, `*current-user-scope*`, and each tool's
-  `:metabot/available?` check, a function of the request context `ctx` (`{:metabot ... :profile-id ...}`), where
-  `:metabot` is the Metabot row, or nil. When the
-  profile exposes any skills, `load_skill` is injected for on-demand loading; profiles with `:skills? false` never get
-  it (see [[metabase.metabot.skills/build-skill-manifest]]).
+  Returns `:tools`, the registry of tool-name -> tool, filtered by capabilities, `*current-user-scope*`, and each
+  tool's `:metabot/available?` check.
+  That check is a function of the request context `ctx`, `{:metabot ... :profile-id ...}`, where `:metabot` is the
+  Metabot row, or nil.
+  When the profile exposes any skills, `load_skill` is injected for on-demand loading; profiles with `:skills? false`
+  never get it (see [[metabase.metabot.skills/build-skill-manifest]]).
 
-  `:unavailable-tools` feeds the system prompt's \"Unavailable tools\" section: the allowed tools whose name no
-  offered tool carries and that describe themselves with a `:metabot/unavailable-note` (a function of the same `ctx`). Each
-  entry is `{:name ... :purpose ...}`, plus whichever of `:missing`, `:reason` and `:workaround` the tool supplies.
-  Deriving both from the same check keeps the prompt from contradicting the tools when availability changes mid-turn."
+  Also returns `:unavailable-tools`, for the system prompt's \"Unavailable tools\" section: the allowed tools whose
+  name no offered tool carries and that describe themselves with a `:metabot/unavailable-note`, a function of `ctx`.
+  Each entry is `{:name ... :purpose ...}`, plus any of `:missing`, `:reason` and `:workaround` the tool supplies."
   [profile capabilities ctx]
   (when profile
     (let [allowed         (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
           offered         (filterv #(available? % ctx) allowed)
-          offered-names   (into #{} (map #(:name (tools.legacy/declaration-of %))) offered)]
+          offered-names   (into #{} (map tool-name) offered)]
       {:tools             (with-load-skill (tool-map offered) profile capabilities)
        :unavailable-tools (->> allowed
                                (map tools.legacy/declaration-of)
                                (remove #(offered-names (:name %)))
-                               (keep (fn [{tool-name :name note :metabot/unavailable-note}]
+                               (keep (fn [{name' :name, note :metabot/unavailable-note}]
                                        (when note
-                                         (assoc (note ctx) :name tool-name))))
-                               (into (sorted-map) (map (juxt :name identity)))
-                               vals
+                                         (assoc (note ctx) :name name'))))
+                               (m/distinct-by :name)
+                               (sort-by :name)
                                vec)})))
 
 (defn profile->tools
@@ -420,13 +423,6 @@
    (profile->tools profile capabilities {}))
   ([profile capabilities ctx]
    (:tools (resolve-tools profile capabilities ctx))))
-
-(defn unavailable-tools
-  "The tools an ALREADY-RESOLVED profile can't offer this turn, for the system prompt; see [[resolve-tools]]."
-  ([profile capabilities]
-   (unavailable-tools profile capabilities {}))
-  ([profile capabilities ctx]
-   (:unavailable-tools (resolve-tools profile capabilities ctx))))
 
 (defn get-tools-for-profile
   "Resolve a profile by id and return its capability/scope-filtered tool registry (see [[profile->tools]]).

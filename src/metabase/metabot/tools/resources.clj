@@ -229,7 +229,7 @@
              [:kind {:optional true} [:maybe :string]]]}
   [{:keys [uri kind]}]
   {:message  (str "No resource is served at " (pr-str (uri-preview uri)) ".")
-   :recovery (-> (vec (keep identity [(templates-step kind) kinds-step]))
+   :recovery (-> (filterv some? [(templates-step kind) kinds-step])
                  (into search-steps))})
 
 (def ^:private search-id-steps
@@ -265,7 +265,7 @@
   [{:keys [kind id]}]
   {:message  (str "Invalid id " (pr-str (uri-preview id)) " in URI. Resource URIs use the numeric entity id, not"
                   " an entity_id, a name or a slug.")
-   :recovery (-> (vec (keep identity [(templates-step kind)]))
+   :recovery (-> (filterv some? [(templates-step kind)])
                  (into (if-let [step (get id-lookup-steps kind)] [step] search-id-steps)))})
 
 (tools/defrecoverable inactive-table!
