@@ -157,39 +157,39 @@
   caller's retry will resend the earlier batches — at-least-once per batch, matching the existing retry
   semantics in [[send-email-retrying!]]."
   [{:keys [subject recipients message-type message bcc?] :as _email}]
-  (try
-    (when-not (channel.settings/email-configured?)
-      (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
-    ;; Now send the email
-    (let [to-type       (if bcc? :bcc :to)
-          smtp-settings (smtp-settings)
-          base-message  (merge
-                         {:from    (if-let [from-name (:from-name smtp-settings)]
-                                     (str from-name " <" (:from-address smtp-settings) ">")
-                                     (:from-address smtp-settings))
-                          :subject subject
-                          :body    (case message-type
-                                     :attachments message
-                                     :text        message
-                                     :html        [{:type    "text/html; charset=utf-8"
-                                                    :content message}])}
-                         (when-let [reply-to (:reply-to smtp-settings)]
-                           {:reply-to reply-to}))]
-      ;; Throttle once for the whole logical message, before splitting it into batches. Batching
-      ;; ([[partition-recipients]]) turns one notification into several SMTP messages; if we threw on a later
-      ;; batch after earlier ones had already been sent, the caller's retry would resend those earlier batches
-      ;; and recipients would get duplicates. Checking here means the throttle can only throw before anything is
-      ;; sent, so a retry is safe.
-      (check-email-throttle {to-type recipients})
-      (doseq [batch (partition-recipients recipients (channel.settings/email-max-recipients-per-message))]
-        ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
-        (send-email! smtp-settings (assoc base-message to-type (seq batch)))))
-    (catch Throwable e
-      (analytics/inc! :metabase-email/message-errors)
-      (when (not= :smtp-host-not-set (:cause (ex-data e)))
-        (throw e)))
-    (finally
-      (analytics/inc! :metabase-email/messages))))
+  (if-not (channel.settings/email-configured?)
+    (log/debug "Not sending email: SMTP is not configured")
+    (try
+      ;; Now send the email
+      (let [to-type       (if bcc? :bcc :to)
+            smtp-settings (smtp-settings)
+            base-message  (merge
+                           {:from    (if-let [from-name (:from-name smtp-settings)]
+                                       (str from-name " <" (:from-address smtp-settings) ">")
+                                       (:from-address smtp-settings))
+                            :subject subject
+                            :body    (case message-type
+                                       :attachments message
+                                       :text        message
+                                       :html        [{:type    "text/html; charset=utf-8"
+                                                      :content message}])}
+                           (when-let [reply-to (:reply-to smtp-settings)]
+                             {:reply-to reply-to}))]
+        ;; Throttle once for the whole logical message, before splitting it into batches. Batching
+        ;; ([[partition-recipients]]) turns one notification into several SMTP messages; if we threw on a later
+        ;; batch after earlier ones had already been sent, the caller's retry would resend those earlier batches
+        ;; and recipients would get duplicates. Checking here means the throttle can only throw before anything is
+        ;; sent, so a retry is safe.
+        (check-email-throttle {to-type recipients})
+        (doseq [batch (partition-recipients recipients (channel.settings/email-max-recipients-per-message))]
+          ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
+          (send-email! smtp-settings (assoc base-message to-type (seq batch)))))
+      (catch Throwable e
+        (analytics/inc! :metabase-email/message-errors)
+        (when (not= :smtp-host-not-set (:cause (ex-data e)))
+          (throw e)))
+      (finally
+        (analytics/inc! :metabase-email/messages)))))
 
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
