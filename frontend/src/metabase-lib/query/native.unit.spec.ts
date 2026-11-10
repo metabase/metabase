@@ -20,8 +20,8 @@ describe("native query template tags", () => {
       queryText,
     );
 
-    const templateTags = {
-      state: {
+    const templateTags = [
+      {
         id: "5b1cf042-45b0-4b4d-90e2-008973dc0358",
         name: "state",
         "display-name": "State",
@@ -29,13 +29,13 @@ describe("native query template tags", () => {
         required: true,
         default: null,
       },
-    };
+    ];
 
     const queryWithTags = Lib.withTemplateTags(query, templateTags);
     const updatedQuery = Lib.withNativeQuery(queryWithTags, queryText);
     const retrievedTags = Lib.templateTags(updatedQuery);
 
-    expect(retrievedTags.state.required).toBe(true);
+    expect(retrievedTags[0].required).toBe(true);
   });
 
   it("should preserve required=false attribute (metabase#38263)", () => {
@@ -47,8 +47,8 @@ describe("native query template tags", () => {
     );
 
     // Set template tags with required=false
-    const templateTags = {
-      state: {
+    const templateTags = [
+      {
         id: "state-id",
         name: "state",
         "display-name": "State",
@@ -56,11 +56,11 @@ describe("native query template tags", () => {
         required: false,
         default: "CA",
       },
-    };
+    ];
 
     const queryWithTags = Lib.withTemplateTags(query, templateTags);
     const retrievedTags = Lib.templateTags(queryWithTags);
 
-    expect(retrievedTags.state.required).toBe(false);
+    expect(retrievedTags[0].required).toBe(false);
   });
 });

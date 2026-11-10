@@ -6,20 +6,19 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.schema]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -166,15 +165,11 @@
     (-> (merge defaults field)
         enforce-effective-type-invariant)))
 
-(def field-user-settings
-  "Set of user-settable values for a Field; see [[warehouse-schema-overlay/user-settable-field-columns]]."
-  warehouse-schema-overlay/user-settable-field-columns)
-
 (t2/define-before-update :model/Field
   [field]
   (when (false? (:active (t2/changes field)))
-    (warehouse-schema.db/clear-fk-targets-to-field! (:id field))
-    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field)))
+    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field))
+    (warehouse-schema.db/clear-fk-targets-to-field! (:id field)))
   (enforce-effective-type-invariant field))
 
 (t2/define-before-delete :model/Field
@@ -205,14 +200,13 @@
    (mi/can-query? (warehouse-schema.db/field pk))))
 
 (defenterprise current-user-can-write-field?
-  "OSS implementation. Returns a boolean whether the current user can write the given field.
-   Checks both that the user is a superuser and that the parent table is editable (not in a
-   remote-synced collection in read-only mode)."
+  "OSS implementation: whether the current user, a superuser, can write the field `instance`, which nobody can when a
+  read-only instance syncs its table."
   metabase-enterprise.advanced-permissions.common
   [instance]
   (let [table (or (:table instance)
                   (warehouse-schema.db/table (:table_id instance)))]
-    (and (remote-sync/table-editable? table)
+    (and (remote-sync/can-write? :model/TableUserSettings (:id table))
          (mi/superuser?))))
 
 (defmethod mi/can-write? :model/Field
@@ -222,35 +216,13 @@
    (mi/can-write? (warehouse-schema.db/field pk))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
-  "Batched hydration for :can_write on fields. First hydrates :table for all fields,
-   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
-   on each field. This avoids N+1 queries when checking permissions for multiple fields."
+  "Batched hydration for :can_write on fields, hydrating their tables first."
   [_model k fields]
-  (let [fields-with-tables (t2/hydrate (remove nil? fields) :table)
-        ;; Get all unique collection IDs from the hydrated tables
-        collection-ids (->> fields-with-tables
-                            (keep (comp :collection_id :table))
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (warehouse-schema.db/collections collection-ids))
-                                {})
-        ;; Associate collection info with each field's table
-        fields-with-collection (for [field fields-with-tables
-                                     :let [table (:table field)
-                                           coll-id (:collection_id table)]]
-                                 (if (and table coll-id)
-                                   (assoc-in field [:table :collection]
-                                             {:id coll-id
-                                              :is_remote_synced (get collection-synced-map coll-id false)})
-                                   field))]
-    (mi/instances-with-hydrated-data
-     fields k
-     #(u/index-by :id mi/can-write? fields-with-collection)
-     :id
-     {:default false})))
+  (mi/instances-with-hydrated-data
+   fields k
+   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? fields) :table))
+   :id
+   {:default false}))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -433,46 +405,27 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/generate-path "Field" [_ {:keys [id]}]
-  (let [[db schema table & fields] (serdes/*export-field-fk* id)]
-    (->> (into (serdes/table->path [db schema table])
-               (map (fn [n] {:model "Field" :id n}) fields))
-         (filterv some?))))
 
-(defmethod serdes/ingested-path "Field" [_ {:keys [table_id parent_id name]}]
-  (serdes/field->path (conj (or parent_id table_id) name)))
+(def ^:private table-transform
+  serialization/table-transform)
 
-(defmethod serdes/entity-id "Field" [_ {:keys [name]}]
-  name)
+(def ^:private field-transform
+  serialization/field-transform)
 
-(defmethod serdes/load-find-local "Field"
-  [path]
-  (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
-        table               (serdes/load-find-local table-path)]
-    (when table
-      (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields))))))
-
-(def ^:private legacy-dimensions
-  "The Dimensions a Field file carried before they got files of their own."
-  (serdes/nested :model/Dimension :field_id {}))
-
-(defmethod serdes/load-one! "Field" [ingested maybe-local]
-  (let [field (serdes/default-load-one! ingested maybe-local)]
-    (when (contains? ingested :dimensions)
-      ((:import-with-context legacy-dimensions) field :dimensions (:dimensions ingested)))
-    field))
-
-(defmethod serdes/make-spec "Field" [_model-name _opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
+(defmethod serialization/spec :model/Field [_]
+  {:schema    ::warehouse-schema.schema/external-field
+   :identity  [:table_id :parent_id :name]
+   :copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
                :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
                :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
    :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
-   :transform {:table_id           (serdes/fk :model/Table)
-               :fk_target_field_id (serdes/fk :model/Field)
-               :parent_id          (serdes/fk :model/Field)}
+   :children  {:dimensions :model/Dimension}
+   :transform {:table_id           table-transform
+               :fk_target_field_id field-transform
+               :parent_id          field-transform}
    :defaults  {:active                     true
                :database_is_auto_increment false
                :database_required          false
@@ -480,9 +433,14 @@
                :json_unfolding             false
                :preview_display            true}})
 
-(defmethod serdes/storage-path "Field" [field _]
-  (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))
-        field-name    (str/join "." (map :id fields))]
-    (conj (serdes/storage-path-prefixes path)
-          {:label "fields"}
-          {:label field-name :key field-name})))
+(defmethod serialization/entity-ref :model/Field [_ {:keys [table_id parent_id name]}]
+  (conj (or parent_id table_id) name))
+
+(defmethod serialization/storage-paths :model/Field [_ entities _]
+  (mapv (fn [field]
+          (let [[db-name schema table-name & field-names] (serialization/entity-ref :model/Field field)
+                field-name                                (str/join "." field-names)]
+            (conj (serialization/storage-path-prefixes [db-name schema table-name])
+                  {:label "fields"}
+                  {:label field-name :key field-name})))
+        entities))

@@ -273,6 +273,11 @@
             (is (some? (api-call! "adhoc/%s/cell/%s/compare/table/%s"
                                   (concat (map magic.util/encode-base64-json [query cell-query])
                                           [(format "card__%d" card-id)])
+                                  #(revoke-collection-permissions! collection-id)))))
+          (testing "Compare with question"
+            (is (some? (api-call! "adhoc/%s/cell/%s/compare/question/%s"
+                                  (concat (map magic.util/encode-base64-json [query cell-query])
+                                          [card-id])
                                   #(revoke-collection-permissions! collection-id))))))))))
 
 ;;; ------------------- Transforms -------------------

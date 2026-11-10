@@ -23,7 +23,7 @@
 (def modules-triggering-cloud-drivers
   "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
   '#{query-processor transforms
-     enterprise/transforms enterprise/transforms.python})
+     enterprise/transforms enterprise/transforms.python enterprise/workspaces})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -205,11 +205,12 @@
      transforms.feature-gating
      lib.types
      users
+     users.schema
      util
      core.version
      audit-app.view-log
      warehouses.schema
-     warehouse-schema-overlay
+     workspaces
      xrays})
 
 (defn- affected-modules
@@ -707,7 +708,7 @@
 (def cloud-drivers
   "Drivers that run on cloud infrastructure and require secrets. These are more expensive to run,
   since they need round trip times, so we skip them on PRs unless specifically needed."
-  #{:athena :bigquery :databricks :redshift :snowflake})
+  #{:athena :bigquery :databricks :motherduck :redshift :snowflake})
 
 (def ^:private all-drivers
   "All driver test jobs in drivers.yml, in order."
@@ -720,6 +721,7 @@
    :mongo
    :mongo-ssl
    :mongo-sharded-cluster
+   :motherduck
    :mysql-mariadb
    :oracle
    :postgres
@@ -741,6 +743,7 @@
    "databricks" [:databricks]
    "druid-jdbc" [:druid-jdbc]
    "mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
+   "motherduck" [:motherduck]
    "oracle" [:oracle]
    "presto-jdbc" [:presto-jdbc]
    "redshift" [:redshift]

@@ -1,5 +1,6 @@
 ---
 title: Database driver basics
+summary: What a Metabase driver does and how to package one as a plugin, with an example module you can copy.
 ---
 
 # Database driver basics

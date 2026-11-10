@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
-   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -26,15 +25,17 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-processor.core :as qp]
+   [metabase.serialization.core :as serialization]
+   [metabase.serialization.protocol.mp :as serialization.protocol.mp]
+   [metabase.serialization.resolve :as serialization.resolve]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -136,19 +137,9 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
-   [:show_chart {:optional true
-                 :description (str "Pass false for a query you build only to read its values with run_query: "
-                                   "the user is then shown no chart. Defaults to true.")}
-    [:maybe :boolean]]
+   shared/show-chart-arg
    [:title :string]
    [:description :string]])
-
-(defn without-show-chart
-  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
-   model is not told about the argument."
-  [tool]
-  (update tool :schema (fn [[arrow [cat args-schema] output]]
-                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -230,7 +221,7 @@
   is not a table reference at all, so it must not be collected — and on it, it still has to be
   permission-checked like any portable FK."
   [x]
-  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+  (when (and repr.resolve/*numeric-ids-allowed?* (pos-int? x))
     x))
 
 (defn- numeric-field-id-ref
@@ -241,7 +232,7 @@
   so we tag the raw id and resolve it to a table id in [[resolve-table-fk]]. Off the numeric-id
   surface a bare number is not a field reference at all, so it must not be collected."
   [x]
-  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+  (when (and repr.resolve/*numeric-ids-allowed?* (pos-int? x))
     [::field-id x]))
 
 (defn- numeric-scoped-content-ref
@@ -257,7 +248,7 @@
   a card pulls in whatever tables its own query names, which this pre-flight sweep cannot see,
   and the QP re-checks them at execution."
   [model x]
-  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+  (when (and repr.resolve/*numeric-ids-allowed?* (pos-int? x))
     [::scoped-content model x]))
 
 (defn- node-scoped-content-ref
@@ -306,7 +297,7 @@
         (tree-seq coll? seq parsed-query)))
 
 (def ^:private unresolved-table-fk-errors
-  #{:unknown-table :ambiguous-table})
+  #{:unknown-table :ambiguous-table :unknown-database :cross-database-table})
 
 ;;; ----- the numeric-id boundary contract -------------------------------------------------
 ;;;
@@ -407,7 +398,7 @@
   (:table-id (visible-field metadata-provider field-id)))
 
 (defn- resolve-table-fk
-  [metadata-provider resolver table-fk]
+  [metadata-provider store table-fk]
   (cond
     (pos-int? table-fk)
     ;; Already a table id, but not necessarily one this query may reference. Resolve it through
@@ -429,8 +420,8 @@
     (let [[_ model id] table-fk
           row (try
                 (case model
-                  :model/Measure (resolve.mp/measure-by-id permission-aware-content-store id)
-                  :model/Segment (resolve.mp/segment-by-id permission-aware-content-store id)
+                  :model/Measure (serialization.protocol.mp/measure-by-id permission-aware-content-store id)
+                  :model/Segment (serialization.protocol.mp/segment-by-id permission-aware-content-store id)
                   nil)
                 (catch Exception _ nil))]
       (when-let [table-id (or (:table-id row) (:table_id row))]
@@ -438,7 +429,7 @@
 
     :else
     (try
-      (serdes.resolve/import-table-fk resolver table-fk)
+      (get (serialization.resolve/table-ids store #{table-fk} (repr.resolve/import-opts)) table-fk)
       (catch clojure.lang.ExceptionInfo e
         (when-not (contains? unresolved-table-fk-errors (:error (ex-data e)))
           (throw e))
@@ -455,7 +446,7 @@
   as plain not-found — an id being absent, hidden, or in the wrong database are all the same
   answer to the agent, and distinguishing them would report on rows it cannot otherwise see."
   [metadata-provider parsed-query]
-  (when serdes.resolve/*numeric-ids-allowed?*
+  (when repr.resolve/*numeric-ids-allowed?*
     (doseq [ref (referenced-table-fks parsed-query)]
       (cond
         (pos-int? ref)
@@ -530,9 +521,9 @@
 
   ([metadata-provider portable-query already-checked]
    (if-let [table-fks (not-empty (referenced-table-fks portable-query))]
-     (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)]
+     (let [store (serialization.protocol.mp/import-store metadata-provider permission-aware-content-store)]
        (reduce (fn [checked table-fk]
-                 (if-let [table-id (resolve-table-fk metadata-provider resolver table-fk)]
+                 (if-let [table-id (resolve-table-fk metadata-provider store table-fk)]
                    (if (contains? checked table-id)
                      checked
                      (do (query-check-table! table-fk table-id)
@@ -580,7 +571,7 @@
   [ref]
   (when-let [card (cond
                     (string? ref)                           (metabot.db/card-by-entity-id ref)
-                    serdes.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
+                    repr.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
     (when (mi/can-read? card)
       card)))
 
@@ -602,16 +593,16 @@
           metric-ids   (into metric-ids (comp (filter #(= :metric (:type %))) (map :id)) cards)
           card-ids     (into #{} (comp (remove #(= :metric (:type %))) (map :id)) cards)
           source-card  (some-> (or (first-stage-source-card-eid parsed-query)
-                                   (when serdes.resolve/*numeric-ids-allowed?*
+                                   (when repr.resolve/*numeric-ids-allowed?*
                                      (first-stage-numeric-source-card parsed-query)))
                                readable-card-by-ref
                                :id)
           source-table (when-let [fk (or (first-stage-source-table-fk parsed-query)
-                                         (when serdes.resolve/*numeric-ids-allowed?*
+                                         (when repr.resolve/*numeric-ids-allowed?*
                                            (first-stage-numeric-source-table parsed-query)))]
                          (resolve-table-fk metadata-provider
-                                           (resolve.mp/import-resolver metadata-provider
-                                                                       permission-aware-content-store)
+                                           (serialization.protocol.mp/import-store metadata-provider
+                                                                                   permission-aware-content-store)
                                            fk))
           uncurated    (curation/uncurated-sources metadata-provider
                                                    {:source-table source-table
@@ -656,10 +647,10 @@
   [parsed-query]
   (detect-metabase-uri-source-table! parsed-query)
   (let [source-table-fk     (first-stage-source-table-fk parsed-query)
-        numeric-table       (when serdes.resolve/*numeric-ids-allowed?*
+        numeric-table       (when repr.resolve/*numeric-ids-allowed?*
                               (first-stage-numeric-source-table parsed-query))
         source-card-eid     (first-stage-source-card-eid parsed-query)
-        numeric-card        (when serdes.resolve/*numeric-ids-allowed?*
+        numeric-card        (when repr.resolve/*numeric-ids-allowed?*
                               (first-stage-numeric-source-card parsed-query))]
     (cond
       source-table-fk
@@ -739,11 +730,14 @@
 ;;; ---------------------------------------- Implicit joins ----------------------------------------
 
 (defn- field-ref-for-error
-  "Return `field-ref` with portable field paths unless the caller accepts numeric IDs."
+  "Return `field-ref` with Field references unless the caller accepts numeric IDs."
   [metadata-provider field-ref]
-  (if serdes.resolve/*numeric-ids-allowed?*
+  (if repr.resolve/*numeric-ids-allowed?*
     field-ref
-    (serdes.resolve/export-mbql (resolve.mp/export-resolver metadata-provider permission-aware-content-store) field-ref)))
+    (first (serialization/export-in-bulk (serialization.protocol.mp/export-store metadata-provider
+                                                                                 permission-aware-content-store)
+                                         [field-ref]
+                                         serialization/walk-export-refs))))
 
 (defn- foreign-key-target-table-id
   [metadata-provider field]
@@ -770,7 +764,7 @@
 
 (defn- intermediate-source-field
   [metadata-provider from-table-id to-table-id]
-  (let [fields (->> (resolve.mp/outbound-fks-from-table metadata-provider from-table-id)
+  (let [fields (->> (serialization.protocol.mp/outbound-fks-from-table metadata-provider from-table-id)
                     (map :source-field)
                     (filter #(visible-field metadata-provider (:id %)))
                     entity-details/permission-filter-columns
@@ -864,7 +858,7 @@
   [mbql5-query metadata-provider]
   (let [query (lib/query metadata-provider mbql5-query)
         cols  (lib/returned-columns query)]
-    (mapv #(tools.u/->result-column query %) cols)))
+    (tools.u/->result-columns query cols)))
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
@@ -979,14 +973,15 @@
                     :problem (or (not-runnable-problem error) (me/error-message error))})
         paths-of (group-by :problem located)
         lines    (for [problem (distinct (map :problem located))
-                       :let    [[path & others] (distinct (map :path (paths-of problem)))]]
+                       :let    [[path & others] (distinct (map :path (paths-of problem)))
+                                n-others         (count others)]]
                    (str path
                         (when others
-                          (format " (and %d other place%s)" (count others) (if (= 1 (count others)) "" "s")))
+                          (format " (and %d other %s)" n-others (u/format-plural n-others "place")))
                         ": " problem))
         omitted  (- (count lines) max-not-runnable-problems)]
     (cond-> (vec (take max-not-runnable-problems lines))
-      (pos? omitted) (conj (format "and %d more problem%s" omitted (if (= 1 omitted) "" "s"))))))
+      (pos? omitted) (conj (format "and %d more %s" omitted (u/format-plural omitted "problem"))))))
 
 (defn- query-not-runnable-explanation
   "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
@@ -1006,6 +1001,34 @@
            (not-any? not-runnable-problem errors)
            (str ". This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
 
+(defn- first-stage-metric-ids
+  "Return the IDs of the metrics that the first stage's aggregations reference."
+  [query]
+  (into #{}
+        (match/match-many (lib/aggregations query 0)
+          [:metric _ (id :guard pos-int?)]
+          id)))
+
+(defn- metric-source-card
+  "Return `{metric-id required-source}`, as [[incompatible-metrics]] does, for the metric that the first stage of
+  `query` reads as its `source-card`, when that stage does not aggregate the same metric.
+
+  The query processor expands a metric `source-card` only when the query references a metric. Otherwise the stage
+  reads the metric's aggregated result, so a `count` gives 1 and a base column is not there. This check is stricter:
+  the stage must aggregate this metric.
+
+  A stage that passes this check still goes to [[incompatible-metrics]]. That check accepts the stage for a metric on
+  a table, and refuses it for a metric on a model or a saved question, because the stage's `source-card` is not that
+  card."
+  [mp query]
+  ;; Not `lib.util/source-card-id`: it validates the query, and this check runs before the gate that explains an
+  ;; invalid query.
+  (when-let [card-id (get-in query [:stages 0 :source-card])]
+    (let [card (lib.metadata/card mp card-id)]
+      (when (and (= :metric (:type card))
+                 (not (contains? (first-stage-metric-ids query) card-id)))
+        {card-id (tools.u/metric-required-source mp card)}))))
+
 (defn- incompatible-metrics
   "Return the required sources of incompatible metrics in the first stage, sorted by metric ID.
 
@@ -1016,10 +1039,7 @@
   Only source mismatches in the first stage's aggregations are checked. Metrics in later stages, joins, or other
   clauses still reach the query processor, as do other errors such as archived metrics."
   [mp query]
-  (let [referenced (into #{}
-                         (match/match-many (lib/aggregations query 0)
-                           [:metric _ (id :guard pos-int?)]
-                           id))]
+  (let [referenced (first-stage-metric-ids query)]
     (when (seq referenced)
       (let [stage-card-id (lib.util/source-card-id query)
             _             (lib.metadata/bulk-metadata mp :metadata/card (cond-> referenced
@@ -1041,11 +1061,12 @@
                            [metric-id required]))))
                referenced))))))
 
-(defn- incompatible-metric-explanation
-  "Describe each incompatible metric and the source it requires.
+(defn- metric-source-descriptions
+  "Describe each metric and the source it requires.
 
-  Return `{:message ... :usable-sources {metric-id {:source-table id} | {:source-card id}}}`.
-  `required-by-metric-id` comes from [[incompatible-metrics]]; `mp` supplies the database name for portable FKs.
+  Return `{:descriptions [string ...] :usable-sources {metric-id {:source-table id} | {:source-card id}}}`, with the
+  descriptions in the order of `required-by-metric-id`. `required-by-metric-id` maps a metric ID to its
+  [[metabase.metabot.tools.util/metric-required-source]]; `mp` supplies the database name for portable FKs.
   Include names and sources only when the current user may access them. `:usable-sources` identifies those same
   sources by numeric ID."
   [mp required-by-metric-id]
@@ -1082,11 +1103,7 @@
 
                                 :else
                                 " (defined on a source you do not have access to)"))))]
-    {:message        (str "These metrics cannot be used on this stage's source: "
-                          (str/join ", " (map describe metric-ids))
-                          ". "
-                          "Either change the stage's source-table:/source-card: to the one shown for each metric, "
-                          "or drop the metric and express the aggregation directly.")
+    {:descriptions   (mapv describe metric-ids)
      :usable-sources (into {}
                            (keep (fn [[metric-id r]]
                                    (cond
@@ -1096,6 +1113,47 @@
                                      (and (= :card (:kind r)) (contains? readable (:card-id r)))
                                      [metric-id {:source-card (:card-id r)}])))
                            required-by-metric-id)}))
+
+(defn- incompatible-metric-explanation
+  "Describe each incompatible metric and the source it requires.
+
+  Return `{:message ... :usable-sources ...}`, as [[metric-source-descriptions]] does.
+  `required-by-metric-id` comes from [[incompatible-metrics]]."
+  [mp required-by-metric-id]
+  (let [{:keys [descriptions usable-sources]} (metric-source-descriptions mp required-by-metric-id)]
+    {:message        (str "These metrics cannot be used on this stage's source: "
+                          (str/join ", " descriptions)
+                          ". "
+                          "Either change the stage's source-table:/source-card: to the one shown for each metric, "
+                          "or drop the metric and express the aggregation directly.")
+     :usable-sources usable-sources}))
+
+(defn- metric-source-card-explanation
+  "Describe the metric that a stage reads as its `source-card`, and the source to use instead.
+
+  Return `{:message ... :usable-sources ...}`, as [[metric-source-descriptions]] does.
+  `required-by-metric-id` comes from [[metric-source-card]]."
+  [mp required-by-metric-id]
+  (let [{:keys [descriptions usable-sources]} (metric-source-descriptions mp required-by-metric-id)]
+    {:message        (str "The metric " (first descriptions) " is in `source-card:`. A metric is an aggregation, "
+                          "not a source: a stage on a metric reads its result, not its rows. "
+                          (if (seq usable-sources)
+                            (str "Build the stage on the source shown for the metric, and put the metric in the "
+                                 "stage's `aggregation:`.")
+                            "Drop the metric, and express its aggregation directly on a table or model."))
+     :usable-sources usable-sources}))
+
+(defn- metric-source-error
+  "Return the agent error for the metrics in `required-by-metric-id`, with the message and usable sources that
+  `explanation` gives for them. `data` carries the `:error` code."
+  [mp data explanation required-by-metric-id]
+  (let [{:keys [message usable-sources]} (explanation mp required-by-metric-id)]
+    (ex-info message
+             (assoc data
+                    :agent-error?   true
+                    :metric-ids     (vec (keys required-by-metric-id))
+                    :usable-sources usable-sources
+                    :status-code    400))))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
@@ -1119,13 +1177,16 @@
     5. Sanity-check the post-repair shape against the portable repair schema.
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
-    6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
+    6.5. Backstop-gate the resolved query: reject a metric in the first stage's `source-card:` unless that stage
+       aggregates the metric ([[metric-source-card]]), mirror the FE `canRun` schema validation
        ([[query-not-runnable-explanation]]), check that implicit field references use a foreign key to their table
        ([[assert-source-fields-reach-their-tables!]]), run the FE expression editor's own
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
        sitting on a column that is not temporal
-       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]), and reject a metric whose
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]), reject automatic bins on a text
+       column or on a custom column with no known min and max
+       ([[repr.repair/assert-binning-on-numeric-columns!]]), and reject a metric whose
        definition can't run on the stage's source ([[incompatible-metrics]]). Any of these
        failing is a retryable `:agent-error?` - success on a query the editor rejects is
        BOT-1442.
@@ -1169,12 +1230,16 @@
       (let [;; Repair's mini-resolve lookups are best-effort - a failure is logged at debug and the
             ;; clause left alone - and `resolve-query` below resolves the query for real. A refusal
             ;; in there reaches nobody, so it must not go into the audit trail as an access attempt.
-            repaired      (binding [resolve.mp/*audit-refusals?* false]
+            repaired      (binding [shared.content-store/*audit-refusals?* false]
                             (repr.repair/repair mp parsed permission-aware-content-store))
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _curated      (check-curated-query-sources! mp pmbql-query)
+            ;; Before the other gates: a metric source changes which columns the stage has, so their errors would
+            ;; send the agent to fix the wrong thing.
+            _metric-src   (when-let [bad (metric-source-card mp pmbql-query)]
+                            (throw (metric-source-error mp {:error :metric-as-source-card} metric-source-card-explanation bad)))
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query repaired)]
                             (throw (ex-info (format "The constructed query is not runnable - it would fail the query builder's validation, so it cannot be visualized or saved. Failing paths: %s."
                                                     why)
@@ -1189,15 +1254,10 @@
             ;; argument against the same schema.
             _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query repaired)
             _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
+            _bins-ok      (repr.repair/assert-binning-on-numeric-columns! pmbql-query)
             ;; Check sources after schema validation so an incompatible metric produces a retryable error before execution.
             _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]
-                            (let [{:keys [message usable-sources]} (incompatible-metric-explanation mp bad)]
-                              (throw (ex-info message
-                                              {:agent-error?   true
-                                               :error          :incompatible-metric
-                                               :metric-ids     (vec (keys bad))
-                                               :usable-sources usable-sources
-                                               :status-code    400}))))
+                            (throw (metric-source-error mp {:error :incompatible-metric} incompatible-metric-explanation bad)))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (try
                             (repr/validate-query exported-repr)
@@ -1351,7 +1411,7 @@
    "Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a\n"
    "short, human-friendly `title` shown above the resulting chart. Also provide a concise\n"
    "one- or two-sentence `description` of what the chart shows (the metric, the grouping, and\n"
-   "any notable filter); it is used as the saved question's description. See\n"
+   "any notable filter); if the chart is saved, it becomes the description of the saved question. See\n"
    "`resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."))
 
 (defn- chart-instructions
@@ -1364,6 +1424,7 @@
      "Next steps to present the chart to the user:"
      (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
      "- If creating multiple charts, present all chart links"
+     instructions/not-saved-instruction
      (when (shared/tool-offered? "run_query")
        (str "- To state any of its values, call `run_query` with `query_id` `" query-id
             "` first. Call it without telling the user you are doing so.")))))
@@ -1385,15 +1446,15 @@
           ;; Declared pipeline errors and refusals are recoverable; anything else is `:internal`.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query {:preprocess-check? true})))
-          ;; A query built only to be read needs run_query, so without it the chart is the one way
-          ;; the user sees anything and is always shown.
-          show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+          ;; A query built only to be read needs run_query to read it, so without that the chart is the one way
+          ;; the user sees anything and is always shown. Readability reads the app DB, so it is checked only when
+          ;; it can change the delivery.
+          show-chart? (not (and (false? show_chart) (tools.run-query/results-readable?)))]
       (if-not show-chart?
         (let [instruction-text (te/lines
-                                "Your query has been created. The user has not been shown it."
+                                "Your query has been created."
                                 ""
-                                (str "To read its values, call `run_query` with `query_id` `"
-                                     (:query-id structured) "`."))]
+                                (instructions/query-hidden-instructions-for (:query-id structured)))]
           {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
                                            instruction-text)
            :structured-output (assoc structured :result-type :query)})

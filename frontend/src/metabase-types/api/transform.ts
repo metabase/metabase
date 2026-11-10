@@ -6,7 +6,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
-import type { ConcreteTableId, SchemaName, Table } from "./table";
+import type { SchemaName, Table, TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
 
@@ -43,7 +43,7 @@ export type Transform = {
   can_write?: boolean;
   can_execute?: boolean;
 
-  source_database_id?: DatabaseId | null;
+  source_database_id?: DatabaseId;
 
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;
@@ -78,7 +78,7 @@ export type SuggestedTransform = Partial<Pick<Transform, "id">> &
 
 export type PythonTransformTableEntry = {
   alias: string;
-  table_id: ConcreteTableId;
+  table_id: TableId;
   schema?: SchemaName | null;
   database_id: DatabaseId;
 };
@@ -517,7 +517,7 @@ export type InspectorSummary = {
 };
 
 export type InspectorSource = {
-  table_id?: ConcreteTableId;
+  table_id?: TableId;
   table_name: string;
   schema?: SchemaName;
   db_id?: DatabaseId;
@@ -527,7 +527,7 @@ export type InspectorSource = {
 };
 
 export type InspectorTarget = {
-  table_id: ConcreteTableId;
+  table_id: TableId;
   table_name: string;
   schema?: SchemaName;
   row_count?: number;
@@ -595,7 +595,7 @@ export type InspectorCardDisplayType = CardDisplayType | "hidden";
 type InspectorCardMetadata = {
   card_type: "join_step" | "table_count" | "base_count";
   dedup_key: Array<string | number>;
-  table_id?: ConcreteTableId;
+  table_id?: TableId;
   join_step?: number;
   join_alias?: string;
   join_strategy?: JoinStrategy;

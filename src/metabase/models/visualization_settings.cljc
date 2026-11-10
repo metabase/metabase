@@ -311,6 +311,7 @@
    :number_style                  ::number-style
    :currency                      ::currency
    :currency_style                ::currency-style
+   :currency_position             ::currency-position
    :currency_in_header            ::currency-in-header
    :number_separators             ::number-separators
    :decimals                      ::decimals

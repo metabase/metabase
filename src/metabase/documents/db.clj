@@ -8,10 +8,19 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mu/defn synced-documents-clause :- [:fn vector?]
+  "The clause over the Document table aliased `alias` selecting the documents remote sync syncs."
+  [alias :- :keyword]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   [:= (u/qualified-key alias :exploration_id) nil]
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection)])
 
 (mu/defn document
   "The Document with `id`, or nil."
@@ -30,32 +39,6 @@
                                       (collection/visible-collection-filter-clause)
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
-
-(mu/defn documents-for-serdes-reducible
-  "A reducible of the Documents to export via serdes: those whose `:collection_id` is in `collection-set` (nil in the
-  set counts as the root collection; an empty or nil set means every collection), further restricted to the rows
-  whose `filter-column` is one of `filter-ids` when `filter-column` is given, and ordered ascending by
-  `order-columns` (unordered when empty).
-
-  Exploration documents are always excluded: such a document is not first-class content, it is reachable only through
-  its owning exploration, its body embeds values computed under its creator's data-access lens, and
-  `:exploration_id` is in the serdes spec's `:skip` list — so an exported document would import as an ordinary,
-  ungated document detached from any exploration."
-  [collection-set :- [:maybe [:or [:set [:maybe ::lib.schema.id/collection]] [:sequential [:maybe ::lib.schema.id/collection]]]]
-   filter-column  :- [:maybe :keyword]
-   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   order-columns  :- [:maybe [:sequential :keyword]]]
-  (t2/reducible-select :model/Document
-                       (cond-> {:where [:and
-                                        (when (seq collection-set)
-                                          [:or
-                                           [:in :collection_id collection-set]
-                                           (when (some nil? collection-set)
-                                             [:= :collection_id nil])])
-                                        (when filter-column
-                                          [:in filter-column filter-ids])
-                                        [:= :exploration_id nil]]}
-                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn insert-document!
   "Insert the Document `row` and return its id."
@@ -142,7 +125,7 @@
 (mu/defn table
   "The Table with `id`, or nil."
   [id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id id))
 
 (mu/defn dashboard
   "The Dashboard with `id`, or nil."

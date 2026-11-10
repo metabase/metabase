@@ -30,6 +30,8 @@ import type {
   NavigationId,
 } from "embedding-sdk-bundle/types/navigation";
 import { loadVisualizationComponents } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { Card, ClickBehavior, Dashboard } from "metabase-types/api";
 import {
@@ -42,9 +44,7 @@ import {
   createMockDashboardQueryMetadata,
   createMockDataset,
   createMockDatasetData,
-  createMockNativeDatasetQuery,
   createMockParameter,
-  createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
@@ -98,18 +98,17 @@ const createNativeCard = (
 ) =>
   createMockCard({
     display: "table",
-    dataset_query: createMockNativeDatasetQuery({
-      database: DATABASE.id,
-      native: {
-        query: "select category from products",
-        "template-tags": Object.fromEntries(
-          templateTags.map((tag) => [
-            tag,
-            { id: `tag-${tag}`, name: tag, "display-name": tag, type: "text" },
-          ]),
+    dataset_query: Lib.toJsQuery(
+      Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+        query: [
+          "select category from products where 1 = 1",
+          ...templateTags.map((tag) => `and category = {{${tag}}}`),
+        ].join(" "),
+        templateTags: Object.fromEntries(
+          templateTags.map((tag) => [tag, { type: "text" as const }]),
         ),
-      },
-    }),
+      }),
+    ),
     ...card,
   });
 
@@ -237,10 +236,11 @@ const SQL_QUESTION = createNativeCard(
 const GUI_QUESTION = createMockCard({
   id: GUI_QUESTION_ID,
   name: "GUI question",
-  dataset_query: createMockStructuredDatasetQuery({
-    database: DATABASE.id,
-    query: { "source-table": PRODUCTS_ID },
-  }),
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+    }),
+  ),
 });
 
 const TARGET_QUERY_PATH = `path:/api/dashboard/${TARGET_DASHBOARD_ID}/dashcard/${TARGET_DASHCARD.id}/card/${TARGET_CARD.id}/query`;

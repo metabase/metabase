@@ -16,6 +16,7 @@ template_tags:
     display-name: 'Snippet: Date Range Filter'
     id: dd000002-0000-0000-0000-000000000002
     name: 'snippet: Date Range Filter'
+    snippet-id: jpIUEStroQyLnJ-MVfeS4
     snippet-name: Date Range Filter
     type: snippet
   'snippet: Missing Filter':

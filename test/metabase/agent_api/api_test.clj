@@ -2156,6 +2156,19 @@
       (is (<= (count attribute) 200))
       (is (str/ends-with? attribute "...[truncated]")))))
 
+(deftest read-resource-non-numeric-database-id-test
+  (testing "a database or collection name points at its listing URI, not at `search`"
+    (let [{[database-item collection-item] :resources}
+          (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                {:uris ["metabase://database/redshift/schemas/core/tables"
+                                        "metabase://collection/our-analytics/items"]})]
+      (doseq [[item listing-uri] [[database-item   "metabase://databases"]
+                                  [collection-item "metabase://collections?tree=true"]]]
+        (testing (:uri item)
+          (is (not (contains? item :content)))
+          (is (str/includes? (:error item) listing-uri))
+          (is (not (str/includes? (:error item) "Call `search`"))))))))
+
 (deftest ^:parallel read-resource-tool-description-test
   (let [endpoint    (some (fn [[_ endpoint]]
                             (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
@@ -2248,7 +2261,8 @@
                             result ((get-in entries ["get_field_values" :fn]) args)]
                         (is (some? (get-in unrestricted [:structured-output :value_metadata :statistics])))
                         (if blocked?
-                          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+                          (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
+                                  :value_metadata nil}
                                  (:structured-output result)))
                           (is (= unrestricted result)))))))
                 (let [response (mt/user-http-request :rasta :post 200 "agent/v1/read-resource"

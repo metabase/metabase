@@ -1,8 +1,8 @@
 import type {
-  ConcreteTableId,
   GroupInfo,
   GroupsPermissions,
   PermissionsDatabase,
+  TableId,
 } from "metabase-types/api";
 import { DataPermission } from "metabase-types/api";
 
@@ -63,7 +63,7 @@ function diffDatabasePermissions(
         databaseId: database.id,
         schemaName: table.schema || "",
         // A permission entity always names a real warehouse table, never a card.
-        tableId: table.id as ConcreteTableId,
+        tableId: table.id as TableId,
       },
       DataPermission.VIEW_DATA,
     );
@@ -74,7 +74,7 @@ function diffDatabasePermissions(
         databaseId: database.id,
         schemaName: table.schema || "",
         // A permission entity always names a real warehouse table, never a card.
-        tableId: table.id as ConcreteTableId,
+        tableId: table.id as TableId,
       },
       DataPermission.VIEW_DATA,
     );

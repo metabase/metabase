@@ -15,6 +15,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
+(events/derive! :event/collection-create :metabase/event)
+
 (defn- parent-or-root
   "From a create request return either the parent collection or the root collection."
   [{collection-id :parent_id collection-namespace :namespace}]

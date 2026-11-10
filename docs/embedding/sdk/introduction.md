@@ -1,5 +1,6 @@
 ---
 title: Modular embedding SDK
+summary: Embed individual Metabase components in your React app, with access control per component and deep styling customization.
 redirect_from:
   - /docs/latest/embedding/sdk
 ---

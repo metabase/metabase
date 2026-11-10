@@ -6,8 +6,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (defn- action-database-joins
@@ -18,6 +19,22 @@
    [(t2/table-name :model/ImplicitAction) :ia] [:= :ia.action_id :action.id]
    [(t2/table-name :model/Table) :tbl]         [:= :tbl.id :ia.table_id]
    [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]])
+
+(mu/defn synced-action-details-clause :- [:fn vector?]
+  "The clause over an action details table aliased `alias` selecting the details of the synced actions."
+  [alias :- :keyword]
+  (remote-sync/synced-fk-clause alias :action_id :model/Action))
+
+(mu/defn synced-actions-clause :- [:fn vector?]
+  "The clause over the Action table aliased `alias` selecting the actions remote sync syncs."
+  [alias :- :keyword]
+  [:and
+   [:= (u/qualified-key alias :archived) false]
+   [:or
+    (remote-sync/synced-fk-clause alias :collection_id :model/Collection)
+    [:and
+     [:= (u/qualified-key alias :collection_id) nil]
+     [:= (u/qualified-key alias :model_id) nil]]]])
 
 (mu/defn database-for-action
   "The Database the Action with `action-id` runs against: its query's, or its model's or table's for an implicit action,
@@ -31,7 +48,7 @@
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -73,15 +90,15 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
 
-(mu/defn collection-namespace-with-entity-id
-  "The namespace of the Collection with `entity-id`, or nil."
-  [entity-id :- :string]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :entity_id entity-id))
-
 (mu/defn unarchived-collection-exists?
   "Whether the unarchived Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
+
+(mu/defn action
+  "The Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one :model/Action :id action-id))
 
 (mu/defn action-collection-id
   "The Collection id of the Action with `action-id`, or nil."
@@ -96,12 +113,12 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in table-ids]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -225,7 +242,7 @@
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids]))
 
 (mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."
@@ -256,9 +273,9 @@
 (mu/defn writable-table-exists?
   "Whether the Database with `database-id` has a writable Table."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :db_id database-id :is_writable true))
 
 (mu/defn table-with-unknown-writability-exists?
   "Whether the Database with `database-id` has a Table whose writability is unknown."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable nil {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :db_id database-id :is_writable nil))

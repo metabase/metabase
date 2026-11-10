@@ -1,5 +1,6 @@
 ---
 title: API changelog
+summary: Breaking changes to the Metabase API, listed by release.
 ---
 
 # Breaking changes to the API interface
@@ -11,6 +12,38 @@ title: API changelog
   `POST /api/ee/security-center/acknowledge`, `POST /api/ee/security-center/sync` and
   `POST /api/ee/security-center/test-notification` take the same `/advisories` prefix. The old paths return
   `404 Not Found`. Request and response bodies are unchanged.
+
+- `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
+  `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
+
+- `POST /api/ee/transform-test/:id/run` answers a query under test whose output has two columns of one name with the
+  `error-code` `transform-test.duplicate-output-columns` in place of `transform-test.query-failed`. The status stays
+  `422`. On a database that ignores case in column names (MySQL, MariaDB, SQL Server, Redshift), two names that differ
+  only in case are one name.
+
+- `GET /api/ee/transform-test/:id/run` has been removed. List the runs of a transform test with
+  `GET /api/ee/data-test-run?test-type=transform&test-id=:id`, which takes the same `statuses`, `start-time`,
+  `end-time`, `limit` and `offset` parameters. Without `test-id`, it needs Data Studio access and lists the runs of
+  every test of the type that the caller can read. Runs of a test that was deleted are not listed. A run, and
+  `last_run` in the transform test responses, has `test_type` and `test_id` in place of `transform_test_id`. Deleting
+  a test through Metabase sets `test_id` to `null` on its runs. A delete outside Metabase (raw SQL, a database cascade)
+  leaves a `test_id` that names no test. A run belongs to a test only if the test exists and was created no later than
+  the run started, so such a run is never listed or returned as `last_run`.
+
+- `POST /api/ee/transform-test/:id/run` needs native query access to the transform's source database, as well as
+  read access to the test and its transform. Users without native query access get `403 Forbidden`.
+
+- Field filter (`dimension`) and time grouping (`temporal-unit`) template tags of native queries carry the Field ID
+  they map to in `field-id` instead of a `dimension` field reference. Queries returned by the API use `field-id`.
+  Queries sent with `dimension` are still accepted and converted to `field-id`.
+
+- `GET /api/table/card__:id/query_metadata` and `GET /api/table/card__:id/fks` have been removed. Use
+  `GET /api/card/:id` and `GET /api/card/:id/query_metadata` for a card's columns and dependent metadata.
+
+- `GET /api/card/:id/query_metadata`, `GET /api/dashboard/:id/query_metadata`, `POST /api/dataset/query_metadata`
+  and the x-ray `query_metadata` endpoints no longer return a `card__<id>` "virtual" table in `tables` for each source
+  card. They return the source cards themselves in a new `cards` list instead, and in `tables` the tables of the
+  cards' columns and the tables their foreign keys point to, as they do for a source table.
 
 - The `can-write-metadata` query parameter of `GET /api/database`, `GET /api/database/:id/schemas`,
   `GET /api/database/:id/schema/:schema` and `GET /api/database/:id/schema/`, and the `can-write` query parameter of
@@ -24,6 +57,35 @@ title: API changelog
 
 - `POST /api/ee/serialization/export` accepts a `dirname` of 1-255 characters from `A-Z a-z 0-9 _ - . %`
   that does not start with `.` or `-`. Other values get `400 Bad Request`.
+
+- `PUT /api/field/:id` no longer accepts `nfc_path`, which only sync sets, and answers `null` for `has_field_values`,
+  `display_name`, `visibility_type` or `json_unfolding` with `400 Bad Request`. Leave a key out to keep its value.
+  `PUT /api/table/:id`, `PUT /api/table` and the Data Studio bulk table edit answer `data_authority: null` the same
+  way.
+
+- `POST /api/pulse` and `PUT /api/pulse/:id` answer `collection_id` and `collection_position` on a dashboard
+  subscription with `400 Bad Request` when they do not fit the dashboard. A dashboard subscription is always in its
+  dashboard's collection, and it has no collection position. `POST` accepts a `collection_id` that is absent, `null`
+  or equal to the dashboard's collection, and no `collection_position`. `PUT` accepts values equal to the stored
+  ones. In 0.65, `POST` asked for write access to a non-nil `collection_id` and answered `403` without it. With that
+  access, it saved the subscription in that collection. It stored a `collection_position` for any caller who passed
+  these checks. `PUT` accepted a new `collection_position`.
+
+- The `collection_preview` card property has been removed.
+  - The following endpoints no longer return `collection_preview` in response objects:
+    - `GET /api/card`
+    - `GET /api/card/:id`
+    - `GET /api/collection/:id/items`
+    - `GET /api/collection/root/items`
+    - `GET /api/dashboard/:id/items`
+    - `GET /api/ee/library`
+    - `GET /api/ee/stale/:id`
+  - The following endpoints ignore `collection_preview` in request bodies:
+    - `POST /api/card`
+    - `PUT /api/card/:id`
+    - `POST /api/card/:id/query`
+  - A metric requested from `POST /api/card/:id/query` with `collection_preview: true` now runs with its saved
+    breakouts, as it does without the flag, instead of returning a single aggregated value.
 
 ## Metabase 0.65.0
 

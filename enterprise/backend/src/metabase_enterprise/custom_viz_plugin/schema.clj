@@ -1,6 +1,8 @@
 (ns metabase-enterprise.custom-viz-plugin.schema
   "Malli schemas for the custom-viz-plugin module."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -35,3 +37,12 @@
    [:manifest         {:optional true} [:maybe ::custom-viz-plugin.manifest]]
    [:metabase_version {:optional true} [:maybe :string]]
    [:dev_bundle_url   {:optional true} [:maybe :string]]])
+
+(mr/def ::external-custom-viz-plugin
+  "A CustomVizPlugin as serialization writes it, with references in place of ids."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::custom-viz-plugin [:display_name :identifier :enabled :icon :manifest :metabase_version
+                                       :bundle_hash :bundle]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

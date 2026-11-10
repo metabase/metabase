@@ -10,14 +10,26 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- seed-c3p0-registry-cache!
+  "Puts a new instance of `klass` into the private `C3P0Registry` cache named `cache-field`, keyed by class name."
+  [^String cache-field ^Class klass]
+  (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry cache-field)
+                (.setAccessible true))]
+    (.put ^java.util.Map (.get field com.mchange.v2.c3p0.C3P0Registry)
+          (.getName klass) (.newInstance (.getDeclaredConstructor klass (into-array Class [])) (object-array 0)))))
+
 (defn register-c3p0-connection-customizer!
   "Seeds c3p0's customizer cache with an instance of `klass`, since c3p0's `Class/forName` can't see classes defined in
   Clojure's dynamic class loader (https://github.com/swaldman/c3p0/issues/166)."
   [^Class klass]
-  (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
-                (.setAccessible true))]
-    (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
-          (.getName klass) (.newInstance (.getDeclaredConstructor klass (into-array Class [])) (object-array 0)))))
+  (seed-c3p0-registry-cache! "classNamesToConnectionCustomizers" klass))
+
+(defn register-c3p0-connection-tester!
+  "Seeds c3p0's connection tester cache with an instance of `klass`, so a pool can name it in its
+  `connectionTesterClassName` property. Like [[register-c3p0-connection-customizer!]], this is needed because c3p0's
+  `Class/forName` can't see classes defined in Clojure's dynamic class loader."
+  [^Class klass]
+  (seed-c3p0-registry-cache! "classNamesToConnectionTesters" klass))
 
 (defn- consume-rset [^ResultSet rset cb]
   (into {} (iteration

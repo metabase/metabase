@@ -2,8 +2,16 @@ import { useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { selectTableQueryMetadata } from "metabase/api";
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import {
+  useLazyGetCardQuery,
+  useLazyGetCardQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
+} from "metabase/api";
+import type {
+  OmniPickerItem,
+  OmniPickerQuestionItem,
+  OmniPickerTableItem,
+} from "metabase/common/components/Pickers";
 import {
   DataPickerModal,
   getDataPickerValue,
@@ -16,15 +24,13 @@ import type {
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { getIsTenantUser } from "metabase/current-user";
+import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { isEmbedding } from "metabase/embedding/config";
 import { selectMetadataProvider } from "metabase/metadata-store";
-import { useDispatch, useSelector, useStore } from "metabase/redux";
-import { fetchTableMetadata } from "metabase/redux/tables";
+import { useSelector, useStore } from "metabase/redux";
 import { Icon, TextInput } from "metabase/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
+import type { CardId, TableId } from "metabase-types/api";
 
 import type { QueryEditorDatabasePickerItem } from "../../../editor/types";
 import {
@@ -34,7 +40,7 @@ import {
 import { NotebookCellItem } from "../NotebookCell";
 
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
-import { isObjectWithModel } from "./utils";
+import { getMiniPickerDataSource, isObjectWithModel } from "./utils";
 
 const DATA_SOURCE_SEARCH_PARAMS: MiniPickerSearchParams = {
   filter_items_in_personal_collection: "exclude-others",
@@ -81,24 +87,51 @@ export function NotebookDataPicker({
   columnPicker,
 }: NotebookDataPickerProps) {
   const store = useStore();
-  const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
   const isEmbed = isEmbedding();
   const isTenantUser = useSelector(getIsTenantUser);
 
-  const handleChange = async (tableId: TableId) => {
-    await dispatch(fetchTableMetadata({ id: tableId }));
-    const state = store.getState();
-    const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
-      state,
+  const [fetchTable] = useLazyGetTableQueryMetadataQuery();
+  const [fetchCard] = useLazyGetCardQuery();
+  const [fetchCardQueryMetadata] = useLazyGetCardQueryMetadataQuery();
+
+  const loadTable = async (tableId: TableId) => {
+    const table = await fetchTable({ id: tableId }, true).unwrap();
+    const metadataProvider = selectMetadataProvider(
+      store.getState(),
+      table.db_id,
     );
-    const databaseId = checkNotNull(tableMetadata).db_id;
-    const metadataProvider = selectMetadataProvider(state, databaseId);
-    const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+    return {
+      metadataProvider,
+      table: Lib.tableOrCardMetadata(metadataProvider, tableId),
+    };
+  };
+
+  const loadCard = async (cardId: CardId) => {
+    const [card] = await Promise.all([
+      fetchCard({ id: cardId }, true).unwrap(),
+      fetchCardQueryMetadata(cardId, true).unwrap(),
+    ]);
+    const metadataProvider = selectMetadataProvider(
+      store.getState(),
+      card.database_id ?? null,
+    );
+    return {
+      metadataProvider,
+      table: Lib.cardMetadata(metadataProvider, cardId),
+    };
+  };
+
+  const handleChange = async (source: DataSource) => {
+    const { metadataProvider, table } =
+      source.type === "table"
+        ? await loadTable(source.id)
+        : await loadCard(source.id);
     if (table) {
       onChangeRef.current?.(table, metadataProvider);
     }
   };
+
   const isRaw = useMemo(() => {
     return (
       Lib.aggregations(query, stageIndex).length === 0 &&
@@ -167,7 +200,7 @@ type ModernDataPickerProps = {
   hasMetrics: boolean;
   hasMetricsInMiniPicker?: boolean;
   isDisabled: boolean;
-  onChange: (tableId: TableId) => void;
+  onChange: (source: DataSource) => void;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldShowLibrary?: boolean;
@@ -228,6 +261,25 @@ function ModernDataPicker({
     };
   }, [databaseId, canChangeDatabase, shouldDisableItem, shouldDisableDatabase]);
 
+  const handleMiniPickerChange = (item: MiniPickerPickableItem) => {
+    const source = getMiniPickerDataSource(item);
+    if (source != null) {
+      onChange(source);
+    }
+    setDataSourceSearchQuery("");
+    setIsOpened(false);
+  };
+
+  const handleModalChange = (
+    item: OmniPickerTableItem | OmniPickerQuestionItem,
+  ) => {
+    onChange(
+      item.model === "table"
+        ? { type: "table", id: item.id }
+        : { type: "card", id: item.id },
+    );
+  };
+
   // when you can't change databases, let's default to
   // selecting that database in the picker
   const defaultDbValue =
@@ -250,15 +302,7 @@ function ModernDataPicker({
         searchParams={DATA_SOURCE_SEARCH_PARAMS}
         onBrowseAll={() => setIsBrowsing(true)}
         trapFocus={focusPicker}
-        onChange={(value: MiniPickerPickableItem) => {
-          const id =
-            value.model === "table"
-              ? value.id
-              : getQuestionVirtualTableId(value.id);
-          onChange(id);
-          setDataSourceSearchQuery("");
-          setIsOpened(false);
-        }}
+        onChange={handleMiniPickerChange}
         shouldHide={shouldHide}
         shouldShowLibrary={shouldShowLibrary}
         menuDropdownProps={{
@@ -272,7 +316,7 @@ function ModernDataPicker({
           value={tableValue ?? defaultDbValue}
           onlyDatabaseId={canChangeDatabase ? undefined : databaseId}
           models={modalModelList}
-          onChange={onChange}
+          onChange={handleModalChange}
           onClose={() => {
             setIsBrowsing(false);
             setIsOpened(false);

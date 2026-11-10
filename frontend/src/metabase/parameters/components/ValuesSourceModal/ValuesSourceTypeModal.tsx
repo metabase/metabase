@@ -6,19 +6,25 @@ import { jt, t } from "ttag";
 import {
   skipToken,
   useGetCardQuery,
-  useGetTableQueryMetadataQuery,
+  useGetCardQueryMetadataQuery,
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import { SelectButton } from "metabase/common/components/SelectButton";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { connect, useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Button, Flex, Icon, Radio, Select, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Modal,
+  Radio,
+  Select,
+  Stack,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
@@ -30,6 +36,8 @@ import {
   isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  Card,
+  CardId,
   FieldReference,
   Parameter,
   ParameterValue,
@@ -68,8 +76,9 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalQuestionProps {
-  question: Question | undefined;
+interface ModalCardProps {
+  card: Card | undefined;
+  query: Lib.Query | undefined;
 }
 
 interface ModalDispatchProps {
@@ -78,11 +87,17 @@ interface ModalDispatchProps {
   ) => Promise<ParameterValues>;
 }
 
-type ModalProps = ModalOwnProps & ModalQuestionProps & ModalDispatchProps;
+type ModalProps = ModalOwnProps & ModalCardProps & ModalDispatchProps;
+
+type ModalLoaderProps = ModalOwnProps & {
+  /** Hides the modal's panel but keeps it open, along with its backdrop. */
+  isContentHidden?: boolean;
+};
 
 const ValuesSourceTypeModal = ({
   parameter,
-  question,
+  card,
+  query,
   sourceType,
   sourceConfig,
   onFetchParameterValues,
@@ -90,21 +105,9 @@ const ValuesSourceTypeModal = ({
   onChangeSourceConfig,
   onChangeCard,
   onSubmit,
-  onClose,
 }: ModalProps): JSX.Element => {
   return (
-    <ModalContent
-      title={t`Selectable values for ${parameter.name}`}
-      footer={[
-        <Button
-          key="submit"
-          variant="filled"
-          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
-          onClick={onSubmit}
-        >{t`Done`}</Button>,
-      ]}
-      onClose={onClose}
-    >
+    <>
       {sourceType === null ? (
         <FieldSourceModal
           // if sourceType === null the parameter must have fields
@@ -118,7 +121,8 @@ const ValuesSourceTypeModal = ({
       ) : sourceType === "card" ? (
         <CardSourceModal
           parameter={parameter}
-          question={question}
+          card={card}
+          query={query}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
@@ -135,7 +139,14 @@ const ValuesSourceTypeModal = ({
           onChangeSourceConfig={onChangeSourceConfig}
         />
       ) : null}
-    </ModalContent>
+      <Modal.Footer>
+        <Button
+          variant="filled"
+          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
+          onClick={onSubmit}
+        >{t`Done`}</Button>
+      </Modal.Footer>
+    </>
   );
 };
 
@@ -276,7 +287,8 @@ const FieldSourceModal = ({
 
 interface CardSourceModalProps {
   parameter: Parameter;
-  question: Question | undefined;
+  card: Card | undefined;
+  query: Lib.Query | undefined;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
@@ -289,7 +301,8 @@ interface CardSourceModalProps {
 
 const CardSourceModal = ({
   parameter,
-  question,
+  card,
+  query,
   sourceType,
   sourceConfig,
   onFetchParameterValues,
@@ -297,10 +310,6 @@ const CardSourceModal = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: CardSourceModalProps) => {
-  const query = useMemo(() => {
-    return question != null ? getQuestionBasedQuery(question) : undefined;
-  }, [question]);
-
   const columns = useMemo(() => {
     return query != null ? getSupportedColumns(query, parameter) : [];
   }, [query, parameter]);
@@ -376,10 +385,10 @@ const CardSourceModal = ({
         <ModalSection>
           <ModalLabel>{t`Model or question to supply the values`}</ModalLabel>
           <SelectButton onClick={onChangeCard}>
-            {question ? question.displayName() : t`Pick a model or question…`}
+            {card ? card.name : t`Pick a model or question…`}
           </SelectButton>
         </ModalSection>
-        {question && query != null && (
+        {card && query != null && (
           <>
             <ColumnSelect
               query={query}
@@ -389,7 +398,7 @@ const CardSourceModal = ({
               placeholder={t`Pick a column…`}
               emptyMessage={
                 <>
-                  {getErrorMessage(question, parameter)}{" "}
+                  {getErrorMessage(card, parameter)}{" "}
                   {t`Please pick a different model or question.`}
                 </>
               }
@@ -410,7 +419,7 @@ const CardSourceModal = ({
         )}
       </ModalPane>
       <ModalMain>
-        {!question ? (
+        {!card ? (
           <ModalEmptyState>{t`Pick a model or question`}</ModalEmptyState>
         ) : !selectedField ? (
           <ModalEmptyState>{t`Pick a column`}</ModalEmptyState>
@@ -489,10 +498,10 @@ const ColumnSelect = ({
   );
 };
 
-const getErrorMessage = (question: Question, parameter: Parameter) => {
+const getErrorMessage = (card: Card, parameter: Parameter) => {
   // avoids using the sectionId to determine the parameter type
   const parameterType = getParameterType(parameter.type);
-  const type = question.type();
+  const { type } = card;
 
   if (parameterType === "number") {
     if (type === "question") {
@@ -512,7 +521,7 @@ const getErrorMessage = (question: Question, parameter: Parameter) => {
     return t`This model doesn’t have any text columns.`;
   }
 
-  throw new Error(`Unsupported or unknown question.type(): ${type}`);
+  throw new Error(`Unsupported or unknown card type: ${type}`);
 };
 
 const getLabel = (value: string | ParameterValue): string | undefined =>
@@ -602,9 +611,15 @@ const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
 };
 
-const getQuestionBasedQuery = (question: Question) => {
-  const adhocQuestion = question.composeQuestion();
-  return adhocQuestion.query();
+const getCardQuery = (
+  metadataProvider: Lib.MetadataProvider,
+  cardId: CardId,
+): Lib.Query | undefined => {
+  const cardMetadata = Lib.cardMetadata(metadataProvider, cardId);
+  if (cardMetadata == null) {
+    return undefined;
+  }
+  return Lib.queryFromTableOrCardMetadata(metadataProvider, cardMetadata);
 };
 
 const getColumnByReference = (
@@ -692,7 +707,7 @@ const useParameterValues = ({
   }, [isValidSource, handleFetchValues]);
 
   return {
-    values: value?.values ?? [],
+    values: isValidSource && !loading ? (value?.values ?? []) : [],
     isLoading: loading,
     isError: !!error,
   };
@@ -707,32 +722,50 @@ const ValuesSourceTypeModalConnected = connect(
   mapDispatchToProps,
 )(ValuesSourceTypeModal);
 
-// Loads the source card and its virtual-table query metadata into the store (so
-// the question and its connected fields are available) before rendering,
-// replacing the former Questions.load / Tables.load HOCs.
-function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
+function ValuesSourceTypeModalLoader({
+  isContentHidden = false,
+  ...props
+}: ModalLoaderProps) {
   const { card_id } = props.sourceConfig;
-  const virtualTableId =
-    card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
-  const { isLoading: isMetadataLoading, error: metadataError } =
-    useGetTableQueryMetadataQuery(
-      virtualTableId != null ? { id: virtualTableId } : skipToken,
-    );
   const {
     data: card,
-    isLoading: isCardLoading,
+    isFetching: isCardFetching,
     error: cardError,
   } = useGetCardQuery(card_id != null ? { id: card_id } : skipToken);
-  const question = useQuestionFromCard(card);
+  const {
+    data: cardMetadata,
+    isFetching: isMetadataFetching,
+    error: metadataError,
+  } = useGetCardQueryMetadataQuery(card_id ?? skipToken);
+  const metadataProvider = useMetadataProvider(card?.database_id ?? null);
+  const query = useMemo(
+    () =>
+      card != null && cardMetadata != null
+        ? getCardQuery(metadataProvider, card.id)
+        : undefined,
+    [metadataProvider, card, cardMetadata],
+  );
 
   return (
-    <ModalLoadingAndErrorWrapper
-      loading={isMetadataLoading || isCardLoading}
-      error={metadataError ?? cardError}
-      noWrapper
+    <Modal
+      opened
+      size="65%"
+      density="relaxed"
+      title={t`Selectable values for ${props.parameter.name}`}
+      classNames={{ content: isContentHidden ? S.hiddenContent : undefined }}
+      // The picker is outside this modal's React tree, so a lock here would
+      // treat it as outside the modal and cancel its wheel and touch scrolling
+      lockScroll={!isContentHidden}
+      onClose={props.onClose}
     >
-      <ValuesSourceTypeModalConnected {...props} question={question} />
-    </ModalLoadingAndErrorWrapper>
+      <ModalLoadingAndErrorWrapper
+        loading={isMetadataFetching || isCardFetching}
+        error={metadataError ?? cardError}
+        noWrapper
+      >
+        <ValuesSourceTypeModalConnected {...props} card={card} query={query} />
+      </ModalLoadingAndErrorWrapper>
+    </Modal>
   );
 }
 

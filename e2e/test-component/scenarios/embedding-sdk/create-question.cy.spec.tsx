@@ -18,6 +18,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import { defer } from "metabase/utils/promise";
 
 const { H } = cy;
 
@@ -232,6 +233,39 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.findByRole("link", { name: "Orders" }).should("be.visible");
       cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
       cy.findAllByRole("link").should("have.length", MODEL_COUNT + TABLE_COUNT);
+    });
+  });
+
+  it("should open the staged picker's Models list on Our analytics when the root collection loads late", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+    // send "Our analytics" only after the collections tree has answered
+    const collectionsTreeAnswered = defer();
+    cy.intercept(
+      { method: "GET", pathname: "/api/collection/tree" },
+      (request) => request.continue(() => collectionsTreeAnswered.resolve()),
+    );
+    cy.intercept(
+      { method: "GET", pathname: "/api/collection/root" },
+      (request) =>
+        collectionsTreeAnswered.promise.then(() => request.continue()),
+    );
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["model"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByText("Our analytics").should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
     });
   });
 

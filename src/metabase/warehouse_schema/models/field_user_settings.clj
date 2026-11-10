@@ -2,13 +2,14 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -23,8 +24,7 @@
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
    :data_sensitivity  mi/transform-keyword
-   :settings          mi/transform-json
-   :nfc_path          mi/transform-json})
+   :settings          mi/transform-json})
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
@@ -39,16 +39,16 @@
                  (and (contains? effective column) (not (contains? effective flag)))
                  (assoc flag true)))
              settings
-             warehouse-schema-overlay/field-user-settings-flags))
+             user-settings/field-set-flags))
 
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
   [settings]
-  (when (and (every? #(nil? (get settings %)) warehouse-schema-overlay/user-settable-field-columns)
-             (not-any? #(get settings %) (vals warehouse-schema-overlay/field-user-settings-flags)))
-    (warehouse-schema.db/delete-field-user-settings! (:field_id settings)))
+  (when (and (every? #(nil? (get settings %)) user-settings/user-settable-field-columns)
+             (not-any? #(get settings %) (vals user-settings/field-set-flags)))
+    (warehouse-schema.db/delete-field-user-settings! [(:field_id settings)]))
   settings)
 
 (t2/define-before-insert :model/FieldUserSettings
@@ -67,81 +67,93 @@
   [settings]
   (delete-when-empty! settings))
 
-(mu/defn upsert-user-settings
-  "Record the user-settable Field columns present in `settings` as the user values of `field`."
+(mu/defn upsert-field-user-settings!
+  "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
+  row; a nil for a column without a set flag unsets it."
   [{:keys [id]} :- ::warehouse-schema.schema/field
    settings     :- ::warehouse-schema.schema/field.update]
-  (let [settings (u/select-keys-when settings :present field/field-user-settings)]
+  (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
     (when (seq settings)
-      (if (warehouse-schema.db/field-user-settings-exist? id)
-        (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings))
-        (warehouse-schema.db/insert-field-user-settings! (assoc settings :field_id id))))))
+      (t2/with-transaction [_]
+        (warehouse-schema.db/update-or-insert-field-user-settings!
+         id (fn [existing] (cond->> settings existing (with-set-flags settings))))
+        (warehouse-schema.db/update-field! id settings)))))
 
 (mu/defn set-custom-positions!
-  "Record `field-id->position` as the Fields' user `custom_position`s."
+  "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
-  (let [existing (warehouse-schema.db/field-ids-with-user-settings (keys field-id->position))
-        missing  (remove existing (keys field-id->position))]
-    (when (seq missing)
-      (warehouse-schema.db/insert-field-user-settings!
-       (mapv (fn [id] {:field_id id :custom_position (field-id->position id)}) missing)))
-    (when (seq existing)
-      (warehouse-schema.db/update-field-user-settings-custom-positions! (select-keys field-id->position existing)))))
+  (t2/with-transaction [_]
+    (let [existing (warehouse-schema.db/field-ids-with-user-settings (keys field-id->position))
+          missing  (remove existing (keys field-id->position))]
+      (when (seq missing)
+        (warehouse-schema.db/insert-field-user-settings!
+         (mapv (fn [id] {:field_id id :custom_position (field-id->position id)}) missing)))
+      (when (seq existing)
+        (warehouse-schema.db/update-field-user-settings-custom-positions! (select-keys field-id->position existing)))
+      (warehouse-schema.db/update-field-custom-positions! field-id->position))))
 
-(mu/defn unset-user-settings!
-  "Drop the user values of the Field columns `ks` for `field`."
+(mu/defn unset-field-user-settings!
+  "Drop the user values of the Field columns `ks` for `field` from its settings, leaving its row as it is for sync to
+  take over."
   [{:keys [id]} :- ::warehouse-schema.schema/field
-   ks           :- [:sequential (into [:enum] warehouse-schema-overlay/user-settable-field-columns)]]
-  (when (warehouse-schema.db/field-user-settings-exist? id)
+   ks           :- [:sequential (into [:enum] user-settings/user-settable-field-columns)]]
+  (when (warehouse-schema.db/field-user-settings id)
     (warehouse-schema.db/update-field-user-settings!
      id
      (into {} (mapcat (fn [k]
                         (cond-> [[k nil]]
-                          (warehouse-schema-overlay/field-user-settings-flags k) (conj [(warehouse-schema-overlay/field-user-settings-flags k) false]))))
+                          (user-settings/field-set-flags k) (conj [(user-settings/field-set-flags k) false]))))
            ks))))
 
-(defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids] :as opts}]
-  (if (= filter-column :table_id)
-    (warehouse-schema.db/field-user-settings-for-tables filter-ids)
-    (serdes/extract-query-collections :model/FieldUserSettings opts)))
+(mu/defn delete-field-user-settings!
+  "Delete the settings of the Fields with `field-ids`, leaving their rows as they are for sync to take over."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (doseq [batch (partition-all 1000 field-ids)]
+    (warehouse-schema.db/delete-field-user-settings! batch)))
 
-(defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
-
-(defmethod serdes/generate-path "FieldUserSettings" [_ {:keys [field_id]}]
-  (conj (serdes/generate-path "Field" {:id field_id})
-        {:model "FieldUserSettings" :id "1"}))
-
-(defmethod serdes/load-find-local "FieldUserSettings" [path]
-  (when-let [field (serdes/load-find-local (pop path))]
-    (warehouse-schema.db/field-user-settings (:id field))))
-
-(defmethod serdes/load-update! "FieldUserSettings" [model-name ingested local]
-  ((get-method serdes/load-update! :default)
-   model-name
-   (merge (zipmap warehouse-schema-overlay/user-settable-field-columns (repeat nil)) ingested)
-   local))
-
-(defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
-  {:copy      [:semantic_type :description :display_name :visibility_type
-               :has_field_values :effective_type :coercion_strategy :caveats
-               :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position
-               :description_set :semantic_type_set :fk_target_field_id_set]
-   :defaults  {:description_set        false
-               :semantic_type_set      false
-               :fk_target_field_id_set false}
-   :transform {:fk_target_field_id (serdes/fk :model/Field)
-               :field_id     {::serdes/fk true
-                              :export     #(serdes/*export-field-fk* %)
-                              :import-with-context (fn [current _ _]
-                                                     (serdes/*import-field-fk*
-                                                      (serdes/field-path->field-ref (pop (serdes/path current)))))}}})
-
-(defmethod serdes/ingested-path "FieldUserSettings" [_ {:keys [field_id]}]
-  (conj (serdes/field->path field_id) {:model "FieldUserSettings" :id "1"}))
+(mu/defn delete-field-user-settings-for-table!
+  "[[delete-field-user-settings!]] for every Field of the Table with `table-id`."
+  [table-id :- ::lib.schema.id/table]
+  (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-table table-id))))
 
 (def ^:private field-user-settings-slug "___fieldusersettings")
 
-(defmethod serdes/storage-path "FieldUserSettings" [field-user-settings _ctx]
-  (let [field-path (serdes/storage-path-prefixes (pop (serdes/path field-user-settings)))]
-    (update field-path (dec (count field-path))
-            (fn [segment] (assoc segment :suffix field-user-settings-slug)))))
+(defmethod serialization/spec :model/FieldUserSettings [_]
+  {:schema    ::warehouse-schema.schema/external-field-user-settings
+   :identity  [:field_id]
+   :primary-key :field_id
+   :copy      [:semantic_type :description :display_name :visibility_type
+               :has_field_values :effective_type :coercion_strategy :caveats
+               :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
+               :description_set :semantic_type_set :fk_target_field_id_set]
+   :skip      [:nfc_path]
+   :defaults  {:description_set        false
+               :semantic_type_set      false
+               :fk_target_field_id_set false}
+   :transform {:fk_target_field_id serialization/field-transform
+               :field_id           serialization/field-transform}})
+
+(defmethod serialization/storage-paths :model/FieldUserSettings [_ entities _ctx]
+  (mapv (fn [field-user-settings]
+          (let [field-path (serialization/storage-path-prefixes (:field_id field-user-settings))]
+            (update field-path (dec (count field-path))
+                    (fn [segment] (assoc segment :suffix field-user-settings-slug)))))
+        entities))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/FieldUserSettings [_ items]
+  (mapv (fn [{:keys [local] :as item}]
+          (cond-> item
+            local (update :row #(merge (zipmap user-settings/user-settable-field-columns (repeat nil)) %))))
+        items))
+
+(defmethod serialization/after-load :model/FieldUserSettings [_ items]
+  (doseq [{{:keys [field_id] :as settings} :instance} items]
+    (warehouse-schema.db/update-field! field_id (select-keys settings (user-settings/user-set-field-columns settings)))))
+
+(defmethod remote-sync/spec :model/FieldUserSettings
+  [_model]
+  {:parent               (fn [{:keys [field_id]}]
+                           (some->> (warehouse-schema.db/field field_id) :table_id (vector :model/TableUserSettings)))
+   :synced-filter-clause warehouse-schema.db/synced-field-user-settings-clause})

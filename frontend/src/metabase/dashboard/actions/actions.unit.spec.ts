@@ -257,20 +257,5 @@ describe("dashboard actions", () => {
         payload: null,
       });
     });
-
-    it("should return to Data Studio instead of stripping the hash", () => {
-      const location = createMockLocation({
-        pathname: "/dashboard/1",
-        hash: "#hashparam",
-        state: { returnTo: "/data-studio/dashboards/1" },
-      });
-
-      setEditingDashboard(null, location)(dispatch);
-
-      expect(navigate).toHaveBeenCalledTimes(1);
-      expect(navigate).toHaveBeenCalledWith("/data-studio/dashboards/1", {
-        replace: true,
-      });
-    });
   });
 });

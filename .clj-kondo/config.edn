@@ -75,7 +75,6 @@
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/t2-implicit-pk                                   {:level :warning}
-  :metabase/table-or-field-query                             {:level :warning}
   ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
   ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
   ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
@@ -286,6 +285,7 @@
               :googleanalytics
               :hive-like
               :mongo
+              :motherduck
               :oracle
               :presto-jdbc
               :redshift
@@ -337,12 +337,12 @@
   {metabase-enterprise.search.entity-retrieval.core/search-unfiltered        {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.search.entity-retrieval.core/search-unfiltered                   {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.search.entity-retrieval.mirror/search-unfiltered                 {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
-   metabase-enterprise.transform-testing.expectations.equals/->EqualsRows    {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.equals/map->EqualsRows {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.equals/->EqualsSql     {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.equals/map->EqualsSql  {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.empty/->Empty          {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
-   metabase-enterprise.transform-testing.expectations.empty/map->Empty       {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.equals/->EqualsRows         {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.equals/map->EqualsRows      {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.equals/->EqualsSql          {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.equals/map->EqualsSql       {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.empty/->Empty               {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.data-testing.expectations.empty/map->Empty            {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
    clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
    clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
    clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
@@ -645,7 +645,7 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
-   metabase-enterprise.remote-sync.metric-dimension-api-test/with-synced-metric                                              hooks.common/with-one-binding
+   metabase-enterprise.remote-sync.test-util/with-repository                                                                 hooks.common/with-one-binding
    metabase-enterprise.search.semantic.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
@@ -731,7 +731,6 @@
    metabase.mcp.v2.common/list-content                                                                                       hooks.metabase.agent-message/lint-list-content
    metabase.mcp.v2.common/success-content                                                                                    hooks.metabase.agent-message/lint-success-content
    metabase.mcp.v2.common/throw-teaching-error                                                                               hooks.metabase.agent-message/lint-teaching-exit
-   metabase.mcp.v2.dashboard-ops/op-error!                                                                                   hooks.metabase.agent-message/lint-op-error
    metabase.mcp.v2.message/msg                                                                                               hooks.metabase.agent-message/lint-msg
    metabase.mcp.v2.tools.browse/paged-list-content                                                                           hooks.metabase.agent-message/lint-list-content
    metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
@@ -898,7 +897,8 @@
    potemkin.namespaces/import-macro                                                             macros.potemkin.namespaces/import-macro}}
 
  :config-in-comment
- {:linters {:unresolved-symbol {:level :off}}}
+ {:linters {:unresolved-symbol {:level :off}
+            :metabase/modules  {:level :off}}}
 
  ;;
  ;; TEST CONFIG
@@ -974,12 +974,7 @@
    :name    agent-exit-namespaces}]
 
  :config-in-ns
- {metabase.app-db.custom-migrations
-  {:linters
-   ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
-   {:metabase/table-or-field-query {:level :off}}}
-
-  test-namespaces
+ {test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}

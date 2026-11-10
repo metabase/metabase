@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
+  (:refer-clojure :exclude [mapv update-keys #?@(:clj [some])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [update-keys every-key? #?@(:clj [some])]]))
+   [metabase.util.performance :refer [mapv update-keys every-key? #?@(:clj [some every?])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -150,7 +150,8 @@
 
 (mr/def ::positive-number
   [:fn
-   {:error/message "positive number"}
+   {:error/message "positive number"
+    :json-schema   {:type "number" :exclusiveMinimum 0}}
    (every-pred number? pos?)])
 
 (mr/def ::visualization-settings
@@ -178,7 +179,7 @@
 
 (mr/def ::field-value
   "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."
-  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal"}
+  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal", :json-schema {:type "string"}}
                                                        #(instance? java.time.temporal.Temporal %)])]])
 
 (mr/def ::uuid
@@ -347,7 +348,7 @@
                            :metabase.lib.field/temporal-unit :metabase.lib.field/original-effective-type
                            :metabase.lib.field/simple-display-name
                            :metabase.lib.query/transformation-added-base-type
-                           :lib/stage-metadata :condition :parameters :dimension :strategy :lib/uuid :lib/type
+                           :lib/stage-metadata :condition :parameters :dimension :field-id :strategy :lib/uuid :lib/type
                            :model/inner_ident :stages :lib/model-display-name]
                   :string]]
   (let [fn-schemas (map (fn [[k message]]
@@ -438,6 +439,15 @@
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 
+(mr/def ::external-options
+  "[[::options]] as serialization writes them, keeping only the `:lib/uuid`s other clauses refer to."
+  (update (mr/schema ::options) 2
+          (fn [map-form]
+            (mapv #(if (and (vector? %) (= :lib/uuid (first %)))
+                     [:lib/uuid {:optional true} (peek %)]
+                     %)
+                  map-form))))
+
 (mr/def ::external-op
   [:map {:closed true}
    [:lib/type [:= :lib/external-op]]
@@ -448,10 +458,17 @@
    [:options  {:optional true} [:maybe [:ref ::clause-options]]]])
 
 #?(:clj
+   (def ^:private string-encoded-classes
+     "Classes, with their subclasses, whose instances JSON encodes as strings."
+     [java.time.temporal.Temporal java.util.regex.Pattern]))
+
+#?(:clj
    (defn- instance-of-class* [& classes]
-     [:fn {:error/message (str "instance of "
-                               (str/join " or "
-                                         (map #(.getName ^Class %) classes)))}
+     [:fn (cond-> {:error/message (str "instance of "
+                                       (str/join " or "
+                                                 (map #(.getName ^Class %) classes)))}
+            (every? (fn [klass] (some #(isa? klass %) string-encoded-classes)) classes)
+            (assoc :json-schema {:type "string"}))
       (fn [x]
         (some (fn [klass]
                 (instance? klass x))

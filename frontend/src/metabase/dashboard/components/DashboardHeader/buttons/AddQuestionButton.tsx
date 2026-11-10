@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context/context";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
 import { getNewQuestionUrl } from "../../QuestionPicker/actions";
@@ -10,6 +11,7 @@ import { getNewQuestionUrl } from "../../QuestionPicker/actions";
 export const AddQuestionButton = () => {
   const { toggleSidebar, sidebar, dashboard, onChangeLocation } =
     useDashboardContext();
+  const buildQuestion = useQuestionFromOptsBuilder();
 
   const sidebarOpen = sidebar.name === SIDEBAR_NAME.addQuestion;
 
@@ -17,25 +19,26 @@ export const AddQuestionButton = () => {
     ? t`Close sidebar`
     : t`Add questions`;
 
-  useRegisterShortcut(
-    [
-      {
-        id: "dashboard-add-notebook-question",
-        perform: () =>
-          onChangeLocation(getNewQuestionUrl({ dashboard, type: "notebook" })),
-      },
-      {
-        id: "dashboard-add-native-question",
-        perform: () =>
-          onChangeLocation(getNewQuestionUrl({ dashboard, type: "native" })),
-      },
-      {
-        id: "dashboard-toggle-add-question-sidepanel",
-        perform: () => toggleSidebar(SIDEBAR_NAME.addQuestion),
-      },
-    ],
-    [sidebarOpen],
-  );
+  useRegisterShortcut([
+    {
+      id: "dashboard-add-notebook-question",
+      perform: () =>
+        onChangeLocation(
+          getNewQuestionUrl({ dashboard, type: "notebook", buildQuestion }),
+        ),
+    },
+    {
+      id: "dashboard-add-native-question",
+      perform: () =>
+        onChangeLocation(
+          getNewQuestionUrl({ dashboard, type: "native", buildQuestion }),
+        ),
+    },
+    {
+      id: "dashboard-toggle-add-question-sidepanel",
+      perform: () => toggleSidebar(SIDEBAR_NAME.addQuestion),
+    },
+  ]);
 
   return (
     <ToolbarButton

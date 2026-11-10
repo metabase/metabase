@@ -117,7 +117,7 @@ In your development Metabase, [create a new branch](../data-modeling/semantic-la
 
 ### 3. Ask the agent to create content
 
-Run the `/metabase-cli` skill and prompt the agent to build your questions and dashboards. The agent creates the content directly in your development Metabase.
+Run the `/metabase-cli` skill and prompt the agent to build your questions and dashboards in a [synced collection](../data-modeling/semantic-layer/remote-sync.md#syncing-other-collections). The agent creates the content directly in your development Metabase.
 
 ### 4. Verify the content in your development Metabase
 
@@ -146,6 +146,7 @@ Since the agent uses the CLI to create content directly in Metabase, to undo cha
 
 - [Remote Sync](../data-modeling/semantic-layer/remote-sync.md)
 - [Metabase CLI](../installation-and-operation/metabase-cli.md)
+- [Data apps](../data-apps/start.md): custom apps that your agent builds on your semantic layer, and ships with Remote Sync.
 - [Metabase Representation Format](https://github.com/metabase/representations)
 - [Agent skills](https://github.com/metabase/agent-skills)
 - [MCP server](./mcp.md): for agents that need live metadata lookups outside the agent-driven workflow.

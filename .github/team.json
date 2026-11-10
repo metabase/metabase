@@ -1,13 +1,25 @@
 {
   "teams": [
     {
-      "name": "Querying Platform",
-      "label": ".Team/QueryingPlatform",
+      "name": "Querying",
+      "label": ".Team/Querying",
       "members": [
+        "bshepherdson",
+        "dpsutton",
         "metamben",
         "rileythomp",
-        "camsaul",
         "technomancy"
+      ]
+    },
+    {
+      "name": "Data Apps",
+      "label": ".Team/DataApps",
+      "codeowner": "@metabase/data-apps",
+      "members": [
+        "ranquild",
+        "heypoom",
+        "sanex3339",
+        "NevRA"
       ]
     },
     {
@@ -15,11 +27,8 @@
       "label": ".Team/Graphy",
       "members": [
         "ranquild",
-        "ericnormand",
         "galdre",
-        "dpsutton",
         "escherize",
-        "bgrabow",
         "alxnddr",
         "tsplude"
       ]
@@ -31,15 +40,7 @@
         "WiNloSt",
         "npretto",
         "heypoom",
-        "sanex3339",
-        "lorem--ipsum"
-      ]
-    },
-    {
-      "name": "Admin Webapp",
-      "label": ".Team/AdminWebapp",
-      "members": [
-        "eliotmetabase"
+        "sanex3339"
       ]
     },
     {
@@ -57,11 +58,8 @@
       "label": ".Team/Metabot",
       "codeowner": "@metabase/metabot",
       "members": [
-        "retro",
-        "sloansparger",
         "lbrdnk",
         "crisptrutski",
-        "undrfined",
         "andreis",
         "prascuna",
         "Krever",
@@ -76,20 +74,11 @@
       ]
     },
     {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
-        "eliotmetabase"
-      ]
-    },
-    {
       "name": "UX West",
       "label": ".Team/UXWest",
       "members": [
-        "eliotmetabase",
         "npfitz",
         "nvoxland",
-        "bshepherdson",
         "deniskaber",
         "andsalves",
         "kevinkelleher12",
@@ -125,7 +114,6 @@
         "iethree",
         "bpander",
         "gantoreno",
-        "losrebellos",
         "tmashara"
       ]
     },

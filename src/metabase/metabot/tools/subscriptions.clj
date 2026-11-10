@@ -49,7 +49,7 @@
      (map (partial pulse-card dashboard-id) dashcards)
      [(make-slack-channel schedule channel)]
      (-> dashboard
-         (select-keys [:collection_id :collection_position :name :parameters])
+         (select-keys [:name :parameters])
          (assoc :dashboard_id  dashboard-id
                 :creator_id    api/*current-user-id*
                 :skip_if_empty false)))))

@@ -10,7 +10,6 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
@@ -237,38 +236,10 @@
               (map #(nth % 2)))
         (tree-seq coll? seq x)))
 
-(defn- metric-join-required-dimensions
-  "Dimensions a metric reaches through an EXPLICIT join with no database foreign key.
+(defn- metric-join-required-columns
+  "Return accessible dimensions grouped by the explicit joins needed to use them.
 
-  A metric's `queryable-dimensions` are computed from a *consumer-framed* query (`source-table` +
-  `[:metric …]`), so `filterable-columns` only surfaces the base table and FK-reachable tables — the
-  metric's FK-less join dimensions are silently dropped. But the metric's *definition* joins that
-  table, so a consumer query that re-adds the same join can group/filter by them. Left unsurfaced,
-  the LLM guesses at those columns and dead-ends on `:no-fk-path` (BOT-1612).
-
-  We surface them here, grouped per join. Each entry carries the portable join clause to paste into
-  `joins:` AND, per dimension, a `:reference` — the alias-qualified field clause
-  (`[\"field\" {\"join-alias\" …} [db schema table field]]`) the LLM must reference the column by.
-  The bare portable FK does NOT resolve for these columns (there is no FK path — that is the whole
-  premise), so only the alias-qualified clause is pasteable. Detection is cheap — the definition
-  query's joins are already in hand; a `:fk-field-id` of nil marks an explicit, non-FK join. Returns
-  nil when the metric has no such joins (the common case).
-
-  Fail closed: a join is surfaced only when BOTH its portable clause exported and it targets a real
-  table. These dimensions are unreachable without the join by definition, so an entry lacking the
-  clause has zero value — and instructing the LLM to paste a nil/`null` join would be strictly worse
-  than the `:no-fk-path` dead-end this feature replaces. A `:source-card`-based join (nil
-  `source-table`) is likewise dropped rather than mislabeled with a nil table name. Dimensions are
-  permission-filtered on the way out (see `permission-filter-columns`) — the join target is a table
-  the consumer query never reaches, so nothing else has checked the user can read it.
-
-  The join-key columns (fields referenced in the join `:conditions`) are excluded — the target-side
-  key equals a base-table column and is redundant groupable noise. A metric that self-joins one
-  table under two aliases yields two entries with the same columns but DIFFERENT `:join_alias`, and
-  therefore distinct (correct) references — one per alias — which is the intended behavior.
-
-  `base-reachable-ids` is the id set of the consumer-framed `filterable-columns` (already computed by
-  the caller); columns in it are reachable without the join and are not re-surfaced here."
+  Exclude join keys and columns already reachable without the join. Only include joins that can be exported."
   [metadata-provider defq base-reachable-ids]
   (when defq
     (let [explicit-joins (filter #(nil? (:fk-field-id %)) (lib/joins defq -1))]
@@ -295,16 +266,9 @@
                                key-ids    (clause-field-ids (:conditions jn))
                                dims       (when target-tid
                                             (into []
-                                                  (comp (filter #(and (= target-tid (:table-id %))
-                                                                      (not (base-reachable-ids (:id %)))
-                                                                      (not (key-ids (:id %)))))
-                                                        (map #(metabot.tools.u/->result-column defq %))
-                                                        (map (fn [rc]
-                                                               (cond-> rc
-                                                                 (vector? (:portable_fk rc))
-                                                                 (assoc :reference
-                                                                        ["field" {"join-alias" alias}
-                                                                         (:portable_fk rc)])))))
+                                                  (filter #(and (= target-tid (:table-id %))
+                                                                (not (base-reachable-ids (:id %)))
+                                                                (not (key-ids (:id %)))))
                                                   def-cols))]
                            (when (and portable target-tid (seq dims))
                              {:join_alias   alias
@@ -312,6 +276,28 @@
                               :join         portable
                               :dimensions   dims}))))
                  explicit-joins)))))))
+
+(defn- metric-join-required-dimensions
+  [metadata-provider defq base-reachable-ids]
+  (not-empty
+   (mapv (fn [{join-alias :join_alias :as join}]
+           (update join :dimensions
+                   (partial mapv (fn [column]
+                                   (let [rc (metabot.tools.u/->result-column defq column)]
+                                     (cond-> rc
+                                       (vector? (:portable_fk rc))
+                                       (assoc :reference ["field" {"join-alias" join-alias} (:portable_fk rc)])))))))
+         (metric-join-required-columns metadata-provider defq base-reachable-ids))))
+
+(defn metric-dimension-columns
+  "Return the accessible columns listed as a metric's dimensions, including dimensions requiring explicit joins."
+  [query metric-id]
+  (let [base-columns (permission-filter-columns (lib/filterable-columns query))]
+    (concat base-columns
+            (lazy-seq
+             (let [mp (lib.metadata/->metadata-provider query)
+                   definition (some->> (lib.metadata/card mp metric-id) :dataset-query (lib/query mp))]
+               (mapcat :dimensions (metric-join-required-columns mp definition (set (keep :id base-columns)))))))))
 
 (defn- card-read-verdicts-for-metrics
   "Return read permissions for the source cards required by `metric-cards`, or nil when none are required.
@@ -343,7 +329,7 @@
   "Get metric details as returned by tools."
   ([id] (metric-details id nil))
   ([id options]
-   (when-let [card (metabot.tools.u/get-card id)]
+   (when-let [card (metabot.tools.u/get-card id :metric)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider options]
    (metric-details card metadata-provider options nil))
@@ -355,6 +341,7 @@
                                    with-queryable-dimensions?      true
                                    with-segments?                  false}}
     card-read-verdicts]
+   (metabot.tools.u/check-card-type card :metric)
    (let [id (:id card)
          ;; Database metadata so the LLM can build portable FKs — metrics are always
          ;; referenced from a query targeting a specific database, and the LLM needs the
@@ -384,24 +371,23 @@
          metric-card (when query-needed?
                        (lib.metadata/card metadata-provider id))
          metric-query (when query-needed?
-                        (lib/query metadata-provider metric-card))
+                        (metabot.tools.u/metric-dimension-query metadata-provider metric-card required))
          breakouts (when query-needed?
                      (lib/breakouts metric-query))
          base-query (when query-needed?
                       (lib/remove-all-breakouts metric-query))
-         ;; Consumer-framed filterable columns (base table + FK-reachable), permission-filtered.
+         ;; Consumer-framed filterable columns (base table + FK-reachable), before the permission filter.
+         all-filterable-cols  (when (and query-needed? with-queryable-dimensions?)
+                                (lib/filterable-columns base-query))
+         ;; The same columns, permission-filtered.
          ;; Computed once and shared by `:queryable-dimensions` and the join-required-dims
          ;; reachability filter below — which needs the FILTERED set, so that a column the user
          ;; cannot read is never treated as "already reachable" nor re-surfaced under a join.
-         base-filterable-cols (when (and query-needed? with-queryable-dimensions?)
-                                (->> (lib/filterable-columns base-query)
-                                     permission-filter-columns))
+         base-filterable-cols (some-> all-filterable-cols permission-filter-columns)
          ;; Definition query (WITH the metric's own joins) — surfaces FK-less join dimensions that
          ;; the consumer-framed `base-query` drops. Built from the card's `:dataset-query`, not from
          ;; `metric-query`, which frames the metric as a source and hides its definition joins.
-         ;; Only a metric's definition joins are dimensions to offer; a question or model read through the
-         ;; metric path exposes its results, as through its own URI, not the tables its definition reads.
-         join-required-dims (when (and query-needed? with-queryable-dimensions? (= :metric (:type metric-card)))
+         join-required-dims (when (and query-needed? with-queryable-dimensions?)
                               (metric-join-required-dimensions
                                metadata-provider
                                (some->> (:dataset-query metric-card) (lib/query metadata-provider))
@@ -425,9 +411,7 @@
               ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
               :portable_entity_id (metabot.tools.u/metric-card-shape-get card :entity-id :entity_id)
               :verified (verified-review? id "card")}
-       ;; Under curated-only, only a metric names what it reads: a question or model read through this path
-       ;; exposes its results, as through its own URI, not the table or card its definition reads.
-       (or (not (shared/curated-only?)) (= :metric (:type metric-card)))
+       true
        (merge (metabot.tools.u/metric-source-fields
                {:source-card   (when source-card
                                  {:id        (:id source-card)
@@ -444,7 +428,8 @@
                  :default_time_dimension_field_name (:name col)}))
 
        (and query-needed? with-queryable-dimensions?)
-       (assoc :queryable-dimensions (mapv #(metabot.tools.u/->result-column metric-query %) queryable-columns))
+       (assoc :queryable-dimensions
+              (metabot.tools.u/metric-dimensions metric-query queryable-columns all-filterable-cols))
 
        (seq join-required-dims)
        (assoc :join-required-dimensions join-required-dims)
@@ -634,7 +619,7 @@
    (when-not (int? id)
      (throw (ex-info "Invalid card id format"
                      {:agent-error? true :status-code 400})))
-   (when-let [card (metabot.tools.u/get-card id)]
+   (when-let [card (metabot.tools.u/get-card id (:expected-type options))]
      (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?
                                    with-measures? with-segments?]
@@ -664,7 +649,7 @@
                    (related-tables card-query with-fields? field-values-fn))]
      (-> {:id id
           :type card-type
-          :fields (mapv #(metabot.tools.u/->result-column card-query %) returned-fields)
+          :fields (metabot.tools.u/->result-columns card-query returned-fields)
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
@@ -792,20 +777,8 @@
       (metabot.perms/with-cache
         (let [options (arguments->options arguments)
               details (cond
-                        (= :model entity-type)
-                        (let [card (card-details entity-id (assoc options :only-model true))]
-                          (if (= :model (:type card))
-                            card
-                            (throw (ex-info (format "ID %s is not a valid model id, it's a question" entity-id)
-                                            {:agent-error? true :status-code 400}))))
-
-                        (= :question entity-type)
-                        (let [card (card-details entity-id options)]
-                          (if (= :question (:type card))
-                            card
-                            (throw (ex-info (format "ID %s is not a valid question id, it's a %s"
-                                                    entity-id (:type card))
-                                            {:agent-error? true :status-code 400}))))
+                        (#{:model :question} entity-type)
+                        (card-details entity-id (assoc options :expected-type entity-type))
 
                         (and (= :table entity-type)
                              (int? entity-id))
@@ -984,7 +957,7 @@
     {:type :query
      :query-id query-id
      :query normalized-query
-     :result-columns (mapv #(metabot.tools.u/->result-column query %) returned-cols)}))
+     :result-columns (metabot.tools.u/->result-columns query returned-cols)}))
 
 (defn get-query-details
   "Get the details of a query (supports both MBQL v4 and v5)."

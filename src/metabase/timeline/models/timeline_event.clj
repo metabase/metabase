@@ -1,9 +1,10 @@
 (ns metabase.timeline.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
-   [metabase.timeline.schema]
+   [metabase.timeline.schema :as timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -101,14 +102,15 @@
 
 ;;;; serialization
 
-(defmethod serdes/generate-path "TimelineEvent" [_ event]
-  [(serdes/infer-self-path "Timeline" (timeline.db/timeline (:timeline_id event)))
-   (serdes/infer-self-path "TimelineEvent" event)])
+(defmethod serialization/spec :model/TimelineEvent [_]
+  {:schema    ::timeline.schema/external-timeline-event
+   :copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
+   :parent    {:model :model/Timeline :key :timeline_id :order (juxt :name :entity_id)}
+   :transform {:timeline_id serialization/import-only-transform
+               :creator_id serialization/user-transform
+               :timestamp  serialization/date-transform}
+   :defaults  {:archived false}})
 
-(defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
-  {:copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
-   :skip      []
-   :transform {:creator_id  (serdes/fk :model/User)
-               :timeline_id (serdes/parent-ref)
-               :timestamp   (serdes/date)}
-   :defaults {:archived false}})
+(defmethod remote-sync/spec :model/TimelineEvent
+  [_model]
+  {:synced-filter-clause timeline.db/synced-timeline-events-clause})

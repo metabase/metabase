@@ -41,7 +41,9 @@
           (recur (+ i width)))))
     (str sb)))
 
-(defn- escaped-code-point?
+(defn escaped-code-point?
+  "Return whether `code-point` is invisible, line-breaking, unassigned or a double-quote look-alike.
+   [[quoted]] escapes these code points."
   [code-point]
   (or (invisible-code-point? code-point)
       (contains? double-quote-look-alikes (long code-point))))

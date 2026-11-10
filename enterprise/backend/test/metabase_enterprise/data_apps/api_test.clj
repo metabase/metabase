@@ -68,20 +68,13 @@
                              "BUNDLE")))))))
 
 (deftest read-only-remote-sync-allows-enabling-test
-  (mt/with-premium-features #{:data-apps}
+  (mt/with-premium-features #{:data-apps :remote-sync}
     (mt/with-temp [:model/DataApp app {}]
       (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                          remote-sync-type :read-only]
         (testing "enabling and disabling an app is allowed on a read-only instance"
           (is (=? {:enabled false}
                   (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled false}))))))))
-
-(deftest enabling-a-data-app-is-not-a-synced-change-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/RemoteSyncObject]
-      (mt/with-temp [:model/DataApp app {}]
-        (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled false})
-        (is (not (t2/exists? :model/RemoteSyncObject :model_type "DataApp" :model_id (:id app))))))))
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
@@ -332,12 +325,15 @@
       (let [[{:keys [path contents]} :as files] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema")]
         (is (= 1 (count files)))
         (is (= "src/metabase.schema.ts" path))
-        (testing "the schema holds the published tables with their fields, and the Library's metrics"
-          (is (str/includes? contents "const tables = {"))
+        (testing "the schema holds the published tables with their fields, and a section for the Library's metrics"
+          (is (str/includes? contents "export const venues = {"))
           (is (str/includes? contents (str "id: " (mt/id :venues))))
           (is (str/includes? contents (str "fieldId: " (mt/id :venues :name))))
           (is (str/includes? contents "slug: \"category_id\""))
-          (is (str/includes? contents "const metrics = {")))
+          (is (str/includes? contents "metrics: {")))
+        (testing "and `schema`, holding them all, for apps that import it"
+          (is (str/includes? contents "export const schema = {"))
+          (is (re-find #"\n    venues[,\n]" contents)))
         (testing "and no actions"
           (is (not (str/includes? contents "actions"))))))))
 

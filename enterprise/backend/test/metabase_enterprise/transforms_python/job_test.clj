@@ -11,7 +11,11 @@
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.quartz Scheduler)))
+
+(set! *warn-on-reflection* true)
 
 (deftest python-transform-scheduled-job-test
   (mt/test-helpers-set-global-values!
@@ -26,7 +30,7 @@
               (mt/with-temp
                 [:model/TransformTag {tag-id :id}       {:name "every second"}
                  :model/Transform    {transform-id :id} {:name   "Gadget Products"
-                                                         :source {:type  "python"
+                                                         :source {:type  :python
                                                                   :source-database (mt/id)
                                                                   :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                                   :body  (str "import pandas as pd\n"
@@ -39,36 +43,48 @@
                  :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
                 (transforms.schedule/initialize-job! job)
                 (transforms.schedule/update-job! job-id "* * * * * ? *")
-                (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target))
-                                    :done?   true?
-                                    :timeout-ms 20000
-                                    :interval-ms 1000})))
-                (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
-                                    :done?   true?
-                                    :timeout-ms 10000
-                                    :interval-ms 1000})))))))))))
+                (try
+                  (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target))
+                                      :done?   true?
+                                      :timeout-ms 20000
+                                      :interval-ms 1000})))
+                  (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
+                                      :done?   true?
+                                      :timeout-ms 10000
+                                      :interval-ms 1000})))
+                  (finally
+                    ;; The synced Table appears before the run writes the transform row, and the job fires every
+                    ;; second. Shut down the scheduler and wait for the running job, so no run writes the transform or
+                    ;; its target table during cleanup.
+                    (.shutdown ^Scheduler (task/scheduler) true)))))))))))
 
-(def ^:private python-source {:type "python"})
+(def ^:private python-source {:type :python :source-tables [] :body "pass"})
 
 (deftest run-transform-feature-flag-test
   (testing "Python transforms are skipped without :transforms-python feature"
     (mt/with-premium-features #{:transforms-basic}
-      (let [python-transform {:id 2
-                              :source python-source
-                              :name "Test Python Transform"}
-            run-id 101]
-        (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
-          (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)]
-            (#'jobs/run-transform! {:parent-run       [:job run-id]
-                                    :run-method       :scheduled
-                                    :user-id          nil
-                                    :add-run-activity! (constantly nil)}
-                                   (promise)
-                                   python-transform)
-            (is (= 1 (count (messages)))
-                "Should log exactly one warning")
-            (is (= :warn (:level (first (messages))))
-                "Should log at warn level")
-            (is (re-matches #".*Skip running transform 2 due to lacking premium features.*"
-                            (:message (first (messages))))
-                "Warning message should indicate transform was skipped due to missing features")))))))
+      (mt/with-temp [:model/Transform {transform-id :id} {:name   "Test Python Transform"
+                                                          :source python-source
+                                                          :target {:type "table" :name "python_feature_flag_target"}}]
+        (let [python-transform (t2/select-one :model/Transform :id transform-id)
+              run-id           101]
+          (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
+            (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)]
+              (#'jobs/run-transform! {:plan              []
+                                      :deps              {}
+                                      :parent-run        [:job run-id]
+                                      :run-gone?         (constantly false)
+                                      :run-method        :cron
+                                      :user-id           nil
+                                      :add-run-activity! (constantly nil)
+                                      :lanes             {:sql 1 :py 1}
+                                      :timeout-ms        1000}
+                                     (promise)
+                                     python-transform)
+              (is (= 1 (count (messages)))
+                  "Should log exactly one warning")
+              (is (= :warn (:level (first (messages))))
+                  "Should log at warn level")
+              (is (re-matches (re-pattern (str ".*Skip running transform " transform-id " due to lacking premium features.*"))
+                              (:message (first (messages))))
+                  "Warning message should indicate transform was skipped due to missing features"))))))))

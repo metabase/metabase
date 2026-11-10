@@ -88,11 +88,6 @@
     [:parameter_mappings _ _]
     (deferred-tru "changed the filter mapping")
 
-    [:collection_preview _ after]
-    (if after
-      (deferred-tru "enabled collection review")
-      (deferred-tru "disabled collection preview"))
-
     [:dataset_query _ _]
     (deferred-tru "modified the query")
 

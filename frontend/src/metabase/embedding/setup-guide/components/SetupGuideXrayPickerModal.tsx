@@ -5,12 +5,15 @@ import { t } from "ttag";
 import { Api, dashboardApi, useLazyGetXrayDashboardQuery } from "metabase/api";
 import { invalidateTags, listTag } from "metabase/api/tags";
 import { Link } from "metabase/common/components/Link";
+import type {
+  OmniPickerQuestionItem,
+  OmniPickerTableItem,
+} from "metabase/common/components/Pickers";
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";
-import type { TableId } from "metabase-types/api";
 
 interface SetupGuideXrayPickerModalProps {
   opened: boolean;
@@ -25,12 +28,17 @@ export const SetupGuideXrayPickerModal = ({
   const [sendToast] = useToast();
   const [fetchXrayDashboard] = useLazyGetXrayDashboardQuery();
 
-  async function handleTableSelect(tableId: TableId) {
+  async function handleTableSelect(
+    item: OmniPickerTableItem | OmniPickerQuestionItem,
+  ) {
     onClose();
+    if (item.model !== "table") {
+      return;
+    }
 
     try {
       const xrayDashboard = await fetchXrayDashboard({
-        subPath: `table/${tableId}`,
+        subPath: `table/${item.id}`,
       }).unwrap();
 
       const { data: savedDashboard } = await dispatch(

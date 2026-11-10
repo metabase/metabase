@@ -1,5 +1,6 @@
 ---
 title: "Creating an RDS database on AWS"
+summary: Create a PostgreSQL database on Amazon RDS and use it as your Metabase application database.
 redirect_from:
   - /docs/latest/operations-guide/creating-RDS-database-on-AWS
 ---

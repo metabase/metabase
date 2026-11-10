@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
-   [metabase.data-apps.core :as data-apps]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -42,6 +41,8 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/table-update :metabase/event)
+
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
   (into [:enum] (map name table/visibility-types)))
@@ -53,7 +54,7 @@
 (def ^:private EntityType
   "Schema for a valid table entity type, as either a keyword or a string."
   (mu/with-api-error-message
-   [:fn #(isa? types/entity-hierarchy (keyword %) :entity/*)]
+   [:fn {:json-schema {:type "string"}} #(isa? types/entity-hierarchy (keyword %) :entity/*)]
    (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (mr/def ::data-authority-write
@@ -186,7 +187,7 @@
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:field_order             {:optional true} [:maybe FieldOrder]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+   [:data_authority          {:optional true} ::data-authority-write]
    [:data_source             {:optional true} [:maybe :string]]
    [:data_layer              {:optional true} [:maybe :string]]
    [:owner_email             {:optional true} [:maybe :string]]
@@ -216,7 +217,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (schema.table-user-settings/upsert-user-settings existing-table changes))
+    (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
   (let [updated-table        (warehouse-schema-rest.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
@@ -330,38 +331,6 @@
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model}))
 
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/card__:id/query_metadata"
-  "Return metadata for the 'virtual' table for a Card."
-  {:scope api-scope/data-app}
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card id))
-  (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/card__:id/fks"
-  "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
-   serves mainly as a placeholder to avoid having to change anything on the frontend."
-  [_route-params :- [:map {:closed true}
-                     [:id ms/PositiveInt]]]
-  []) ; return empty array
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -387,12 +356,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/rescan_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/rescan_values" :- [:map {:closed true} [:status [:= :success]]]
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [{:keys [id]} :- [:map {:closed true}
@@ -411,12 +376,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/discard_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/discard_values" :- [:map {:closed true} [:status [:= :success]]]
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
@@ -530,12 +491,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/sync_schema"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/sync_schema" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]

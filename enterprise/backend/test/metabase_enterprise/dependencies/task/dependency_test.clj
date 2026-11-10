@@ -20,7 +20,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.serialization :as serdes]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -101,9 +100,9 @@
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
                        :model/Transform {transform-id :id} {:name "Test Transform"
-                                                            :source {:type "query"
-                                                                     :query (mt/mbql-query nil
-                                                                              {:source-table (str "card__" card-id)})}
+                                                            :source {:type :query
+                                                                     :query (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+                                                                              (lib/query mp (lib.metadata/card mp card-id)))}
                                                             :target {:type "table" :name (mt/random-name)}}]
           (forget-status! :card card-id)
           (forget-status! :transform transform-id)
@@ -1171,11 +1170,10 @@
        (let [card-deps #(t2/select-fn-set (juxt :to_entity_type :to_entity_id)
                                           :model/Dependency :from_entity_type :card :from_entity_id %)
              query     #(lib/query mp (lib.metadata/table mp (mt/id %)))
-             load!     #(serdes/with-cache
-                          (serdes.load/load-metabase! (ts/ingestion-in-memory %) :reindex? false))]
-         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (query :products)}
-                        :model/Card {other-id :id}         {:dataset_query (query :products)}]
-           (let [exported (serdes/extract-one "Card" {} card)]
+             load!     #(serdes.load/load-metabase! (ts/ingestion-in-memory %) :reindex? false)]
+         (mt/with-temp [:model/Card {card-id :id}  {:dataset_query (query :products)}
+                        :model/Card {other-id :id} {:dataset_query (query :products)}]
+           (let [exported (ts/extract-one "Card" card-id)]
              (t2/update! :model/Card :id card-id {:dataset_query (query :orders)})
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:table (mt/id :orders)]} (card-deps card-id)))

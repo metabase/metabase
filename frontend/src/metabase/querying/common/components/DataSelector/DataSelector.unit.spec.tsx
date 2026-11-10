@@ -1,21 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import { createMockSettingsState, createMockState } from "__support__/state";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
+import { getIcon, render, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import {
   UnconnectedDataSelector as DataSelector,
   getEntityLookups,
 } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
-import {
-  createMockDatabase,
-  createMockSavedQuestionsDatabase,
-  createMockTable,
-} from "metabase-types/api/mocks";
+import type { DatabaseId } from "metabase-types/api";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
@@ -87,11 +83,6 @@ describe("DataSelector", () => {
   const emptyLookups = getEntityLookups(
     createMockState({ entities: createMockEntitiesState({}) }),
   );
-  const storeInitialState = createMockState({
-    settings: createMockSettingsState({
-      "enable-nested-queries": true,
-    }),
-  });
 
   const SAMPLE_DATABASE = checkNotNull(entityLookups.database(SAMPLE_DB_ID));
   const ANOTHER_DATABASE = checkNotNull(entityLookups.database(EMPTY_DB_ID));
@@ -101,32 +92,16 @@ describe("DataSelector", () => {
   const OTHER_MULTI_SCHEMA_DATABASE = checkNotNull(
     entityLookups.database(OTHER_MULTI_SCHEMA_DB_ID),
   );
-  const SAVED_QUESTIONS_DATABASE = checkNotNull(
-    getEntityLookups(
-      createMockState({
-        entities: createMockEntitiesState({
-          databases: [createMockSavedQuestionsDatabase()],
-        }),
-      }),
-    ).database(SAVED_QUESTIONS_VIRTUAL_DB_ID),
-  );
 
   const defaultProps: DataSelectorProps = {
     steps: ["DATABASE"],
     entityLookups: emptyLookups,
     databases: [],
-    availableModels: [],
-    hasLoadedDatabasesWithTablesSaved: false,
-    hasLoadedDatabasesWithSaved: false,
+    hasLoadedDatabases: false,
     hasLoadedDatabasesWithTables: false,
     hasDataAccess: false,
-    hasNestedQueriesEnabled: false,
-    loading: false,
-    loaded: false,
-    allLoading: false,
     fetchDatabases: jest.fn(),
     fetchFields: jest.fn(),
-    fetchQuestion: jest.fn(),
     fetchSchemas: jest.fn(),
     fetchSchemaTables: jest.fn(),
   };
@@ -214,8 +189,6 @@ describe("DataSelector", () => {
     // on initial load, we fetch databases
     await delay(1);
     expect(fetchDatabases).toHaveBeenCalled();
-    rerender(<DataSelector {...props} loading />);
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
     // select a db
     rerenderWith(lookupsWith({ schemas: {}, tables: {}, fields: {} }));
@@ -257,6 +230,46 @@ describe("DataSelector", () => {
     );
     await delay(1); // state isn't updated until the next tick
     expect(await screen.findByText("Orders")).toBeInTheDocument();
+  });
+
+  it("should not select a database when there are several to choose from", async () => {
+    const setDatabaseFn = jest.fn<void, [DatabaseId]>();
+    render(
+      <DataSelector
+        {...defaultProps}
+        steps={["DATABASE"]}
+        triggerElement={<div />}
+        databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
+        entityLookups={entityLookups}
+        isOpen={true}
+        setDatabaseFn={setDatabaseFn}
+      />,
+    );
+    await delay(1); // state isn't updated until the next tick
+
+    expect(await screen.findByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
+    expect(screen.getByText(ANOTHER_DATABASE.name)).toBeInTheDocument();
+    expect(setDatabaseFn).not.toHaveBeenCalled();
+  });
+
+  it("should select the only enabled database", async () => {
+    const setDatabaseFn = jest.fn<void, [DatabaseId]>();
+    render(
+      <DataSelector
+        {...defaultProps}
+        steps={["DATABASE"]}
+        triggerElement={<div />}
+        databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
+        databaseIsDisabled={(database) => database.id !== ANOTHER_DATABASE.id}
+        entityLookups={entityLookups}
+        isOpen={true}
+        setDatabaseFn={setDatabaseFn}
+      />,
+    );
+    await delay(1); // state isn't updated until the next tick
+
+    expect(setDatabaseFn).toHaveBeenCalledTimes(1);
+    expect(setDatabaseFn).toHaveBeenCalledWith(ANOTHER_DATABASE.id);
   });
 
   it("should auto-advance past a single schema that loads asynchronously", async () => {
@@ -562,45 +575,5 @@ describe("DataSelector", () => {
         "To pick some data, you'll need to add some first",
       ),
     ).toBeInTheDocument();
-  });
-
-  it("should show 'Saved Questions' option when there are saved questions", async () => {
-    renderWithProviders(
-      <DataSelector
-        {...defaultProps}
-        availableModels={[]}
-        steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
-        databases={[SAMPLE_DATABASE, SAVED_QUESTIONS_DATABASE]}
-        hasNestedQueriesEnabled
-        loaded
-        triggerElement={<div />}
-        isOpen
-      />,
-      { storeInitialState },
-    );
-
-    expect(await screen.findByText("Saved Questions")).toBeInTheDocument();
-  });
-
-  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", async () => {
-    renderWithProviders(
-      <DataSelector
-        {...defaultProps}
-        availableModels={[]}
-        steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
-        databases={[SAMPLE_DATABASE]}
-        entityLookups={entityLookups}
-        hasNestedQueriesEnabled
-        loaded
-        triggerElement={<div />}
-        isOpen
-      />,
-      { storeInitialState },
-    );
-
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
-    expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
   });
 });
