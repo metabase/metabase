@@ -2,9 +2,15 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockDashboardState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ParameterValuesMap } from "metabase-types/api";
+import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
+import type {
+  Dashboard,
+  ParameterValuesMap,
+  VirtualDashboardCard,
+} from "metabase-types/api";
 import {
   createMockDashboard,
+  createMockParameter,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 
@@ -27,6 +33,9 @@ const defaultProps = {
 interface SetupOpts {
   settings?: Settings;
   parameterValues?: ParameterValuesMap;
+  dashboard?: Dashboard;
+  dashcard?: VirtualDashboardCard;
+  isEditing?: boolean;
 }
 
 const setup = ({ parameterValues, ...options }: SetupOpts = {}) => {
@@ -57,6 +66,15 @@ describe("Text", () => {
       setup(options);
 
       expect(screen.getByText("Bold text")).toHaveStyle("font-weight: bold");
+    });
+
+    it("should replace mapped variables with formatted parameter values", () => {
+      setup({
+        ...getMappedVariableOptions(),
+        settings: getSettingsWithText("Variable: {{foo}}"),
+      });
+
+      expect(screen.getByText("Variable: 1 and 2")).toBeInTheDocument();
     });
 
     it("should render an internal link", () => {
@@ -146,6 +164,18 @@ describe("Text", () => {
         );
       });
 
+      it("should preview the raw template without replacing mapped variables (metabase#31626)", () => {
+        setup({
+          ...getMappedVariableOptions(),
+          settings: getSettingsWithText("Variable: {{foo}}"),
+          isEditing: true,
+        });
+
+        expect(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        ).toHaveTextContent("Variable: {{foo}}");
+      });
+
       it("should preview with text when it has content", () => {
         const options = {
           settings: getSettingsWithText("text text text"),
@@ -232,5 +262,22 @@ describe("Text", () => {
 function getSettingsWithText(text: string | null): Settings {
   return {
     text: text,
+  };
+}
+
+function getMappedVariableOptions() {
+  const parameter = createMockParameter({ id: "p1", type: "number/=" });
+  return {
+    dashboard: createMockDashboard({ parameters: [parameter] }),
+    dashcard: createMockVirtualDashCard({
+      parameter_mappings: [
+        {
+          card_id: 1,
+          parameter_id: parameter.id,
+          target: buildTextTagTarget("foo"),
+        },
+      ],
+    }),
+    parameterValues: { [parameter.id]: [1, 2] },
   };
 }

@@ -475,6 +475,36 @@ describe("parameters/utils/mapping-options", () => {
     });
   });
 
+  describe.each(["text", "heading"] as const)("%s dashcard", (display) => {
+    const getTextOptions = (text: string) =>
+      getParameterMappingOptions(
+        undefined,
+        null,
+        createMockVirtualCard({ display }),
+        createMockDashboardCard({
+          visualization_settings: {
+            virtual_card: createMockVirtualCard({ display }),
+            text,
+          },
+        }),
+      );
+
+    it("should return tag options from the card text", () => {
+      expect(getTextOptions("Variable: {{foo}}")).toEqual([
+        {
+          name: "foo",
+          icon: "string",
+          isForeign: false,
+          target: ["text-tag", "foo"],
+        },
+      ]);
+    });
+
+    it("should return empty array for text without template tags", () => {
+      expect(getTextOptions("Variable: foo")).toEqual([]);
+    });
+  });
+
   describe("parameterDashcard filtering", () => {
     it("should return empty array when parameterDashcard is from a different tab", () => {
       const card = structured({
