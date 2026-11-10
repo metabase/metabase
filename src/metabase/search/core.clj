@@ -314,6 +314,11 @@
                               (search.ingestion/doc-ids search-model (into [:or] selectors))
                               ;; The id query runs in its own nested transaction, so a failure leaves the
                               ;; caller's usable; see [[search.db/spec-index-doc-ids-reducible]].
+                              ;; Skipping is ours to decide, but the caller's interrupt is not ours to clear.
+                              (catch InterruptedException e
+                                (.interrupt (Thread/currentThread))
+                                (log/errorf e "Interrupted; skipping cascade enumeration for %s" search-model)
+                                nil)
                               (catch Exception e
                                 (log/errorf e "Skipping cascade enumeration for %s" search-model)
                                 nil))]
@@ -366,13 +371,17 @@
   "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
   Documents that still resolve are re-derived, and only the ones that stopped resolving are removed.
   A search-model whose surviving documents cannot be enumerated is left alone.
-  A failure while checking one search-model's survivors is logged and does not stop the others.
-  Its queued work shares the ingestion worker's batches, where one failing message loses the whole batch."
+  A failure while checking one search-model's survivors is logged and does not stop the others; an interrupt does.
+  Its queued work shares the ingestion worker's batches, where one failing message loses the run of re-index messages
+  it was coalesced with."
   [cascading]
   (when (and (seq cascading) (supports-index?))
     (doseq [[search-model ids] cascading]
       (try
         (reconcile-search-model! search-model ids)
+        (catch InterruptedException e
+          (.interrupt (Thread/currentThread))
+          (throw e))
         (catch Exception e
           (log/errorf e "Failed to reconcile cascaded %s documents" search-model))))))
 

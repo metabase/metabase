@@ -62,6 +62,11 @@
   [model rows]
   (try
     (search/cascading-documents (rows->instances model rows))
+    ;; Skipping is ours to decide, but the caller's interrupt is not ours to clear.
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (log/errorf e "Interrupted; skipping search cascade enumeration for %s" model)
+      nil)
     (catch Exception e
       (log/errorf e "Skipping search cascade enumeration for %s" model)
       nil)))
