@@ -20,6 +20,7 @@ const BLOCKQUOTE_ID = "e785b000-1651-c154-e0bd-7313f839bb50";
 const ORDERED_LIST_ID = "12fd2bdb-76f7-d07a-b61e-b2d2eee127b5";
 const CODE_BLOCK_ID = "b9fec4be-4b44-2c24-7073-10f23522cfd3";
 const CARD_EMBED_ID = "cce109c3-4cec-caf1-a569-89fa15410ae1";
+const REACTION_EMOJI = "😀";
 
 describe("document comments", () => {
   beforeEach(() => {
@@ -295,6 +296,36 @@ describe("document comments", () => {
       Comments.openAllComments();
       Comments.getCommentByText("Test comment").should("be.visible");
       cy.findByRole("button", { name: "Save" }).should("be.visible");
+    });
+  });
+
+  it("edits, reacts to and deletes a comment", () => {
+    startNewCommentIn1ParagraphDocument();
+    cy.realType("Smoke");
+    cy.realPress([META_KEY, "Enter"]);
+
+    Comments.getCommentByText("Smoke").realHover();
+    Comments.getCommentByText("Smoke").findByLabelText("More actions").click();
+    H.popover().findByText("Edit").click();
+    cy.realType("Edited ");
+    cy.realPress([META_KEY, "Enter"]);
+    Comments.getCommentByText("Edited Smoke")
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "false");
+
+    Comments.reactToComment("Edited Smoke", REACTION_EMOJI);
+    Comments.getCommentByText("Edited Smoke")
+      .findByTestId("discussion-reactions")
+      .should("contain", `${REACTION_EMOJI}1`);
+
+    Comments.getCommentByText("Edited Smoke").realHover();
+    Comments.getCommentByText("Edited Smoke")
+      .findByLabelText("More actions")
+      .click();
+    H.popover().findByText("Delete").click();
+    Comments.getSidebar().within(() => {
+      cy.findByText("Edited Smoke").should("not.exist");
+      Comments.getAllComments().should("not.exist");
     });
   });
 
