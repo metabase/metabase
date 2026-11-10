@@ -22,7 +22,7 @@ function setup({
   isRepoStatusUnavailable = false,
 }: SetupOpts) {
   const app = createMockDataApp({ name: "sales" });
-  setupDataAppGroupsEndpoint(app.name, []);
+  setupDataAppGroupsEndpoint(app.id, []);
   if (isRepoStatusUnavailable) {
     setupDataAppRepoStatusEndpointWithError("Server error");
   } else {

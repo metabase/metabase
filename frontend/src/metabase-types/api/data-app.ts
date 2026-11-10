@@ -50,8 +50,7 @@ export interface DataAppRepoStatus {
 }
 
 export interface SetDataAppEnabledRequest {
-  /** The app's slug. */
-  name: string;
+  id: DataAppId;
   enabled: boolean;
 }
 
@@ -63,12 +62,12 @@ export interface DataAppGroup {
 }
 
 export interface AddDataAppGroupsRequest {
-  name: string;
+  id: DataAppId;
   group_ids: number[];
 }
 
 export interface RemoveDataAppGroupRequest {
-  name: string;
+  id: DataAppId;
   group_id: number;
 }
 

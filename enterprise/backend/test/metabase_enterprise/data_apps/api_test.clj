@@ -79,7 +79,7 @@
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
-    (mt/user-http-request :crowberto :put 402 "ee/apps/demo" {:enabled false})))
+    (mt/user-http-request :crowberto :put 402 "ee/apps/1" {:enabled false})))
 
 (deftest group-with-access-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"
@@ -183,22 +183,38 @@
             (mt/user-http-request :crowberto :put 400 url {:display_name "Renamed"})
             (is (= "Demo app" (t2/select-one-fn :display_name :model/DataApp :id (:id app)))))
           (testing "updating a missing app 404s"
-            (mt/user-http-request :crowberto :put 404 "ee/apps/missing" {:enabled false})))))))
+            (mt/user-http-request :crowberto :put 404 "ee/apps/2147483647" {:enabled false})))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 
 (deftest list-and-bundle-endpoints-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp _ demo-app]
+      (mt/with-temp [:model/DataApp app demo-app]
         (testing "GET / lists the apps"
           (is (=? [{:name "demo" :display_name "Demo app"
                     :bundle_path "dist/index.js" :enabled true}]
                   (mt/user-http-request :crowberto :get 200 "ee/apps"))))
-        (testing "GET /:slug/bundle serves the cached bytes"
+        (testing "GET /:id/bundle serves the cached bytes"
           (is (str/includes?
-               (str (mt/user-real-request :crowberto :get 200 "ee/apps/demo/bundle"))
+               (str (mt/user-real-request :crowberto :get 200 (data-apps.tu/app-url app "bundle")))
                "DEMOBUNDLE")))))))
+
+(deftest get-by-slug-endpoint-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp app demo-app]
+      (let [data-app-request {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+        (testing "GET /slug/:slug returns the app with its ID"
+          (is (=? {:id (:id app) :name "demo"}
+                  (mt/user-http-request :crowberto :get 200 "ee/apps/slug/demo"))))
+        (testing "a data app's request reaches it, but not GET /:id"
+          (is (=? {:id (:id app)}
+                  (mt/user-http-request :crowberto :get 200 "ee/apps/slug/demo" data-app-request)))
+          (mt/user-http-request :crowberto :get 403 (data-apps.tu/app-url app) data-app-request))
+        (testing "a user who cannot read the app is refused"
+          (mt/user-http-request :rasta :get 403 "ee/apps/slug/demo"))
+        (testing "a missing app 404s"
+          (mt/user-http-request :crowberto :get 404 "ee/apps/slug/missing"))))))
 
 (deftest repo-status-endpoint-test
   (mt/with-premium-features #{:data-apps}
@@ -214,22 +230,22 @@
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp _ demo-app]
-        (testing "PUT /:slug can disable an app"
+      (mt/with-temp [:model/DataApp app demo-app]
+        (testing "PUT /:id can disable an app"
           (is (=? {:name "demo" :enabled false}
-                  (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false}))))
+                  (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled false}))))
         (testing "a disabled app is not served to a user with access"
-          (group-access/add-groups! (t2/select-one :model/DataApp :name "demo") [(:id (perms/all-users-group))])
-          (mt/user-http-request :rasta :get 403 "ee/apps/demo")
-          (mt/user-real-request :rasta :get 403 "ee/apps/demo/bundle"))
+          (group-access/add-groups! app [(:id (perms/all-users-group))])
+          (mt/user-http-request :rasta :get 403 (data-apps.tu/app-url app))
+          (mt/user-real-request :rasta :get 403 (data-apps.tu/app-url app "bundle")))
         (testing "a superuser still reads a disabled app's metadata and bundle"
           (is (=? {:name "demo" :enabled false}
-                  (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))
-          (mt/user-real-request :crowberto :get 200 "ee/apps/demo/bundle"))
+                  (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app))))
+          (mt/user-real-request :crowberto :get 200 (data-apps.tu/app-url app "bundle")))
         (testing "re-enabling restores serving"
           (is (=? {:enabled true}
-                  (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})))
-          (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "ee/apps/demo"))))))))
+                  (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled true})))
+          (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app)))))))))
 
 (deftest admins-write-the-resource-collection-through-the-api-test
   (mt/with-premium-features #{:data-apps}
@@ -269,7 +285,7 @@
       (testing "a superuser does"
         (is (some #(= "demo" (:name %)) (mt/user-http-request :crowberto :get 200 "ee/apps"))))
       (testing "a user with access sees it once it's enabled"
-        (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})
+        (mt/user-http-request :crowberto :put 200 (data-apps.tu/app-url app) {:enabled true})
         (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps")))))))
 
 (deftest apps-are-listed-only-to-users-who-can-read-their-collection-test
@@ -407,6 +423,6 @@
                      (get-in response [:headers policy-header])))))
           (testing "authorization failures and missing apps do not return a CSP header"
             (doseq [[user path status] [[:rasta url 403]
-                                        [:crowberto "ee/apps/missing/bundle" 404]]]
+                                        [:crowberto "ee/apps/2147483647/bundle" 404]]]
               (is (nil? (get-in (mt/user-http-request-full-response user :get status path options)
                                 [:headers policy-header]))))))))))

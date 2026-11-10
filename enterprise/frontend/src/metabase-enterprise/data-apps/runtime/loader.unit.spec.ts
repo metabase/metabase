@@ -19,12 +19,21 @@ const mockedCreateSandbox = jest.mocked(createDataAppSandbox);
 describe("fetchDataAppBundleCode", () => {
   const originalFetch = global.fetch;
 
-  const setup = (response: Response | Error) => {
+  const setup = (
+    response: Response | Error,
+    appResponse: Response = new Response(JSON.stringify({ id: 7 })),
+  ) => {
     const fetchMock = jest.fn(
-      (_input: RequestInfo | URL, _init?: RequestInit) =>
-        response instanceof Error
-          ? Promise.reject(response)
-          : Promise.resolve(response.clone()),
+      (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = input instanceof Request ? input.url : String(input);
+        const result = url.includes("/api/ee/apps/slug/")
+          ? appResponse
+          : response;
+
+        return result instanceof Error
+          ? Promise.reject(result)
+          : Promise.resolve(result.clone());
+      },
     );
 
     global.fetch = fetchMock;
@@ -41,28 +50,36 @@ describe("fetchDataAppBundleCode", () => {
   });
 
   it.each([false, true])(
-    "requests the bundle with the Metabase client with cache disabled and the name encoded (embedded: %s)",
+    "looks up the app by its encoded name, then requests its bundle by ID, with the Metabase client with cache disabled (embedded: %s)",
     async (embedded) => {
       const apiFetch = jest.spyOn(api, "fetch");
       const { fetchMock } = setup(new Response("CODE"));
 
       await fetchDataAppBundleCode("my app", { embedded });
 
-      expect(apiFetch).toHaveBeenCalledWith({
+      expect(apiFetch).toHaveBeenCalledTimes(2);
+      expect(apiFetch).toHaveBeenNthCalledWith(1, {
         method: "GET",
-        url: "/api/ee/apps/my%20app/bundle",
+        url: "/api/ee/apps/slug/my%20app",
+        cache: "no-store",
+      });
+      expect(apiFetch).toHaveBeenNthCalledWith(2, {
+        method: "GET",
+        url: "/api/ee/apps/7/bundle",
         cache: "no-store",
       });
 
-      const request = fetchMock.mock.calls[0][0];
-      if (!(request instanceof Request)) {
-        throw new Error("expected an API request");
-      }
-
-      expect(new URL(request.url).search).toBe("");
-      expect(new URL(request.url).pathname).toBe(
-        "/api/ee/apps/my%20app/bundle",
-      );
+      const paths = fetchMock.mock.calls.map(([request]) => {
+        if (!(request instanceof Request)) {
+          throw new Error("expected an API request");
+        }
+        expect(new URL(request.url).search).toBe("");
+        return new URL(request.url).pathname;
+      });
+      expect(paths).toEqual([
+        "/api/ee/apps/slug/my%20app",
+        "/api/ee/apps/7/bundle",
+      ]);
     },
   );
 
@@ -136,6 +153,23 @@ describe("fetchDataAppBundleCode", () => {
       contentSecurityPolicy: "default-src 'none';",
     });
   });
+
+  it.each<[number, string]>([
+    [403, "You don't have access to this data app."],
+    [
+      404,
+      'Data app "demo" was not found or is disabled. Check the app name in path.',
+    ],
+  ])(
+    "reports embedded app lookup failures inside the runtime: %s",
+    async (status, message) => {
+      setup(new Response("CODE"), new Response("unavailable", { status }));
+
+      await expect(
+        fetchDataAppBundleCode("demo", { embedded: true }),
+      ).rejects.toMatchObject({ status, message });
+    },
+  );
 
   it("throws a DataAppBundleError carrying the HTTP status on a non-2xx response", async () => {
     setup(new Response("nope", { status: 404 }));

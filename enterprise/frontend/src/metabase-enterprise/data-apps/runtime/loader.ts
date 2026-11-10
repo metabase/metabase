@@ -19,6 +19,7 @@ import {
   DATA_APP_PROVIDER_PROP_KEYS,
   type DataAppMetabaseProviderProps,
 } from "metabase-enterprise/data-apps/sandbox/types";
+import type { DataAppId } from "metabase-types/api";
 
 export interface LoadedDataApp {
   component: React.ComponentType<Record<string, unknown>>;
@@ -78,24 +79,15 @@ export class DataAppBundleError extends Error {
   }
 }
 
-/**
- * Fetch a data-app bundle's raw JS source plus its fetch/XHR allowlist. Called
- * from the iframe-top `DataAppIframeApp` after it reads the `:name` from the
- * URL. Throws a [[DataAppBundleError]] on a transport failure or non-2xx
- * response.
- */
-export const fetchDataAppBundleCode = async (
+const fetchDataAppResponse = async (
+  url: string,
   name: string,
-  { embedded = false }: { embedded?: boolean } = {},
-): Promise<FetchedDataAppBundle> => {
+  embedded: boolean,
+): Promise<Response> => {
   let res: Response;
   try {
     // Use metabase/client fetch for SDK auth headers.
-    res = await api.fetch({
-      method: "GET",
-      url: `/api/ee/apps/${encodeURIComponent(name)}/bundle`,
-      cache: "no-store",
-    });
+    res = await api.fetch({ method: "GET", url, cache: "no-store" });
   } catch (e) {
     throw new DataAppBundleError(
       `Failed to reach the server for data-app bundle: ${
@@ -121,6 +113,49 @@ export const fetchDataAppBundleCode = async (
 
     throw new DataAppBundleError(message, res.status);
   }
+
+  return res;
+};
+
+const fetchDataAppId = async (
+  name: string,
+  embedded: boolean,
+): Promise<DataAppId> => {
+  const res = await fetchDataAppResponse(
+    `/api/ee/apps/slug/${encodeURIComponent(name)}`,
+    name,
+    embedded,
+  );
+  const app: unknown = await res.json();
+
+  if (
+    typeof app !== "object" ||
+    app === null ||
+    !("id" in app) ||
+    typeof app.id !== "number"
+  ) {
+    throw new DataAppBundleError(t`Failed to fetch data app bundle.`);
+  }
+
+  return app.id;
+};
+
+/**
+ * Fetch a data-app bundle's raw JS source plus its fetch/XHR allowlist, looking
+ * up the app's ID by its slug first. Called from the iframe-top
+ * `DataAppIframeApp` after it reads the `:name` from the URL. Throws a
+ * [[DataAppBundleError]] on a transport failure or non-2xx response.
+ */
+export const fetchDataAppBundleCode = async (
+  name: string,
+  { embedded = false }: { embedded?: boolean } = {},
+): Promise<FetchedDataAppBundle> => {
+  const id = await fetchDataAppId(name, embedded);
+  const res = await fetchDataAppResponse(
+    `/api/ee/apps/${id}/bundle`,
+    name,
+    embedded,
+  );
 
   return {
     code: await res.text(),

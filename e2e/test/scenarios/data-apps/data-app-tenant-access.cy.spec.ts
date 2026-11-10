@@ -53,7 +53,7 @@ describe("scenarios > data apps > tenant access (DAT-17)", () => {
     assertAppAccessDenied();
 
     cy.signInAsAdmin();
-    cy.intercept("POST", `/api/ee/apps/${APP_SLUG}/groups`).as("addGroups");
+    cy.intercept("POST", "/api/ee/apps/*/groups").as("addGroups");
     cy.visit(`/data-studio/apps/${APP_SLUG}/permissions`);
     H.main().findByText(EMPTY_STATE_TEXT).should("be.visible");
 
@@ -76,9 +76,7 @@ describe("scenarios > data apps > tenant access (DAT-17)", () => {
 
     cy.log("revoke the tenant group's access");
     cy.signInAsAdmin();
-    cy.intercept("DELETE", `/api/ee/apps/${APP_SLUG}/groups/*`).as(
-      "removeGroup",
-    );
+    cy.intercept("DELETE", "/api/ee/apps/*/groups/*").as("removeGroup");
 
     cy.visit(`/data-studio/apps/${APP_SLUG}/permissions`);
     H.main()

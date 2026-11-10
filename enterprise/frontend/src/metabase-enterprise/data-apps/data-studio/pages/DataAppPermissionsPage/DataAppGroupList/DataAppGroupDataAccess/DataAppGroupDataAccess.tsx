@@ -14,9 +14,7 @@ export function DataAppGroupDataAccess({
   app,
   group,
 }: DataAppGroupDataAccessProps) {
-  const { data: warnings } = useGetDataAppGroupPermissionWarningsQuery(
-    app.name,
-  );
+  const { data: warnings } = useGetDataAppGroupPermissionWarningsQuery(app.id);
 
   if (warnings == null) {
     return EMPTY_CELL_PLACEHOLDER;

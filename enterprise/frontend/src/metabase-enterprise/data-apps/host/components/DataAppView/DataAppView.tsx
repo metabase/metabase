@@ -19,7 +19,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useParams } from "metabase/router";
 import { Box, Flex, Icon } from "metabase/ui";
-import { useGetDataAppQuery } from "metabase-enterprise/api";
+import { useGetDataAppBySlugQuery } from "metabase-enterprise/api";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
@@ -116,7 +116,7 @@ export function DataAppView({
     data: meta,
     isLoading: metaLoading,
     error: metaError,
-  } = useGetDataAppQuery(name, { skip: !validName });
+  } = useGetDataAppBySlugQuery(name, { skip: !validName });
 
   useEffect(() => {
     if (!iframeEl || !validName || !enableUrlMirroring) {

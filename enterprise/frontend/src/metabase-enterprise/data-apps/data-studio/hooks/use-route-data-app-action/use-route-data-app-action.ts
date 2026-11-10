@@ -4,7 +4,7 @@ import { skipToken, useGetActionQuery } from "metabase/api";
 import { useActionDatabases } from "metabase/data-studio/actions/hooks/use-action-databases";
 import { useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { useGetDataAppQuery } from "metabase-enterprise/api";
+import { useGetDataAppBySlugQuery } from "metabase-enterprise/api";
 
 export function useRouteDataAppAction() {
   const params = useParams<{ name: string; actionId: string }>();
@@ -14,7 +14,7 @@ export function useRouteDataAppAction() {
     data: app,
     isLoading: isLoadingApp,
     error: appError,
-  } = useGetDataAppQuery(name);
+  } = useGetDataAppBySlugQuery(name);
   const {
     currentData,
     isFetching: isFetchingAction,

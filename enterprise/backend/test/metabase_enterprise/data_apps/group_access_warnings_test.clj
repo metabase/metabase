@@ -185,7 +185,7 @@
 
 (deftest group-permission-warnings-missing-app-test
   (mt/with-premium-features #{:data-apps}
-    (mt/user-http-request :crowberto :get 404 "ee/apps/missing/group-permission-warnings")))
+    (mt/user-http-request :crowberto :get 404 "ee/apps/2147483647/group-permission-warnings")))
 
 (deftest group-permission-warnings-use-group-access-not-memberships-test
   (mt/with-premium-features #{:data-apps :advanced-permissions}

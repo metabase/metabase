@@ -36,12 +36,17 @@ type SetupOpts = {
 
 function setup({ groups, warnings = [], useTenants = false }: SetupOpts) {
   const onSelectGroup = jest.fn<void, [GroupId]>();
-  setupDataAppGroupsEndpoint("sales", groups);
-  setupDataAppGroupPermissionWarningsEndpoint("sales", warnings);
-  groups.forEach((group) => setupRemoveDataAppGroupEndpoint("sales", group.id));
+  const app = createMockDataApp({
+    id: 7,
+    name: "sales",
+    display_name: "Sales",
+  });
+  setupDataAppGroupsEndpoint(app.id, groups);
+  setupDataAppGroupPermissionWarningsEndpoint(app.id, warnings);
+  groups.forEach((group) => setupRemoveDataAppGroupEndpoint(app.id, group.id));
   renderWithProviders(
     <DataAppGroupList
-      app={createMockDataApp({ name: "sales", display_name: "Sales" })}
+      app={app}
       selectedGroupId={undefined}
       onSelectGroup={onSelectGroup}
     />,
@@ -182,7 +187,7 @@ describe("DataAppGroupList", () => {
       within(dialog).getByText("Remove Support from Sales?"),
     ).toBeInTheDocument();
     expect(
-      fetchMock.callHistory.calls("path:/api/ee/apps/sales/groups/3", {
+      fetchMock.callHistory.calls("path:/api/ee/apps/7/groups/3", {
         method: "DELETE",
       }),
     ).toHaveLength(0);
@@ -192,7 +197,7 @@ describe("DataAppGroupList", () => {
     );
 
     expect(
-      fetchMock.callHistory.calls("path:/api/ee/apps/sales/groups/3", {
+      fetchMock.callHistory.calls("path:/api/ee/apps/7/groups/3", {
         method: "DELETE",
       }),
     ).toHaveLength(1);

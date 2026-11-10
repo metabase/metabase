@@ -3,6 +3,7 @@ import type {
   DataApp,
   DataAppGroup,
   DataAppGroupPermissionWarning,
+  DataAppId,
   DataAppRepoStatus,
   RemoveDataAppGroupRequest,
   SetDataAppEnabledRequest,
@@ -24,15 +25,15 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (apps = []) => [
         listTag("data-app"),
-        ...apps.map((app) => idTag("data-app", app.name)),
+        ...apps.map((app) => idTag("data-app", app.id)),
       ],
     }),
-    getDataApp: builder.query<DataApp, string>({
-      query: (name) => ({
+    getDataAppBySlug: builder.query<DataApp, string>({
+      query: (slug) => ({
         method: "GET",
-        url: `/api/ee/apps/${encodeURIComponent(name)}`,
+        url: `/api/ee/apps/slug/${encodeURIComponent(slug)}`,
       }),
-      providesTags: (_, __, name) => [idTag("data-app", name)],
+      providesTags: (app) => (app ? [idTag("data-app", app.id)] : []),
     }),
     getDataAppRepoStatus: builder.query<DataAppRepoStatus, void>({
       query: () => ({
@@ -43,29 +44,29 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
     }),
     getDataAppGroupPermissionWarnings: builder.query<
       DataAppGroupPermissionWarning[],
-      string
+      DataAppId
     >({
-      query: (name) => ({
+      query: (id) => ({
         method: "GET",
-        url: `/api/ee/apps/${encodeURIComponent(name)}/group-permission-warnings`,
+        url: `/api/ee/apps/${id}/group-permission-warnings`,
       }),
-      providesTags: (_, __, name) => [idTag("data-app", name)],
+      providesTags: (_, __, id) => [idTag("data-app", id)],
     }),
-    getDataAppGroups: builder.query<DataAppGroup[], string>({
-      query: (name) => ({
+    getDataAppGroups: builder.query<DataAppGroup[], DataAppId>({
+      query: (id) => ({
         method: "GET",
-        url: `/api/ee/apps/${encodeURIComponent(name)}/groups`,
+        url: `/api/ee/apps/${id}/groups`,
       }),
-      providesTags: (_, __, name) => [idTag("data-app", name)],
+      providesTags: (_, __, id) => [idTag("data-app", id)],
     }),
     addDataAppGroups: builder.mutation<DataAppGroup[], AddDataAppGroupsRequest>(
       {
-        query: ({ name, group_ids }) => ({
+        query: ({ id, group_ids }) => ({
           method: "POST",
-          url: `/api/ee/apps/${encodeURIComponent(name)}/groups`,
+          url: `/api/ee/apps/${id}/groups`,
           body: { group_ids },
         }),
-        async onQueryStarted({ name }, { dispatch, queryFulfilled }) {
+        async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
           try {
             const { data: groups } = await queryFulfilled;
 
@@ -74,7 +75,7 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
             dispatch(
               dataAppApi.util.updateQueryData(
                 "getDataAppGroups",
-                name,
+                id,
                 () => groups,
               ),
             );
@@ -82,51 +83,49 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
             return;
           }
         },
-        invalidatesTags: (_, error, { name }) =>
-          invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+        invalidatesTags: (_, error, { id }) =>
+          invalidateTags(error, [listTag("data-app"), idTag("data-app", id)]),
       },
     ),
     removeDataAppGroup: builder.mutation<void, RemoveDataAppGroupRequest>({
-      query: ({ name, group_id }) => ({
+      query: ({ id, group_id }) => ({
         method: "DELETE",
-        url: `/api/ee/apps/${encodeURIComponent(name)}/groups/${group_id}`,
+        url: `/api/ee/apps/${id}/groups/${group_id}`,
       }),
 
-      async onQueryStarted({ name, group_id }, { dispatch, queryFulfilled }) {
+      async onQueryStarted({ id, group_id }, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
 
           // pending group-permission-warnings request delays tag invalidation; after a
           // successful removal, filter the group from the cache so it disappears immediately.
           dispatch(
-            dataAppApi.util.updateQueryData(
-              "getDataAppGroups",
-              name,
-              (groups) => groups.filter((group) => group.id !== group_id),
+            dataAppApi.util.updateQueryData("getDataAppGroups", id, (groups) =>
+              groups.filter((group) => group.id !== group_id),
             ),
           );
         } catch {
           return;
         }
       },
-      invalidatesTags: (_, error, { name }) =>
-        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("data-app"), idTag("data-app", id)]),
     }),
     setDataAppEnabled: builder.mutation<DataApp, SetDataAppEnabledRequest>({
-      query: ({ name, enabled }) => ({
+      query: ({ id, enabled }) => ({
         method: "PUT",
-        url: `/api/ee/apps/${encodeURIComponent(name)}`,
+        url: `/api/ee/apps/${id}`,
         body: { enabled },
       }),
-      invalidatesTags: (_, error, { name }) =>
-        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("data-app"), idTag("data-app", id)]),
     }),
   }),
 });
 
 export const {
   useListDataAppsQuery,
-  useGetDataAppQuery,
+  useGetDataAppBySlugQuery,
   useGetDataAppRepoStatusQuery,
   useGetDataAppGroupsQuery,
   useGetDataAppGroupPermissionWarningsQuery,

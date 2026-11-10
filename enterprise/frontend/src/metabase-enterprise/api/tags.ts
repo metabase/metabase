@@ -213,8 +213,7 @@ function provideActionDependencyNodeTags(
 function provideDataAppDependencyNodeTags(
   node: DataAppDependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
-  // the data app endpoints tag apps by their slug, not their id
-  return [idTag("data-app", node.data.name)];
+  return [idTag("data-app", node.id)];
 }
 
 export function provideDependencyNodeTags(

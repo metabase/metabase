@@ -29,7 +29,7 @@ export function AddDataAppGroupsModal({
   onClose,
 }: AddDataAppGroupsModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const { data: assignedGroups = [] } = useGetDataAppGroupsQuery(app.name);
+  const { data: assignedGroups = [] } = useGetDataAppGroupsQuery(app.id);
 
   const isTenantsEnabled = useSetting("use-tenants");
   const hasTenantsFeature = useHasTokenFeature("tenants");
@@ -61,7 +61,7 @@ export function AddDataAppGroupsModal({
 
   const handleAdd = async () => {
     const { error } = await addGroups({
-      name: app.name,
+      id: app.id,
       group_ids: selectedIds.map(Number),
     });
     if (error) {

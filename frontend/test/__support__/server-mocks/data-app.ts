@@ -4,6 +4,7 @@ import type {
   DataApp,
   DataAppGroup,
   DataAppGroupPermissionWarning,
+  DataAppId,
   DataAppRepoStatus,
   GroupId,
 } from "metabase-types/api";
@@ -18,7 +19,7 @@ export function setupListDataAppsEndpoint(
 }
 
 export function setupDataAppEndpoint(app: DataApp) {
-  fetchMock.get(`path:/api/ee/apps/${app.name}`, app);
+  fetchMock.get(`path:/api/ee/apps/slug/${app.name}`, app);
 }
 
 export function setupDataAppRepoStatusEndpoint(status: DataAppRepoStatus) {
@@ -30,36 +31,33 @@ export function setupDataAppRepoStatusEndpointWithError(error: string) {
 }
 
 export function setupUpdateDataAppEndpoint(app: DataApp) {
-  fetchMock.put(`path:/api/ee/apps/${app.name}`, app);
+  fetchMock.put(`path:/api/ee/apps/${app.id}`, app);
 }
 
 export function setupDataAppGroupsEndpoint(
-  name: string,
+  id: DataAppId,
   groups: DataAppGroup[],
 ) {
-  fetchMock.get(`path:/api/ee/apps/${name}/groups`, groups);
+  fetchMock.get(`path:/api/ee/apps/${id}/groups`, groups);
 }
 
 export function setupDataAppGroupPermissionWarningsEndpoint(
-  name: string,
+  id: DataAppId,
   warnings: DataAppGroupPermissionWarning[],
 ) {
-  fetchMock.get(
-    `path:/api/ee/apps/${name}/group-permission-warnings`,
-    warnings,
-  );
+  fetchMock.get(`path:/api/ee/apps/${id}/group-permission-warnings`, warnings);
 }
 
 export function setupAddDataAppGroupsEndpoint(
-  name: string,
+  id: DataAppId,
   groups: DataAppGroup[],
 ) {
-  fetchMock.post(`path:/api/ee/apps/${name}/groups`, groups);
+  fetchMock.post(`path:/api/ee/apps/${id}/groups`, groups);
 }
 
 export function setupRemoveDataAppGroupEndpoint(
-  name: string,
+  id: DataAppId,
   groupId: GroupId,
 ) {
-  fetchMock.delete(`path:/api/ee/apps/${name}/groups/${groupId}`, 204);
+  fetchMock.delete(`path:/api/ee/apps/${id}/groups/${groupId}`, 204);
 }

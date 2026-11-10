@@ -108,5 +108,5 @@
 
 (deftest data-apps-still-require-authentication-test
   (mt/with-premium-features #{:data-apps}
-    (doseq [route ["ee/apps" "ee/apps/demo" "ee/apps/demo/bundle"]]
+    (doseq [route ["ee/apps" "ee/apps/1" "ee/apps/1/bundle" "ee/apps/slug/demo"]]
       (client/client-full-response :get 401 route))))

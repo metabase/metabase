@@ -2,7 +2,7 @@ import { act } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
-import { useGetDataAppQuery } from "metabase-enterprise/api";
+import { useGetDataAppBySlugQuery } from "metabase-enterprise/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import {
@@ -15,10 +15,10 @@ import { DataAppView } from "./DataAppView";
 
 jest.mock("metabase-enterprise/api", () => ({
   ...jest.requireActual("metabase-enterprise/api"),
-  useGetDataAppQuery: jest.fn(),
+  useGetDataAppBySlugQuery: jest.fn(),
 }));
 
-const mockedGetApp = jest.mocked(useGetDataAppQuery);
+const mockedGetApp = jest.mocked(useGetDataAppBySlugQuery);
 
 type SetupOpts = {
   name?: string;
@@ -41,7 +41,7 @@ function setup({
     data,
     isLoading,
     error,
-  } as unknown as ReturnType<typeof useGetDataAppQuery>);
+  } as unknown as ReturnType<typeof useGetDataAppBySlugQuery>);
 
   renderWithProviders(
     <>

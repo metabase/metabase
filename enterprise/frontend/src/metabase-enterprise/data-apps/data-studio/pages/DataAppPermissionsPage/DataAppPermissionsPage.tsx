@@ -2,6 +2,7 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { Button, Center, Flex, Stack } from "metabase/ui";
@@ -23,9 +24,7 @@ export function DataAppPermissionsPage() {
     useDisclosure(false);
   const [selectedGroupId, setSelectedGroupId] = useState<GroupId>();
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const { data: groups } = useGetDataAppGroupsQuery(app?.name ?? "", {
-    skip: app == null,
-  });
+  const { data: groups } = useGetDataAppGroupsQuery(app?.id ?? skipToken);
   const selectedGroup = groups?.find((group) => group.id === selectedGroupId);
 
   if (isLoading || error != null || app == null) {

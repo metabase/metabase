@@ -40,30 +40,29 @@ function setup({ useTenants = false, hasTenantsFeature = false } = {}) {
     name: "Support",
     member_count: 12,
   });
-  setupDataAppGroupsEndpoint("sales", [support]);
-  setupAddDataAppGroupsEndpoint("sales", [
+  const app = createMockDataApp({
+    id: 7,
+    name: "sales",
+    display_name: "Sales",
+  });
+  setupDataAppGroupsEndpoint(app.id, [support]);
+  setupAddDataAppGroupsEndpoint(app.id, [
     support,
     createMockDataAppGroup({ id: 4, name: "Finance", member_count: 4 }),
   ]);
   const onClose = jest.fn<void, []>();
-  renderWithProviders(
-    <AddDataAppGroupsModal
-      app={createMockDataApp({ name: "sales", display_name: "Sales" })}
-      onClose={onClose}
-    />,
-    {
-      storeInitialState: createMockState({
-        settings: mockSettings(
-          createMockSettings({
-            "use-tenants": useTenants,
-            "token-features": createMockTokenFeatures({
-              tenants: hasTenantsFeature,
-            }),
+  renderWithProviders(<AddDataAppGroupsModal app={app} onClose={onClose} />, {
+    storeInitialState: createMockState({
+      settings: mockSettings(
+        createMockSettings({
+          "use-tenants": useTenants,
+          "token-features": createMockTokenFeatures({
+            tenants: hasTenantsFeature,
           }),
-        ),
-      }),
-    },
-  );
+        }),
+      ),
+    }),
+  });
   return { onClose };
 }
 
@@ -88,12 +87,9 @@ describe("AddDataAppGroupsModal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    const calls = fetchMock.callHistory.calls(
-      "path:/api/ee/apps/sales/groups",
-      {
-        method: "POST",
-      },
-    );
+    const calls = fetchMock.callHistory.calls("path:/api/ee/apps/7/groups", {
+      method: "POST",
+    });
     expect(calls).toHaveLength(1);
     expect(JSON.parse(String(calls[0].options.body))).toEqual({
       group_ids: [4],

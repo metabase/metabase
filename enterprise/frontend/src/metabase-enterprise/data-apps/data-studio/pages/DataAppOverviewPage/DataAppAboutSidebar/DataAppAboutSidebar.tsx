@@ -26,7 +26,7 @@ type DataAppAboutSidebarProps = {
 };
 
 export function DataAppAboutSidebar({ app }: DataAppAboutSidebarProps) {
-  const { data: groups = [] } = useGetDataAppGroupsQuery(app.name);
+  const { data: groups = [] } = useGetDataAppGroupsQuery(app.id);
   const appUrl = Urls.dataApp(app.name);
 
   return (

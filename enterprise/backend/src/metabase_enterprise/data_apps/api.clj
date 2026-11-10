@@ -29,9 +29,6 @@
 
 ;;; ------------------------------------------------ Constants ------------------------------------------------
 
-;; Slug must not collide with the literal `repo-status`/`generate` sub-routes.
-(def ^:private slug-regex #"(?!repo-status$|generate$)[^/]+")
-
 (def ^:private bundle-response-headers
   ;; `no-cache` so the browser may cache but must revalidate via
   ;; the content-hash ETag — we answer If-None-Match with 304 below.
@@ -167,6 +164,11 @@
                     {:status-code 409, :error-code "data-app-outdated"})))
   app)
 
+(defn- readable-data-app-response
+  "The response for `app`, read-checked, refusing an outdated app to non-superusers."
+  [app]
+  (data-app-response (cond-> (api/read-check app) (not api/*is-superuser?*) check-not-outdated)))
+
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
   "List the data apps the user can read. Disabled and outdated apps are listed only to superusers, who see them
   badged."
@@ -175,18 +177,16 @@
        (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
-;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
-;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status` and `generate` routes.
-(api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
+(api.macros/defendpoint :put "/:id" :- DataAppResponse
   "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an
   app changes only through a repository import."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [enabled]} :- UpdateDataAppRequest]
   (api/check-superuser)
-  (let [app (api/check-404 (data-apps.db/data-app-by-slug slug))]
-    (data-apps.db/update-data-app! (:id app) {:enabled enabled})
-    (data-app-response (data-apps.db/data-app (:id app)))))
+  (api/check-404 (data-apps.db/data-app id))
+  (data-apps.db/update-data-app! id {:enabled enabled})
+  (data-app-response (data-apps.db/data-app id)))
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
   "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and
@@ -229,12 +229,12 @@
       [:database_id ms/PositiveInt]
       [:database_name :string]]]]])
 
-(api.macros/defendpoint :get ["/:slug/group-permission-warnings" :slug slug-regex]
+(api.macros/defendpoint :get "/:id/group-permission-warnings"
   :- [:sequential GroupPermissionWarning]
   "Return missing table access for the groups listed for this app."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app-by-slug slug))))
+  (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app id))))
 
 (def ^:private AssignedGroup
   [:map
@@ -243,48 +243,50 @@
    [:member_count ms/IntGreaterThanOrEqualToZero]
    [:is_tenant_group :boolean]])
 
-(api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
+(api.macros/defendpoint :get "/:id/groups" :- [:sequential AssignedGroup]
   "List the groups other than Administrators that can read a data app's resource collection."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
+  (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app id))))
 
-(api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
+(api.macros/defendpoint :post "/:id/groups" :- [:sequential AssignedGroup]
   "Grant a batch of internal or tenant groups read access to a data app's resource collection atomically."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]
   (api/check-superuser)
-  (data-app.group-access/add-groups! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-ids))
+  (data-app.group-access/add-groups! (api/check-404 (data-apps.db/data-app id)) group-ids))
 
-(api.macros/defendpoint :delete ["/:slug/groups/:group-id" :slug slug-regex] :- :nil
+(api.macros/defendpoint :delete "/:id/groups/:group-id" :- :nil
   "Revoke a group's access to a data app's resource collection."
-  [{:keys [slug group-id]} :- [:map {:closed true} [:slug ms/NonBlankString] [:group-id ms/PositiveInt]]]
+  [{:keys [id group-id]} :- [:map {:closed true} [:id ms/PositiveInt] [:group-id ms/PositiveInt]]]
   (api/check-superuser)
-  (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-id))
+  (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app id)) group-id))
 
-;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
-;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide
-;; what iframe to render, before any data-app realm exists, so the request never carries the
-;; marker. The bundle is fetched from inside that iframe, where it does.
-(api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
-  "Fetch metadata for a single data app by its slug, disabled ones to superusers only."
+(api.macros/defendpoint :get "/:id" :- [:or DataAppResponse PublicDataAppResponse]
+  "Fetch metadata for a single data app, disabled ones to superusers only."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (readable-data-app-response (data-apps.db/data-app id)))
+
+(api.macros/defendpoint :get "/slug/:slug" :- [:or DataAppResponse PublicDataAppResponse]
+  "Fetch metadata for a single data app by its slug, disabled ones to superusers only. A data app's iframe looks up its
+  app's ID here."
+  {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (api/read-check (data-apps.db/data-app-by-slug slug))]
-    (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
+  (readable-data-app-response (data-apps.db/data-app-by-slug slug)))
 
-(api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
-  "Serve the cached JS bundle and its CSP for a single data app by slug, disabled ones to superusers only.
+(api.macros/defendpoint :get "/:id/bundle" :- :any
+  "Serve the cached JS bundle and its CSP for a single data app, disabled ones to superusers only.
    Honors `If-None-Match` against the content-hash ETag with a 304."
   {:scope api-scope/data-app}
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body
    request
    respond
    raise]
   (try
-    (let [row  (check-not-outdated (api/read-check (data-apps.db/data-app-by-slug slug)))
+    (let [row  (check-not-outdated (api/read-check (data-apps.db/data-app id)))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond

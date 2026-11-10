@@ -49,7 +49,7 @@ describe("scenarios > data apps", { tags: ["@external", "@actions"] }, () => {
   });
 
   it("lists an imported app with its questions and actions, and makes it a draft and live again", () => {
-    cy.intercept("PUT", `/api/ee/apps/${APP_SLUG}`).as("updateApp");
+    cy.intercept("PUT", "/api/ee/apps/*").as("updateApp");
 
     cy.visit("/data-studio/apps");
     H.main().findByText(APP_NAME).click();
@@ -117,7 +117,7 @@ describe("scenarios > data apps", { tags: ["@external", "@actions"] }, () => {
 
     cy.log("share the app with a group");
     cy.signInAsAdmin();
-    cy.intercept("POST", `/api/ee/apps/${APP_SLUG}/groups`).as("addGroups");
+    cy.intercept("POST", "/api/ee/apps/*/groups").as("addGroups");
     cy.visit(`/data-studio/apps/${APP_SLUG}/permissions`);
     H.main().findByRole("button", { name: "Add groups" }).click();
     H.modal().findByRole("textbox", { name: "Groups" }).click();

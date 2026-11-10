@@ -94,6 +94,7 @@ describe("DataAppMoreMenu", () => {
   it("makes a live app a draft only after confirmation", async () => {
     setup({
       app: createMockDataApp({
+        id: 7,
         name: "sales",
         display_name: "Sales",
         enabled: true,
@@ -107,15 +108,13 @@ describe("DataAppMoreMenu", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Make Sales a draft?")).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/ee/apps/sales")).toHaveLength(
-      0,
-    );
+    expect(fetchMock.callHistory.calls("path:/api/ee/apps/7")).toHaveLength(0);
 
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Make draft" }),
     );
 
-    const calls = fetchMock.callHistory.calls("path:/api/ee/apps/sales");
+    const calls = fetchMock.callHistory.calls("path:/api/ee/apps/7");
     expect(calls).toHaveLength(1);
     expect(JSON.parse(String(calls[0].options.body))).toEqual({
       enabled: false,

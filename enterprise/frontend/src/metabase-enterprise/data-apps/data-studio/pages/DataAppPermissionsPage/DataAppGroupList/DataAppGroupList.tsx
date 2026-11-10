@@ -37,7 +37,7 @@ export function DataAppGroupList({
     data: groups = [],
     isLoading,
     error,
-  } = useGetDataAppGroupsQuery(app.name);
+  } = useGetDataAppGroupsQuery(app.id);
 
   const columns = useMemo<TreeTableColumnDef<DataAppGroup>[]>(
     () => [

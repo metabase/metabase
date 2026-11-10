@@ -42,7 +42,7 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
       confirmButtonText: enabled ? t`Make live` : t`Make draft`,
       confirmButtonProps: { color: "brand" },
       onConfirm: async () => {
-        const { error } = await setDataAppEnabled({ name: app.name, enabled });
+        const { error } = await setDataAppEnabled({ id: app.id, enabled });
         if (error) {
           sendErrorToast(t`Failed to update ${app.display_name}`);
         } else {

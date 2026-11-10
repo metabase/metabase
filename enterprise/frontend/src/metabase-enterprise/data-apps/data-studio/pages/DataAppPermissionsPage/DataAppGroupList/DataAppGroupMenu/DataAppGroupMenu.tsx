@@ -32,7 +32,7 @@ export function DataAppGroupMenu({ app, group }: DataAppGroupMenuProps) {
       confirmButtonText: t`Remove access`,
       onConfirm: async () => {
         const { error } = await removeGroup({
-          name: app.name,
+          id: app.id,
           group_id: group.id,
         });
         if (error) {
