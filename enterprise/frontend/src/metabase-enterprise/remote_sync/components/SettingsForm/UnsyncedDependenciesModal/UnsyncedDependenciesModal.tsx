@@ -1,10 +1,11 @@
 import { useFormikContext } from "formik";
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { jt, t } from "ttag";
 
 import { Link } from "metabase/router";
 import {
   Anchor,
+  Box,
   Button,
   FocusTrap,
   Group,
@@ -85,13 +86,17 @@ const DependencyGroupItem = ({ group }: DependencyGroupItemProps) => (
       ) : null}
     </Group>
     {group.dependencies.map((dependency) => (
-      <Stack key={`${dependency.model}-${dependency.id}`} gap={0}>
-        <Group gap="sm" wrap="nowrap">
-          <Icon name={getModelIcon(dependency.model)} c="text-secondary" />
-          <Text>
-            <EntityLink entity={dependency} />
-          </Text>
-        </Group>
+      <Stack
+        key={`${dependency.model}-${dependency.id}`}
+        gap={0}
+        align="flex-start"
+      >
+        <EntityLink entity={dependency}>
+          <Group gap="sm" wrap="nowrap">
+            <Icon name={getModelIcon(dependency.model)} />
+            <Box>{dependency.name}</Box>
+          </Group>
+        </EntityLink>
         <Text c="text-secondary" fz="sm">
           {jt`Used by ${dependency.used_by.map((entity, index) => (
             <Fragment key={`${entity.model}-${entity.id}`}>
@@ -116,9 +121,10 @@ const getCollectionLinkTarget = ({
 
 type EntityLinkProps = {
   entity: RemoteSyncEntityLinkTarget;
+  children?: ReactNode;
 };
 
-const EntityLink = ({ entity }: EntityLinkProps) => {
+const EntityLink = ({ entity, children = entity.name }: EntityLinkProps) => {
   const url = getEntityUrl(entity);
 
   return url != null ? (
@@ -130,10 +136,10 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
       fz="inherit"
       fw="inherit"
     >
-      {entity.name}
+      {children}
     </Anchor>
   ) : (
-    entity.name
+    children
   );
 };
 
