@@ -1,6 +1,7 @@
 (ns metabase.remote-sync.core-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -114,8 +115,6 @@
                  :model/QueryAction       _               {:action_id     (:id unsynced-query)
                                                            :database_id   (mt/id)
                                                            :dataset_query (mt/native-query {:query "SELECT 1"})}
-                 :model/PythonLibrary     library         {:path "synced" :source "def synced(): pass"}
-                 :model/DataApp           app             {}
                  :model/Transform         transform       {}]
     (doseq [[model synced-pk unsynced-pk] [[:model/TableUserSettings (:id synced-table) (:id unsynced-table)]
                                            [:model/FieldUserSettings (:id synced-field) (:id unsynced-field)]
@@ -127,19 +126,23 @@
                                            [:model/DashboardTab (:id synced-tab) (:id unsynced-tab)]
                                            [:model/Action (:id synced-action) (:id unsynced-action)]
                                            [:model/ImplicitAction (:id synced-action) (:id unsynced-action)]
-                                           [:model/QueryAction (:id synced-query) (:id unsynced-query)]
-                                           [:model/PythonLibrary (:id library) nil]
-                                           [:model/DataApp (:id app) nil]]]
+                                           [:model/QueryAction (:id synced-query) (:id unsynced-query)]]]
       (testing (str model " syncs the rows of synced content, and not the others")
         (is (synced? model synced-pk))
         (when unsynced-pk
           (is (not (synced? model unsynced-pk))))))
-    (mt/with-temp [:model/TableIndex    index {:transform_id (:id transform) :index_name "idx" :structured {:kind :btree :name "idx" :columns [{:name "id"}]}}
-                   :model/TransformTest test  {:transform_id (:id transform)
-                                               :name         "Test"
-                                               :creator_id   (mt/user->id :crowberto)
-                                               :inputs       []
-                                               :expectations []}]
-      (testing "the indexes and tests of a transform sync with it"
-        (is (synced? :model/TableIndex (:id index)))
-        (is (synced? :model/TransformTest (:id test)))))))
+    (mt/with-temp [:model/TableIndex index {:transform_id (:id transform) :index_name "idx" :structured {:kind :btree :name "idx" :columns [{:name "id"}]}}]
+      (testing "the indexes of a transform sync with it"
+        (is (synced? :model/TableIndex (:id index)))))
+    (when config/ee-available?
+      (mt/with-temp [:model/PythonLibrary library {:path "synced" :source "def synced(): pass"}
+                     :model/DataApp       app     {}
+                     :model/TransformTest test    {:transform_id (:id transform)
+                                                   :name         "Test"
+                                                   :creator_id   (mt/user->id :crowberto)
+                                                   :inputs       []
+                                                   :expectations []}]
+        (testing "Python libraries and data apps are synced, and the tests of a transform sync with it"
+          (is (synced? :model/PythonLibrary (:id library)))
+          (is (synced? :model/DataApp (:id app)))
+          (is (synced? :model/TransformTest (:id test))))))))
