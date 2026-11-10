@@ -183,7 +183,9 @@ const VALUE_RENDERING_COLUMNS: DatasetColumn[] = [
   createOrdersTotalDatasetColumn({ settings: { prefix: PREFIX } }),
   createOrdersDiscountDatasetColumn(),
   createOrdersCreatedAtDatasetColumn(),
-  createOrdersQuantityDatasetColumn({ remapped_to: "Quantity" }),
+  createOrdersQuantityDatasetColumn({
+    remapped_to: "Quantity [internal remap]",
+  }),
   createExpressionColumn("Order image", {
     semantic_type: "type/ImageURL",
     settings: { view_as: "image" },
@@ -199,7 +201,7 @@ const VALUE_RENDERING_COLUMNS: DatasetColumn[] = [
     base_type: "type/Text",
     source: "fields",
     remapped_from: "USER_ID",
-    field_ref: ["field", PEOPLE.NAME, { "source-field": PEOPLE.ID }],
+    field_ref: ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
   }),
   createMockColumn({
     name: "TITLE",
@@ -207,15 +209,14 @@ const VALUE_RENDERING_COLUMNS: DatasetColumn[] = [
     base_type: "type/Text",
     source: "fields",
     remapped_from: "PRODUCT_ID",
-    field_ref: ["field", PRODUCTS.TITLE, { "source-field": PRODUCTS.ID }],
+    field_ref: ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
   }),
   createMockColumn({
-    name: "Quantity",
+    name: "Quantity [internal remap]",
     display_name: "Quantity",
     base_type: "type/Text",
     source: "fields",
     remapped_from: "QUANTITY",
-    field_ref: ["expression", "Quantity"],
   }),
 ];
 
