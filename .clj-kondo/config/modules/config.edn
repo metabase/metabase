@@ -2940,6 +2940,7 @@
            driver
            events
            interestingness
+           lib
            lib.metadata
            lib.schema
            models

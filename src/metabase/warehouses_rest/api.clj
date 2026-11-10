@@ -14,6 +14,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -44,11 +45,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def DBEngineString
-  "Schema for a valid database engine name, e.g. `h2` or `postgres`."
+(def DBEngine
+  "Schema for a valid database engine, e.g. `:h2` or `:postgres`, normalized from its name."
   (mu/with-api-error-message
    [:and
-    ms/NonBlankString
+    ::lib.schema.common/keyword
     [:fn
      {:error/message "Valid database engine"}
      #(u/ignore-exceptions (driver/the-driver %))]]
@@ -635,7 +636,7 @@
     :as   body}
    :- [:map {:closed true}
        [:name              ms/NonBlankString]
-       [:engine            DBEngineString]
+       [:engine            DBEngine]
        [:details           ms/DatabaseDetails]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
@@ -746,7 +747,7 @@
    _query-params
    {{:keys [engine details id]} :details} :- [:map {:closed true}
                                               [:details [:map {:closed true}
-                                                         [:engine  DBEngineString]
+                                                         [:engine  DBEngine]
                                                          [:details ms/DatabaseDetails]
                                                          [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
@@ -839,7 +840,7 @@
     :as   body}
    :- [:map {:closed true}
        [:name               {:optional true} [:maybe ms/NonBlankString]]
-       [:engine             {:optional true} [:maybe DBEngineString]]
+       [:engine             {:optional true} [:maybe DBEngine]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
        [:details            {:optional true} [:maybe ms/DatabaseDetails]]
        [:write_data_details {:optional true} [:maybe ms/DatabaseDetails]]

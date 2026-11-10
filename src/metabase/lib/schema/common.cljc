@@ -22,6 +22,10 @@
   (cond-> x
     (string? x) keyword))
 
+(mr/def ::keyword
+  "A keyword, normalized from its name."
+  [:keyword {:decode/normalize normalize-keyword}])
+
 (defn normalize-keyword-lower
   "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
   string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that

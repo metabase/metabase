@@ -65,7 +65,7 @@
    [:name                        {:optional true} [:maybe :string]]
    [:description                 {:optional true} [:maybe :string]]
    [:details                     {:optional true} [:maybe ::database.details]]
-   [:engine                      {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
+   [:engine                      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:is_sample                   {:optional true} [:maybe :boolean]]
    [:is_full_sync                {:optional true} [:maybe :boolean]]
    [:points_of_interest          {:optional true} [:maybe :string]]

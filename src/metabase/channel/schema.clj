@@ -90,7 +90,7 @@
    [:id          ms/PositiveInt]
    [:name        :string]
    [:description {:optional true} [:maybe :string]]
-   [:type        [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
+   [:type        ::lib.schema.common/keyword]
    [:active      {:optional true} :boolean]
    [:created_at  ms/TemporalInstant]
    [:updated_at  ms/TemporalInstant]])
@@ -106,7 +106,7 @@
   [:map {:closed true}
    [:name        {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:type        {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
+   [:type        {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:details     {:optional true} [:maybe ::channel.details]]
    [:active      {:optional true} [:maybe :boolean]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]

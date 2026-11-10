@@ -208,14 +208,14 @@
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}
    [:action_id ::lib.schema.id/action]
-   [:kind      [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
+   [:kind      ::lib.schema.common/keyword]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::implicit-action.update
   "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
-   [:kind      {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
+   [:kind      {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::query-action.dataset-query

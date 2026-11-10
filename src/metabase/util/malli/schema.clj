@@ -210,22 +210,6 @@
    [:fn {:json-schema {:type "string"}} #(isa? (keyword %) :type/*)]
    (deferred-tru "value must be a valid field data type (keyword or string).")))
 
-(def FieldSemanticOrRelationTypeKeywordOrString
-  "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
-  (mu/with-api-error-message
-   [:fn {:json-schema {:type "string"}}
-    (fn [k]
-      (let [k (keyword k)]
-        (or (isa? k :Semantic/*)
-            (isa? k :Relation/*))))]
-   (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
-
-(def CoercionStrategyKeywordOrString
-  "Like `CoercionStrategy` but accepts either a keyword or string."
-  (mu/with-api-error-message
-   [:fn {:json-schema {:type "string"}} #(isa? (keyword %) :Coercion/*)]
-   (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
-
 (defn- open-map
   "A map whose keys are deliberately not ours to declare. The marker property is what lets
   [[metabase.api.macros.defendpoint.closed-schemas]] accept it; nothing outside this namespace should set it."

@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.parameters.field :as parameters.field]
@@ -37,11 +38,11 @@
 
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
-  (into [:enum] (map name field/visibility-types)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] field/visibility-types))
 
 (def ^:private FieldDataSensitivity
   "Schema for a valid `Field` data sensitivity classification."
-  (into [:enum] (map name field/data-sensitivity-types)))
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] field/data-sensitivity-types))
 
 (def ^:private max-field-ids-for-table-id-lookup
   1000)
@@ -160,8 +161,8 @@
                   [:display_name       {:optional true} ms/NonBlankString]
                   [:fk_target_field_id {:optional true} [:maybe ms/PositiveInt]]
                   [:points_of_interest {:optional true} [:maybe ms/NonBlankString]]
-                  [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
-                  [:coercion_strategy  {:optional true} [:maybe ms/CoercionStrategyKeywordOrString]]
+                  [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+                  [:coercion_strategy  {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
                   [:visibility_type    {:optional true} FieldVisibilityType]
                   [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
                   [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
@@ -251,12 +252,12 @@
    _query-params
    {dimension-type :type, dimension-name :name, human-readable-field-id :human_readable_field_id}
    :- [:map {:closed true}
-       [:type                    [:enum "internal" "external"]]
+       [:type                    [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external]]
        [:name                    ms/NonBlankString]
        [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/write-check :model/Field id)
-  (api/check (or (= dimension-type "internal")
-                 (and (= dimension-type "external")
+  (api/check (or (= dimension-type :internal)
+                 (and (= dimension-type :external)
                       human-readable-field-id))
              [400 "Foreign key based remappings require a human readable field id"])
   (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]

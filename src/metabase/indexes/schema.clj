@@ -126,7 +126,7 @@
    [:transform_id     {:optional true} [:maybe ::lib.schema.id/transform]]
    [:index_name       {:optional true} [:maybe :string]]
    [:structured       {:optional true} [:maybe ::table-index.structured]]
-   [:status           {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
+   [:status           {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:error_message    {:optional true} [:maybe :string]]
    [:created_by       {:optional true} [:maybe :int]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]

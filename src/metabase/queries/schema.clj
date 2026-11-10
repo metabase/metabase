@@ -52,7 +52,7 @@
    [:semantic_type           {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:fk_target_field_id      {:optional true} [:maybe ::lib.schema.id/field]]
    [:settings                {:optional true} [:maybe ms/VisualizationSettings]]
-   [:visibility_type         {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
+   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:lib/source_display_name {:optional true} [:maybe :string]]])
 
 (mr/def ::card
@@ -179,7 +179,7 @@
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
    [:name                                      {:optional true} [:maybe :string]]
    [:description                               {:optional true} [:maybe :string]]
-   [:display                                   {:optional true} [:maybe [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]
+   [:display                                   {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:dataset_query                             {:optional true} [:maybe ::card.dataset-query]]
    [:visualization_settings                    {:optional true} [:maybe ::card.visualization-settings]]
    [:creator_id                                {:optional true} [:maybe ::lib.schema.id/user]]
