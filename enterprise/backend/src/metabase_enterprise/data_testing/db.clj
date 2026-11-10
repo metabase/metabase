@@ -175,7 +175,7 @@
 (mu/defn card-collection-id :- [:maybe ::lib.schema.id/collection]
   "The id of the collection of the Card with `card-id`, or nil when the card is in no collection or doesn't exist."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :collection_id :model/Card :id card-id))
+  (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
 
 (mu/defn card-test :- [:maybe ::data-testing.schema/card-test]
   "The CardTest with `id`, or nil."
