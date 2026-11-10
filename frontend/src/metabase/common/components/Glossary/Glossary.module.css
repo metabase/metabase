@@ -38,13 +38,23 @@
   }
 }
 
-/* Fields use the unstyled variant, so the border is drawn here; an error keeps the theme's red border */
+/* Fields use the unstyled variant, so the border is drawn here: gray on hover, blue on focus, red on an error */
 .input {
   /* Lifts the theme's minimum input height so a one-line field is one line tall */
   min-height: 0;
 
-  &:not([data-error]):is(.bordered, :hover, :focus) {
+  &:is(.bordered, :hover) {
     border-color: var(--mb-color-border-neutral);
+  }
+
+  /* Keep below the gray rule: same specificity, so focus wins by coming later */
+  &:focus {
+    border-color: var(--mb-color-border-highlight);
+  }
+
+  /* Like the shared input, the error color hides while the field has focus */
+  &[data-error]:not(:focus) {
+    border-color: var(--mb-color-feedback-negative-strong);
   }
 }
 

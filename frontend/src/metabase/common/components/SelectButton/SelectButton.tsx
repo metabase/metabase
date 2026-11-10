@@ -77,7 +77,7 @@ const SelectButtonInner = forwardRef(function SelectButton(
       rightSectionPointerEvents="none"
       classNames={{
         wrapper: S.wrapper,
-        section: cx(S.section, classNames.section),
+        section: classNames.section,
         input: cx(S.input, { [S.noValue]: !hasValue }, classNames.input),
       }}
       {...rest}
