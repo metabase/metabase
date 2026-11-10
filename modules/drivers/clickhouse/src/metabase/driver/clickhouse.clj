@@ -742,7 +742,7 @@
         db-name          (:schema workspace)
         canonical-db     (:db (driver.conn/effective-details lib-db))
         {:keys [user password] :as read-user} (:database_details workspace)
-        escaped-password (sql.u/escape-sql password :ansi)]
+        escaped-password (sql.u/escape-sql password :ansi+backslashes)]
     ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
     ;; immediately. Failure recovery is compensation via the idempotent destroy.
     (sql-jdbc.execute/do-with-connection-with-options
@@ -796,7 +796,7 @@
   DROP USER and DROP DATABASE, so KILL QUERY ... SYNC ends those, and waits for them, before the database goes."
   [db-name user]
   [(format "DROP USER IF EXISTS %s" (quote-field user))
-   (format "KILL QUERY WHERE user = '%s' SYNC" (sql.u/escape-sql user :ansi))
+   (format "KILL QUERY WHERE user = '%s' SYNC" (sql.u/escape-sql user :ansi+backslashes))
    ;; DROP DATABASE cascades to all tables within it
    (format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))])
 

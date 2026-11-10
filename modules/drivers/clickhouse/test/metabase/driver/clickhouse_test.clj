@@ -1006,7 +1006,10 @@
     (is (= ["DROP USER IF EXISTS `mb_iso_user`"
             "KILL QUERY WHERE user = 'mb_iso_user' SYNC"
             "DROP DATABASE IF EXISTS `mb_iso_db`"]
-           (#'clickhouse/destroy-workspace-sqls "mb_iso_db" "mb_iso_user")))))
+           (#'clickhouse/destroy-workspace-sqls "mb_iso_db" "mb_iso_user"))))
+  (testing "string literals escape backslashes too: ClickHouse always reads \\ as an escape"
+    (is (= "KILL QUERY WHERE user = 'a\\\\b''c' SYNC"
+           (second (#'clickhouse/destroy-workspace-sqls "db" "a\\b'c"))))))
 
 (defn- workspace-for-test [label]
   (let [workspace {:id (rand-int 100000000) :name label}]
