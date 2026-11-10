@@ -484,8 +484,9 @@
                 (catch clojure.lang.ExceptionInfo e e))]
         (is (some? e))
         (is (= 422 (:status-code (ex-data e))))
+        ;; no `details.schema-filters-patterns` here: #86610 writes each input schema as a literal pattern, which
+        ;; escapes `{` and `}` as `\x{..}`, so the template form does not reach that field
         (is (= #{"database \"DW [[a]]\" field name"
-                 "database \"DW [[a]]\" field details.schema-filters-patterns"
                  "database \"Stub [[b]]\" field name"
                  "workspace field databases.DW [[a]]"
                  "workspace field databases.DW [[a]].input_schemas.1"}
