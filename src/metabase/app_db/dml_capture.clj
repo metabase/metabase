@@ -95,6 +95,8 @@
   Implementations run on the calling thread inside the statement's transaction.
   They may query, since nothing has failed yet at this point, but their failures propagate and abort the caller's
   delete, so keep them narrow.
+  Unlike [[capture-fields]], which runs no SQL, a failure here is not skipped: on PostgreSQL a failed query has
+  already aborted the enclosing transaction, so catching it here could not save the delete.
   An implementation that catches a failed query must run it in its own nested transaction: on PostgreSQL the failure
   otherwise aborts the enclosing transaction, and the caller's delete fails anyway."
   {:arglists '([model rows])}
