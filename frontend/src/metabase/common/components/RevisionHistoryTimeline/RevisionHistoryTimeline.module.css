@@ -40,7 +40,8 @@
   transition: opacity 150ms ease;
 }
 
-.event:hover .revertButton {
+.event:hover .revertButton,
+.revertButton:focus-visible {
   opacity: 1;
   color: var(--mb-color-text-brand-hover);
 }
