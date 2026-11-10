@@ -214,7 +214,12 @@
         (testing "a user who cannot read the app is refused"
           (mt/user-http-request :rasta :get 403 "ee/apps/slug/demo"))
         (testing "a missing app 404s"
-          (mt/user-http-request :crowberto :get 404 "ee/apps/slug/missing"))))))
+          (mt/user-http-request :crowberto :get 404 "ee/apps/slug/missing"))))
+    (testing "a slug that names a sub-route reaches the app with that slug"
+      (doseq [slug ["groups" "group-permission-warnings" "bundle"]]
+        (mt/with-temp [:model/DataApp app (assoc demo-app :name slug)]
+          (is (=? {:id (:id app) :name slug}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/apps/slug/" slug)))))))))
 
 (deftest endpoints-take-slug-in-place-of-id-test
   (mt/test-helpers-set-global-values!

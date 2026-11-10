@@ -31,7 +31,7 @@
 
 (def ^:private app-ref-regex
   "A data app's ID, or, from a client that predates IDs, its slug; never a literal sub-route."
-  #"(?!repo-status$|generate$|slug$)[^/]+")
+  #"(?!(?:repo-status|generate|slug)(?:/|$))[^/]+")
 
 (def ^:private bundle-response-headers
   ;; `no-cache` so the browser may cache but must revalidate via
