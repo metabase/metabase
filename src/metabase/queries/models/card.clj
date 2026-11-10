@@ -342,20 +342,16 @@
     (when (and (seq query) (map? query))
       (merge
        ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
-       {:source_card_id (source-card-id query)}
+       {:source_card_id (source-card-id query)
+        :query_type     (if (query/query-is-native? query) :native :query)}
        (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
-         ;; TODO -- not sure `query_type` is actually used for anything important anyway
-         (let [query-type (if (query/query-is-native? query)
-                            :native
-                            :query)]
-           (merge
-            {:query_type (keyword query-type)}
-            ;; a stale table_id gets cleared when the query no longer has a source table (e.g. it was converted to
-            ;; native SQL), same as :source_card_id above
-            (when (or table-id clear-stale-table-id?)
-              {:table_id table-id})
-            (when database-id
-              {:database_id database-id})))))))))
+         (merge
+          ;; a stale table_id gets cleared when the query no longer has a source table (e.g. it was converted to
+          ;; native SQL), same as :source_card_id above
+          (when (or table-id clear-stale-table-id?)
+            {:table_id table-id})
+          (when database-id
+            {:database_id database-id}))))))))
 
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
@@ -1059,6 +1055,7 @@
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
         (u/assoc-default :entity_id (u/generate-nano-id))
+        (u/assoc-default :type :question)
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields
