@@ -915,6 +915,7 @@
                     :model/Database
                     :model/NativeQuerySnippet
                     :model/Pulse
+                    :model/SecurityAdvisory
                     :model/Segment
                     :model/Table
                     :model/User}}
@@ -2798,6 +2799,7 @@
    :uses #{analytics
            api
            app-db
+           audit-app
            channel
            config
            driver

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.security-center.models.security-advisory
   (:require
    [metabase.analytics.core :as analytics]
+   [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -17,6 +18,10 @@
    :affected_versions mi/transform-json
    ;; EDN because HoneySQL treats keywords as identifiers and strings as values.
    :matching_query    mi/transform-edn})
+
+(defmethod audit-app/model-details :model/SecurityAdvisory
+  [advisory _event-type]
+  (select-keys advisory [:advisory_id :title :severity :match_status]))
 
 (t2/define-before-insert :model/SecurityAdvisory
   [advisory]
