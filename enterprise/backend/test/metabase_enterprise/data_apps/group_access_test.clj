@@ -282,8 +282,8 @@
       (doseq [[path status] [[(str "ee/apps/" (:id other-app) "/groups/" (:id group)) 404]
                              [(str "ee/apps/2147483647/groups/" (:id group)) 404]
                              [(data-apps.tu/app-url app "groups/2147483647") 404]
-                             [(data-apps.tu/app-url app "groups/0") 404]
-                             [(data-apps.tu/app-url app "groups/not-an-id") 404]]]
+                             [(data-apps.tu/app-url app "groups/0") 400]
+                             [(data-apps.tu/app-url app "groups/not-an-id") 400]]]
         (mt/user-http-request :crowberto :delete status path))
       (is (= [(:id group)]
              (mapv :id (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "groups"))))))))

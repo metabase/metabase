@@ -29,6 +29,10 @@
 
 ;;; ------------------------------------------------ Constants ------------------------------------------------
 
+(def ^:private app-ref-regex
+  "A data app's ID, or, from a client that predates IDs, its slug; never a literal sub-route."
+  #"(?!repo-status$|generate$|slug$)[^/]+")
+
 (def ^:private bundle-response-headers
   ;; `no-cache` so the browser may cache but must revalidate via
   ;; the content-hash ETag — we answer If-None-Match with 304 below.
@@ -44,6 +48,28 @@
   (let [url (data-apps.apps/repo-url)]
     {:configured (some? url)
      :url        url}))
+
+(defn- parse-app-id
+  "`x` as a data app ID when it is a positive integer string, else unchanged."
+  [x]
+  (if (and (string? x) (re-matches #"[1-9]\d*" x))
+    (parse-long x)
+    x))
+
+(def ^:private AppRef
+  "A data app's ID, or, as clients that predate IDs send it, its slug."
+  [:or {:decode/api parse-app-id} ms/PositiveInt ms/NonBlankString])
+
+(def ^:private AppRefParams
+  [:map {:closed true}
+   [:id AppRef]])
+
+(defn- app-by-ref
+  "The data app without its bundle whose ID or slug is `ref`, or nil."
+  [ref]
+  (if (int? ref)
+    (data-apps.db/data-app ref)
+    (data-apps.db/data-app-by-slug ref)))
 
 (defn- if-none-match-hashes
   "Parse an `If-None-Match` header into the set of bare hashes it lists, dropping
@@ -177,16 +203,16 @@
        (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
-(api.macros/defendpoint :put "/:id" :- DataAppResponse
+(api.macros/defendpoint :put ["/:id" :id app-ref-regex] :- DataAppResponse
   "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an
   app changes only through a repository import."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- AppRefParams
    _query-params
    {:keys [enabled]} :- UpdateDataAppRequest]
   (api/check-superuser)
-  (api/check-404 (data-apps.db/data-app id))
-  (data-apps.db/update-data-app! id {:enabled enabled})
-  (data-app-response (data-apps.db/data-app id)))
+  (let [app (api/check-404 (app-by-ref id))]
+    (data-apps.db/update-data-app! (:id app) {:enabled enabled})
+    (data-app-response (data-apps.db/data-app (:id app)))))
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
   "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and
@@ -229,12 +255,12 @@
       [:database_id ms/PositiveInt]
       [:database_name :string]]]]])
 
-(api.macros/defendpoint :get "/:id/group-permission-warnings"
+(api.macros/defendpoint :get ["/:id/group-permission-warnings" :id app-ref-regex]
   :- [:sequential GroupPermissionWarning]
   "Return missing table access for the groups listed for this app."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- AppRefParams]
   (api/check-superuser)
-  (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app id))))
+  (data-app.group-access/permission-warnings (api/check-404 (app-by-ref id))))
 
 (def ^:private AssignedGroup
   [:map
@@ -243,30 +269,30 @@
    [:member_count ms/IntGreaterThanOrEqualToZero]
    [:is_tenant_group :boolean]])
 
-(api.macros/defendpoint :get "/:id/groups" :- [:sequential AssignedGroup]
+(api.macros/defendpoint :get ["/:id/groups" :id app-ref-regex] :- [:sequential AssignedGroup]
   "List the groups other than Administrators that can read a data app's resource collection."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- AppRefParams]
   (api/check-superuser)
-  (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app id))))
+  (data-app.group-access/assigned-groups (api/check-404 (app-by-ref id))))
 
-(api.macros/defendpoint :post "/:id/groups" :- [:sequential AssignedGroup]
+(api.macros/defendpoint :post ["/:id/groups" :id app-ref-regex] :- [:sequential AssignedGroup]
   "Grant a batch of internal or tenant groups read access to a data app's resource collection atomically."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- AppRefParams
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]
   (api/check-superuser)
-  (data-app.group-access/add-groups! (api/check-404 (data-apps.db/data-app id)) group-ids))
+  (data-app.group-access/add-groups! (api/check-404 (app-by-ref id)) group-ids))
 
-(api.macros/defendpoint :delete "/:id/groups/:group-id" :- :nil
+(api.macros/defendpoint :delete ["/:id/groups/:group-id" :id app-ref-regex] :- :nil
   "Revoke a group's access to a data app's resource collection."
-  [{:keys [id group-id]} :- [:map {:closed true} [:id ms/PositiveInt] [:group-id ms/PositiveInt]]]
+  [{:keys [id group-id]} :- [:merge AppRefParams [:map {:closed true} [:group-id ms/PositiveInt]]]]
   (api/check-superuser)
-  (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app id)) group-id))
+  (data-app.group-access/remove-group! (api/check-404 (app-by-ref id)) group-id))
 
-(api.macros/defendpoint :get "/:id" :- [:or DataAppResponse PublicDataAppResponse]
+(api.macros/defendpoint :get ["/:id" :id app-ref-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single data app, disabled ones to superusers only."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (readable-data-app-response (data-apps.db/data-app id)))
+  [{:keys [id]} :- AppRefParams]
+  (readable-data-app-response (app-by-ref id)))
 
 (api.macros/defendpoint :get "/slug/:slug" :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single data app by its slug, disabled ones to superusers only. A data app's iframe looks up its
@@ -275,18 +301,18 @@
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (readable-data-app-response (data-apps.db/data-app-by-slug slug)))
 
-(api.macros/defendpoint :get "/:id/bundle" :- :any
+(api.macros/defendpoint :get ["/:id/bundle" :id app-ref-regex] :- :any
   "Serve the cached JS bundle and its CSP for a single data app, disabled ones to superusers only.
    Honors `If-None-Match` against the content-hash ETag with a 304."
   {:scope api-scope/data-app}
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- AppRefParams
    _query-params
    _body
    request
    respond
    raise]
   (try
-    (let [row  (check-not-outdated (api/read-check (data-apps.db/data-app id)))
+    (let [row  (check-not-outdated (api/read-check (app-by-ref id)))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond

@@ -216,6 +216,24 @@
         (testing "a missing app 404s"
           (mt/user-http-request :crowberto :get 404 "ee/apps/slug/missing"))))))
 
+(deftest endpoints-take-slug-in-place-of-id-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/DataApp          app            demo-app
+                     :model/PermissionsGroup {group-id :id} {}]
+        (testing "a client that predates IDs still addresses an app by its slug"
+          (is (=? {:id (:id app)} (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))
+          (is (=? {:id (:id app) :enabled false}
+                  (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false})))
+          (is (str/includes? (str (mt/user-real-request :crowberto :get 200 "ee/apps/demo/bundle")) "DEMOBUNDLE"))
+          (is (=? [{:id group-id}]
+                  (mt/user-http-request :crowberto :post 200 "ee/apps/demo/groups" {:group_ids [group-id]})))
+          (is (=? [{:id group-id}] (mt/user-http-request :crowberto :get 200 "ee/apps/demo/groups")))
+          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/apps/demo/group-permission-warnings")))
+          (mt/user-http-request :crowberto :delete 204 (str "ee/apps/demo/groups/" group-id)))
+        (testing "a missing slug 404s"
+          (mt/user-http-request :crowberto :get 404 "ee/apps/missing"))))))
+
 (deftest repo-status-endpoint-test
   (mt/with-premium-features #{:data-apps}
     (testing "reports no repository when none is connected"

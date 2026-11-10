@@ -9,8 +9,10 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 - The data app endpoints take the app's ID in place of its slug: `GET /api/ee/apps/:id`, `PUT /api/ee/apps/:id`,
   `GET /api/ee/apps/:id/bundle`, `GET /api/ee/apps/:id/groups`, `POST /api/ee/apps/:id/groups`,
-  `DELETE /api/ee/apps/:id/groups/:group-id` and `GET /api/ee/apps/:id/group-permission-warnings`. Look up an app by
-  its slug with the new `GET /api/ee/apps/slug/:slug`, which returns the same response as `GET /api/ee/apps/:id`.
+  `DELETE /api/ee/apps/:id/groups/:group-id` and `GET /api/ee/apps/:id/group-permission-warnings`. They still take a
+  slug in place of the ID, except a slug made only of digits, which they read as an ID; that is deprecated and will be
+  removed in the next version. Look up an app by its slug with the new `GET /api/ee/apps/slug/:slug`, which returns
+  the same response as `GET /api/ee/apps/:id`.
 
 - `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
   `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
