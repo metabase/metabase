@@ -144,13 +144,14 @@
                                                   :details  {}
                                                   :settings {:database-enable-workspaces true}}]
         (mt/with-model-cleanup [:model/Workspace]
-          (is (=? {:status-code 400 :database_id db-id}
+          (is (=? {:message #".*no synced schemas.*"
+                   :data    {:status-code 400 :database_id db-id}}
                   (try
                     (ws/create-workspace! {:name         "No Inputs"
                                            :creator_id   (mt/user->id :crowberto)
                                            :database_ids [db-id]})
                     nil
-                    (catch ExceptionInfo e (ex-data e)))))
+                    (catch ExceptionInfo e {:message (ex-message e) :data (ex-data e)}))))
           (is (not (t2/exists? :model/Workspace :name "No Inputs"))))))
     (testing "a schemaless database (MySQL) is accepted with empty input_schemas"
       (mt/with-temp [:model/Database {db-id :id} {:engine   :mysql

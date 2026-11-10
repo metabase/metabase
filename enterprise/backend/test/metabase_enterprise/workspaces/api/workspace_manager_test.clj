@@ -112,9 +112,10 @@
           (testing "an ineligible database is rejected"
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids [ineligible-id]}))
-          (testing "a database with no synced tables is rejected"
-            (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
-                                  {:name "Nope" :database_ids [tableless-id]}))
+          (testing "a database with no synced schemas is rejected"
+            (is (=? #".*no synced schemas.*"
+                    (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                                          {:name "Nope" :database_ids [tableless-id]}))))
           (testing "at least one database is required"
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
