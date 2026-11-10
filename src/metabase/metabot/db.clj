@@ -1082,7 +1082,7 @@
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
   (t2/select [:model/Table :schema :name]
-             :db_id database-id
+             :db_id [:auto/param database-id]
              :active true
              {:where [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]}))
 
