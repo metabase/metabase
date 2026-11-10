@@ -2,6 +2,7 @@ export * from "./clause";
 export * from "./diagnostics";
 export * from "./errors";
 export * from "./formatter";
+export * from "./function-arguments";
 export * from "./help-text";
 export * from "./mode";
 export * from "./position";

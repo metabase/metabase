@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import {
   expressionTemplates,
+  functionArgumentPlaceholders,
   suggestions,
 } from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
@@ -58,6 +59,7 @@ export function useExtensions(options: Options): Extension[] {
         database,
       }),
       expander(),
+      functionArgumentPlaceholders(),
       expressionTemplates({ activeClassName: S.templateActive }),
       suggestions({
         query,
