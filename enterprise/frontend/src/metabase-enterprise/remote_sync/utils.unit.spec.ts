@@ -6,7 +6,7 @@ import {
 
 import { getEntityUrl, getModelIcon } from "./utils";
 
-describe("card tests", () => {
+describe("getModelIcon and getEntityUrl", () => {
   it("shows a card test with the list icon", () => {
     expect(getModelIcon("cardtest")).toBe("list");
   });
