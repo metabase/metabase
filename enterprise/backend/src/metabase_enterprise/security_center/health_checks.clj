@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase-enterprise.security-center.read-only-connections :as read-only-connections]
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
@@ -319,6 +320,19 @@
    :applicable?       (constantly true)
    :run               supported-version-items})
 
+(def ^:private read-only-connections
+  {:id                :read-only-connections
+   :severity          :high
+   :title             (deferred-tru "Database connections should be read-only")
+   :description       (deferred-tru "A connection user that can write lets a query change or delete your data.")
+   :remediation       (deferred-tru "Give the connection user read-only privileges. If Metabase must write to a database, add a writable connection to it.")
+   :docs-page         "databases/users-roles-privileges"
+   :docs-anchor       "recommended-setup"
+   :requires-restart? false
+   :applicable?       (constantly true)
+   :refresh           read-only-connections/refresh
+   :run               #(read-only-connections/items (stored-result :read-only-connections))})
+
 ;;; The registry
 
 (def ^:private checks
@@ -334,6 +348,7 @@
     :scim-provisioning         scim-provisioning
     :mfa-required              mfa-required
     :all-users-permissions     all-users-permissions
+    :read-only-connections     read-only-connections
     :supported-version         supported-version}))
 
 (defn all-checks

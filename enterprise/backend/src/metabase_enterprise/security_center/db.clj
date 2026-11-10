@@ -96,3 +96,13 @@
                                                :perm_value [:not= :no]))]
     (t2/select [:model/Database :id :name] :id [:in db-ids] {:order-by [:name]})
     []))
+
+(mu/defn databases-with-details :- [:sequential [:map
+                                                 [:id      ms/PositiveInt]
+                                                 [:name    :string]
+                                                 [:engine  :keyword]
+                                                 [:details :map]]]
+  "The id, name, engine and connection details, in name order, of every database that Admin → Databases shows: every
+  database except the audit database, routing destinations included."
+  []
+  (t2/select [:model/Database :id :name :engine :details] :is_audit false {:order-by [:name]}))
