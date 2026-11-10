@@ -163,8 +163,8 @@
   `(mt/when-ee-evailable
     (mt/with-premium-features #{:data-apps}
       (with-isolated-origin
-        (mt/with-temp [:model/DataApp _# {:name         "sales"
-                                          :display_name "Sales"
+        (mt/with-temp [:model/DataApp _# {:slug         "sales"
+                                          :name         "Sales"
                                           :bundle_path  "dist/index.js"
                                           :enabled      true}]
           (with-redefs [index/data-app-shell (fn [_req# respond# _raise#] (respond# {:status 200 :body "DATA-APP"}))]
@@ -253,13 +253,13 @@
   (testing "an anonymous request on the isolated origin learns no app's allowed_hosts, and can't tell an app from a
             missing one: every slug gets the same CSP"
     (with-isolated-origin-data-app
-      (mt/with-temp [:model/DataApp _ {:name          "billing"
-                                       :display_name  "Billing"
+      (mt/with-temp [:model/DataApp _ {:slug          "billing"
+                                       :name          "Billing"
                                        :bundle_path   "dist/index.js"
                                        :enabled       true
                                        :allowed_hosts ["https://billing-api.corp.example.org"]}
-                     :model/DataApp _ {:name          "internal-tools"
-                                       :display_name  "Internal tools"
+                     :model/DataApp _ {:slug          "internal-tools"
+                                       :name          "Internal tools"
                                        :bundle_path   "dist/index.js"
                                        :enabled       false
                                        :allowed_hosts ["https://tools-api.corp.example.org"]}]

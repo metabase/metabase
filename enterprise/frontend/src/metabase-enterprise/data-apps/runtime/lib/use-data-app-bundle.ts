@@ -26,7 +26,7 @@ export interface LoadedApp {
  * CSP is installed before the sandbox is created.
  */
 export const useDataAppBundle = (
-  name: string,
+  slug: string,
   {
     embedded = false,
     installContentSecurityPolicy = embedded,
@@ -49,7 +49,7 @@ export const useDataAppBundle = (
 
     const load = async () => {
       const { code, allowedHosts, contentSecurityPolicy } =
-        await fetchDataAppBundleCode(name, { embedded });
+        await fetchDataAppBundleCode(slug, { embedded });
 
       if (cancelled) {
         return;
@@ -63,7 +63,7 @@ export const useDataAppBundle = (
 
       const { component, providerProps } = await instantiateDataAppBundle(
         code,
-        name,
+        slug,
         window,
         allowedHosts,
       );
@@ -97,7 +97,7 @@ export const useDataAppBundle = (
     return () => {
       cancelled = true;
     };
-  }, [name, embedded, installContentSecurityPolicy]);
+  }, [slug, embedded, installContentSecurityPolicy]);
 
   useEffect(() => {
     // The bundle runs in a Near-Membrane sandbox that can throw errors which

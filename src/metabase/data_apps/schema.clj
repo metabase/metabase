@@ -50,8 +50,8 @@
    [:re #"^[a-z0-9]+(?:-[a-z0-9]+)*(?![\s\S])"]
    [:fn {:error/message "must not be a reserved slug"} (complement reserved-slugs)]])
 
-(mr/def ::display-name
-  "A data app's display name."
+(mr/def ::name
+  "A data app's name, which people see."
   [:string (merge {:min 1} (decoders trim))])
 
 (mr/def ::description
@@ -115,8 +115,8 @@
   model computes, all optional."
   [:map {:closed true}
    [:entity_id       {:optional true} [:maybe :string]]
-   [:name            {:optional true} ::slug]
-   [:display_name    {:optional true} ::display-name]
+   [:slug            {:optional true} ::slug]
+   [:name            {:optional true} ::name]
    [:allowed_hosts   {:optional true} ::allowed-hosts]
    [:bundle_path     {:optional true} ::bundle-path]
    [:bundle          {:optional true} [:maybe ::bundle]]
@@ -128,13 +128,13 @@
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::data-app.insert
-  "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, display name, and bundle path required."
+  "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, name, and bundle path required."
   [:merge
    ::data-app.update
    [:map
-    [:name         ::slug]
-    [:display_name ::display-name]
-    [:bundle_path  ::bundle-path]]])
+    [:slug        ::slug]
+    [:name        ::name]
+    [:bundle_path ::bundle-path]]])
 
 (mr/def ::query-stage-spec
   "A stage of a Lib test query spec with only what a data app's question may hold, as the card hooks check it: a table
@@ -157,15 +157,13 @@
             [:id ::lib.schema.id/table]]]])
 
 (mr/def ::external-data-app
-  "A DataApp as serialization writes it, with portable references in place of ids, its slug, display name, and bundle
-  path under the keys of its manifest, and its bundle as a resource file."
+  "A DataApp as serialization writes it, with portable references in place of ids, its bundle path under the key of its
+  manifest, and its bundle as a resource file."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::data-app [:entity_id :description :version :allowed_hosts]]
+    [:select-keys ::data-app [:entity_id :slug :name :description :version :allowed_hosts]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:collection       {:optional true} [:maybe ::lib.schema.id/collection]]
-     [:slug             {:optional true} ::slug]
-     [:name             {:optional true} ::display-name]
      [:path             {:optional true} ::bundle-path]
      [:serdes/resources {:optional true} [:map-of :string :string]]]]])

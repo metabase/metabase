@@ -22,8 +22,8 @@ export const EmbedDataAppPicker = ({
       return;
     }
 
-    const fallbackPath = apps[0]?.name ?? "";
-    const hasSelectedApp = apps.some((app) => app.name === value);
+    const fallbackPath = apps[0]?.slug ?? "";
+    const hasSelectedApp = apps.some((app) => app.slug === value);
 
     if (!hasSelectedApp && value !== fallbackPath) {
       onChange(fallbackPath);
@@ -41,8 +41,8 @@ export const EmbedDataAppPicker = ({
           searchable
           disabled={isLoading}
           data={apps.map((app) => ({
-            value: app.name,
-            label: app.display_name,
+            value: app.slug,
+            label: app.name,
           }))}
           value={value}
           onChange={(path) => {
