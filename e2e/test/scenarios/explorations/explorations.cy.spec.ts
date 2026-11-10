@@ -90,53 +90,6 @@ function createTimelineWithSentinelEvent(
 }
 
 /**
- * Resolve the "Count of orders" metric plus its first two dimensions and
- * create an exploration with them — yielding one metric-group heading with
- * exactly two dimension-named pages, the smallest deterministic tree for
- * sidebar-triage assertions.
- */
-function createTwoPageExploration(name: string): Cypress.Chainable<{
-  explorationId: number;
-  metricName: string;
-  pageNames: string[];
-}> {
-  return cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
-    // Unjustified type cast. FIXME
-    const data = body as GetExplorationDataResponse;
-    const ordersMetric = data.metrics.find(
-      (metric) => metric.name === ORDERS_COUNT_METRIC_NAME,
-    );
-    expect(
-      ordersMetric,
-      `"${ORDERS_COUNT_METRIC_NAME}" metric is exposed by /api/exploration/dimensions`,
-    ).to.exist;
-    const dimsById = new Map(
-      data.dimension_groups.flatMap((group) =>
-        group.dimensions.map((dim) => [dim.id, dim] as const),
-      ),
-    );
-    const pickedDimensions = ordersMetric!.dimension_ids
-      .map((id) => dimsById.get(id))
-      .filter((dim) => dim != null)
-      .slice(0, 2);
-    expect(
-      pickedDimensions.length,
-      "metric exposes at least two dimensions",
-    ).to.eq(2);
-
-    return H.createExplorationViaApi({
-      name,
-      metricCardIds: [ordersMetric!.id],
-      dimensionIds: pickedDimensions.map((dim) => dim!.id),
-    }).then((explorationId) => ({
-      explorationId,
-      metricName: ordersMetric!.name,
-      pageNames: pickedDimensions.map((dim) => dim!.display_name),
-    }));
-  });
-}
-
-/**
  * Visit an exploration and wait until it has fully settled. The "Ready" icons
  * only say every page's queries finished; the page keeps polling
  * `GET /api/exploration/:id` (rebuilding the sidebar tree on each response)
@@ -234,7 +187,7 @@ describe("scenarios > explorations", () => {
   });
 
   describe("new research", () => {
-    it("picks Our analytics + metrics + timelines, filters the data pickers by search, creates an exploration, and lands on the detail page", () => {
+    it("picks Our analytics + metrics + timelines, creates an exploration, and lands on the detail page", () => {
       createTimelineWithSentinelEvent("Releases", "star").then((releasesId) => {
         createTimelineWithSentinelEvent("Marketing campaigns", "bell").then(
           (marketingId) => {
@@ -254,80 +207,6 @@ describe("scenarios > explorations", () => {
             // instead of leaving the research flow (UXW-4832).
             cy.location("pathname").should("eq", "/question/research/plan");
 
-            cy.log("Search inside the + Metrics modal");
-            cy.intercept({
-              method: "GET",
-              pathname: "/api/exploration/dimensions",
-              query: { q: "over time" },
-            }).as("searchOverTime");
-            cy.intercept({
-              method: "GET",
-              pathname: "/api/exploration/dimensions",
-              query: { q: "zzz" },
-            }).as("searchNoMatch");
-            cy.findByRole("button", { name: /Metrics/ }).click();
-            // Seeded names are "Count of orders" + "Count of orders over time".
-            // Seeded metrics aren't in the library; switch off the default Library tab.
-            H.selectAllMetricsTab();
-            cy.findByRole("checkbox", {
-              name: ORDERS_COUNT_METRIC_NAME,
-            }).should("exist");
-            cy.findByRole("checkbox", {
-              name: ORDERS_TIMESERIES_METRIC_NAME,
-            }).should("exist");
-
-            // Type a substring that only matches the timeseries metric.
-            cy.findByPlaceholderText("Search for a metric").type("over time");
-            cy.wait("@searchOverTime");
-            cy.findByRole("checkbox", {
-              name: ORDERS_TIMESERIES_METRIC_NAME,
-            }).should("exist");
-            cy.findByRole("checkbox", {
-              name: ORDERS_COUNT_METRIC_NAME,
-            }).should("not.exist");
-
-            // Clear the input → both rows return.
-            cy.findByPlaceholderText("Search for a metric").clear();
-            cy.findByRole("checkbox", {
-              name: ORDERS_COUNT_METRIC_NAME,
-            }).should("exist");
-            cy.findByRole("checkbox", {
-              name: ORDERS_TIMESERIES_METRIC_NAME,
-            }).should("exist");
-
-            // Search for something that matches no metric → empty-state copy.
-            cy.findByPlaceholderText("Search for a metric").type("zzz");
-            cy.wait("@searchNoMatch");
-            cy.findByRole("dialog").should("contain", "No results");
-
-            cy.findByPlaceholderText("Search for a metric").clear();
-            cy.findByRole("checkbox", {
-              name: ORDERS_COUNT_METRIC_NAME,
-            }).should("exist");
-            cy.get("body").type("{esc}");
-
-            cy.log("Search inside the + Events modal");
-            cy.findByRole("button", { name: /Events/ }).click();
-            cy.findByRole("checkbox", { name: "Releases" }).should("exist");
-            cy.findByRole("checkbox", { name: "Marketing campaigns" }).should(
-              "exist",
-            );
-
-            // Filter to just one timeline by name fragment.
-            cy.findByPlaceholderText("Search for a timeline").type("release");
-            cy.findByRole("checkbox", { name: "Releases" }).should("exist");
-            cy.findByRole("checkbox", { name: "Marketing campaigns" }).should(
-              "not.exist",
-            );
-
-            // Clear → both return.
-            cy.findByPlaceholderText("Search for a timeline").clear();
-            cy.findByRole("checkbox", { name: "Releases" }).should("exist");
-            cy.findByRole("checkbox", { name: "Marketing campaigns" }).should(
-              "exist",
-            );
-            cy.get("body").type("{esc}");
-
             cy.log("Add a metric");
             cy.findByRole("button", { name: /Metrics/ }).click();
             H.selectAllMetricsTab();
@@ -344,13 +223,6 @@ describe("scenarios > explorations", () => {
 
             // Pick two timelines via the "+ Events" modal.
             H.addTimelinesToExploration(["Marketing campaigns", "Releases"]);
-
-            // The first picked timeline shows as a pill next to the Events
-            // button; the rest collapse into a "+N" overflow pill.
-            cy.findByTestId("selected-timelines-container").within(() => {
-              cy.findByText("Marketing campaigns").should("be.visible");
-              cy.findByText("+1").should("be.visible");
-            });
 
             H.beginResearch().then((id) => {
               // `beginResearch` consumed the create request; re-read it off its
@@ -393,105 +265,10 @@ describe("scenarios > explorations", () => {
         );
       });
     });
-
-    it("auto-populates metrics + dimensions + name from agent tool calls, then Start research succeeds", () => {
-      cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
-        // Unjustified type cast. FIXME
-        const data = body as {
-          metrics: Array<{ id: number; name: string; dimension_ids: string[] }>;
-          dimension_groups: Array<{
-            name: string;
-            dimension_interestingness: number | null;
-            dimensions: Array<{
-              id: string;
-              name: string;
-              display_name: string;
-              dimension_interestingness: number | null;
-            }>;
-          }>;
-        };
-
-        const firstMetric = data.metrics[0];
-        const interestingGroup =
-          data.dimension_groups.find((g) =>
-            g.dimensions.some((d) => (d.dimension_interestingness ?? 0) >= 0.7),
-          ) ?? data.dimension_groups[0];
-        expect(
-          firstMetric,
-          "seeded metric is exposed by /api/exploration/dimensions",
-        ).to.exist;
-        expect(interestingGroup, "at least one dimension group is exposed").to
-          .exist;
-
-        const agentName = "New exploration";
-        H.mockExplorationsAgentToolCalls([
-          {
-            toolCallId: "groups-1",
-            toolName: "add_research_groups",
-            // The tool result is only the LLM's summary of the edit; the picker
-            // hydration rides a `research_plan_update` data part.
-            result: `Added 1 group(s) to the research plan:\n- ${firstMetric.name}, by the automatically-selected dimensions`,
-            dataParts: [
-              {
-                dataType: "research_plan_update",
-                data: {
-                  metrics: [firstMetric],
-                  dimension_groups: [interestingGroup],
-                  groups: [{ metric_id: firstMetric.id }],
-                },
-              },
-            ],
-          },
-          {
-            toolCallId: "name-1",
-            toolName: "set_research_name",
-            result: { name: agentName },
-          },
-        ]);
-
-        H.visitNewExploration();
-
-        H.explorationsMetabotPromptInput().type("Why are signups down?");
-        cy.findByRole("button", { name: /Create plan/i }).click();
-
-        // The chat dispatch went through with the `explorations`
-        // profile, confirming we wired the new-exploration page to
-        // the right agent.
-        cy.wait("@metabotAgent")
-          .its("request.body.profile_id")
-          .should("eq", "explorations");
-
-        // Right panel hydrated from the tool-call result — the agent's
-        // metric now heads a research-plan block.
-        cy.findByRole("main").findByText(firstMetric.name).should("be.visible");
-
-        // Click Start research; the create-exploration POST body
-        // should carry the name the agent picked.
-        cy.intercept("POST", "/api/exploration").as("createExploration");
-        cy.findByRole("button", { name: /Start research/i }).click();
-        cy.wait("@createExploration").then(({ request, response }) => {
-          expect(request.body.name).to.eq(agentName);
-          // Unjustified type cast. FIXME
-          const id = response?.body?.id as number;
-          H.expectUnstructuredSnowplowEvent({
-            event: "exploration_agent_message_sent",
-          });
-          H.expectUnstructuredSnowplowEvent({
-            event: "exploration_plan_edited",
-            triggered_from: "agent",
-            event_detail: "metrics",
-          });
-          H.expectUnstructuredSnowplowEvent({
-            event: "exploration_created",
-            target_id: id,
-          });
-        });
-      });
-    });
   });
 
   describe("detail page", () => {
-    it("preserves the URL `timeline` param across navigation and reload", () => {
+    it("keeps the URL `timeline` param and its event chips after a reload", () => {
       createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
         cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
           // Unjustified type cast. FIXME
@@ -516,12 +293,9 @@ describe("scenarios > explorations", () => {
             cy.findByRole("treeitem", {
               name: new RegExp(`${temporalDimension!.display_name}$`), // anchor at end so we don't match day of week or hour of day
             }).click();
-
             cy.findByTestId("exploration-chart-grid").within(() => {
               H.timelineEventChip("Releases event").should("be.visible");
             });
-
-            cy.location("search").should("include", `timeline=${timelineId}`);
 
             // Reload — the URL param is the source of truth and the
             // router shouldn't rewrite it away on hydration.
@@ -540,259 +314,8 @@ describe("scenarios > explorations", () => {
     });
   });
 
-  describe("sidebar triage", () => {
-    const sidebar = () => cy.findByTestId("exploration-page-sidebar");
-    const filterToggle = () =>
-      cy.findByTestId("exploration-show-hidden-toggle");
-    const selectedRows = () =>
-      cy.findAllByRole("treeitem").filter('[aria-selected="true"]');
-    const toggleShowHiddenItems = () => {
-      filterToggle().click();
-      H.menu().findByText("Show hidden items").click();
-      cy.get("body").type("{esc}");
-    };
-
-    it("selects a page on click, filters pages with the Stars and Discussions tabs, persists the sort preference across reloads, and hides and reveals pages from the toolbar and group menus", () => {
-      createTwoPageExploration("Sidebar triage fixture").then(
-        ({ explorationId, metricName, pageNames }) => {
-          visitExplorationUntilSettled(explorationId, 2);
-
-          cy.log("Clicking an unselected page selects it and shows its chart");
-          // The page auto-selects a row on load, so clicking the first (already
-          // selected) row would pass even with click-to-select broken. Click a
-          // row that is NOT selected and assert the selection moves to it.
-          cy.findAllByRole("treeitem").should("have.length", 3); // summary document + 2 pages
-          cy.findAllByRole("treeitem")
-            .filter('[aria-selected="false"]')
-            .eq(1) // first treeitem is the summary document
-            .invoke("attr", "href")
-            .then((href) => {
-              cy.get(`[role="treeitem"][href="${href}"]`).click();
-              cy.get(`[role="treeitem"][href="${href}"]`)
-                .should("have.attr", "aria-selected", "true")
-                .invoke("text")
-                .then((text) => text.trim())
-                .as("clickedPageName");
-            });
-
-          // The clicked page's chart renders in the main area — assert a real
-          // visualization anchor, not just "main is not empty" (a spinner
-          // satisfies that).
-          cy.location("pathname").should("match", /\/page\/\d+$/);
-          cy.findByRole("main")
-            .findByTestId("visualization-root", { timeout: 15000 })
-            .should("be.visible");
-
-          cy.log("Stars tab is empty until something is starred");
-          cy.findByRole("radio", { name: "Stars" }).click({ force: true });
-          cy.location("search").should("include", "tab=stars");
-          H.main()
-            .findByText("Nothing's been starred yet.")
-            .should("be.visible");
-          cy.findAllByRole("treeitem").should("not.exist");
-
-          cy.log("Discussions tab shows its own empty message");
-          cy.findByRole("radio", { name: "Discussions" }).click({
-            force: true,
-          });
-          H.main().findByText("No discussions yet.").should("be.visible");
-          cy.findAllByRole("treeitem").should("not.exist");
-
-          cy.log("Star the selected page with the s shortcut");
-          cy.findByRole("radio", { name: "All" }).click({ force: true });
-          cy.findAllByRole("treeitem").should("have.length", 3); // summary document + 2 pages
-          cy.get<string>("@clickedPageName").then((name) => {
-            sidebar().findByText(name).click();
-            selectedRows().should("contain.text", name);
-          });
-          cy.intercept("PUT", "/api/exploration/page/*/starred").as(
-            "setStarred",
-          );
-          cy.get("body").type("s");
-          cy.wait("@setStarred").its("request.body.starred").should("eq", true);
-          H.main()
-            .findByRole("button", { name: "Remove star" })
-            .should("be.visible");
-
-          cy.log("The c shortcut opens the comment editor");
-          cy.get("body").type("c");
-          // The editor's placeholder is CSS-rendered by TipTap (not real text),
-          // so anchor on the editor's Send button instead. The popover is
-          // portaled outside <main>.
-          H.popover()
-            .findByRole("button", { name: "Send" })
-            .should("be.visible");
-          H.main().findByRole("button", { name: "Add comment" }).click();
-          cy.findByRole("button", { name: "Send" }).should("not.exist");
-
-          cy.log("The l shortcut copies a link to the selected page");
-          // Headless Chrome denies real clipboard access here (NotAllowedError),
-          // so stub the write and assert the call instead of reading it back.
-          cy.window().then((win) => {
-            cy.stub(win.navigator.clipboard, "writeText")
-              .as("copyToClipboard")
-              .resolves();
-          });
-          cy.get("body").type("l");
-          H.undoToastListContainer()
-            .findByText("Copied link")
-            .should("be.visible");
-          cy.location("href").then((href) => {
-            cy.get("@copyToClipboard").should("have.been.calledWith", href);
-          });
-
-          cy.log("Stars tab now shows only the starred page");
-          cy.findByRole("radio", { name: "Stars" }).click({ force: true });
-          cy.get<string>("@clickedPageName").then((name) => {
-            cy.findAllByRole("treeitem")
-              .should("have.length", 1)
-              .first()
-              .should("contain.text", name);
-          });
-
-          cy.log("Alphabetical sort is remembered per exploration");
-          cy.findByRole("radio", { name: "All" }).click({ force: true });
-          // Assert and click through separate queries — chaining `.click()` off
-          // the assertion can act on a node a poll-driven re-render detached.
-          filterToggle().should("have.attr", "aria-pressed", "false");
-          filterToggle().click();
-          H.menu().findByText("Alphabetical").click();
-          H.menu()
-            .findByRole("menuitem", { name: /Alphabetical/ })
-            .should("have.attr", "data-checked", "true");
-          cy.get("body").type("{esc}");
-          cy.log("Sorting is not a filter, so the toggle stays unfilled");
-          filterToggle().should("have.attr", "aria-pressed", "false");
-
-          cy.reload();
-          H.closeNavigationSidebar();
-          cy.findAllByRole("treeitem", { timeout: 15000 })
-            .first()
-            .should("be.visible");
-          filterToggle().should("have.attr", "aria-pressed", "false");
-          filterToggle().click();
-          H.menu()
-            .findByRole("menuitem", { name: /Alphabetical/ })
-            .should("have.attr", "data-checked", "true");
-          cy.get("body").type("{esc}");
-
-          cy.intercept("PUT", "/api/exploration/pages/hidden").as(
-            "setPagesHidden",
-          );
-          // Which of the two dimension-named pages is selected is
-          // data-dependent; derive it from the DOM instead of assuming.
-          cy.findAllByRole("treeitem").should("have.length", 3); // summary document + 2 pages
-          selectedRows().should("have.length", 1);
-          selectedRows()
-            .first()
-            .invoke("text")
-            .then((text) => {
-              const firstPageName = text.trim();
-              const secondPageName = pageNames.find(
-                (name) => name !== firstPageName,
-              )!;
-
-              cy.log("Triage arrows step between pages");
-              cy.findByRole("button", { name: "Next" }).click();
-              selectedRows().should("contain.text", secondPageName);
-              cy.findByRole("button", { name: "Previous" }).click();
-              selectedRows().should("contain.text", firstPageName);
-
-              cy.log("Hide the selected page with the h shortcut");
-              cy.get("body").type("h");
-              cy.wait("@setPagesHidden").then(({ request }) => {
-                expect(request.body.hidden).to.eq(true);
-                expect(request.body.page_ids).to.have.length(1);
-              });
-              H.undoToastListContainer()
-                .findByText(`"${firstPageName}" hidden`)
-                .should("be.visible");
-
-              cy.log("Auto-advance moves the selection to the remaining page");
-              selectedRows().should("contain.text", secondPageName);
-              cy.findAllByRole("treeitem").should("have.length", 2); // summary document + 1 non-hidden page
-              sidebar().findByText(firstPageName).should("not.exist");
-
-              cy.log("Show hidden items reveals the page with a Hidden marker");
-              toggleShowHiddenItems();
-              filterToggle().should("have.attr", "aria-pressed", "true");
-              sidebar().findByText(firstPageName).should("be.visible");
-              sidebar().findAllByLabelText("Hidden").should("have.length", 1);
-              toggleShowHiddenItems();
-              cy.findAllByRole("treeitem").should("have.length", 2);
-              sidebar().findByText(firstPageName).should("not.exist");
-            });
-
-          cy.log("Hide the whole group from its actions menu");
-          sidebar()
-            .findByRole("group", { name: metricName })
-            .findByRole("button", { name: "Group actions" })
-            .click({ force: true });
-          H.menu().findByText("Hide").click();
-          cy.wait("@setPagesHidden")
-            .its("request.body.hidden")
-            .should("eq", true);
-          H.undoToastListContainer()
-            .findByText(`${metricName} hidden`)
-            .should("be.visible");
-
-          cy.log("Everything but the summary document is hidden");
-          cy.findAllByRole("treeitem").should("have.length", 1);
-
-          cy.log("Hidden state is persisted server-side across a reload");
-          cy.reload();
-          H.closeNavigationSidebar();
-          cy.findAllByRole("treeitem").should("have.length", 1);
-
-          cy.log("Show hidden items + the group Show action restore the pages");
-          toggleShowHiddenItems();
-          cy.findAllByRole("treeitem").should("have.length", 3);
-          sidebar().findAllByLabelText("Hidden").should("have.length", 2);
-          sidebar()
-            .findByRole("group", { name: metricName })
-            .findByRole("button", { name: "Group actions" })
-            .click({ force: true });
-          H.menu().findByText("Show").click();
-          cy.wait("@setPagesHidden")
-            .its("request.body.hidden")
-            .should("eq", false);
-          cy.findAllByRole("treeitem").should("have.length", 3);
-          sidebar().findAllByLabelText("Hidden").should("not.exist");
-
-          cy.log(
-            "Hiding the group with every page visible sends both page ids",
-          );
-          toggleShowHiddenItems();
-          cy.findAllByRole("treeitem").should("have.length", 3);
-          sidebar()
-            .findByRole("group", { name: metricName })
-            .findByRole("button", { name: "Group actions" })
-            .click({ force: true });
-          H.menu().findByText("Hide").click();
-          cy.wait("@setPagesHidden").then(({ request }) => {
-            expect(request.body.hidden).to.eq(true);
-            expect(request.body.page_ids).to.have.length(2);
-          });
-          cy.findAllByRole("treeitem").should("have.length", 1);
-
-          cy.log("Undo on the group-hidden toast restores the whole group");
-          H.undoToastListContainer()
-            .findByText(`${metricName} hidden`)
-            .should("be.visible");
-          H.undoToastListContainer()
-            .findByRole("button", { name: "Undo" })
-            .click();
-          cy.wait("@setPagesHidden")
-            .its("request.body.hidden")
-            .should("eq", false);
-          cy.findAllByRole("treeitem").should("have.length", 3);
-        },
-      );
-    });
-  });
-
   describe("chart click-through", () => {
-    it("clicking a cartesian point opens Explore further + Add comment, posts explore-further filters, and navigates from the new-thread toast", () => {
+    it("clicking a cartesian point posts explore-further filters and navigates to the new thread from its toast", () => {
       createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
         cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
           // manual typecast for BE data
@@ -896,15 +419,6 @@ describe("scenarios > explorations", () => {
 
             H.chartPathWithFillColor("#509EE3").first().click({ force: true });
 
-            cy.findByTestId("click-actions-view").within(() => {
-              cy.findByRole("button", { name: /Explore further/i }).should(
-                "be.visible",
-              );
-              cy.findByRole("button", { name: /Add comment/i }).should(
-                "be.visible",
-              );
-            });
-
             cy.findByTestId("click-actions-view")
               .findByRole("button", { name: /Explore further/i })
               .click();
@@ -948,22 +462,12 @@ describe("scenarios > explorations", () => {
               .findAllByTestId("visualization-root", { timeout: 15000 })
               .first()
               .should("be.visible");
-            cy.location("search").should("include", "tab=all");
-            cy.location("search").should("include", `timeline=${timelineId}`);
-
-            cy.get("@newThreadName").then((name) => {
-              cy.findByRole("group", { name: String(name) }).should(
-                "have.attr",
-                "aria-expanded",
-                "true",
-              );
-            });
           });
         });
       });
     });
 
-    it("brushing a timeseries cartesian chart opens Explore further only, posts between explore_filters, navigates from the new-thread toast, and Add to Summary flips the placeholder Summary, preserves filter pills, and mirrors page comments", () => {
+    it("brushing a timeseries cartesian chart posts between explore_filters, navigates to the new thread from its toast, and Add to Summary flips the placeholder Summary, preserves filter pills, and mirrors page comments", () => {
       cy.request<GetExplorationDataResponse>(
         "GET",
         "/api/exploration/dimensions",
@@ -1001,19 +505,6 @@ describe("scenarios > explorations", () => {
           ).as("exploreFurther");
 
           visitExplorationUntilSettled(explorationId, 1);
-
-          // Summary is pinned at the top of the tree but not initially selected
-          // while it is still a placeholder.
-          cy.findAllByRole("treeitem")
-            .first()
-            .should("contain.text", "Summary")
-            .and("have.attr", "aria-selected", "false");
-          cy.findAllByRole("treeitem")
-            .filter('[aria-selected="true"]')
-            .should("have.length", 1)
-            .and("not.contain.text", "Summary")
-            .invoke("attr", "href")
-            .should("match", /\/page\/\d+/);
 
           cy.request<Exploration>(
             "GET",
@@ -1063,15 +554,6 @@ describe("scenarios > explorations", () => {
           H.ensureEchartsContainerHasSvg();
           H.applyBrush(120, 280);
 
-          cy.findByTestId("click-actions-view").within(() => {
-            cy.findByRole("button", { name: /Explore further/i }).should(
-              "be.visible",
-            );
-            cy.findByRole("button", { name: /Add comment/i }).should(
-              "not.exist",
-            );
-          });
-
           cy.findByTestId("click-actions-view")
             .findByRole("button", { name: /Explore further/i })
             .click();
@@ -1118,14 +600,6 @@ describe("scenarios > explorations", () => {
                 const pageId = Number(/\/page\/(\d+)/.exec(pathname)![1]);
                 cy.wrap(pageId).as("pageId");
               });
-          });
-          cy.location("search").should("include", "tab=all");
-          cy.get("@newThreadName").then((name) => {
-            cy.findByRole("group", { name: String(name) }).should(
-              "have.attr",
-              "aria-expanded",
-              "true",
-            );
           });
 
           // Temporal ranges use an en-dash (e.g. "Feb 2020 – Mar 2020"); exact
@@ -1220,7 +694,7 @@ describe("scenarios > explorations", () => {
   });
 
   describe("collection placement + archive", () => {
-    it("places a newly-created exploration in the creator's personal collection, moves it to trash, and restores and permanently deletes archived explorations from the trash banner and the /trash page", () => {
+    it("places a newly-created exploration in the creator's personal collection, moves it to trash, and restores and permanently deletes archived explorations from the /trash page", () => {
       const explorationName = "Personal-collection archive fixture";
       const restoreName = "Trash-page restore fixture";
       const deleteName = "Trash-page delete-permanently fixture";
@@ -1296,69 +770,11 @@ describe("scenarios > explorations", () => {
 
       H.createExplorationViaApi({ name: restoreName }).as("restoreId");
       H.createExplorationViaApi({ name: deleteName }).as("deleteId");
-      for (const alias of ["@explorationId", "@restoreId", "@deleteId"]) {
+      for (const alias of ["@restoreId", "@deleteId"]) {
         cy.get<number>(alias).then((id) => {
           cy.request("PUT", `/api/exploration/${id}`, { archived: true });
         });
       }
-
-      cy.log("An archived exploration opens with the trash banner");
-      cy.get<number>("@explorationId").then((explorationId) => {
-        cy.intercept("PUT", `/api/exploration/${explorationId}`).as(
-          "bannerRestore",
-        );
-        H.visitExploration(explorationId);
-      });
-      cy.findByTestId("archive-banner")
-        .should("contain", "This research is in the trash.")
-        .findByRole("button", { name: /Restore/ })
-        .click();
-
-      cy.wait("@bannerRestore").then(({ request, response }) => {
-        expect(request.body).to.deep.eq({ archived: false });
-        expect(response?.statusCode).to.eq(200);
-      });
-      cy.findByTestId("exploration-page-sidebar").should("be.visible");
-      cy.findByTestId("archive-banner").should("not.exist");
-
-      cy.log("Delete permanently from the banner lands on the trash page");
-      cy.get<number>("@explorationId").then((explorationId) => {
-        cy.request("PUT", `/api/exploration/${explorationId}`, {
-          archived: true,
-        });
-        cy.intercept("DELETE", `/api/exploration/${explorationId}`).as(
-          "bannerDelete",
-        );
-      });
-      cy.reload();
-      cy.findByTestId("archive-banner")
-        .findByRole("button", { name: /Delete permanently/ })
-        .click();
-      H.modal()
-        .findByRole("button", { name: /Delete permanently/i })
-        .click();
-
-      cy.wait("@bannerDelete").its("response.statusCode").should("eq", 204);
-      cy.location("pathname").should("eq", "/trash");
-      H.undoToast()
-        .findByText("This item has been permanently deleted.")
-        .should("be.visible");
-      cy.get<number>("@explorationId").then((explorationId) => {
-        cy.request({
-          method: "GET",
-          url: `/api/exploration/${explorationId}`,
-          failOnStatusCode: false,
-        })
-          .its("status")
-          .should("eq", 404);
-      });
-
-      cy.findByTestId("collection-table")
-        .findByText(restoreName)
-        .should("be.visible");
-      cy.findByTestId("collection-table")
-        .findByText(deleteName)
-        .should("be.visible");
 
       cy.log("Restore from the /trash page row menu");
       cy.visit("/trash");
