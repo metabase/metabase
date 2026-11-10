@@ -3,6 +3,8 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase-enterprise.security-center.health-checks :as health-checks]
+   [metabase-enterprise.security-center.metrics :as metrics]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
@@ -64,9 +66,9 @@
    [:acknowledged_by [:maybe AcknowledgedByUser]]
    [:acknowledged_at [:maybe ms/TemporalInstant]]])
 
-(api.macros/defendpoint :get "/" :- [:map
-                                     [:last_checked_at [:maybe ms/TemporalInstant]]
-                                     [:advisories [:sequential AdvisoryResponse]]]
+(api.macros/defendpoint :get "/advisories" :- [:map
+                                               [:last_checked_at [:maybe ms/TemporalInstant]]
+                                               [:advisories [:sequential AdvisoryResponse]]]
   "List all security advisories with match status."
   []
   (api/check-superuser)
@@ -80,7 +82,7 @@
   (-> (select-keys advisory [:advisory_id :match_status :acknowledged_by_user :acknowledged_at])
       (set/rename-keys {:acknowledged_by_user :acknowledged_by})))
 
-(api.macros/defendpoint :post "/:advisory-id/acknowledge" :- AcknowledgeResponse
+(api.macros/defendpoint :post "/advisories/:advisory-id/acknowledge" :- AcknowledgeResponse
   "Acknowledge a security advisory. Stops repeat notifications."
   [{:keys [advisory-id]} :- [:map {:closed true} [:advisory-id ms/NonBlankString]]]
   (api/check-superuser)
@@ -88,7 +90,7 @@
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 
-(api.macros/defendpoint :post "/acknowledge" :- [:sequential AcknowledgeResponse]
+(api.macros/defendpoint :post "/advisories/acknowledge" :- [:sequential AcknowledgeResponse]
   "Acknowledge multiple security advisories. Skips already-acknowledged advisories."
   [_route-params
    _query-params
@@ -102,7 +104,7 @@
   (ThreadPoolExecutor. 1 1 0 TimeUnit/MILLISECONDS
                        (SynchronousQueue.) (ThreadPoolExecutor$AbortPolicy.)))
 
-(api.macros/defendpoint :post "/sync" :- [:map [:status ms/NonBlankString]]
+(api.macros/defendpoint :post "/advisories/sync" :- [:map [:status ms/NonBlankString]]
   "Trigger an async advisory sync + re-evaluation.
    Returns immediately. If a sync is already running, the request is a no-op."
   []
@@ -114,7 +116,7 @@
                        false))]
     {:status (if submitted? "started" "already-in-progress")}))
 
-(api.macros/defendpoint :post "/test-notification" :- [:map [:success :boolean]]
+(api.macros/defendpoint :post "/advisories/test-notification" :- [:map [:success :boolean]]
   "Send a test notification through the given Security Center channels.
 
    The request body lets callers pass the unsaved notification config from the
@@ -135,6 +137,18 @@
                         (:slack_channel body)
                         (settings/security-center-slack-channel))})
   {:success true})
+
+(api.macros/defendpoint :get "/health-checks" :- [:map [:checks [:sequential ::security-center.schema/health-check]]]
+  "The health checks that apply to this instance, each with its current result."
+  []
+  (api/check-superuser)
+  {:checks (doto (health-checks/run-checks) metrics/set-health-check-gauges!)})
+
+(api.macros/defendpoint :post "/health-checks/recheck" :- [:map [:checks [:sequential ::security-center.schema/health-check]]]
+  "Run every health check that applies to this instance again."
+  []
+  (api/check-superuser)
+  {:checks (doto (health-checks/run-checks) metrics/set-health-check-gauges!)})
 
 (def +check-security-center-enabled
   "Middleware that returns 402 if Security Center is not available on this instance."

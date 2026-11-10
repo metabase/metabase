@@ -176,7 +176,7 @@ export const setup = async ({
     email: { configured: false },
     slack: { configured: false },
   });
-  fetchMock.get("path:/api/ee/security-center", {
+  fetchMock.get("path:/api/ee/security-center/advisories", {
     last_checked_at: null,
     advisories: [],
   });

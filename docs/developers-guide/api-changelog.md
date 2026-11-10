@@ -7,6 +7,12 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- The Security Center advisory endpoints moved under `/api/ee/security-center/advisories`: `GET /api/ee/security-center`
+  is now `GET /api/ee/security-center/advisories`, and `POST /api/ee/security-center/:advisory-id/acknowledge`,
+  `POST /api/ee/security-center/acknowledge`, `POST /api/ee/security-center/sync` and
+  `POST /api/ee/security-center/test-notification` take the same `/advisories` prefix. The old paths return
+  `404 Not Found`. Request and response bodies are unchanged.
+
 - `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
   `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
 
