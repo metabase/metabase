@@ -687,7 +687,12 @@
                                              sync-fields-rf
                                              sync-state-acc))
                      init-sync-state
-                     (if (seq dbname) [dbname] (remove nil? schema-names))))))))))
+                     (cond
+                       (seq dbname)       [dbname]
+                       (seq schema-names) (remove nil? schema-names)
+                       :else              (into (sorted-set)
+                                                (keep :schema)
+                                                (sync-tables database nil table-names)))))))))))
 
 ;; one-off REPL script kept for reference
 #_{:clj-kondo/ignore [:discouraged-var]}

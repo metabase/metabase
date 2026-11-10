@@ -568,9 +568,11 @@
                                                         (dissoc :dbname :catalog))}]
           (t2/insert! :model/Table (for [table (t2/select :model/Table :db_id (mt/id), :active true)]
                                      {:db_id (:id db), :schema schema, :name (:name table), :active true}))
-          (is (= expected
-                 (into #{} (driver/describe-fields :athena (driver.u/ensure-lib-database db)
-                                                   :schema-names [schema])))))))))
+          (testing "with and without `schema-names`"
+            (is (= expected
+                   (into #{} (driver/describe-fields :athena (driver.u/ensure-lib-database db)
+                                                     :schema-names [schema]))
+                   (into #{} (driver/describe-fields :athena (driver.u/ensure-lib-database db)))))))))))
 
 (deftest describe-fields-table-error-test
   (mt/test-driver :athena
