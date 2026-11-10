@@ -232,11 +232,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]
-   _body
-   request]
+    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        _           (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
         card (get-card resolved-id)]
     (cond-> card
       legacy-mbql?
@@ -661,12 +658,8 @@
   "Get all of the required query metadata for a card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   _query-params
-   _body
-   request]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
