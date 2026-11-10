@@ -137,6 +137,8 @@
                                                         :engine   :postgres
                                                         :details  {}
                                                         :settings {:database-enable-workspaces true}})]
+    ;; a synced table, so the database has an input schema and create does not refuse it
+    (t2/insert! :model/Table {:db_id db-id :schema "public" :name "t" :active true})
     (try
       (mt/with-model-cleanup [:model/Workspace]
         (f db-id))
