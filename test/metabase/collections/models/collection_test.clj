@@ -1344,7 +1344,7 @@
         (is (thrown-with-msg?
              Exception
              #"You are not allowed to change the authority level of a Personal Collection."
-             (t2/update! :model/Collection :id (u/the-id personal-collection) {:authority_level "official"}))))))
+             (t2/update! :model/Collection :id (u/the-id personal-collection) {:authority_level :official}))))))
   (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"
     (mt/with-temp [:model/User temp-user]
       (is (malli= [:map [:personal_collection_id ms/PositiveInt]]

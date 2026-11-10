@@ -402,7 +402,6 @@
                   (is (= [{:id                   "abc",
                            :name                 "CATEGORY",
                            :type                 :category,
-                           :position             0,
                            :values_source_config {:card_id     (:entity_id card1s),
                                                   :value_field [:field
                                                                 ["my-db" nil "CUSTOMERS" (:name field1s)]
@@ -414,7 +413,6 @@
                            [{:id                   "abc",
                              :name                 "CATEGORY",
                              :type                 :category,
-                             :position             0,
                              :values_source_config {:card_id     (:entity_id card1s),
                                                     :value_field [:field
                                                                   ["my-db" nil "CUSTOMERS" (:name field1s)]
