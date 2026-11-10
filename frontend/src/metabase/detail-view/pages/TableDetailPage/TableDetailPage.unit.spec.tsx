@@ -14,10 +14,11 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { Nav } from "metabase/detail-view/components";
-import { useSelector } from "metabase/redux";
+import {
+  DetailViewNav,
+  getPkFilterValue,
+} from "metabase/detail-view/test-utils";
 import { Route } from "metabase/router";
-import { getDetailViewState } from "metabase/selectors/app";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Dataset, RowValues } from "metabase-types/api";
 import {
@@ -81,20 +82,16 @@ const RELATED_ROW_COUNTS: Record<number, number> = {
   [REVIEWS_ID]: 8,
 };
 
-const DetailViewNav = () => {
-  const detailView = useSelector(getDetailViewState);
-  return detailView ? <Nav detailView={detailView} /> : null;
-};
+const PRODUCT_ROWS: RowValues[] = [PRODUCT_ROW];
 
 interface SetupOpts {
   rowId: number;
-  rows: RowValues[];
 }
 
-function setup({ rowId, rows }: SetupOpts) {
+function setup({ rowId }: SetupOpts) {
   setupTableEndpoints(PRODUCTS_TABLE, FOREIGN_KEYS);
   setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
-  setupAdhocQueryEndpoint((call) => getDatasetResponse(call, rows));
+  setupAdhocQueryEndpoint(getDatasetResponse);
 
   renderWithProviders(
     <Route
@@ -116,7 +113,8 @@ function setup({ rowId, rows }: SetupOpts) {
   );
 }
 
-function getDatasetResponse(call: CallLog, rows: RowValues[]): Dataset {
+// Like the backend, return only the rows that match the primary key filter.
+function getDatasetResponse(call: CallLog): Dataset {
   const body = String(call.options.body);
   const isCountQuery = body.includes("aggregation");
 
@@ -131,10 +129,12 @@ function getDatasetResponse(call: CallLog, rows: RowValues[]): Dataset {
     });
   }
 
+  const pkFilterValue = getPkFilterValue(call, PRODUCTS.ID);
+
   return createMockDataset({
     data: createMockDatasetData({
       cols: createProductsTableDatasetColumns(),
-      rows,
+      rows: PRODUCT_ROWS.filter(([pk]) => String(pk) === pkFilterValue),
     }),
   });
 }
@@ -150,7 +150,7 @@ function getDetailRows() {
 
 describe("TableDetailPage", () => {
   it("shows a loading indicator and then 'Row not found' for a missing row", async () => {
-    setup({ rowId: 9999, rows: [] });
+    setup({ rowId: 9999 });
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
@@ -162,11 +162,13 @@ describe("TableDetailPage", () => {
       await screen.findByRole("link", { name: /Sample Database/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Products" })).toBeInTheDocument();
-    expect(screen.getByText("9999")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("detail-view-nav")).getByText("9999"),
+    ).toBeInTheDocument();
   });
 
   it("shows the header, breadcrumbs, details and relationships of a row", async () => {
-    setup({ rowId: 1, rows: [PRODUCT_ROW] });
+    setup({ rowId: 1 });
 
     expect(
       await screen.findByRole("heading", {
@@ -189,6 +191,11 @@ describe("TableDetailPage", () => {
       "href",
       `/table/${PRODUCTS_ID}-products`,
     );
+    expect(
+      within(screen.getByTestId("detail-view-nav")).getByText(
+        "Rustic Paper Wallet",
+      ),
+    ).toBeInTheDocument();
 
     expect(getDetailRows()).toEqual([
       ["ID", "1"],

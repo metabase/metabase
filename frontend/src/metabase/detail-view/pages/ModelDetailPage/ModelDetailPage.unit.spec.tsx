@@ -14,10 +14,11 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { Nav } from "metabase/detail-view/components";
-import { useSelector } from "metabase/redux";
+import {
+  DetailViewNav,
+  getPkFilterValue,
+} from "metabase/detail-view/test-utils";
 import { Route } from "metabase/router";
-import { getDetailViewState } from "metabase/selectors/app";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -31,6 +32,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   PEOPLE,
   PEOPLE_ID,
   PRODUCTS,
@@ -224,18 +226,14 @@ const VALUE_RENDERING_ROW: RowValues = [
   "two",
 ];
 
-const DetailViewNav = () => {
-  const detailView = useSelector(getDetailViewState);
-  return detailView ? <Nav detailView={detailView} /> : null;
-};
-
 interface SetupOpts {
   rowId: number;
   columns?: DatasetColumn[];
-  rows: RowValues[];
+  /** The only row of the model. The detail query returns it when it filters on its primary key. */
+  row?: RowValues;
 }
 
-function setup({ rowId, columns = MODEL_COLUMNS, rows }: SetupOpts) {
+function setup({ rowId, columns = MODEL_COLUMNS, row = MODEL_ROW }: SetupOpts) {
   const model = createMockCard({
     id: MODEL_ID,
     name: "My model",
@@ -261,9 +259,16 @@ function setup({ rowId, columns = MODEL_COLUMNS, rows }: SetupOpts) {
   });
   setupFieldEndpoints(createPeopleIdField());
   setupFieldEndpoints(createProductsIdField());
-  setupAdhocQueryEndpoint(
-    createMockDataset({ data: createMockDatasetData({ cols: columns, rows }) }),
-  );
+  setupAdhocQueryEndpoint((call) => {
+    const isRowQuery = getPkFilterValue(call, ORDERS.ID) === String(row[0]);
+
+    return createMockDataset({
+      data: createMockDatasetData({
+        cols: columns,
+        rows: isRowQuery ? [row] : [],
+      }),
+    });
+  });
 
   renderWithProviders(
     <Route
@@ -310,7 +315,7 @@ function getDetailRowValue(columnName: string) {
 
 describe("ModelDetailPage", () => {
   it("shows a loading indicator and then 'Row not found' for a missing row", async () => {
-    setup({ rowId: 9999, rows: [] });
+    setup({ rowId: 9999 });
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     await waitForLoaderToBeRemoved();
@@ -325,11 +330,13 @@ describe("ModelDetailPage", () => {
       await screen.findByRole("link", { name: /Second collection/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /My model/ })).toBeInTheDocument();
-    expect(screen.getByText("9999")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("detail-view-nav")).getByText("9999"),
+    ).toBeInTheDocument();
   });
 
   it("shows the header, breadcrumbs and details of a row", async () => {
-    setup({ rowId: 1, rows: [MODEL_ROW] });
+    setup({ rowId: 1 });
 
     expect(
       await screen.findByRole("heading", {
@@ -358,6 +365,11 @@ describe("ModelDetailPage", () => {
       "href",
       `/model/${MODEL_ID}-my-model`,
     );
+    expect(
+      within(screen.getByTestId("detail-view-nav")).getByText(
+        "Awesome Concrete Shoes",
+      ),
+    ).toBeInTheDocument();
 
     expect(getDetailRows()).toEqual([
       ["ID", "1"],
@@ -386,7 +398,7 @@ describe("ModelDetailPage", () => {
       setup({
         rowId: 1,
         columns: VALUE_RENDERING_COLUMNS,
-        rows: [VALUE_RENDERING_ROW],
+        row: VALUE_RENDERING_ROW,
       });
       await screen.findByTestId("object-details");
     });
