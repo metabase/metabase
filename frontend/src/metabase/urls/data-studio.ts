@@ -176,6 +176,10 @@ export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
   return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;
 }
 
+export function dataStudioTableHistory(tableId: TableId) {
+  return `${dataStudioTable(tableId)}/history`;
+}
+
 export function dataStudioTableDependencies(tableId: TableId) {
   return `${dataStudioTable(tableId)}/dependencies`;
 }

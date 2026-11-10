@@ -22,7 +22,11 @@ import { TableFiltering } from "./TableFiltering";
 import { TableMetadata, TableStats } from "./TableMetadata";
 import { TableProcess, useHasProcess } from "./TableProcess";
 import { TablePropertyList } from "./TablePropertyList";
-import { TableHistorySection, TableStructure } from "./TableStructure";
+import {
+  TableHistorySection,
+  TableStructure,
+  useIsHistoryTable,
+} from "./TableStructure";
 
 interface Props {
   table: Table;
@@ -46,8 +50,7 @@ const TableSectionBase = ({
   const isCustomPropertyTable =
     structure.role != null &&
     isRoleA(structure.role, "role/CustomPropertyTable");
-  const isHistoryTable =
-    structure.role != null && isRoleA(structure.role, "role/HistoryDimension");
+  const isHistoryTable = useIsHistoryTable(table);
   const hasProcess = useHasProcess(table);
   // A link to the Process tab of a table without one lands on Details
   const isMissingTab =

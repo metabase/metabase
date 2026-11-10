@@ -26,6 +26,7 @@ type SetupMockApiOpts = {
   database: Database;
   fieldValues: GetFieldValuesResponse[];
   getDataset: (query: unknown) => Dataset | null;
+  hasLibrary?: boolean;
 };
 
 const networkFetch = window.fetch.bind(window);
@@ -34,6 +35,7 @@ export function setupMockApi({
   database,
   fieldValues,
   getDataset,
+  hasLibrary = false,
 }: SetupMockApiOpts) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -46,10 +48,10 @@ export function setupMockApi({
     key: "seen-publish-tables-info",
     value: true,
   });
-  setupLibraryEndpoints();
+  setupLibraryEndpoints(hasLibrary);
   setupFieldsValuesEndpoints(fieldValues);
   const settings = createMockSettings({
-    "token-features": createMockTokenFeatures(),
+    "token-features": createMockTokenFeatures({ library: hasLibrary }),
   });
   window.MetabaseBootstrap = settings;
   setupPropertiesEndpoints(settings);
