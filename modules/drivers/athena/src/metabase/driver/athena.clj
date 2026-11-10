@@ -603,12 +603,13 @@
 (defn- reduce-schema-fields
   "Reduces the fields of the tables in `glue-schema` with `sync-fields-rf`, one table at a time. Reads the columns of
   all tables with one `.getColumns` call. Tables that this call does not return (no columns, or the call failed) get
-  their fields with [[describe-table-fields]], the same as [[driver/describe-table]].
+  their fields with [[describe-table-fields]] and `describe-table-catalog`, the same as [[driver/describe-table]].
 
   `glue-schema` is the actual schema name that the tables are in, it is always set.
   `mb-schema` is the schema value that we set for the field. It is nil if the user has set `dbname` in the connection
   details, otherwise it is the same as `glue-schema`."
-  [driver database ^DatabaseMetaData metadata catalog glue-schema mb-schema table-names sync-fields-rf init-sync-state]
+  [driver database ^DatabaseMetaData metadata catalog describe-table-catalog glue-schema mb-schema table-names
+   sync-fields-rf init-sync-state]
   (let [tables         (or (not-empty table-names)
                            (into #{} (map :name) (sync-tables database [mb-schema] nil)))
         table-pattern  (if (= 1 (count table-names))
@@ -653,7 +654,7 @@
                 (let [sync-state-acc (send-table sync-state-acc table-name
                                                  #(describe-table-fields metadata database driver
                                                                          {:schema glue-schema, :name table-name}
-                                                                         catalog nil))]
+                                                                         describe-table-catalog nil))]
                   ;; wrap again, so that the caller stops too
                   (cond-> sync-state-acc (reduced? sync-state-acc) reduced)))
               sync-state-acc
@@ -669,13 +670,17 @@
          database
          nil
          (fn [^Connection conn]
-           (let [metadata (.getMetaData conn)
-                 catalog  (if (str/blank? catalog) (.getCatalog conn) catalog)]
+           (let [metadata               (.getMetaData conn)
+                 ;; same as `describe-table`: a blank catalog without `dbname` does not filter by catalog
+                 describe-table-catalog (if (and (str/blank? catalog) (not (str/blank? dbname)))
+                                          (.getCatalog conn)
+                                          catalog)
+                 catalog                (if (str/blank? catalog) (.getCatalog conn) catalog)]
              ;; Tables have no schema when `dbname` is set, so we pass 2 schema values here.
              ;; The first is the actual schema name, used for reading from Athena. The second
              ;; is the schema value to set for the field. So it is nil when `dbname` is set.
              (reduce (fn [sync-state-acc schema]
-                       (reduce-schema-fields driver database metadata catalog
+                       (reduce-schema-fields driver database metadata catalog describe-table-catalog
                                              schema                        ;; the actual schema name
                                              (when (empty? dbname) schema) ;; the schema value to set for the field
                                              (set table-names)
