@@ -1520,15 +1520,101 @@
                     sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f conn))]
         (driver/destroy-workspace-isolation! :sqlserver {} {:schema           "ws_schema"
                                                             :database_details {:user "ws_user"}}))
-      (is (= [(str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+      (is (= [;; disable the login and end its sessions before any drop, so none of them holds a lock the drops wait on
+              "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') ALTER LOGIN \"ws_user\" DISABLE"
+              (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                   "FROM sys.dm_exec_sessions WHERE login_name = 'ws_user'; "
+                   "EXEC sp_executesql @kill_sessions_sql")
+              (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
                    "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
                    "FROM sys.tables WHERE schema_id = SCHEMA_ID('ws_schema'); "
                    "EXEC sp_executesql @drop_tables_sql")
               "IF EXISTS (SELECT * FROM sys.schemas WHERE name = 'ws_schema') DROP SCHEMA \"ws_schema\""
               "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = 'ws_user') DROP USER \"ws_user\""
-              (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
-                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
-                   "FROM sys.dm_exec_sessions WHERE login_name = 'ws_user'; "
-                   "EXEC sp_executesql @kill_sessions_sql")
               "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = 'ws_user') DROP LOGIN \"ws_user\""]
              @batch)))))
+
+(deftest workspace-init-sqls-test
+  (testing "init creates the login, user and schema outright: it neither adopts an existing one nor resets a login's password"
+    (is (= ["CREATE LOGIN \"ws_user\" WITH PASSWORD = N'pa''ss'"
+            "CREATE USER \"ws_user\" FOR LOGIN \"ws_user\""
+            "EXEC('CREATE SCHEMA \"ws_schema\"')"
+            "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::\"ws_schema\" TO \"ws_user\""
+            "GRANT CREATE TABLE TO \"ws_user\""]
+           (#'sqlserver/workspace-init-sqls "ws_user" "pa'ss" "ws_schema")))))
+
+(defn- workspace-isolation-fixture
+  "A fresh workspace map with isolation details for the test database, and the admin and workspace-user specs."
+  []
+  (let [database (mt/db)
+        details  (:details database)
+        run-id   (subs (str (random-uuid)) 0 8)
+        ws       {:id (Long/parseLong run-id 16) :name (str "ws-sqlserver-" run-id)}
+        ws       (merge ws (driver/workspace-isolation-details :sqlserver database ws))]
+    {:database   database
+     :ws         ws
+     :admin-spec (sql-jdbc.conn/connection-details->spec :sqlserver details)
+     :user-spec  (sql-jdbc.conn/connection-details->spec :sqlserver (merge details (:database_details ws)))}))
+
+(defn- principal-counts [admin-spec ws]
+  (first (jdbc/query admin-spec
+                     [(str "SELECT (SELECT COUNT(*) FROM master.sys.server_principals WHERE name = ?) AS logins, "
+                           "(SELECT COUNT(*) FROM sys.database_principals WHERE name = ?) AS users, "
+                           "(SELECT COUNT(*) FROM sys.schemas WHERE name = ?) AS schemas")
+                      (-> ws :database_details :user) (-> ws :database_details :user) (:schema ws)])))
+
+(deftest ^:synchronized init-workspace-isolation-refuses-existing-objects-test
+  (mt/test-driver :sqlserver
+    (let [{:keys [database ws admin-spec]} (workspace-isolation-fixture)
+          user (-> ws :database_details :user)]
+      (testing "an existing login of the workspace user's name is refused before any DDL, and its password is kept"
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE LOGIN [%s] WITH PASSWORD = N'Other!Passw0rd'" user)])
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver database ws)))]
+            (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))
+            (is (str/includes? (ex-message e) (str "login \"" user "\""))))
+          (is (= {:logins 1, :users 0, :schemas 0} (principal-counts admin-spec ws)))
+          ;; the login has no user in the test database, so it signs in to master
+          (is (= [{:one 1}]
+                 (jdbc/query (sql-jdbc.conn/connection-details->spec
+                              :sqlserver (assoc (:details database) :user user :password "Other!Passw0rd" :db "master"))
+                             ["SELECT 1 AS one"])))
+          (finally
+            (jdbc/execute! admin-spec [(format "DROP LOGIN [%s]" user)]))))
+      (testing "an existing schema of the workspace's name is refused, and nothing is created"
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE SCHEMA [%s]" (:schema ws))])
+          (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver database ws)))]
+            (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e))))
+          (is (= {:logins 0, :users 0, :schemas 1} (principal-counts admin-spec ws)))
+          (finally
+            (jdbc/execute! admin-spec [(format "DROP SCHEMA [%s]" (:schema ws))]))))
+      (testing "a login made after the existence check fails the init, which rolls back everything it made"
+        (try
+          (jdbc/execute! admin-spec [(format "CREATE LOGIN [%s] WITH PASSWORD = N'Other!Passw0rd'" user)])
+          (mt/with-dynamic-fn-redefs [sqlserver/existing-workspace-principals (constantly [])]
+            (let [e (is (thrown? clojure.lang.ExceptionInfo (driver/init-workspace-isolation! :sqlserver database ws)))]
+              (is (=? {:status-code 409, :workspace/cleanup? false} (ex-data e)))))
+          (is (= {:logins 1, :users 0, :schemas 0} (principal-counts admin-spec ws)))
+          (finally
+            (jdbc/execute! admin-spec [(format "DROP LOGIN [%s]" user)])))))))
+
+(deftest ^:synchronized destroy-workspace-isolation-ends-sessions-first-test
+  (mt/test-driver :sqlserver
+    (testing "teardown completes while a session of the workspace user holds a lock on one of its tables"
+      (let [{:keys [database ws admin-spec user-spec]} (workspace-isolation-fixture)
+            table (format "[%s].[locked]" (:schema ws))]
+        (try
+          (driver/init-workspace-isolation! :sqlserver database ws)
+          (jdbc/execute! user-spec [(str "CREATE TABLE " table " (id INT)")])
+          (is (thrown-with-msg? Exception #"(?i)connection"
+                                (jdbc/with-db-transaction [holder user-spec]
+                                  ;; the insert's lock lasts until the transaction ends
+                                  (jdbc/execute! holder [(str "INSERT INTO " table " VALUES (1)")])
+                                  (let [destroyed (future (driver/destroy-workspace-isolation! :sqlserver database ws) :done)]
+                                    (is (= :done (deref destroyed 60000 :timed-out)))
+                                    (is (= {:logins 0, :users 0, :schemas 0} (principal-counts admin-spec ws))))))
+              "teardown ended the holder's session, so its commit fails")
+          (finally
+            (driver/destroy-workspace-isolation! :sqlserver database ws)))))))

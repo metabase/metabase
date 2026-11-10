@@ -1364,45 +1364,91 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- existing-workspace-principals
+  "Descriptions of the login, database user and schema named like the workspace's that already exist, such as
+  `login \"ws_user\"`. Empty when none do."
+  [^Connection conn username schema-name]
+  (with-open [stmt (.prepareStatement conn (str "SELECT "
+                                                "(SELECT COUNT(*) FROM master.sys.server_principals WHERE name = ?) AS login_count, "
+                                                "(SELECT COUNT(*) FROM sys.database_principals WHERE name = ?) AS user_count, "
+                                                "(SELECT COUNT(*) FROM sys.schemas WHERE name = ?) AS schema_count"))]
+    (.setString stmt 1 username)
+    (.setString stmt 2 username)
+    (.setString stmt 3 schema-name)
+    (with-open [rs (.executeQuery stmt)]
+      (.next rs)
+      (cond-> []
+        (pos? (.getInt rs "login_count"))  (conj (str "login " (quote-field username)))
+        (pos? (.getInt rs "user_count"))   (conj (str "database user " (quote-field username)))
+        (pos? (.getInt rs "schema_count")) (conj (str "schema " (quote-schema schema-name)))))))
+
+(defn- workspace-exists-error
+  "The 409 for a login, user or schema that init found already there, described by `found`. It may belong to another
+  workspace, so the caller must not tear this one down: see `:workspace/cleanup?` in
+  [[driver/init-workspace-isolation!]]."
+  [found cause]
+  (ex-info (str found " It may belong to another workspace, so it was left unchanged.")
+           {:status-code 409, :workspace/cleanup? false}
+           cause))
+
+(def ^:private duplicate-object-error-codes
+  "SQL Server error numbers for creating a login (15025), a database user (15023) or a schema (2714) whose name is
+  taken: a concurrent init made it after the existence check."
+  #{15025 15023 2714})
+
+(defn- workspace-init-sqls
+  "The batch that creates the workspace's login, database user and schema and grants it access to that schema.
+  Nothing here is created IF NOT EXISTS: an object made by someone else between the existence check and this batch
+  fails it."
+  [username password schema-name]
+  (let [quoted-user   (quote-field username)
+        quoted-schema (quote-schema schema-name)]
+    [(format "CREATE LOGIN %s WITH PASSWORD = N'%s'" quoted-user (sql.u/escape-sql password :ansi))
+     (format "CREATE USER %s FOR LOGIN %s" quoted-user quoted-user)
+     ;; CREATE SCHEMA must be the only statement in its T-SQL batch
+     (format "EXEC('CREATE SCHEMA %s')" quoted-schema)
+     ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
+     ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
+     ;;   ALTER  - create/drop/sp_rename objects in the schema
+     ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
+     ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
+     (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s" quoted-schema quoted-user)
+     ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
+     (format "GRANT CREATE TABLE TO %s" quoted-user)]))
+
 (defmethod driver/init-workspace-isolation! :sqlserver
   [driver database workspace]
   (let [schema-name      (:schema workspace)
         {:keys [user password]} (:database_details workspace)
-        username         user
-        escaped-password (sql.u/escape-sql password :ansi)
-        escaped-username (sql.u/escape-sql username :ansi)
-        escaped-schema   (sql.u/escape-sql schema-name :ansi)
-        quoted-user      (quote-field username)
-        quoted-schema    (quote-schema schema-name)]
+        escaped-password (sql.u/escape-sql password :ansi)]
     ;; SQL Server: create login (server level), then user (database level), then schema
-    (try
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver (driver.u/ensure-lib-database database) {:write? true}
-       (fn [^Connection conn]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver (driver.u/ensure-lib-database database) {:write? true}
+     (fn [^Connection conn]
+       ;; The names are deterministic from the workspace id, so a login, user or schema of the same name may belong
+       ;; to another workspace, such as one restored from the same backup. Adopting it would hand that workspace's
+       ;; objects and grants to this one, and tearing this one down would drop them.
+       (let [existing (existing-workspace-principals conn user schema-name)]
+         (when (seq existing)
+           (throw (workspace-exists-error (str "SQL Server already has a " (str/join ", " existing) ".") nil))))
+       ;; one transaction, so a failed init leaves nothing behind
+       (.setAutoCommit conn false)
+       (try
          (with-open [^Statement stmt (.createStatement conn)]
-           (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
-                                     "CREATE LOGIN %s WITH PASSWORD = N'%s'")
-                                escaped-username quoted-user escaped-password)
-                        ;; the login may survive a failed teardown; without this it would keep
-                        ;; its old password while the new one gets persisted
-                        (format "ALTER LOGIN %s WITH PASSWORD = N'%s'" quoted-user escaped-password)
-                        (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER %s FOR LOGIN %s"
-                                escaped-username quoted-user quoted-user)
-                        (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"
-                                escaped-schema quoted-schema)
-                        ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
-                        ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
-                        ;;   ALTER  - create/drop/sp_rename objects in the schema
-                        ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
-                        ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
-                        (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s"
-                                quoted-schema quoted-user)
-                        ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
-                        (format "GRANT CREATE TABLE TO %s" quoted-user)]]
-             (.addBatch ^Statement stmt ^String sql))
-           (.executeBatch ^Statement stmt))))
-      (catch Throwable t
-        (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password]))))
+           (doseq [sql (workspace-init-sqls user password schema-name)]
+             (.addBatch stmt ^String sql))
+           (.executeBatch stmt))
+         (.commit conn)
+         (catch Throwable t
+           (.rollback conn)
+           (let [t        (driver.u/batch-exception t)
+                 scrubbed (driver.u/scrub-exceptions t [password escaped-password])]
+             (if (and (instance? java.sql.SQLException t)
+                      (duplicate-object-error-codes (.getErrorCode ^java.sql.SQLException t)))
+               (throw (workspace-exists-error (ex-message scrubbed) scrubbed))
+               (throw scrubbed))))
+         (finally
+           (.setAutoCommit conn true)))))
     nil))
 
 (defmethod driver/destroy-workspace-isolation! :sqlserver
@@ -1421,7 +1467,16 @@
          ;; variable names must be unique across the batch entries.
          ;; Table names come from the warehouse, so QUOTENAME them (it escapes `]`) rather than
          ;; splicing them into the dynamic SQL between brackets.
-         (doseq [sql [(format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
+         (doseq [sql [;; Disable the login and kill its sessions before any drop: a session of the workspace
+                      ;; user could hold a lock on one of its tables, and the drops would wait on it.
+                      (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') ALTER LOGIN %s DISABLE"
+                              escaped-username quoted-user)
+                      (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
+                                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                                   "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                                   "EXEC sp_executesql @kill_sessions_sql")
+                              escaped-username)
+                      (format (str "DECLARE @drop_tables_sql NVARCHAR(MAX) = ''; "
                                    "SELECT @drop_tables_sql += 'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + '; ' "
                                    "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
                                    "EXEC sp_executesql @drop_tables_sql")
@@ -1430,12 +1485,6 @@
                               escaped-schema quoted-schema)
                       (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER %s"
                               escaped-username quoted-user)
-                      ;; Kill all sessions using this login before dropping it
-                      (format (str "DECLARE @kill_sessions_sql NVARCHAR(MAX) = ''; "
-                                   "SELECT @kill_sessions_sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
-                                   "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
-                                   "EXEC sp_executesql @kill_sessions_sql")
-                              escaped-username)
                       (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN %s"
                               escaped-username quoted-user)]]
            (.addBatch ^Statement stmt ^String sql))

@@ -623,7 +623,9 @@
   ;; with data before init runs, the workspace user inherits read access to that
   ;; data. Whether to refuse-on-collision or clear-on-collision is a design
   ;; decision tracked separately; this test does not assert one way or the other.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace))
+  ;; SQL Server refuses an existing schema with a 409 instead
+  ;; (`metabase.driver.sqlserver-test/init-workspace-isolation-refuses-existing-objects-test`).
+  (mt/test-drivers (remove #{:sqlserver} (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :workspace)))
     (testing "init-workspace-isolation! is robust when its target output namespace already exists"
       (let [driver       driver/*driver*
             database     (mt/db)
@@ -1102,8 +1104,10 @@
   ;; per provisioning attempt, so init must reset the surviving user's password
   ;; — engines whose `CREATE USER IF NOT EXISTS` silently no-ops need an
   ;; explicit ALTER, or the persisted password stops matching the warehouse.
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
-                           (mt/normal-drivers-with-feature :workspace))
+  ;; SQL Server refuses the surviving login with a 409 instead
+  ;; (`metabase.driver.sqlserver-test/init-workspace-isolation-refuses-existing-objects-test`).
+  (mt/test-drivers (remove #{:sqlserver} (filter #(isa? driver/hierarchy % :sql-jdbc)
+                                                 (mt/normal-drivers-with-feature :workspace)))
     (testing "re-running init for the same workspace id resets the user's password"
       (let [driver    driver/*driver*
             database  (mt/db)
