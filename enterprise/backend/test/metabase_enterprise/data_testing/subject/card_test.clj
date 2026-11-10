@@ -164,27 +164,46 @@
     (catch ExceptionInfo e
       {:error-type (:error-type (ex-data e)) :message (ex-message e)})))
 
-(deftest card-with-a-parameter-and-no-default-is-refused-test
+(deftest card-with-a-parameter-that-needs-a-value-is-refused-test
   (mt/test-driver :h2
     (let [{:keys [schema name]} (table-ref :people)
           people                (str schema "." name)
           tag                   (fn [tag-name & {:as more}]
                                   (merge {:type :text :name tag-name :display-name tag-name} more))
+          card-tag              (fn [card-id]
+                                  (let [tag-name (str "#" card-id)]
+                                    {:type :card :name tag-name :display-name tag-name :card-id card-id}))
           plan-of               (fn [query]
                                   (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-                                    (refusal #(data-testing.subject/subject-plan :card (saved-card card-id)))))]
-      (testing "a required parameter with no default: the refusal says card tests cannot set it"
-        (is (= {:error-type ::data-testing.errors/uncompilable-subject
-                :message    (str "This card has a parameter with no default value: source. "
-                                 "Card tests cannot set parameter values.")}
+                                    (refusal #(data-testing.subject/subject-plan :card (saved-card card-id)))))
+          needs-a-value         (fn [tag-names]
+                                  {:error-type ::data-testing.errors/uncompilable-subject
+                                   :message    (str "This card's query has a parameter that needs a value and has no "
+                                                    "default: " tag-names ". Card tests cannot set parameter values.")})]
+      (testing "a required parameter with no default: the refusal names it and says card tests cannot set it"
+        (is (= (needs-a-value "source")
                (plan-of (native-query (str "SELECT * FROM " people " WHERE source = {{source}}")
                                       "source" (tag "source" :required true))))))
       (testing "a parameter outside an optional clause with no default is refused the same way"
-        (is (= {:error-type ::data-testing.errors/uncompilable-subject
-                :message    (str "This card has a parameter with no default value: source. "
-                                 "Card tests cannot set parameter values.")}
+        (is (= (needs-a-value "source")
                (plan-of (native-query (str "SELECT * FROM " people " WHERE source = {{source}}")
                                       "source" (tag "source"))))))
+      (testing "the refusal names the parameter that needs the value, not an optional one beside it"
+        (mt/with-temp [:model/Card {inner-id :id} {:dataset_query
+                                                   (native-query (str "SELECT * FROM " people " WHERE source = {{p}}")
+                                                                 "p" (tag "p" :required true))}]
+          (is (= (needs-a-value "p")
+                 (plan-of (native-query (str "SELECT * FROM {{#" inner-id "}} AS i WHERE 1 = 1 [[AND i.ID = {{x}}]]")
+                                        (str "#" inner-id) (card-tag inner-id)
+                                        "x" (tag "x")))))))
+      (testing "a query that fails for another reason keeps the query processor's message"
+        (let [{:keys [error-type message]}
+              (plan-of (native-query (str "SELECT * FROM " people " WHERE 1 = 1 [[AND source = {{x}}]]"
+                                          " AND id IN (SELECT id FROM {{#999999999}})")
+                                     "x" (tag "x")
+                                     "#999999999" (card-tag 999999999)))]
+          (is (= ::data-testing.errors/uncompilable-subject error-type))
+          (is (re-find #"^The query under test could not be compiled to SQL: " message) message)))
       (testing "control: a required parameter with a default compiles at its default"
         (is (nil? (plan-of (native-query (str "SELECT * FROM " people " WHERE source = {{source}}")
                                          "source" (tag "source" :required true :default "Google"))))))

@@ -54,7 +54,7 @@
   default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other
   `{{...}}` is refused.
 
-  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values.
+  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table."
   [_route-params
    _query-params
@@ -66,7 +66,7 @@
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
   "Update a card test.
 
-  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values.
+  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
@@ -93,7 +93,7 @@
   "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the
   database of that query.
 
-  A card with a parameter that has no default value cannot be tested: a test cannot set parameter values.
+  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
   A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
