@@ -187,11 +187,11 @@
          :tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
         (fn [ws-id]
           (is (= {} (select-keys (details-of ws-id) kh-keys))))))
-    (testing "tunnel on with a known-hosts id that doesn't resolve: a 409, since dropping it would skip host-key checks"
+    (testing "tunnel on with a known-hosts id that doesn't resolve: a 422, since dropping it would skip host-key checks"
       (with-cert-workspace
         (assoc tunnel :tunnel-known-hosts-id Integer/MAX_VALUE)
         (fn [ws-id]
-          (is (=? {:status-code 409 :database_id int?}
+          (is (=? {:status-code 422 :database_id int?}
                   (try
                     (config/build-workspace-config ws-id)
                     nil
@@ -203,14 +203,14 @@
                       (ex-data e))))))))))
 
 (deftest build-workspace-config-refuses-ssl-client-auth-test
-  (testing "a database that authenticates with an SSL client certificate is a 409: the child gets no client cert, so
+  (testing "a database that authenticates with an SSL client certificate is a 422: the child gets no client cert, so
             it would fail only when it connects"
     (with-cert-workspace
       {:host "h" :port 5432 :ssl true :ssl-mode "verify-full" :ssl-use-client-auth true
        :ssl-client-cert-options "uploaded" :ssl-client-cert-value "client-cert"
        :ssl-key-options "uploaded" :ssl-key-value "client-key"}
       (fn [ws-id]
-        (is (=? {:status-code 409 :database_id int?}
+        (is (=? {:status-code 422 :database_id int?}
                 (try
                   (config/build-workspace-config ws-id)
                   nil
@@ -222,7 +222,7 @@
                     (ex-data e)))))))))
 
 (deftest build-workspace-config-refuses-local-file-root-cert-test
-  (testing "a root cert given as a file on the parent's server is a 409 naming the database: its contents could be any
+  (testing "a root cert given as a file on the parent's server is a 422 naming the database: its contents could be any
             file the server can read, so they don't ship, and the file is not read"
     ;; A local-file root cert is refused on hosted instances, so run as self-hosted.
     (mt/with-premium-features #{}
@@ -230,7 +230,7 @@
         {:host "h" :port 5432 :ssl true :ssl-mode "verify-full"
          :ssl-root-cert-options "local" :ssl-root-cert-path "/nonexistent/fe103/root.crt"}
         (fn [ws-id]
-          (is (=? {:status-code 409 :database_id int?}
+          (is (=? {:status-code 422 :database_id int?}
                   (try
                     (config/build-workspace-config ws-id)
                     nil

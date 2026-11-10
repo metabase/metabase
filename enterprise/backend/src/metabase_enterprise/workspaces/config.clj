@@ -131,10 +131,10 @@
     :required?  true}])
 
 (defn- refuse-secret
-  "A 409 that names the database of the refused Secret."
+  "A 422 that names the database of the refused Secret."
   [db message-format label]
   (ex-info (format message-format label (pr-str (:name db)))
-           {:status-code 409
+           {:status-code 422
             :database_id (:id db)}))
 
 (defn- shippable-secret-value
@@ -149,7 +149,7 @@
 (defn- inlined-secret-entries
   "The keys an inlined secret (an entry of `inlined-secrets`) adds to the config when the connection uses it: the value
    of its uploaded Secret, or a value the driver keeps in `:details` as is (Postgres doesn't store the known hosts as a
-   Secret). An optional Secret whose row is gone is dropped. These cases are a 409 naming the database:
+   Secret). An optional Secret whose row is gone is dropped. These cases are a 422 naming the database:
 
    - the Secret is a file path on the parent's server: its contents could be any file the server can read, so they
      don't ship, and the admin has to upload the file instead.
@@ -191,7 +191,7 @@
    `inlined-secrets`, is dropped. The values of the `inlined-secrets` whose feature is on ship instead, for the child's
    config-file import to store as Secrets of its own.
 
-   The client certificate and key are not inlined, so a connection that authenticates with them is a 409: the child
+   The client certificate and key are not inlined, so a connection that authenticates with them is a 422: the child
    would otherwise fail only when it connects."
   [db details]
   (when (and (:ssl details) (:ssl-use-client-auth details))
@@ -199,7 +199,7 @@
                                  "support. Remove the database from the workspace, or turn off client-certificate "
                                  "authentication for it.")
                             (pr-str (:name db)))
-                    {:status-code 409
+                    {:status-code 422
                      :database_id (:id db)})))
   (let [;; the `-id`/`-options` naming follows `metabase.secrets.models.secret`. The inlined secrets are listed on
         ;; their own: Postgres puts the SSH-tunnel properties in a nested vector, which `secret-conn-props-by-name`
@@ -325,9 +325,9 @@
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`
-  (waiting clears it), and a 422 when its `:additional-options` set a login
-  (`check-additional-options!`; only an admin can clear it). Throws a 409 when it
-  uses SSL client-certificate auth, or an inlined secret in use can't ship
+  (waiting clears it), and a 422 when only an admin can clear the cause: its
+  `:additional-options` set a login (`check-additional-options!`), it uses SSL
+  client-certificate auth, or an inlined secret in use can't ship
   (`inlined-secret-entries`)."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
