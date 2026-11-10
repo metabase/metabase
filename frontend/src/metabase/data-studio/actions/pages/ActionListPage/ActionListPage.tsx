@@ -18,7 +18,6 @@ import {
   isCollectionData,
   openNewCollectionModal,
 } from "metabase/data-studio/common/utils";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
@@ -38,9 +37,6 @@ export function ActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [collectionModal, setCollectionModal] =
     useState<CollectionRowModalState>();
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
   const {
     databases,
     isLoading: isLoadingDatabases,
@@ -53,9 +49,7 @@ export function ActionListPage() {
     rootCollection,
     isLoading: isLoadingActions,
     error: actionsError,
-  } = useBuildActionTree({
-    canCreateActions: !isRemoteSyncReadOnly && canCreate,
-  });
+  } = useBuildActionTree();
   useErrorHandling(actionsError ?? databasesError);
 
   const isSearchActive = searchQuery.trim().length > 0;

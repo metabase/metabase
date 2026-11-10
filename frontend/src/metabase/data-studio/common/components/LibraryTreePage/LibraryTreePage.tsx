@@ -122,6 +122,7 @@ export function LibraryTreePage({
           tabs={tabs}
           px="3.5rem"
           py={0}
+          mb={tabs != null ? "lg" : undefined}
         />
         <Stack
           bg="background_page-secondary"

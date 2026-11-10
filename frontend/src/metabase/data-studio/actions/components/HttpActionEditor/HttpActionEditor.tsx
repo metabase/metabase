@@ -1,7 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import { type ReactNode, useMemo } from "react";
-import { match } from "ts-pattern";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
@@ -9,8 +8,6 @@ import {
   ActionIcon,
   Button,
   Card,
-  Code,
-  Divider,
   Group,
   Icon,
   Select,
@@ -23,15 +20,13 @@ import {
 import {
   HTTP_ACTION_METHODS,
   type HttpActionRequest,
-  type HttpActionRequestPart,
   type HttpActionTemplateEntry,
-  getHttpActionRequestVariables,
   parseHttpActionBody,
 } from "../../utils";
 
-const WHOLE_VALUE_SYNTAX = '"{{x}}"';
-const OPTIONAL_SYNTAX = "[[ … ]]";
-const SECRET_SYNTAX = "{{secrets.name}}";
+const EMPTY_ENTRY: HttpActionTemplateEntry = { name: "", value: "" };
+
+const BODY_PLACEHOLDER = '{"id": "{{id}}"}';
 
 type HttpActionEditorProps = {
   request: HttpActionRequest;
@@ -54,140 +49,99 @@ export function HttpActionEditor({
   };
 
   return (
-    <Group
-      align="flex-start"
-      gap="xl"
-      wrap="nowrap"
-      data-testid="http-action-editor"
-    >
-      <Stack flex={1} miw={0} gap="2.5rem">
-        <HttpActionSection
-          label={t`Request`}
-          description={t`Where the action sends its request. It is sent from the server, not the browser.`}
-          actions={requestActions}
-        >
-          <Group gap="sm" wrap="nowrap">
-            <Select
-              w="8rem"
-              data={HTTP_ACTION_METHODS}
-              value={request.method}
-              readOnly={readOnly}
-              aria-label={t`Method`}
-              onChange={handleMethodChange}
-            />
-            <TextInput
-              flex={1}
-              value={request.url}
-              placeholder="https://example.com/api/{{id}}"
-              readOnly={readOnly}
-              aria-label={t`URL`}
-              onChange={(event) =>
-                onChange({ ...request, url: event.target.value })
+    <Stack gap="2.5rem" data-testid="http-action-editor">
+      <HttpActionSection
+        label={t`Request`}
+        description={t`Where the action sends its request. It is sent from the server, not the browser.`}
+        actions={requestActions}
+      >
+        <Group gap="sm" wrap="nowrap">
+          <Select
+            w="8rem"
+            data={HTTP_ACTION_METHODS}
+            value={request.method}
+            readOnly={readOnly}
+            aria-label={t`Method`}
+            onChange={handleMethodChange}
+          />
+          <TextInput
+            flex={1}
+            value={request.url}
+            placeholder="https://example.com/api/{{id}}"
+            readOnly={readOnly}
+            aria-label={t`URL`}
+            onChange={(event) =>
+              onChange({ ...request, url: event.target.value })
+            }
+          />
+        </Group>
+      </HttpActionSection>
+      <HttpActionSection
+        label={t`Query parameters`}
+        actions={
+          !readOnly && (
+            <AddEntryButton
+              label={t`Add query parameter`}
+              onClick={() =>
+                onChange({
+                  ...request,
+                  queryParams: [...request.queryParams, EMPTY_ENTRY],
+                })
               }
             />
-          </Group>
-        </HttpActionSection>
-        <HttpActionSection label={t`Query parameters`}>
-          <TemplateEntryList
-            entries={request.queryParams}
-            nameLabel={t`Query parameter name`}
-            valueLabel={t`Query parameter value`}
-            addLabel={t`Add query parameter`}
-            emptyMessage={t`No query parameters`}
-            readOnly={readOnly}
-            onChange={(queryParams) => onChange({ ...request, queryParams })}
-          />
-        </HttpActionSection>
-        <HttpActionSection label={t`Headers`}>
-          <TemplateEntryList
-            entries={request.headers}
-            nameLabel={t`Header name`}
-            valueLabel={t`Header value`}
-            addLabel={t`Add header`}
-            emptyMessage={t`No headers`}
-            readOnly={readOnly}
-            onChange={(headers) => onChange({ ...request, headers })}
-          />
-        </HttpActionSection>
-        <TitleSection
-          label={t`Body`}
-          description={t`Sent as JSON. A value that is only a {{variable}} keeps its type, so a number stays a number.`}
-        >
-          <HttpActionBodyEditor
-            body={request.body}
-            readOnly={readOnly}
-            onChange={(body) => onChange({ ...request, body })}
-          />
-        </TitleSection>
-      </Stack>
-      {!readOnly && <HttpActionVariables request={request} />}
-    </Group>
+          )
+        }
+      >
+        <TemplateEntryList
+          entries={request.queryParams}
+          nameLabel={t`Query parameter name`}
+          valueLabel={t`Query parameter value`}
+          namePlaceholder="page"
+          valuePlaceholder="{{page}}"
+          emptyMessage={t`No query parameters`}
+          readOnly={readOnly}
+          onChange={(queryParams) => onChange({ ...request, queryParams })}
+        />
+      </HttpActionSection>
+      <HttpActionSection
+        label={t`Headers`}
+        actions={
+          !readOnly && (
+            <AddEntryButton
+              label={t`Add header`}
+              onClick={() =>
+                onChange({
+                  ...request,
+                  headers: [...request.headers, EMPTY_ENTRY],
+                })
+              }
+            />
+          )
+        }
+      >
+        <TemplateEntryList
+          entries={request.headers}
+          nameLabel={t`Header name`}
+          valueLabel={t`Header value`}
+          namePlaceholder="Authorization"
+          valuePlaceholder="Bearer {{secrets.token}}"
+          emptyMessage={t`No headers`}
+          readOnly={readOnly}
+          onChange={(headers) => onChange({ ...request, headers })}
+        />
+      </HttpActionSection>
+      <TitleSection
+        label={t`Body`}
+        description={t`Sent as JSON. A value that is only a {{variable}} keeps its type, so a number stays a number.`}
+      >
+        <HttpActionBodyEditor
+          body={request.body}
+          readOnly={readOnly}
+          onChange={(body) => onChange({ ...request, body })}
+        />
+      </TitleSection>
+    </Stack>
   );
-}
-
-type HttpActionVariablesProps = {
-  request: HttpActionRequest;
-};
-
-function HttpActionVariables({ request }: HttpActionVariablesProps) {
-  const variables = useMemo(
-    () => getHttpActionRequestVariables(request),
-    [request],
-  );
-
-  return (
-    <Card
-      component="aside"
-      aria-label={t`Variables`}
-      w="18rem"
-      flex="0 0 auto"
-      p="lg"
-      shadow="none"
-      withBorder
-    >
-      <Stack gap="md">
-        <Title order={5}>{t`Variables`}</Title>
-        <Text c="text-secondary">
-          {t`Type a {{variable}} anywhere in the URL, query parameters, headers or body. Each one becomes a field of the action's form.`}
-        </Text>
-        {variables.length === 0 ? (
-          <Text c="text-secondary">{t`No variables yet.`}</Text>
-        ) : (
-          <Stack gap="sm">
-            {variables.map(({ name, parts }) => (
-              <Group key={name} justify="space-between" wrap="nowrap" gap="sm">
-                <Code>{`{{${name}}}`}</Code>
-                <Text size="sm" c="text-secondary" ta="right">
-                  {parts.map(getRequestPartLabel).join(", ")}
-                </Text>
-              </Group>
-            ))}
-          </Stack>
-        )}
-        <Divider />
-        <Stack gap="xs">
-          <Text size="sm" c="text-secondary">
-            {jt`${<Code key="whole">{WHOLE_VALUE_SYNTAX}</Code>} alone keeps the value's type.`}
-          </Text>
-          <Text size="sm" c="text-secondary">
-            {jt`${<Code key="optional">{OPTIONAL_SYNTAX}</Code>} is left out when a variable in it is empty.`}
-          </Text>
-          <Text size="sm" c="text-secondary">
-            {jt`${<Code key="secret">{SECRET_SYNTAX}</Code>} inserts a secret, sent only to its allowed hosts.`}
-          </Text>
-        </Stack>
-      </Stack>
-    </Card>
-  );
-}
-
-function getRequestPartLabel(part: HttpActionRequestPart): string {
-  return match(part)
-    .with("url", () => t`URL`)
-    .with("queryParams", () => t`Query`)
-    .with("headers", () => t`Headers`)
-    .with("body", () => t`Body`)
-    .exhaustive();
 }
 
 type HttpActionSectionProps = {
@@ -217,11 +171,25 @@ function HttpActionSection({
   );
 }
 
+type AddEntryButtonProps = {
+  label: string;
+  onClick: () => void;
+};
+
+function AddEntryButton({ label, onClick }: AddEntryButtonProps) {
+  return (
+    <Button leftSection={<Icon name="add" />} onClick={onClick}>
+      {label}
+    </Button>
+  );
+}
+
 type TemplateEntryListProps = {
   entries: HttpActionTemplateEntry[];
   nameLabel: string;
   valueLabel: string;
-  addLabel: string;
+  namePlaceholder: string;
+  valuePlaceholder: string;
   emptyMessage: string;
   readOnly: boolean;
   onChange: (entries: HttpActionTemplateEntry[]) => void;
@@ -231,7 +199,8 @@ function TemplateEntryList({
   entries,
   nameLabel,
   valueLabel,
-  addLabel,
+  namePlaceholder,
+  valuePlaceholder,
   emptyMessage,
   readOnly,
   onChange,
@@ -244,8 +213,14 @@ function TemplateEntryList({
     onChange(entries.filter((_entry, i) => i !== index));
   };
 
-  if (readOnly && entries.length === 0) {
-    return <Text c="text-secondary">{emptyMessage}</Text>;
+  if (entries.length === 0) {
+    return (
+      <Card p="xl" shadow="none" withBorder>
+        <Text c="text-secondary" ta="center">
+          {emptyMessage}
+        </Text>
+      </Card>
+    );
   }
 
   return (
@@ -255,7 +230,9 @@ function TemplateEntryList({
           <TextInput
             flex={1}
             value={entry.name}
+            placeholder={namePlaceholder}
             readOnly={readOnly}
+            autoFocus={!readOnly && isEmptyEntry(entry)}
             aria-label={nameLabel}
             onChange={(event) =>
               handleEntryChange(index, { ...entry, name: event.target.value })
@@ -264,6 +241,7 @@ function TemplateEntryList({
           <TextInput
             flex={1}
             value={entry.value}
+            placeholder={valuePlaceholder}
             readOnly={readOnly}
             aria-label={valueLabel}
             onChange={(event) =>
@@ -281,19 +259,12 @@ function TemplateEntryList({
           )}
         </Group>
       ))}
-      {!readOnly && (
-        <Group>
-          <Button
-            variant="subtle"
-            leftSection={<Icon name="add" />}
-            onClick={() => onChange([...entries, { name: "", value: "" }])}
-          >
-            {addLabel}
-          </Button>
-        </Group>
-      )}
     </Stack>
   );
+}
+
+function isEmptyEntry({ name, value }: HttpActionTemplateEntry) {
+  return name.length === 0 && value.length === 0;
 }
 
 type HttpActionBodyEditorProps = {
@@ -328,6 +299,7 @@ function HttpActionBodyEditor({
     <Stack gap={0}>
       <CodeEditor
         value={body}
+        placeholder={BODY_PLACEHOLDER}
         language="json"
         extensions={extensions}
         aria-label={t`Body`}

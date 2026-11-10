@@ -13,7 +13,6 @@ import {
   canEditActionQuery,
   getFieldSettingsFromQuery,
   getHttpActionDefinition,
-  getHttpActionRequestVariables,
 } from "./utils";
 
 const STATUS_TAG: TemplateTag = {
@@ -217,19 +216,21 @@ describe("getHttpActionDefinition", () => {
     ).not.toContain("ignored");
   });
 
-  it("does not create parameters for secrets", () => {
+  it("does not create parameters for dotted names like secrets", () => {
     const definition = getHttpActionDefinition(
       {
         ...REQUEST,
         headers: [{ name: "Authorization", value: "Bearer {{secrets.token}}" }],
+        body: JSON.stringify({ value: "{{secret.auth_url}}" }),
       },
       [],
       {},
     );
 
-    expect(
-      definition?.parameters.map((parameter) => parameter.slug),
-    ).not.toContain("secrets.token");
+    expect(definition?.parameters.map((parameter) => parameter.slug)).toEqual([
+      "deal_id",
+      "reason",
+    ]);
   });
 
   it("has no body for blank body text", () => {
@@ -246,22 +247,5 @@ describe("getHttpActionDefinition", () => {
     expect(
       getHttpActionDefinition({ ...REQUEST, ...change }, [], {}),
     ).toBeNull();
-  });
-});
-
-describe("getHttpActionRequestVariables", () => {
-  it("lists each variable once with parts of request that use it", () => {
-    expect(
-      getHttpActionRequestVariables({
-        method: "POST",
-        url: "https://crm.example.com/deals/{{deal_id}}",
-        queryParams: [{ name: "q", value: "{{reason}}" }],
-        headers: [],
-        body: '{"deal": "{{deal_id}}", "reason": "{{ reason }}"}',
-      }),
-    ).toEqual([
-      { name: "deal_id", parts: ["url", "body"] },
-      { name: "reason", parts: ["queryParams", "body"] },
-    ]);
   });
 });

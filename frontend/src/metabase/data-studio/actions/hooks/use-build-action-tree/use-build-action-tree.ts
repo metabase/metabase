@@ -13,12 +13,10 @@ import { buildActiveActionTree, buildArchivedActionTree } from "./utils";
 
 type ActionTreeOptions = {
   archived?: boolean;
-  canCreateActions?: boolean;
 };
 
 export function useBuildActionTree({
   archived = false,
-  canCreateActions = false,
 }: ActionTreeOptions = {}): {
   isLoading: boolean;
   tree: TreeItem[];
@@ -62,7 +60,7 @@ export function useBuildActionTree({
       rootCollection: collections.find(isRootCollection),
       tree: archived
         ? buildArchivedActionTree(collections, actions, activeCollections ?? [])
-        : buildActiveActionTree(collections, actions, canCreateActions),
+        : buildActiveActionTree(collections, actions),
     };
   }, [
     actions,
@@ -70,7 +68,6 @@ export function useBuildActionTree({
     activeCollections,
     activeCollectionsError,
     archived,
-    canCreateActions,
     collections,
     collectionsError,
     isLoadingActions,

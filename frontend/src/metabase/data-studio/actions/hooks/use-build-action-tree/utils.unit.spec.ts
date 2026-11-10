@@ -26,7 +26,6 @@ describe("buildActiveActionTree", () => {
         createMockQueryAction({ id: 1, name: "At root", collection_id: null }),
         createMockQueryAction({ id: 2, name: "In folder", collection_id: 10 }),
       ],
-      true,
     );
 
     expect(tree).toMatchObject([
@@ -45,29 +44,13 @@ describe("buildActiveActionTree", () => {
         createMockImplicitQueryAction({ id: 3, model_id: 5 }),
         createMockQueryAction({ id: 4, collection_id: 99 }),
       ],
-      true,
     );
 
-    expect(tree).toEqual([expect.objectContaining({ model: "empty-state" })]);
-  });
-
-  it("should show an empty state without an action when no action can be created", () => {
-    expect(buildActiveActionTree([ROOT], [], false)).toEqual([
-      expect.objectContaining({
-        model: "empty-state",
-        data: expect.objectContaining({ actionUrl: undefined }),
-      }),
-    ]);
-  });
-
-  it("should show the empty state when an action can be created", () => {
-    expect(buildActiveActionTree([ROOT], [], true)).toEqual([
-      expect.objectContaining({ model: "empty-state" }),
-    ]);
+    expect(tree).toEqual([]);
   });
 
   it("should build no tree without a readable root", () => {
-    expect(buildActiveActionTree([FOLDER], [], true)).toEqual([]);
+    expect(buildActiveActionTree([FOLDER], [])).toEqual([]);
   });
 });
 

@@ -3,7 +3,6 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   buildCollectionTreeChildren,
   buildCollectionTreeNode,
-  createEmptyStateItem,
 } from "metabase/data-studio/common/utils";
 import type {
   Collection,
@@ -41,13 +40,11 @@ function isDataAction(
 }
 
 /**
- * The folders and actions without a model at the top of the data actions collection, an empty-state row when it holds
- * none, or nothing without a readable root.
+ * The folders and actions without a model at the top of the data actions collection, or nothing without a readable root.
  */
 export function buildActiveActionTree(
   actionCollections: Collection[],
   actions: WritebackAction[],
-  canCreateActions: boolean,
 ): TreeItem[] {
   if (!actionCollections.some(isRootCollection)) {
     return [];
@@ -60,16 +57,12 @@ export function buildActiveActionTree(
   const dataActions = actions.filter(
     (action) => !action.archived && isDataAction(action, collectionIds),
   );
-  const items = buildCollectionTreeChildren(
+  return buildCollectionTreeChildren(
     null,
     collections,
     dataActions,
     createActionNode,
   );
-
-  return items.length > 0
-    ? items
-    : [createEmptyStateItem("actions", undefined, !canCreateActions)];
 }
 
 /**

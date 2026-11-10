@@ -141,9 +141,7 @@ describe("ActionListPage", () => {
   it("does not offer non-admins to create anything", async () => {
     setup({ isAdmin: false });
 
-    expect(
-      await screen.findByText("Queries that change data"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No actions yet")).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: /Secrets/ }),
     ).not.toBeInTheDocument();
@@ -162,9 +160,7 @@ describe("ActionListPage", () => {
       ],
     });
 
-    expect(
-      await screen.findByText("Queries that change data"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No actions yet")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /New/ }),
     ).not.toBeInTheDocument();
