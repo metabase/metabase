@@ -17,3 +17,17 @@
     margin-right: var(--mantine-spacing-sm);
   }
 }
+
+.action {
+  flex-shrink: 0;
+}
+
+.note {
+  flex-basis: 100%;
+  line-height: 1.4;
+}
+
+.noteIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}

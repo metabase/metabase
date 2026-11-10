@@ -48,6 +48,7 @@ import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
+import { useFixErrorAction } from "./FixErrorAction";
 import { InlinePrompt } from "./InlinePrompt";
 import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
@@ -408,6 +409,14 @@ export function Editor(props: EditorProps) {
     [promptPos, generate, handleClosePrompt, proposeSource],
   );
 
+  const fixError = useFixErrorAction({
+    error,
+    source,
+    isEnabled: inline && !readOnly,
+    generate,
+    proposeSource,
+  });
+
   const aiCompletionExtensions = useAiCompletion({
     query,
     stageIndex,
@@ -594,6 +603,8 @@ export function Editor(props: EditorProps) {
             isSnippetActive || isProposing || promptPos != null ? null : error
           }
           source={source}
+          action={fixError.action}
+          note={fixError.note}
         />
 
         {!inline && source.trim() === "" && !isFormatting && error == null && (
