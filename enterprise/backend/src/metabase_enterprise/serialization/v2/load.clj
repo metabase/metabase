@@ -15,12 +15,16 @@
 
 (defn- load-settings!
   "Sets the exported `settings`, returning with `continue-on-error` the errors of those it could not set, which it
-  skips."
+  skips. A Setting whose name is retired is skipped with a warning, and is not an error."
   [settings continue-on-error]
   (into []
         (keep (fn [{:keys [key value]}]
                 (try
-                  (setting/set-value-of-type! :string (keyword key) (some-> value str))
+                  (if (setting/retired? key)
+                    ;; An export lists every exportable Setting, also one with no value. So every export of a version
+                    ;; that had this Setting has the key, and a throw here would fail each of those imports.
+                    (log/warnf "Skipping Setting %s: this version of Metabase does not have it." key)
+                    (setting/set-value-of-type! :string (keyword key) (some-> value str)))
                   nil
                   (catch Exception e
                     (if continue-on-error

@@ -1379,6 +1379,14 @@
   (testing "the removed agent-api-enabled? setting's name cannot be reused by a new setting"
     (is (contains? @#'setting/retired-setting-names "agent-api-enabled?"))))
 
+(deftest ^:parallel retired?-test
+  (testing "a retired name, as a keyword or a string"
+    (is (true? (setting/retired? :agent-api-enabled?)))
+    (is (true? (setting/retired? "agent-api-enabled?"))))
+  (testing "the name of a setting that exists, and a name that no setting ever had"
+    (is (false? (setting/retired? :site-name)))
+    (is (false? (setting/retired? "no-such-setting")))))
+
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set))

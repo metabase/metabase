@@ -112,6 +112,7 @@
   registered-settings
   registered?
   resolve-setting
+  retired?
   set!
   set-many!
   set-value-of-type!

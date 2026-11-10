@@ -420,6 +420,24 @@
           (is (= 1 (count errors)))
           (is (= "After" (setting/get :site-name))))))))
 
+(deftest settings-retired-name-test
+  (testing "an export of an earlier version that lists a retired setting imports, and its other settings are set"
+    ;; `agent-api-enabled?` is retired since 0.66.0. Each export of 0.65 has the key, first in `settings.yaml`.
+    (mt/with-temporary-setting-values [site-name "Before"]
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (io/make-parents dump-dir "settings.yaml")
+        (spit (io/file dump-dir "settings.yaml") "agent-api-enabled?: null\nsite-name: After\n")
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
+          (testing "without continue-on-error the import does not throw"
+            (is (= [] (:errors (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir))))))
+          (is (= "After" (setting/get :site-name)))
+          (is (some #(= "Skipping Setting agent-api-enabled?: this version of Metabase does not have it."
+                        (:message %))
+                    (messages))))
+        (testing "with continue-on-error it is not an error"
+          (is (= [] (:errors (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)
+                                                         :continue-on-error true)))))))))
+
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
     (let [serialized  (atom nil)

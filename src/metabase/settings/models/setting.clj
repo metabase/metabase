@@ -82,6 +82,11 @@
     "llm-max-tokens"
     "agent-api-enabled?"})
 
+(mu/defn retired? :- :boolean
+  "Whether `setting-keyword-or-name` is one of the [[retired-setting-names]]."
+  [setting-keyword-or-name :- [:or :keyword :string]]
+  (contains? retired-setting-names (name setting-keyword-or-name)))
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-retired-setting-names*
   "A dynamic val that controls whether it's allowed to use retired settings.
