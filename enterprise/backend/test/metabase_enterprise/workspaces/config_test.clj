@@ -393,11 +393,25 @@
         (is (= {:user "iso" :password "iso-pass" :additional-options "sslmode=require&tcpKeepAlive=true"}
                (select-keys (login-dw-details (config/build-workspace-config ws-id))
                             [:user :password :additional-options]))))))
+  (testing "control: option names that contain a credential word but name no credential ship as is"
+    (doseq [additional-options ["passwordCharacterEncoding=UTF-8" "TokenType=ACCESS_TOKEN"]]
+      (testing additional-options
+        (with-postgres-workspace
+          {:host "h" :port 5432 :additional-options additional-options}
+          (fn [_db-id ws-id]
+            (is (= additional-options
+                   (:additional-options (login-dw-details (config/build-workspace-config ws-id))))))))))
   (testing "options that set the parent's login are a 422: pgjdbc lets them override the workspace login, and the
             config's holder would read them"
     (doseq [[additional-options option-name] {"user=parent_admin&password=parent-secret" "user"
                                               "?sslmode=require&PASSWORD=parent-secret"  "PASSWORD"
-                                              "encrypt=true;sslpassword=parent-secret"   "sslpassword"}]
+                                              "encrypt=true;sslpassword=parent-secret"   "sslpassword"
+                                              ;; the ClickHouse driver percent-decodes option names
+                                              "us%65r=parent_admin&pass%77ord=parent-pw" "us%65r"
+                                              "ssl_key=/parent/key.pem"                  "ssl_key"
+                                              ;; Redshift IAM: the credential word need not end the name
+                                              "SecretAccessKey=parent-secret"            "SecretAccessKey"
+                                              "Session-Token=parent-token"               "Session-Token"}]
       (testing additional-options
         (with-postgres-workspace
           {:host "h" :port 5432 :additional-options additional-options}

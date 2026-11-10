@@ -266,7 +266,7 @@
                 ^[StringBuffer] StringBuilder/.append)
       (str)))
 
-(defn- normalize-connection-parameter
+(defn normalize-connection-parameter
   "Normalize `s` for matching against [[driver/disallowed-connection-parameters]]: percent escapes decoded once, case
   folded the way `equalsIgnoreCase` does, and `_ . - +` and whitespace removed."
   [s]
