@@ -32,6 +32,7 @@
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
+   [metabase-enterprise.lint.api]
    [metabase-enterprise.mcp.api.permissions]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
@@ -148,7 +149,8 @@
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
-   "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
+   "/lint"                         (premium-handler metabase-enterprise.lint.api/routes :dependencies)
+   "/logs"                        (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
    ;; Deliberately NOT premium-handler-gated: managing an existing enrollment (disable/status/recover)

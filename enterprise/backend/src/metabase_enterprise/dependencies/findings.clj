@@ -1,0 +1,153 @@
+(ns metabase-enterprise.dependencies.findings
+  "The stored analysis findings read as a whole: every entity whose query analysis failed, with its errors and what
+  caused each, once the background work that keeps the findings current has run."
+  (:require
+   [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task.dependency :as task.dependency]
+   [metabase-enterprise.dependencies.task.util :as task.util]
+   [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
+
+(set! *warn-on-reflection* true)
+
+;;; ------------------------------------------- Draining the jobs -------------------------------------------
+
+(def ^:private max-drain-batches
+  "How many batches [[drain-pending!]] runs one job for before it gives up. Each batch takes up to the job's batch size,
+  and an entity whose processing fails stays pending until the job gives up on it after `dependency-max-failures`
+  tries, so a drain that runs this long is stuck rather than busy."
+  1000)
+
+(mu/defn- drain! :- :nil
+  "Run `run-batch!`, which answers whether it took any entity, until it takes none."
+  [job-name   :- :string
+   run-batch! :- fn?]
+  (loop [runs 1]
+    (when (task.util/run-batch-locked! run-batch!)
+      (when (>= runs max-drain-batches)
+        (throw (ex-info (tru "The {0} job did not finish within {1} batches" job-name max-drain-batches)
+                        {:status-code 500, :job job-name})))
+      (recur (inc runs)))))
+
+(defn drain-pending!
+  "Run the dependency job, then the analysis job, until each has nothing left to do, so that the findings reflect every
+  write committed before the call. A write marks what it makes stale in its own transaction, so nothing committed is
+  missed; only the jobs' scheduling is deferred, and this runs their batches in place."
+  []
+  (drain! "dependency" task.dependency/update-dependencies!)
+  (drain! "analysis" #(pos? (deps.analysis-finding/analyze-batch!
+                             (deps.settings/dependency-entity-check-batch-size)))))
+
+;;; ------------------------------------------- Reading the findings -------------------------------------------
+
+(mr/def ::analyzed-type
+  "A type of entity the analysis checks."
+  (into [:enum] (sort deps.analysis-finding/analyzable-entities)))
+
+(mr/def ::cause
+  "The entity an error is traced to. `entity_id` is nil for a table, which has none, and `name` is nil when the entity
+  no longer exists."
+  [:map {:closed true}
+   [:type      ::lib.schema.validate/source-entity-type]
+   [:id        ms/PositiveInt]
+   [:entity_id [:maybe :string]]
+   [:name      [:maybe :string]]])
+
+(mr/def ::error
+  "One error of a failed analysis."
+  [:map {:closed true}
+   [:type   ::lib.schema.validate/validate-error-type]
+   [:detail [:maybe :string]]
+   [:cause  [:maybe ::cause]]])
+
+(mr/def ::failed-entity
+  "An entity whose analysis failed, with its errors."
+  [:map {:closed true}
+   [:type          ::analyzed-type]
+   [:id            ms/PositiveInt]
+   [:entity_id     :string]
+   [:name          :string]
+   [:collection_id [:maybe ms/PositiveInt]]
+   [:errors        [:sequential ::error]]])
+
+;; A transform has no `archived` column, and a segment lives under its table rather than in a collection.
+(def ^:private entity-columns
+  {:card      {:archived? true,  :collection? true}
+   :transform {:archived? false, :collection? true}
+   :segment   {:archived? true,  :collection? false}})
+
+(mu/defn- failed-entities-of-type :- [:sequential ::failed-entity]
+  "The entities of `entity-type` whose analysis failed, without their errors yet."
+  [entity-type :- ::analyzed-type]
+  (mapv (fn [row]
+          {:type          entity-type
+           :id            (:id row)
+           :entity_id     (:entity_id row)
+           :name          (:name row)
+           :collection_id (:collection_id row)
+           :errors        []})
+        (dependencies.db/failed-analysis-entities entity-type (entity-columns entity-type))))
+
+(def ^:private cause-columns
+  "The columns a cause is described by, per type; a table has no `entity_id`."
+  {:table     [:id :name]
+   :card      [:id :name :entity_id]
+   :transform [:id :name :entity_id]})
+
+(mu/defn- causes :- [:map-of [:tuple ::lib.schema.validate/source-entity-type ms/PositiveInt] ::cause]
+  "The causes the AnalysisFindingError `rows` name, keyed by type and id, nameless when the entity no longer exists."
+  [rows :- [:sequential ::dependencies.schema/analysis-finding-error]]
+  (let [refs  (into #{}
+                    (keep (fn [{:keys [source_entity_type source_entity_id]}]
+                            (when (and source_entity_type source_entity_id)
+                              [source_entity_type source_entity_id])))
+                    rows)
+        found (into {}
+                    (mapcat (fn [[source-type ids]]
+                              (for [row (dependencies.db/entities-with-columns
+                                         source-type (cause-columns source-type) (vec ids))]
+                                [[source-type (:id row)] row])))
+                    (u/group-by first second refs))]
+    (into {}
+          (map (fn [[source-type id :as ref]]
+                 (let [row (found ref)]
+                   [ref {:type      source-type
+                         :id        id
+                         :entity_id (:entity_id row)
+                         :name      (:name row)}])))
+          refs)))
+
+(mu/defn- errors-by-entity :- [:map-of [:tuple ::analyzed-type ms/PositiveInt] [:sequential ::error]]
+  "The errors of the failed `entities`, keyed by type and id, each with its cause."
+  [entities :- [:sequential ::failed-entity]]
+  (let [rows  (into []
+                    (mapcat (fn [[entity-type entities]]
+                              (dependencies.db/finding-errors-for-entities entity-type (mapv :id entities))))
+                    (group-by :type entities))
+        cause (causes rows)]
+    (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)
+                (fn [{:keys [error_type error_detail source_entity_type source_entity_id]}]
+                  {:type   error_type
+                   :detail error_detail
+                   :cause  (when (and source_entity_type source_entity_id)
+                             (cause [source_entity_type source_entity_id]))})
+                rows)))
+
+(mu/defn failed-entities :- [:sequential ::failed-entity]
+  "Every analyzed entity whose stored analysis failed, with its errors, by type then id: not archived, and not content
+  Metabase manages itself. Call [[drain-pending!]] first for an answer that reflects every committed write."
+  []
+  (let [entities (into []
+                       (mapcat failed-entities-of-type)
+                       (sort deps.analysis-finding/analyzable-entities))
+        errors   (errors-by-entity entities)]
+    (mapv (fn [{:keys [type id] :as entity}]
+            (assoc entity :errors (vec (errors [type id]))))
+          entities)))
