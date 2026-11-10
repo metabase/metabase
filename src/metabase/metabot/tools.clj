@@ -141,7 +141,7 @@
 
   An entry keeps the keys the adapters and the system-message builder already read (`:tool-name`,
   `:doc`, `:schema`, `:title-fn`, `:prompt`, `:system-instructions`, `:capabilities`, `:scope`), and
-  `:runs-alone?`, which the tool executor reads. Its `:fn` performs the whole call through
+  `:runs-alone?` and `:replaces`, which the tool executor reads. Its `:fn` performs the whole call through
   `metabase.metabot.tools.runtime/invoke`. So argument coercion, argument validation, the scope
   check, the result check and error rendering all happen in one place, and `:fn` never throws.
 
@@ -171,5 +171,6 @@
           :prompt              (:metabot/prompt declaration)
           :system-instructions (:metabot/system-instructions declaration)
           :runs-alone?         (:metabot/runs-alone? declaration)
+          :replaces            (:metabot/replaces declaration)
           :fn                  (fn [arguments]
                                  (tools.runtime/invoke entries ctx tool-name arguments))})))))
