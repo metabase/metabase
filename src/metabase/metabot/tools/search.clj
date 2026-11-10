@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
@@ -17,54 +18,68 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
-  (sorted-set "card"
-              "dashboard"
-              "database"
-              "dataset"
-              "document"
-              "measure"
-              "metric"
-              "segment"
-              "table"
-              "transform"))
+  (sorted-set "card" "collection" "dashboard" "database" "dataset" "document"
+              "measure" "metric" "segment" "table" "transform"))
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection data_authority curated data_layer can_write] :as result}]
+  [{:keys [verified moderated_status collection collection_authority_level data_authority curated data_layer can_write]
+    :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
+        ;; `collection_authority_level` is the only authority signal every model carries: on a card /
+        ;; dashboard / document row it's the *parent* collection's level, and on a collection row it's
+        ;; the collection's own. Don't read `official_collection` (cards and dashboards define it, but
+        ;; collections and documents don't) and don't read the nested `:collection` map either —
+        ;; `search.impl/serialize` overwrites that with the *effective parent* for collection rows, so
+        ;; it answers a different question and arrives keywordized. `name` because the index column is
+        ;; a string but the hydrated parent is a keyword.
+        authority-level (some-> collection_authority_level name)
+        official? (= "official" authority-level)
         collection-info (select-keys collection [:id :name :authority_level])
-        ;; Curation signals beyond verified, so the LLM can see *why* content is curated. `:curated` is
-        ;; the precomputed rollup (present on the appdb/semantic engines); `:data_layer` is table-only.
-        ;; assoc-some keeps them off results that don't carry them (e.g. the in-place fallback).
-        official? (= "official" (:authority_level collection-info))
-        common-fields {:id          (:id result)
-                       :type        (metabot.search-models/search-model->entity-type model)
-                       :name        (:name result)
-                       :description (:description result)
-                       :updated_at  (:updated_at result)
-                       :created_at  (:created_at result)}]
+        common-fields {:id                  (:id result)
+                       :type                (metabot.search-models/search-model->entity-type model)
+                       :name                (:name result)
+                       :description         (:description result)
+                       :updated_at          (:updated_at result)
+                       :created_at          (:created_at result)
+                       :official_collection official?
+                       :verified            verified?}]
     (case model
       "database"
       common-fields
 
       "collection"
       ;; A collection has no database/base-table; surface its own curation level and parent location.
+      ;; `:is_container true` marks it (like dashboards) as a thing the LLM drills *into* rather than
+      ;; queries directly. For a collection row `authority-level` is the collection's own level, so
+      ;; here `:official` means "this collection is official" rather than "it sits in one".
+      ;;
+      ;; The set of container types also lives in `llm-shape/container-type?`, which decides the
+      ;; rendered `is_container` attribute — add a new container type to both or neither.
       (-> common-fields
-          (merge {:official official?})
-          (m/assoc-some :location (:location result)))
+          (merge {:official        official?
+                  :is_container    true})
+          (m/assoc-some :authority_level authority-level
+                        :location        (:location result)))
 
       "table"
+      ;; Curation signals beyond verified, so the LLM can see *why* content is curated:
+      ;; `:curated` is the precomputed rollup (appdb/semantic engines only), `:data_layer` is
+      ;; table-only. assoc-some (here and in the dashboard/metric branches) keeps them off results
+      ;; that don't carry them (e.g. the in-place fallback).
       (-> common-fields
           (merge {:name            (:table_name result)
                   :display_name    (:name result)
@@ -72,13 +87,27 @@
                   :database_schema (:table_schema result)
                   :official        official?
                   :data_authority  data_authority})
-          (m/assoc-some :curated curated :data_layer data_layer))
+          ;; A *published* table lives in a collection — often a library one (the table spec joins
+          ;; Collection on `is_published`). Carry it like any other collection-bearing result so the
+          ;; table picks up `collection_path` and `library_member`.
+          ;;
+          ;; Both halves of the test earn their keep. A table published at the *root* has no
+          ;; collection row, and the spec coalesces a display name for it, which makes
+          ;; `search.impl/serialize` stamp the id as the string "root" — feeding that to a numeric
+          ;; `:id [:in ...]` lookup downstream fails the whole search. And an *unpublished* table can
+          ;; still carry a stale numeric `collection_id`, but its collection join is gated on
+          ;; `is_published`, so the name comes back nil and we must not claim it lives there.
+          (m/assoc-some :curated curated
+                        :data_layer data_layer
+                        :collection (when (and (int? (:id collection)) (:name collection))
+                                      collection-info)))
 
       "dashboard"
       (-> common-fields
-          (merge {:verified   verified?
-                  :official   official?
-                  :collection collection-info})
+          (merge {:verified     verified?
+                  :official     official?
+                  :collection   collection-info
+                  :is_container true})
           (m/assoc-some :curated curated
                         :can_write can_write))
 
@@ -97,7 +126,8 @@
                   :base_table_id     (:table_id result)
                   :base_table_name   (:table_name result)
                   :base_table_schema (:table_schema result)})
-          (m/assoc-some :curated curated))
+          (m/assoc-some :curated                 curated
+                        :base_table_display_name (:table_display_name result)))
 
       "transform"
       (merge common-fields
@@ -106,7 +136,6 @@
       ;; Questions, metrics, and datasets
       (-> common-fields
           (merge {:database_id (:database_id result)
-                  :verified    verified?
                   :official    official?
                   :collection  collection-info})
           (m/assoc-some :curated curated
@@ -123,6 +152,99 @@
       (seq descriptions) (mapv (fn [r]
                                  (let [cid (-> r :collection :id)]
                                    (update r :collection m/assoc-some :description (get descriptions cid))))))))
+
+(defn- collection-result?
+  "Whether a postprocessed result represents a collection itself (vs. an item *in* a collection)."
+  [r]
+  (= "collection" (:type r)))
+
+(defn- result-collection-id
+  "The collection id this result lives in (or, for collection results, the collection's own id).
+
+  Only real numeric ids: `search.impl/serialize` uses the string \"root\" to mean \"published at the
+  root\", and every caller here feeds this straight into a numeric `:id [:in ...]` lookup."
+  [r]
+  (let [id (if (collection-result? r) (:id r) (get-in r [:collection :id]))]
+    (when (int? id) id)))
+
+(defn- ancestor-ids
+  "Parse a Collection :location string like \"/12/34/\" into [12 34]."
+  [location]
+  (when (and location (not= "/" location))
+    (->> (str/split location #"/") (remove str/blank?) (keep parse-long))))
+
+(defn- enrich-with-collection-paths
+  "Stamp each collection-bearing result with :collection_path (and :full_path for collection
+   results) and :library_member (boolean, gated by the :library premium feature).
+
+   :collection_path is the slash-joined chain of ancestor names ending in the result's
+   collection name (e.g. \"Marketing/Q4 Reports/Email\"). For collection-typed results,
+   the same string is also exposed as :full_path.
+
+   :library_member is true when the result's top-level (root) collection is a library-type
+   collection. Published tables have a collection too, so they route through here like anything else.
+   A table's `data_layer` plays no part: upgraded instances put nearly every visible table on `:final`."
+  [results]
+  (let [direct-ids   (->> results (keep result-collection-id) distinct)
+        ;; Bulk-fetch direct collections (with their effective location, which elides ancestors
+        ;; the current user can't read) so we can chase ancestors permission-safely.
+        direct-rows  (when (seq direct-ids)
+                       (metabot.db/collection-path-rows-with-effective-location direct-ids))
+        id->eff-loc  (u/index-by :id :effective_location direct-rows)
+        ;; Chase ancestors from the *raw* location so library-member detection (which reads the
+        ;; root's :type, not its name) still works even when the root isn't readable. Only the
+        ;; ancestor delta needs fetching — direct collections are already in hand.
+        ancestor-delta   (->> direct-rows
+                              (mapcat (comp ancestor-ids :location))
+                              (remove (set direct-ids))
+                              distinct)
+        ancestor-rows    (when (seq ancestor-delta)
+                           (metabot.db/collection-path-rows ancestor-delta))
+        id->row      (u/index-by :id (concat direct-rows ancestor-rows))
+        ;; A table (and so a measure/segment bound to it) is reachable through *data* permissions,
+        ;; which say nothing about its collection. Everything name-shaped is gated on reading that
+        ;; collection; only the root's `:type` survives below, per the disclosure note there.
+        readable-ids (into #{} (comp (filter mi/can-read?) (map :id)) direct-rows)
+        path-of      (fn [coll-id]
+                       (when-let [{:keys [name]} (and (readable-ids coll-id) (get id->row coll-id))]
+                         ;; Only readable ancestors (from :effective_location) contribute names,
+                         ;; so we never leak the name of a collection the user can't see.
+                         (let [ancestor-names (->> (ancestor-ids (get id->eff-loc coll-id))
+                                                   (keep #(get-in id->row [% :name])))]
+                           (str/join "/" (concat ancestor-names [name])))))
+        library?     (premium-features/has-feature? :library)
+        ;; A collection's root is its top-level ancestor, or itself when it's already top-level.
+        ;; NOTE: the root is chased from the *raw* location, not `:effective_location`, so for a
+        ;; readable item whose root ancestor is unreadable, `library_member` reflects that hidden
+        ;; root's *type*. This is an accepted disclosure: it leaks one bit (library-type or not)
+        ;; of type metadata about an already-visible item, never a name, and the flag is a
+        ;; curation signal that must stay accurate even when the root isn't directly readable.
+        root-type-of (fn [coll-id]
+                       (let [root-id (or (first (ancestor-ids (get-in id->row [coll-id :location])))
+                                         coll-id)]
+                         (get-in id->row [root-id :type])))
+        ;; A result is a library member when its root collection is a library type. Reuse the
+        ;; canonical set the `:library` search scorer keys off of (see
+        ;; `metabase.search.scoring/library-score-expr`) so the flag can't drift from the ranking.
+        library-of   (fn [coll-id]
+                       (boolean (and library?
+                                     coll-id
+                                     (collection/library-collection-types (root-type-of coll-id)))))]
+    (mapv (fn [r]
+            (let [cid  (result-collection-id r)
+                  path (when cid (path-of cid))]
+              (cond-> r
+                ;; drop the whole nested map when its collection is unreadable: it carries the name,
+                ;; and `enrich-with-collection-descriptions` may already have added the description
+                (and cid (not (readable-ids cid)) (not (collection-result? r)))
+                (dissoc :collection)
+
+                path (assoc :collection_path path)
+                (and path (collection-result? r)) (assoc :full_path path)
+                ;; Only expose the premium `:library_member` signal when the feature is on, leaving the
+                ;; key absent otherwise so external /v1/search consumers see a consistent shape.
+                (and library? cid) (assoc :library_member (library-of cid)))))
+          results)))
 
 (defn- enrich-with-database-engines
   "Fetch and merge database engine + name info for search results that have database IDs.
@@ -222,13 +344,35 @@
 (defn- enrich-with-measure-segment-base-tables
   "Attach `:base_table_portable_fk` (`[database_name schema table]`) to measure and segment results.
   The agent queries a measure or segment against that table, as it does for a metric.
-  Requires `:database_name` to already be set on each result, by [[enrich-with-database-engines]]."
+  Requires `:database_name` to already be set on each result, by [[enrich-with-database-engines]].
+
+  Also attach the binding table's collection when the table is published, so [[enrich-with-collection-paths]] can
+  mark a measure or segment of a Library table as `library_member`, as it does the table.
+  This is wider than `search.scoring/library-score-expr`, which scores measures and segments 0 because their spec
+  sets `:collection-id false`. The flag tells the agent whether it can trust the content, and the binding table
+  settles that.
+  The collection is attached only when the user can read the table."
   [results]
-  (mapv (fn [{:keys [type database_name base_table_schema base_table_name] :as r}]
-          (if (and (#{"measure" "segment"} type) database_name base_table_name)
-            (assoc r :base_table_portable_fk [database_name base_table_schema base_table_name])
-            r))
-        results))
+  (let [table-ids            (->> results
+                                  (filter (comp #{"measure" "segment"} :type))
+                                  (keep :base_table_id)
+                                  distinct)
+        table-id->collection (when (seq table-ids)
+                               (into {}
+                                     (keep (fn [{:keys [id collection_id is_published] :as table}]
+                                             (when (and is_published collection_id (mi/can-read? table))
+                                               [id {:id collection_id}])))
+                                     (metabot.db/table-schema-rows table-ids)))]
+    (mapv (fn [{:keys [type database_name base_table_id base_table_schema base_table_name] :as r}]
+            (if (#{"measure" "segment"} type)
+              (cond-> r
+                (and database_name base_table_name)
+                (assoc :base_table_portable_fk [database_name base_table_schema base_table_name])
+
+                (get table-id->collection base_table_id)
+                (assoc :collection (get table-id->collection base_table_id)))
+              r))
+          results)))
 
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.
@@ -333,13 +477,32 @@
             (= profile-id "nlq"))
     (:collection_id metabot)))
 
+(defn- scoped-collection-id
+  "The collection a search is limited to. A confined metabot (embedded, or the nlq profile) keeps every search
+  inside its configured collection: a caller-supplied collection narrows the scope only when it is the configured
+  one or lies beneath it, and is ignored otherwise. Unconfined, the caller's collection applies as given."
+  [caller-id configured-id]
+  (cond
+    (nil? configured-id)        caller-id
+    (nil? caller-id)            configured-id
+    (= caller-id configured-id) caller-id
+
+    (some-> (:location (metabot.db/collection caller-id))
+            (str/includes? (str "/" configured-id "/")))
+    caller-id
+
+    :else
+    (do (log/infof "[METABOT-SEARCH] Collection %s is outside the configured collection %s; searching %s"
+                   caller-id configured-id configured-id)
+        configured-id)))
+
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, transforms) in Metabase.
   Abstracted from the API endpoint logic.
 
   Optional filter keys threaded straight into the search context: `created-by` (set of user ids),
-  `archived`, `collection-id` (numeric, scopes to the collection subtree; overrides the metabot's
-  own confined collection), `offset`. `filters-only?` makes a call with no queries run a single
+  `archived`, `collection-id` (numeric, scopes to the collection subtree; see [[scoped-collection-id]]
+  for how it combines with a confined metabot's own collection), `offset`. `filters-only?` makes a call with no queries run a single
   nil-query search — a pure listing over the active filters — instead of returning nothing.
   `partial-results?` keeps the other queries' results when a query's search fails, unless every
   search failed; without it, any failure fails the call.
@@ -370,13 +533,12 @@
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
         use-verified?   (:use_verified_content metabot)
-        ;; The confined collection is a containment boundary, not a default, so a caller-supplied
-        ;; collection-id — which the v2 search tool fills from a request filter — can never
-        ;; replace it. Unconfined, the caller's collection-id applies.
-        confined-id     (confined-collection-id metabot profile-id)
+        ;; The confined collection is a containment boundary, not a default. A caller-supplied collection-id
+        ;; (the v2 search tool fills it from a request filter) can narrow the search within it but never widen it.
+        ;; Unconfined, the caller's collection-id applies.
         ;; Measures and segments belong to a table, not a collection, so a search scoped to a collection
         ;; never returns them, even though the search tools list them as entity types.
-        collection-id   (or confined-id collection-id)
+        collection-id   (scoped-collection-id collection-id (confined-collection-id metabot profile-id))
         limit           (or limit 50)
         ;; the user's data lens, computed once for every context built below
         lens            {:is-impersonated-user? (perms/impersonated-user?)
@@ -483,19 +645,149 @@
                    :total total
                    :failed-queries (into [] (comp (mapcat :queries) (distinct)) failed)))))
 
+(def ^:private query-broadening-stopwords
+  "Tokens we don't include in an OR-broadened fallback query — they'd flood the result
+   set with noise without adding signal."
+  #{"the" "a" "an" "of" "for" "with" "on" "in" "to" "by" "at" "and" "or"})
+
+(defn- broaden-query
+  "When the original keyword query produces zero hits, the agent has typically over-
+   specified — every word is ANDed and one stray qualifier (e.g. \"hard bounce rate
+   campaign\") collapses the result set to empty. As a one-shot fallback we rejoin the
+   meaningful tokens with `or` so the engine compiles them with `|` semantics.
+
+   Returns nil (no fallback) when broadening doesn't apply:
+     - the query is empty or has a single distinct token
+     - the agent already used `or` (so OR-broadening would be redundant)
+     - the agent used a quoted phrase (treat as a deliberate exact-match intent)
+     - the agent excluded a word (OR-joined branches would drop the exclusion and surface exactly what was
+       ruled out)"
+  [q]
+  (when (and q
+             (not (str/includes? q "\""))
+             (not (re-find #"(?i)\bor\b" q))
+             ;; the same test `search.util/to-tsquery-expr` uses to read a word as negated
+             (not (re-find #"(?:^|\s)-\w" q)))
+    (let [tokens (->> (str/split q #"\s+")
+                      ;; Strip clinging edge punctuation so "sales, revenue" broadens to
+                      ;; "sales or revenue", not "sales, or revenue".
+                      (map #(str/replace % #"^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$" ""))
+                      (remove str/blank?)
+                      (remove #(query-broadening-stopwords (u/lower-case-en %))))]
+      ;; Decide on distinct words: repeats of one word OR to the query that just came back empty. Keep the
+      ;; repeats in the output, though: `to-tsquery-expr` reads a repeated final word as typed in full rather
+      ;; than as a prefix, and dropping the repeat would hand that prefix to a different word.
+      (when (> (count (distinct (map u/lower-case-en tokens))) 1)
+        (str/join " or " tokens)))))
+
+;; TODO (Chris 2026-09-30) -- Two search entry points have diverged. [[search]] is the multi-query search (term and
+;; semantic queries, fused by rank, paginated) behind MCP v2's `search` tool and `/v1/search`. [[search-by-query]] is
+;; the single-query search the Metabot tools use, with its own engine choice, zero-hit broadening, and richer result
+;; enrichment. We may want to consolidate them once it's clear which shape both callers should share.
+(defn search-by-query
+  "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, collections) in Metabase
+  with a single query string. This is the Metabot tools' search.
+
+  Routes the query to the semantic engine when available. That engine already blends keyword and vector matching for
+  one query (see `metabase-enterprise.search.semantic.scoring/rrf-rank-exp`), so no metabot-level fusion is needed.
+  Otherwise the instance's default keyword engine runs it.
+
+  The keyword (appdb) engine ANDs every token in the input, so one extra qualifier word can collapse the result set to
+  zero. When the first call returns no hits, the search retries once with the tokens OR-joined by [[broaden-query]].
+  It skips that retry when the query is a single token, is quoted, or already uses `or`.
+
+  The result carries the size of the whole match set as `:total` metadata, so the caller can tell that `limit`
+  cut it short."
+  [{:keys [query database-id collection-id created-at last-edited-at
+           entity-types limit metabot profile-id weights]}]
+  (log/infof "[METABOT-SEARCH] Starting search with params: %s"
+             {:database-id  database-id
+              :entity-types entity-types
+              :limit        limit
+              :metabot-id   (:entity_id metabot)
+              :profile-id   profile-id
+              :weights      weights})
+  (let [search-models  (if (seq entity-types)
+                         (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
+                         metabot-search-models)
+        _              (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
+        use-verified?  (:use_verified_content metabot)
+        ;; A caller-supplied collection narrows a confined metabot's search but never widens it.
+        collection-id  (scoped-collection-id collection-id (confined-collection-id metabot profile-id))
+        limit          (or limit 50)
+        ;; Pick the engine that will actually run the search. Semantic blends keyword and vector matching itself,
+        ;; so it gets first refusal when active. Otherwise the instance's default precedence decides, typically
+        ;; appdb but `in-place` on minimal installs. Choosing here lets the broadening below branch on the engine.
+        picked-engine  (search.engine/resolved-engine)
+        run-engine     (fn [search-string]
+                         (search/search
+                          (search/search-context
+                           (cond-> {:search-string                       search-string
+                                    :models                              search-models
+                                    :search-engine                       (name picked-engine)
+                                    :table-db-id                         database-id
+                                    :created-at                          created-at
+                                    :last-edited-at                      last-edited-at
+                                    :current-user-id                     api/*current-user-id*
+                                    :is-impersonated-user?               (perms/impersonated-user?)
+                                    :is-sandboxed-user?                  (perms/sandboxed-user?)
+                                    :is-routed-user?                     (perms/routed-user?)
+                                    :is-superuser?                       api/*is-superuser?*
+                                    :current-user-perms                  @api/*current-user-permissions-set*
+                                    :filter-items-in-personal-collection "exclude-others"
+                                    :context                             :metabot
+                                    :archived                            false
+                                    :limit                               limit
+                                    :offset                              0}
+                             weights       (assoc :weights weights)
+                             use-verified? (assoc :curated true)
+                             collection-id (assoc :collection collection-id)))))
+        primary        (run-engine query)
+        ;; The `or` rewrite only broadens where lowercase `or` compiles to a tsquery `|`; see
+        ;; [[search.engine/tsquery-operators-supported?]] for where that holds. Semantic is excluded as well,
+        ;; because it already blends keyword and vector matching.
+        {:keys [data total]} (or (when (and (empty? (:data primary))
+                                            (not= picked-engine :search.engine/semantic)
+                                            (search.engine/tsquery-operators-supported?))
+                                   (when-let [broadened (broaden-query query)]
+                                     (log/info "[METABOT-SEARCH] Zero hits; retrying with an OR-broadened query")
+                                     (let [retry (run-engine broadened)]
+                                       (when (seq (:data retry)) retry))))
+                                 primary)]
+    (log/infof "[METABOT-SEARCH] Query returned entity types: %s" (frequencies (map :model data)))
+    (-> (->> data
+             (take limit)
+             (map postprocess-search-result)
+             enrich-with-collection-descriptions
+             enrich-with-database-engines
+             enrich-with-portable-entity-ids
+             enrich-with-metric-sources
+             enrich-with-measure-segment-base-tables
+             ;; after base tables: that step resolves a measure/segment's binding collection
+             enrich-with-collection-paths
+             (validate-and-enrich-documents false)
+             remove-unreadable-transforms)
+        (with-meta {:total total}))))
+
 (defn- table-refs->results
   [ids]
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
     (for [t (filter mi/can-read?
-                    (metabot.db/table-summaries ids))]
-      {:id              (:id t)
-       :type            "table"
-       :name            (:name t)
-       :display_name    (:display_name t)
-       :database_id     (:db_id t)
-       :database_schema (:schema t)
-       :description     (:description t)})))
+                    (metabot.db/table-summaries-with-publication ids))]
+      (cond-> {:id              (:id t)
+               :type            "table"
+               :name            (:name t)
+               :display_name    (:display_name t)
+               :database_id     (:db_id t)
+               :database_schema (:schema t)
+               :description     (:description t)}
+        ;; Carry the collection so `enrich-with-collection-paths` reaches these too — otherwise the
+        ;; same library table reports `library_member` true through `search` and false through this
+        ;; path. Gated on `is_published` for the same reason the search path is: an unpublished table
+        ;; can still hold a stale `collection_id` it isn't really published into.
+        (and (:is_published t) (:collection_id t))
+        (assoc :collection {:id (:collection_id t)})))))
 
 (defn- card-refs->results
   "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`).
@@ -565,7 +857,7 @@
 
 (defn entity-refs->search-results
   "Hydrate semantic-layer entity refs into the enriched search-result shape that
-  [[metabase.metabot.tools.shared.llm-shape/search-results->xml]] and the `search` tool consume.
+  [[metabase.metabot.tools.shared.llm-shape/search-result->xml]] and the `search` tool consume.
 
   `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
   `\"metric\"`, `\"question\"`, `\"measure\"`, or `\"segment\"` (the names the agent uses with
@@ -578,6 +870,12 @@
         table-ids (distinct (map :id (get by-model "table")))
         card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})
         ms-refs   (for [m ["measure" "segment"], r (get by-model m)] {:id (:id r) :type m})]
+    ;; Same enrichment chain as [[search]] minus `remove-unreadable-transforms`, which can't fire —
+    ;; there is no transform branch above, so a transform ref never reaches here. The collection-path
+    ;; step does run: both paths render through
+    ;; [[metabase.metabot.tools.shared.llm-shape/search-result->xml]], and omitting it would drop
+    ;; `is_library_member` — which the result instructions call the strongest curation signal — from
+    ;; exactly the entities most likely to have it.
     (->> (concat (table-refs->results table-ids)
                  (card-refs->results (distinct card-refs))
                  (measure-segment-refs->results (distinct ms-refs)))
@@ -586,18 +884,24 @@
          enrich-with-portable-entity-ids
          enrich-with-metric-sources
          enrich-with-measure-segment-base-tables
+         ;; after base tables: that step resolves a measure/segment's binding collection
+         enrich-with-collection-paths
          remove-unreadable-transforms)))
 
-(def ^:private default-search-limit 10)
+(def ^:private default-search-limit 25)
 (def ^:private max-search-limit 50)
 
 (defn- search-restrictions
   "What narrowed a search beyond its queries, as sentences for the model."
-  [default-types {:keys [metabot profile-id]} {:keys [entity_types]}]
+  [default-types {:keys [metabot profile-id]} {:keys [entity_types collection_id]}]
   (cond-> []
     (and (seq entity_types) (not-every? (set entity_types) default-types))
     (conj (str "Only these entity types were searched: " (str/join ", " (sort (set entity_types)))
                ". If other types could match, add them to `entity_types`."))
+
+    collection_id
+    (conj (str "Only collection " collection_id " and the collections inside it were searched. "
+               "To search everywhere, leave out `collection_id`."))
 
     (:use_verified_content metabot)
     (conj "This Metabot searches only curated content, such as verified items and items in official collections.")
@@ -606,54 +910,46 @@
     (conj "This Metabot searches only inside its own collection.")))
 
 (defn- format-search-output
-  "Format search results as an LLM-ready string. `limit` is the page size the search asked for, and `restrictions`
-  are the [[search-restrictions]] that explain an empty result."
-  [results limit restrictions]
-  (let [results-xml                    (llm-shape/search-results->xml results)
-        {:keys [total failed-queries]} (meta results)]
+  "Format search results as an LLM-ready string, one XML element per result.
+  `limit` is the page size the search asked for, and `restrictions` are the [[search-restrictions]] that explain an
+  empty result."
+  [query results limit restrictions]
+  (let [results-xml (str/join "\n" (map llm-shape/search-result->xml results))
+        {:keys [total]} (meta results)]
     (te/lines
-     "<result>"
+     (str "<results query=\"" (llm-shape/escape-xml query)
+          "\" total=\"" (count results) "\">")
      results-xml
-     ""
-     ;; Search caps each ranked pool, so the total is a lower bound.
-     (if (and total (< limit total))
+     "</results>"
+     ;; Search caps the ranked pool, so the total is a lower bound.
+     (when (and total (< limit total))
        (str "Showing " (count results) " of at least " total " results. "
-            "To see more, raise `limit` (max " max-search-limit ") or make the queries more specific.")
-       (str "Total results: " (count results)))
-     (when (seq failed-queries)
-       (str "The search failed for " (str/join ", " (map #(str "\"" (llm-shape/escape-xml %) "\"") failed-queries))
-            ", so these results may be incomplete. "
-            "If what you need isn't listed, tell the user the search was incomplete."))
+            "To see more, raise `limit` (max " max-search-limit ") or make the query more specific."))
      (when (empty? results)
        ["<no-results>"
         restrictions
-        (str "Retry once with shorter `keyword_queries`: one or two words each, with synonyms as separate entries. "
+        (str "Retry once with a shorter `query`: one or two distinctive words, or a synonym. "
              "If that also finds nothing, tell the user instead of searching again.")
         "</no-results>"])
-     "</result>"
      "<instructions>"
      instructions/search-result-instructions "</instructions>")))
 
 ;; Field-level descriptions surface to the model as JSON-Schema `description`s on the
 ;; tool's input parameters (via `malli.json-schema` in `metabase.metabot.self.claude`).
-;; This is where per-parameter guidance lives; cross-tool search *strategy* (navigate
-;; first, drill instead of re-searching, one search per concept) lives in the system
-;; prompt's discovery section, not here.
-(def ^:private semantic-query-desc
-  (str "A natural-language description of what you're looking for, matched by vector similarity. "
-       "Prefer one focused query that captures the user's intent; add another only to cover a "
-       "genuinely different facet of the request, not a reworded synonym."))
-
-(def ^:private keyword-query-desc
-  (str "A distinctive keyword matched against names and descriptions via full-text search. "
-       "Provide a few of the most salient terms from the request; entities matching more of them rank higher."))
-
+;; Query-writing guidance lives in the system prompt's discovery section, not here.
 (def ^:private entity-types-desc
   "Restrict results to these entity types. Omit to search across all types this tool supports.")
 
 (def ^:private limit-desc
-  (str "Maximum number of results (default " default-search-limit ", max " max-search-limit "). "
-       "Use a larger value (20–50) for broad or generic queries; keep the default for narrow, specific ones."))
+  (str "Maximum number of results (default " default-search-limit ", max " max-search-limit ")."))
+
+(defn- entity-types-schema
+  [& types]
+  [:maybe [:sequential {:error/message "must be an array of supported entity type strings"}
+           (into [:enum {:description entity-types-desc}] types)]])
+
+(def ^:private limit-schema
+  [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]])
 
 (defn- search-result->item
   "Trim a search result to the fields the chain-of-thought results card renders.
@@ -725,54 +1021,36 @@
    :recovery (conj (browse-steps scope) no-retry-step)})
 
 (defn- do-search
-  [default-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as args}]
+  [default-types search-opts {:keys [query entity_types limit collection_id] :as args}]
   ;; Recoverable, not `:internal`: the agent can find the data without search, or tell the user that
   ;; search failed. `read_resource` does not use the search index.
   (let [limit        (min max-search-limit (or limit default-search-limit))
-        opts         (merge {:semantic-queries semantic_queries
-                             :term-queries     keyword_queries
-                             :entity-types     (or (seq entity_types) (vec default-types))
-                             :limit            limit
-                             :partial-results? true}
-                            search-opts)
+        opts         (merge {:query        query
+                             :entity-types (or (seq entity_types) (vec default-types))
+                             :limit        limit}
+                            search-opts
+                            (when collection_id
+                              {:collection-id collection_id}))
         results      (try
-                       (search opts)
+                       (search-by-query opts)
                        (catch Exception e
                          ;; The runtime logs a recoverable error at debug level, without its cause.
                          (log/error e "Metabot search failed")
                          (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)))))
         restrictions (search-restrictions default-types search-opts args)]
-    {:output (format-search-output results limit restrictions)
+    {:output (format-search-output query results limit restrictions)
      :structured-output (cond-> {:result-type :search
                                  :data results
                                  :total_count (count results)}
-                          (empty? results) (assoc :empty_reason (cond
-                                                                  (seq (:failed-queries (meta results))) "incomplete"
-                                                                  (seq restrictions)                     "restricted"
-                                                                  :else                                  "no_match")))
+                          (empty? results) (assoc :empty_reason (if (seq restrictions) "restricted" "no_match")))
      :data-parts [(streaming/search-results-part
                    {:total_count (count results)
                     :results (mapv search-result->item results)})]}))
 
-(def ^:private semantic-queries-schema
-  [:sequential {:error/message "must be an array of strings"}
-   [:string {:description semantic-query-desc}]])
-
-(def ^:private keyword-queries-schema
-  [:sequential {:error/message "must be an array of strings"}
-   [:string {:description keyword-query-desc}]])
-
-(defn- entity-types-schema
-  [& types]
-  [:maybe [:sequential {:error/message "must be an array of supported entity type strings"}
-           (into [:enum {:description entity-types-desc}] types)]])
-
-(def ^:private limit-schema
-  [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]])
-
 (def ^:private general-entity-types
   "The entity types the general and NLQ search tools accept."
-  (sorted-set "dashboard"
+  (sorted-set "collection"
+              "dashboard"
               "document"
               "measure"
               "metric"
@@ -783,32 +1061,19 @@
 
 (def ^:private search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
-   [:keyword_queries {:optional true} keyword-queries-schema]
+   [:query ms/NonBlankString]
    [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
+   [:database_id   {:optional true} [:maybe :int]]
+   [:collection_id {:optional true} [:maybe :int]]
    [:limit {:optional true} limit-schema]])
 
 (defn- search-display
-  [{:keys [keyword_queries semantic_queries]}]
-  (let [query-lists  [keyword_queries semantic_queries]
-        well-formed? (every? #(or (nil? %) (sequential? %)) query-lists)
-        queries      (when well-formed?
-                       (->> (apply concat query-lists)
-                            (filter string?)
-                            distinct))]
-    (when (seq queries)
-      ;; just the object (the queries) — the client wraps it in the verb + tense
-      ;; ("Searching for …" while active, "Searched for …" once finished)
-      (str/join ", " queries))))
-
-(tools/defrecoverable missing-query!
-  "A search needs at least one query and no blank entries."
-  {:payload [:map {:closed true}]}
-  [_]
-  {:message "Provide at least one query. Every query must be non-blank."
-   :recovery [{:uses #{"search"}
-               :text (str "Remove blank entries from every query list, then call `search` again "
-                          "with non-blank queries in `keyword_queries`.")}]})
+  [{:keys [query]}]
+  ;; just the object (the query) — the client wraps it in the verb + tense
+  ;; ("Searching for …" while active, "Searched for …" once finished). The title runs before argument
+  ;; validation, so a malformed query yields no title rather than an error.
+  (when (string? query)
+    (not-empty query)))
 
 (tools/defrecoverable unavailable-database!
   "The database for this SQL search does not exist or the user cannot read it."
@@ -836,28 +1101,24 @@
      :args args
      :scope scope/agent-search
      :metabot/title-fn search-display})
-  (handle [_ {:keys [database_id semantic_queries keyword_queries] :as args} {:keys [metabot]}]
-    (let [queries (concat semantic_queries keyword_queries)]
-      (when (or (empty? queries) (some str/blank? queries))
-        (missing-query! {})))
-    (when (contains? args :database_id)
+  (handle [_ {:keys [database_id] :as args} {:keys [metabot]}]
+    (when (some? database_id)
       (check-search-database! database_id))
     (do-search default-types
                (cond-> (assoc search-opts :metabot metabot)
-                 (contains? args :database_id) (assoc :database-id database_id))
+                 (some? database_id) (assoc :database-id database_id))
                args)))
 
 (def search-tool
   "The general `search` tool."
   (->SearchTool
-   "Find tables, models, metrics, measures, segments, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
+   "Find tables, models, metrics, measures, segments, dashboards, documents, saved questions, and collections by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
    search-schema general-entity-types {}))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
-   [:keyword_queries {:optional true} keyword-queries-schema]
-   [:database_id [:int {:description "ID of the database to search — use the database currently selected in the SQL editor."}]]
+   [:query ms/NonBlankString]
+   [:database_id :int]
    [:entity_types {:optional true} (entity-types-schema "table" "model")]
    [:limit {:optional true} limit-schema]])
 
@@ -869,13 +1130,14 @@
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
-   [:keyword_queries {:optional true} keyword-queries-schema]
+   [:query ms/NonBlankString]
    [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
+   [:database_id   {:optional true} [:maybe :int]]
+   [:collection_id {:optional true} [:maybe :int]]
    [:limit {:optional true} limit-schema]])
 
 (def nlq-search-tool
   "The NLQ `search` tool."
   (->SearchTool
-   "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
-   nlq-search-schema ["metric" "measure" "segment" "model" "question" "table"] {:profile-id "nlq"}))
+   "Find NLQ-queryable data sources (tables, models, metrics, measures, segments, questions, and collections) by topic, or find dashboards and documents as save destinations."
+   nlq-search-schema ["collection" "metric" "measure" "segment" "model" "question" "table"] {:profile-id "nlq"}))
