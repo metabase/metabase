@@ -368,7 +368,8 @@
   "A map from table name to the schema [[inferred-schema]] picks for it, for each table name that `refs` give a null
   schema.
   The `refs` are `[schema table-name]` pairs naming tables in the database with `database-id`, and the candidates are
-  the tables there that the current user can query."
+  the tables there that the current user can query. Under [[shared/curated-only?]], a name with a curated candidate
+  resolves among its curated candidates only."
   [database-id default-schema refs]
   (let [table-names (into #{} (keep (fn [[schema table-name]] (when (nil? schema) table-name))) refs)
         named       (reduce (fn [m [schema table-name]]
@@ -382,9 +383,18 @@
         ;; Only tables the user can query count, so a filled-in schema never names a table the permission sweep would
         ;; reject, and whether a name gets one says nothing about tables the user cannot use.
         queryable   (when (seq tables)
-                      (metabot.perms/queryable-table-ids (map :id tables)))]
-    (u/for-map [[table-name same-name] (group-by :name (filter #(contains? queryable (:id %)) tables))
-                :let  [schema (inferred-schema (get named table-name) default-schema same-name)]
+                      (metabot.perms/queryable-table-ids (map :id tables)))
+        tables      (filter #(contains? queryable (:id %)) tables)
+        ;; A curated-only Metabot refuses an uncurated source, so a name with a curated table resolves among those.
+        ;; A name without one keeps every candidate: a table can be usable through curated content that covers it.
+        curated     (when (and (seq tables) (shared/curated-only?))
+                      (into #{}
+                            (map second)
+                            (curation/curated-ids (map (fn [{:keys [id]}] ["table" id]) tables))))]
+    (u/for-map [[table-name same-name] (group-by :name tables)
+                :let  [same-name (or (not-empty (filter #(contains? curated (:id %)) same-name))
+                                     same-name)
+                       schema    (inferred-schema (get named table-name) default-schema same-name)]
                 :when schema]
       [table-name schema])))
 
