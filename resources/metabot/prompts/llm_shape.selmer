@@ -369,6 +369,11 @@ No metadata available to display. This doesn't mean the column is empty or canno
 {% endif %}
 </transform>
 {% endif %}
+{% if is_data_source_entry %}
+<{{entry_tag}} id="{{entry_id}}" name="{{entry_name}}" is_verified="{{entry_verified}}" database_id="{{entry_database_id}}"{% if entry_portable_entity_id %} portable_entity_id="{{entry_portable_entity_id}}"{% endif %}{% if entry_source_unavailable %} source_unavailable="true"{% endif %}>{% if entry_description %}
+{{entry_description}}
+{% endif %}</{{entry_tag}}>
+{% endif %}
 {% if is_get_metadata_result %}
 {% if metadata_has_any %}
 {% if metadata_metrics_xml %}{{metadata_metrics_xml|safe}}{% endif %}{% if metadata_tables_xml %}{{metadata_tables_xml|safe}}{% endif %}{% if metadata_models_xml %}{{metadata_models_xml|safe}}{% endif %}{% if metadata_questions_xml %}The cards in <questions> are saved questions, not metrics or models.{% if metadata_questions_have_query %} The <query> of a question shows the table and filters it uses.{% endif %}

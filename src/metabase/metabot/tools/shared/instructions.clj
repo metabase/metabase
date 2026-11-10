@@ -69,6 +69,10 @@ The assistant needs to:
   "Instructions for LLM when processing available answer sources (metrics and models)."
   "These are the available metrics and models for answering questions.
 Use this information to understand what data sources are available.
+The entries do not show columns. Before you write a query, get the columns of the data sources you chose:
+- For a model, call `list_available_fields` with its id.
+- For a metric, call `read_resource` with `metabase://metric/{id}/dimensions`. Its dimensions are the columns that
+  you can filter and break out by.
 Reference items using: [name](metabase://type/id)")
 
 (defn query-created-instructions-for

@@ -13,7 +13,9 @@
    [metabase.metabot.usage :as metabot.usage]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -136,8 +138,40 @@
   (some #(and (string? %) (str/includes? % text))
         (tree-seq coll? seq (:input request))))
 
+(defn- request-body-bytes
+  "The size in UTF-8 bytes of the JSON body that OpenRouter gets for the LLM `request`."
+  ^long [request]
+  (alength (.getBytes ^String (json/encode (openrouter/openrouter-request-body request)) "UTF-8")))
+
+(deftest generate-content-listing-size-test
+  (testing "with 200 models in scope, the request after `list_available_data_sources` stays under 100 KB"
+    (let [mp     (mt/metadata-provider)
+          orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-model-cleanup [:model/Card]
+        (t2/insert! :model/Card (for [i (range 200)]
+                                  {:name                   (str "Orders model " i)
+                                   :type                   :model
+                                   :display                :table
+                                   :dataset_query          orders
+                                   :visualization_settings {}
+                                   :creator_id             (mt/user->id :crowberto)
+                                   :database_id            (mt/id)}))
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [requests (atom [])]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (scripted-llm requests [[{:type      :tool-input
+                                                                  :id        "t1"
+                                                                  :function  "list_available_data_sources"
+                                                                  :arguments {}}]])]
+              (mt/user-http-request :crowberto :post 200 "metabot/document/generate-content"
+                                    {:instructions "count of orders"}))
+            (let [size (request-body-bytes (second @requests))]
+              (is (< size (* 100 1024))
+                  (format "request 2 is %d bytes" size)))))))))
+
 (deftest generate-content-model-chart-round-trip-test
-  (testing "the model loads the query skills, then charts a model by its column names"
+  (testing "the model lists the data sources, reads the model's columns, loads the query skills, then charts the model"
     (let [mp (mt/metadata-provider)]
       (mt/with-temp [:model/Card model {:type          :model
                                         :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
@@ -145,11 +179,19 @@
                                            llm-metabot-provider test-provider]
           (let [requests  (atom [])
                 responses [[{:type      :tool-input
+                             :id        "t0"
+                             :function  "list_available_data_sources"
+                             :arguments {}}]
+                           [{:type      :tool-input
                              :id        "t1"
+                             :function  "list_available_fields"
+                             :arguments {:table_ids [] :model_ids [(:id model)] :metric_ids []}}]
+                           [{:type      :tool-input
+                             :id        "t2"
                              :function  "load_skill"
                              :arguments {:ids ["construct-notebook-query-core" "construct-notebook-query-advanced"]}}]
                            [{:type      :tool-input
-                             :id        "t2"
+                             :id        "t3"
                              :function  "document_construct_model_chart"
                              :arguments {:name         "Orders by month"
                                          :description  "Count of orders per month."
@@ -165,15 +207,68 @@
               (let [response (mt/user-http-request :crowberto
                                                    :post 200 "metabot/document/generate-content"
                                                    {:instructions "Chart orders by month"})
-                    [first-request second-request] @requests]
+                    [first-request _ third-request fourth-request] @requests]
                 (is (some #{"load_skill"} (map :tool-name (:tools first-request))))
-                (is (input-includes? second-request "<skill id=\"construct-notebook-query-advanced\">")
+                (is (input-includes? third-request "name=\"CREATED_AT\"")
+                    "`list_available_fields` gives the model's columns before the model writes the query")
+                (is (input-includes? fourth-request "<skill id=\"construct-notebook-query-advanced\">")
                     "the skill body reaches the model before it writes the query")
                 (is (=? {:error      nil
                          :draft_card {:name          "Orders by month"
                                       :display       "line"
                                       :database_id   (mt/id)
                                       :dataset_query {:stages [{:source-card (:id model)}]}}}
+                        response))))))))))
+
+(deftest generate-content-metric-chart-round-trip-test
+  (testing "the model lists the data sources, reads the metric's dimensions, then charts the metric by a dimension"
+    (let [mp      (mt/metadata-provider)
+          orders  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          db-name (t2/select-one-fn :name :model/Database :id (mt/id))]
+      (mt/with-temp [:model/Card metric {:type          :metric
+                                         :dataset_query (lib/aggregate orders (lib/count))}]
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [requests  (atom [])
+                responses [[{:type      :tool-input
+                             :id        "t0"
+                             :function  "list_available_data_sources"
+                             :arguments {}}]
+                           [{:type      :tool-input
+                             :id        "t1"
+                             :function  "read_resource"
+                             :arguments {:uris [(str "metabase://metric/" (:id metric) "/dimensions")]}}]
+                           [{:type      :tool-input
+                             :id        "t2"
+                             :function  "document_construct_model_chart"
+                             :arguments {:name         "Orders by month"
+                                         :description  "Count of orders per month."
+                                         :query        {"lib/type" "mbql/query"
+                                                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                                     "source-table" [db-name "PUBLIC" "ORDERS"]
+                                                                     "aggregation"  [["metric" {} (:entity_id metric)]]
+                                                                     "breakout"     [["field" {"temporal-unit" "month"}
+                                                                                      [db-name "PUBLIC" "ORDERS"
+                                                                                       "CREATED_AT"]]]}]}
+                                         :viz_settings {:chart_type "line"}}}]]]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (scripted-llm requests responses)]
+              (let [response (mt/user-http-request :crowberto
+                                                   :post 200 "metabot/document/generate-content"
+                                                   {:instructions "Chart orders by month"})
+                    [_ second-request third-request] @requests]
+                (is (input-includes? second-request "`metabase://metric/{id}/dimensions`")
+                    "the list tells the model where a metric's dimensions come from")
+                (is (input-includes? third-request "### Dimensions")
+                    "`read_resource` gives the metric's dimensions before the model writes the query")
+                (is (input-includes? third-request "CREATED_AT"))
+                (is (=? {:error      nil
+                         :draft_card {:name          "Orders by month"
+                                      :display       "line"
+                                      :database_id   (mt/id)
+                                      :dataset_query {:stages [{:aggregation [["metric" {} (:id metric)]]
+                                                                :breakout    [["field" {:temporal-unit "month"}
+                                                                               (mt/id :orders :created_at)]]}]}}}
                         response))))))))))
 
 (deftest generate-content-sql-chart-without-mention-test

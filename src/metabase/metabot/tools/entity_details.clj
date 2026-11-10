@@ -731,15 +731,38 @@
                  (assoc :type card-type))
             cards))))
 
+(def ^:private answer-source-options
+  "Card detail options for [[answer-sources]]: the fields only, which the empty-fields filter needs."
+  {:with-fields?                    true
+   :with-related-tables?            false
+   :with-metrics?                   false
+   :with-measures?                  false
+   :with-segments?                  false
+   :with-queryable-dimensions?      false
+   :with-default-temporal-breakout? false})
+
+(defn- scope-rows
+  "The first `limit` metric and model rows in the scope of the Metabot with `metabot-id`, curated first, and whether
+  more rows exist. A nil `limit` returns every row."
+  [metabot-id limit]
+  (let [rows (metabot.tools.u/get-metrics-and-models metabot-id :limit (some-> limit inc))]
+    (if (and limit (> (count rows) limit))
+      {:rows (take limit rows) :more? true}
+      {:rows rows :more? false})))
+
 (defn answer-sources
-  "Get the details of metrics and models in the scope of a Metabot row.
-  Accepts a map with `:metabot` and optional options for field values."
-  [{:keys [metabot] :as options}]
+  "Get the metrics and models in the scope of a Metabot row, with light detail.
+
+  Accepts a map with `:metabot`, an optional `:limit` on the number of rows, and optional options for field values.
+  The structured output holds `:metrics`, `:models`, `:more?` (true when the scope holds more than `:limit` rows),
+  the Metabot's `:collection_id`, and the `:database_ids` of the listed rows."
+  [{:keys [metabot limit] :as options}]
   (if-let [metabot-id (:id metabot)]
     (lib-be/with-metadata-provider-cache
-      (let [metrics-and-models (metabot.tools.u/get-metrics-and-models metabot-id)
+      (let [{:keys [rows more?]} (scope-rows metabot-id limit)
+            options (merge (dissoc options :metabot :limit) answer-source-options)
             {metrics :metric, models :model}
-            (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
+            (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) rows)
                        detail (cards-details card-type database-id cards options)]
                    detail)
                  (group-by :type))
@@ -747,9 +770,12 @@
             ;; :fields permission-filtered down to nothing -- list it as unavailable rather than
             ;; as a data source with no columns to query.
             models (remove (comp empty? :fields) models)]
-        {:structured-output {:result-type :answer-sources
-                             :metrics (vec metrics)
-                             :models  (vec models)}}))
+        {:structured-output {:result-type   :answer-sources
+                             :metrics       (vec metrics)
+                             :models        (vec models)
+                             :more?         more?
+                             :collection_id (:collection_id metabot)
+                             :database_ids  (into (sorted-set) (keep :database_id) rows)}}))
     (throw (ex-info (i18n/tru "Unknown Metabot.")
                     {:status-code 400}))))
 

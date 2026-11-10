@@ -147,16 +147,60 @@
   (str "<result>\n" data "\n</result>\n"
        "<instructions>\n" instruction-text "\n</instructions>"))
 
+;; Every later request of the turn sends the list again, so a long list can pass the model's context window or the
+;; provider's request size limit.
+(def ^:private max-answer-sources
+  "The most entries that `list_available_data_sources` lists."
+  50)
+
+(defn- collection-browse-uris
+  "The `read_resource` URIs, each with what it gives, that find the data sources in the collection `collection-id`."
+  [collection-id]
+  [(str (llm-shape/metabase-uri :collection collection-id "items")
+        " (the metrics, models and subcollections of the Metabot's collection)")])
+
+(defn- instance-browse-uris
+  "The `read_resource` URIs, each with what it gives, that find the data sources of a Metabot with no collection."
+  [database-ids]
+  ;; The collection URIs list the default namespace only. The table URIs also reach the metrics and models in other
+  ;; namespaces, for example shared tenant collections.
+  (concat ["metabase://collection/root/items (the metrics, models and subcollections of the root collection)"
+           (str "metabase://databases, then metabase://database/{id}/tables, then metabase://table/{id}/derived "
+                "(the metrics and models built on a table, in any collection)")]
+          (map #(str (llm-shape/metabase-uri :database % "models") " (the models of database " % ")")
+               database-ids)))
+
+(defn- more-answer-sources-note
+  "A note that the scope holds more data sources than the list shows, with the URIs that `read_resource` can
+  browse."
+  [{:keys [collection_id database_ids]}]
+  (let [uris (if collection_id
+               (collection-browse-uris collection_id)
+               (instance-browse-uris database_ids))]
+    (str "<more-data-sources>\n"
+         "This list does not show all data sources. More data sources exist. "
+         "To find them, call `read_resource` with one of these URIs:\n"
+         (str/join "\n" (map #(str "- " %) uris)) "\n"
+         "</more-data-sources>")))
+
+(defn- short-answer-source
+  "The keys of a model or metric that one entry of `list_available_data_sources` shows."
+  [source]
+  (select-keys source [:id :type :name :description :verified :database_id :portable_entity_id
+                       :source_unavailable]))
+
 (defn- format-answer-sources-output
-  [{:keys [metrics models]}]
+  [{:keys [metrics models more?] :as sources}]
   (let [content (str (when (seq metrics)
                        (str "<metrics>\n"
-                            (str/join "\n" (map llm-shape/metric->xml metrics))
+                            (str/join "\n" (map llm-shape/data-source-entry->xml metrics))
                             "\n</metrics>\n"))
                      (when (seq models)
                        (str "<metabase-models>\n"
-                            (str/join "\n" (map llm-shape/model->xml models))
-                            "\n</metabase-models>")))]
+                            (str/join "\n" (map llm-shape/data-source-entry->xml models))
+                            "\n</metabase-models>\n"))
+                     (when more?
+                       (more-answer-sources-note sources)))]
     (format-with-instructions content instructions/answer-sources-instructions)))
 
 (defn- format-field-metadata-output
@@ -184,24 +228,24 @@
   tools/Tool
   (declaration [_]
     {:name "list_available_data_sources"
-     :description "List all data sources (metrics and models) available to the metabot instance."
+     :description (str "List up to " max-answer-sources " data sources (metrics and models) available to the "
+                       "metabot instance, curated first. Each entry holds the id, name, description and database. "
+                       "Call `list_available_fields` to get the columns of a model. Call `read_resource` with "
+                       "`metabase://metric/{id}/dimensions` to get the dimensions of a metric.")
      :scope scope/agent-metadata-read
      :args [:map {:closed true}]})
   (handle [_ _args {:keys [metabot]}]
     (when-not (:id metabot)
       (unknown-metabot! {}))
     (add-output
-     (cond-> (entity-details-tools/answer-sources {:metabot metabot
-                                                   :with-field-values? false
-                                                   :with-measures? true
-                                                   :with-segments? true})
-       ;; under curated-only a card's details omit its definition, as read_resource's do
-       (shared/curated-only?)
-       (update :structured-output
-               (fn [so]
-                 (-> so
-                     (update :metrics (fn [rows] (mapv #(dissoc % :query_json) rows)))
-                     (update :models (fn [rows] (mapv #(dissoc % :query_json) rows)))))))
+     (update (entity-details-tools/answer-sources {:metabot            metabot
+                                                   :limit              max-answer-sources
+                                                   :with-field-values? false})
+             :structured-output
+             (fn [sources]
+               (-> sources
+                   (update :metrics #(mapv short-answer-source %))
+                   (update :models #(mapv short-answer-source %)))))
      format-answer-sources-output)))
 
 (def list-available-data-sources-tool

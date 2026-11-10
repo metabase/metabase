@@ -241,6 +241,7 @@
    :is_field_values_metadata (= type :field_values_metadata)
    :is_field_metadata (= type :field_metadata)
    :is_get_metadata_result (= type :get_metadata_result)
+   :is_data_source_entry (= type :data_source_entry)
    :is_transform (= type :transform)})
 
 (defn- render-llm-template
@@ -604,6 +605,29 @@
                                   (str/join "\n" (map measure->xml measures)))
       :model_segments_xml       (when (seq segments)
                                   (str/join "\n" (map segment->xml segments)))})))
+
+(def ^:private max-entry-description-length
+  "The longest description that [[data-source-entry->xml]] renders in full."
+  200)
+
+(defn data-source-entry->xml
+  "Format a model or metric as one short entry of a data-source list.
+
+  For example, a model renders as
+  `<metabase-model id=\"7\" name=\"Orders\" is_verified=\"false\" database_id=\"1\" portable_entity_id=\"…\">`
+  with its description inside. The entry holds no columns or query. A metric with no usable source also
+  gets `source_unavailable=\"true\"`. A description longer than [[max-entry-description-length]] characters is cut."
+  [{:keys [id type name description verified database_id portable_entity_id source_unavailable]}]
+  (render-llm-template
+   :data_source_entry
+   {:entry_tag                (if (= type :metric) "metric" "metabase-model")
+    :entry_id                 (str id)
+    :entry_name               name
+    :entry_verified           (boolean verified)
+    :entry_database_id        (str database_id)
+    :entry_portable_entity_id portable_entity_id
+    :entry_source_unavailable (boolean source_unavailable)
+    :entry_description        (truncate description max-entry-description-length)}))
 
 (defn- format-markdown-row
   "Format a sequence of values as a markdown table row."

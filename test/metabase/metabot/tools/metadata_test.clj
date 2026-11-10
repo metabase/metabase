@@ -534,3 +534,201 @@
               (is (str/includes? output (str "Card " card-id " is a " (name actual-type)
                                              ", not a " (name expected-type) ".")))
               (is (str/includes? output (str "metabase://" (name actual-type) "/" card-id))))))))))
+
+;;; ------------------------------------- list_available_data_sources size -------------------------------------
+
+(defn- insert-cards!
+  "Insert `n` cards of `card-type` over ORDERS into `collection-id`, each with the description that `description-fn`
+  gives for its index. Return their ids, in insert order."
+  ([n card-type collection-id]
+   (insert-cards! n card-type collection-id (constantly nil)))
+  ([n card-type collection-id description-fn]
+   (let [mp     (mt/metadata-provider)
+         orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+     (t2/insert-returning-pks! :model/Card
+                               (for [i (range n)]
+                                 {:name                   (str "Listing " (name card-type) " " i)
+                                  :type                   card-type
+                                  :description            (description-fn i)
+                                  :display                :table
+                                  :dataset_query          (cond-> orders
+                                                            (= card-type :metric) (lib/aggregate (lib/count)))
+                                  :visualization_settings {}
+                                  :collection_id          collection-id
+                                  :creator_id             (mt/user->id :crowberto)
+                                  :database_id            (mt/id)})))))
+
+(defn- list-data-sources
+  "Call `list_available_data_sources` for `metabot` as crowberto."
+  [metabot]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (invoke-metadata :document-generate-content "list_available_data_sources" {} metabot)))
+
+(defn- entry-count
+  "The number of model and metric entries in the `output` of `list_available_data_sources`."
+  [output]
+  (count (re-seq #"<(metabase-model|metric) id=" output)))
+
+(def ^:private more-note "More data sources exist")
+
+(deftest list-available-data-sources-cap-test
+  (doseq [[n expected-entries note?] [[49 49 false] [50 50 false] [51 50 true]]]
+    (testing (format "%d models in scope" n)
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Metabot    metabot {:name "listing metabot" :collection_id coll-id}]
+        (mt/with-model-cleanup [:model/Card]
+          (insert-cards! n :model coll-id)
+          (let [{:keys [output]} (list-data-sources metabot)]
+            (is (= expected-entries (entry-count output)))
+            (is (= note? (str/includes? output more-note)))))))))
+
+(deftest list-available-data-sources-curated-first-test
+  (testing "with 51 models in scope, the verified one with the highest id is in the list"
+    (mt/with-premium-features #{:content-verification}
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Metabot    metabot {:name "listing metabot" :collection_id coll-id}]
+        (mt/with-model-cleanup [:model/Card :model/ModerationReview]
+          (let [verified-id (last (insert-cards! 51 :model coll-id))]
+            (t2/insert! :model/ModerationReview {:moderated_item_type "card"
+                                                 :moderated_item_id   verified-id
+                                                 :moderator_id        (mt/user->id :crowberto)
+                                                 :status              "verified"
+                                                 :most_recent         true})
+            (is (str/includes? (:output (list-data-sources metabot))
+                               (str "<metabase-model id=\"" verified-id "\"")))))))))
+
+(deftest list-available-data-sources-description-cut-test
+  (let [descriptions [(apply str (repeat 199 "a"))
+                      (apply str (repeat 200 "b"))
+                      (apply str (repeat 201 "c"))
+                      (apply str (repeat 2000 "e"))
+                      nil]]
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Metabot    metabot {:name "listing metabot" :collection_id coll-id}]
+      (mt/with-model-cleanup [:model/Card]
+        (insert-cards! (count descriptions) :model coll-id descriptions)
+        (let [{:keys [output error]} (list-data-sources metabot)]
+          (is (nil? error))
+          (is (= 5 (entry-count output)))
+          (testing "a description of 200 characters or fewer is unchanged"
+            (is (str/includes? output (first descriptions)))
+            (is (not (str/includes? output (str (first descriptions) "a"))))
+            (is (str/includes? output (second descriptions)))
+            (is (not (str/includes? output (str (second descriptions) "...")))))
+          (testing "a longer description is cut after 200 characters, with an ellipsis"
+            (doseq [c ["c" "e"]]
+              (is (str/includes? output (str (apply str (repeat 200 c)) "...")))
+              (is (not (str/includes? output (apply str (repeat 201 c))))))))))))
+
+(defn- orders-query
+  "A query over the ORDERS table."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
+(defn- card-count-query
+  "A count of the rows of the card `card-id`."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/aggregate (lib/query mp (lib.metadata/card mp card-id)) (lib/count))))
+
+(deftest list-available-data-sources-unavailable-source-test
+  (testing "a metric whose source card was deleted is marked unavailable, and a metric with a source is not"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Metabot    metabot {:name "listing metabot" :collection_id coll-id}
+                   :model/Card       {question-id :id} {:name          "Doomed question"
+                                                        :type          :question
+                                                        :dataset_query (orders-query)}
+                   :model/Card       {metric-id :id} {:name          "Metric on a deleted question"
+                                                      :type          :metric
+                                                      :collection_id coll-id
+                                                      :dataset_query (card-count-query question-id)}]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[usable-id] (insert-cards! 1 :metric coll-id)]
+          (t2/delete! :model/Card :id question-id)
+          (let [{:keys [output]} (list-data-sources metabot)]
+            (is (re-find (re-pattern (str "<metric id=\"" metric-id "\"[^>]* source_unavailable=\"true\"")) output))
+            (is (str/includes? output (str "<metric id=\"" usable-id "\"")))
+            (is (= 1 (count (re-seq #"source_unavailable" output))))))))))
+
+(deftest list-available-data-sources-short-entry-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Metabot    metabot {:name "listing metabot" :collection_id coll-id}]
+    (mt/with-model-cleanup [:model/Card]
+      (let [[model-id]  (insert-cards! 1 :model coll-id)
+            [metric-id] (insert-cards! 1 :metric coll-id)
+            entity-ids  (t2/select-pk->fn :entity_id :model/Card :id [:in [model-id metric-id]])
+            {:keys [output]} (list-data-sources metabot)]
+        (testing "an entry holds the id, name, database id and portable entity id"
+          (doseq [id [model-id metric-id]]
+            (is (str/includes? output (str "id=\"" id "\"")))
+            (is (str/includes? output (str "portable_entity_id=\"" (entity-ids id) "\""))))
+          (is (str/includes? output "name=\"Listing model 0\""))
+          (is (str/includes? output "name=\"Listing metric 0\""))
+          (is (str/includes? output (str "database_id=\"" (mt/id) "\""))))
+        (testing "an entry holds no columns, query, related tables or dimensions"
+          (doseq [text ["### Fields" "<field " "<query>" "<related-table" "### Dimensions"]]
+            (is (not (str/includes? output text)) text)))))))
+
+(deftest list-available-data-sources-note-uri-test
+  (testing "the note names the Metabot's collection when it has one"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Metabot    metabot {:name "listing metabot" :collection_id coll-id}]
+      (mt/with-model-cleanup [:model/Card]
+        (insert-cards! 51 :model coll-id)
+        (let [{:keys [output]} (list-data-sources metabot)]
+          (is (str/includes? output more-note))
+          (is (str/includes? output "This list does not show all data sources."))
+          (is (not (re-find #"first \d+ data sources" output)))
+          (is (str/includes? output (str "metabase://collection/" coll-id "/items")))
+          (is (not (str/includes? output "/models")))))))
+  (testing "the note names the database models when the Metabot has no collection"
+    (mt/with-temp [:model/Metabot metabot {:name "listing metabot" :collection_id nil}]
+      (mt/with-model-cleanup [:model/Card]
+        (insert-cards! 51 :model nil)
+        (let [{:keys [output]} (list-data-sources metabot)]
+          (is (str/includes? output more-note))
+          (is (str/includes? output (str "metabase://database/" (mt/id) "/models"))))))))
+
+(deftest list-available-data-sources-note-metrics-test
+  (testing "with 51 metrics and no Metabot collection, the note names URIs that reach metrics"
+    (mt/with-temp [:model/Metabot metabot {:name "listing metabot" :collection_id nil}]
+      (mt/with-model-cleanup [:model/Card]
+        (insert-cards! 51 :metric nil)
+        (let [{:keys [output]} (list-data-sources metabot)]
+          (is (str/includes? output more-note))
+          (testing "the root collection, for metrics in the default collection tree"
+            (is (str/includes? output "metabase://collection/root/items")))
+          (testing "the tables of every database, for metrics in any collection"
+            (doseq [uri ["metabase://databases" "metabase://database/{id}/tables" "metabase://table/{id}/derived"]]
+              (is (str/includes? output uri) uri))))))))
+
+(deftest note-table-uri-reaches-tenant-metrics-test
+  (testing "with tenants on, `metabase://table/{id}/derived` lists a metric in a shared tenant collection"
+    ;; The collection URIs list the default namespace only, so they do not reach this metric.
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {coll-id :id} {:namespace "shared-tenant-collection"}
+                       :model/Metabot    metabot {:name "listing metabot" :collection_id nil}]
+          (mt/with-model-cleanup [:model/Card]
+            (insert-cards! 1 :metric coll-id)
+            (let [{:keys [output]} (mt/with-current-user (mt/user->id :crowberto)
+                                     (invoke-metadata :document-generate-content "read_resource"
+                                                      {:uris [(str "metabase://table/" (mt/id :orders) "/derived")]}
+                                                      metabot))]
+              (is (str/includes? output "Listing metric 0")))))))))
+
+(deftest list-available-data-sources-cost-bounded-test
+  (testing "the app-DB calls of one call do not grow with the number of models in scope"
+    (letfn [(call-count [n]
+              (mt/with-temp [:model/Collection {coll-id :id} {}
+                             :model/Metabot    metabot {:name "listing metabot" :collection_id coll-id}]
+                (mt/with-model-cleanup [:model/Card]
+                  (insert-cards! n :model coll-id)
+                  ;; The first call warms caches that only the first call pays for.
+                  (list-data-sources metabot)
+                  (t2/with-call-count [calls]
+                    (list-data-sources metabot)
+                    (calls)))))]
+      (let [counts [(call-count 60) (call-count 200)]]
+        (is (apply = counts) (str "app-DB calls for 60 and 200 models: " counts))))))

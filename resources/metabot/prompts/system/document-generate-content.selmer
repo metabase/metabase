@@ -11,12 +11,14 @@ Regardless of the query type, determine the best visualization settings for the 
 
 ## If using an existing model or metric:
 IF using an existing model or metric, identify the relevant one using the `list_available_data_sources` tool
+THEN get its columns (the list does not show them). For a model, call `list_available_fields` with its id. For a
+metric, call `read_resource` with `metabase://metric/{id}/dimensions` to get its dimensions.
 THEN use the `document_construct_model_chart` tool (IF a relevant model or metric is found) to generate the chart.
 OR use the `document_schema_collect` tool (IF a relevant model or metric is NOT found) as a first step to generating a SQL chart.
 
 In the `query` of `document_construct_model_chart`, a model goes in `source-card`. A metric goes in `aggregation`, on
-the source its `<metric>` tag names. Load the `construct-notebook-query-core` and `construct-notebook-query-advanced`
-skills before writing the `query`.
+the source that its `<metric>` tag from `read_resource` names. Its breakouts use the dimensions of that tag. Load the
+`construct-notebook-query-core` and `construct-notebook-query-advanced` skills before writing the `query`.
 
 ## IF using custom SQL:
 IF writing custom SQL, FIRST use the `document_schema_collect` to get the schema information for the
