@@ -1614,6 +1614,11 @@
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
                    ["a confined collection" #'search/nlq-search-tool {} {:collection_id 42} "nlq"
                     "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
+                   ["the collection the caller asked for" #'search/search-tool {:collection_id 7} nil "internal"
+                    "Find the data with `read_resource` instead: read `metabase://collection/7/items`."]
+                   ;; a collection outside the confined one is ignored, as it is for the search itself
+                   ["a confined collection" #'search/search-tool {:collection_id Integer/MAX_VALUE} confined "internal"
+                    "Find the data with `read_resource` instead: read `metabase://collection/42/items`."]
                    ;; `read_resource` shows only verified content here too, so the browse step stays
                    ["verified content" #'search/search-tool {} {:use_verified_content true} "internal" instance-step]
                    ;; Profiles exempt from curation, where `read_resource` shows unverified content

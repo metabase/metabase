@@ -1034,12 +1034,16 @@
 (defn search-scope
   "The [[::search-scope]] of a search for the Metabot row `metabot`.
   `profile-id` names the profile the search runs under, and `database-id`, unless nil, is the database it is limited
-  to."
-  [metabot profile-id database-id]
-  {:collection-id (confined-collection-id metabot profile-id)
-   :database-id   database-id
-   :verified-only (and (boolean (:use_verified_content metabot))
-                       (not (shared/curated-only?)))})
+  to.
+  `collection-id`, unless nil, is the collection the caller asked for; it narrows the scope as [[scoped-collection-id]]
+  allows."
+  ([metabot profile-id database-id]
+   (search-scope metabot profile-id database-id nil))
+  ([metabot profile-id database-id collection-id]
+   {:collection-id (scoped-collection-id collection-id (confined-collection-id metabot profile-id))
+    :database-id   database-id
+    :verified-only (and (boolean (:use_verified_content metabot))
+                        (not (shared/curated-only?)))}))
 
 (defn browse-steps
   "The recovery steps that find with `read_resource` what a search over a [[::search-scope]] could have found.
@@ -1091,7 +1095,8 @@
                        (catch Exception e
                          ;; The runtime logs a recoverable error at debug level, without its cause.
                          (log/error e "Metabot search failed")
-                         (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)))))
+                         (search-failed! (search-scope (:metabot opts) (:profile-id opts) (:database-id opts)
+                                                       collection_id))))
         restrictions (search-restrictions default-types search-opts args (:collection-id (meta results)))]
     {:output (format-search-output query results limit restrictions)
      :structured-output (cond-> {:result-type :search
