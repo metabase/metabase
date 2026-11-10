@@ -565,7 +565,11 @@
               table-name     (active-index-table-name! pgvector index-metadata)
               content-index  (semantic.index/content-index-name {:table-name table-name})]
           (semantic.tu/restore-content-btree! pgvector index-metadata table-name)
-          (is (= {content-index :btree} (semantic.tu/content-indexes table-name)))
+          ;; a B-tree under a name the migration can't derive, as when Postgres truncated a long legacy name
+          (jdbc/execute! pgvector [(format "CREATE INDEX truncated_content_idx ON %s (content)"
+                                           (semantic.util/quote-table table-name))])
+          (is (= {content-index :btree, "truncated_content_idx" :btree}
+                 (semantic.tu/content-indexes table-name)))
           (semantic.core/init! (semantic.tu/mock-documents) nil)
           (is (= {content-index :hash} (semantic.tu/content-indexes table-name)))
           (testing "and a version from before the migration keeps the hash index when it starts up"

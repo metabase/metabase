@@ -355,6 +355,20 @@
              (update-model-rows-in-batches! execute! kw-tbl "dashboard" @dashboards
                                             {:curated true :official_collection true}))))))))
 
+(defn- content-btree-index-names
+  "Names of the B-tree indexes on `content` of index table `table-name`, read from the catalog."
+  [tx table-name]
+  ;; Read rather than rebuilt from the table name: older versions counted characters, not bytes, when deciding
+  ;; to hash a long index name, so a multibyte table name can have its B-tree under a name Postgres truncated.
+  (let [[schema bare] (semantic.util/qualified-table-parts table-name)]
+    (->> (jdbc/execute! tx
+                        [(str "SELECT indexname FROM pg_indexes"
+                              " WHERE schemaname = coalesce(?::text, current_schema()) AND tablename = ?"
+                              " AND indexdef LIKE '%USING btree (content)'")
+                         schema bare]
+                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+         (map :indexname))))
+
 (defn- replace-content-btree-with-hash-index!
   "Migration 6: replace the B-tree index on `content` with a hash index.
   A B-tree entry is capped at about 2.7 KB, so rows with long text failed to insert.
@@ -373,7 +387,9 @@
        (jdbc/execute! tx [(format "CREATE INDEX IF NOT EXISTS %s ON %s USING hash (content)"
                                   (semantic.util/quote-ident temp-name)
                                   (semantic.util/quote-table table-name))])
-       (jdbc/execute! tx [(str "DROP INDEX IF EXISTS " (qualified name))])
+       ;; the index already holding the final name goes too, so a re-run replaces it rather than failing
+       (doseq [old-name (distinct (cons name (content-btree-index-names tx table-name)))]
+         (jdbc/execute! tx [(str "DROP INDEX IF EXISTS " (qualified old-name))]))
        (jdbc/execute! tx [(format "ALTER INDEX %s RENAME TO %s"
                                   (qualified temp-name)
                                   (semantic.util/quote-ident name))])))))
