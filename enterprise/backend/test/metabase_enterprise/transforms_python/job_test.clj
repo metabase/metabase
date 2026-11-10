@@ -54,8 +54,8 @@
                                       :interval-ms 1000})))
                   (finally
                     ;; The synced Table appears before the run writes the transform row, and the job fires every
-                    ;; second. Stop the schedule and wait for the running job, so no run writes the transform or its
-                    ;; target table while cleanup deletes them.
+                    ;; second. Shut down the scheduler and wait for the running job, so no run writes the transform or
+                    ;; its target table during cleanup.
                     (.shutdown ^Scheduler (task/scheduler) true)))))))))))
 
 (def ^:private python-source {:type :python :source-tables [] :body "pass"})

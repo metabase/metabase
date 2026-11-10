@@ -368,10 +368,9 @@
 
 (deftest delete-while-run-writes-transform-does-not-deadlock-test
   (testing "Deleting a transform while a run writes the transform row succeeds without a deadlock"
-    ;; The delete removes the transform's search-index row, then the transform row. The run updates the transform row,
-    ;; then upserts the same search-index row in the same transaction, since `with-temp-index-table` indexes
-    ;; synchronously. The redefs make the delete wait, after its search-index delete, until the run has updated the
-    ;; transform row.
+    ;; The delete removes the search-index row, then the transform row. The run updates the transform row, then upserts
+    ;; the search-index row in the same transaction (`with-temp-index-table` indexes synchronously). The redefs pause
+    ;; the delete after its search-index delete until the run has updated the transform row.
     (search.tu/with-temp-index-table
       (let [transform-id   (t2/insert-returning-pk! :model/Transform
                                                     {:name   "Deleted while running"
@@ -386,14 +385,14 @@
                                                        (u/prog1 (search-delete! model ids)
                                                          (when (= :model/Transform model)
                                                            (deliver search-deleted true)
-                                                           ;; A delete that holds the transform row keeps the run
-                                                           ;; from updating it, and this times out.
+                                                           ;; A delete that holds the transform row blocks the run's
+                                                           ;; update, and this deref times out.
                                                            (when (deref run-updated 3000 nil)
                                                              ;; Postgres checks a lock wait for a deadlock once,
-                                                             ;; `deadlock_timeout` (1 s by default) after it starts.
-                                                             ;; Pausing longer than that before the delete waits too
-                                                             ;; leaves the check to the delete, so the delete is the
-                                                             ;; transaction aborted.
+                                                             ;; `deadlock_timeout` (1 s by default) after the wait
+                                                             ;; starts. A longer pause lets the run's check pass
+                                                             ;; before the delete waits, so the delete's check finds
+                                                             ;; the cycle and Postgres aborts the delete.
                                                              (Thread/sleep 1500)))))
                                       search/update! (fn [instance & more]
                                                        (when (= :model/Transform (t2/model instance))
