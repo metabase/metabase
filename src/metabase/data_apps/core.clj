@@ -74,8 +74,7 @@
   nil)
 
 (defenterprise-schema referenced-entity-refusals :- [:map-of [:tuple :string :int] :string]
-  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`, with
-  [[check-card]]'s rule for cards; none without the data-apps feature."
+  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`."
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app-info
    _specs    :- [:sequential [:map [:type :string] [:id :int]]]]

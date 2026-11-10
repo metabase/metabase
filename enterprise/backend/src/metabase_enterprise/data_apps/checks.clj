@@ -103,9 +103,7 @@
   nil)
 
 (defenterprise-schema referenced-entity-refusals :- [:map-of [:tuple :string :int] :string]
-  "Refusal messages for the cards among the referenced-entity `specs` that are neither in `data-app`'s collection nor
-  Library metrics, keyed by `[type id]`, as [[check-card]] refuses them. A card that doesn't exist gets the message an
-  outside one does; the cards that pass are still read-checked when they run. Measures pass."
+  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    specs    :- [:sequential [:map [:type :string] [:id :int]]]]
