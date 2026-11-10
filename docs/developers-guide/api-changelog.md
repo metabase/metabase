@@ -81,6 +81,9 @@ summary: Breaking changes to the Metabase API, listed by release.
   - A metric requested from `POST /api/card/:id/query` with `collection_preview: true` now runs with its saved
     breakouts, as it does without the flag, instead of returning a single aggregated value.
 
+- The sandbox host used by custom visualizations and data apps is now at
+  `GET /api/ee/browser-sandboxing/sandbox-host`, replacing `GET /api/ee/custom-viz-plugin/sandbox-host`.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with

@@ -58,7 +58,8 @@ export type SdkIframeEmbedMessage =
   | SdkIframeEmbedReportAuthenticationError
   | SdkIframeEmbedReportAnalytics
   | SdkIframeEmbedHandleLinkResponse
-  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage;
+  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage
+  | SdkIframeEmbedNavigateToDataAppPathMessage;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -67,7 +68,11 @@ export type SdkIframeEmbedSetSettingsMessage = {
 export type SdkIframeEmbedSubmitSessionTokenMessage = {
   type: "metabase.embed.submitSessionToken";
   data: {
-    authMethod: MetabaseAuthMethod;
+    /**
+     * Use "provider-managed" when the host owns the session,
+     * so the iframe does not save it to SAML token storage.
+     **/
+    authMethod: MetabaseAuthMethod | "provider-managed";
     sessionToken: MetabaseEmbeddingSessionToken;
   };
 };
@@ -93,6 +98,10 @@ export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
   data: {
     guestToken: string;
   };
+};
+export type SdkIframeEmbedNavigateToDataAppPathMessage = {
+  type: "metabase.embed.navigateToDataAppPath";
+  data: { path: string };
 };
 
 export type SdkIframeEmbedComponentTagMessage =
@@ -248,6 +257,17 @@ export interface MetabotEmbedOptions {
   token?: never;
 }
 
+export interface DataAppEmbedOptions {
+  componentName: "metabase-data-app";
+  path: string;
+
+  theme?: never;
+  template?: never;
+  questionId?: never;
+  dashboardId?: never;
+  token?: never;
+}
+
 type CollectionBrowserEntityTypes =
   | "collection"
   | "dashboard"
@@ -310,7 +330,8 @@ export type SdkIframeEmbedTemplateSettings =
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  | DataAppEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = Omit<
@@ -328,6 +349,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
       })
     | BrowserEmbedOptions
     | MetabotEmbedOptions
+    | DataAppEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -341,4 +363,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof SdkIframeQuestionEmbedSettings
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions
-  | keyof MetabotEmbedOptions;
+  | keyof MetabotEmbedOptions
+  | keyof DataAppEmbedOptions;
