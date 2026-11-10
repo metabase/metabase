@@ -9,11 +9,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -23,7 +22,8 @@
 (doto :model/CardTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]
@@ -143,10 +143,6 @@
   [_model object]
   ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
   (boolean (some-> (data-testing.db/card (:card_id object)) mi/can-read?)))
-
-(defmethod revision/check-revisions-available :model/CardTest
-  [_model]
-  (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
 (defmethod revision/revert-to-revision! :model/CardTest
   [_model id _user-id serialized-instance]

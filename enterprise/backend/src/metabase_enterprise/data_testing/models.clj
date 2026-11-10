@@ -22,10 +22,12 @@
 
 (methodical/defmethod t2/table-name :model/TransformTest [_model] :transform_test)
 
+;; `::saved-test` is the parent of every saved test model, for the methods they share.
 (doto :model/TransformTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive ::saved-test))
 
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
@@ -155,7 +157,7 @@
   [_model object]
   (mi/can-read? (t2/instance :model/TransformTest object)))
 
-(defmethod revision/check-revisions-available :model/TransformTest
+(defmethod revision/check-revisions-available ::saved-test
   [_model]
   (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
