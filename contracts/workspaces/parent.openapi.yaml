@@ -106,6 +106,18 @@ paths:
         content:
           application/json:
             schema: { $ref: "#/components/schemas/CreateWorkspaceRequest" }
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          x-status: hardening
+          x-pr: 86825
+          description: |
+            1 to 255 characters, not blank (400 otherwise). Makes the create safe to retry: if the caller already has a
+            workspace with this key, nothing is provisioned and the response is that workspace (200), or 409
+            `"error-code": "workspace_busy"` while it is still provisioning. A create that failed and deleted its
+            workspace frees the key. The body of a retry is not compared with the original's. Unique per creator.
+          schema: { type: string, minLength: 1, maxLength: 255 }
       responses:
         "200":
           x-pr: [86601]
