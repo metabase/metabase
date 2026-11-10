@@ -143,15 +143,6 @@
       (and (:location collection)
            (str/starts-with? (:location collection) (trash-path)))))
 
-(defn remote-synced-collection?
-  "Is this a remote-synced collection?
-   Returns true if the collection has is_remote_synced=true in the database."
-  [collection-or-id]
-  (cond
-    (nil? collection-or-id) false ;; the root collection is never remote-synced
-    (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
-    :else (collections.db/collection-remote-synced? (u/the-id collection-or-id))))
-
 (defn- is-library?
   "Is this the Library collection?"
   [collection]
@@ -171,11 +162,6 @@
   "Is this the Dashboards collection?"
   [collection]
   (= (:type collection) library-dashboards-collection-type))
-
-(defn remote-synced-collection
-  "Get the remote-synced collection if it exists."
-  []
-  (collections.db/root-remote-synced-collection))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)

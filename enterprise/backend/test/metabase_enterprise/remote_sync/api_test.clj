@@ -41,7 +41,20 @@
     (testing path
       (mt/user-http-request :rasta :get 403 path)))
   (testing "ee/remote-sync/export-preflight"
-    (mt/user-http-request :rasta :get 403 "ee/remote-sync/export-preflight" :branch "main")))
+    (mt/user-http-request :rasta :get 403 "ee/remote-sync/export-preflight" :branch "main"))
+  (mt/with-temporary-setting-values [remote-sync-url nil]
+    (let [task-count (t2/count :model/RemoteSyncTask)]
+      (doseq [[method path body] [[:post "ee/remote-sync/import" {}]
+                                  [:post "ee/remote-sync/export" {:branch "main"}]
+                                  [:post "ee/remote-sync/stash" {:new_branch "stashed" :message "Stash"}]
+                                  [:put "ee/remote-sync/settings" {:remote-sync-url "https://example.com/repo.git"}]
+                                  [:post "ee/remote-sync/current-task/cancel" {}]
+                                  [:post "ee/remote-sync/test-connection" {:remote-sync-url "https://example.com/repo.git"}]]]
+        (testing path
+          (mt/user-http-request :rasta method 403 path body)))
+      (testing "a refused request changes nothing"
+        (is (= task-count (t2/count :model/RemoteSyncTask)))
+        (is (nil? (t2/select-one-fn :value :model/Setting :key "remote-sync-url")))))))
 
 (deftest settings-test
   (remote-sync.tu/with-repository [url]
@@ -58,8 +71,8 @@
                                         :collections      {(:id collection) true}})))
           (is (= "main" (mt/user-http-request :crowberto :get 200 "setting/remote-sync-branch")))
           (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id collection)))))
-        (testing "a repository URL that is not HTTPS is refused"
-          (is (re-find #"Use an HTTPS repository URL"
+        (testing "a repository URL with a scheme other than http, https or file is refused"
+          (is (re-find #"Use an HTTP or HTTPS repository URL"
                        (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                              {:remote-sync-url "ftp://example.com/repo.git"}))))
         (testing "a branch the repository lacks is refused"

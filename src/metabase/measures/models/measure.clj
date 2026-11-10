@@ -69,7 +69,8 @@
   ([_model pk]
    (mi/can-read? (measures.db/measure pk))))
 
-;; Measures can be written by superusers or data analysts with unrestricted view data permissions.
+;; Measures can be written by superusers or data analysts with unrestricted view data permissions, but not on a
+;; read-only instance that syncs their table.
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
@@ -86,7 +87,8 @@
   ([_model pk]
    (mi/can-write? (measures.db/measure pk))))
 
-;; Measures can be created by superusers or data analysts with unrestricted view data permissions.
+;; Measures can be created by superusers or data analysts with unrestricted view data permissions, but not on a
+;; read-only instance that syncs their table.
 (defmethod mi/can-create? :model/Measure
   [_model instance]
   (let [table (or (:table instance)

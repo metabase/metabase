@@ -7,6 +7,17 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `POST /api/ee/transform-test/run`, which ran a transform test that wasn't saved, has been removed. Save the test and
+  run it with `POST /api/ee/transform-test/:id/run`.
+
+- `POST /api/ee/remote-sync/create-branch` has been removed. `POST /api/ee/remote-sync/stash` creates the branch
+  `new_branch` at the version of the last sync, pushes the synced content of the instance to it and syncs with it.
+
+- The items of `GET /api/ee/remote-sync/dirty` are closed maps with `id`, `name`, `model` and `sync_status`, and, when
+  they apply, `collection` (the collection the change is in, with its `effective_ancestors`) and `parent` (the entity the
+  change shows within, such as the table of a segment). They no longer have `collection_id`, `created_at`, `updated_at`,
+  `authority_level`, `display`, `query_type`, `description`, `table_id`, `table_name` or `card_id`.
+
 - `POST /api/ee/transform-test/:id/run` answers a query under test that fails to run with the `error-code`
   `transform-test.query-failed` in place of `transform-test.transform-failed`. The status stays `422`.
 

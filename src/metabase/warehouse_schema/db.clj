@@ -530,11 +530,6 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn databases-by-id
-  "A map of ID to ::warehouses.schema/database for `database-ids`."
-  [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
-
 (mu/defn database-engine
   "The engine of the ::warehouses.schema/database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -551,24 +546,3 @@
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
-
-(mu/defn cards-with-moderated-status
-  "The query-metadata columns of the Cards with `card-ids`, with their latest moderation status."
-  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select :model/Card
-             {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                          :c.description :c.collection_id :c.database_id :c.type
-                          :c.source_card_id :c.created_at :c.entity_id :c.card_schema
-                          ;; required alongside :card_schema for the Card schema upgrade
-                          :c.dimensions :c.dimension_mappings
-                          [:r.status :moderated_status]]
-              :from      [[:report_card :c]]
-              :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
-                                             :from     [:moderation_review]
-                                             :where    [:and
-                                                        [:= :moderated_item_type "card"]
-                                                        [:= :most_recent true]]
-                                             :order-by [[:id :desc]]
-                                             :limit    1} :r]
-                          [:= :r.moderated_item_id :c.id]]
-              :where     [:in :c.id card-ids]}))

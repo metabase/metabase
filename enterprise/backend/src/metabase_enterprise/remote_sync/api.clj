@@ -255,7 +255,7 @@
   (some-> (remote-sync.task/most-recent-task) present-task))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
-  "Cancel the running task."
+  "Ask the running task to stop. A task that already started to change content finishes."
   []
   (api/check-superuser)
   (let [task (remote-sync.task/most-recent-task)]

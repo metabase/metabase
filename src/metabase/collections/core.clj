@@ -32,8 +32,6 @@
   library-metrics-collection-type
   location-path
   location-path->ids
-  remote-synced-collection
-  remote-synced-collection?
   root-collection-type-by-id
   set-remote-synced!
   shared-tenant-collection?

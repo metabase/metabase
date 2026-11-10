@@ -56,7 +56,7 @@ Field ids: `browse_data {"action": "get_fields", "table_ids": [<table id>]}`. `w
 | PK/FK | `id` |
 | Location semantic type | `location/city` `location/state` `location/zip_code` `location/country` |
 
-Round-trip: `get_content` returns `template_tags` in the stored shape (`display-name`, `widget-type`, a `dimension` ref); `question_write` accepts it back verbatim. Don't author that shape or hand-mint ids — `field_id` is the write dialect.
+Round-trip: `get_content` returns `template_tags` in the stored shape (`display-name`, `widget-type`, `field-id`); `question_write` accepts it back verbatim. Don't author that shape or hand-mint ids — `field_id` is the write dialect.
 
 ## Optional blocks `[[ ... ]]`
 

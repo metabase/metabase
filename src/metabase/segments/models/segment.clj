@@ -90,9 +90,10 @@
   ([_model pk]
    (mi/can-read? (segments.db/segment pk))))
 
-;; Segments can be created by
+;; Segments can be written by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
+;; but not on a read-only instance that syncs their table
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
@@ -112,6 +113,7 @@
 ;; Segments can be created by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
+;; but not on a read-only instance that syncs their table
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
