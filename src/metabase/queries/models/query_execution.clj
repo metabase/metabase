@@ -39,6 +39,16 @@
   (u/prog1 (analytics/include-sdk-info query-execution)
     (validate-context context)))
 
+(def ^:private referenced-run-contexts
+  "Contexts of runs of a Card made to feed another entity, not to show the Card's own results."
+  ["dynamic-goal"])
+
+(defn not-referenced-run
+  "Where-clause that leaves out runs of a Card made to feed another entity. `context-column` is the
+  `query_execution.context` column, qualified as the query needs."
+  [context-column]
+  [:or [:= context-column nil] [:not-in context-column referenced-run-contexts]])
+
 (t2/define-after-select :model/QueryExecution
   [{:keys [result_rows] :as query-execution}]
   ;; sadly we have 2 ways to reference the row count :(
