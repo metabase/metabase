@@ -928,6 +928,33 @@
       (testing "and the calls whose input comes after the error are dropped"
         (is (not-any? #(= "late" (:toolCallId %)) result))))))
 
+(deftest tool-executor-xf-runs-a-call-the-pool-starts-after-an-error-test
+  (testing "a call whose input completed before an :error chunk runs, even if the pool starts it after the error"
+    (let [release (promise)
+          busy    (java.util.concurrent.CountDownLatch. 20)
+          pool    @#'self.core/tool-executor]
+      ;; Hold every thread of the pool, so that no call starts until the stream has ended
+      (dotimes [_ 20]
+        (.execute ^java.util.concurrent.Executor pool ^Runnable #(do (.countDown busy) @release)))
+      (try
+        (is (.await busy 5 java.util.concurrent.TimeUnit/SECONDS))
+        (let [chunks (concat (test-util/parts->aisdk-chunks
+                              [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "UTC"}}])
+                             [{:type :error :errorText "Overloaded"}])
+              errored (promise)
+              result  (future (into [] (comp (self.core/tool-executor-xf test-util/TOOLS)
+                                             (map (fn [chunk]
+                                                    (when (= :error (:type chunk))
+                                                      (deliver errored true))
+                                                    chunk)))
+                                    chunks))]
+          (is (deref errored 5000 false))
+          (deliver release true)
+          (is (= ["call-1"] (keep #(when (= :tool-output-available (:type %)) (:toolCallId %))
+                                  (deref result 5000 nil)))))
+        (finally
+          (deliver release true))))))
+
 (deftest tool-executor-xf-returns-results-in-call-order-test
   (testing "calls that run at the same time and finish in reverse order return their results in call order"
     (let [n        10
