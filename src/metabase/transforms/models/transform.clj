@@ -369,6 +369,10 @@
   nil)
 
 (t2/define-before-delete :model/Transform [transform]
+  ;; An update of a transform writes its row, then its search-index row when search indexes synchronously, in one
+  ;; transaction. Locking the row before the search-index delete below takes the two rows in the same order as that
+  ;; update, so the two transactions cannot deadlock.
+  (transforms.db/lock-transform! (:id transform))
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
   (delete-transform-tests! (:id transform))

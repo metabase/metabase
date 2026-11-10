@@ -53,9 +53,9 @@
                                       :timeout-ms 10000
                                       :interval-ms 1000})))
                   (finally
-                    ;; The synced Table appears before the run writes the transform row, so a run can still be
-                    ;; writing when cleanup deletes the transform, and the two app DB transactions can deadlock.
-                    ;; Stop the schedule and wait for the running job to end before cleanup.
+                    ;; The synced Table appears before the run writes the transform row, and the job fires every
+                    ;; second. Stop the schedule and wait for the running job, so no run writes the transform or its
+                    ;; target table while cleanup deletes them.
                     (.shutdown ^Scheduler (task/scheduler) true)))))))))))
 
 (def ^:private python-source {:type :python :source-tables [] :body "pass"})
