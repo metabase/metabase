@@ -1526,3 +1526,54 @@
                    (tested-card-eids {}))))
           (testing "an export with no collections takes no card tests"
             (is (= #{} (tested-card-eids {:no-collections true})))))))))
+
+(defn- exported-card-eids
+  "The entity ids of the Cards in `entities`, and the entity ids of the Cards their CardTests test."
+  [entities]
+  (let [eids (fn [model k] (into #{} (comp (filter #(= model (-> % :serdes/meta last :model))) (map k)) entities))]
+    {:cards  (eids "Card" :entity_id)
+     :tested (eids "CardTest" :card_id)}))
+
+(deftest export-takes-no-test-of-a-card-it-leaves-out-test
+  (testing "An export of a targeted card takes no test of the card when it leaves the card out"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (let [{:keys [current-eid current archived exploration]}
+              (ts/with-db source-db
+                (let [db       (ts/create! :model/Database :name "my-db")
+                      finance  (ts/create! :model/Collection :name "Finance")
+                      creator  (ts/create! :model/User :email "creator@example.com")
+                      current  (create-card-with-test! db creator "Revenue ignores refunds"
+                                                       :name "Revenue" :collection_id (:id finance))
+                      old      (create-card-with-test! db creator "Old revenue ignores refunds"
+                                                       :name "Old revenue" :collection_id (:id finance) :archived true)
+                      expl     (ts/create! :model/Exploration :name "Exploration")
+                      summary  (ts/create! :model/Document :name "Summary" :collection_id (:id finance)
+                                           :creator_id (:id creator) :exploration_id (:id expl))
+                      explored (create-card-with-test! db creator "Explored revenue ignores refunds"
+                                                       :name "Explored revenue" :collection_id (:id finance)
+                                                       :document_id (:id summary))
+                      export   (fn [card opts]
+                                 (into [] (extract/extract (merge {:targets [[:model/Card (:id card)]] :include-h2? true}
+                                                                  opts))))
+                      archived (export old {:skip-archived true})]
+                  (storage/store! (seq archived) (storage.files/file-writer dump-dir))
+                  {:current-eid (:entity_id current)
+                   :current     (exported-card-eids (export current {:skip-archived true}))
+                   :archived    (exported-card-eids archived)
+                   :exploration (exported-card-eids (export explored {}))}))]
+          (testing "control: a targeted card the export writes brings its test"
+            (is (= {:cards #{current-eid} :tested #{current-eid}} current)))
+          (testing "an archived targeted card under skip-archived"
+            (testing "premise: the export leaves out the card"
+              (is (= #{} (:cards archived))))
+            (testing "the export takes no test of the card"
+              (is (= #{} (:tested archived))))
+            (testing "the dump loads"
+              (ts/with-db dest-db
+                (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))))
+          (testing "a targeted card of an exploration document"
+            (testing "premise: the export leaves out the card"
+              (is (= #{} (:cards exploration))))
+            (testing "the export takes no test of the card"
+              (is (= #{} (:tested exploration))))))))))

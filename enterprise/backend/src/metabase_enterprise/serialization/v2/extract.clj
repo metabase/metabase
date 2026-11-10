@@ -177,7 +177,10 @@
 (defn- export-card-tests
   "The CardTests of the Cards with `card-ids` that `opts` select, exported a batch of Cards at a time."
   [card-ids opts]
-  (eduction (mapcat #(export-rows :model/CardTest (assoc opts :card-ids (vec %))))
+  ;; `card-ids` holds targeted Cards before the export's filters, which can leave a Card out; its tests stay out too.
+  (eduction (comp (map #(select/select-ids :model/Card (assoc opts :ids (vec %))))
+                  (filter seq)
+                  (mapcat #(export-rows :model/CardTest (assoc opts :card-ids (vec %)))))
             (partition-all serialization/batch-size card-ids)))
 
 (defn extract
