@@ -37,6 +37,7 @@
 (defonce ^:private next-sync-at (atom nil))
 
 ;; The active and pending index tables. Writers that read the database before writing this state hold its slot lock.
+;; The exception is the test-only guard in [[batch-update!]], which only clears a table that is still the tracked one.
 ;; Installing the first root also clears the sync timer, so a root a reload installs, which starts empty, syncs on its
 ;; next read instead of waiting out a timer set for the state it replaced.
 (def ^:private indexes-component
@@ -70,7 +71,7 @@
                             [status (keyword table-name)]
                             ;; For debugging, make it clear why we are not tracking the given metadata.
                             [(keyword (name status) "not-found") (keyword table-name)])))]
-      (log/debugf "Sync tracking atoms: %s" indexes)
+      (log/debugf "Sync tracked index tables: %s" indexes)
       (mc/reset! indexes-component indexes))))
 
 (defn sync-from-restored-db!
@@ -163,7 +164,7 @@
 (defn delete-obsolete-tables!
   "Prune obsolete index metadata, then drop the index tables that leaves unreferenced.
   Best effort: failures are logged and never propagate.
-  Does nothing while mocking tables, where the pending table lives in an atom with no metadata row.
+  Does nothing while mocking tables, where the pending table lives in the tracked index state with no metadata row.
   Skips the drops when they would commit the caller's transaction, leaving those tables to a later sweep."
   []
   (when-not *mocking-tables*
@@ -191,7 +192,7 @@
   []
   (mc/with-slot-lock indexes-component
     (if *mocking-tables*
-      ;; In a test where the atoms are the source of truth, create a new table if necessary.
+      ;; In a test where the tracked index state is the source of truth, create a new table if necessary.
       (or (pending-table)
           (let [table-name (gen-table-name)]
             (create-table! table-name)
@@ -232,7 +233,7 @@
   []
   (mc/with-slot-lock indexes-component
     (if *mocking-tables*
-      ;; The atoms are the only source of truth, we must not update the metadata.
+      ;; The tracked index state is the only source of truth, we must not update the metadata.
       (boolean
        (when-let [pending (:pending @indexes-component)]
          (analyze-table! pending)
