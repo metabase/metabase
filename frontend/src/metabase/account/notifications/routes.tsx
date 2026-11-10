@@ -12,11 +12,9 @@ export function getNotificationRoutes() {
   return (
     <Route path="notifications" element={<NotificationsApp />}>
       {modalRoute("help", HelpModal)}
-      {modalRoute("alert/:alertId/archive", DeleteAlertModal, { noWrap: true })}
+      {modalRoute("alert/:alertId/archive", DeleteAlertModal)}
       {modalRoute("pulse/:pulseId/archive", ArchivePulseModal)}
-      {modalRoute("alert/:alertId/unsubscribe", UnsubscribeAlertModal, {
-        noWrap: true,
-      })}
+      {modalRoute("alert/:alertId/unsubscribe", UnsubscribeAlertModal)}
       {modalRoute("pulse/:pulseId/unsubscribe", UnsubscribePulseModal)}
     </Route>
   );

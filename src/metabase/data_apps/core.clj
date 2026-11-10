@@ -73,9 +73,8 @@
    _card-id  :- ::lib.schema.id/card]
   nil)
 
-(defenterprise-schema check-referenced-entities :- [:map-of [:tuple :string :int] :string]
-  "The refusal message of each of the referenced-entity `specs` that `data-app` may not run, by `[type id]`, with
-  [[check-card]]'s rule for cards; none without the data-apps feature."
+(defenterprise-schema referenced-entity-refusals :- [:map-of [:tuple :string :int] :string]
+  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`."
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app-info
    _specs    :- [:sequential [:map [:type :string] [:id :int]]]]
@@ -102,30 +101,6 @@
   [_data-app :- ::data-apps.schema/data-app-info
    actions   :- [:sequential ::actions.schema/action]]
   actions)
-
-(defenterprise-schema check-table :- :nil
-  "Throws a 400 unless `data-app` may read the table with `table-id`, after a read check of the table; does nothing
-  without the data-apps feature."
-  metabase-enterprise.data-apps.checks
-  [_data-app :- ::data-apps.schema/data-app-info
-   _table-id :- ::lib.schema.id/table]
-  nil)
-
-(defenterprise-schema check-field :- :nil
-  "Throws a 400 unless `data-app` may read the field with `field-id`, after a read check of the field; does nothing
-  without the data-apps feature."
-  metabase-enterprise.data-apps.checks
-  [_data-app :- ::data-apps.schema/data-app-info
-   _field-id :- ::lib.schema.id/field]
-  nil)
-
-(defenterprise-schema check-database :- :nil
-  "Throws a 400 unless `data-app` may read the database with `database-id`, after a read check of the database; does
-  nothing without the data-apps feature."
-  metabase-enterprise.data-apps.checks
-  [_data-app    :- ::data-apps.schema/data-app-info
-   _database-id :- ::lib.schema.id/database]
-  nil)
 
 (defenterprise-schema check-user-key-value :- :nil
   "Throws a 400 unless `data-app` may use the user key-value `k` in `nmspace`; does nothing without the data-apps

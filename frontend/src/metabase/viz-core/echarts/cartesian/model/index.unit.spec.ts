@@ -235,3 +235,54 @@ describe("getCardsReferencedColumns", () => {
     );
   });
 });
+
+describe("goal formatting on a normalized stacked chart", () => {
+  it("formats a goal of 50 on a 100% stacked bar as 50%", () => {
+    const dimensionColumn = createMockColumn({
+      name: "bucket",
+      base_type: "type/Integer",
+    });
+    const countColumn = createMockColumn({
+      name: "count",
+      base_type: "type/Integer",
+    });
+    const sumColumn = createMockColumn({
+      name: "sum",
+      base_type: "type/Integer",
+    });
+
+    const model = getCartesianChartModel(
+      [
+        {
+          card: createMockCard({ id: 1, display: "bar" }),
+          data: createMockDatasetData({
+            cols: [dimensionColumn, countColumn, sumColumn],
+            rows: [
+              [1, 10, 30],
+              [2, 20, 20],
+            ],
+          }),
+        },
+      ],
+      createMockVisualizationSettings({
+        "graph.dimensions": [dimensionColumn.name],
+        "graph.metrics": [countColumn.name, sumColumn.name],
+        "graph.x_axis.scale": "ordinal",
+        "graph.y_axis.scale": "linear",
+        "stackable.stack_type": "normalized",
+        column: (column: DatasetColumn) => ({ column }),
+        series: () => ({ display: "bar" }),
+      }),
+      [],
+      {
+        getColor: (name) => name,
+        measureText: () => 10,
+        measureTextHeight: () => 10,
+        fontFamily: "",
+        theme: DEFAULT_VISUALIZATION_THEME,
+      },
+    );
+
+    expect(model.leftAxisModel?.formatGoal(50)).toBe("50%");
+  });
+});

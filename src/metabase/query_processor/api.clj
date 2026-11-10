@@ -63,7 +63,7 @@
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [query :- [:or ::lib.schema/query ::lib-be.schema/internal-query]
-   & {:keys [context export-format was-pivot referenced-entities-specs check-referenced-entities]
+   & {:keys [context export-format was-pivot referenced-entities-specs referenced-entity-refusals]
       :or   {context       :ad-hoc
              export-format :api}}
    :- [:maybe [:map {:closed true}
@@ -71,7 +71,7 @@
                [:export-format {:optional true} ::qp.schema/export-format]
                [:was-pivot     {:optional true} [:maybe :boolean]]
                [:referenced-entities-specs {:optional true} qp.referenced-entities/specs-schema]
-               [:check-referenced-entities {:optional true} [:maybe ifn?]]]]]
+               [:referenced-entity-refusals {:optional true} [:maybe ifn?]]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table
@@ -93,7 +93,7 @@
       (qp.streaming/streaming-response [rff export-format]
         ;; must run before `process-query` sets up the QP store
         (let [rff (qp.referenced-entities/maybe-wrap-rff-for-goals rff referenced-entities-specs
-                                                                   check-referenced-entities)]
+                                                                   referenced-entity-refusals)]
           (if was-pivot
             (let [constraints (if (= export-format :api)
                                 (qp.constraints/default-query-constraints)
@@ -135,7 +135,7 @@
          qp/userland-query-with-default-constraints)
      :referenced-entities-specs (request-referenced-entities request)
      ;; the specs come from the body, which `check-adhoc-query` doesn't read
-     :check-referenced-entities (when data-app (partial data-apps/check-referenced-entities data-app)))))
+     :referenced-entity-refusals (when data-app (partial data-apps/referenced-entity-refusals data-app)))))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -168,7 +168,8 @@
     format-rows                   :format_rows
     pivot-results                 :pivot_results
     csv-include-bom               :csv_include_bom
-    visualization-settings        :visualization_settings}
+    visualization-settings        :visualization_settings
+    display                       :display}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map {:closed true}
@@ -181,6 +182,12 @@
                                                        {:decode/api (fn [x]
                                                                       (cond-> x
                                                                         (string? x) (json/decode viz-setting-key-fn)))})]
+       ;; the browser form-encodes downloads and JSON-encodes every value, so a display arrives as "\"table\""
+       [:display                {:optional true} [:maybe (mu/with ms/KeywordOrString
+                                                                  {:decode/api (fn [x]
+                                                                                 (cond-> x
+                                                                                   (and (string? x) (= (first x) \"))
+                                                                                   json/decode))})]]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
        [:csv_include_bom         {:default false} ms/BooleanValue]]
@@ -197,6 +204,7 @@
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
                                                                           :csv-include-bom?       (if (some? csv-include-bom) csv-include-bom false)
+                                                                          :display                (some-> display keyword)
                                                                           :process-viz-settings?  true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query

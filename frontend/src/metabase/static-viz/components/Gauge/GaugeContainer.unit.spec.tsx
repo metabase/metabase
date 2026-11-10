@@ -2,10 +2,11 @@ import ReactDOMServer from "react-dom/server";
 
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { GoalData } from "metabase/viz-core";
-import type { GoalSegment } from "metabase-types/api";
+import type { GoalSegment, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 import GaugeContainer from "./GaugeContainer";
@@ -26,15 +27,21 @@ const RED = "#ED6E6E";
 const BLUE = "#509EE3";
 
 type SetupOpts = {
+  columnSettings?: VisualizationSettings["column_settings"];
   data?: GoalData;
   segments?: GoalSegment[];
 };
 
-function setup({ data = DATA, segments }: SetupOpts = {}) {
+function setup({ columnSettings, data = DATA, segments }: SetupOpts = {}) {
   const root = document.createElement("div");
   root.innerHTML = ReactDOMServer.renderToStaticMarkup(
     <GaugeContainer
-      card={{ visualization_settings: { "gauge.segments": segments } }}
+      card={{
+        visualization_settings: {
+          column_settings: columnSettings,
+          "gauge.segments": segments,
+        },
+      }}
       data={data}
       getColor={getColor}
     />,
@@ -88,6 +95,23 @@ describe("GaugeContainer", () => {
     expect(root).toHaveTextContent("250");
   });
 
+  it("formats a bound from another entity with this chart's column settings", () => {
+    const root = setup({
+      data: {
+        ...DATA,
+        referenced_entities: createMockReferencedEntitiesResults({
+          value: 2500,
+        }),
+      },
+      columnSettings: { '["name","count"]': { prefix: "$" } },
+      segments: [
+        { min: 0, max: { type: "card", id: 9, column: "goal" }, color: GREEN },
+      ],
+    });
+
+    expect(root).toHaveTextContent("$2,500");
+  });
+
   it("fills a legacy segment without a color with the static text-secondary color", () => {
     const root = setup({ segments: [{ min: 0, max: 100 }] });
     const [fill] = getSegmentFills(root);
@@ -96,7 +120,7 @@ describe("GaugeContainer", () => {
     expect(fill?.toUpperCase()).toBe(getColor("text-secondary").toUpperCase());
   });
 
-  it("runs a segment with a missing bound to that end of the gauge", () => {
+  it("runs a segment with a missing bound to that end of the gauge (metabase#86183)", () => {
     const root = setup({
       segments: [
         { min: null, max: 50, color: RED },
@@ -189,7 +213,7 @@ describe("GaugeContainer", () => {
       expect(getSegmentPaths(root)).toEqual(getSegmentPaths(expected));
     }
 
-    it("runs a segment bound to a reference nothing has answered yet to the end of the gauge", () => {
+    it("runs a segment bound to a reference nothing has answered yet to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(DATA, {
         type: "card",
         id: 9,
@@ -199,7 +223,7 @@ describe("GaugeContainer", () => {
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("runs a segment bound to a reference whose query failed to the end of the gauge", () => {
+    it("runs a segment bound to a reference whose query failed to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(
         {
           ...DATA,
@@ -211,7 +235,7 @@ describe("GaugeContainer", () => {
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("runs a segment bound to a referenced column that does not exist to the end of the gauge", () => {
+    it("runs a segment bound to a referenced column that does not exist to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(
         {
           ...DATA,
@@ -230,19 +254,56 @@ describe("GaugeContainer", () => {
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("runs a segment bound to a self-column reference that does not exist to the end of the gauge", () => {
+    it("runs a segment bound to a self-column reference that does not exist to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(DATA, "missing");
 
       expectSegmentRunToGaugeEnd(root);
     });
 
-    it("runs a segment bound to a self-column reference that is not a number to the end of the gauge", () => {
+    it("runs a segment bound to a self-column reference that is not a number to the end of the gauge (metabase#86183)", () => {
       const root = setupUnresolvableSegment(
         { cols: [COUNT_COL, GOAL_COL], rows: [[10, null]] },
         "goal",
       );
 
       expectSegmentRunToGaugeEnd(root);
+    });
+
+    it("renders finite positions when an unresolved min sits among segments that give the gauge's bounds (metabase#86183)", () => {
+      const root = setup({
+        segments: [
+          { min: 0, max: 30, color: GREEN },
+          {
+            min: { type: "card", id: 9, column: "goal" },
+            max: 70,
+            color: RED,
+          },
+          { min: 70, max: 100, color: BLUE },
+        ],
+      });
+
+      // running to the start of the gauge, the red segment contains the green one
+      expect(getSegmentFills(root)).toEqual([RED, GREEN, BLUE]);
+      expect(getEndpointLabels(root)).toEqual(["0", "100"]);
+      expect(getNaNAttributes(root)).toEqual([]);
+    });
+
+    it("renders finite positions when an unresolved max sits among segments that give the gauge's bounds (metabase#86183)", () => {
+      const root = setup({
+        segments: [
+          { min: 0, max: 30, color: GREEN },
+          {
+            min: 30,
+            max: { type: "card", id: 9, column: "goal" },
+            color: RED,
+          },
+          { min: 70, max: 100, color: BLUE },
+        ],
+      });
+
+      expect(getSegmentFills(root)).toEqual([GREEN, RED, BLUE]);
+      expect(getEndpointLabels(root)).toEqual(["0", "100"]);
+      expect(getNaNAttributes(root)).toEqual([]);
     });
 
     it("drops a segment with both bounds unresolvable", () => {
@@ -276,6 +337,14 @@ function getSegmentFills(root: HTMLElement) {
 
 function getSegmentPaths(root: HTMLElement) {
   return getSegmentArcs(root).map((arc) => arc.getAttribute("d"));
+}
+
+function getNaNAttributes(root: HTMLElement) {
+  return Array.from(root.querySelectorAll("*")).flatMap((element) =>
+    Array.from(element.attributes)
+      .filter((attribute) => attribute.value.includes("NaN"))
+      .map((attribute) => `${element.tagName} ${attribute.name}`),
+  );
 }
 
 function getNeedleTransform(root: HTMLElement) {

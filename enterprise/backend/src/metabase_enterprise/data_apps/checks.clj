@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-apps.checks
   "The checks that hold a data app's requests to the Library and its own collection. A dev preview, which has no app on
-  the instance, reads the Library alone and runs ad-hoc implicit actions; an app may also use the cards and run the
-  actions in its collection."
+  the instance, uses Library metrics but no saved card and runs ad-hoc implicit actions; an app may also use the cards
+  and run the actions in its collection."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -59,8 +59,7 @@
 
 (defenterprise-schema check-adhoc-query :- :nil
   "Throws a 400 unless `query`, as the `/api/dataset` endpoints normalize it, is an MBQL query without explicit joins or
-  custom columns that reads only tables published to the Library, through foreign keys too, Library metrics, and
-  segments and measures of published tables; an app's query may also build on the cards in its collection."
+  custom columns that uses only Library metrics; an app's query may also build on the cards in its collection."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    query    :- ::lib-be.schema/maybe-legacy-or-internal-query]
@@ -81,19 +80,7 @@
         (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the cards {0}."
                                     (format-ids external))))))
     (when-let [external (some-> metric-ids data-apps.db/external-metric-ids not-empty)]
-      (throw (data-app-error (tru "A data app can use only metrics from the Library, not the metrics {0}." (format-ids external)))))
-    (when-let [external (some-> (not-empty (set/union (set (lib/all-source-table-ids query))
-                                                      (set (lib/all-implicitly-joined-table-ids query))))
-                                data-apps.db/external-table-ids
-                                not-empty)]
-      (throw (data-app-error (tru "A data app can read only tables published to the Library, not the tables {0}."
-                                  (format-ids external)))))
-    (when-let [external (some-> (lib/all-segment-ids query) data-apps.db/external-segment-ids not-empty)]
-      (throw (data-app-error (tru "A data app can use only segments of tables published to the Library, not the segments {0}."
-                                  (format-ids external)))))
-    (when-let [external (some-> (lib/all-measure-ids query) data-apps.db/external-measure-ids not-empty)]
-      (throw (data-app-error (tru "A data app can use only measures of tables published to the Library, not the measures {0}."
-                                  (format-ids external))))))
+      (throw (data-app-error (tru "A data app can use only metrics from the Library, not the metrics {0}." (format-ids external))))))
   nil)
 
 (defn- card-refusal
@@ -115,10 +102,8 @@
       (throw (data-app-error (card-refusal data-app card-id)))))
   nil)
 
-(defenterprise-schema check-referenced-entities :- [:map-of [:tuple :string :int] :string]
-  "The refusal message of each card among the referenced-entity `specs` that is neither in `data-app`'s collection nor
-  a Library metric, by `[type id]`, as [[check-card]] refuses it. A card that doesn't exist gets the message an outside
-  one does; the cards that pass are still read-checked when they run. Measures pass."
+(defenterprise-schema referenced-entity-refusals :- [:map-of [:tuple :string :int] :string]
+  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    specs    :- [:sequential [:map [:type :string] [:id :int]]]]
@@ -128,19 +113,6 @@
                           not-empty
                           data-apps.db/external-metric-ids)]
     (into {} (map (fn [card-id] [["card" card-id] (card-refusal data-app card-id)])) (concat invalid-ids external))))
-
-(defn- published-table?
-  "Whether the table with `table-id` is published to the Library."
-  [table-id]
-  (empty? (data-apps.db/external-table-ids #{table-id})))
-
-(defn- check-published-field
-  "Throws a 400 unless the field with `field-id` belongs to a table published to the Library, after a read check of
-  the field."
-  [field-id]
-  (when-not (published-table? (:table_id (api/read-check :model/Field field-id)))
-    (throw (data-app-error (tru "A data app can read only fields of tables published to the Library, not the field {0}."
-                                (str field-id))))))
 
 (defenterprise-schema check-action :- :nil
   "Throws a 400 unless `data-app` is an app and the action with `action-id` is in its collection, after a read check of
@@ -156,20 +128,14 @@
   nil)
 
 (defenterprise-schema check-adhoc-action :- :nil
-  "Throws a 400 unless `data-app` is a dev preview and the ad-hoc `action` is an implicit action of no model on a table
-  published to the Library, after a read check of the table."
+  "Throws a 400 unless `data-app` is a dev preview and the ad-hoc `action` is an implicit action of no model on a table."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app-info
    action   :- ::actions.schema/action.adhoc]
   (when-not (preview? data-app)
     (throw (data-app-error (tru "A data app can run only the actions in its own collection, not ad-hoc ones."))))
-  (let [table-id (:table_id action)]
-    (when-not (and (= :implicit (keyword (:type action))) (nil? (:model_id action)) table-id)
-      (throw (data-app-error (tru "A data app''s dev preview can run only implicit actions on a table."))))
-    (api/read-check :model/Table table-id)
-    (when-not (published-table? table-id)
-      (throw (data-app-error (tru "A data app can write only to tables published to the Library, not the table {0}."
-                                  (str table-id))))))
+  (when-not (and (= :implicit (keyword (:type action))) (nil? (:model_id action)) (:table_id action))
+    (throw (data-app-error (tru "A data app''s dev preview can run only implicit actions on a table."))))
   nil)
 
 (defenterprise-schema data-app-actions :- [:sequential ::actions.schema/action]
@@ -178,37 +144,6 @@
   [data-app :- ::data-apps.schema/data-app-info
    actions  :- [:sequential ::actions.schema/action]]
   (filterv (partial in-app-collection? data-app) actions))
-
-(defenterprise-schema check-table :- :nil
-  "Throws a 400 unless the table with `table-id` is published to the Library, after a read check of the table."
-  :feature :data-apps
-  [_data-app :- ::data-apps.schema/data-app-info
-   table-id  :- ::lib.schema.id/table]
-  (api/read-check :model/Table table-id)
-  (when-not (published-table? table-id)
-    (throw (data-app-error (tru "A data app can read only tables published to the Library, not the table {0}." (str table-id)))))
-  nil)
-
-(defenterprise-schema check-field :- :nil
-  "Throws a 400 unless the field with `field-id` belongs to a table published to the Library, after a read check of
-  the field."
-  :feature :data-apps
-  [_data-app :- ::data-apps.schema/data-app-info
-   field-id  :- ::lib.schema.id/field]
-  (check-published-field field-id)
-  nil)
-
-(defenterprise-schema check-database :- :nil
-  "Throws a 400 unless the database with `database-id` has a table published to the Library, after a read check of the
-  database."
-  :feature :data-apps
-  [_data-app   :- ::data-apps.schema/data-app-info
-   database-id :- ::lib.schema.id/database]
-  (api/read-check :model/Database database-id)
-  (when-not (some #(= database-id (:db_id %)) (data-apps.db/published-tables))
-    (throw (data-app-error (tru "A data app can read only databases with tables published to the Library, not the database {0}."
-                                (str database-id)))))
-  nil)
 
 (def ^:private sdk-user-key-values
   "The user key-values, as `[namespace key]`, that the SDK reads and writes inside a data app."

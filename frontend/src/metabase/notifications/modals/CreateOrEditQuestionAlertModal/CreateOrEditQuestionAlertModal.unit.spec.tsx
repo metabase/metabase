@@ -16,6 +16,7 @@ import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import { checkNotNull } from "metabase/utils/types";
 import type {
+  GoalValue,
   Notification,
   NotificationChannel,
   UserListResult,
@@ -62,6 +63,22 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
     const goalSelect = screen.getByTestId("alert-goal-select");
     expect(goalSelect).toHaveValue("When this metric has results");
+  });
+
+  it("should offer goal-based alerts when the goal value comes from another question", async () => {
+    setup({
+      isAdmin: true,
+      goalValue: { type: "card", id: 2, column: "TARGET" },
+    });
+
+    await userEvent.click(await screen.findByTestId("alert-goal-select"));
+
+    expect(
+      screen.getByRole("option", { name: "When results go above the goal" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "When results go below the goal" }),
+    ).toBeInTheDocument();
   });
 
   it("should display first available channel by default - Email", async () => {
@@ -687,6 +704,7 @@ function setup({
   onAlertCreatedMock = jest.fn(),
   onAlertUpdatedMock = jest.fn(),
   cardType = "question",
+  goalValue,
   users = [],
 }: {
   userCanAccessSettings?: boolean;
@@ -699,6 +717,7 @@ function setup({
   onAlertCreatedMock?: jest.Mock;
   onAlertUpdatedMock?: jest.Mock;
   cardType?: "question" | "model" | "metric";
+  goalValue?: GoalValue;
   users?: UserListResult[];
 }) {
   const settings = mockSettings({
@@ -716,6 +735,7 @@ function setup({
     visualization_settings: createMockVisualizationSettings({
       "graph.show_goal": true,
       "graph.metrics": ["count"],
+      "graph.goal_value": goalValue,
     }),
   });
 

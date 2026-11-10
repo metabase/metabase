@@ -11,6 +11,7 @@ import type {
   GoalValue,
   MeasureId,
   ReferencedEntity,
+  ReferencedEntityResult,
   RowValue,
   VisualizationDisplay,
   VisualizationSettings,
@@ -28,6 +29,7 @@ import type {
   GoalCard,
   GoalData,
   GoalRefError,
+  GoalRefErrorReason,
   GoalValueResult,
   ReferencedEntityKind,
   ResolvedGoalSegment,
@@ -110,10 +112,7 @@ function resolveForeignColumnRef(
         type,
         id,
         column,
-        reason:
-          result.error_type === "too-many-rows"
-            ? "too-many-rows"
-            : "query-failed",
+        reason: getFailedQueryReason(result.error_type),
         message: result.error,
       },
     };
@@ -152,6 +151,16 @@ function resolveForeignColumnRef(
   }
 
   return { value };
+}
+
+function getFailedQueryReason(
+  errorType: ReferencedEntityResult["error_type"],
+): GoalRefErrorReason {
+  return match(errorType)
+    .returnType<GoalRefErrorReason>()
+    .with("too-many-rows", () => "too-many-rows")
+    .with("not-found", () => "source-not-found")
+    .otherwise(() => "query-failed");
 }
 
 function toNumberOrNull(raw: RowValue | undefined): number | null {
@@ -193,9 +202,22 @@ export const getGoalErrorMessage = (
 ) =>
   match(reason)
     .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with("source-not-found", () => getMissingSourceMessage(sourceKind))
     .with("too-many-rows", () => getTooManyRowsMessage(sourceKind))
     .with("column-not-found", () => t`This column no longer exists`)
     .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
+
+const getMissingSourceMessage = (
+  sourceKind: ReferencedEntityKind | undefined,
+) =>
+  match(sourceKind)
+    .with("question", () => t`This question no longer exists`)
+    .with("model", () => t`This model no longer exists`)
+    .with("metric", () => t`This metric no longer exists`)
+    .with("measure", () => t`This measure no longer exists`)
+    // a deleted card can't tell which kind it was
+    .with(undefined, () => t`This source no longer exists`)
     .exhaustive();
 
 const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>

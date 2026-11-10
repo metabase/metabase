@@ -34,19 +34,16 @@ export const LeftViewFooterButtonGroup = () => {
     ? () => dispatch(onCloseChartSettings())
     : () => dispatch(onOpenChartSettings());
 
-  useRegisterShortcut(
-    [
-      {
-        id: "query-builder-toggle-viz-types",
-        perform: handleVizTypeClick,
-      },
-      {
-        id: "query-builder-toggle-viz-settings",
-        perform: handleVizSettingClick,
-      },
-    ],
-    [isShowingChartTypeSidebar, isShowingChartSettingsSidebar],
-  );
+  useRegisterShortcut([
+    {
+      id: "query-builder-toggle-viz-types",
+      perform: handleVizTypeClick,
+    },
+    {
+      id: "query-builder-toggle-viz-settings",
+      perform: handleVizSettingClick,
+    },
+  ]);
 
   return (
     <Group className={cx(CS.flex1, S.Root)}>

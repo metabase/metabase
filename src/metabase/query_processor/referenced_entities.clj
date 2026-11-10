@@ -4,8 +4,8 @@
 
   An entity that returns more rows than its caller asked for fails that entity, never the main query.
 
-  Each referenced query runs under its own QP store ([[qp.store/with-fresh-store]]): a store holds one database, so
-  a nested run against a different one would otherwise be rejected.
+  Each referenced query runs under its own QP store ([[qp.store/with-fresh-store]]): otherwise a nested run reuses
+  the main query's store and can't resolve tables on a different database.
 
   The runner knows nothing about what the specs are for. One row is the dynamic-goal consumer's requirement, not the
   runner's, so it's declared in the second section below along with the rest of the goal-aware code."

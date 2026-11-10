@@ -231,8 +231,8 @@
     (thunk)))
 
 (defmacro with-fresh-store
-  "Run `body` with no QP store bound, so a nested query can bind its own. A store holds one database, and
-  [[validate-existing-provider]] rejects a nested run against another."
+  "Run `body` with no QP store bound, so a nested query binds its own. Otherwise it reuses the caller's store and
+  resolves its tables against the caller's database."
   {:style/indent 0}
   [& body]
   `(do-with-fresh-store (^:once fn* [] ~@body)))

@@ -143,6 +143,18 @@ describe("onReplaceAllVisualizationSettings", () => {
     expectRun(false);
   });
 
+  it("does not run the query when the question is not editable", async () => {
+    jest
+      .spyOn(Lib, "queryDisplayInfo")
+      .mockReturnValue({ isNative: false, isEditable: false });
+
+    await dispatchWith(
+      STATIC_SEGMENTS,
+      onReplaceAllVisualizationSettings(DYNAMIC_SEGMENTS),
+    );
+    expectRun(false);
+  });
+
   it("re-runs when a dynamic range is retargeted to a different entity", async () => {
     await dispatchWith(
       DYNAMIC_SEGMENTS,

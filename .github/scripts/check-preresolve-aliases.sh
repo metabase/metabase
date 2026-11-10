@@ -44,12 +44,6 @@ if [ -z "$declared" ]; then
   exit 1
 fi
 
-# Expressions we know how to expand. An unrecognised one has to stop the check rather than be skipped:
-# silently ignoring it is how a whole matrix of combinations would go unchecked.
-unknown="$(grep -rhoE '\$\{\{[^}]*\}\}' --include='*' \
-             --exclude='*.png' --exclude='*.jpg' .github/ 2>/dev/null \
-           | sort -u | grep -v 'edition' || true)"
-
 scan() { # scan <edition>: dependency root and aliases used by .github Clojure invocations
   grep -rhE 'clojure[[:space:]]+(-P[[:space:]]+)?-[XMATP]?:' \
        --include='*' --exclude='*.png' --exclude='*.jpg' .github/ 2>/dev/null \

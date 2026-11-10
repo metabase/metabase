@@ -84,7 +84,9 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :table-privileges                       true}]
+                              :table-privileges                       true
+                              :stage-ctes                             true
+                              :stage-ctes/nested                      false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :sqlserver
@@ -1302,7 +1304,7 @@
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
+    [(sql-tools/add-insert-clause driver sql-query table-name) sql-params]))
 
 (defmethod driver/run-transform! [:sqlserver :table-incremental]
   [driver transform-details opts]

@@ -453,8 +453,8 @@
                               (data-access-token/routing-token-for-db (mt/id))))))))
 
 (deftest resolved-table-ids-skip-viewer-routing-lens-test
-  (testing "resolving a query's table footprint must not resolve the *viewer's* routing lens.
-            Footprint resolution preprocesses as admin, but do-as-admin keeps the user's id and
+  (testing "resolving a query's source ids must not resolve the *viewer's* routing lens.
+            Resolving them preprocesses as admin, but do-as-admin keeps the user's id and
             attributes, so without `preprocess-without-per-user-lens` the routing preprocess
             middleware resolves this user's destination db and throws (no :database-routing
             feature) — and the read gate would deny every same-lens viewer"
@@ -464,7 +464,7 @@
         (sandbox.tu/with-user-attributes! :rasta {"db_name" "sr-dest-a"}
           (mt/with-test-user :rasta
             (is (= #{(mt/id :venues)}
-                   (query-perms/query->resolved-source-table-ids (venues-count-query))))))))))
+                   (:table-ids (query-perms/query->resolved-source-ids (venues-count-query)))))))))))
 
 (deftest routing-gate-end-to-end-test
   (testing "the routing lens gates cached exploration results per destination database"
