@@ -1040,7 +1040,8 @@
   [conn]
   (when-let [schemas (seq (public-create-schemas conn))]
     (throw (ex-info (format (str "The workspace user could create objects outside its output schema. These schemas grant "
-                                 "CREATE to PUBLIC: %s. Run %s, and retry.")
+                                 "CREATE to PUBLIC: %s. As the owner of each schema named, or a superuser, run %s, and retry. Redshift "
+                                 "grants CREATE on `public` to PUBLIC by default, so this is a one-time setup step.")
                             (str/join ", " schemas)
                             (str/join ", " (map #(format "`REVOKE CREATE ON SCHEMA %s FROM PUBLIC;`"
                                                          (quote-schema %))
