@@ -11,6 +11,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
@@ -54,6 +55,47 @@
   [_driver]
   ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
    "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
+
+(defmethod sql-jdbc.actions/do-nested-transaction :databricks
+  [_driver ^java.sql.Connection conn thunk]
+  ;; Databricks (Simba) JDBC supports savepoints on SQL warehouses. Roll back to the
+  ;; savepoint on error so a failed row doesn't poison the enclosing transaction.
+  ;; Release errors are swallowed so they never mask the original action error.
+  (let [savepoint (.setSavepoint conn)]
+    (try
+      (try
+        (thunk)
+        (catch Throwable e
+          (try
+            (.rollback conn savepoint)
+            (catch Throwable rollback-error
+              (log/errorf e "failed to roll back to savepoint: %s" (ex-message rollback-error))))
+          (throw e))
+        (finally
+          (try
+            (.releaseSavepoint conn savepoint)
+            (catch Throwable release-error
+              (log/warnf "failed to release savepoint: %s" (ex-message release-error))))))
+      (catch Throwable e
+        (throw e)))))
+
+(defmethod sql-jdbc.actions/base-type->sql-type-map :databricks
+  [_driver]
+  {:type/BigInteger          "BIGINT"
+   :type/Boolean             "BOOLEAN"
+   :type/Date                "DATE"
+   :type/DateTime            "TIMESTAMP"
+   :type/DateTimeWithTZ      "TIMESTAMP"
+   :type/DateTimeWithLocalTZ "TIMESTAMP"
+   ;; Databricks defaults a bare DECIMAL to DECIMAL(10,0), which would silently round
+   ;; non-integer values to whole numbers, so cast with an explicit scale.
+   :type/Decimal             "DECIMAL(38,9)"
+   :type/Float               "DOUBLE"
+   :type/Integer             "INTEGER"
+   :type/Text                "STRING"
+   ;; Databricks has no TIME type; the driver's set-parameter shims prefill
+   ;; 1970-01-01 so time values are storable as timestamps.
+   :type/Time                "TIMESTAMP"})
 
 (doseq [[feature supported?] {:actions                           true
                               :actions/custom                    true
