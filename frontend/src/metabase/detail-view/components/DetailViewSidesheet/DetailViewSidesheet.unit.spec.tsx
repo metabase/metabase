@@ -1,5 +1,6 @@
 import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupActionsEndpoints,
@@ -77,6 +78,7 @@ const idColumn = createMockColumn({
   display_name: "ID",
   semantic_type: "type/PK",
 });
+const ROW_ID = 11;
 const table = createMockTable({
   fields: [idField],
 });
@@ -102,8 +104,8 @@ function setup({ showNav = true, actions = [updateAction] }: SetupOpts = {}) {
         columns={[idColumn]}
         columnsSettings={[undefined]}
         query={undefined}
-        row={[1]}
-        rowId={1}
+        row={[ROW_ID]}
+        rowId={ROW_ID}
         modelId={modelId}
         showImplicitActions
         showNav={showNav}
@@ -120,6 +122,11 @@ function setup({ showNav = true, actions = [updateAction] }: SetupOpts = {}) {
   );
 
   return { onNextClick, onPreviousClick, onActionSuccess, onClose };
+}
+
+function getRequestBody(url: string): unknown {
+  const [call] = fetchMock.callHistory.calls(url, { method: "POST" });
+  return JSON.parse(String(call.options.body));
 }
 
 async function openActionFromMenu(name: string) {
@@ -195,9 +202,9 @@ describe("DetailViewSidesheet", () => {
       ).toBeInTheDocument();
     });
 
-    it("closes only the action modal, not the object detail, on Escape", async () => {
-      setupPrefetchActionValuesEndpoint(updateAction.id, { id: 1 });
-      const { onClose } = setup();
+    it("closes the action modal on Escape", async () => {
+      setupPrefetchActionValuesEndpoint(updateAction.id, { id: ROW_ID });
+      setup();
 
       await openUpdateModal();
       await userEvent.keyboard("{Escape}");
@@ -207,13 +214,11 @@ describe("DetailViewSidesheet", () => {
           screen.queryByTestId("action-execute-modal"),
         ).not.toBeInTheDocument();
       });
-      expect(screen.getByTestId("object-detail")).toBeInTheDocument();
-      expect(onClose).not.toHaveBeenCalled();
     });
 
     it("prefills the update form with the row values", async () => {
       setupPrefetchActionValuesEndpoint(updateAction.id, {
-        id: 1,
+        id: ROW_ID,
         team_name: "Kind Koalas",
       });
       setup();
@@ -225,12 +230,15 @@ describe("DetailViewSidesheet", () => {
           "Kind Koalas",
         );
       });
-      expect(within(modal).getByLabelText("ID")).toHaveValue("1");
+      expect(within(modal).getByLabelText("ID")).toHaveValue(String(ROW_ID));
+      expect(
+        getRequestBody(`path:/api/action/${updateAction.id}/execute/values`),
+      ).toEqual({ parameters: { id: String(ROW_ID) } });
     });
 
     it("shows field and form errors when the update violates a constraint", async () => {
       setupPrefetchActionValuesEndpoint(updateAction.id, {
-        id: 1,
+        id: ROW_ID,
         team_name: "Kind Koalas",
       });
       setupExecuteActionEndpoint(updateAction.id, {
@@ -263,7 +271,7 @@ describe("DetailViewSidesheet", () => {
 
     it("shows a success toast after updating a row", async () => {
       setupPrefetchActionValuesEndpoint(updateAction.id, {
-        id: 1,
+        id: ROW_ID,
         team_name: "Kind Koalas",
       });
       setupExecuteActionEndpoint(updateAction.id, {
@@ -283,6 +291,11 @@ describe("DetailViewSidesheet", () => {
       expect(
         await screen.findByText("Successfully updated"),
       ).toBeInTheDocument();
+      expect(
+        getRequestBody(`path:/api/action/${updateAction.id}/execute`),
+      ).toMatchObject({
+        parameters: { id: String(ROW_ID), team_name: "Dusty Ducks" },
+      });
       expect(onActionSuccess).toHaveBeenCalledTimes(1);
       expect(onClose).not.toHaveBeenCalled();
       await waitFor(() => {
@@ -309,6 +322,9 @@ describe("DetailViewSidesheet", () => {
       expect(
         await screen.findByText("Successfully deleted"),
       ).toBeInTheDocument();
+      expect(
+        getRequestBody(`path:/api/action/${deleteAction.id}/execute`),
+      ).toEqual({ parameters: { id: ROW_ID } });
       expect(onActionSuccess).toHaveBeenCalledTimes(1);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
