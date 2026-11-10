@@ -766,12 +766,12 @@
 
   When [[metabase.driver/with-swapped-connection-details]] is active for a database, the database details are
   modified before creating the connection pool. Swapped pools are stored in a separate Guava cache with TTL-based
-  eviction (see [[swapped-pool-ttl-minutes]]), while canonical pools are stored in the main atom cache."
+  eviction (see [[swapped-pool-ttl-minutes]]), while canonical pools are stored in the pools state."
   [db :- ::lib.schema.metadata/database]
   (driver-api/check-allowed-access! db)
   (let [db           (driver.conn/connection-database db)
         cache-key    (pool-cache-key db)
-        ;; Check for workspace detail swaps (for pool routing: canonical atom vs Guava TTL cache).
+        ;; Check for workspace detail swaps (for pool routing: canonical pools state vs Guava TTL cache).
         ;; The actual swap is applied inside effective-details, not here.
         has-swap?    (driver.w/has-connection-swap? (:id db))
         ;; Calculate hash from effective details (includes write-connection merge + workspace swap)
@@ -791,7 +791,7 @@
       has-swap?
       (get-swapped-pool db)
 
-      ;; Canonical pool: use atom cache
+      ;; Canonical pool: use the pools state
       :else
       (or
        ;; we have an existing valid pool for this database, so use it
