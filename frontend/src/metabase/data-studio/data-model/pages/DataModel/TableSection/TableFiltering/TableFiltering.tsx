@@ -11,15 +11,15 @@ import type {
   DefaultSegment,
   SystemSegmentRole,
 } from "metabase/metadata/table-segments";
-import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import {
+  type ExtraSourceItem,
+  FilterPicker,
+} from "metabase/querying/filters/components/FilterPicker";
 import {
   ActionIcon,
-  Box,
-  Divider,
   Icon,
   Input,
   Menu,
-  NavLink,
   Popover,
   Stack,
   Text,
@@ -460,13 +460,13 @@ function RequiredFilterPicker({
         </Input>
       </Popover.Target>
       <Popover.Dropdown p={0}>
-        <SystemSegmentChoices
-          systemSegments={systemSegments}
-          selectedRole={requiredFilter.systemSegmentRole}
-          onPick={handlePickSystemSegment}
-        />
         {filterQuery && (
           <FilterPicker
+            extraSourceItems={getSystemSegmentItems(
+              systemSegments,
+              requiredFilter.systemSegmentRole,
+              handlePickSystemSegment,
+            )}
             query={filterQuery}
             stageIndex={STAGE_INDEX}
             filter={filter}
@@ -494,60 +494,20 @@ function RequiredFilterPicker({
   );
 }
 
-function SystemSegmentChoiceLabel({
-  segment,
-}: {
-  segment: ResolvedSystemSegment;
-}) {
-  const hint = getSystemSegmentHint(segment);
-  return (
-    <Stack gap={2}>
-      <Text c="inherit">{segment.label}</Text>
-      {hint != null && (
-        <Text size="sm" c="text-secondary">
-          {hint}
-        </Text>
-      )}
-    </Stack>
-  );
-}
-
-function SystemSegmentChoices({
-  systemSegments,
-  selectedRole,
-  onPick,
-}: {
-  systemSegments: ResolvedSystemSegment[];
-  selectedRole: SystemSegmentRole | undefined;
-  onPick: (segment: ResolvedSystemSegment) => void;
-}) {
-  const choices = systemSegments.filter(
-    ({ status }) => status !== "not-applicable",
-  );
-  if (choices.length === 0) {
-    return null;
-  }
-
-  return (
-    <>
-      <Box p="sm">
-        <Text size="sm" fw="bold" c="text-secondary" px="sm" pb="xs">
-          {t`System segments`}
-        </Text>
-        {choices.map((segment) => (
-          <NavLink
-            key={segment.role}
-            label={<SystemSegmentChoiceLabel segment={segment} />}
-            leftSection={<Icon name="segment" />}
-            rightSection={
-              segment.role === selectedRole ? <Icon name="check" /> : null
-            }
-            active={segment.role === selectedRole}
-            onClick={() => onPick(segment)}
-          />
-        ))}
-      </Box>
-      <Divider />
-    </>
-  );
+function getSystemSegmentItems(
+  systemSegments: ResolvedSystemSegment[],
+  selectedRole: SystemSegmentRole | undefined,
+  onPick: (segment: ResolvedSystemSegment) => void,
+): ExtraSourceItem[] {
+  return systemSegments
+    .filter(({ status }) => status !== "not-applicable")
+    .map((segment) => ({
+      type: "extra-source-item",
+      key: segment.role,
+      name: segment.label,
+      displayName: segment.label,
+      hint: getSystemSegmentHint(segment),
+      isSelected: segment.role === selectedRole,
+      onSelect: () => onPick(segment),
+    }));
 }

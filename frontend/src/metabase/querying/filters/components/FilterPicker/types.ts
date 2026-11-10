@@ -34,6 +34,16 @@ export type SegmentListItem = Lib.SegmentDisplayInfo & {
   stageIndex: number;
 };
 
+export type ExtraSourceItem = {
+  type: "extra-source-item";
+  key: string;
+  name: string;
+  displayName: string;
+  hint?: string;
+  isSelected?: boolean;
+  onSelect: () => void;
+};
+
 export type ExpressionClauseItem = {
   type: "expression-clause";
   clause: Lib.DefinedClauseName;

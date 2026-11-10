@@ -24,6 +24,7 @@ import { FilterPickerBody } from "./FilterPickerBody";
 import type {
   ColumnListItem,
   ExpressionClauseItem,
+  ExtraSourceItem,
   SegmentListItem,
 } from "./types";
 
@@ -38,6 +39,7 @@ export type FilterPickerProps = {
   onClose?: () => void;
   onBack?: () => void;
   readOnly?: boolean;
+  extraSourceItems?: ExtraSourceItem[];
 } & Pick<
   FilterColumnPickerProps,
   "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
@@ -56,6 +58,7 @@ export function FilterPicker({
   withColumnGroupIcon,
   withCustomExpression,
   readOnly,
+  extraSourceItems,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
   const [column, setColumn] = useState(
@@ -158,6 +161,7 @@ export function FilterPicker({
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleSegmentSelect}
         onExpressionSelect={handleExpressionSelect}
+        extraSourceItems={extraSourceItems}
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}
         withCustomExpression={withCustomExpression}

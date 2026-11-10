@@ -28,12 +28,17 @@ import { WIDTH } from "../constants";
 import type {
   ColumnListItem,
   ExpressionClauseItem,
+  ExtraSourceItem,
   SegmentListItem,
 } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 
-type Item = ColumnListItem | SegmentListItem | ExpressionClauseItem;
+type Item =
+  | ColumnListItem
+  | SegmentListItem
+  | ExpressionClauseItem
+  | ExtraSourceItem;
 
 type Section = BaseSection<Item> & {
   key?: string;
@@ -50,10 +55,11 @@ export interface FilterColumnPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndexes: number[];
-  checkItemIsSelected?: (item: Item) => boolean;
+  checkItemIsSelected?: (item: Exclude<Item, ExtraSourceItem>) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
   onExpressionSelect?: (clause?: Lib.DefinedClauseName) => void;
+  extraSourceItems?: ExtraSourceItem[];
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
@@ -64,6 +70,9 @@ export const isSegmentListItem = (item: Item): item is SegmentListItem => {
   // Unjustified type cast. FIXME
   return (item as SegmentListItem).segment != null;
 };
+
+const isExtraSourceItem = (item: Item): item is ExtraSourceItem =>
+  "type" in item && item.type === "extra-source-item";
 
 export const isExpressionClauseItem = (
   item: Item,
@@ -83,6 +92,7 @@ export function FilterColumnPicker({
   onColumnSelect,
   onSegmentSelect,
   onExpressionSelect,
+  extraSourceItems,
   withCustomExpression = true,
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
@@ -97,6 +107,7 @@ export function FilterColumnPicker({
       getSections({
         query,
         stageIndexes,
+        extraSourceItems,
         withColumnGroupIcon,
         withCustomExpression,
         isSearching,
@@ -105,6 +116,7 @@ export function FilterColumnPicker({
     [
       query,
       stageIndexes,
+      extraSourceItems,
       withColumnGroupIcon,
       withCustomExpression,
       isSearching,
@@ -132,7 +144,9 @@ export function FilterColumnPicker({
   };
 
   const handleSelect = (item: Item) => {
-    if (isSegmentListItem(item)) {
+    if (isExtraSourceItem(item)) {
+      item.onSelect();
+    } else if (isSegmentListItem(item)) {
       onSegmentSelect(item);
     } else if (isExpressionClauseItem(item)) {
       onExpressionSelect?.(item.clause);
@@ -160,10 +174,14 @@ export function FilterColumnPicker({
         onChange={handleSelect}
         onChangeSection={handleSectionChange}
         onChangeSearchText={handleSearchTextChange}
-        itemIsSelected={checkItemIsSelected}
+        itemIsSelected={(item) =>
+          isExtraSourceItem(item)
+            ? Boolean(item.isSelected)
+            : Boolean(checkItemIsSelected?.(item))
+        }
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
-        renderItemDescription={omitDescription}
+        renderItemDescription={getExtraSourceItemHint}
         renderItemIcon={(item) =>
           withColumnItemIcon ? renderItemIcon(query, item) : null
         }
@@ -183,6 +201,7 @@ export function FilterColumnPicker({
 function getSections({
   query,
   stageIndexes,
+  extraSourceItems = [],
   withColumnGroupIcon,
   withCustomExpression,
   isSearching,
@@ -190,6 +209,7 @@ function getSections({
 }: {
   query: Lib.Query;
   stageIndexes: number[];
+  extraSourceItems?: ExtraSourceItem[];
   withColumnGroupIcon: boolean;
   withCustomExpression: boolean;
   isSearching: boolean;
@@ -235,7 +255,11 @@ function getSections({
             : groupInfo.displayName,
         ),
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
-        items: [...segmentItems, ...columnItems],
+        items: [
+          ...(groupInfo.isSourceTable ? extraSourceItems : []),
+          ...segmentItems,
+          ...columnItems,
+        ],
       };
     });
   });
@@ -268,7 +292,7 @@ function getSections({
 }
 
 function renderItemIcon(query: Lib.Query, item: Item) {
-  if (isSegmentListItem(item)) {
+  if (isExtraSourceItem(item) || isSegmentListItem(item)) {
     return <Icon name={modelIconMap["segment"]} size={18} />;
   } else if (isExpressionClauseItem(item)) {
     return <Icon name="function" size={18} />;
@@ -290,6 +314,6 @@ function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
 
-function omitDescription() {
-  return undefined;
+function getExtraSourceItemHint(item: Item) {
+  return isExtraSourceItem(item) ? item.hint : undefined;
 }
