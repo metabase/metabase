@@ -715,10 +715,13 @@
         (throw e))
       (let [refusal (workspace-object-exists-exception kind object-name e)]
         ;; a failed undo must still surface as the 409 (cleanup? false): otherwise the caller's
-        ;; compensating destroy would drop the object init refused to adopt
+        ;; compensating destroy would drop the object init refused to adopt. The undo error is logged, not attached:
+        ;; the caller rebuilds the 409 with `scrub-exceptions`, which drops suppressed exceptions.
         (doseq [^String undo undo-sqls]
           (try (.execute stmt undo)
-               (catch Throwable undo-error (.addSuppressed refusal undo-error))))
+               (catch Throwable undo-error
+                 (log/warnf undo-error "Refused the existing %s %s, but could not undo this init: %s. Drop it by hand."
+                            (name kind) (quote-field object-name) undo))))
         (throw refusal)))))
 
 (defn- init-workspace-sqls
@@ -845,7 +848,12 @@
                        nil
                        (catch SQLException e
                          e))]
-      (.execute stmt drop-db)
+      (try
+        (.execute stmt drop-db)
+        (catch SQLException drop-db-error
+          (when kill-error
+            (.addSuppressed drop-db-error kill-error))
+          (throw drop-db-error)))
       (when kill-error
         (throw kill-error)))))
 

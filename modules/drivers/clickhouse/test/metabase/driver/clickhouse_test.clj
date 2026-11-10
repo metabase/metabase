@@ -34,7 +34,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.clickhouse.jdbc ConnectionImpl)
-   (java.sql Connection SQLException)))
+   (java.sql Connection SQLException Statement)))
 
 (set! *warn-on-reflection* true)
 
@@ -1010,6 +1010,35 @@
   (testing "string literals escape backslashes too: ClickHouse always reads \\ as an escape"
     (is (= "KILL QUERY WHERE user = 'a\\\\b''c' SYNC"
            (second (#'clickhouse/destroy-workspace-sqls "db" "a\\b'c"))))))
+
+(defn- failing-statement
+  "A Statement whose `execute` runs each SQL through `results`: a SQLException value is thrown, anything else returns."
+  ^Statement [results]
+  (reify Statement
+    (^boolean execute [_ ^String sql]
+      (let [r (get results sql)]
+        (if (instance? SQLException r) (throw ^SQLException r) true)))))
+
+(deftest create-workspace-object-failed-undo-test
+  (testing "a late collision whose undo fails still throws the 409, and logs the undo error"
+    (let [stmt (failing-statement {"CREATE USER u" (SQLException. "exists" "" 493)
+                                   "DROP DATABASE d" (SQLException. "undo failed")})]
+      (mt/with-log-messages-for-level [messages [metabase.driver.clickhouse :warn]]
+        (let [e (is (thrown? clojure.lang.ExceptionInfo
+                             (#'clickhouse/create-workspace-object! stmt "CREATE USER u" :user "u" ["DROP DATABASE d"])))]
+          (is (=? {:status-code 409 :workspace/cleanup? false} (ex-data e))))
+        (is (=? [{:level :warn :message "Refused the existing user `u`, but could not undo this init: DROP DATABASE d. Drop it by hand."}]
+                (messages)))
+        (is (= "undo failed" (some-> (messages) first :e ex-message)))))))
+
+(deftest destroy-workspace-keeps-kill-error-test
+  (testing "when KILL QUERY and DROP DATABASE both fail, the KILL error is suppressed on the DROP DATABASE error"
+    (let [[_ kill drop-db] (#'clickhouse/destroy-workspace-sqls "d" "u")
+          kill-error       (SQLException. "kill failed")
+          stmt             (failing-statement {kill kill-error drop-db (SQLException. "drop failed")})
+          e                (is (thrown? SQLException (#'clickhouse/destroy-workspace! stmt "d" "u")))]
+      (is (= "drop failed" (ex-message e)))
+      (is (= [kill-error] (vec (.getSuppressed ^Throwable e)))))))
 
 (defn- workspace-for-test [label]
   (let [workspace {:id (rand-int 100000000) :name label}]
