@@ -626,7 +626,7 @@
                                                                                :table-schema mb-schema
                                                                                :table-name   table-name))]
                                      ;; wrap again, because `reduce` unwraps it
-                                     (if (reduced? sync-state-acc) (reduced sync-state-acc) sync-state-acc)))
+                                     (cond-> sync-state-acc (reduced? sync-state-acc) reduced)))
                                  sync-state-acc
                                  (try
                                    (sort-by :database-position (get-fields))
