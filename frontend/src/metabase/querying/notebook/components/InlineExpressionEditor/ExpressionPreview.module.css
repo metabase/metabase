@@ -6,3 +6,8 @@
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   border-top: 1px solid var(--mb-color-border-neutral);
 }
+
+/* The rows of an outdated preview fade, the header stays. */
+.outdated .body {
+  opacity: 0.5;
+}

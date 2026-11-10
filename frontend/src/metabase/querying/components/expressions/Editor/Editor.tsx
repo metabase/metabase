@@ -53,6 +53,7 @@ import { InlinePrompt } from "./InlinePrompt";
 import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
+import { useSqlHint } from "./SqlHint";
 import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { describeCursor, getColumnType } from "./cursor-context";
@@ -103,6 +104,22 @@ export type EditorProps = {
     error: ExpressionError | null,
     meta: EditorChangeMeta,
   ) => void;
+  /**
+   * Called on each change of the text, without the delay of `onChange`, with
+   * the clause when the text is valid.
+   */
+  onEdit?: (source: string, clause: Lib.ExpressionClause | null) => void;
+  /**
+   * Called when a proposed change shows as a diff, or changes, or goes, with
+   * the clause when the proposed text is valid, and the proposed name.
+   */
+  onProposalChange?: (
+    proposal: {
+      source: string;
+      clause: Lib.ExpressionClause | null;
+      name?: string;
+    } | null,
+  ) => void;
   shortcuts?: Shortcut[];
 };
 
@@ -151,6 +168,7 @@ export function Editor(props: EditorProps) {
     name,
     hasDefaultName = false,
     onAcceptName,
+    onProposalChange,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -265,11 +283,9 @@ export function Editor(props: EditorProps) {
     Object.assign(window, { __expressionEditorDebug: debug });
   }, [validate, expressionMode, database, availableColumns, query, stageIndex]);
 
-  // Formats an AI suggestion like the format button does. A source that does
-  // not compile stays as it is, so that the editor can show its error.
-  const formatProposedSource = useCallback(
-    async (source: string) => {
-      const { expressionClause } = diagnoseAndCompile({
+  const compileSource = useCallback(
+    (source: string) => {
+      const { expressionClause, error } = diagnoseAndCompile({
         source,
         expressionMode,
         query,
@@ -279,15 +295,7 @@ export function Editor(props: EditorProps) {
         availableColumns,
         availableMetrics,
       });
-      if (expressionClause == null) {
-        return source;
-      }
-      return format(expressionClause, {
-        query,
-        stageIndex,
-        availableColumns,
-        printWidth: 55, // the same as the format button
-      }).catch(() => source);
+      return error == null ? (expressionClause ?? null) : null;
     },
     [
       expressionMode,
@@ -300,6 +308,24 @@ export function Editor(props: EditorProps) {
     ],
   );
 
+  // Formats an AI suggestion like the format button does. A source that does
+  // not compile stays as it is, so that the editor can show its error.
+  const formatProposedSource = useCallback(
+    async (source: string) => {
+      const expressionClause = compileSource(source);
+      if (expressionClause == null) {
+        return source;
+      }
+      return format(expressionClause, {
+        query,
+        stageIndex,
+        availableColumns,
+        printWidth: 55, // the same as the format button
+      }).catch(() => source);
+    },
+    [compileSource, query, stageIndex, availableColumns],
+  );
+
   const proposeSource = useCallback(
     async (source: string, name?: string) => {
       const formatted = await formatProposedSource(source);
@@ -308,6 +334,14 @@ export function Editor(props: EditorProps) {
     },
     [formatProposedSource],
   );
+
+  // Text from a fix that the user already chose: no diff to confirm it.
+  const applySource = useCallback(
+    async (source: string) => acceptSource(await formatProposedSource(source)),
+    [acceptSource, formatProposedSource],
+  );
+
+  useReportProposal(proposal, compileSource, onProposalChange);
 
   const handleProposedNameChange = useCallback((name: string) => {
     setProposal((proposal) => proposal && { ...proposal, name });
@@ -410,12 +444,28 @@ export function Editor(props: EditorProps) {
     [promptPos, generate, handleClosePrompt, proposeSource],
   );
 
+  const canAssist = inline && !readOnly;
+
+  // A hint on SQL in the expression replaces the error.
+  const sqlHint = useSqlHint({
+    hasError: error != null,
+    source,
+    query,
+    stageIndex,
+    availableColumns,
+    isEnabled: canAssist,
+    generate,
+    proposeSource,
+    applySource,
+  });
+
   const fixError = useFixErrorAction({
     error,
     source,
-    isEnabled: inline && !readOnly,
+    isEnabled: canAssist,
     generate,
     proposeSource,
+    replacement: sqlHint,
   });
 
   const aiCompletionExtensions = useAiCompletion({
@@ -616,6 +666,7 @@ export function Editor(props: EditorProps) {
           source={source}
           action={fixError.action}
           note={fixError.note}
+          content={fixError.content}
         />
 
         {!inline && source.trim() === "" && !isFormatting && error == null && (
@@ -725,6 +776,7 @@ function useExpression({
   availableMetrics,
   database,
   onChange,
+  onEdit,
   initialClause,
 }: EditorProps & {
   database: Pick<Database, "features"> | undefined;
@@ -791,6 +843,7 @@ function useExpression({
 
       if (source.trim() === "") {
         debouncedOnChange.cancel();
+        onEdit?.(source, null);
         handleChange(null, null, meta);
         return;
       }
@@ -805,6 +858,7 @@ function useExpression({
         availableColumns,
         availableMetrics,
       });
+      onEdit?.(source, error == null ? (clause ?? null) : null);
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
         handleChange(clause, error, meta);
@@ -822,6 +876,7 @@ function useExpression({
       debouncedOnChange,
       availableColumns,
       availableMetrics,
+      onEdit,
     ],
   );
 
@@ -909,6 +964,27 @@ function useExpression({
     isValidated,
     acceptSource,
   };
+}
+
+/**
+ * Reports the proposed text, its clause and the proposed name. It compiles
+ * the text only when the proposal changes.
+ */
+function useReportProposal(
+  proposal: Proposal | null,
+  compileSource: (source: string) => Lib.ExpressionClause | null,
+  onProposalChange: EditorProps["onProposalChange"],
+) {
+  const latestRef = useRef({ compileSource, onProposalChange });
+  latestRef.current = { compileSource, onProposalChange };
+  const source = proposal?.source;
+  const name = proposal?.name?.trim() || undefined;
+  useEffect(() => {
+    const { compileSource, onProposalChange } = latestRef.current;
+    onProposalChange?.(
+      source == null ? null : { source, clause: compileSource(source), name },
+    );
+  }, [source, name]);
 }
 
 function getTooltipPosition(state: EditorState) {

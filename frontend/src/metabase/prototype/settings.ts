@@ -42,6 +42,15 @@ export const EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING: BooleanPrototypeSettin
     defaultValue: true,
   };
 
+export const EXPRESSION_SQL_FIXES_SETTING: BooleanPrototypeSetting = {
+  key: "expression-sql-fixes",
+  type: "boolean",
+  label: "Fixes for SQL syntax in custom expressions",
+  description:
+    "When an invalid expression has SQL, like [Total] IS NULL, suggest the custom expression for it.",
+  defaultValue: true,
+};
+
 export const EXPRESSION_AI_COMPLETION_DELAY_SETTING: NumberPrototypeSetting = {
   key: "expression-ai-completion-delay",
   type: "number",
@@ -62,4 +71,5 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   EXPRESSION_AI_COMPLETION_DELAY_SETTING,
   EXPRESSION_PARAMETER_HINTS_SETTING,
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
+  EXPRESSION_SQL_FIXES_SETTING,
 ];

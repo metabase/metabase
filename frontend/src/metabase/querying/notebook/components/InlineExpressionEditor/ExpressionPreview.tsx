@@ -1,9 +1,18 @@
+import cx from "classnames";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { ActionIcon, Flex, Icon, Loader, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Flex,
+  Icon,
+  Loader,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -16,7 +25,6 @@ import S from "./ExpressionPreview.module.css";
 // Rows to run the expression on, and rows to show from them.
 const QUERY_ROW_COUNT = 200;
 const SHOWN_ROW_COUNT = 8;
-const DEBOUNCE_MS = 600;
 
 type ExpressionPreviewProps = {
   query: Lib.Query;
@@ -25,14 +33,18 @@ type ExpressionPreviewProps = {
   expressionIndex?: number;
   clause: Lib.ExpressionClause;
   name: string;
-  /** A new value runs the current expression at once and picks new rows. */
+  /** A new value runs the expression again and picks new rows. */
   refreshKey: number;
+  /** True when the text in the editor is not the expression in the preview. */
+  isOutdated: boolean;
+  runShortcut: string;
+  onRun: () => void;
   onClose: () => void;
 };
 
 /**
  * Sample rows with the result of the expression, and only the columns that the
- * expression uses.
+ * expression uses. It runs only on request.
  */
 export function ExpressionPreview({
   query,
@@ -41,47 +53,45 @@ export function ExpressionPreview({
   clause,
   name,
   refreshKey,
+  isOutdated,
+  runShortcut,
+  onRun,
   onClose,
 }: ExpressionPreviewProps) {
-  // The clause after a pause in typing, or at once on a refresh.
-  const [debouncedClause, setDebouncedClause] = useState(clause);
-  useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedClause(clause), DEBOUNCE_MS);
-    return () => clearTimeout(timeout);
-  }, [clause]);
-  const debouncedClauseRef = useRef(debouncedClause);
-  debouncedClauseRef.current = debouncedClause;
-
-  const preview = useMemo(
-    () =>
-      getPreviewQuery(
-        query,
-        stageIndex,
-        expressionIndex,
-        debouncedClause,
-        name,
-      ),
-    [query, stageIndex, expressionIndex, debouncedClause, name],
-  );
+  // The query is built only for a run. Each valid edit saves the expression,
+  // which changes `query`, and a new build of the same query has new ids, so
+  // it would run again.
+  const latestRef = useRef({ query, stageIndex, expressionIndex, name });
+  latestRef.current = { query, stageIndex, expressionIndex, name };
+  const preview = useMemo(() => {
+    const { query, stageIndex, expressionIndex, name } = latestRef.current;
+    const preview = getPreviewQuery(
+      query,
+      stageIndex,
+      expressionIndex,
+      clause,
+      name,
+    );
+    return preview && { ...preview, name };
+    // `name` is in the dependencies only to run again with a new name.
+  }, [clause, name]);
   const { data, error, isFetching, refetch } = useGetAdhocQueryQuery(
     preview ? Lib.toJsQuery(preview.query) : skipToken,
   );
   const [seed, setSeed] = useState(0);
 
-  const latestClauseRef = useRef(clause);
-  latestClauseRef.current = clause;
+  const clauseRef = useRef(clause);
   const isFirstRefreshRef = useRef(true);
   useEffect(() => {
     if (isFirstRefreshRef.current) {
       isFirstRefreshRef.current = false;
       return;
     }
-    const latestClause = latestClauseRef.current;
-    setDebouncedClause(latestClause);
     // A new clause runs a new query by itself. The same one runs again.
-    if (latestClause === debouncedClauseRef.current) {
+    if (clause === clauseRef.current) {
       refetch();
     }
+    clauseRef.current = clause;
     setSeed((seed) => seed + 1);
     // Only a new refresh key refreshes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -93,14 +103,14 @@ export function ExpressionPreview({
         ? getSample(
             data.data.cols,
             data.data.rows,
-            name,
+            preview.name,
             preview.usedNames,
             preview.primaryKeyName,
           )
         : null,
     // `seed` picks other rows on request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, name, preview, seed],
+    [data, preview, seed],
   );
 
   // The sample, as a result for the normal table visualization.
@@ -132,42 +142,67 @@ export function ExpressionPreview({
       : null;
 
   return (
-    <div className={S.preview} data-testid="expression-preview">
+    <div
+      className={cx(S.preview, { [S.outdated]: isOutdated && !isFetching })}
+      data-testid="expression-preview"
+    >
       <Flex align="center" gap="xs" mb="sm">
         <Text fw="bold" fz="sm">
           {t`Preview`}
         </Text>
-        {isFetching && <Loader size="xs" ml="xs" />}
+        {isFetching ? (
+          <Loader size="xs" ml="xs" />
+        ) : (
+          isOutdated && (
+            <Text fz="sm" c="text-secondary">
+              {"· "}
+              {t`Outdated`}
+            </Text>
+          )
+        )}
         <Flex ml="auto" gap="xs">
-          <Tooltip label={t`Show other rows`}>
-            <ActionIcon
-              aria-label={t`Show other rows`}
-              onClick={() => setSeed((seed) => seed + 1)}
-              disabled={sample == null}
-            >
-              <Icon name="refresh" />
-            </ActionIcon>
-          </Tooltip>
+          {isOutdated ? (
+            <Tooltip label={t`Run the new expression (${runShortcut})`}>
+              <Button
+                size="md"
+                variant="filled"
+                leftSection={<Icon name="refresh" />}
+                onClick={onRun}
+              >{t`Refresh`}</Button>
+            </Tooltip>
+          ) : (
+            <Tooltip label={t`Show other rows`}>
+              <ActionIcon
+                aria-label={t`Show other rows`}
+                onClick={() => setSeed((seed) => seed + 1)}
+                disabled={sample == null}
+              >
+                <Icon name="refresh" />
+              </ActionIcon>
+            </Tooltip>
+          )}
           <ActionIcon aria-label={t`Close preview`} onClick={onClose}>
             <Icon name="close" />
           </ActionIcon>
         </Flex>
       </Flex>
-      {errorMessage != null ? (
-        <Text c="feedback-negative" fz="sm">
-          {errorMessage}
-        </Text>
-      ) : sample == null ? (
-        <Loader size="sm" />
-      ) : sample.rows.length === 0 ? (
-        <Text c="text-secondary" fz="sm">{t`No rows`}</Text>
-      ) : (
-        <VisualizationPreview
-          rawSeries={sampleSeries?.rawSeries ?? null}
-          result={sampleSeries?.result ?? null}
-          error={null}
-        />
-      )}
+      <div className={S.body}>
+        {errorMessage != null ? (
+          <Text c="feedback-negative" fz="sm">
+            {errorMessage}
+          </Text>
+        ) : sample == null ? (
+          <Loader size="sm" />
+        ) : sample.rows.length === 0 ? (
+          <Text c="text-secondary" fz="sm">{t`No rows`}</Text>
+        ) : (
+          <VisualizationPreview
+            rawSeries={sampleSeries?.rawSeries ?? null}
+            result={sampleSeries?.result ?? null}
+            error={null}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -31,3 +31,16 @@
   flex-shrink: 0;
   margin-top: 2px;
 }
+
+.sqlHint {
+  color: var(--mb-color-text-primary);
+}
+
+.link {
+  color: var(--mb-color-text-brand);
+  text-decoration: underline;
+}
+
+.code {
+  font-size: 12px;
+}

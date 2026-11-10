@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -15,7 +15,8 @@ import S from "./Errors/Errors.module.css";
 /**
  * "Fix with AI" for the error bar: a button, and a note when the AI does not
  * fix the error. The button asks the AI with a fixed prompt and proposes the
- * fix as a diff. The note stays until the text changes.
+ * fix as a diff. The note stays until the text changes. A `replacement`, like
+ * the SQL hint, replaces the error and the button.
  */
 export function useFixErrorAction({
   error,
@@ -23,6 +24,7 @@ export function useFixErrorAction({
   isEnabled,
   generate,
   proposeSource,
+  replacement = null,
 }: {
   error?: ExpressionError | Error | null;
   source: string;
@@ -32,6 +34,8 @@ export function useFixErrorAction({
     source: string;
   }) => Promise<GenerateExpressionResult | null>;
   proposeSource: (source: string, name?: string) => void;
+  /** The content to show instead of the error, when there is one. */
+  replacement?: ReactNode;
 }) {
   const [isFixing, setIsFixing] = useState(false);
   const [refusal, setRefusal] = useState<{ source: string; message: string }>();
@@ -67,7 +71,10 @@ export function useFixErrorAction({
   }, [error, source, generate, proposeSource]);
 
   if (!isEnabled || error == null) {
-    return { action: null, note: null };
+    return { action: null, note: null, content: null };
+  }
+  if (replacement != null) {
+    return { action: null, note: null, content: replacement };
   }
   if (refusal?.source === source) {
     return {
@@ -78,6 +85,7 @@ export function useFixErrorAction({
           {refusal.message}
         </Flex>
       ),
+      content: null,
     };
   }
   return {
@@ -93,5 +101,6 @@ export function useFixErrorAction({
       </Button>
     ),
     note: null,
+    content: null,
   };
 }

@@ -15,6 +15,7 @@ export function Errors({
   source,
   action,
   note,
+  content,
 }: {
   error?: ExpressionError | Error | null;
   source?: string;
@@ -22,9 +23,18 @@ export function Errors({
   action?: ReactNode;
   /** Shown on its own line below the error. */
   note?: ReactNode;
+  /** Shown instead of the error, the action and the note. */
+  content?: ReactNode;
 }) {
   if (!error) {
     return null;
+  }
+  if (content != null) {
+    return (
+      <Flex p="sm" className={S.errors}>
+        {content}
+      </Flex>
+    );
   }
 
   const position =

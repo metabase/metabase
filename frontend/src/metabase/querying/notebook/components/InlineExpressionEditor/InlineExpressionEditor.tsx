@@ -44,6 +44,13 @@ export type InlineExpressionEditorProps = {
   onDiscard: () => void;
 };
 
+type PreviewRun = {
+  source: string;
+  clause: Lib.ExpressionClause;
+  /** The name of a proposed change, when it has one. */
+  name?: string;
+};
+
 const PREVIEW_SHORTCUT = isMac() ? "⌘ Enter" : "Ctrl Enter";
 
 export function InlineExpressionEditor({
@@ -65,11 +72,74 @@ export function InlineExpressionEditor({
   onDiscard,
 }: InlineExpressionEditorProps) {
   const [error, setError] = useState<ExpressionError | null>(null);
-  // The last valid clause, for the preview. The editor reports the opened
-  // clause when it validates it.
-  const [previewClause, setPreviewClause] = useState<Lib.ExpressionClause>();
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  // The text in the editor, and the last valid expression. The editor
+  // reports the opened expression when it validates it.
+  const [editedSource, setEditedSource] = useState<string>();
+  const [lastValid, setLastValid] = useState<PreviewRun>();
+  // The expression in the preview. The preview runs only on request, so it
+  // can be outdated.
+  const [previewRun, setPreviewRun] = useState<PreviewRun>();
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+
+  // A change proposed as a diff. The preview runs it, so that the user can
+  // check the result before accepting it.
+  const [proposal, setProposal] = useState<PreviewRun | null>(null);
+
+  const showPreview = useCallback((run: PreviewRun) => {
+    setPreviewRun(run);
+    setPreviewRefreshKey((key) => key + 1);
+  }, []);
+  const runPreview = () => {
+    const run = proposal ?? lastValid;
+    if (run != null) {
+      showPreview(run);
+    }
+  };
+  const shownSource = proposal?.source ?? editedSource;
+  const isPreviewOutdated =
+    previewRun != null &&
+    shownSource !== undefined &&
+    shownSource !== previewRun.source;
+
+  // A new proposal runs in the preview at once. An accepted one stays in the
+  // preview; a rejected one makes the preview outdated.
+  const hasProposalRef = useRef(false);
+  const handleProposalChange = useCallback(
+    (
+      next: {
+        source: string;
+        clause: Lib.ExpressionClause | null;
+        name?: string;
+      } | null,
+    ) => {
+      const isNew = next != null && !hasProposalRef.current;
+      hasProposalRef.current = next != null;
+      const run =
+        next?.clause != null ? { ...next, clause: next.clause } : null;
+      setProposal(run);
+      if (isNew && run != null) {
+        showPreview(run);
+      } else if (run != null) {
+        // A new name for the proposal in the preview shows at once.
+        setPreviewRun((previewRun) =>
+          previewRun?.source === run.source && previewRun.name !== run.name
+            ? { ...previewRun, name: run.name }
+            : previewRun,
+        );
+      }
+    },
+    [showPreview],
+  );
+
+  const handleEdit = useCallback(
+    (source: string, clause: Lib.ExpressionClause | null) => {
+      setEditedSource(source);
+      if (clause != null) {
+        setLastValid({ source, clause });
+      }
+    },
+    [],
+  );
 
   // Cmd/Ctrl+Enter opens the preview, or runs it again. The capture phase
   // comes before the keymap of the code editor.
@@ -79,11 +149,7 @@ export function InlineExpressionEditor({
     }
     event.preventDefault();
     event.stopPropagation();
-    if (isPreviewOpen) {
-      setPreviewRefreshKey((key) => key + 1);
-    } else if (previewClause != null) {
-      setIsPreviewOpen(true);
-    }
+    runPreview();
   };
   const [hasExpression, setHasExpression] = useState(clause != null);
 
@@ -108,7 +174,7 @@ export function InlineExpressionEditor({
     ) => {
       const isValid = !error && clause != null;
       if (isValid) {
-        setPreviewClause(clause);
+        setLastValid({ source, clause });
       }
       setError(error);
       setHasExpression(clause != null);
@@ -163,6 +229,8 @@ export function InlineExpressionEditor({
         initialClause={editorClause}
         initialSource={revertCount === 0 ? initialSource : undefined}
         onChange={handleChange}
+        onEdit={handleEdit}
+        onProposalChange={handleProposalChange}
         query={query}
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}
@@ -195,29 +263,32 @@ export function InlineExpressionEditor({
         inline
       />
 
-      {isPreviewOpen && previewClause != null && (
+      {previewRun != null && (
         <ExpressionPreview
           query={query}
           stageIndex={stageIndex}
           expressionIndex={expressionIndex}
-          clause={previewClause}
-          name={name ?? t`New column`}
+          clause={previewRun.clause}
+          name={previewRun.name ?? name ?? t`New column`}
           refreshKey={previewRefreshKey}
-          onClose={() => setIsPreviewOpen(false)}
+          isOutdated={isPreviewOutdated}
+          runShortcut={PREVIEW_SHORTCUT}
+          onRun={runPreview}
+          onClose={() => setPreviewRun(undefined)}
         />
       )}
 
       {!readOnly && (
         <LayoutFooter className={S.footer}>
           <Flex p="sm" gap="sm" justify="end" align="center">
-            {!isPreviewOpen && (
+            {previewRun == null && (
               <Tooltip label={t`Preview (${PREVIEW_SHORTCUT})`}>
                 <Button
                   variant="subtle"
                   mr="auto"
                   leftSection={<Icon name="play" />}
-                  disabled={previewClause == null}
-                  onClick={() => setIsPreviewOpen(true)}
+                  disabled={lastValid == null}
+                  onClick={runPreview}
                 >{t`Preview`}</Button>
               </Tooltip>
             )}
