@@ -5,6 +5,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.summary-formula :as summary-formula]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.test :as mt]))
 
@@ -332,6 +333,60 @@
            (is (=? {:errors some?}
                    (mt/user-http-request :rasta :post 400 endpoint body)))))
        (is (empty? @calls))))))
+
+(defn- check-size-limit
+  "Check that `at-limit` overrides reach the LLM and `over-limit` overrides return 400 without calling it."
+  [at-limit over-limit]
+  (testing "at the limit"
+    (is (string? (sent-to-llm at-limit))))
+  (testing "over the limit"
+    (do-with-llm
+     {:expression "Count" :name "Count"}
+     (fn [calls]
+       (is (=? {:errors some?}
+               (mt/user-http-request :rasta :post 400 endpoint (request-body over-limit))))
+       (is (empty? @calls))))))
+
+(defn- string-of-length
+  [n]
+  (apply str (repeat n "a")))
+
+(deftest summary-formula-prompt-size-limit-test
+  (testing "POST /api/metabot/summary-formula caps the length of the prompt"
+    (check-size-limit {:prompt (string-of-length summary-formula/max-prompt-chars)}
+                      {:prompt (string-of-length (inc summary-formula/max-prompt-chars))})))
+
+(deftest summary-formula-column-count-limit-test
+  (testing "POST /api/metabot/summary-formula caps the number of columns"
+    (letfn [(columns [n] (mapv #(hash-map :name (str "Column " %)) (range n)))]
+      (check-size-limit {:columns (columns summary-formula/max-columns)}
+                        {:columns (columns (inc summary-formula/max-columns))}))))
+
+(deftest summary-formula-column-name-size-limit-test
+  (testing "POST /api/metabot/summary-formula caps the length of a column name"
+    (check-size-limit {:columns [{:name (string-of-length summary-formula/max-string-input-chars)}]}
+                      {:columns [{:name (string-of-length (inc summary-formula/max-string-input-chars))}]})))
+
+(deftest summary-formula-column-type-size-limit-test
+  (testing "POST /api/metabot/summary-formula caps the length of a column type"
+    (check-size-limit {:columns [{:name "Total" :type (string-of-length summary-formula/max-string-input-chars)}]}
+                      {:columns [{:name "Total" :type (string-of-length (inc summary-formula/max-string-input-chars))}]})))
+
+(deftest summary-formula-metric-count-limit-test
+  (testing "POST /api/metabot/summary-formula caps the number of metrics"
+    (letfn [(metrics [n] (mapv #(str "Metric " %) (range n)))]
+      (check-size-limit {:metrics (metrics summary-formula/max-metrics)}
+                        {:metrics (metrics (inc summary-formula/max-metrics))}))))
+
+(deftest summary-formula-metric-name-size-limit-test
+  (testing "POST /api/metabot/summary-formula caps the length of a metric name"
+    (check-size-limit {:metrics [(string-of-length summary-formula/max-string-input-chars)]}
+                      {:metrics [(string-of-length (inc summary-formula/max-string-input-chars))]})))
+
+(deftest summary-formula-table-name-size-limit-test
+  (testing "POST /api/metabot/summary-formula caps the length of the table name"
+    (check-size-limit {:table_name (string-of-length summary-formula/max-string-input-chars)}
+                      {:table_name (string-of-length (inc summary-formula/max-string-input-chars))})))
 
 ;;; -------------------------------------------------- Database --------------------------------------------------
 
