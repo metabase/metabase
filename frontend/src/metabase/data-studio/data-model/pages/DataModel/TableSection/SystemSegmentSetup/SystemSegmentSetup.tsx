@@ -35,7 +35,6 @@ export type SystemSegmentColumnForm = ReturnType<
   typeof useSystemSegmentColumnForm
 >;
 
-/** The marking column and the value that marks rows, before they're saved */
 export function useSystemSegmentColumnForm(
   table: Table,
   segment: ResolvedSystemSegment | undefined,
@@ -79,7 +78,6 @@ export function useSystemSegmentColumnForm(
   };
 }
 
-/** Which column marks the segment's rows, which value marks them, and the rows it keeps */
 export function SystemSegmentColumnFields({
   segment,
   baseQuery,
@@ -139,10 +137,6 @@ export function SystemSegmentColumnFields({
   );
 }
 
-/**
- * Sets up a system segment from somewhere else, like the default segment
- * picker. Saving hands back the condition; closing changes nothing.
- */
 export function SystemSegmentSetupModal({
   table,
   segment,

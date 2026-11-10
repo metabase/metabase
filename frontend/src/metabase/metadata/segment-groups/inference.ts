@@ -200,6 +200,8 @@ export function getSegmentGroupSourceLabel(
       return name ? t`From the order of ${name}` : t`From the process`;
     case "flag":
       return name ? t`From the ${name} flag` : null;
+    case "suggested":
+      return name ? t`Suggested from ${name}` : null;
     // A group named after its column already says where it comes from
     case "kind":
     case "admin":

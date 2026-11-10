@@ -18,7 +18,12 @@ export const SEGMENT_GROUP_KINDS: SegmentGroupKind[] = [
 ];
 
 /** What made the group: a process's buckets, a flag, a kind column, or an admin */
-export type SegmentGroupSource = "process" | "flag" | "kind" | "admin";
+export type SegmentGroupSource =
+  | "process"
+  | "flag"
+  | "kind"
+  | "suggested"
+  | "admin";
 
 /**
  * A custom segment, or one of the table's system segments. `label` is the
@@ -28,14 +33,12 @@ export type SegmentGroupMember =
   | { segmentId: SegmentId; label: string }
   | { systemRole: SystemSegmentRole; label: string };
 
-/** Unique within a group, for keys and drag-and-drop */
 export function getSegmentGroupMemberKey(member: SegmentGroupMember): string {
   return "segmentId" in member
     ? `custom:${member.segmentId}`
     : `system:${member.systemRole}`;
 }
 
-/** A custom member whose segment was deleted drops out of its groups */
 export function isSegmentGroupMemberPresent(
   member: SegmentGroupMember,
   segments: Pick<Segment, "id">[],
@@ -80,7 +83,13 @@ const EMPTY_TABLE: TableSegmentGroups = {
   resolvedProposalKeys: [],
 };
 
-const SOURCES: SegmentGroupSource[] = ["process", "flag", "kind", "admin"];
+const SOURCES: SegmentGroupSource[] = [
+  "process",
+  "flag",
+  "kind",
+  "suggested",
+  "admin",
+];
 
 function parseMember(value: unknown): SegmentGroupMember | null {
   if (!isObject(value) || typeof value.label !== "string") {

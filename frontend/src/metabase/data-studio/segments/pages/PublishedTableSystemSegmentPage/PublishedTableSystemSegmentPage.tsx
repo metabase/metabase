@@ -5,7 +5,6 @@ import * as Urls from "metabase/urls";
 
 import { SystemSegmentPage } from "../DataModelSystemSegmentPage";
 
-/** PROTOTYPE: mocked. A published table's built-in segment, in Published data. */
 export function PublishedTableSystemSegmentPage() {
   return (
     <SystemSegmentPage

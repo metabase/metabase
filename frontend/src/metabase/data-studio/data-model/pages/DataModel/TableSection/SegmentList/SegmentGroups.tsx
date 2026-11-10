@@ -15,12 +15,17 @@ import {
   type SegmentGroup,
   type SegmentGroupMember,
   type SegmentGroupProposal,
+  type SuggestedValueGroupingCandidate,
   createSegmentGroupId,
   getFlagPartitionProposals,
   getKindPartitionCandidates,
   getKindPartitionProposal,
   getProcessPartitionProposal,
   getSegmentGroupSourceLabel,
+  getSuggestedBandProposals,
+  getSuggestedValueGroupingCandidates,
+  getSuggestedValueGroupingKey,
+  getSuggestedValueGroupingProposal,
   isSegmentGroupMemberPresent,
   useSegmentGroups,
 } from "metabase/metadata/segment-groups";
@@ -40,6 +45,7 @@ export type SegmentGroupProposals = {
   proposals: SegmentGroupProposal[];
   /** Kind columns whose values decide whether there's a proposal */
   kindCandidates: Field[];
+  suggestedCandidates: SuggestedValueGroupingCandidate[];
 };
 
 /**
@@ -69,10 +75,23 @@ export function useSegmentGroupProposals(table: Table): SegmentGroupProposals {
   const processProposal = statusField
     ? getProcessPartitionProposal(table, statusField, orderedValues)
     : null;
+  const isSuggestionOpen = (key: string, name: string) =>
+    !resolvedKeys.includes(key) && !groups.some((group) => group.name === name);
   const proposals = [
     ...(processProposal ? [processProposal] : []),
     ...getFlagPartitionProposals(fields),
   ].filter(({ key, sourceFieldId }) => isOpen(key, sourceFieldId));
+  const bandProposals = getSuggestedBandProposals(table, fields).filter(
+    ({ key, name }) => isSuggestionOpen(key, name),
+  );
+  const suggestedCandidates = getSuggestedValueGroupingCandidates(
+    fields,
+  ).filter((candidate) =>
+    isSuggestionOpen(
+      getSuggestedValueGroupingKey(candidate),
+      candidate.rule.getName(),
+    ),
+  );
 
   const kindCandidates = getKindPartitionCandidates(
     fields,
@@ -81,7 +100,11 @@ export function useSegmentGroupProposals(table: Table): SegmentGroupProposals {
     isOpen(`kind:${getRawTableFieldId(field)}`, getRawTableFieldId(field)),
   );
 
-  return { proposals, kindCandidates };
+  return {
+    proposals: [...proposals, ...bandProposals],
+    kindCandidates,
+    suggestedCandidates,
+  };
 }
 
 /** Accepting creates a segment per member, then the group; either hides it */
@@ -255,6 +278,40 @@ export function SegmentGroupProposalItem({
  * A kind column's partition, once its values are in: one member per value.
  * Renders nothing when the column turns out to have too many values.
  */
+export function SuggestedValueGroupingProposalItem({
+  candidate,
+  query,
+  canAccept,
+  onAccept,
+  onDismiss,
+}: {
+  candidate: SuggestedValueGroupingCandidate;
+  query: string;
+  canAccept: boolean;
+  onAccept: (proposal: SegmentGroupProposal) => void;
+  onDismiss: (proposal: SegmentGroupProposal) => void;
+}) {
+  const { data } = useGetFieldValuesQuery(
+    getRawTableFieldId(candidate.field) ?? skipToken,
+  );
+  const values = (data?.values ?? [])
+    .map(([value]) => value)
+    .filter((value) => value != null && value !== "")
+    .map(String);
+  const proposal = getSuggestedValueGroupingProposal(candidate, values);
+  if (!proposal || !matchesListSearch(query, proposal.name)) {
+    return null;
+  }
+  return (
+    <SegmentGroupProposalItem
+      proposal={proposal}
+      canAccept={canAccept}
+      onAccept={() => onAccept(proposal)}
+      onDismiss={() => onDismiss(proposal)}
+    />
+  );
+}
+
 export function KindPartitionProposalItem({
   field,
   query,

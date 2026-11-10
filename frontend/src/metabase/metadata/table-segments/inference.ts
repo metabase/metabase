@@ -28,6 +28,8 @@ export type FieldCondition =
   /** Any of several values, like a status bucket's */
   | { fieldId: FieldId; operator: "in"; values: string[] }
   | { fieldId: FieldId; operator: "is-null" | "not-null" }
+  | { fieldId: FieldId; operator: "<" | ">"; value: number }
+  | { fieldId: FieldId; operator: "between"; min: number; max: number }
   | { fieldId: FieldId; operator: "last-days"; days: number };
 
 export type SystemSegmentInference = {
@@ -140,20 +142,14 @@ export function getSystemSegmentMarkedWhenLabel(
   }
 }
 
-/** Current rows keep the marked rows; the others leave them out */
 function keepsMarkedRows(role: SystemSegmentRole): boolean {
   return role === "current_rows";
 }
 
-/** Columns that can mark rows for a system segment: yes/no flags and dates */
 export function isSystemSegmentColumn(field: Field): boolean {
   return isBoolean(field) || isDate(field);
 }
 
-/**
- * The segment's condition when `field` marks the rows: a flag marks them by
- * its value, a date by being set (`true`) or empty (`false`).
- */
 export function getSystemSegmentCondition(
   role: SystemSegmentRole,
   field: Field,
@@ -172,7 +168,6 @@ export function getSystemSegmentCondition(
   };
 }
 
-/** Which value of the condition's column marks rows, for the setup form */
 export function getSystemSegmentMarkedWhen(
   role: SystemSegmentRole,
   condition: FieldCondition,

@@ -37,6 +37,7 @@ import {
   KindPartitionProposalItem,
   SegmentGroupItem,
   SegmentGroupProposalItem,
+  SuggestedValueGroupingProposalItem,
   getMemberLabels,
   useSegmentGroupProposalActions,
   useSegmentGroupProposals,
@@ -137,9 +138,11 @@ export function SegmentList({
     matchesListSearch(query, proposal.name),
   );
   // Kind proposals filter themselves once their values load
-  const kindCandidates = groupProposals.kindCandidates;
+  const { kindCandidates, suggestedCandidates } = groupProposals;
   const hasGroupProposals =
-    matchingGroupProposals.length > 0 || kindCandidates.length > 0;
+    matchingGroupProposals.length > 0 ||
+    kindCandidates.length > 0 ||
+    suggestedCandidates.length > 0;
   const matchingProposalCount =
     matchingGroupProposals.length + matchingProposals.length;
   const hasMatches =
@@ -147,7 +150,6 @@ export function SegmentList({
     segmentGroups.length > 0 ||
     customSegments.length > 0 ||
     matchingProposalCount > 0;
-  // A search looks through every view at once, each in its own section
   const showsView = (viewToShow: SegmentView) =>
     !isSearching && view === viewToShow;
   const editingGroup =
@@ -290,6 +292,16 @@ export function SegmentList({
               canAccept={canCreateSegment}
               onAccept={() => groupProposalActions.accept(proposal)}
               onDismiss={() => groupProposalActions.dismiss(proposal)}
+            />
+          ))}
+          {suggestedCandidates.map((candidate) => (
+            <SuggestedValueGroupingProposalItem
+              key={`${candidate.rule.key}:${getRawTableFieldId(candidate.field)}`}
+              candidate={candidate}
+              query={query}
+              canAccept={canCreateSegment}
+              onAccept={groupProposalActions.accept}
+              onDismiss={groupProposalActions.dismiss}
             />
           ))}
           {kindCandidates.map((field) => (

@@ -16,14 +16,11 @@ import {
 export type TableSegmentsOverrides = {
   /** System segments an admin wrote a custom filter for */
   systemSegments: Partial<Record<SystemSegmentRole, DatasetQuery>>;
-  /** System segments an admin pointed at the column that marks their rows */
   systemSegmentConditions: Partial<Record<SystemSegmentRole, FieldCondition>>;
-  /** System segments an admin said don't apply to the table */
   notApplicableSystemSegments: SystemSegmentRole[];
   defaultSegment?: DefaultSegment;
   /** `null` means an admin said the table has no required filter */
   requiredFilter?: DatasetQuery | null;
-  /** A system segment an admin made the required filter */
   requiredSystemSegment?: SystemSegmentRole;
   /** Proposed cohorts already accepted or dismissed */
   resolvedCohortKeys: string[];
@@ -200,7 +197,6 @@ export function useTableSegments() {
     [updateOverrides],
   );
 
-  /** `undefined` goes back to the column sync found */
   const setSystemSegmentCondition = useCallback(
     (
       table: Pick<Table, "db_id" | "id">,

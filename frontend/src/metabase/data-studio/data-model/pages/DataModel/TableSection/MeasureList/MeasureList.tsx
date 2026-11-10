@@ -118,7 +118,6 @@ export function MeasureList({
     editingGroupId != null
       ? getMeasureGroups(table).find(({ id }) => id === editingGroupId)
       : undefined;
-  // A search looks through every view at once, each in its own section
   const showsView = (viewToShow: MeasureView) =>
     !isSearching && view === viewToShow;
 
@@ -133,7 +132,6 @@ export function MeasureList({
 
   return (
     <Stack gap="xl" data-testid="table-measures-page">
-      {/* The view control belongs to the search, so it sits closer than the lists */}
       <Stack gap="md">
         <ListSearchBar
           value={query}

@@ -31,12 +31,6 @@ const STAGE_INDEX = -1;
 // Hoisted: the metadata selector memoises on the options object
 const WITH_HIDDEN_TABLES: MetadataSelectorOpts = { includeHiddenTables: true };
 
-/**
- * - `on`: an admin set it up
- * - `guessed`: sync found its column; an admin hasn't confirmed it
- * - `not-set-up`: nothing marks its rows yet, so it filters nothing
- * - `not-applicable`: an admin said the table has no such rows
- */
 export type SystemSegmentStatus =
   | "on"
   | "guessed"
@@ -51,15 +45,12 @@ export type ResolvedSystemSegment = {
   query: Lib.Query | undefined;
   filterNames: string[];
   isEdited: boolean;
-  /** Set when an admin wrote a custom filter instead of picking a column */
   hasCustomFilter: boolean;
-  /** The one condition on its marking column, if it has one */
   condition: FieldCondition | undefined;
   status: SystemSegmentStatus;
   inference: SystemSegmentInference;
 };
 
-/** Whether a segment filters anything, so it can be a default or a member */
 export function isUsableSystemSegment({ status }: ResolvedSystemSegment) {
   return status === "on" || status === "guessed";
 }
@@ -80,7 +71,6 @@ export type TableSegmentsModel = {
   requiredFilter: ResolvedRequiredFilter;
   /** `undefined` goes back to the definition sync built */
   setSystemSegmentQuery: (role: SystemSegmentRole, query?: Lib.Query) => void;
-  /** `undefined` goes back to the column sync found */
   setSystemSegmentCondition: (
     role: SystemSegmentRole,
     condition?: FieldCondition,
@@ -104,7 +94,6 @@ export type ResolvedRequiredFilter = {
   inferredQuery: Lib.Query | null | undefined;
   inferredFilterName: string | null;
   isOverridden: boolean;
-  /** Set when the required filter is one of the table's system segments */
   systemSegmentRole: SystemSegmentRole | undefined;
 };
 
@@ -164,6 +153,19 @@ function toFilterClause(
     case "is-null":
     case "not-null":
       return Lib.defaultFilterClause({ operator: condition.operator, column });
+    case "<":
+    case ">":
+      return Lib.numberFilterClause({
+        operator: condition.operator,
+        column,
+        values: [condition.value],
+      });
+    case "between":
+      return Lib.numberFilterClause({
+        operator: "between",
+        column,
+        values: [condition.min, condition.max],
+      });
     case "last-days":
       return Lib.relativeDateFilterClause({
         column,
@@ -362,7 +364,6 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
     requiredInference.condition == null
       ? null
       : baseQuery && applyConditions(baseQuery, [requiredInference.condition]);
-  // A required system segment that filters nothing falls back like no choice
   const requiredSystemSegment = systemSegments.find(
     (segment) =>
       segment.role === overrides.requiredSystemSegment &&

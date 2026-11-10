@@ -10,6 +10,13 @@ export {
   getSegmentGroupSourceLabel,
 } from "./inference";
 export {
+  type SuggestedValueGroupingCandidate,
+  getSuggestedBandProposals,
+  getSuggestedValueGroupingCandidates,
+  getSuggestedValueGroupingKey,
+  getSuggestedValueGroupingProposal,
+} from "./suggested-proposals";
+export {
   SEGMENT_GROUP_KINDS,
   type SegmentGroup,
   type SegmentGroupKind,

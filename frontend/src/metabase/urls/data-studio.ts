@@ -192,7 +192,6 @@ export function dataStudioPublishedTableSegmentNew(tableId: TableId) {
   return `${dataStudioTableSegments(tableId)}/new`;
 }
 
-/** PROTOTYPE: a published table's built-in segment, by role */
 export function dataStudioPublishedTableSystemSegment(
   tableId: TableId,
   role: string,

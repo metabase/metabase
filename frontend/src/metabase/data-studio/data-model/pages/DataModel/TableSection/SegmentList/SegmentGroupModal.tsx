@@ -74,7 +74,6 @@ export function SegmentGroupModal({
       member: { segmentId: segment.id, label: segment.name },
       label: segment.name,
     })),
-    // A system segment that filters nothing can't split rows
     ...systemSegments.filter(isUsableSystemSegment).map((segment) => ({
       member: { systemRole: segment.role, label: segment.label },
       label: segment.label,

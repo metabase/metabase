@@ -134,7 +134,6 @@ function DefaultSegmentValue({
   disabled: boolean;
 }) {
   const [isMenuOpenOnMount, setIsMenuOpenOnMount] = useState(false);
-  // A system segment that isn't set up yet, while its setup is open
   const [settingUpRole, setSettingUpRole] = useState<SystemSegmentRole>();
   const { defaultSegment, setDefaultSegment, systemSegments } = model;
   const settingUpSegment = systemSegments.find(
@@ -380,7 +379,6 @@ function RequiredFilterPicker({
   isOpenOnMount: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(isOpenOnMount);
-  // A system segment that isn't set up yet, while its setup is open
   const [settingUpRole, setSettingUpRole] = useState<SystemSegmentRole>();
   const {
     baseQuery,
@@ -390,7 +388,6 @@ function RequiredFilterPicker({
     setRequiredSystemSegment,
   } = model;
   const isSystemSegment = requiredFilter.systemSegmentRole != null;
-  // A system segment's filter isn't edited here; picking a column replaces it
   const filterQuery = isSystemSegment
     ? baseQuery
     : (requiredFilter.query ?? baseQuery);
@@ -515,7 +512,6 @@ function SystemSegmentChoiceLabel({
   );
 }
 
-/** The table's system segments, above the column filters */
 function SystemSegmentChoices({
   systemSegments,
   selectedRole,
