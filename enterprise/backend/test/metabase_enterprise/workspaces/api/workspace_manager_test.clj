@@ -200,6 +200,16 @@
          (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-failure"))
              "the retry's workspace holds the freed key"))))))
 
+(deftest create-idempotency-retry-of-kept-empty-workspace-test
+  (testing "a kept workspace with no databases (cleanup removed them, deleting the row failed) is a failed create: the retry answers 500"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (mt/with-temp [:model/Workspace {ws-id :id} {:name            "Kept empty"
+                                                    :creator_id      (mt/user->id :crowberto)
+                                                    :idempotency_key "kept-empty"}]
+         (is (=? {:workspace_id ws-id :cleanup_required true}
+                 (create-with-key 500 "kept-empty" "Kept empty" db-id))))))))
+
 (deftest create-idempotency-retry-after-failed-cleanup-test
   (testing "a retry of a create whose provisioning and cleanup both failed replays the 500 and provisions nothing"
     (do-with-eligible-database!

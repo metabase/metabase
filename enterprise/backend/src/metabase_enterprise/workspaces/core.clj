@@ -293,11 +293,13 @@
   create is still provisioning. When the earlier create failed and kept the
   workspace because its cleanup failed too, some database is not `:provisioned`:
   the retry replays that failure as a 500 with `cleanup_required`, and the key stays
-  taken until the workspace is deleted."
+  taken until the workspace is deleted. A kept workspace with no databases (cleanup
+  removed them, then deleting the Workspace row failed) is a failed create too."
   [ws-id]
   (assert-workspace-not-busy ws-id)
   (let [ws (workspace/get-workspace ws-id)]
-    (when-not (every? #(= :provisioned (:status %)) (:databases ws))
+    (when (or (empty? (:databases ws))
+              (not-every? #(= :provisioned (:status %)) (:databases ws)))
       (let [message "An earlier create with this idempotency key failed, and its cleanup did not finish. Delete the workspace, then create it again with a new key."]
         (throw (ex-info message
                         {:status-code      500
