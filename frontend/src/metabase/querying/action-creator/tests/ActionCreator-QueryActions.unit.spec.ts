@@ -155,6 +155,9 @@ describe("ActionCreator > Query Actions", () => {
       const view = screen.getByTestId("mock-native-query-editor");
       await userEvent.click(within(view).getByRole("textbox"));
       await userEvent.paste("DELETE FROM orders WHERE id = {{ id }}");
+      await userEvent.click(
+        await screen.findByRole("radio", { name: "Number" }),
+      );
       await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
       await userEvent.type(
@@ -173,6 +176,9 @@ describe("ActionCreator > Query Actions", () => {
         type: "query",
         model_id: model.id,
       });
+      expect(getFieldSettingsList(body)).toEqual([
+        expect.objectContaining({ fieldType: "number", inputType: "number" }),
+      ]);
       expect(onSubmit).toHaveBeenCalledTimes(1);
     });
   });
@@ -181,23 +187,44 @@ describe("ActionCreator > Query Actions", () => {
     it("updates the action and closes the editor", async () => {
       const action = createMockQueryAction({
         dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
-          query: "SELECT 1",
+          query: "DELETE FROM orders WHERE id = {{ id }}",
         }),
       });
       const onClose = jest.fn<void, []>();
       await setup({ action, onClose });
 
+      await userEvent.click(screen.getByLabelText("Show field"));
+      const view = screen.getByTestId("mock-native-query-editor");
+      await userEvent.type(
+        within(view).getByRole("textbox"),
+        " AND status = 'pending'",
+      );
       await userEvent.click(
         await screen.findByRole("button", { name: "Update" }),
       );
 
       await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-      expect(
-        fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
-          method: "PUT",
-        }),
-      ).toHaveLength(1);
+      const putCalls = fetchMock.callHistory.calls(
+        `path:/api/action/${action.id}`,
+        { method: "PUT" },
+      );
+      expect(putCalls).toHaveLength(1);
+      const body: unknown = JSON.parse(String(putCalls[0].options.body));
+      expect(body).toMatchObject({
+        dataset_query: {
+          stages: [
+            {
+              native:
+                "DELETE FROM orders WHERE id = {{ id }} AND status = 'pending'",
+            },
+          ],
+        },
+      });
+      expect(getFieldSettingsList(body)).toEqual([
+        expect.objectContaining({ hidden: true }),
+      ]);
     });
+
     it("renders correctly", async () => {
       const action = createMockQueryAction();
       await setup({ action });
@@ -273,3 +300,25 @@ describe("ActionCreator > Query Actions", () => {
     });
   });
 });
+
+function getFieldSettingsList(requestBody: unknown): unknown[] {
+  if (
+    typeof requestBody !== "object" ||
+    requestBody === null ||
+    !("visualization_settings" in requestBody)
+  ) {
+    return [];
+  }
+  const settings = requestBody.visualization_settings;
+  if (
+    typeof settings !== "object" ||
+    settings === null ||
+    !("fields" in settings)
+  ) {
+    return [];
+  }
+  const { fields } = settings;
+  return typeof fields === "object" && fields !== null
+    ? Object.values(fields)
+    : [];
+}
