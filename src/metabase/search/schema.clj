@@ -35,4 +35,5 @@
    [:status     {:optional true} [:maybe [:or :keyword :string]]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:completed_at {:optional true} [:maybe ms/TemporalInstant]]
    [:lang_code  {:optional true} [:maybe :string]]])
