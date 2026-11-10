@@ -48,6 +48,7 @@ When you stop, write questions for the person who asked. Write each question so 
 ## Limits
 
 - Edit only `*.md` files in `docs/`. The workflow commits no other file.
+- For a new file, use only `A-Z`, `a-z`, `0-9`, `_`, and `-` in each folder name and file name, and `.` only in the file name. Use lowercase words and hyphens, as for images. The workflow removes a new file with other characters in its path.
 - Do not edit generated files: the `docs/` paths with `# auto-generated` in `.github/CODEOWNERS`. The workflow removes all changes to them. If the request needs a change to a generated file, find its source (the start of the file usually gives the command that generates it), and say in `body` where the source is.
 - Engineers own `docs/developers-guide/`. If you change a file there, say so in `body`, so that the writer asks an engineer for a review.
 

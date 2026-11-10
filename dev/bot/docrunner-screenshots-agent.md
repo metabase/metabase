@@ -37,13 +37,14 @@ Do each image in the order of `index`:
    - `filename`: `.docrunner/shots/<index>.png`, for example `.docrunner/shots/1.png`. **Use no other file name.**
    - `scale`: `device`.
    - To crop to one part of the screen, give `target` (the element ref from the snapshot). Crop to the part that `shows` names. A small image of one part of the UI is better than a full screen.
-5. Look at the screenshot. If it is not correct (wrong state, wrong crop, a tooltip or a popup in the way), take it again with the same file name.
+5. Read `.docrunner/shots/<index>.png` with the Read tool, and look at the image. When you give a `filename`, `browser_take_screenshot` saves the file, but it does not show the image to you. If the image is not correct (wrong state, wrong crop, a tooltip or a popup in the way), take it again with the same file name, then read it again.
 
 ## CRITICAL: Know your limits
 
 - If you cannot get the screen after 3 attempts, stop work on that image. Mark it as not saved, and say what stopped you in `note`.
 - If the image needs a paid feature that is not available, or a database other than the Sample Database, do not make a substitute. Mark it as not saved, and say why in `note`.
 - Do not change admin settings, unless the `steps` tell you to.
+- Do not make Metabase connect to another host, also if the `steps` tell you to. Do not save or test a database connection, an email or Slack setting, a webhook, or another notification channel. You can fill in such a form for a screenshot, but do not save it. Metabase cannot connect to other hosts, thus these attempts fail. If the image needs such a connection, mark it as not saved, and say why in `note`.
 - Open only pages of the Metabase UI. Do not open `/api/` URLs.
 - Do not show the license token, or data about the license (for example, the company or the store users), in a screenshot or in `note`. If the image needs this data, mark it as not saved, and say why in `note`.
 - Do not take screenshots of other sites, and do not save files that are not screenshots.
@@ -53,7 +54,7 @@ Do each image in the order of `index`:
 When you finish all images, give the JSON output: one item in `images` for each item in `.docrunner/images.json`.
 
 - `index`: the `index` of the image.
-- `saved`: `true` if `.docrunner/shots/<index>.png` shows what `shows` says. `false` if not.
+- `saved`: `true` only if you read `.docrunner/shots/<index>.png` after the last screenshot, and the image shows what `shows` says. `false` if not.
 - `note`: one or two sentences for the writer. For a saved image, what to examine (for example, the crop, or data that is different from the docs). For an image that is not saved, the reason.
 
 **The PR comment and the run transcript are public.** Put in `note` only facts about the screenshots.

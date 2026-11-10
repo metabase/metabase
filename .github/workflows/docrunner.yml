@@ -41,6 +41,10 @@ env:
   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
   # The JSON schema of the docs agent also uses this regex, thus it has no backslash.
   IMAGE_PATH_RE: '^docs/([A-Za-z0-9_-]+/)*images/[A-Za-z0-9_-][A-Za-z0-9_.-]*[.]png$'
+  # A new Markdown file must have a path of the same form. See "Remove files that are not Markdown".
+  MD_PATH_RE: '^docs/([A-Za-z0-9_-]+/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*[.]md$'
+  # The lines of .github/CODEOWNERS for generated paths in docs/. Both jobs keep Docrunner out of these paths.
+  GENERATED_RE: '^/?docs/[^[:space:]]+[[:space:]]+#[[:space:]]*auto-generated'
   DOCRUNNER_MODEL: claude-opus-5-5
   DOCRUNNER_MAX_TURNS: "100"
   SCREENSHOTS_MODEL: claude-sonnet-5-5
@@ -131,8 +135,8 @@ jobs:
       # - Rendered HTML has no HTML comments. `visible` also removes the `alt` and `title` attributes, because the
       #   page does not show them. Text in a closed `<details>` block still gets to the agent.
       # - The writer read the issue, then added the label. Comments and timeline links from after that time do not
-      #   get to the agent. If the issue body changed after that time, Docrunner stops. For a dispatch, the cutoff
-      #   is the start of this step.
+      #   get to the agent. If the title or the body of the issue changed after that time, Docrunner stops. For a
+      #   dispatch, the cutoff is the start of this step.
       # - The linked PRs come from the visible HTML and from the timeline. A person who writes a PR can put any text
       #   in it. Thus Docrunner uses only PRs from people who can write to the repo, the same rule that
       #   claude-code-action uses for the person who adds the label.
@@ -148,13 +152,18 @@ jobs:
           cutoff="${LABELED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
           echo "Cutoff: $cutoff"
 
+          # `lastEditedAt` is only for the body. A change to the title is a `RenamedTitleEvent` on the timeline.
+          # `edited` is the later of the two times.
           edited=$(gh api graphql -F number="$ISSUE" -f owner="$GITHUB_REPOSITORY_OWNER" -f name="${GITHUB_REPOSITORY#*/}" \
             -f query='query($owner: String!, $name: String!, $number: Int!) {
-              repository(owner: $owner, name: $name) { issue(number: $number) { lastEditedAt } } }' \
-            --jq '.data.repository.issue.lastEditedAt // ""')
+              repository(owner: $owner, name: $name) { issue(number: $number) {
+                lastEditedAt
+                timelineItems(itemTypes: [RENAMED_TITLE_EVENT], last: 1) { nodes { ... on RenamedTitleEvent { createdAt } } }
+              } } }' \
+            --jq '.data.repository.issue | [.lastEditedAt, .timelineItems.nodes[]?.createdAt] | map(select(. != null)) | max // ""')
           if [[ "$edited" > "$cutoff" ]]; then
-            echo "Docrunner did not run, because a person changed the issue body after the label was added ($edited). Read the issue again." > "$T/reason.md"
-            echo "::error::The issue body changed after the cutoff."
+            echo "Docrunner did not run, because a person changed the title or the body of the issue after the label was added ($edited). Read the issue again." > "$T/reason.md"
+            echo "::error::The issue title or body changed after the cutoff."
             exit 1
           fi
 
@@ -334,22 +343,26 @@ jobs:
       # The tool rules permit only Markdown files in `docs/`. This step makes sure of it, because a later step can run
       # code from a file in the workspace (prettier loads a JS config). `--others` without `--exclude-standard` also
       # lists ignored files, thus a `.gitignore` from the agent cannot hide a file.
+      # A new file must also have a path that matches `MD_PATH_RE`: the PR is on a branch of this repo, thus its CI
+      # gets secrets, and a CI step can put a file name in a shell command. `LC_ALL=C` makes `A-Z` only ASCII letters.
       - name: Remove files that are not Markdown
         if: always() && steps.claude.outcome != 'skipped'
+        env:
+          LC_ALL: C
         run: |
           git checkout -- docs ':(exclude)docs/*.md'
           git ls-files -z --others -- docs | while IFS= read -r -d '' f; do
-            case "$f" in
-              *.md) ;;
-              *) printf 'Removed: %q\n' "$f"; rm -f -- "$f" ;;
-            esac
+            if ! [[ "$f" =~ $MD_PATH_RE ]]; then
+              printf 'Removed: %q\n' "$f"
+              rm -f -- "$f"
+            fi
           done
 
-      # This rule does not depend on the prompt.
+      # This rule does not depend on the prompt. "Write the image list" in the screenshots job uses the same rule.
       - name: Remove changes to generated files
         if: always() && steps.claude.outcome != 'skipped'
         run: |
-          grep -E '^/?docs/[^[:space:]]+[[:space:]]+#[[:space:]]*auto-generated' .github/CODEOWNERS \
+          grep -E "$GENERATED_RE" .github/CODEOWNERS \
             | awk '{ sub(/^\//, "", $1); print $1 }' \
             | while read -r path; do
                 git checkout -- "$path" 2> /dev/null || true
@@ -397,7 +410,7 @@ jobs:
           elif [ -z "$changed" ]; then
             status=no-change
             {
-              echo "Docrunner did not change a Markdown file in \`docs/\` that it can commit. It removes all changes to generated files."
+              echo "Docrunner did not change a Markdown file in \`docs/\` that it can commit. It removes all changes to generated files, and each new file with characters in its path that are not safe."
               echo
               echo "The notes of the agent:"
               echo
@@ -408,7 +421,7 @@ jobs:
           fi
 
           images='[]'
-          if [ "$status" = done ]; then
+          if [ "$status" = "done" ]; then
             # The JSON schema checks each path and the count. "Check the screenshots" checks each path again before the push.
             # The screenshots job uses `index`.
             images=$(jq -c '.images // [] | unique_by(.path) | to_entries | map(.value + {index: (.key + 1)})' <<< "$RESULT")
@@ -524,7 +537,7 @@ jobs:
         run: |
           f="$T/comment.md"
           case "$STATUS" in
-            done)
+            "done")
               if [ -n "$PR_URL" ]; then
                 echo "Docrunner opened a draft PR: $PR_URL" > "$f"
                 if [ -n "$IMAGES" ] && [ "$IMAGES" != '[]' ]; then
@@ -557,7 +570,7 @@ jobs:
               } > "$f"
               ;;
           esac
-          if [ "$GITHUB_EVENT_NAME" = issues ] && [ "$STATUS" != done ] && [ "$STATUS" != exists ]; then
+          if [ "$GITHUB_EVENT_NAME" = issues ] && [ "$STATUS" != "done" ] && [ "$STATUS" != exists ]; then
             printf '\nTo run Docrunner again, add the label `Docrunner` again.\n' >> "$f"
           fi
           gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" -F body=@"$f" > /dev/null
@@ -601,10 +614,32 @@ jobs:
           persist-credentials: false
 
       # The agent gets the image list, not the issue text.
+      # An image in a generated path does not go to the agent. The rule is the same as in "Remove changes to generated
+      # files" in the docrunner job. This step reads CODEOWNERS before the agent starts, because
+      # `browser_take_screenshot` can write a file at each path in the workspace. The agent cannot change a step
+      # output, thus "Check the screenshots" uses `generated`.
       - name: Write the image list
+        id: list
         run: |
           mkdir -p .docrunner/shots "$OUT"
-          jq '[.[] | {index, path, shows, steps}]' <<< "$IMAGES" > .docrunner/images.json
+          mapfile -t paths < <(grep -E "$GENERATED_RE" .github/CODEOWNERS | awk '{ sub(/^\//, "", $1); print $1 }')
+          generated='[]'
+          while IFS= read -r item; do
+            i=$(jq -r '.index' <<< "$item")
+            dest=$(jq -r '.path' <<< "$item")
+            for p in "${paths[@]}"; do
+              # `$p` has no quotes, thus a `*` in it matches as in a git pathspec, also across `/`.
+              # shellcheck disable=SC2053
+              if [[ "$dest" == $p || "$dest" == $p/* ]]; then
+                echo "Not used: $dest. It is in the generated path $p."
+                generated=$(jq -c --argjson i "$i" '. + [$i]' <<< "$generated")
+                break
+              fi
+            done
+          done < <(jq -c '.[] | {index, path}' <<< "$IMAGES")
+          echo "generated=$generated" >> "$GITHUB_OUTPUT"
+          jq --argjson g "$generated" '[.[] | select(.index | IN($g[]) | not) | {index, path, shows, steps}]' <<< "$IMAGES" \
+            > .docrunner/images.json
           cp .docrunner/images.json "$OUT/images.json"
 
       # metabase-enterprise-head is the build of master. The license token turns on the paid features.
@@ -670,6 +705,42 @@ jobs:
             '{cookies: [{name: "metabase.SESSION", value: $s, domain: "localhost", path: "/", expires: -1,
                          httpOnly: true, secure: false, sameSite: "Lax"}], origins: []}' > "$T/storage-state.json"
 
+      # The agent operates Metabase as an admin, and the `steps` come from the issue. An injected step can set up a
+      # webhook, an HTTP channel, an email server, or a database on another host. Metabase opens that connection from
+      # the server, thus the browser proxy does not stop it, and the license token is in the environment of the
+      # container. This step blocks all new connections from the container to other hosts and to the runner, also DNS.
+      # A reply to the browser is not a new connection, thus it is not blocked.
+      # The first token check is complete ("Start Metabase" reads the paid features). Metabase keeps that status for
+      # 36 hours, also when a refresh fails: see `grace-period` in metabase.premium-features.token-check.
+      # The test before the block makes sure that the test after the block can find a connection.
+      - name: Block connections from Metabase to other hosts
+        run: |
+          probe() { docker exec metabase curl --silent --max-time 10 --output /dev/null https://github.com/; }
+          if ! probe; then
+            echo "::error::The connection test does not work: the container cannot open https://github.com/ before the block."
+            exit 1
+          fi
+          if [ -n "$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.GlobalIPv6Address}}{{end}}' metabase)" ]; then
+            echo "::error::The container has an IPv6 address. This step blocks only IPv4."
+            exit 1
+          fi
+          ips=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' metabase)
+          if [ -z "${ips// /}" ]; then
+            echo "::error::The container has no IPv4 address."
+            exit 1
+          fi
+          for ip in $ips; do
+            # DOCKER-USER is in the FORWARD chain: connections to other hosts. INPUT: connections to the runner.
+            sudo iptables -w -I DOCKER-USER -s "$ip" -j REJECT
+            sudo iptables -w -I INPUT -s "$ip" -m conntrack --ctstate NEW -j REJECT
+          done
+          if probe; then
+            echo "::error::The block does not work: the container can still open https://github.com/."
+            exit 1
+          fi
+          curl --silent --show-error --fail "$MB_URL/api/health" > /dev/null
+          echo "Metabase cannot connect to other hosts, and the browser can connect to Metabase."
+
       # --allowed-origins "does not serve as a security boundary and does not affect redirects" (Playwright MCP README).
       # Thus the browser also sends all requests to a proxy that does not exist, except requests to localhost.
       - name: Install Playwright MCP
@@ -718,15 +789,16 @@ jobs:
             --disallowedTools "Bash,Edit,Write,NotebookEdit,Skill,WebFetch,WebSearch,Agent,Workflow,SendMessage,Monitor,Read(//proc/**),Read(./.git/**),mcp__playwright__browser_evaluate,mcp__playwright__browser_run_code_unsafe,mcp__playwright__browser_file_upload,mcp__playwright__browser_drop,mcp__playwright__browser_tabs"
             --json-schema '{"type":"object","additionalProperties":false,"required":["images"],"properties":{"images":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["index","saved","note"],"properties":{"index":{"type":"integer"},"saved":{"type":"boolean"},"note":{"type":"string"}}}}}}'
 
-      # Use only the list from the first job, not the files in the workspace: the agent can write files there.
-      # Rules: only paths from the list, only docs/**/images/*.png, only PNG files of 3 MB or less, and only images that
-      # the agent confirmed.
+      # Use only the list from the first job and the outputs of "Write the image list", not the files in the workspace:
+      # the agent can write files there. Rules: only paths from the list, only docs/**/images/*.png, no generated paths,
+      # only PNG files of 3 MB or less, and only images that the agent confirmed.
       - name: Check the screenshots
         id: check
         if: always()
         env:
           RESULT: ${{ steps.claude.outputs.structured_output }}
           EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+          GENERATED: ${{ steps.list.outputs.generated }}
         run: |
           max=$((3 * 1024 * 1024))
           rm -rf "$OUT/shots" "$OUT/all-shots"
@@ -749,6 +821,8 @@ jobs:
             if [ -f "$src" ] && [ ! -L "$src" ]; then cp "$src" "$OUT/all-shots/$i.png"; fi
             if ! [[ "$dest" =~ $IMAGE_PATH_RE ]]; then
               reason="the path is not in docs/**/images/*.png"
+            elif jq -e --argjson i "$i" 'any(.[]; . == $i)' <<< "${GENERATED:-[]}" > /dev/null; then
+              reason="the path is in a generated folder"
             elif [ ! -f "$src" ] || [ -L "$src" ]; then
               reason="no screenshot"
             elif [ "$saved" != true ]; then
