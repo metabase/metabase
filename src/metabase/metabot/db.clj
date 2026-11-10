@@ -726,6 +726,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
+(mu/defn dashboard-questions
+  "The Cards among `card-ids` that are saved inside a dashboard, which is their `:dashboard_id`."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids] :dashboard_id [:not= nil]))
+
 (mu/defn card-by-entity-id
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]

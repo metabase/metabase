@@ -190,6 +190,26 @@
    :recovery [{:uses #{"search"}
                :text "Call `search` to find curated questions, models, or metrics and add one of those instead."}]})
 
+(tools/defrecoverable cards-in-other-dashboards!
+  "The ops place questions saved inside other dashboards, which only those dashboards can show.
+  Each of `:cards` is a question the user can read, with the dashboard it is saved in."
+  {:payload [:map {:closed true}
+             [:cards [:sequential {:min 1} [:map {:closed true}
+                                            [:card-id      :int]
+                                            [:dashboard-id :int]]]]]}
+  [{:keys [cards]}]
+  {:message  (str "A question saved in a dashboard can be shown only on that dashboard, and these are saved in other"
+                  " dashboards: "
+                  (str/join ", " (for [{:keys [card-id dashboard-id]} cards]
+                                   (str "question " card-id " (dashboard " dashboard-id ")")))
+                  ". Nothing was saved.")
+   :recovery [{:uses #{"construct_notebook_query" "create_chart"}
+               :text (str "To show the same data, build a query on the question with `construct_notebook_query`,"
+                          " chart it with `create_chart`, and add that chart with `chart_id` and a `name`. It is"
+                          " saved as a new question on this dashboard.")}
+              {:uses #{}
+               :text "Or ask the user which question to add instead."}]})
+
 (defn- quoted-list
   "The strings in `values`, quoted and joined for a sentence."
   [values]
@@ -465,6 +485,26 @@
                           card-ids)]
         (when (seq refused)
           (cards-not-curated! {:card-ids refused}))))))
+
+(defn- check-cards-not-in-other-dashboards!
+  "Throws [[cards-in-other-dashboards!]] when `ops` place a question saved inside a dashboard other than `dashboard`,
+  nil on a create. The writer refuses those with no reason the model could act on.
+  As in the writer, a question `dashboard` already shows, as a card or a series, may stay. A question the user can't
+  read is left to the ops compiler, which reports it as unknown."
+  [dashboard ops]
+  (when-let [card-ids (seq (placed-card-ids ops))]
+    (when-let [foreign (seq (filter #(and (not= (:dashboard_id %) (:id dashboard))
+                                          (mi/can-read? %))
+                                    (metabot.db/dashboard-questions (vec card-ids))))]
+      (let [shown   (into #{}
+                          (mapcat (fn [{:keys [card_id series]}] (cons card_id (map :id series))))
+                          (some-> dashboard (t2/hydrate [:dashcards :series]) :dashcards))
+            refused (into []
+                          (comp (remove (comp shown :id))
+                                (map (fn [{:keys [id dashboard_id]}] {:card-id id, :dashboard-id dashboard_id})))
+                          (sort-by :id foreign))]
+        (when (seq refused)
+          (cards-in-other-dashboards! {:cards refused}))))))
 
 ;;; --------------------------------------------------- Charts -----------------------------------------------------
 
@@ -743,6 +783,7 @@
       (check-request! args)
       (check-op-sources! dashboard_id ops)
       (check-cards-curated! ops)
+      (check-cards-not-in-other-dashboards! dashboard ops)
       (let [charts (requested-charts ops)
             {saved :dashboard :keys [before saved-charts]}
             (save-entity/do-with-save-rejections

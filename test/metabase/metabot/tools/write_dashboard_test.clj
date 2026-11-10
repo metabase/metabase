@@ -452,6 +452,37 @@
           (is (=? {:class :recoverable, :code ::save-entity/destination-not-writable}
                   (failure {:name "Mine", :collection_id "root"}))))))))
 
+(deftest other-dashboard-question-test
+  (mt/with-temp [:model/Dashboard     {dash-id :id}   {:name "Target"}
+                 :model/Dashboard     {other-id :id}  {:name "Other"}
+                 :model/Card          {foreign-id :id} {:dataset_query (venues-query), :dashboard_id other-id}
+                 :model/Card          {legacy-id :id} {:dataset_query (venues-query), :dashboard_id other-id}
+                 :model/Card          {own-id :id}    {:dataset_query (venues-query), :dashboard_id dash-id}
+                 :model/DashboardCard _               {:dashboard_id dash-id, :card_id legacy-id
+                                                       :row 0, :col 0, :size_x 12, :size_y 6}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "a question saved in another dashboard is refused with the reason and a way around it"
+        (is (= {:class :recoverable
+                :code  ::write-dashboard/cards-in-other-dashboards
+                :text  (str "A question saved in a dashboard can be shown only on that dashboard, and these are"
+                            " saved in other dashboards: question " foreign-id " (dashboard " other-id ")."
+                            " Nothing was saved.\n"
+                            "To show the same data, build a query on the question with `construct_notebook_query`,"
+                            " chart it with `create_chart`, and add that chart with `chart_id` and a `name`. It is"
+                            " saved as a new question on this dashboard.\n"
+                            "Or ask the user which question to add instead.")}
+               (failure {:dashboard_id dash-id
+                         :ops          [{:op "add_card", :id -1, :card_id foreign-id}]})))
+        (is (=? {:code ::write-dashboard/cards-in-other-dashboards}
+                (failure {:name "New", :ops [{:op "add_card", :id -1, :card_id foreign-id}]})))
+        (is (not (t2/exists? :model/Dashboard :name "New")))
+        (is (= #{legacy-id} (set (map :card_id (dashcards dash-id))))))
+      (testing "the dashboard's own questions, and ones it already shows, can be placed"
+        (call {:dashboard_id dash-id
+               :ops          [{:op "add_card", :id -1, :card_id own-id}
+                              {:op "add_card", :id -2, :card_id legacy-id}]})
+        (is (= [legacy-id own-id legacy-id] (map :card_id (dashcards dash-id))))))))
+
 (deftest unrunnable-chart-test
   (mt/with-model-cleanup [:model/Dashboard]
     (mt/with-no-data-perms-for-all-users!
