@@ -1,1 +1,5 @@
-export { TableHistorySection, TableStructure } from "./TableStructure";
+export {
+  TableHistorySection,
+  TableStructure,
+  useIsHistoryTable,
+} from "./TableStructure";

@@ -224,6 +224,11 @@ export function TableStructure({ table, readOnly }: TableStructureProps) {
   );
 }
 
+export function useIsHistoryTable(table: Table) {
+  const { role } = useTableStructures().getTableStructure(table);
+  return role != null && isRoleA(role, "role/HistoryDimension");
+}
+
 export function TableHistorySection({ table, readOnly }: TableStructureProps) {
   const { getTableStructure, setHistoryBinding, setScdType, setScdDetails } =
     useTableStructures();
