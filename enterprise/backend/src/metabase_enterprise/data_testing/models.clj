@@ -8,23 +8,26 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/TransformTest [_model] :transform_test)
 
+;; `::saved-test` is the parent of every saved test model, for the methods they share.
 (doto :model/TransformTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive ::saved-test))
 
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
@@ -154,6 +157,10 @@
   [_model object]
   (mi/can-read? (t2/instance :model/TransformTest object)))
 
+(defmethod revision/check-revert-available ::saved-test
+  [_model]
+  (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
+
 (defmethod revision/revert-to-revision! :model/TransformTest
   [_model id _user-id serialized-instance]
   (data-testing.db/update-transform-test! id (select-keys serialized-instance revision-columns)))
@@ -197,22 +204,34 @@
    :transform {:transform_id (serialization/fk-transform :model/Transform)
                :creator_id   serialization/user-transform}})
 
+(defn subject-storage-paths
+  "The storage path of each of `tests`, saved tests whose `subject-key` holds the entity id of a row of
+  `subject-model`: the path of the subject's file, as a directory, then the test's name. `fk-models` maps each column of
+  the subject that the subject's storage path reads to the model the column references."
+  [tests subject-model subject-key fk-models]
+  (let [rows     (vals (serialization/rows-by-refs subject-model
+                                                   (into #{} (keep subject-key) tests)
+                                                   (into [:entity_id :name] (keys fk-models))))
+        fk-refs  (into {}
+                       (map (fn [[k model]]
+                              [k (zipmap (map :entity_id rows)
+                                         (serialization/column-refs serialization/app-db-store model (map k rows)))]))
+                       fk-models)
+        subjects (into {}
+                       (map (fn [{eid :entity_id subject-name :name}]
+                              [eid (into {:serdes/meta [{:model (name subject-model)}]
+                                          :name        subject-name
+                                          :entity_id   eid}
+                                         (map (fn [[k refs]] [k (get refs eid)]))
+                                         fk-refs)]))
+                       rows)
+        paths    (serialization/batch-storage-paths (mapv #(get subjects (subject-key %)) tests))]
+    (mapv (fn [saved-test path]
+            (conj path {:label (:name saved-test) :key (:entity_id saved-test)}))
+          tests paths)))
+
 (defmethod serialization/storage-paths :model/TransformTest [_ entities _ctx]
-  (let [transforms (u/index-by :entity_id (data-testing.db/transforms-by-entity-ids
-                                           (vec (distinct (keep :transform_id entities)))))
-        coll-eids  (zipmap (keys transforms)
-                           (serialization/column-refs serialization/app-db-store :model/Collection
-                                                      (map :collection_id (vals transforms))))
-        paths      (serialization/batch-storage-paths
-                    (for [transform-test entities
-                          :let [{eid :entity_id transform-name :name} (get transforms (:transform_id transform-test))]]
-                      {:serdes/meta   [{:model "Transform"}]
-                       :name          transform-name
-                       :entity_id     eid
-                       :collection_id (get coll-eids eid)}))]
-    (mapv (fn [transform-test path]
-            (conj path {:label (:name transform-test) :key (:entity_id transform-test)}))
-          entities paths)))
+  (subject-storage-paths entities :model/Transform :transform_id {:collection_id :model/Collection}))
 
 (defmethod serialization/import-dependencies :model/TransformTest [_ entities]
   (mapv (fn [{:keys [transform_id]}]

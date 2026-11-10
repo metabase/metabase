@@ -2516,6 +2516,7 @@
            util.config}
    :model-exports #{:model/Revision}
    :model-imports #{:model/Card
+                    :model/CardTest
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
@@ -4011,10 +4012,12 @@
            transforms
            transforms.base
            util}
-   :model-exports #{:model/TransformTest}
+   :model-exports #{:model/CardTest :model/TransformTest}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Dashboard
                     :model/Database
+                    :model/Document
                     :model/Transform
                     :model/User}}
 

@@ -14,6 +14,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1404,3 +1405,284 @@
                     (is (= [:equals :empty] (mapv :type expectations)))))
                 (testing "the payload is unchanged, row keys still strings"
                   (is (= round-trip-expectations expectations)))))))))))
+
+;;; ------------------------------------------------- Card tests -------------------------------------------------
+
+(def ^:private card-test-inputs
+  [{:table   {:schema "PUBLIC" :name "ORDERS"}
+    :format  :rows
+    :columns [{:name "ID" :cast_type "INTEGER"}]
+    :rows    [{"ID" 1}]}])
+
+(def ^:private card-test-expectations
+  [{:type :equals :name "one row" :format :rows :columns [{:name "ID" :cast_type "INTEGER"}] :rows [{"ID" 1}]}
+   {:type :empty :name "no nulls" :sql "SELECT * FROM {{output}} WHERE ID IS NULL"}])
+
+(defn- create-card-with-test!
+  "Create, in the current app DB, a native Card on Database `db` with `card-props`, and a test of it named `test-name`
+  by the User `creator`. Returns the Card."
+  [db creator test-name & {:as card-props}]
+  (let [card (ts/create! :model/Card
+                         (merge {:database_id   (:id db)
+                                 :creator_id    (:id creator)
+                                 :dataset_query (lib/native-query (lib-be/application-database-metadata-provider (:id db))
+                                                                  "SELECT 1 AS ID")}
+                                card-props))]
+    (ts/create! :model/CardTest
+                :card_id      (:id card)
+                :creator_id   (:id creator)
+                :name         test-name
+                :description  "Checks the card"
+                :inputs       card-test-inputs
+                :expectations card-test-expectations)
+    card))
+
+(defn- imported-card-test-is-the-exported-one
+  "Assert that the CardTest named `test-name` in the current app DB is the one [[create-card-with-test!]] made, of the
+  Card named `card-name`, created by `creator-email`."
+  [test-name card-name creator-email]
+  (is (=? {:name         test-name
+           :description  "Checks the card"
+           :card_id      (t2/select-one-pk :model/Card :name card-name)
+           :creator_id   (t2/select-one-pk :model/User :email creator-email)
+           :inputs       card-test-inputs
+           :expectations card-test-expectations}
+          (t2/select-one :model/CardTest :name test-name))))
+
+(deftest card-test-of-a-card-in-a-collection-round-trip-test
+  (testing "A card test is exported next to its card, and imported with its card"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (let [[card-eid test-eid]
+              (ts/with-db source-db
+                (let [db      (ts/create! :model/Database :name "my-db")
+                      coll    (ts/create! :model/Collection :name "Finance")
+                      creator (ts/create! :model/User :email "creator@example.com")
+                      card    (create-card-with-test! db creator "Revenue ignores refunds"
+                                                      :name "Revenue" :collection_id (:id coll))]
+                  (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))
+                  [(:entity_id card) (t2/select-one-fn :entity_id :model/CardTest :card_id (:id card))]))]
+          (testing "the card's file, and the test's file in the directory named like it"
+            (is (.isFile (io/file dump-dir "collections" "main" "finance" "revenue.yaml")))
+            (is (=? {:entity_id    test-eid
+                     :card_id      card-eid
+                     :creator_id   "creator@example.com"
+                     :inputs       [{:format "rows" :columns [{:cast_type "INTEGER"}]}]
+                     :expectations [{:type "equals" :format "rows"} {:type "empty"}]
+                     :serdes/meta  [{:model "CardTest"}]}
+                    (yaml/parse-string
+                     (slurp (io/file dump-dir "collections" "main" "finance" "revenue" "revenue_ignores_refunds.yaml"))))))
+          (ts/with-db dest-db
+            (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+            (imported-card-test-is-the-exported-one "Revenue ignores refunds" "Revenue" "creator@example.com")
+            (is (= test-eid (t2/select-one-fn :entity_id :model/CardTest :name "Revenue ignores refunds")))))))))
+
+(deftest card-test-of-a-card-in-a-dashboard-round-trip-test
+  (testing "A test of a card saved in a dashboard is exported next to the card, under the dashboard"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db      (ts/create! :model/Database :name "my-db")
+                coll    (ts/create! :model/Collection :name "Finance")
+                dash    (ts/create! :model/Dashboard :name "Monthly" :collection_id (:id coll))
+                creator (ts/create! :model/User :email "creator@example.com")
+                card    (create-card-with-test! db creator "Revenue ignores refunds"
+                                                :name "Revenue" :collection_id (:id coll) :dashboard_id (:id dash))]
+            (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
+            (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+        (testing "the card's file, and the test's file in the directory named like it"
+          (is (.isFile (io/file dump-dir "collections" "main" "finance" "monthly" "revenue.yaml")))
+          (is (.isFile (io/file dump-dir "collections" "main" "finance" "monthly" "revenue" "revenue_ignores_refunds.yaml"))))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (testing "premise: the card is in its dashboard"
+            (is (= (t2/select-one-pk :model/Dashboard :name "Monthly")
+                   (t2/select-one-fn :dashboard_id :model/Card :name "Revenue"))))
+          (imported-card-test-is-the-exported-one "Revenue ignores refunds" "Revenue" "creator@example.com"))))))
+
+(defn- exported-card-eids
+  "The entity ids of the Cards in `entities`, and the entity ids of the Cards their CardTests test."
+  [entities]
+  (let [eids (fn [model k] (into #{} (comp (filter #(= model (-> % :serdes/meta last :model))) (map k)) entities))]
+    {:cards  (eids "Card" :entity_id)
+     :tested (eids "CardTest" :card_id)}))
+
+(deftest selective-export-takes-the-tests-of-exported-cards-test
+  (testing "An export takes the tests of the cards it exports, and no others"
+    (ts/with-dbs [source-db]
+      (ts/with-db source-db
+        (let [db       (ts/create! :model/Database :name "my-db")
+              finance  (ts/create! :model/Collection :name "Finance")
+              sales    (ts/create! :model/Collection :name "Sales")
+              creator  (ts/create! :model/User :email "creator@example.com")
+              revenue  (create-card-with-test! db creator "Revenue ignores refunds"
+                                               :name "Revenue" :collection_id (:id finance))
+              orders   (create-card-with-test! db creator "Orders are positive"
+                                               :name "Orders" :collection_id (:id sales))
+              tested   (fn [opts] (:tested (exported-card-eids (extract/extract (assoc opts :include-h2? true)))))]
+          (testing "the collection's card test, through its card"
+            (is (= #{(:entity_id revenue)}
+                   (tested {:targets [[:model/Collection (:id finance)]]}))))
+          (testing "a card targeted directly brings its test"
+            (is (= #{(:entity_id revenue)}
+                   (tested {:targets [[:model/Card (:id revenue)]]}))))
+          (testing "a full export takes every card test"
+            (is (= #{(:entity_id revenue) (:entity_id orders)}
+                   (tested {}))))
+          (testing "an export with no collections takes no card tests"
+            (is (= #{} (tested {:no-collections true})))))))))
+
+(deftest export-takes-no-test-of-a-card-it-leaves-out-test
+  (testing "An export of a targeted card takes no test of the card when it leaves the card out"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (let [{:keys [current-eid current archived exploration]}
+              (ts/with-db source-db
+                (let [db       (ts/create! :model/Database :name "my-db")
+                      finance  (ts/create! :model/Collection :name "Finance")
+                      creator  (ts/create! :model/User :email "creator@example.com")
+                      current  (create-card-with-test! db creator "Revenue ignores refunds"
+                                                       :name "Revenue" :collection_id (:id finance))
+                      old      (create-card-with-test! db creator "Old revenue ignores refunds"
+                                                       :name "Old revenue" :collection_id (:id finance) :archived true)
+                      expl     (ts/create! :model/Exploration :name "Exploration")
+                      summary  (ts/create! :model/Document :name "Summary" :collection_id (:id finance)
+                                           :creator_id (:id creator) :exploration_id (:id expl))
+                      explored (create-card-with-test! db creator "Explored revenue ignores refunds"
+                                                       :name "Explored revenue" :collection_id (:id finance)
+                                                       :document_id (:id summary))
+                      export   (fn [card opts]
+                                 (into [] (extract/extract (merge {:targets [[:model/Card (:id card)]] :include-h2? true}
+                                                                  opts))))
+                      archived (export old {:skip-archived true})]
+                  (storage/store! (seq archived) (storage.files/file-writer dump-dir))
+                  {:current-eid (:entity_id current)
+                   :current     (exported-card-eids (export current {:skip-archived true}))
+                   :archived    (exported-card-eids archived)
+                   :exploration (exported-card-eids (export explored {}))}))]
+          (testing "control: a targeted card the export writes brings its test"
+            (is (= {:cards #{current-eid} :tested #{current-eid}} current)))
+          (testing "an archived targeted card under skip-archived"
+            (testing "premise: the export leaves out the card"
+              (is (= #{} (:cards archived))))
+            (testing "the export takes no test of the card"
+              (is (= #{} (:tested archived))))
+            (testing "the dump loads"
+              (ts/with-db dest-db
+                (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))))
+          (testing "a targeted card of an exploration document"
+            (testing "premise: the export leaves out the card"
+              (is (= #{} (:cards exploration))))
+            (testing "the export takes no test of the card"
+              (is (= #{} (:tested exploration))))))))))
+
+(deftest import-publishes-no-card-test-events-test
+  (testing "An import writes no CardTest revision and no CardTest audit row"
+    (mt/with-premium-features #{:audit-app}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (let [db      (ts/create! :model/Database :name "my-db")
+                  coll    (ts/create! :model/Collection :name "Finance")
+                  creator (ts/create! :model/User :email "creator@example.com")]
+              (create-card-with-test! db creator "Revenue ignores refunds" :name "Revenue" :collection_id (:id coll))
+              (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+          (ts/with-db dest-db
+            (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+            (testing "premise: the test is imported"
+              (is (t2/exists? :model/CardTest :name "Revenue ignores refunds")))
+            (is (zero? (t2/count :model/Revision :model "CardTest")))
+            (is (zero? (t2/count :model/AuditLog :model "CardTest")))
+            (testing "control: an edit outside an import writes both"
+              (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
+                (t2/update! :model/CardTest :name "Revenue ignores refunds" {:description "Edited"}))
+              (is (= 1 (t2/count :model/Revision :model "CardTest")))
+              (is (= 1 (t2/count :model/AuditLog :model "CardTest"))))))))))
+
+(deftest card-test-of-a-card-in-a-document-round-trip-test
+  (testing "A test of a card saved in a document is exported next to the card, under the document"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db      (ts/create! :model/Database :name "my-db")
+                coll    (ts/create! :model/Collection :name "Finance")
+                creator (ts/create! :model/User :email "creator@example.com")
+                doc     (ts/create! :model/Document :name "Summary" :collection_id (:id coll) :creator_id (:id creator))]
+            (create-card-with-test! db creator "Revenue ignores refunds"
+                                    :name "Revenue" :collection_id (:id coll) :document_id (:id doc))
+            (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+        (testing "the card's file, and the test's file in the directory named like it"
+          (is (.isFile (io/file dump-dir "collections" "main" "finance" "summary" "revenue.yaml")))
+          (is (.isFile (io/file dump-dir "collections" "main" "finance" "summary" "revenue" "revenue_ignores_refunds.yaml"))))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (testing "premise: the card is in its document"
+            (is (= (t2/select-one-pk :model/Document :name "Summary")
+                   (t2/select-one-fn :document_id :model/Card :name "Revenue"))))
+          (imported-card-test-is-the-exported-one "Revenue ignores refunds" "Revenue" "creator@example.com"))))))
+
+(deftest card-test-of-a-card-in-the-root-collection-is-exported-next-to-the-card-test
+  (testing "A test of a card in the root collection is exported in the directory named like the card's file"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db]
+        (ts/with-db source-db
+          (let [db      (ts/create! :model/Database :name "my-db")
+                creator (ts/create! :model/User :email "creator@example.com")]
+            (create-card-with-test! db creator "Revenue ignores refunds" :name "Revenue" :collection_id nil)
+            (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+        (is (.isFile (io/file dump-dir "collections" "main" "revenue.yaml")))
+        (is (.isFile (io/file dump-dir "collections" "main" "revenue" "revenue_ignores_refunds.yaml")))))))
+
+(deftest card-tests-of-cards-with-the-same-name-are-exported-next-to-their-own-cards-test
+  (testing "Tests of two cards with the same name are each exported in the directory named like their own card's file"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db]
+        (ts/with-db source-db
+          (let [db      (ts/create! :model/Database :name "my-db")
+                coll    (ts/create! :model/Collection :name "Finance")
+                creator (ts/create! :model/User :email "creator@example.com")
+                cards   (mapv #(create-card-with-test! db creator % :name "Revenue" :collection_id (:id coll))
+                              ["Revenue ignores refunds" "Revenue counts sales"])
+                exported (into [] (extract/extract {:include-h2? true}))]
+            (storage/store! (seq exported) (storage.files/file-writer dump-dir))
+            (let [card-file (into {} (for [file ["revenue.yaml" "revenue_2.yaml"]]
+                                       [(:entity_id (yaml/from-file (io/file dump-dir "collections" "main" "finance" file)))
+                                        (str/replace file #"\.yaml$" "")]))]
+              (testing "premise: the two cards have files of different names"
+                (is (= (set (map :entity_id cards)) (set (keys card-file)))))
+              (doseq [{card-eid :card_id test-name :name} (by-model exported "CardTest")]
+                (testing test-name
+                  (is (.isFile (io/file dump-dir "collections" "main" "finance" (card-file card-eid)
+                                        ({"Revenue ignores refunds" "revenue_ignores_refunds.yaml"
+                                          "Revenue counts sales"    "revenue_counts_sales.yaml"} test-name)))))))))))))
+
+(deftest reimport-publishes-no-card-test-update-event-test
+  (testing "A re-import that updates a card test publishes no CardTest event and writes no CardTest audit row"
+    (mt/with-premium-features #{:audit-app}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (let [db      (ts/create! :model/Database :name "my-db")
+                  coll    (ts/create! :model/Collection :name "Finance")
+                  creator (ts/create! :model/User :email "creator@example.com")]
+              (create-card-with-test! db creator "Revenue ignores refunds" :name "Revenue" :collection_id (:id coll))
+              (storage/store! (seq (into [] (extract/extract {:include-h2? true}))) (storage.files/file-writer dump-dir))))
+          (ts/with-db dest-db
+            (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+            (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
+              (t2/update! :model/CardTest :name "Revenue ignores refunds" {:description "Edited"}))
+            (let [audit-rows (t2/count :model/AuditLog :model "CardTest")
+                  published  (atom [])
+                  publish    events/publish-event!]
+              (with-redefs [events/publish-event! (fn [topic event]
+                                                    (swap! published conj topic)
+                                                    (publish topic event))]
+                (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (testing "premise: the re-import updated the test"
+                (is (= "Checks the card"
+                       (t2/select-one-fn :description :model/CardTest :name "Revenue ignores refunds"))))
+              (testing "no CardTest event is published"
+                (is (= [] (filter #{:event/card-test-create :event/card-test-update :event/card-test-delete}
+                                  @published))))
+              (testing "no CardTest audit row is written"
+                (is (= audit-rows (t2/count :model/AuditLog :model "CardTest")))))))))))
