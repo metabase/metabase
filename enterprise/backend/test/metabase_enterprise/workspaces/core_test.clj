@@ -121,7 +121,8 @@
   (mt/test-helpers-set-global-values!
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (testing "provisioning failure whose cleanup also fails keeps the workspace and returns it for retry"
           (let [wedged (reify provisioning/Provisioner
