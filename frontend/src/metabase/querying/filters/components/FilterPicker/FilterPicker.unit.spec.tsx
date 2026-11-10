@@ -302,6 +302,31 @@ describe("FilterPicker", () => {
       );
     });
 
+    it("should show the values and options of a multi-value contains filter and update them (metabase#49304)", async () => {
+      const { query, getNextFilter } = setup(
+        createQueryWithStringFilter({
+          column: findStringColumn(createQuery(), "PRODUCTS", "CATEGORY"),
+          operator: "contains",
+          values: ["gadget", "widget", "gizmo"],
+          options: { caseSensitive: false },
+        }),
+      );
+
+      expect(await screen.findByText("gadget")).toBeInTheDocument();
+      expect(screen.getByText("widget")).toBeInTheDocument();
+      expect(screen.getByText("gizmo")).toBeInTheDocument();
+      expect(screen.getByLabelText("Case sensitive")).not.toBeChecked();
+
+      await userEvent.click(screen.getByLabelText("Case sensitive"));
+      await userEvent.click(screen.getByText("Update filter"));
+
+      expect(Lib.stringFilterParts(query, 0, getNextFilter())).toMatchObject({
+        operator: "contains",
+        values: ["gadget", "widget", "gizmo"],
+        options: { caseSensitive: true },
+      });
+    });
+
     it("should ignore the existing filter state when changing a column", async () => {
       const { query, getNextFilter, getNextFilterColumnName } = setup(
         createQueryWithMultipleValuesFilter(),
@@ -542,6 +567,28 @@ describe("FilterPicker", () => {
         'contains([Product → Title], "MULLER", "case-insensitive")',
       ],
       [
+        "a case-insensitive string filter with many values (metabase#49304)",
+        () =>
+          createQueryWithStringFilter({
+            column: findStringColumn(createQuery(), "PRODUCTS", "CATEGORY"),
+            operator: "contains",
+            values: ["gadget", "widget"],
+            options: { caseSensitive: false },
+          }),
+        'contains([Product → Category], "gadget", "widget", "case-insensitive")',
+      ],
+      [
+        "a case-sensitive string filter with many values (metabase#49304)",
+        () =>
+          createQueryWithStringFilter({
+            column: findStringColumn(createQuery(), "PRODUCTS", "CATEGORY"),
+            operator: "contains",
+            values: ["gadget", "widget", "gizmo"],
+            options: { caseSensitive: true },
+          }),
+        'contains([Product → Category], "gadget", "widget", "gizmo")',
+      ],
+      [
         "an is-empty string filter",
         () =>
           createQueryWithStringFilter({
@@ -566,6 +613,25 @@ describe("FilterPicker", () => {
         await expectEditorSource(expectedSource);
       },
     );
+
+    it("should turn a multi-argument contains expression into a filter with its values and options (metabase#49304)", async () => {
+      const { query, getNextFilter } = setup();
+
+      await userEvent.click(screen.getByText(/Custom expression/i));
+      await editExpressionAndSubmit(
+        'contains([[Product → Category], "gadget", "widget", "gizmo", "case-insensitive")',
+      );
+
+      const filter = getNextFilter();
+      expect(Lib.stringFilterParts(query, 0, filter)).toMatchObject({
+        operator: "contains",
+        values: ["gadget", "widget", "gizmo"],
+        options: { caseSensitive: false },
+      });
+      expect(Lib.displayInfo(query, 0, filter).displayName).toBe(
+        "Category contains 3 selections",
+      );
+    });
 
     it("should show a comparison between two columns as a custom expression (metabase#12492)", async () => {
       const query = createQuery();

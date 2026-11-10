@@ -24,6 +24,7 @@ import {
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -345,6 +346,35 @@ describe("DataStep", () => {
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeFalsy();
       expect(getNextColumn("TOTAL").selected).toBeTruthy();
+    });
+
+    it("should keep a custom column when de-selecting a table column (metabase#20229)", async () => {
+      const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Adjective: [
+              "case",
+              [[[">", ["field", ORDERS.TOTAL, null], 100], "expensive"]],
+              { default: "cheap" },
+            ],
+          },
+        },
+      });
+      const step = createMockNotebookStep({ query });
+      const { getNextQuery } = await setup({ step });
+
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Tax"));
+
+      const nextQuery = getNextQuery();
+      const returnedColumnNames = Lib.returnedColumns(nextQuery, 0).map(
+        (column) => Lib.displayInfo(nextQuery, 0, column).name,
+      );
+      expect(returnedColumnNames).toContain("Adjective");
+      expect(returnedColumnNames).not.toContain("TAX");
     });
 
     it("should allow selecting all columns", async () => {

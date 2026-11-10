@@ -20,6 +20,9 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
@@ -274,6 +277,43 @@ describe("AggregationPicker", () => {
       expect(getRecentClauseInfo()).toMatchObject({
         name: "avg",
         displayName: "Average of Rating",
+      });
+    });
+
+    it("should only list numeric custom columns for Sum (metabase#18069)", async () => {
+      const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            CC_Category: ["field", PRODUCTS.CATEGORY, null],
+            CC_LowerVendor: ["lower", ["field", PRODUCTS.VENDOR, null]],
+            CC_UpperTitle: ["upper", ["field", PRODUCTS.TITLE, null]],
+            CC_HalfPrice: ["/", ["field", PRODUCTS.PRICE, null], 2],
+            CC_ScaledRating: ["*", 1.5, ["field", PRODUCTS.RATING, null]],
+          },
+        },
+      });
+      const { getRecentClauseInfo } = setup({ query });
+
+      await userEvent.click(screen.getByText("Sum of ..."));
+
+      expect(screen.getByRole("option", { name: "Price" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Rating" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "CC_HalfPrice" }),
+      ).toBeInTheDocument();
+      ["CC_Category", "CC_LowerVendor", "CC_UpperTitle"].forEach((name) => {
+        expect(screen.queryByText(name)).not.toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText("CC_ScaledRating"));
+      expect(getRecentClauseInfo()).toMatchObject({
+        name: "sum",
+        displayName: "Sum of CC_ScaledRating",
       });
     });
 
