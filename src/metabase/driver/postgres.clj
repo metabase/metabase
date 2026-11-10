@@ -1691,8 +1691,8 @@
                                      owner-names))]
     (throw (ex-info (format (str "The admin connection's login %s is not a member of %d role(s) owning objects in "
                                  "schema %s: %s. The workspace user would lose access to "
-                                 "future tables created by these roles. Grant role membership "
-                                 "with `%s` and retry.")
+                                 "future tables created by these roles. As a superuser, or a role with ADMIN "
+                                 "OPTION on those roles, run `%s` and retry.")
                             (quote-field login) (count owners) quoted-schema (str/join ", " owner-names) grants)
                     {:status-code 412
                      :schema      schema-name
@@ -1794,10 +1794,11 @@
 
 (defn- check-no-public-writes!
   "The workspace user can write to an input table that grants a write privilege to PUBLIC, and no REVOKE from the
-  workspace user takes that back."
+  workspace user takes that back. Throws a 412 naming each such grant in `schema`, with the REVOKE that removes it."
   [conn schema]
   (when-let [grants (seq (public-writes conn schema (table-creators conn schema)))]
-    (throw (ex-info (format "%d grant(s) let PUBLIC write to tables in schema %s: %s. Run `%s` and retry."
+    (throw (ex-info (format (str "%d grant(s) let PUBLIC write to tables in schema %s: %s. As the owner of each table "
+                                 "and the role of each default privilege named, or a superuser, run `%s` and retry.")
                             (count grants) (quote-schema schema) (str/join ", " (map public-write-label grants))
                             (str/join " " (map #(public-write-revoke schema %) grants)))
                     {:status-code 412, :schema schema, :objects (mapv public-write-label grants)}))))
@@ -1817,10 +1818,11 @@
   "30s")
 
 (defn- start-workspace-transaction!
-  "Runs first in every transaction of the workspace methods. Pins search_path to pg_catalog: a function or operator
-  that a workspace user planted in a schema on the default search_path (`public`, in a cluster created before
+  "Runs first in every transaction of the workspace methods. Pins search_path to `pg_catalog, pg_temp`: a function or
+  operator that a workspace user planted in a schema on the default search_path (`public`, in a cluster created before
   Postgres 15 or upgraded from one) would otherwise run with this login's privileges (CVE-2018-1058). Catalog
-  functions are also schema-qualified where it matters."
+  functions are also schema-qualified where it matters. Sets `lock_timeout` to [[workspace-lock-timeout]], so that a
+  lock another session holds, such as a workspace user's, fails a statement with 55P03 instead of hanging it."
   [conn]
   (jdbc/execute! conn ["SET LOCAL search_path = pg_catalog, pg_temp"])
   (jdbc/execute! conn [(format "SET LOCAL lock_timeout = '%s'" workspace-lock-timeout)]))
@@ -1959,20 +1961,36 @@
               (catch Exception _
                 :unverifiable)))])))
 
+(defn- public-create-databases
+  "The databases of the cluster that grant CREATE to PUBLIC, where any login may create a schema."
+  [conn]
+  (set (map :datname (jdbc/query conn [(str "SELECT d.datname FROM pg_catalog.pg_database d "
+                                            "CROSS JOIN LATERAL pg_catalog.aclexplode("
+                                            "  COALESCE(d.datacl, pg_catalog.acldefault('d', d.datdba))) a "
+                                            "WHERE a.grantee = 0 AND a.privilege_type = 'CREATE'")]))))
+
 (defn- check-no-public-create-anywhere!
-  "Every login, the workspace user included, can create objects in a schema that grants CREATE to PUBLIC, in any
-  database it may connect to: writes outside its output schema, objects that keep it from being dropped, and
-  functions that shadow catalog ones for whoever runs with that schema on its search_path. In a cluster created
-  before Postgres 15, or upgraded from one by pg_upgrade or a dump and restore, `public` grants it in every database."
+  "Every login, the workspace user included, can create objects in a schema that grants CREATE to PUBLIC, and can
+  create a schema in a database that grants CREATE to PUBLIC, in any database it may connect to: writes outside its
+  output schema, objects that keep it from being dropped, and functions or tables that shadow others for whoever runs
+  with that schema on its search_path, such as a schema named after another login. In a cluster created before
+  Postgres 15, or upgraded from one by pg_upgrade or a dump and restore, `public` grants CREATE to PUBLIC in every
+  database. Throws a 412 naming each such database and schema, and each database this login cannot connect to check,
+  with the statements that fix them."
   [database conn]
   ;; the warehouse's own database too, even when CONNECT comes from a grant to the workspace user rather than PUBLIC
   (let [current      (current-database conn)
-        findings     (doall (public-create-findings database conn (distinct (cons current (connectable-databases conn)))))
+        checked      (distinct (cons current (connectable-databases conn)))
+        databases    (filter (public-create-databases conn) checked)
+        findings     (doall (public-create-findings database conn checked))
         schemas      (for [[db found] findings :when (sequential? found), schema found] [db schema])
         unverifiable (for [[db found] findings :when (= :unverifiable found)] db)]
-    (when (or (seq schemas) (seq unverifiable))
+    (when (or (seq databases) (seq schemas) (seq unverifiable))
       (throw (ex-info
               (str "The workspace user could create objects outside its output schema."
+                   (when (seq databases)
+                     (format " These databases grant CREATE to PUBLIC, so it could create schemas there: %s."
+                             (str/join ", " databases)))
                    (when (seq schemas)
                      (format " These schemas grant CREATE to PUBLIC: %s."
                              (str/join ", " (for [[db schema] schemas] (str db "." schema)))))
@@ -1982,20 +2000,24 @@
                    (when (seq unverifiable)
                      (format " The admin connection's login cannot connect to check these databases: %s."
                              (str/join ", " unverifiable)))
-                   (format (str " Run %s"
-                                ;; init checks this database whatever its CONNECT grants, so only another database
-                                ;; can be fixed by keeping the workspace user out
-                                (when (some (fn [[db _schema]] (not= db current)) schemas)
-                                  (str ", or keep the workspace user out of a database other than "
-                                       (quote-field current) " with `REVOKE CONNECT ON DATABASE <db> FROM PUBLIC;`"))
-                                ", and retry.")
-                           (str/join ", " (concat
-                                           (for [[db schema] schemas]
-                                             (format "`REVOKE CREATE ON SCHEMA %s FROM PUBLIC;` in database %s"
-                                                     (quote-schema schema) (quote-field db)))
-                                           (for [db unverifiable]
-                                             (format "`REVOKE CONNECT ON DATABASE %s FROM PUBLIC;`" (quote-field db)))))))
+                   ;; only the grantor of a grant to PUBLIC can revoke it, and from another role REVOKE changes nothing
+                   " As the owner of each database and schema named, or a superuser, run "
+                   (str/join ", " (concat
+                                   (for [db databases]
+                                     (format "`REVOKE CREATE ON DATABASE %s FROM PUBLIC;`" (quote-field db)))
+                                   (for [[db schema] schemas]
+                                     (format "`REVOKE CREATE ON SCHEMA %s FROM PUBLIC;` in database %s"
+                                             (quote-schema schema) (quote-field db)))
+                                   (for [db unverifiable]
+                                     (format "`REVOKE CONNECT ON DATABASE %s FROM PUBLIC;`" (quote-field db)))))
+                   ;; init checks this database whatever its CONNECT grants, so only another database can be fixed by
+                   ;; keeping the workspace user out
+                   (when (some #(not= % current) (concat databases (map first schemas)))
+                     (str ", or keep the workspace user out of a database other than " (quote-field current)
+                          " with `REVOKE CONNECT ON DATABASE <db> FROM PUBLIC;`"))
+                   ", and retry.")
               {:status-code  412
+               :databases    (vec databases)
                :schemas      (vec (for [[db schema] schemas] (str db "." schema)))
                :unverifiable (vec unverifiable)})))))
 
@@ -2020,8 +2042,9 @@
                       {:status-code 412, :user user})))))
 
 (defn- check-holds-workspace-user-privileges!
-  "An admin connection login with NOINHERIT is a member of the workspace user without its privileges, and teardown, which
-  needs them, would fail for good. Throws a 412, rolling back init."
+  "Before Postgres 16, an admin connection login with NOINHERIT is a member of the workspace user without its
+  privileges, and teardown, which needs them, would fail for good. From 16 init grants the membership WITH INHERIT
+  TRUE, so the check passes there. Throws a 412, rolling back init."
   [conn user]
   (when-not (:usage (first (jdbc/query conn [(str "SELECT pg_catalog.pg_has_role(current_user, ?::text, 'USAGE') "
                                                   "AS usage")
