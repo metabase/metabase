@@ -4,11 +4,15 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.audit-app.core :as audit-app]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.revisions.models.revision :as revision]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -18,7 +22,8 @@
 (doto :model/CardTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]
@@ -33,6 +38,12 @@
   [_model _k card-tests]
   (data-testing.models/with-last-runs :card card-tests))
 
+(defmethod audit-app/model-details :model/CardTest
+  [card-test _event-type]
+  (select-keys card-test [:card_id :name :description]))
+
+;;; ---------------------------------------------------- Events ----------------------------------------------------
+
 (defenterprise delete-card-tests!
   "Enterprise implementation: delete the tests of the card `card-id`, each through its own hook. Runs whatever the token
   says, since the rows outlive the feature."
@@ -46,6 +57,21 @@
   ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
   ;; runs are never listed or shown as `last_run`.
   (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/card-test-delete {:object card-test}))
+  card-test)
+
+(t2/define-after-insert :model/CardTest [card-test]
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/card-test-create
+                           {:object  (t2/instance :model/CardTest card-test)
+                            :user-id (:creator_id card-test)}))
+  card-test)
+
+(t2/define-after-update :model/CardTest [card-test]
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/card-test-update
+                           {:object (t2/instance :model/CardTest card-test)}))
   card-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -103,3 +129,40 @@
   [instance changes]
   (and (can-save-test? (:card_id instance))
        (can-save-test? (:card_id changes (:card_id instance)))))
+
+;;; -------------------------------------------------- Revisions ---------------------------------------------------
+
+(def ^:private revision-columns
+  [:card_id :name :description :inputs :expectations])
+
+(defmethod revision/serialize-instance :model/CardTest
+  [_model _id card-test]
+  (select-keys card-test revision-columns))
+
+(defmethod revision/revision-readable? :model/CardTest
+  [_model object]
+  ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
+  (boolean (some-> (data-testing.db/card (:card_id object)) mi/can-read?)))
+
+(defmethod revision/revert-to-revision! :model/CardTest
+  [_model id _user-id serialized-instance]
+  (data-testing.db/update-card-test! id (select-keys serialized-instance revision-columns)))
+
+;;; ------------------------------------------------- Serialization ------------------------------------------------
+
+(defmethod serialization/spec :model/CardTest [_]
+  {:schema    ::data-testing.schema/external-card-test
+   :copy      [:entity_id :name :description :inputs :expectations]
+   :transform {:card_id    (serialization/fk-transform :model/Card)
+               :creator_id serialization/user-transform}})
+
+(defmethod serialization/storage-paths :model/CardTest [_ entities _ctx]
+  ;; A card's file can sit in a collection, a dashboard or a document, so its path reads all three.
+  (data-testing.models/subject-storage-paths entities :model/Card :card_id {:collection_id :model/Collection
+                                                                            :dashboard_id  :model/Dashboard
+                                                                            :document_id   :model/Document}))
+
+(defmethod serialization/import-dependencies :model/CardTest [_ entities]
+  (mapv (fn [{:keys [card_id]}]
+          #{[:model/Card card_id]})
+        entities))

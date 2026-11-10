@@ -9,6 +9,7 @@ import * as Urls from "metabase/urls";
 import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { useCrossOriginDataAppHref } from "../../../host/lib/get-cross-origin-data-app-href";
 import { isDataAppOpenable } from "../../../utils";
 import { trackDataAppMadeDraft, trackDataAppMadeLive } from "../../analytics";
 
@@ -29,6 +30,11 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
   const [setDataAppEnabled] = useSetDataAppEnabledMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const { show: showConfirmation, modalContent } = useConfirmation();
+
+  const getCrossOriginHref = useCrossOriginDataAppHref();
+  const href =
+    getCrossOriginHref(app.name) ??
+    Urls.getSubpathSafeUrl(Urls.dataApp(app.name));
 
   const handleToggleEnabled = () => {
     const enabled = !app.enabled;
@@ -79,7 +85,7 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
           {isDataAppOpenable(app) && (
             <Menu.Item
               component="a"
-              href={Urls.getSubpathSafeUrl(Urls.dataApp(app.name))}
+              href={href}
               target="_blank"
               rel="noreferrer"
               leftSection={<Icon name="external" />}

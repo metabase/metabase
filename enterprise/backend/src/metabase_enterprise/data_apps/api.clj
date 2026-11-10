@@ -290,8 +290,9 @@
       (cond
         (and hash (contains? (if-none-match-hashes (get-in request [:headers "if-none-match"])) hash))
         ;; 304 carries only the cacheable headers (Cache-Control) + ETag — never
-        ;; Content-Type or a body, per RFC 9110 §15.4.5.
-        (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}})
+        ;; Content-Type or a body, per RFC 9110 §15.4.5. `:body` must be present, even nil:
+        ;; without it the endpoint wrapper sends this map as the JSON body of a 200.
+        (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}, :body nil})
 
         :else
         (let [^bytes bundle (data-apps.db/data-app-bundle (:id row))]

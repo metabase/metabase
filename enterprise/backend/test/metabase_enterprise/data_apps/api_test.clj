@@ -405,6 +405,15 @@
             (let [response (mt/user-http-request-full-response :crowberto :get 200 url options)]
               (is (= (security/embedded-data-app-content-security-policy ["https://other.example.com"])
                      (get-in response [:headers policy-header])))))
+          (testing "a conditional request with the bundle's ETag gets a bodiless 304"
+            (let [etag     (get-in (mt/user-http-request-full-response :crowberto :get 200 url options)
+                                   [:headers "ETag"])
+                  response (mt/user-http-request-full-response
+                            :crowberto :get 304 url
+                            (assoc-in options [:request-options :headers "if-none-match"] etag))]
+              (is (some? etag))
+              (is (= etag (get-in response [:headers "ETag"])))
+              (is (empty? (:body response)))))
           (testing "authorization failures and missing apps do not return a CSP header"
             (doseq [[user path status] [[:rasta url 403]
                                         [:crowberto "ee/apps/missing/bundle" 404]]]

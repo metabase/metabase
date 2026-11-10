@@ -56,6 +56,21 @@ export function DataAppAboutSidebar({ app }: DataAppAboutSidebarProps) {
           </MetadataRow>
         </MetadataCard>
       </AboutSubSection>
+      <AboutSubSection title={t`External hosts`} mt="xxl">
+        <MetadataCard withConnector={false}>
+          {app.allowed_hosts.length > 0 ? (
+            app.allowed_hosts.map((host) => (
+              <MetadataRow key={host} icon="globe">
+                <span className={CS.textBreakAll}>{host}</span>
+              </MetadataRow>
+            ))
+          ) : (
+            <MetadataRow icon="globe" muted>
+              {t`No external hosts`}
+            </MetadataRow>
+          )}
+        </MetadataCard>
+      </AboutSubSection>
       <DataAppRepositorySection slug={app.name} />
       <AboutSubSection title={t`Group access`} mt="xxl">
         <MetadataCard>
