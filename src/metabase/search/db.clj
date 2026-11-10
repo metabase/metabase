@@ -477,7 +477,7 @@
   converting JDBC time types."
   [conn            :- (ms/InstanceOfClass java.sql.Connection)
    duration-millis :- :int]
-  (t2/query-one conn {:select [[[:current-timestamp] :now]
+  (t2/query-one conn {:select [[[:current-timestamp 6] :now]
                                [[:current-timestamp-plus-ms duration-millis] :expires_at]]}))
 
 (def ^:private LeaseCoordinate
@@ -525,7 +525,7 @@
    owner :- :string]
   (t2/exists? :conn conn :search_index_lease
               :engine engine :lang_code lang_code :version version :owner owner
-              :expires_at [:> [:current-timestamp]]))
+              :expires_at [:> [:current-timestamp 6]]))
 
 (mu/defn renew-lease!
   "Extend the unexpired lease at `coordinate` held by `owner` by `duration-millis`, on `conn`.
@@ -536,8 +536,8 @@
    duration-millis :- :int]
   ;; One statement, so a per-batch fence costs a single round trip.
   (t2/update! :conn conn :search_index_lease
-              (assoc coordinate :owner owner :expires_at [:> [:current-timestamp]])
-              {:last_renewed_at [:current-timestamp]
+              (assoc coordinate :owner owner :expires_at [:> [:current-timestamp 6]])
+              {:last_renewed_at [:current-timestamp 6]
                :expires_at      [:current-timestamp-plus-ms duration-millis]}))
 
 (mu/defn delete-lease!
@@ -557,7 +557,7 @@
   ;; Recheck owner and database expiry on DELETE: a selected row may have been renewed or replaced.
   (with-open [select (.prepareStatement conn
                                         (str "SELECT engine, version, lang_code, owner FROM search_index_lease "
-                                             "WHERE expires_at <= CURRENT_TIMESTAMP "
+                                             "WHERE expires_at <= CURRENT_TIMESTAMP(6) "
                                              "AND NOT (engine = ? AND version = ? AND lang_code = ?) LIMIT 8"))]
     (when-not (u.conn/set-query-timeout! select 1)
       (throw (ex-info "Skipping lease collection: database does not support a statement timeout" {})))
@@ -572,7 +572,7 @@
       (doseq [row rows]
         (with-open [delete (.prepareStatement conn
                                               (str "DELETE FROM search_index_lease WHERE engine = ? AND version = ? "
-                                                   "AND lang_code = ? AND owner = ? AND expires_at <= CURRENT_TIMESTAMP"))]
+                                                   "AND lang_code = ? AND owner = ? AND expires_at <= CURRENT_TIMESTAMP(6)"))]
           (when-not (u.conn/set-query-timeout! delete 1)
             (throw (ex-info "Skipping lease collection: database does not support a statement timeout" {})))
           (doseq [[i value] (map-indexed vector row)]

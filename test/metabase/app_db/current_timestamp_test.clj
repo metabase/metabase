@@ -4,9 +4,19 @@
    [clojure.test :refer :all]
    [toucan2.core :as t2])
   (:import
-   (java.time.temporal ChronoUnit Temporal)))
+   (java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor)))
 
 (set! *warn-on-reflection* true)
+
+(deftest current-timestamp-keeps-sub-second-precision-test
+  (testing "neither clock is truncated to whole seconds, which a bare `current_timestamp` is on MySQL and MariaDB"
+    ;; One sample lands on a whole second once in a million; five in a row with gaps between them never will.
+    (let [samples (repeatedly 5 #(do (Thread/sleep 3)
+                                     (t2/query-one {:select [[[:current-timestamp 6] :now]
+                                                             [[:current-timestamp-plus-ms 0] :plus_zero]]})))
+          nanos   (fn [k] (map #(.get ^TemporalAccessor (get % k) ChronoField/NANO_OF_SECOND) samples))]
+      (is (some pos? (nanos :now)))
+      (is (some pos? (nanos :plus_zero))))))
 
 (deftest current-timestamp-plus-ms-runs-on-the-app-db-test
   (testing "both timestamps read one statement's clock, so they differ by exactly the offset"
