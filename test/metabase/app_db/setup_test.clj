@@ -426,51 +426,53 @@
           (is (= ["E-commerce Insights"] (t2/select-fn-vec :name :report_dashboard)) "sample content was created"))))))
 
 (deftest setup-db-refuses-settings-from-an-older-version-when-legacy-encryption-disabled-test
-  (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION and a key, a setting row without value_with_aad refuses startup"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
-      (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
-        (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
-        (is (mdb.db/unmigrated-settings?))
-        (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
-          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                #"Some settings were saved by an older version of Metabase .* MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set"
-                                (mdb/setup-db! :create-sample-content? false)))
-          (is (mdb.db/unmigrated-settings?) "nothing was converted"))
-        (testing "unset again, setup converts them"
-          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
-          (is (= :done (mdb/setup-db! :create-sample-content? false)))
-          (is (not (mdb.db/unmigrated-settings?))))))
-    (testing "without a key there is nothing to encrypt, so the setting is converted with a warning as usual"
+  (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "false"]
+    (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION and a key, a setting row without value_with_aad refuses startup"
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? false)
-        (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
-        (is (mdb.db/unmigrated-settings?))
-        (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
-          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
-          (is (= :done (mdb/setup-db! :create-sample-content? false)))
-          (is (not (mdb.db/unmigrated-settings?)))
-          (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
+        (encryption-test/with-secret-key "ABCDEFGH12345678"
+          (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+          (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+          (is (mdb.db/unmigrated-settings?))
+          (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+            (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Some settings were saved by an older version of Metabase .* MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set"
+                                  (mdb/setup-db! :create-sample-content? false)))
+            (is (mdb.db/unmigrated-settings?) "nothing was converted"))
+          (testing "unset again, setup converts them"
+            (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+            (is (= :done (mdb/setup-db! :create-sample-content? false)))
+            (is (not (mdb.db/unmigrated-settings?))))))
+      (testing "without a key there is nothing to encrypt, so the setting is converted with a warning as usual"
+        (mt/with-temp-empty-app-db [_conn :h2]
+          (mdb/setup-db! :create-sample-content? false)
+          (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+          (is (mdb.db/unmigrated-settings?))
+          (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+            (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+            (is (= :done (mdb/setup-db! :create-sample-content? false)))
+            (is (not (mdb.db/unmigrated-settings?)))
+            (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name")))))))))
 
 (deftest migrate-settings-decides-by-decrypting-test
-  (testing "the value_with_aad backfill treats a value as encrypted only if it decrypts, and copes with one that encrypts to nothing"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
-      (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
-        (let [shaped (str (apply str (repeat 86 "a")) "==")]
-          (is (encryption/possibly-encrypted-string? shaped))
-          (t2/query {:insert-into :setting, :values [{:key "shaped", :value shaped}
-                                                     {:key "blank", :value (encryption/encrypt "")}]})
-          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
-          (is (= :done (mdb/setup-db! :create-sample-content? false)))
-          (testing "a plaintext value that merely looks like ciphertext is a value, not skipped"
-            (is (= shaped (encryption/maybe-decrypt (t2/select-one-fn :value_with_aad :setting :key "shaped")
-                                                    {:aad (mdb.setting/setting-aad "shaped")}))))
-          (testing "an encrypted blank value has nothing to store, and is written as NULL rather than failing"
-            (is (nil? (t2/select-one-fn :value_with_aad :setting :key "blank")))))))))
+  (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "false"]
+    (testing "the value_with_aad backfill treats a value as encrypted only if it decrypts, and copes with one that encrypts to nothing"
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (mdb/setup-db! :create-sample-content? false)
+        (encryption-test/with-secret-key "ABCDEFGH12345678"
+          (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+          (let [shaped (str (apply str (repeat 86 "a")) "==")]
+            (is (encryption/possibly-encrypted-string? shaped))
+            (t2/query {:insert-into :setting, :values [{:key "shaped", :value shaped}
+                                                       {:key "blank", :value (encryption/encrypt "")}]})
+            (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+            (is (= :done (mdb/setup-db! :create-sample-content? false)))
+            (testing "a plaintext value that merely looks like ciphertext is a value, not skipped"
+              (is (= shaped (encryption/maybe-decrypt (t2/select-one-fn :value_with_aad :setting :key "shaped")
+                                                      {:aad (mdb.setting/setting-aad "shaped")}))))
+            (testing "an encrypted blank value has nothing to store, and is written as NULL rather than failing"
+              (is (nil? (t2/select-one-fn :value_with_aad :setting :key "blank"))))))))))
 
 (deftest encryption-check-status-falls-back-to-value-test
   (testing "the sentinel is read from `value`, whatever `value_with_aad` holds -- an older version rewrites only `value`"
