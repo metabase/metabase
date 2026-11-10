@@ -23,6 +23,7 @@ import {
   ACTION_NAME_MAX_LENGTH,
   ACTION_SECRET_NAME_REGEX,
 } from "../../constants";
+import { getActionSecretNameError } from "../../utils";
 
 function getAllowedHosts(text: string): string[] {
   return text
@@ -36,10 +37,7 @@ const getValidationSchema = (isNew: boolean) =>
     name: Yup.string()
       .required(Errors.required)
       .max(ACTION_NAME_MAX_LENGTH, Errors.maxLength)
-      .matches(
-        ACTION_SECRET_NAME_REGEX,
-        () => t`Use letters, digits and underscores.`,
-      ),
+      .matches(ACTION_SECRET_NAME_REGEX, getActionSecretNameError),
     value: isNew
       ? Yup.string().required(Errors.required)
       : Yup.string().default(""),
@@ -47,7 +45,7 @@ const getValidationSchema = (isNew: boolean) =>
       .defined()
       .test(
         "has-host",
-        () => t`Add at least one host.`,
+        Errors.required,
         (value) => value != null && getAllowedHosts(value).length > 0,
       ),
   });

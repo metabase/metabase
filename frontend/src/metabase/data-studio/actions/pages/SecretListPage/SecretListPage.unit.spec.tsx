@@ -139,7 +139,9 @@ describe("SecretListPage", () => {
     await userEvent.type(within(dialog).getByLabelText(/Value/), "abc");
 
     expect(
-      await within(dialog).findByText("Use letters, digits and underscores."),
+      await within(dialog).findByText(
+        "must contain only letters, digits and underscores",
+      ),
     ).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
   });

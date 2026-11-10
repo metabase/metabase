@@ -247,6 +247,9 @@ export function getQueryActionDefinition(
   };
 }
 
+export const getActionSecretNameError = () =>
+  t`must contain only letters, digits and underscores`;
+
 export function canCreateActions(databases: Database[]): boolean {
   return databases.some(
     (database) =>
