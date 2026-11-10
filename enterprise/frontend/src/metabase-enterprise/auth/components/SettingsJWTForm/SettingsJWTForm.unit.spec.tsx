@@ -9,6 +9,7 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
 import { SettingsJWTForm } from "./SettingsJWTForm";
@@ -24,13 +25,16 @@ const GROUPS = [
 const setup = async ({
   jwtEnabled,
   useTenants,
+  settings = [],
 }: {
   jwtEnabled?: boolean;
   useTenants?: boolean;
+  settings?: SettingDefinition[];
 } = {}) => {
   setupSettingsEndpoints([
     { key: "use-tenants", value: useTenants ?? false },
     { key: "jwt-enabled", value: jwtEnabled ?? false },
+    ...settings,
   ]);
   setupPropertiesEndpoints(
     createMockSettings({
@@ -108,6 +112,65 @@ describe("SettingsJWTForm", () => {
     expect(url).toMatch(/\/api\/setting$/);
     expect(body).toEqual(ATTRS);
   });
+
+  it("should show an environment notice instead of the group sync switch (#82849)", async () => {
+    await setup({
+      settings: [
+        {
+          key: "jwt-group-sync",
+          value: null,
+          is_env_setting: true,
+          env_name: "MB_JWT_GROUP_SYNC",
+        },
+      ],
+    });
+
+    const groupSync = within(await screen.findByTestId("jwt-group-schema"));
+    expect(
+      await groupSync.findByText("Using MB_JWT_GROUP_SYNC"),
+    ).toBeInTheDocument();
+    expect(groupSync.queryByRole("switch")).not.toBeInTheDocument();
+    expect(await groupSync.findByText("No mappings yet")).toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
+      ATTRS["jwt-identity-provider-uri"],
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toHaveProperty(
+      "jwt-identity-provider-uri",
+      ATTRS["jwt-identity-provider-uri"],
+    );
+    expect(puts[0].body).not.toHaveProperty("jwt-group-sync");
+    expect(groupSync.queryByRole("switch")).not.toBeInTheDocument();
+    expect(groupSync.getByText("Using MB_JWT_GROUP_SYNC")).toBeInTheDocument();
+  });
+
+  it.each([true, false])(
+    "should keep non-environment group sync editable when set to %s (#82849)",
+    async (value) => {
+      await setup({ settings: [{ key: "jwt-group-sync", value }] });
+
+      const groupSync = within(await screen.findByTestId("jwt-group-schema"));
+      const toggle = await groupSync.findByRole("switch", { checked: value });
+      expect(toggle).toBeEnabled();
+      await userEvent.click(toggle);
+      expect(groupSync.getByRole("switch", { checked: !value })).toBeEnabled();
+
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
+        ATTRS["jwt-identity-provider-uri"],
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      expect(puts[0].body).toHaveProperty("jwt-group-sync", !value);
+    },
+  );
 
   it("should not show tenant attribute unless tenanting is on", async () => {
     await setup();

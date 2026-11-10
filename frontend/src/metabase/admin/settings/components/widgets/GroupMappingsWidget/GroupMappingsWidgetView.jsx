@@ -33,6 +33,9 @@ const helpText = (mappingSetting) => {
 };
 
 const noMappingText = (mappingSetting, syncSwitchValue) => {
+  if (typeof syncSwitchValue === "string") {
+    return t`No mappings yet`;
+  }
   if (!syncSwitchValue) {
     return `No mappings yet, group sync is not on`;
   }
@@ -121,10 +124,14 @@ export function GroupMappingsWidgetView({
         <Header>
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
-            <FormSwitch
-              data-testid="group-sync-switch"
-              name={props.setting.key}
-            />
+            {typeof groupSyncSwitchValue === "string" ? (
+              <span>{t`Using ${groupSyncSwitchValue}`}</span>
+            ) : (
+              <FormSwitch
+                data-testid="group-sync-switch"
+                name={props.setting.key}
+              />
+            )}
           </ToggleRoot>
           <About>
             <Tooltip

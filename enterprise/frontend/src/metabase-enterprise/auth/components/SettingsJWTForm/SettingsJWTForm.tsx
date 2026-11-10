@@ -35,7 +35,9 @@ export type JWTFormValues = Pick<
   | "jwt-attribute-email"
   | "jwt-attribute-firstname"
   | "jwt-attribute-lastname"
->;
+> & {
+  "jwt-group-sync"?: boolean | string | null;
+};
 
 export const SettingsJWTForm = () => {
   const {
@@ -46,8 +48,16 @@ export const SettingsJWTForm = () => {
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
 
   const handleSubmit = async (values: Partial<JWTFormValues>) => {
-    const { "jwt-shared-secret": jwtSecret, ...rest } = values;
-    const settingsToUpdate: Partial<JWTFormValues> = { ...rest };
+    const {
+      "jwt-shared-secret": jwtSecret,
+      "jwt-group-sync": groupSync,
+      ...rest
+    } = values;
+    const settingsToUpdate: Partial<EnterpriseSettings> = { ...rest };
+
+    if (typeof groupSync === "boolean") {
+      settingsToUpdate["jwt-group-sync"] = groupSync;
+    }
 
     // jwt-shared-secret may be initialized with the obfuscated value from /api/setting.
     // Only send it to the backend if it's a newly generated plaintext value.
@@ -213,7 +223,12 @@ const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
   }
 
   // cast undefined to null
-  return _.mapObject(jwtSettings, (val) => val?.value ?? null) as JWTFormValues;
+  return _.mapObject(jwtSettings, (val, key) => {
+    if (key === "jwt-group-sync" && val?.is_env_setting) {
+      return val.env_name;
+    }
+    return val?.value ?? null;
+  }) as JWTFormValues;
 };
 
 const isObfuscatedValue = (value: string | null | undefined): boolean =>
