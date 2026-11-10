@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.expectations.empty
-  "The `empty` expectation: a query over the transform output returns no rows.
+  "The `empty` expectation: a query over the output of the query under test returns no rows.
 
   The query is the author's own SQL, rewritten so the tables it names resolve to the run's temp
   tables rather than to the real ones."
@@ -45,8 +45,8 @@
   (temp-tables [_this _context]
     {})
 
-  (probes [_this {:keys [driver replacements]}]
-    {:violations {:query    (data-testing.compile/replace-tables driver sql replacements)
+  (probes [_this {:keys [driver replacements output-token]}]
+    {:violations {:query    (data-testing.compile/replace-tables driver sql replacements output-token)
                   :params   []
                   :max-rows expectations.report/row-cap}})
 

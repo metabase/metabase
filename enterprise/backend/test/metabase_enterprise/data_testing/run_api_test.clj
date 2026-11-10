@@ -80,6 +80,8 @@
           (mt/user-http-request :crowberto :get 400 path :test-id test-id))
         (testing "refuses an unknown test type"
           (mt/user-http-request :crowberto :get 400 path :test-type "nonsense"))
+        (testing "a card test that does not exist is not found"
+          (mt/user-http-request :crowberto :get 404 path :test-type "card" :test-id Integer/MAX_VALUE))
         (testing "refuses users who can't read the test"
           (mt/user-http-request :rasta :get 403 path :test-type "transform" :test-id test-id))
         (testing "a test that does not exist is not found"

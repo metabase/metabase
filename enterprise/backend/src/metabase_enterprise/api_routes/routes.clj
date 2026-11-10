@@ -22,6 +22,7 @@
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
    [metabase-enterprise.data-testing.api]
+   [metabase-enterprise.data-testing.card-api]
    [metabase-enterprise.data-testing.run-api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
@@ -121,6 +122,7 @@
    "/apps"                         (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
+   "/card-test"                    (premium-handler metabase-enterprise.data-testing.card-api/routes :transforms-testing)
    "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    ;; The sandbox donor GET can be accessed without auth (an iframe src cannot carry session auth), so it lives in

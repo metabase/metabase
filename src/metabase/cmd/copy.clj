@@ -173,6 +173,7 @@
       :model/CustomVizPlugin
       :model/ContentDiagnosticsFinding
       :model/TransformTest
+      :model/CardTest
       :model/DataTestRun
       :model/Workspace
       :model/WorkspaceDatabase

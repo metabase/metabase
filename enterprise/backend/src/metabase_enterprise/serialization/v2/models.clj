@@ -85,6 +85,8 @@
    :model/BookmarkOrdering
    :model/CacheConfig
    :model/CardBookmark
+   ;; Until card tests have a serialization spec.
+   :model/CardTest
    :model/ChannelTemplate
    :model/CloudMigration
    :model/CollectionBookmark

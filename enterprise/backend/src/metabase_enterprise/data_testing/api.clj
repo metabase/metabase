@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
-   [metabase.transforms.util :as transforms.u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -17,21 +16,9 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn- refusing :- [:maybe ::data-testing.schema/run-result]
-  "Call `thunk`, rethrowing a typed transform-test refusal as the status and `:error-code` it publishes.
-
-  400 — the test is wrong, and its author can fix it.
-  422 — the test is fine; the transform or its database prevents a run here.
-  501 — the test asks for something not built yet."
+  "Call `thunk`, rethrowing a typed refusal as [[data-testing.errors/refusing]] does, under the `transform-test` prefix."
   [thunk :- ifn?]
-  (try
-    (thunk)
-    (catch clojure.lang.ExceptionInfo e
-      (if-let [error-type (:error-type (ex-data e))]
-        (throw (ex-info (ex-message e)
-                        (assoc (dissoc (ex-data e) :error-type)
-                               :status-code (data-testing.errors/status-code error-type)
-                               :error-code  (data-testing.errors/code "transform-test" error-type))))
-        (throw e)))))
+  (data-testing.errors/refusing "transform-test" thunk))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/transform-test.response]
   "List the transform tests with their newest runs, optionally only those of one transform."
@@ -55,7 +42,8 @@
    _query-params
    {:keys [transform_id inputs expectations] :as body} :- ::data-testing.schema/transform-test.create]
   (api/create-check :model/TransformTest body)
-  (refusing #(data-testing.runner/validate-test (transforms.u/->definition (data-testing.db/transform transform_id))
+  (refusing #(data-testing.runner/validate-test :transform
+                                                (data-testing.db/transform transform_id)
                                                 inputs
                                                 expectations))
   (data-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
@@ -70,7 +58,8 @@
     (api/update-check transform-test body)
     (when (some #(contains? body %) [:transform_id :inputs :expectations])
       (let [{:keys [transform_id inputs expectations]} (merge transform-test body)]
-        (refusing #(data-testing.runner/validate-test (transforms.u/->definition (data-testing.db/transform transform_id))
+        (refusing #(data-testing.runner/validate-test :transform
+                                                      (data-testing.db/transform transform_id)
                                                       inputs
                                                       expectations))))
     (when (seq body)
@@ -100,7 +89,7 @@
   (let [transform-test (api/read-check :model/TransformTest id)
         transform      (api/read-check :model/Transform (:transform_id transform-test))]
     (api/check-403 (data-testing.models/can-run-test? (:id transform)))
-    (refusing #(data-testing.runner/run-test! transform transform-test))))
+    (refusing #(data-testing.runner/run-test! :transform transform transform-test))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-test` routes."

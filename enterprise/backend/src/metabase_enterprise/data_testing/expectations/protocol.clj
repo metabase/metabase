@@ -12,7 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (defprotocol Expectation
-  "One check on the output of the transform under test."
+  "One check on the output of the query under test."
   (temp-tables [this context]
     "The queries this expectation needs materialized before its probes run, as `{id compiled-query}`.
 
