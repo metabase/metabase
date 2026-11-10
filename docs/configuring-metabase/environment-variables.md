@@ -3116,6 +3116,14 @@ Also covers the SSH tunnel host and the database auth-provider URLs.
 
 Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
 
+### `MB_WORKSPACES_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `workspaces-enabled`
+
+Whether this instance is a workspace: transforms on a database with a `database-workspace-schema` write there instead of to production, and later reads of their output follow. Not the per-database switch a parent uses to offer workspaces (`database-enable-workspaces`). Turning it off deletes every table remapping.
+
 ## Other environment variables
 
 The following environment variables can only be set via the environment. They cannot be set by the configuration file.

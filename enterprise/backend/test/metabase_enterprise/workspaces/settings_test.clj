@@ -64,3 +64,36 @@
       (is (true? (ws/workspace-mode?)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"MB_WORKSPACES_ENABLED"
                             (ws/clear-instance-workspace!))))))
+
+(deftest workspaces-enabled-env-var-false-refuses-set-test
+  (testing "with MB_WORKSPACES_ENABLED=false, set-instance-workspace! refuses instead of reporting success"
+    (mt/with-temp-env-var-value! [mb-workspaces-enabled "false"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"MB_WORKSPACES_ENABLED"
+                            (ws/set-instance-workspace! {})))
+      (testing "and clearing, which matches the env var, is allowed"
+        (is (nil? (ws/clear-instance-workspace!)))))))
+
+(deftest parent-guard-ignores-false-test
+  (testing "on a parent, writing false (boolean or string) is not refused"
+    (mt/with-temp [:model/Workspace _ {:name "parent-ws"}]
+      (ws.settings/workspaces-enabled! false)
+      (ws.settings/workspaces-enabled! "false")
+      (is (false? (ws/workspace-mode?))))))
+
+(deftest set-instance-workspace-is-atomic-test
+  (testing "when turning the flag on fails (a parent), no database's schema is written"
+    (mt/with-temp [:model/Workspace _ {:name "parent-ws"}
+                   :model/Database {db-id :id} {:engine :postgres}]
+      (is (thrown? clojure.lang.ExceptionInfo (ws/set-instance-workspace! {db-id "ws_x"})))
+      (is (nil? (get-in (t2/select-one :model/Database :id db-id) [:settings :database-workspace-schema]))))))
+
+(deftest clearing-a-database-schema-deletes-its-remappings-test
+  (testing "a database dropped from the workspace loses its remap rows, so its reads stop going to the old schema"
+    (mt/with-temp [:model/Database {db-a :id} {:engine :postgres}
+                   :model/Database {db-b :id} {:engine :postgres}]
+      (ws/set-instance-workspace! {db-a "ws_a" db-b "ws_b"})
+      (doseq [db-id [db-a db-b]]
+        (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "public" :from_table_name "t"
+                                           :to_db "" :to_schema "ws" :to_table_name "public__t"}))
+      (ws/set-instance-workspace! {db-b "ws_b"})
+      (is (= [db-b] (t2/select-fn-vec :database_id :model/TableRemapping))))))

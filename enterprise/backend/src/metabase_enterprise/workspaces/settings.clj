@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (def keep-me
@@ -26,7 +27,7 @@
   :export?    false
   :audit      :getter
   :setter     (fn [new-value]
-                (when (and new-value (ws.db/any-workspace-exists?))
+                (when (and (= "true" (u/lower-case-en (str new-value))) (ws.db/any-workspace-exists?))
                   (throw (ex-info (tru "This instance has workspaces of its own, so it can''t be a workspace.")
                                   {:status-code 400})))
                 (setting/set-value-of-type! :boolean :workspaces-enabled new-value))

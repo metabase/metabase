@@ -294,7 +294,8 @@
               first-input      (first (:input_schemas wsd))
               ;; The fixture's `:output` is already the expanded `{:db ?, :schema ?}`
               ;; map (`workspaces.config/build-workspace-config` emits the runtime
-              ;; shape directly), so the loader stores it verbatim.
+              ;; shape directly); the loader stores its schema and db-workspace-namespace
+              ;; re-expands it, so the two must agree.
               expected-output  (:output wsd)
               fake-db          {:engine engine :details details}
               ;; The from-spec handed to the rewriter must match what the driver
@@ -308,7 +309,7 @@
             (mt/with-temp [:model/Database {db-id :id} {:name db-name :engine engine :details details}]
               (mt/with-premium-features #{:workspaces}
                 (try
-                  ;; 1. Load through the production loader. Populates the atom.
+                  ;; 1. Load through the production loader. Sets the workspace settings.
                   (advanced-config.file.workspace/apply-workspace-section! section)
                   ;; 2. Read the namespace via the production reader.
                   (let [ws-ns      (ws/db-workspace-namespace db-id)
@@ -317,7 +318,7 @@
                                                     driver canonical-sql
                                                     {(ws.table-remapping/prune-no-level from-spec)
                                                      (ws.table-remapping/prune-no-level to-spec)})]
-                    (testing "atom output matches the loader's expansion of fixture's output_namespace"
+                    (testing "db-workspace-namespace matches the fixture's expanded :output"
                       (is (= expected-output ws-ns)
                           "db-workspace-namespace must return the loader's expanded :output map"))
                     ;; MySQL is special-cased: it has no schema layer, so Phase 1 (table

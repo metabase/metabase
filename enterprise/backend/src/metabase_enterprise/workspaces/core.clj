@@ -40,8 +40,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -116,33 +118,47 @@
                                 [(:id database) schema])))
                       (ws.db/all-databases))}))
 
+(defn- check-not-set-by-env-var!
+  "Throw a 400 when `MB_WORKSPACES_ENABLED` holds a value other than `wanted`: the env
+   var wins over the stored value, so a write would report success and change nothing."
+  [wanted]
+  (when-let [env-value (setting/env-var-value :workspaces-enabled)]
+    (when (not= (str wanted) (u/lower-case-en env-value))
+      (throw (ex-info (str "workspaces-enabled is set to " env-value " by the MB_WORKSPACES_ENABLED env var"
+                           " and can't be changed at runtime.")
+                      {:status-code 400})))))
+
 (mu/defn set-instance-workspace! :- :nil
-  "Make this instance a workspace: turn `workspaces-enabled` on and set each database's
-   `database-workspace-schema` from `schemas`, a map of database id to schema. Clears the
-   schema of every database not in `schemas`. Throws a 400 for an unknown database id."
+  "Make this instance a workspace: set each database's `database-workspace-schema` from
+   `schemas`, a map of database id to schema, then turn `workspaces-enabled` on. Clears
+   the schema, and the remap rows, of every database not in `schemas`. One transaction,
+   flag last, so no transform sees workspace mode with a schema missing. Throws a 400
+   for an unknown database id, on a parent, or when `MB_WORKSPACES_ENABLED=false`."
   [schemas :- [:map-of ::lib.schema.id/database ms/NonBlankString]]
-  (let [databases (ws.db/all-databases)]
-    (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
-      (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
-                      {:status-code 400 :database_ids (vec unknown)})))
-    (ws.settings/workspaces-enabled! true)
-    (doseq [{:keys [id settings] :as database} databases
-            :let [schema (get schemas id)]
-            :when (not= schema (database-workspace-schema database))]
-      (ws.db/update-database-settings! id (if schema
-                                            (assoc settings :database-workspace-schema schema)
-                                            (dissoc settings :database-workspace-schema))))
-    nil))
+  (check-not-set-by-env-var! true)
+  (t2/with-transaction [_conn]
+    (let [databases (ws.db/all-databases)]
+      (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
+        (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
+                        {:status-code 400 :database_ids (vec unknown)})))
+      (doseq [{:keys [id settings] :as database} databases
+              :let [schema (get schemas id)]
+              :when (not= schema (database-workspace-schema database))]
+        (ws.db/update-database-settings! id (if schema
+                                              (assoc settings :database-workspace-schema schema)
+                                              (dissoc settings :database-workspace-schema)))
+        ;; Rows pointing at the old schema would keep redirecting reads there.
+        (ws.db/delete-table-remappings-of-database! id))
+      (ws.settings/workspaces-enabled! true)))
+  nil)
 
 (defn clear-instance-workspace!
   "Turn `workspaces-enabled` off and delete every `:model/TableRemapping` row.
    Leaves each database's `database-workspace-schema` in place; it has no effect
-   while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED`
-   sets it, since that value wins over the stored one."
+   while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`,
+   since that value wins over the stored one."
   []
-  (when (some? (setting/env-var-value :workspaces-enabled))
-    (throw (ex-info "workspaces-enabled is set by the MB_WORKSPACES_ENABLED env var and can't be changed at runtime."
-                    {:status-code 400})))
+  (check-not-set-by-env-var! false)
   (ws.settings/workspaces-enabled! false)
   ;; The setting's :on-change deletes them only when the value changes; delete them
   ;; here too so stale rows from an earlier run go regardless.
