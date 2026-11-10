@@ -814,6 +814,16 @@ describe("scenarios > dashboard > text and headings", () => {
     H.expectNoBadSnowplowEvents();
   });
 
+  it("should send schema-valid events when text and heading cards are added", () => {
+    H.editDashboard();
+
+    H.addTextBoxWhileEditing("Text card");
+    H.expectUnstructuredSnowplowEvent({ event: "new_text_card_created" });
+
+    H.addHeadingWhileEditing("Heading card");
+    H.expectUnstructuredSnowplowEvent({ event: "new_heading_card_created" });
+  });
+
   it("should let you add a parameter to a dashboard with a long text box (metabase#8333, metabase#11927)", () => {
     H.addTextBox(
       "Lorem ipsum dolor sit amet,\n\nfoo\n\nbar\n\nbaz\n\nboo\n\nDonec quis enim porta.",
