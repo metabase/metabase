@@ -42,6 +42,16 @@
    [:source-entity-type {:optional true} [:maybe ::lib.schema.validate/source-entity-type]]
    [:source-entity-id   {:optional true} [:maybe ms/PositiveInt]]])
 
+(defn- error-row
+  "The `analysis_finding_error` row of `error` on the entity `entity-type` `entity-id`."
+  [entity-type entity-id {:keys [error-type error-detail source-entity-type source-entity-id]}]
+  {:analyzed_entity_type (name entity-type)
+   :analyzed_entity_id   entity-id
+   :error_type           error-type
+   :error_detail         error-detail
+   :source_entity_type   (some-> source-entity-type name)
+   :source_entity_id     source-entity-id})
+
 (mu/defn replace-errors-for-entity!
   "Delete existing errors for an entity and insert new ones.
    `errors` is a sequence of maps with keys:
@@ -55,15 +65,18 @@
   (t2/with-transaction [_conn]
     (dependencies.db/delete-finding-errors-for-entity! entity-type entity-id)
     (when (seq errors)
-      (dependencies.db/insert-finding-errors!
-       (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]
-               {:analyzed_entity_type (name entity-type)
-                :analyzed_entity_id entity-id
-                :error_type error-type
-                :error_detail error-detail
-                :source_entity_type (some-> source-entity-type name)
-                :source_entity_id source-entity-id})
-             errors)))))
+      (dependencies.db/insert-finding-errors! (mapv #(error-row entity-type entity-id %) errors)))))
+
+(mu/defn replace-errors-for-entities!
+  "[[replace-errors-for-entity!]] for each of the entities `entity-type` in `errors-by-id`, in a few statements."
+  [entity-type  :- ::deps.dependency-types/dependency-types
+   errors-by-id :- [:map-of ms/PositiveInt [:sequential ::error-input]]]
+  (t2/with-transaction [_conn]
+    (dependencies.db/delete-finding-errors-for-entities! entity-type (vec (keys errors-by-id)))
+    (doseq [batch (partition-all 500 (for [[entity-id errors] errors-by-id
+                                           error              errors]
+                                       (error-row entity-type entity-id error)))]
+      (dependencies.db/insert-finding-errors! (vec batch)))))
 
 (mu/defn errors-by-source :- [:sequential ::analysis-finding-error]
   "Get all errors caused by a specific source entity."

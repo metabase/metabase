@@ -128,24 +128,45 @@
   [{:keys [batch-size]} :- Job]
   (pos? (batch-size)))
 
-(mu/defn run-in-parallel! :- :nil
-  "Call `f` on each of `xs`, on up to `threads` threads in the caller's dynamic bindings, and return once every call
-  returned, rethrowing the first one's Throwable."
+(mu/defn map-in-parallel :- [:sequential :any]
+  "What `f` returns for each of `xs`, in order, calling it on up to `threads` threads in the caller's dynamic bindings,
+  rethrowing the first call's Throwable."
   [threads :- ms/PositiveInt
    f       :- [:fn {:error/message "a function"} ifn?]
    xs      :- [:sequential [:fn {:error/message "a value"} some?]]]
   (if (or (= 1 threads) (< (count xs) 2))
-    (run! f xs)
+    (mapv f xs)
     (let [pool (Executors/newFixedThreadPool (min threads (count xs)))
           f    (bound-fn* f)]
       (try
-        (doseq [^Future result (mapv (fn [x] (.submit pool ^Callable (fn [] (f x)))) xs)]
-          (try
-            (.get result)
-            (catch ExecutionException e
-              (throw (or (ex-cause e) e)))))
+        (mapv (fn [^Future result]
+                (try
+                  (.get result)
+                  (catch ExecutionException e
+                    (throw (or (ex-cause e) e)))))
+              (mapv (fn [x] (.submit pool ^Callable (fn [] (f x)))) xs))
         (finally
-          (.shutdownNow pool)))))
+          (.shutdownNow pool))))))
+
+(def write-chunk-size
+  "How many entities' results and statuses one transaction of a job writes. It holds their status rows locked, which a
+  save marking them stale waits for."
+  100)
+
+(mu/defn write-all-or-each! :- :nil
+  "Call `write!` on all of `xs`, or, when that throws an Exception, on each of them alone, calling `on-failure!` with
+  each one whose own write throws, so that one bad item fails only itself."
+  [write!      :- [:fn {:error/message "a function"} ifn?]
+   on-failure! :- [:fn {:error/message "a function"} ifn?]
+   xs          :- [:sequential [:fn {:error/message "a value"} some?]]]
+  (try
+    (write! xs)
+    (catch Exception _
+      (doseq [x xs]
+        (try
+          (write! [x])
+          (catch Exception e
+            (on-failure! x e))))))
   nil)
 
 (mr/def ::batch-outcome

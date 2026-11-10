@@ -9,6 +9,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -48,25 +49,34 @@
    entity-ids  :- [:set ms/PositiveInt]]
   (deps.calculation/hydrate-entities entity-type (dependencies.db/entities entity-type entity-ids)))
 
-(mu/defn- compute-deps-for-entity! :- :any
-  "Compute and store the dependencies of an `entity` hydrated by [[hydrated-entities]], marking
-  an entity with a new upstream stale for its result metadata and analysis, or for a snippet the analysis of what
-  expands it, which an upstream change made before the edge existed never marked."
+(def ^:private Computed
+  "An entity hydrated by [[hydrated-entities]], with the dependencies computed for it."
+  [:map {:closed true}
+   [:entity Entity]
+   [:deps   [:map-of ::dependencies.schema/entity-type [:set [:fn {:error/message "an entity id"} some?]]]]])
+
+(mu/defn- store-deps! :- :nil
+  "Store the dependencies of each of the `computed` entities of `entity-type`, marking an entity with a new upstream
+  stale for its result metadata and analysis, or for a snippet the analysis of what expands it, which an upstream change
+  made before the edge existed never marked."
   [entity-type :- ::deps.dependency-types/dependency-types
-   entity      :- Entity]
-  (log/debug "Computing dependencies for" (name entity-type) (:id entity))
-  (let [deps (deps.calculation/calculate-deps entity-type entity)
-        own  {entity-type #{(:id entity)}}]
-    (t2/with-transaction [_]
-      (when (pos? (or (models.dependency/replace-dependencies! entity-type (:id entity) deps) 0))
+   computed    :- [:sequential Computed]]
+  (t2/with-transaction [_]
+    (let [gained (into #{}
+                       (keep (fn [[id inserted]] (when (pos? inserted) id)))
+                       (models.dependency/replace-dependencies-of-entities!
+                        entity-type (into {} (map (juxt (comp :id :entity) :deps)) computed)))
+          own    {entity-type gained}]
+      (when (seq gained)
         (when (= :card entity-type)
           (dependencies.db/mark-result-metadata-statuses-stale! own))
         (when (some #{entity-type} (deps.analysis-finding/analyzed-types))
           (dependencies.db/mark-analysis-finding-statuses-stale! own))
         (when (= :snippet entity-type)
           (dependencies.db/mark-analysis-finding-statuses-stale!
-           (models.dependency/transitive-dependents {:snippet [entity]}))))
-      (drop-stale-dependents! entity-type entity))))
+           (models.dependency/transitive-dependents {:snippet (filterv (comp gained :id) (map :entity computed))}))))
+      (doseq [{:keys [entity]} computed]
+        (drop-stale-dependents! entity-type entity)))))
 
 (mu/defn- remove-deleted-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
@@ -106,24 +116,31 @@
           stale     (into {} (map (juxt :entity_id :stale)) statuses)]
       (when (seq statuses)
         (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
-      (task.util/run-in-parallel!
-       (deps.settings/dependency-job-threads)
-       (fn [entity]
-         (try
-           ;; one commit for the dependencies and the status
-           (t2/with-transaction [_]
-             (compute-deps-for-entity! entity-type entity)
-             (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity))))
-           (catch Throwable e ;; catch OOMs
-             (dependencies.db/throw-unless-app-db-reachable! e)
-             (record-failure! entity-type (:id entity) e)
-             (when-not (instance? Exception e) ;; re-throw Errors
-               (throw e)))))
-       (if (seq statuses)
-         (dependencies.db/readable-entities #(hydrated-entities entity-type %)
-                                            (set (keys stale))
-                                            #(record-failure! entity-type %1 %2))
-         []))
+      (let [store!   (fn [computed]
+                       (t2/with-transaction [_]
+                         (store-deps! entity-type computed)
+                         (deps.dependency-status/clear-statuses!
+                          entity-type (select-keys stale (map (comp :id :entity) computed)))))
+            outcomes (task.util/map-in-parallel
+                      (deps.settings/dependency-job-threads)
+                      (fn [entity]
+                        (try
+                          {:entity entity :deps (deps.calculation/calculate-deps entity-type entity)}
+                          (catch Throwable e ;; catch OOMs
+                            (dependencies.db/throw-unless-app-db-reachable! e)
+                            {:entity entity :error e})))
+                      (if (seq statuses)
+                        (dependencies.db/readable-entities #(hydrated-entities entity-type %)
+                                                           (set (keys stale))
+                                                           #(record-failure! entity-type %1 %2))
+                        []))]
+        (doseq [chunk (partition-all task.util/write-chunk-size (filterv :deps outcomes))]
+          (task.util/write-all-or-each! store! #(record-failure! entity-type (:id (:entity %1)) %2) chunk))
+        (doseq [{:keys [entity error]} outcomes
+                :when error]
+          (record-failure! entity-type (:id entity) error))
+        (when-let [e (->> outcomes (keep :error) (remove #(instance? Exception %)) first)]
+          (throw e))) ;; re-throw Errors
       (count statuses))))
 
 (mu/defn- update-dependencies! :- [:maybe :boolean]

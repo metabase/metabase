@@ -495,6 +495,17 @@
              :from_entity_type entity-type
              :from_entity_id entity-id))
 
+(mu/defn dependencies-from-entities
+  "The `:id`, `:from_entity_id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entities `entity-type`
+  `entity-ids`."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (into []
+        (mapcat #(t2/select [:model/Dependency :id :from_entity_id :to_entity_type :to_entity_id]
+                            :from_entity_type entity-type
+                            :from_entity_id [:in %]))
+        (partition-all 1000 entity-ids)))
+
 (mu/defn insert-dependencies!
   "Insert the Dependency `rows`, returning the number inserted."
   [rows :- [:sequential [:map {:closed true}
@@ -592,6 +603,18 @@
    current-version :- ms/PositiveInt]
   (pos? (t2/update! model :entity_type entity-type :entity_id entity-id :stale stale
                     {:stale 0 :fail_count 0 :analysis_version current-version})))
+
+(mu/defn- clear-stale-many! :- :nil
+  "[[clear-stale!]] for each of the entities `entity-type` in `stale-by-id`, in one UPDATE per `stale` count and 1,000
+  entities."
+  [model           :- StatusModel
+   entity-type     :- ::dependencies.schema/entity-type
+   stale-by-id     :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
+   current-version :- ms/PositiveInt]
+  (doseq [[stale ids] (group-by stale-by-id (keys stale-by-id))
+          batch       (partition-all 1000 ids)]
+    (t2/update! model :entity_type entity-type :entity_id [:in batch] :stale stale
+                {:stale 0 :fail_count 0 :analysis_version current-version})))
 
 (mu/defn- record-failure! :- :boolean
   "Record that a job failed to process the entity `entity-type` `entity-id`, giving up on it until a write changes it
@@ -764,6 +787,13 @@
    current-version :- ms/PositiveInt]
   (clear-stale! :model/DependencyStatus entity-type entity-id stale current-version))
 
+(mu/defn clear-dependency-statuses! :- :nil
+  "[[clear-dependency-status!]] for each of the entities `entity-type` in `stale-by-id`, in a few statements."
+  [entity-type     :- ::dependencies.schema/entity-type
+   stale-by-id     :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
+   current-version :- ms/PositiveInt]
+  (clear-stale-many! :model/DependencyStatus entity-type stale-by-id current-version))
+
 (mu/defn dependency-pending? :- :boolean
   "Whether an entity of the type `entity-type` has no DependencyStatus, or one that counts a write or records a version
   of the dependency logic below `current-version`."
@@ -807,6 +837,12 @@
    stale           :- ms/IntGreaterThanOrEqualToZero
    current-version :- ms/PositiveInt]
   (clear-stale! :model/ResultMetadataStatus :card card-id stale current-version))
+
+(mu/defn clear-result-metadata-statuses! :- :nil
+  "[[clear-result-metadata-status!]] for each of the Cards in `stale-by-id`, in a few statements."
+  [stale-by-id     :- [:map-of ::lib.schema.id/card ms/IntGreaterThanOrEqualToZero]
+   current-version :- ms/PositiveInt]
+  (clear-stale-many! :model/ResultMetadataStatus :card stale-by-id current-version))
 
 (mu/defn result-metadata-deleted-card-ids :- [:sequential ::lib.schema.id/card]
   "Up to `batch-size` IDs of deleted Cards that still have a ResultMetadataStatus."
@@ -896,6 +932,42 @@
    stale           :- ms/IntGreaterThanOrEqualToZero
    current-version :- ms/PositiveInt]
   (clear-stale! :model/AnalysisFindingStatus entity-type entity-id stale current-version))
+
+(mu/defn clear-analysis-finding-statuses! :- :nil
+  "[[clear-analysis-finding-status!]] for each of the entities `entity-type` in `stale-by-id`, in a few statements."
+  [entity-type     :- ::dependencies.schema/entity-type
+   stale-by-id     :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
+   current-version :- ms/PositiveInt]
+  (clear-stale-many! :model/AnalysisFindingStatus entity-type stale-by-id current-version))
+
+(mu/defn upsert-findings! :- :nil
+  "[[upsert-finding!]] for each of the entities `entity-type` in `result-by-id`, in a few statements; `analyzed_at`
+  moves only for a result that changed."
+  [entity-type  :- ::dependencies.schema/entity-type
+   result-by-id :- [:map-of ms/PositiveInt :boolean]]
+  (let [ids      (vec (keys result-by-id))
+        existing (into {}
+                       (comp (mapcat #(t2/select [:model/AnalysisFinding :entity_id :result]
+                                                 :entity_type entity-type :entity_id [:in %]))
+                             (map (juxt :entity_id :result)))
+                       (partition-all 1000 ids))
+        changed  (filter #(and (contains? existing %) (not= (existing %) (result-by-id %))) ids)
+        new-ids  (remove #(contains? existing %) ids)]
+    ;; the table rather than the model: the model's update hook selects each row first
+    (doseq [[result result-ids] (group-by result-by-id changed)
+            batch               (partition-all 1000 result-ids)]
+      (t2/update! :analysis_finding :entity_type (name entity-type) :entity_id [:in batch]
+                  {:result result :analyzed_at (mi/now)}))
+    (doseq [batch (partition-all 1000 new-ids)]
+      (t2/insert! :model/AnalysisFinding (for [id batch]
+                                           {:entity_type entity-type :entity_id id :result (result-by-id id)})))))
+
+(mu/defn delete-finding-errors-for-entities!
+  "Delete the AnalysisFindingErrors of the entities `entity-type` `entity-ids`."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (doseq [batch (partition-all 1000 entity-ids)]
+    (t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id [:in batch])))
 
 (mu/defn analysis-finding-deleted-entity-ids :- [:sequential ms/PositiveInt]
   "Up to `batch-size` IDs of deleted entities of `entity-type` that still have an AnalysisFindingStatus."

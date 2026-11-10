@@ -11,6 +11,7 @@
    [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -28,20 +29,32 @@
        sort
        vec))
 
-(mu/defn upsert-analysis!
-  "Analyze the Toucan entity `entity` with the `:analysis` of its spec and insert or replace its AnalysisFinding,
-  reusing the caller's metadata provider cache when it has one."
+(def ^:private Analysis
+  "What analyzing an entity found: whether it passed, and its errors."
+  [:map {:closed true}
+   [:result          :boolean]
+   [:finding-details [:maybe [:set [:ref ::lib.schema.validate/error-with-source]]]]])
+
+(mu/defn- analysis :- Analysis
+  "Analyze the Toucan entity `entity`, without recording anything, reusing the caller's metadata provider cache when it
+  has one."
   [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
   (lib-be/with-metadata-provider-cache
-    (let [model    (t2/model entity)
-          analysis (:analysis (dependencies/spec model))
+    (let [analysis (:analysis (dependencies/spec (t2/model entity)))
           results  (try (analysis entity)
                         (catch Exception e
                           (dependencies.db/throw-unless-app-db-reachable! e)
                           (log/errorf "Error analyzing entity: %s" (ex-message e))
                           #{(lib/validation-exception-error (.getMessage e))}))]
-      (models.analysis-finding/upsert-analysis!
-       (dependencies/model-type model) (:id entity) (empty? results) results))))
+      {:result (empty? results) :finding-details results})))
+
+(mu/defn upsert-analysis!
+  "Analyze the Toucan entity `entity` with the `:analysis` of its spec and insert or replace its AnalysisFinding,
+  reusing the caller's metadata provider cache when it has one."
+  [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
+  (let [{:keys [result finding-details]} (analysis entity)]
+    (models.analysis-finding/upsert-analysis!
+     (dependencies/model-type (t2/model entity)) (:id entity) result finding-details)))
 
 (mu/defn record-failed-finding! :- :nil
   "Record `e` as the failed finding of the entity `entity-type` `entity-id`. Logs instead of throwing when that fails."
@@ -62,6 +75,35 @@
   (when (dependencies.db/record-analysis-finding-failure! entity-type entity-id (deps.settings/dependency-max-failures))
     (log/warnf "Giving up on analyzing %s %s until it changes" (name entity-type) entity-id))
   nil)
+
+(mu/defn- record-failure! :- :nil
+  "Record that analyzing or writing the entity `entity-type` `entity-id` threw `e`, as its failed finding and in its
+  failure count."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   e           :- (ms/InstanceOfClass Throwable)]
+  (log/errorf "Analyzing %s %s failed: %s" (name entity-type) entity-id (ex-message e))
+  (record-failed-finding! entity-type entity-id e)
+  (record-analysis-failure! entity-type entity-id))
+
+(mu/defn- write-analyses!
+  "Record the `outcomes` of analyzing entities of `entity-type`, and clear each one's status unless `stale-by-id`'s count
+  changed meanwhile, in one transaction, or entity by entity when that fails, so one bad row fails only its entity."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   stale-by-id :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
+   outcomes    :- [:sequential [:map {:closed true}
+                                [:entity   [:fn {:error/message "a Toucan instance"} t2/instance?]]
+                                [:analysis Analysis]]]]
+  (letfn [(write! [outcomes]
+            (t2/with-transaction [_]
+              (models.analysis-finding/upsert-analyses!
+               entity-type
+               (mapv (fn [{:keys [entity analysis]}] (assoc analysis :entity-id (:id entity))) outcomes))
+              (dependencies.db/clear-analysis-finding-statuses!
+               entity-type (select-keys stale-by-id (map (comp :id :entity) outcomes))
+               models.analysis-finding/*current-analysis-finding-version*)))]
+    (when (seq outcomes)
+      (task.util/write-all-or-each! write! #(record-failure! entity-type (:id (:entity %1)) %2) outcomes))))
 
 (mu/defn- remove-deleted-statuses! :- nat-int?
   "Delete the AnalysisFindingStatuses of up to `batch-size` deleted entities of each analyzable type, returning how
@@ -101,28 +143,28 @@
     (lib-be/with-metadata-provider-cache
       (let [taken (take-pending-statuses! batch-size)]
         (doseq [[entity-type statuses] taken
-                :let [stale (into {} (map (juxt :entity_id :stale)) statuses)]]
-          (task.util/run-in-parallel!
-           (deps.settings/dependency-job-threads)
-           (fn [entity]
-             (try
-               ;; one commit for the finding, its errors and the status
-               (t2/with-transaction [_]
-                 (upsert-analysis! entity)
-                 (dependencies.db/clear-analysis-finding-status!
-                  entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*))
-               (catch Throwable e
-                 (dependencies.db/throw-unless-app-db-reachable! e)
-                 (log/errorf "Analyzing %s %s failed: %s" (name entity-type) (:id entity) (ex-message e))
-                 (record-failed-finding! entity-type (:id entity) e)
-                 (record-analysis-failure! entity-type (:id entity))
-                 (when-not (instance? Exception e)
-                   (throw e)))))
-           (dependencies.db/readable-entities #(dependencies.db/entities entity-type %)
-                                              (set (keys stale))
-                                              (fn [entity-id e]
-                                                (log/errorf "Reading %s %s failed: %s"
-                                                            (name entity-type) entity-id (ex-message e))
-                                                (record-failed-finding! entity-type entity-id e)
-                                                (record-analysis-failure! entity-type entity-id)))))
+                :let [stale    (into {} (map (juxt :entity_id :stale)) statuses)
+                      entities (dependencies.db/readable-entities
+                                #(dependencies.db/entities entity-type %)
+                                (set (keys stale))
+                                (fn [entity-id e]
+                                  (log/errorf "Reading %s %s failed: %s" (name entity-type) entity-id (ex-message e))
+                                  (record-failed-finding! entity-type entity-id e)
+                                  (record-analysis-failure! entity-type entity-id)))]]
+          (let [outcomes (task.util/map-in-parallel
+                          (deps.settings/dependency-job-threads)
+                          (fn [entity]
+                            (try
+                              {:entity entity :analysis (analysis entity)}
+                              (catch Throwable e ;; catch OOMs
+                                (dependencies.db/throw-unless-app-db-reachable! e)
+                                {:entity entity :error e})))
+                          entities)]
+            (doseq [chunk (partition-all task.util/write-chunk-size outcomes)]
+              (write-analyses! entity-type stale (filterv :analysis chunk)))
+            (doseq [{:keys [entity error]} outcomes
+                    :when error]
+              (record-failure! entity-type (:id entity) error))
+            (when-let [e (->> outcomes (keep :error) (remove #(instance? Exception %)) first)]
+              (throw e))))
         (+ removed (reduce + (map count (vals taken))))))))

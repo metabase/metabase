@@ -77,6 +77,19 @@
      entity-id
      (map error->finding-error-row finding-details))))
 
+(mu/defn upsert-analyses!
+  "[[upsert-analysis!]] for each of the `analyses` of entities `entity-type`, in a few statements."
+  [entity-type :- :keyword
+   analyses    :- [:sequential [:map {:closed true}
+                                [:entity-id       ms/PositiveInt]
+                                [:result          :boolean]
+                                [:finding-details FindingDetails]]]]
+  (t2/with-transaction [_conn]
+    (dependencies.db/upsert-findings! entity-type (into {} (map (juxt :entity-id :result)) analyses))
+    (deps.analysis-finding-error/replace-errors-for-entities!
+     entity-type
+     (into {} (map (juxt :entity-id #(mapv error->finding-error-row (:finding-details %)))) analyses))))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/AnalysisFinding [_model]
