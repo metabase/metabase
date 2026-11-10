@@ -203,7 +203,16 @@
             (is (= {:error             "invalid_scope"
                     :error_description (str "The JWT's scope claim must allow at least one of these scopes: "
                                             (or requested (str/join " " (mcp/v2-scopes))))}
-                   (request 400 claim requested)))))))))
+                   (request 400 claim requested))))))
+      (testing "a refused claim leaves an account but no token, audit row or login"
+        (let [email "jwt-bearer-scope-refused@metabase.com"]
+          (token-response 400 {:assertion (assertion {:email email, :scope "openid"})})
+          (let [user-id (t2/select-one-pk :model/User :email email)]
+            (is (some? user-id))
+            (is (not (t2/exists? :model/OAuthAccessToken :user_id user-id)))
+            (is (not (t2/exists? :model/AuditLog :topic "mcp-jwt-token-issued" :user_id user-id)))
+            (is (empty? (mt/all-entries-for :user-joined :model/User user-id)))
+            (is (nil? (t2/select-one-fn :last_login :model/User :id user-id)))))))))
 
 (deftest exchange-provisioning-test
   (with-jwt-bearer-setup!
