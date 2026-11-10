@@ -384,7 +384,8 @@
   transformed query is returned but not persisted to the Card."
   [card :- ::queries.schema/card
    export-format :- ::qp.schema/export-format
-   & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform]
+   & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform
+             withhold-goal-sources?]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -400,7 +401,9 @@
                [:qp             {:optional true} [:maybe ifn?]]
                [:make-run       {:optional true} [:maybe ifn?]]
                [:ignore-cache   {:optional true} [:maybe :boolean]]
-               [:card-transform {:optional true} [:maybe ifn?]]]]]
+               [:card-transform {:optional true} [:maybe ifn?]]
+               ;; set by static embeds whose token signs a parameter value: goal sources run without it
+               [:withhold-goal-sources? {:optional true} [:maybe :boolean]]]]]
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? sequential? parameters)]}
   (let [card        (api/read-check card)
         stored-query (:dataset_query card)
@@ -421,7 +424,8 @@
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
         ;; wrapping the qp (rather than the `:make-run`) covers every card/dashcard/embed/public endpoint
-        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals qp card viz-dashcard export-format)
+        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals
+                     qp card viz-dashcard export-format withhold-goal-sources?)
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)

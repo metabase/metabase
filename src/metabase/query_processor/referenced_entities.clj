@@ -173,13 +173,23 @@
    rff
    (fn [response] (assoc-in response [:data :referenced_entities] result))))
 
+(defn- withheld-result
+  "A failed entry per spec, `{type-string {id-string result}}`, running nothing. Failed rather than left out: a client
+  takes a missing entry as unanswered and asks for it again."
+  [specs]
+  (when (seq specs)
+    (reduce (fn [acc {entity-type :type, :keys [id]}]
+              (assoc-in acc [entity-type (str id)] {:status "failed", :error_type "withheld"}))
+            {}
+            (dedupe-specs specs))))
+
 (defn- maybe-wrap-qp
-  "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_entities`. The specs run
-  when the qp is called, not at wrap time; for a card endpoint that's inside the streaming body."
-  [qp specs max-rows]
+  "Wrap a qp fn `(fn [query rff])` to inject `(result-fn specs)` under `data.referenced_entities`. It's called when
+  the qp is, not at wrap time; for a card endpoint that's inside the streaming body."
+  [qp specs result-fn]
   (if (seq specs)
     (fn [query rff]
-      (if-let [result (referenced-entities-result specs max-rows)]
+      (if-let [result (result-fn specs)]
         (qp query (inject-referenced-entities rff result))
         (qp query rff)))
     qp))
@@ -236,9 +246,14 @@
 
 (defn maybe-wrap-qp-for-goals
   "Derive specs from the goals `card` draws on `dashcard` (nil for a card on its own) and wrap `qp` to inject their
-  values. Exports skip this: only `:api` responses render goals."
-  [qp card dashcard export-format]
+  values. Exports skip this: only `:api` responses render goals. With `withhold?`, each goal gets a failed
+  `withheld` entry and nothing runs."
+  [qp card dashcard export-format withhold?]
   (if-let [{:keys [display viz-settings effective-settings]} (and (= export-format :api)
                                                                   (dynamic-goals/goal-scope card dashcard))]
-    (maybe-wrap-qp qp (viz-settings->goal-specs display viz-settings effective-settings) goal-max-rows)
+    (maybe-wrap-qp qp
+                   (viz-settings->goal-specs display viz-settings effective-settings)
+                   (if withhold?
+                     withheld-result
+                     #(referenced-entities-result % goal-max-rows)))
     qp))

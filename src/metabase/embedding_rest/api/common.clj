@@ -373,6 +373,19 @@
     :json :embedded-json-download
     :embedded-question))
 
+(defn- withhold-goal-sources?
+  "Whether `token-params` sign any parameter value. Goal sources run without the token's values, so where a signed
+  value is what separates tenants they'd show every viewer the same value. A token signing only empty values (`[]`
+  turns a locked filter off) already sees unfiltered data."
+  [token-params]
+  (boolean (some (fn [v]
+                   (cond
+                     (nil? v)     false
+                     (string? v)  (not (str/blank? v))
+                     (seqable? v) (boolean (seq v))
+                     :else        true))
+                 (vals token-params))))
+
 ;;; Embedded viewers have no Metabase account, so there are no user attributes to route by: embedded query execution
 ;;; always uses the router (primary) database. The `with-anonymous-router-access` wraps live here, in the shared
 ;;; execution helpers that every /api/embed and /api/preview_embed endpoint funnels through, so that individual
@@ -395,6 +408,7 @@
                 :context     (get-embed-card-context export-format)
                 :constraints constraints
                 :qp          qp
+                :withhold-goal-sources? (withhold-goal-sources? token-params)
                 options))))
 
 (defn- tile-slug->value
@@ -509,7 +523,8 @@
        :qp            qp
        :context       (get-embed-dashboard-context export-format)
        :constraints   constraints
-       :middleware    middleware))))
+       :middleware    middleware
+       :withhold-goal-sources? (withhold-goal-sources? token-params)))))
 
 (defn process-tiles-query-for-dashcard
   "Like [[metabase.tiles.api/process-tiles-query-for-dashcard]], but takes pre-loaded Dashboard/DashboardCard/Card
