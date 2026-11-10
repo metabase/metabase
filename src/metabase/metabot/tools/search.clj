@@ -932,21 +932,25 @@
   "What narrowed a search beyond its queries, as sentences for the model. `searched-collection-id` is the collection
   the search actually ran in, which differs from the caller's `collection_id` when a confined Metabot ignored it."
   [default-types {:keys [metabot profile-id]} {:keys [entity_types collection_id database_id]} searched-collection-id]
-  (let [left-out (when database_id
-                   (filter databaseless-types (sort (set (or (seq entity_types) default-types)))))]
+  ;; A tool whose defaults reach no databaseless type, the SQL tool, requires its database, so naming it would only
+  ;; suggest leaving out an argument the tool cannot run without.
+  (let [optional-db? (some databaseless-types default-types)
+        left-out     (filter databaseless-types (sort (set (or (seq entity_types) default-types))))]
     (cond-> []
       (and (seq entity_types) (not-every? (set entity_types) default-types))
       (conj (str "Only these entity types were searched: " (str/join ", " (sort (set entity_types)))
                  ". If other types could match, add them to `entity_types`."))
 
-      (seq left-out)
-      (conj (str "Only database " database_id " was searched, so "
-                 (let [plurals (map #(str % "s") left-out)]
-                   (if (next plurals)
-                     (str (str/join ", " (butlast plurals)) " and " (last plurals))
-                     (first plurals)))
-                 " were left out. "
-                 "To search everywhere, leave out `database_id`."))
+      (and database_id optional-db?)
+      (conj (str "Only database " database_id " was searched"
+                 (when (seq left-out)
+                   (str ", so "
+                        (let [plurals (map #(str % "s") left-out)]
+                          (if (next plurals)
+                            (str (str/join ", " (butlast plurals)) " and " (last plurals))
+                            (first plurals)))
+                        " were left out"))
+                 ". To search everywhere, leave out `database_id`."))
 
       (and collection_id (= collection_id searched-collection-id))
       (conj (str "Only collection " collection_id " and the collections inside it were searched. "
