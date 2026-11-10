@@ -27,7 +27,7 @@
   (log/error
    (u/format-color :red "Plugin %s declares a dependency that Metabase does not understand: %s" plugin-name dep)
    "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:"
-   "https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference")
+   "https://www.metabase.com/docs/latest/developers-guide/drivers/plugins#the-metabase-plugin-manifest-reference")
   false)
 
 (defonce ^:private already-logged (atom #{}))
