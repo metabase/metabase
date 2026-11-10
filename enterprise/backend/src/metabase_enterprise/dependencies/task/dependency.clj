@@ -111,8 +111,10 @@
                                                           (set (keys stale))
                                                           #(record-failure! entity-type %1 %2)))]
         (try
-          (compute-deps-for-entity! entity-type entity)
-          (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
+          ;; one commit for the dependencies and the status
+          (t2/with-transaction [_]
+            (compute-deps-for-entity! entity-type entity)
+            (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity))))
           (catch Throwable e ;; catch OOMs
             (dependencies.db/throw-unless-app-db-reachable! e)
             (record-failure! entity-type (:id entity) e)

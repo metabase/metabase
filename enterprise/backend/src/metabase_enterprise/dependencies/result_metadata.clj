@@ -175,10 +175,12 @@
         ;; an unreadable card already counted its failure
         (doseq [{card-id :entity_id, :keys [stale]} (filterv (comp read :entity_id) statuses)]
           (try
-            (let [{:keys [card state]} (read card-id)]
-              (rederive-card! card state))
-            (dependencies.db/clear-result-metadata-status!
-             card-id stale models.result-metadata-status/current-result-metadata-version)
+            ;; one commit for the metadata and the status
+            (t2/with-transaction [_]
+              (let [{:keys [card state]} (read card-id)]
+                (rederive-card! card state))
+              (dependencies.db/clear-result-metadata-status!
+               card-id stale models.result-metadata-status/current-result-metadata-version))
             (catch Throwable e
               (dependencies.db/throw-unless-app-db-reachable! e)
               (record-failure! card-id e)

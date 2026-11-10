@@ -109,9 +109,11 @@
                                                             (record-failed-finding! entity-type entity-id e)
                                                             (record-analysis-failure! entity-type entity-id)))]
           (try
-            (upsert-analysis! entity)
-            (dependencies.db/clear-analysis-finding-status!
-             entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*)
+            ;; one commit for the finding, its errors and the status
+            (t2/with-transaction [_]
+              (upsert-analysis! entity)
+              (dependencies.db/clear-analysis-finding-status!
+               entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*))
             (catch Throwable e
               (dependencies.db/throw-unless-app-db-reachable! e)
               (log/errorf "Analyzing %s %s failed: %s" (name entity-type) (:id entity) (ex-message e))
