@@ -2011,7 +2011,11 @@
   "pgjdbc connection properties, in seconds, for a connection to another database of the cluster. The workspace methods
   open one per database while the caller holds the workspace database's lock, and pgjdbc sets no socket timeout by
   default, so a stalled connection would hold that lock with no bound. Longer than [[workspace-lock-timeout]], so a
-  statement that waits on a lock times out first."
+  statement that waits on a lock times out first.
+
+  Trade-off, decided on purpose: `:socketTimeout` bounds every statement, not only a stalled one. A `DROP OWNED` over
+  very many objects that runs longer than 60 s fails with SQLState 08006, and the DELETE answers 500. A retry finishes
+  the work, because the statements that already ran stay done. A bounded lock hold is worth that rare retry."
   {:connectTimeout 10, :socketTimeout 60})
 
 (defn- do-in-other-database
