@@ -266,6 +266,23 @@
       (testing "404 for a missing workspace"
         (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
 
+(deftest download-config-local-file-ssl-root-cert-test
+  (testing "GET /:id/config answers 409 naming the database when its SSL root certificate is a file on the server"
+    (mt/with-temp [:model/Database {db-id :id} {:name    "Cert DW" :engine :postgres
+                                                :details {:ssl                   true
+                                                          :ssl-root-cert-options "local"
+                                                          :ssl-root-cert-path    "/nonexistent/fe103/root.crt"}}
+                   :model/Workspace {ws-id :id} {:name "Cert WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (is (= (str "The SSL root certificate of database \"Cert DW\" is a file on this instance's server, which "
+                  "workspaces don't copy. Upload the file in the database's connection settings instead.")
+             (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))))))
+
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))
 
