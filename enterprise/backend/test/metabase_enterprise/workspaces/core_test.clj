@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
@@ -168,7 +169,7 @@
         (is (nil? (ws/get-workspace (:id ws))))))))
 
 (deftest delete-workspace-with-pending-status-test
-  (testing "a workspace database still :provisioning/:deprovisioning is torn down like any other state"
+  (testing "a stale :provisioning/:deprovisioning row (left by a crashed instance) is torn down like any other state"
     (doseq [pending-status [:provisioning :deprovisioning]]
       (testing (str "status " pending-status)
         (mt/with-model-cleanup [:model/Workspace]
@@ -177,10 +178,12 @@
                 _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                          (add-database! (:id ws) (mt/id) ["PUBLIC"]))
                 wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))]
-            ;; force the row into the pending state. :provisioning rows that crashed
-            ;; never stored their iso details, so clear them too.
+            ;; force the row into a pending state last touched long ago, as a crash
+            ;; leaves it. :provisioning rows that crashed never stored their iso
+            ;; details, so clear them too.
             (t2/update! :model/WorkspaceDatabase {:id wsd-id}
-                        (cond-> {:status pending-status}
+                        (cond-> {:status     pending-status
+                                 :updated_at (t/minus (t/offset-date-time) (t/hours 1))}
                           (= pending-status :provisioning)
                           (assoc :output_namespace "" :database_details {})))
             (let [destroyed? (atom false)
@@ -195,6 +198,39 @@
                   "pending rows get a real warehouse teardown, not an app-DB-only removal")
               (is (nil? (ws/get-workspace (:id ws))))
               (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))))
+
+(deftest delete-workspace-while-in-flight-test
+  (testing "a fresh :provisioning/:deprovisioning row means work is running: delete refuses with 409 and touches nothing"
+    (doseq [pending-status [:provisioning :deprovisioning]]
+      (testing (str "status " pending-status)
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [ws         (ws/create-workspace! {:name       (str "Busy " (name pending-status))
+                                                  :creator_id (mt/user->id :crowberto)})
+                _          (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                             (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+                wsd-id     (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
+                _          (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:status pending-status})
+                destroyed? (atom false)
+                recording  (reify provisioning/Provisioner
+                             (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                             (init!    [_ _ _ _]   nil)
+                             (grant!   [_ _ _ _ _] nil)
+                             (destroy! [_ _ _ _]   (reset! destroyed? true) nil))
+                e          (with-redefs [provisioning/dispatching-provisioner recording]
+                             (try
+                               (ws/delete-workspace! (:id ws))
+                               nil
+                               (catch ExceptionInfo e e)))]
+            (is (=? {:status-code 409 :error-code "workspace_busy"}
+                    (ex-data e)))
+            (is (false? @destroyed?)
+                "no teardown runs while the other operation holds the row")
+            (is (=? {:status pending-status}
+                    (t2/select-one :model/WorkspaceDatabase :id wsd-id)))
+            (is (some? (ws/get-workspace (:id ws))))
+            (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:status :provisioned})
+            (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+              (is (nil? (ws/delete-workspace! (:id ws)))))))))))
 
 (deftest delete-workspace-teardown-failure-test
   (testing "when teardown fails, nothing is deleted: the row and the workspace are kept for retry"

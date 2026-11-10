@@ -5,6 +5,7 @@
    are wired into the endpoints (one 403 spot-check is enough)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
@@ -52,7 +53,7 @@
               (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
 
 (deftest delete-workspace-pending-databases-test
-  (testing "DELETE tears down a pending database like any other state"
+  (testing "DELETE tears down a stale pending database (left by a crashed instance) like any other state"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}]
@@ -61,9 +62,41 @@
           (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                   {:name "Pending" :database_ids [db-id]})
                 wsd-id      (t2/select-one-pk :model/WorkspaceDatabase :workspace_id ws-id)]
-            (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:status :provisioning})
+            (t2/update! :model/WorkspaceDatabase {:id wsd-id}
+                        {:status     :provisioning
+                         :updated_at (t/minus (t/offset-date-time) (t/hours 1))})
             (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id))
             (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))))))))
+
+(deftest delete-workspace-during-create-test
+  (testing "DELETE while a create is still provisioning answers 409 at once, and the create still succeeds"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [started  (promise)
+              release  (promise)
+              blocking (reify provisioning/Provisioner
+                         (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                         (init!    [_ _ _ _]   (deliver started true) (deref release 30000 nil) nil)
+                         (grant!   [_ _ _ _ _] nil)
+                         (destroy! [_ _ _ _]   nil))]
+          (with-redefs [provisioning/dispatching-provisioner blocking]
+            (let [create (future (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                       {:name "Slow create" :database_ids [db-id]}))]
+              (try
+                (is (true? (deref started 10000 false)) "the create reached the warehouse step")
+                (let [ws-id (t2/select-one-pk :model/Workspace :name "Slow create")]
+                  (is (=? {:error-code "workspace_busy"}
+                          (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id))))
+                  (deliver release true)
+                  (is (=? {:id ws-id :databases [{:status "provisioned"}]}
+                          (deref create 10000 ::timed-out))
+                      "the refused delete left the create alone")
+                  (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))
+                (finally
+                  (deliver release true)
+                  (deref create 10000 nil))))))))))
 
 (deftest delete-workspace-teardown-failure-test
   (testing "DELETE returns a 500 with the database's error and keeps the workspace when a teardown fails"

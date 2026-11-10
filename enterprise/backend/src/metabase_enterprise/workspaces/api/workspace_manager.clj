@@ -121,7 +121,9 @@
   (blocking, any state). Each database is either fully torn down (its row is
   deleted) or kept; when any teardown fails the workspace is kept too — with the
   failed rows, so the delete can be retried — and the combined failure is
-  returned as the error. 204 on success, no response body."
+  returned as the error. 409 (error code `workspace_busy`) while a create or
+  deprovision is still running on any of its databases. 204 on success, no
+  response body."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)

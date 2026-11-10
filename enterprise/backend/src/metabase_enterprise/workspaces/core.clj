@@ -32,6 +32,7 @@
          └──────────────────────────────────────── provisioned"
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
@@ -185,6 +186,25 @@
     (throw (ex-info "Workspace not found"
                     {:status-code 404 :workspace_id workspace-id}))))
 
+(def ^:private in-flight-stale-after
+  "How long after its last status change a `:provisioning` or `:deprovisioning`
+  row still counts as in flight. An older one is treated as left behind by a
+  crashed instance, so a delete tears it down instead of refusing."
+  (t/minutes 15))
+
+(defn- assert-workspace-not-busy
+  "Refuse (409, error code `workspace_busy`) while a create or deprovision is still
+  running on any of the workspace's databases. Without this, a delete waits on
+  the row lock that the running provisioning holds, then fails, or wins the lock
+  and makes the create fail."
+  [workspace-id]
+  (when (ws.db/workspace-has-in-flight-databases? workspace-id
+                                                  (t/minus (t/offset-date-time) in-flight-stale-after))
+    (throw (ex-info "Workspace is busy: a create or deprovision is still running on one of its databases. Retry once it finishes."
+                    {:status-code  409
+                     :error-code   "workspace_busy"
+                     :workspace_id workspace-id}))))
+
 (defn- assert-database-exists [database-id]
   (or (ws.db/database database-id)
       (throw (ex-info "Database not found"
@@ -309,9 +329,13 @@
   exception combining all the failures is thrown, so the delete can be retried.
   Progress is persisted per row, so an instance crash midway loses nothing.
   App-DB `TableRemapping` rows are always cleared, so query routing is never
-  left dangling. Returns nil."
+  left dangling. Refuses with a 409 (`workspace_busy`) while a create or
+  deprovision is still running on any of its databases; a `:provisioning` or
+  `:deprovisioning` row left behind by a crashed instance is torn down once it
+  is older than [[in-flight-stale-after]]. Returns nil."
   [id]
   (assert-workspace-exists id)
+  (assert-workspace-not-busy id)
   (teardown-workspace-databases! id)
   (workspace/delete-workspace! id)
   nil)
