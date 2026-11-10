@@ -71,7 +71,7 @@ jobs:
         run: clojure -Sdescribe > /dev/null
 
       - parallel:
-        # Must always run to check Clojure classpaths match what exist in CI cache. 
+        # Must always run to check Clojure classpaths match what exist in CI cache.
         - name: Check cache-warm pre-resolves every alias combination CI uses
           run: .github/scripts/check-preresolve-aliases.sh
 
@@ -189,8 +189,8 @@ jobs:
         run: ./bin/lint-snowplow-schemas.bb
       - name: Test linter rules
         run: ./bin/lint-snowplow-schemas-test.bb
-  
-  # TODO: remove when master is at v67, at that point versioned migrations are no longer allowed. 
+
+  # TODO: remove when master is at v67, at that point versioned migrations are no longer allowed.
   # See https://github.com/metabase/metabase/blob/2a7df44f02718377e08ab10ff27821853a427c02/bin/lint-migrations-file/src/lint_migrations_file.cljc#L390
   check-migration-versions:
     needs: files-changed
