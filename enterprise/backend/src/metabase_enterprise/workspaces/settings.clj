@@ -43,3 +43,16 @@
   :visibility     :admin
   :export?        false
   :database-local :only)
+
+(defsetting workspace-id
+  (deferred-tru "The id of the parent''s workspace this instance serves. Informational: workspace behavior does not read it.")
+  :type       :integer
+  :visibility :admin
+  :export?    false)
+
+(defsetting workspace-parent-url
+  (deferred-tru "The site URL of the parent instance whose workspace this instance serves. Informational: workspace behavior does not read it.")
+  :type       :string
+  :encryption :no
+  :visibility :admin
+  :export?    false)

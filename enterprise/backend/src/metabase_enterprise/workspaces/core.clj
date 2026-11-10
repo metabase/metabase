@@ -108,15 +108,18 @@
   (some-> (get-in database [:settings :database-workspace-schema]) str/trim not-empty))
 
 (defn instance-workspace
-  "The workspace this instance is, as `{:databases {<db-id> <schema>}}`, or nil when
-   the `workspaces-enabled` setting is off."
+  "The workspace this instance is, as `{:workspace-id <id> :parent-url <url> :databases
+   {<db-id> <schema>}}`, or nil when the `workspaces-enabled` setting is off. The
+   parent's workspace id and site URL are nil when nothing set them."
   []
   (when (ws.settings/workspaces-enabled)
-    {:databases (into {}
-                      (keep (fn [database]
-                              (when-let [schema (database-workspace-schema database)]
-                                [(:id database) schema])))
-                      (ws.db/all-databases))}))
+    {:workspace-id (ws.settings/workspace-id)
+     :parent-url   (ws.settings/workspace-parent-url)
+     :databases    (into {}
+                         (keep (fn [database]
+                                 (when-let [schema (database-workspace-schema database)]
+                                   [(:id database) schema])))
+                         (ws.db/all-databases))}))
 
 (defn- check-not-set-by-env-var!
   "Throw a 400 when `MB_WORKSPACES_ENABLED` holds a value other than `wanted`: the env
@@ -155,6 +158,32 @@
       (ws.settings/workspaces-enabled! true)))
   nil)
 
+(defn check-identity-not-set-by-env-var!
+  "Throw a 400 when `MB_WORKSPACE_ID` or `MB_WORKSPACE_PARENT_URL` holds a value other
+   than `workspace-id` or `parent-url` (nil means cleared): the env var wins over the
+   stored value, so a write would report success and change nothing. Call it before
+   other writes so a refused request changes nothing. The id is compared as a number, so
+   `MB_WORKSPACE_ID=07` accepts 7; an env value that isn't a number refuses every write."
+  [workspace-id parent-url]
+  (doseq [[setting-name wanted parse] [[:workspace-id workspace-id #(or (parse-long %) %)]
+                                       [:workspace-parent-url parent-url identity]]
+          :let [env-value (setting/env-var-value setting-name)]
+          :when (and env-value (not= wanted (parse env-value)))]
+    (throw (ex-info (str (name setting-name) " is set to " env-value " by the "
+                         (setting/env-var-name setting-name) " env var and can't be changed at runtime.")
+                    {:status-code 400}))))
+
+(mu/defn set-instance-identity! :- :nil
+  "Record which parent workspace this instance serves: the parent's workspace id and
+   its site URL. Either may be nil, which clears it. Informational: no workspace
+   behavior reads them. Throws a 400 when an env var sets either to another value."
+  [workspace-id :- [:maybe ms/PositiveInt]
+   parent-url   :- [:maybe ms/NonBlankString]]
+  (check-identity-not-set-by-env-var! workspace-id parent-url)
+  (ws.settings/workspace-id! workspace-id)
+  (ws.settings/workspace-parent-url! parent-url)
+  nil)
+
 (defn delete-stale-table-remappings!
   "Delete the remap rows of `database` when its `database-workspace-schema`
    differs from that of `previous-database`, the same row before the write. Those rows
@@ -166,13 +195,17 @@
   nil)
 
 (defn clear-instance-workspace!
-  "Turn `workspaces-enabled` off and delete every `:model/TableRemapping` row.
+  "Turn `workspaces-enabled` off, clear the parent identity (see
+   [[set-instance-identity!]]), and delete every `:model/TableRemapping` row.
    Leaves each database's `database-workspace-schema` in place; it has no effect
    while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`,
-   since that value wins over the stored one."
+   `MB_WORKSPACE_ID` or `MB_WORKSPACE_PARENT_URL` is set, since that value wins over the
+   stored one."
   []
   (check-not-set-by-env-var! false)
+  (check-identity-not-set-by-env-var! nil nil)
   (ws.settings/workspaces-enabled! false)
+  (set-instance-identity! nil nil)
   ;; The setting's :on-change deletes them only when the value changes; delete them
   ;; here too so stale rows from an earlier run go regardless.
   (ws.db/delete-all-table-remappings!)

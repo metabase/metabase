@@ -8,6 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secrets]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]))
 
@@ -355,9 +356,11 @@
 
     {:version 1
      :config  {:databases [...]
-               :workspace {:name      <ws-name>
-                           :databases {<db-name> {:input_schemas [<schema-name> ...]
-                                                  :output        {:db ? :schema ?}}}}}
+               :workspace {:id         <workspace-id>
+                           :parent_url <this instance's site-url, or nil>
+                           :name       <ws-name>
+                           :databases  {<db-name> {:input_schemas [<schema-name> ...]
+                                                   :output        {:db ? :schema ?}}}}}
 
   Each database entry merges the underlying `metabase_database.details`, minus the
   parent's login properties (`parent-login-keys`), with the WorkspaceDatabase's
@@ -396,8 +399,10 @@
           :config  {:databases (-> ws-entries
                                    (into stub-entries)
                                    (into sample-entries))
-                    :workspace {:name      (:name ws)
-                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}})))))
+                    :workspace {:id         (:id ws)
+                                :parent_url (system/site-url)
+                                :name       (:name ws)
+                                :databases  (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}})))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

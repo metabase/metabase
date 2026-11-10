@@ -5,8 +5,10 @@
   translates it into the `workspaces-enabled` setting and each database's
   `database-workspace-schema` setting (see [[metabase-enterprise.workspaces.settings]]).
   The same settings can be set directly, in the `settings` section and per-database
-  `settings`; this section is kept so existing configs keep working. `:name` and
-  `:input_schemas` are accepted and ignored.
+  `settings`; this section is kept so existing configs keep working. `:id` and
+  `:parent_url` set the parent identity (the `workspace-id` and `workspace-parent-url`
+  settings) when either is present; a section with neither leaves both settings alone.
+  `:name` and `:input_schemas` are accepted and ignored.
 
   Every boot re-reads `config.yml` and overwrites the prior values."
   (:require
@@ -57,8 +59,15 @@
 
 (s/def ::name ::non-blank-string)
 
+(s/def ::id
+  (s/nilable pos-int?))
+
+(s/def ::parent_url
+  (s/nilable ::non-blank-string))
+
 (s/def ::config-file-spec
-  (s/keys :req-un [::name ::databases]))
+  (s/keys :req-un [::name ::databases]
+          :opt-un [::id ::parent_url]))
 
 (defmethod advanced-config.file.i/section-spec :workspace
   [_section-name]
@@ -86,25 +95,35 @@
 
    Shape (post-`ordered->plain`):
 
-     {:name      \"<workspace-name>\"
-      :databases {\"<db-name>\" {:input_schemas [<schema-name>, ...]
-                                  :output        {:db ?, :schema ?}}
-                  ...}}
+     {:id         <parent workspace id>
+      :parent_url \"<parent site URL>\"
+      :name       \"<workspace-name>\"
+      :databases  {\"<db-name>\" {:input_schemas [<schema-name>, ...]
+                                   :output        {:db ?, :schema ?}}
+                   ...}}
 
    Resolves each database name to a `:model/Database` (rows are populated by the
    `:databases` section, which runs earlier — see
    [[metabase-enterprise.advanced-config.file/initialize!]]) and makes the instance a
    workspace whose databases write to the `:output` namespace. The schema is
    `:output`'s `:schema`, or its `:db` on engines without schemas (MySQL), where the
-   parent puts the namespace there."
+   parent puts the namespace there. When the section has `:id` or `:parent_url`, sets
+   the parent identity from them, clearing whichever is absent. A section with neither
+   leaves the identity alone, so a value from the `settings` section survives."
   [section-config]
-  (let [{:keys [name databases]} (ordered->plain section-config)
+  (let [{:keys [id parent_url name databases] :as section} (ordered->plain section-config)
         schemas (into {}
                       (map (fn [[db-name-kw {:keys [output]}]]
                              [(:id (resolve-db (clojure.core/name db-name-kw)))
                               (or (:schema output) (:db output))]))
-                      databases)]
+                      databases)
+        identity? (or (contains? section :id) (contains? section :parent_url))]
+    ;; Refuse an env-var conflict before any write, so a refused section changes nothing.
+    (when identity?
+      (ws/check-identity-not-set-by-env-var! id parent_url))
     (ws/set-instance-workspace! schemas)
+    (when identity?
+      (ws/set-instance-identity! id parent_url))
     (log/infof "Loaded workspace %s from config.yml with %d database(s)"
                (pr-str name) (count schemas))
     {:workspace-name name
