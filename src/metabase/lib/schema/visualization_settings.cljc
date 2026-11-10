@@ -5,9 +5,9 @@
   (:refer-clojure :exclude [update-keys])
   (:require
    #?(:clj [metabase.util.i18n :as i18n])
-   #?@(:clj ([metabase.lib.normalize :as lib.normalize]
+   #?@(:clj ([malli.core :as mc]
+             [malli.transform :as mtx]
              [metabase.util.json :as json]
-             [metabase.util.log :as log]
              [metabase.util.memoize :as u.memo]))
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
@@ -51,6 +51,11 @@
    [:= {:decode/normalize keyword} :name]
    :string])
 
+(mr/def ::column-settings.key
+  "A `:column_settings` key, decoded from its JSON: a legacy MBQL reference wrapped in `ref`, a column name wrapped in
+  `name`, or a bare legacy MBQL reference."
+  [:or ::column-settings.key.ref ::column-settings.key.name ::legacy-reference])
+
 #?(:clj
    (def ^:private normalize-column-key
      "The `:column_settings` key `k`, the JSON-encoded reference or name of a column, with its legacy MBQL reference
@@ -58,16 +63,13 @@
      (u.memo/fast-bounded
       (fn [k]
         (let [decoded (json/decode k)]
-          (some-> (cond
-                    (not (sequential? decoded)) decoded
-                    (= (first decoded) "ref")   (lib.normalize/normalize ::column-settings.key.ref decoded)
-                    (= (first decoded) "name")  (lib.normalize/normalize ::column-settings.key.name decoded)
-                    :else                       (try
-                                                  (lib.normalize/normalize ::legacy-reference decoded {:throw? true})
-                                                  (catch Throwable e
-                                                    (log/debugf "Error normalizing column settings key %s: %s"
-                                                                (pr-str decoded) (ex-message e))
-                                                    nil)))
+          (some-> (if (sequential? decoded)
+                    (let [decode     (mr/cached ::column-settings.key-decoder ::column-settings.key
+                                                #(mc/decoder ::column-settings.key (mtx/transformer {:name :normalize})))
+                          normalized (decode decoded)]
+                      (when (mr/validate ::column-settings.key normalized)
+                        normalized))
+                    decoded)
                   json/encode)))
       :bounded/threshold 4096)))
 

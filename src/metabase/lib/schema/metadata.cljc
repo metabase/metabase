@@ -13,6 +13,7 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.visualization-settings :as lib.schema.visualization-settings]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [empty? get-in]]))
 
@@ -618,7 +619,7 @@
    ;;
    ;; populated by the `metabase_field.settings` column in the application database; I'm not really sure what goes in
    ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
-   [:settings {:optional true} [:maybe [:ref :metabase.lib.schema.visualization-settings/visualization-settings]]]
+   [:settings {:optional true} [:maybe [:ref ::lib.schema.visualization-settings/visualization-settings]]]
    ;;
    ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
    ;; legacy viz settings. This should not be used for anything other than that.
@@ -864,7 +865,7 @@
    [:entity-id              {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:created-at             {:optional true} [:maybe [:or :string #?(:clj (lib.schema.common/instance-of-class java.time.temporal.Temporal))]]]
    [:card-schema            {:optional true} [:maybe :int]]
-   [:visualization-settings {:optional true} [:maybe [:ref :metabase.lib.schema.visualization-settings/visualization-settings]]]
+   [:visualization-settings {:optional true} [:maybe [:ref ::lib.schema.visualization-settings/visualization-settings]]]
    [:description            {:optional true} [:maybe :string]]
    [:display                {:optional true} [:maybe [:or :keyword :string]]]
    [:archived               {:optional true} [:maybe :boolean]]
