@@ -36,6 +36,7 @@
 
 .BackButton {
   composes: Title;
+  width: 100%;
 
   &:hover {
     color: var(--mb-color-core-brand);
