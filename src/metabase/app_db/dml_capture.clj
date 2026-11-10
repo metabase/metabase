@@ -101,34 +101,13 @@
   (or
    ;; A bare primary key, as in `(t2/delete! model 5)`, selects by that key like `(t2/select model 5)`.
    (int? query)
-   (and
-    ;; Otherwise only a HoneySQL map can be restated.
-    ;; A SQL-args vector or a raw SQL string is a valid DELETE input, but toucan2 would execute it as written,
-    ;; running the DELETE before the actual statement.
-    (map? query)
-    (not (or
-          ;; A CTE can modify data (PostgreSQL's `WITH ... DELETE`), and the snapshot select would run it a second
-          ;; time.
-          (contains? query :with)
-          (contains? query :with-recursive)
-          ;; Without an ORDER BY, a limited DELETE removes arbitrary rows, which a separate SELECT need not pick.
-          (contains? query :limit)
-          ;; RETURNING is DELETE-only syntax, and a SELECT carrying it fails to execute rather than to build.
-          (contains? query :returning))))))
-
-;; Toucan's `before-delete` gets this same workaround from [[metabase.app-db.setup]], but only under its own
-;; dispatch value, so capture has to do it for itself (https://github.com/camsaul/toucan2/issues/203).
-;; A caller may pass a `:delete-from` map to `delete!`, and a SELECT built from it would keep that key and compile
-;; to nonsense.
-;; The `{:delete [...], :from [...]}` spelling needs no case: Honey SQL cannot compile a top-level `:delete`, so such
-;; a delete fails whether or not it is captured.
-;; PostgreSQL's `:using` needs none for the same reason: Funny SQL cannot compile it.
-(defn- delete-query->select-query
-  "Restate an explicit HoneySQL DELETE map as a map a SELECT can be built from."
-  [query]
-  (cond-> query
-    (contains? query :delete-from) (-> (dissoc :delete-from)
-                                       (assoc :from [(:delete-from query)]))))
+   ;; Otherwise only a HoneySQL map holding nothing but a `:where` can be restated: kv-args deletes such as
+   ;; `(t2/delete! model :k v)` resolve to `{}`, and the rest of the codebase passes `{:where ...}`.
+   ;; Any other key could change what the DELETE matches, or fail in a SELECT: an aliased `:delete-from` leaves the
+   ;; alias unbound, a CTE could run a second time, a LIMIT picks arbitrary rows, and RETURNING is DELETE-only.
+   ;; A SQL-args vector or a raw SQL string is valid DELETE input too, but toucan2 would execute it as written.
+   (and (map? query)
+        (every? #{:where} (keys query)))))
 
 ;; Executed modelless because `after-select` methods and type transforms often dereference columns a narrow
 ;; snapshot doesn't fetch.
@@ -148,8 +127,7 @@
     (when-let [sql-args (try
                           (let [built (-> (t2.pipeline/build query-type model
                                                              (assoc parsed-args :columns (vec fields))
-                                                             (cond-> resolved-query
-                                                               (map? resolved-query) delete-query->select-query))
+                                                             resolved-query)
                                           (assoc :limit (inc max-pre-image-rows)))]
                             (t2.pipeline/compile query-type model built))
                           (catch Exception e

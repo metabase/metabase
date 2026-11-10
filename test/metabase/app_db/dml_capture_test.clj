@@ -138,13 +138,18 @@
       (is (= (rows-for pks 81) (captured-rows))))))
 
 (deftest explicit-honeysql-delete-syntax-test
-  (testing "an explicit :delete-from map is restated as a select, so the snapshot compiles and the delete runs"
+  (testing "an explicit :delete-from map skips capture, and the delete still runs"
     (reset-capture!)
-    (let [pks (t2/insert-returning-pks! ::bird [(bird 82 "a") (bird 82 "b")])]
-      (is (= 2 (t2/delete! ::bird {:delete-from (keyword table-name), :where [:= :group_id 82]})))
-      ;; The `{:delete [], :from [...]}` spelling has no case here: Funny SQL cannot compile a top-level `:delete`,
-      ;; so such a delete throws and nothing is captured.
-      (is (= (rows-for pks 82) (captured-rows))))))
+    (t2/insert! ::bird [(bird 82 "a") (bird 82 "b")])
+    (is (= 2 (t2/delete! ::bird {:delete-from (keyword table-name), :where [:= :group_id 82]})))
+    (is (empty? (events)))
+    (is (= 0 (t2/count ::bird :group_id 82))))
+  (testing "an aliased :delete-from, whose alias a SELECT would leave unbound, skips capture, and the delete still runs"
+    (reset-capture!)
+    (let [id (t2/insert-returning-pk! ::bird (bird 83 "aliased"))]
+      (is (= 1 (t2/delete! ::bird {:delete-from [(keyword table-name) :b], :where [:= :b.id id]})))
+      (is (empty? (events)))
+      (is (false? (t2/exists? ::bird :id id))))))
 
 (deftest delete-statement-counts-test
   (testing "a captured delete runs two statements (narrow select + delete)"
@@ -316,6 +321,10 @@
       (with-redefs [t2.pipeline/build (fn [& _] (swap! build-calls inc))]
         (are [query] (nil? (#'dml-capture/pre-image-rows
                             :toucan.query-type/select.instances ::bird [:id] {} query))
+          ;; an explicit :delete-from
+          {:delete-from (keyword table-name), :where [:= :group_id 112]}
+          ;; an aliased :delete-from, whose alias the SELECT would leave unbound
+          {:delete-from [(keyword table-name) :b], :where [:= :b.group_id 112]}
           ;; a CTE, which the snapshot would run a second time
           {:with  [[:doomed {:select [:id], :from [(keyword table-name)]}]]
            :where [:in :id {:select [:id], :from [:doomed]}]}
