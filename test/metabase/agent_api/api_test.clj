@@ -1,4 +1,4 @@
-(ns metabase.agent-api.api-test
+(ns ^:synchronized metabase.agent-api.api-test
   "Agent API functional tests using session-based authentication.
    JWT and scope-related tests live in metabase-enterprise.agent-api.api-test."
   (:require
@@ -53,8 +53,7 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 ;; The Agent API is deprecated and off until an admin opts in. These tests exercise it, so they opt in.
-;; No test in this namespace is `^:parallel`, so the fixture may set a Setting.
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+;; The namespace is `^:synchronized` because this fixture sets a Setting.
 (use-fixtures :each (fn [thunk]
                       (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
                         (thunk))))
