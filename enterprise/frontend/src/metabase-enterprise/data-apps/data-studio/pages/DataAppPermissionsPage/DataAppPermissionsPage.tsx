@@ -1,10 +1,12 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import { useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { Button, Center, Flex, Stack } from "metabase/ui";
+import { Alert, Button, Center, Flex, Icon, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useGetDataAppGroupsQuery } from "metabase-enterprise/api";
 import type { GroupId } from "metabase-types/api";
 
@@ -50,6 +52,19 @@ export function DataAppPermissionsPage() {
         miw={0}
       >
         <DataAppHeader app={app} />
+        {app.allowed_hosts.length > 0 && (
+          <Alert variant="light" icon={<Icon name="info" />}>
+            {jt`This app can connect to external hosts, listed on its ${(
+              <Link
+                key="overview"
+                variant="brand"
+                to={Urls.dataStudioDataApp(app.name)}
+              >
+                {t`Overview page`}
+              </Link>
+            )}. Permissions don't apply to data from those hosts: anyone who can open the app can see it.`}
+          </Alert>
+        )}
         <Stack style={{ overflow: "hidden" }}>
           <Flex justify="flex-end">
             <Button variant="filled" onClick={openAdding}>
