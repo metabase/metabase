@@ -1797,21 +1797,28 @@
            {:status-code 409, :workspace/cleanup? false, :user user}
            cause))
 
+(defn- concurrent-init-error [user schema-name cause]
+  (ex-info (format (str "Another session created a role named %s or a schema named %s at the same time. It may "
+                        "belong to another workspace, so it was left unchanged.")
+                   (quote-field user) (quote-schema schema-name))
+           {:status-code 409, :workspace/cleanup? false, :user user}
+           cause))
+
 (defn- connection-failure?
   "Whether `t`, or a cause of it, is the connection failing. When that happens during COMMIT, the server may have
-  committed."
+  committed. The check reads SQLStates only: [[workspace-error]] has already scrubbed any other cause to a plain
+  `Exception`, and pgjdbc reports an I/O error as `08006`."
   [t]
-  (some (fn [cause]
-          (or (instance? java.io.IOException cause)
-              (some-> (sql-state cause) (str/starts-with? "08"))))
+  (some #(some-> (sql-state %) (str/starts-with? "08"))
         (take-while some? (iterate ex-cause t))))
 
 (defn- init-error
   "`t`, from a failed init, marked so the caller does not tear the workspace down: init runs in one transaction, so
   it leaves nothing behind, and a role of the workspace user's name may be one another session has just committed. A
-  connection failure stays unmarked: the transaction may have committed, and its objects then need the teardown."
-  [t]
-  (if (or (contains? (ex-data t) :workspace/cleanup?) (connection-failure? t))
+  connection failure once the transaction is `committing?` stays unmarked: the transaction may have committed, and its
+  objects then need the teardown. A connection failure before that point committed nothing."
+  [t committing?]
+  (if (or (contains? (ex-data t) :workspace/cleanup?) (and committing? (connection-failure? t)))
     t
     (ex-info (ex-message t) (assoc (ex-data t) :workspace/cleanup? false) t)))
 
@@ -1820,7 +1827,9 @@
   (let [schema-name   (:schema workspace)
         {:keys [user password]} (:database_details workspace)
         quoted-schema (quote-schema schema-name)
-        quoted-user   (quote-field user)]
+        quoted-user   (quote-field user)
+        ;; set once the transaction's last statement has run, so that the only step left is COMMIT
+        committing?   (volatile! false)]
     (try
       (run-workspace-ddl!
        database [password]
@@ -1839,15 +1848,17 @@
           (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)])
        (fn [conn]
          (set-password! conn user password)
-         (jdbc/execute! conn [(grant-membership-statement conn user)])))
+         (jdbc/execute! conn [(grant-membership-statement conn user)])
+         (vreset! committing? true)))
       (catch java.sql.SQLException e
         ;; a concurrent init of the same workspace created the role between the check and CREATE USER: a duplicate
-        ;; role, or a duplicate key in pg_authid when both inserted at once
-        (if (#{"42710" "23505"} (sql-state e))
-          (throw (role-exists-error user e))
-          (throw (init-error e))))
+        ;; role, or a duplicate key in pg_authid or pg_namespace when both inserted the role or the schema at once
+        (case (sql-state e)
+          "42710" (throw (role-exists-error user e))
+          "23505" (throw (concurrent-init-error user schema-name e))
+          (throw (init-error e @committing?))))
       (catch Throwable t
-        (throw (init-error t))))))
+        (throw (init-error t @committing?))))))
 
 (defn- grants-to-role
   "Every privilege `role` holds on a relation, a schema or this database, or through a schema's default privileges, as

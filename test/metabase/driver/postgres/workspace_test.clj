@@ -276,6 +276,21 @@
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))
        (is (not (role-exists? spec ws-user)))))))
 
+(deftest init-connection-failure-before-commit-forbids-cleanup-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2114)
+           ws-user   (-> workspace :database_details :user)]
+       ;; a role of the workspace user's name that another parent made: init must leave it, and so must its caller
+       (exec! spec [(format "CREATE ROLE \"%s\"" ws-user)])
+       (testing "a connection that drops before COMMIT committed nothing, so init tells the caller not to tear down"
+         (mt/with-dynamic-fn-redefs [postgres/role-exists? (fn [& _] (throw (java.sql.SQLException. "An I/O error occurred" "08006")))]
+           (let [e (is (thrown? Exception
+                                (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
+             (is (false? (:workspace/cleanup? (ex-data e))))))
+         (is (role-exists? spec ws-user)))
+       (drop-role-if-exists! spec ws-user)))))
+
 (deftest destroy-ends-the-workspace-users-sessions-test
   (do-with-warehouse!
    (fn [spec database]
