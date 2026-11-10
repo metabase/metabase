@@ -350,12 +350,16 @@
             (fn []
               (is (= [semantic-result]
                      (semantic.core/results (assoc search-context :vector-only? true))))))))))
-  (testing "a vector-only search that errors fails instead of falling back"
+  (testing "a vector-only search that errors fails instead of falling back, and doesn't count a fallback"
     (mt/with-premium-features #{:semantic-search}
-      (with-redefs [semantic.pgvector-api/query (fn [& _] (throw (ex-info "Semantic search unavailable" {})))
-                    search.engine/results       (fn [ctx]
-                                                  (case (:search-engine ctx)
-                                                    :search.engine/semantic (semantic.core/results ctx)
-                                                    (throw (ex-info "the keyword engine ran" {}))))]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error executing semantic search"
-                              (semantic.core/results (assoc search-context :vector-only? true))))))))
+      (let [metrics (atom {})]
+        (with-redefs [semantic.pgvector-api/query (fn [& _] (throw (ex-info "Semantic search unavailable" {})))
+                      search.engine/results       (fn [ctx]
+                                                    (case (:search-engine ctx)
+                                                      :search.engine/semantic (semantic.core/results ctx)
+                                                      (throw (ex-info "the keyword engine ran" {}))))
+                      analytics/inc!              (fn [metric & _args]
+                                                    (swap! metrics update metric (fnil inc 0)))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error executing semantic search"
+                                (semantic.core/results (assoc search-context :vector-only? true))))
+          (is (nil? (:metabase-search/semantic-error-fallback @metrics))))))))
