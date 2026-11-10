@@ -170,3 +170,9 @@
                                          :to_table_name   "orders"})
       (let [result (mt/user-http-request :crowberto :get 200 "ee/workspace-instance/table-remappings")]
         (is (some #(= "orders" (:from_table_name %)) result))))))
+
+(deftest contract-version-header-test
+  (testing "workspace-instance responses carry X-Metabase-Workspaces-Version: 2"
+    (mt/with-dynamic-fn-redefs [ws/instance-workspace (constantly nil)]
+      (is (= "2" (get-in (mt/user-http-request-full-response :crowberto :get 200 "ee/workspace-instance/current")
+                         [:headers "X-Metabase-Workspaces-Version"]))))))

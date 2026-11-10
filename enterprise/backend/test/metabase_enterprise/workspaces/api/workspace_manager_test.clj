@@ -155,3 +155,15 @@
         (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/" ws-id) {:name "Nope"})
         (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/config"))
         (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id))))))
+
+(deftest contract-version-header-test
+  (testing "workspace-manager responses carry X-Metabase-Workspaces-Version: 2"
+    (testing "on success"
+      (is (= "2" (get-in (mt/user-http-request-full-response :crowberto :get 200 "ee/workspace-manager/")
+                         [:headers "X-Metabase-Workspaces-Version"]))))
+    (testing "on the 401 the auth wrapper answers"
+      (is (= "2" (get-in (mt/client-full-response :get 401 "ee/workspace-manager/")
+                         [:headers "X-Metabase-Workspaces-Version"]))))
+    (testing "not on errors an endpoint throws: the server's exception middleware builds those responses"
+      (is (nil? (get-in (mt/user-http-request-full-response :crowberto :get 404 "ee/workspace-manager/13371337")
+                        [:headers "X-Metabase-Workspaces-Version"]))))))
