@@ -75,7 +75,8 @@
   (testing "DELETE while a create is still provisioning answers 409 at once, and the create still succeeds"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
-                                                :settings {:database-enable-workspaces true}}]
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
       (mt/with-model-cleanup [:model/Workspace]
         (let [started  (promise)
               release  (promise)
@@ -108,7 +109,8 @@
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                   :details  {}
-                                                  :settings {:database-enable-workspaces true}}]
+                                                  :settings {:database-enable-workspaces true}}
+                     :model/Table _ {:db_id db-id :schema "public" :active true}]
         (mt/with-model-cleanup [:model/Workspace]
           (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                               (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
@@ -137,7 +139,8 @@
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                   :details  {}
-                                                  :settings {:database-enable-workspaces true}}]
+                                                  :settings {:database-enable-workspaces true}}
+                     :model/Table _ {:db_id db-id :schema "public" :active true}]
         (mt/with-model-cleanup [:model/Workspace]
           (let [{ws-id :id} (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
                               (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
@@ -337,6 +340,8 @@
                                                         :engine   :postgres
                                                         :details  {}
                                                         :settings {:database-enable-workspaces true}})]
+    ;; a synced table, so the database has an input schema and create does not refuse it
+    (t2/insert! :model/Table {:db_id db-id :schema "public" :name "t" :active true})
     (try
       (mt/with-model-cleanup [:model/Workspace]
         (f db-id))
