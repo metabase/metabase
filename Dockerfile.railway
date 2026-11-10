@@ -1,0 +1,19 @@
+# Metabase per Amacity, su Railway.
+#
+# Non si compila niente: si parte dall'immagine ufficiale, che e' gia'
+# costruita. Compilare questo repository dai sorgenti vuol dire Clojure piu'
+# il frontend — venti-trenta minuti e parecchia memoria, su una macchina che
+# si paga a ore — per ottenere esattamente lo stesso binario.
+#
+# Il fork serve per due cose: avere un posto proprio da cui Railway deploya, e
+# poter bloccare la versione. `latest` aggiorna da solo al prossimo deploy, e
+# un aggiornamento che arriva mentre stai guardando un numero e' il modo
+# peggiore di scoprirlo: quando l'istanza sara' in piedi e funzionante, qui si
+# scrive la versione esatta (per esempio `metabase/metabase:v0.56.8`) e non si
+# muove piu' finche' non lo decidi tu.
+FROM metabase/metabase:latest
+
+# Metabase ascolta sulla 3000; Railway passa la sua porta in PORT e l'immagine
+# ufficiale la rispetta gia'. Qui si dichiara soltanto, perche' chi legge il
+# file sappia dove va a sbattere.
+EXPOSE 3000
