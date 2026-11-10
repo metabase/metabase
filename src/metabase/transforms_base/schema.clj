@@ -79,7 +79,7 @@
    [:type [:or :string :keyword]]
    [:database {:optional true} [:maybe :int]]
    ;; the catalog-level qualifier a workspace remap writes to on drivers whose isolation namespace is a separate
-   ;; database (MySQL) or the leftmost of three parts (SQL Server, BigQuery); see `resolve-transform-target`
+   ;; database (MySQL) or the leftmost of three parts (SQL Server, BigQuery); see `metabase.transforms.execute/resolve-target`
    [:db {:optional true} [:maybe :string]]
    [:schema {:optional true} [:maybe :string]]
    [:name :string]
@@ -147,6 +147,9 @@
    [:name {:optional true} :string]
    [:description {:optional true} [:maybe :string]]
    [:full-incremental-run? {:optional true} :boolean]
+   ;; the target before the workspace rewrite, set by `metabase.transforms.execute` only when `:target` was
+   ;; rewritten to a workspace copy; the run records its TableRemapping once its write returns
+   [:workspace-canonical-target {:optional true} ::transform-target]
    [:entity_id             {:optional true} [:maybe :string]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]

@@ -241,6 +241,9 @@
                                 driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms*
                                                                           transform-timeout-ms)]
                         (run-transform! cancel-chan source-range-params)))]
+            ;; The write has landed, so the remap can't point at a table that was never written. Before the
+            ;; succeed mark, so a failure here fails the run rather than leaving a succeeded run unremapped.
+            (transforms-base.u/record-workspace-target-remapping! transform)
             (when full-create?
               ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
               ;; stays a full rebuild that re-attempts the index).
