@@ -31,7 +31,9 @@
 
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
-(defn- bytes-hash [^bytes b]
+(defn bytes-hash
+  "The SHA-256 of the bundle bytes `b`, hex-encoded, as `bundle_hash` stores it."
+  [^bytes b]
   (-> b buddy-hash/sha256 codecs/bytes->hex))
 
 (defn- string-hash [^String s]
