@@ -1409,6 +1409,20 @@
                                   (mapv first (:failures (ex-data e)))))
                 :destroyed @destroyed}))))))
 
+(deftest close-all-pools-reports-every-failed-close-test
+  (testing "the first failed close is the cause, and each later one is attached to it as a suppressed exception"
+    (let [state {:pools {[1 :default] ::pool-1, [2 :default] ::pool-2, [3 :default] ::pool-3}}]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [id _spec]
+                                                                (throw (ex-info (str "close " id " failed") {})))]
+        (let [cause (try (#'sql-jdbc.conn/close-all-pools! state)
+                         nil
+                         (catch clojure.lang.ExceptionInfo e
+                           (ex-cause e)))]
+          (is (= #{"close 1 failed" "close 2 failed" "close 3 failed"}
+                 (into #{(ex-message cause)}
+                       (map ex-message)
+                       (.getSuppressed ^Throwable cause)))))))))
+
 (deftest caching-a-pool-records-its-checkout-database-test
   (testing "the pool, its details hash and its checkout database are recorded in one write"
     (let [cache-key   [Integer/MAX_VALUE :default]
