@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "metabase/contracts/workspaces/config.schema.json",
   "title": "Workspace config.yml (parent -> sidecar)",
-  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Built by EE/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
+  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Also carries parent secrets that pass through `details`: an enabled tunnel's credential, `additional-options`; on master, client-cert fields. Treat it as a parent secret. The parent's file contains no template forms; templating is for sections the caller adds. master copies `details` as-is, so a parent value can hold `{{env X}}`, which the sidecar expands at boot; hardening (TBD-config-no-templates): the parent answers 409 instead of emitting a value that contains `{{`. Built by EE/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
   "x-status": "master",
   "type": "object",
   "required": ["version", "config"],
@@ -29,7 +29,21 @@
           "x-status": "hardening",
           "x-pr": 86735,
           "description": "#86735: the settings form. `workspaces-enabled: true` here plus `settings.database-workspace-schema` on each workspace database does what the `workspace` section does. The parent still emits only the `workspace` section; switching it is a later PR, since mbcode checks for that section.",
-          "properties": { "workspaces-enabled": { "type": "boolean" } }
+          "properties": {
+            "workspaces-enabled": { "type": "boolean" },
+            "workspace-id": {
+              "type": "integer",
+              "x-status": "hardening",
+              "x-pr": "TBD-identity",
+              "description": "Settings form of workspace.id, if the sidecar stores it as a setting (per TBD-identity)."
+            },
+            "workspace-parent-url": {
+              "type": "string",
+              "x-status": "hardening",
+              "x-pr": "TBD-identity",
+              "description": "Settings form of workspace.parent_url, if the sidecar stores it as a setting (per TBD-identity)."
+            }
+          }
         }
       }
     }
@@ -125,13 +139,25 @@
       "type": "object",
       "required": ["name", "databases"],
       "x-pr": 86735,
-      "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400. #86735: translated into workspaces-enabled plus each database's database-workspace-schema (output.schema, or output.db on MySQL); name and input_schemas are accepted and ignored; no lock.",
+      "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400. #86735: translated into workspaces-enabled plus each database's database-workspace-schema (output.schema, or output.db on MySQL); name and input_schemas are accepted and ignored; no lock. Its absence does not turn `workspaces-enabled` off: a workspace stored by an earlier boot or by POST /current stays, with its remap rows. Use a fresh app DB or DELETE /current. `MB_WORKSPACES_ENABLED=false` leaves the remap rows.",
       "properties": {
         "name": { "type": "string", "pattern": "\\S" },
+        "id": {
+          "type": "integer",
+          "x-status": "hardening",
+          "x-pr": "TBD-identity",
+          "description": "The parent workspace's id (the {id} of /api/ee/workspace-manager/{id})."
+        },
+        "parent_url": {
+          "type": "string",
+          "x-status": "hardening",
+          "x-pr": "TBD-identity",
+          "description": "The parent Metabase's URL, so the sidecar can name the instance it came from."
+        },
         "databases": {
           "type": "object",
           "minProperties": 1,
-          "description": "Keyed by database name (the sidecar resolves names to ids at boot).",
+          "description": "Keyed by database name (the sidecar resolves names to ids at boot). Parent database names are not unique: two workspace databases with one name collapse into one entry, and the sidecar updates one database with the other's details. master: may be empty (GET /config answers 200 for a workspace with no databases, e.g. after a failed row delete), which minProperties forbids and the sidecar refuses to boot.",
           "additionalProperties": {
             "type": "object",
             "required": ["input_schemas", "output"],
