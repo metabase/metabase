@@ -1050,21 +1050,26 @@
   `collection-id`, unless nil, is the collection the caller asked for; it narrows the scope as [[scoped-collection-id]]
   allows.
   `entity-types`, unless nil, are the types the search looked for. `tables?` records whether a collection-scoped
-  search could have found a table: only with the `:library` feature, which lets a published table belong to a
-  collection, and only for a Metabot not confined to a collection, since a confined one browses only its own."
+  search could have found a table: only with the `:library` feature, and only in the Library or its data
+  collection, where published tables live. A Metabot confined to a collection browses only its own, so it never
+  gets `tables?`."
   ([metabot profile-id database-id]
    (search-scope metabot profile-id database-id nil))
   ([metabot profile-id database-id collection-id]
    (search-scope metabot profile-id database-id collection-id nil))
   ([metabot profile-id database-id collection-id entity-types]
-   (let [confined-id (confined-collection-id metabot profile-id)]
-     (cond-> {:collection-id (scoped-collection-id collection-id confined-id)
+   (let [confined-id (confined-collection-id metabot profile-id)
+         scoped-id   (scoped-collection-id collection-id confined-id)]
+     (cond-> {:collection-id scoped-id
               :database-id   database-id
               :verified-only (and (boolean (:use_verified_content metabot))
                                   (not (shared/curated-only?)))}
        (and (seq entity-types) (nil? confined-id))
        (assoc :tables? (and (contains? (set entity-types) "table")
-                            (premium-features/has-feature? :library)))))))
+                            (some? scoped-id)
+                            (premium-features/has-feature? :library)
+                            (contains? #{collection/library-collection-type collection/library-data-collection-type}
+                                       (:type (first (metabot.db/collection-path-rows [scoped-id]))))))))))
 
 (defn- table-browse-uri
   "Where `read_resource` lists the tables of database `database-id`, or all databases when it is nil."
