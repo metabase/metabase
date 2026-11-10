@@ -7,6 +7,7 @@ import type { IconName } from "metabase-types/api";
 
 import type {
   SummaryDimensionItem,
+  SummaryDragItem,
   SummaryField,
   SummaryFieldItem,
   SummaryFieldSection,
@@ -443,6 +444,80 @@ export function replaceWellWithField(
     wellId,
     field,
   );
+}
+
+export function getDragItem(data: unknown): SummaryDragItem | null {
+  if (typeof data !== "object" || data == null || !("kind" in data)) {
+    return null;
+  }
+  // only the sidebar's draggables register data, always a SummaryDragItem
+  return data as SummaryDragItem;
+}
+
+export function getDragItemLabel(drag: SummaryDragItem): string {
+  return drag.kind === "field" ? drag.label : drag.item.label;
+}
+
+function getDragField(
+  query: Lib.Query,
+  stageIndex: number,
+  drag: SummaryDragItem,
+): SummaryField | null {
+  switch (drag.kind) {
+    case "field":
+      return drag.field;
+    case "value":
+      return drag.item.kind === "column"
+        ? { kind: "column", column: drag.item.column }
+        : null;
+    case "dimension": {
+      const column = Lib.breakoutColumn(query, stageIndex, drag.item.clause);
+      return column ? { kind: "column", column } : null;
+    }
+  }
+}
+
+function getDragSourceWellId(drag: SummaryDragItem): SummaryWellId | null {
+  switch (drag.kind) {
+    case "field":
+      return null;
+    case "value":
+      return "values";
+    case "dimension":
+      return "columns";
+  }
+}
+
+export function canDropOnWell(
+  query: Lib.Query,
+  stageIndex: number,
+  drag: SummaryDragItem,
+  wellId: SummaryWellId,
+): boolean {
+  if (getDragSourceWellId(drag) === wellId) {
+    return false;
+  }
+  const field = getDragField(query, stageIndex, drag);
+  return field != null && (wellId === "values" || field.kind === "column");
+}
+
+/** Returns `query` itself when the drop isn't possible or changes nothing, so a chip is never lost. */
+export function dropOnWell(
+  query: Lib.Query,
+  stageIndex: number,
+  drag: SummaryDragItem,
+  wellId: SummaryWellId,
+): Lib.Query {
+  const field = getDragField(query, stageIndex, drag);
+  if (field == null || !canDropOnWell(query, stageIndex, drag, wellId)) {
+    return query;
+  }
+  const withoutSource =
+    drag.kind === "field"
+      ? query
+      : Lib.removeClause(query, stageIndex, drag.item.clause);
+  const nextQuery = addField(withoutSource, stageIndex, wellId, field);
+  return nextQuery !== withoutSource ? nextQuery : query;
 }
 
 export function changeValueOperator(

@@ -6,17 +6,19 @@ import * as Lib from "metabase-lib";
 
 import S from "../SummarySidebar.module.css";
 import type {
+  SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
   SummaryWellId,
 } from "../types";
 import {
+  canDropOnWell,
   getDimensionItems,
   getValueItems,
   getWellFieldSections,
 } from "../utils";
 
-import { SummaryWell } from "./SummaryWell";
+import { SummaryWell, type WellDropState } from "./SummaryWell";
 import { SummaryWellInput } from "./SummaryWellInput";
 import { ValueChip } from "./ValueChip";
 import { WellChip } from "./WellChip";
@@ -25,6 +27,7 @@ type SummaryWellsProps = {
   query: Lib.Query;
   stageIndex: number;
   sections: SummaryFieldSection[];
+  draggedItem: SummaryDragItem | null;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query) => void;
 };
@@ -33,6 +36,7 @@ export function SummaryWells({
   query,
   stageIndex,
   sections,
+  draggedItem,
   onPick,
   onChange,
 }: SummaryWellsProps) {
@@ -56,9 +60,24 @@ export function SummaryWells({
   const handleRemove = (clause: Lib.AggregationClause | Lib.BreakoutClause) =>
     onChange(Lib.removeClause(query, stageIndex, clause));
 
+  const dropStates = useMemo(() => {
+    if (draggedItem == null) {
+      return null;
+    }
+    const getDropState = (wellId: SummaryWellId): WellDropState =>
+      canDropOnWell(query, stageIndex, draggedItem, wellId)
+        ? "accepts"
+        : "rejects";
+    return { values: getDropState("values"), columns: getDropState("columns") };
+  }, [query, stageIndex, draggedItem]);
+
   return (
     <Box className={S.wells} data-testid="summary-wells">
-      <SummaryWell wellId="values" title={t`Summarize by`}>
+      <SummaryWell
+        wellId="values"
+        title={t`Summarize by`}
+        dropState={dropStates?.values ?? null}
+      >
         <SummaryWellInput
           wellId="values"
           sections={valueSections}
@@ -84,7 +103,11 @@ export function SummaryWells({
           ))}
         </SummaryWellInput>
       </SummaryWell>
-      <SummaryWell wellId="columns" title={t`Group by`}>
+      <SummaryWell
+        wellId="columns"
+        title={t`Group by`}
+        dropState={dropStates?.columns ?? null}
+      >
         <SummaryWellInput
           wellId="columns"
           sections={columnSections}
@@ -100,7 +123,7 @@ export function SummaryWells({
           {dimensionItems.map((item) => (
             <WellChip
               key={item.key}
-              label={item.label}
+              drag={{ kind: "dimension", item }}
               onRemove={() => handleRemove(item.clause)}
             >
               <span className={S.chipLabel}>{item.label}</span>
