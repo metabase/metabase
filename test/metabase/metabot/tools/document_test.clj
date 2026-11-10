@@ -148,6 +148,24 @@
                  (:structured-output (invoke-document-tool "document_schema_collect" {}
                                                            (mentions {(str "database:" (mt/id)) "Test Data"}))))))))))
 
+(deftest schema-collect-ddl-columns-once-test
+  (testing "the DDL of a table lists each column once, with a comma between columns"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [output (:output (invoke-document-tool "document_schema_collect" {:database_id (mt/id)} (mentions {})))]
+        (is (str/includes? output (str "CREATE TABLE PUBLIC.ORDERS (\n"
+                                       "  ID BIGINT,\n"
+                                       "  USER_ID INTEGER,\n"
+                                       "  PRODUCT_ID INTEGER,\n"
+                                       "  SUBTOTAL DOUBLE PRECISION,\n"
+                                       "  TAX DOUBLE PRECISION,\n"
+                                       "  TOTAL DOUBLE PRECISION,\n"
+                                       "  DISCOUNT DOUBLE PRECISION,\n"
+                                       "  CREATED_AT TIMESTAMP WITH TIME ZONE,\n"
+                                       "  QUANTITY INTEGER\n"
+                                       ");")))
+        (testing "no table has a column line with no comma before the next column"
+          (is (nil? (re-find #"[^,(]\n  \S" output))))))))
+
 (deftest document-construct-sql-chart-tool-test
   (testing "builds chart draft payload from SQL query"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
