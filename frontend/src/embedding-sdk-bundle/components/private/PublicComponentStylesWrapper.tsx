@@ -64,7 +64,8 @@ export const SCOPED_CSS_RESET = css`
     background-color: transparent;
   }
 
-  // fonts.styled.ts has a reset for list padding and margin in the main app, so we need to do it here
+  // The app resets list padding and margin globally. These styles are scoped
+  // to the wrapper, so the reset has to be repeated inside it.
   :where(.mb-wrapper) *:where(ul) {
     padding: 0;
     margin: 0;
