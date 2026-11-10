@@ -27,13 +27,19 @@
    Subsequent reads of the canonical `(schema, name)` pair will resolve to the workspace
    copy via the QP middleware (see `metabase-enterprise.workspaces.query-processor.middleware`).
 
-   When no workspace is active for `db-id`, the canonical target passes through unchanged.
+   On a non-workspace instance the canonical target passes through unchanged. On a
+   workspace instance, a database with no `database-workspace-schema` refuses the
+   transform (400) rather than writing to production: fail closed.
 
    Deliberately ungated on premium features: a token expiry shouldn't silently cause
    workspace transforms to overwrite production tables. If a `WorkspaceDatabase` is
    provisioned, the rewrite must apply."
   :feature :none
   [db-id target]
+  (when (and (ws/workspace-mode?) (nil? (ws/db-workspace-namespace db-id)))
+    (throw (ex-info (str "This is a workspace instance and database " db-id " has no workspace schema;"
+                         " refusing to write the transform's output to production.")
+                    {:status-code 400 :database-id db-id})))
   (if (some? (ws/db-workspace-namespace db-id))
     (let [{to-db :db to-schema :schema to-name :name}
           (ws.table-remapping/add-transform-target-mapping! db-id target)]

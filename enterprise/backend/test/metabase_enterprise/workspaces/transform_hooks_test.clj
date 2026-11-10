@@ -20,6 +20,15 @@
       (let [target {:schema "public" :name "orders" :type :table}]
         (is (= target (ws.transform-hooks/resolve-transform-target 42 target)))))))
 
+(deftest resolve-transform-target-fails-closed-test
+  (testing "on a workspace instance, a database with no workspace schema refuses the transform"
+    (mt/with-dynamic-fn-redefs [ws/workspace-mode?          (constantly true)
+                                ws/db-workspace-namespace  (constantly nil)
+                                ws.table-remapping/add-transform-target-mapping!
+                                (fn [& _] (throw (ex-info "must not record a remap" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"refusing to write the transform's output to production"
+                            (ws.transform-hooks/resolve-transform-target 42 {:schema "public" :name "orders" :type :table}))))))
+
 (deftest resolve-transform-target-rewrites-schema-test
   (testing "with a provisioned WorkspaceDatabase, target's :schema and :name come from the recorded to-spec"
     (let [recorded (atom nil)]
