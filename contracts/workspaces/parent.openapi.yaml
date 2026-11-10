@@ -247,10 +247,22 @@ paths:
 
         Concurrent DELETEs each return 204, 404, or 500 after the lock wait.
 
+        hardening (#86788): `force=true` deletes rows in `teardown_failed` without another warehouse teardown,
+        for a warehouse that is gone for good. It logs each abandoned row's output namespace and database user at
+        WARN so leftovers can be removed by hand. Rows in any other state are torn down as without `force`.
+
         Sessions: only SQL Server ends the workspace user's sessions. On other engines DELETE may 500 while a
         sidecar is connected as that user, possibly on every retry; stop the sidecar first.
       x-status: master
       x-source: EE/core.clj:303, EE/provisioning.clj:217
+      parameters:
+        - name: force
+          in: query
+          required: false
+          x-status: hardening
+          x-pr: 86788
+          description: Delete `teardown_failed` rows without retrying their warehouse teardown.
+          schema: { type: boolean, default: false }
       responses:
         "204":
           description: Gone from the parent and the warehouse.
