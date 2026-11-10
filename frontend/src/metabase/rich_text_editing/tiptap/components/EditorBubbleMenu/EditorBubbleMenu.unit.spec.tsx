@@ -33,6 +33,8 @@ function setup() {
   renderWithProviders(<TestEditor />);
 
   return {
+    // The trailing-node extension appends an empty paragraph after block nodes.
+    getHTML: () => editor?.getHTML().replace(/<p><\/p>$/, ""),
     selectText: () =>
       act(() => {
         editor?.commands.setTextSelection({ from: 1, to: 6 });
@@ -87,4 +89,56 @@ describe("EditorBubbleMenu", () => {
     selectText();
     expect(await findBoldButton()).toBeInTheDocument();
   });
+
+  it.each([
+    {
+      buttonName: "text_bold icon",
+      formatted: "<p><strong>Hello</strong> world</p>",
+    },
+    {
+      buttonName: "text_italic icon",
+      formatted: "<p><em>Hello</em> world</p>",
+    },
+    { buttonName: "text_strike icon", formatted: "<p><s>Hello</s> world</p>" },
+    {
+      buttonName: "format_code icon",
+      formatted: "<p><code>Hello</code> world</p>",
+    },
+    { buttonName: "H1", formatted: "<h1>Hello world</h1>" },
+    { buttonName: "H2", formatted: "<h2>Hello world</h2>" },
+    {
+      buttonName: "list icon",
+      formatted: "<ul><li><p>Hello world</p></li></ul>",
+    },
+    {
+      buttonName: "ordered_list icon",
+      formatted: "<ol><li><p>Hello world</p></li></ol>",
+    },
+    {
+      buttonName: "quote icon",
+      formatted: "<blockquote><p>Hello world</p></blockquote>",
+    },
+    {
+      buttonName: "code_block icon",
+      formatted: "<pre><code>Hello world</code></pre>",
+    },
+  ])(
+    "should toggle formatting on and off with the $buttonName button",
+    async ({ buttonName, formatted }) => {
+      const { getHTML, selectText } = setup();
+
+      selectText();
+      const button = await screen.findByRole(
+        "button",
+        { name: buttonName },
+        { timeout: 2000 },
+      );
+
+      await userEvent.click(button);
+      await waitFor(() => expect(getHTML()).toBe(formatted));
+
+      await userEvent.click(button);
+      await waitFor(() => expect(getHTML()).toBe("<p>Hello world</p>"));
+    },
+  );
 });

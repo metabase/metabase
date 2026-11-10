@@ -33,53 +33,6 @@ describe("rich-text input in documents", () => {
       cy.log("floating menu formatting");
       const content = "Some text to play with";
 
-      const formatTests: ({ button: RegExp; revert?: boolean } & (
-        | { role: string }
-        | { selector: string }
-      ))[] = [
-        {
-          button: /text_bold/,
-          role: "strong",
-        },
-        {
-          button: /text_italic/,
-          role: "emphasis",
-        },
-        {
-          button: /text_strike/,
-          selector: "s",
-        },
-        {
-          button: /format_code/,
-          role: "code",
-        },
-        {
-          button: /H1/,
-          role: "heading",
-        },
-        {
-          button: /H2/,
-          role: "heading",
-        },
-        {
-          button: /^list/,
-          role: "list",
-        },
-        {
-          button: /ordered_list/,
-          role: "list",
-        },
-        {
-          button: /quote/,
-          role: "blockquote",
-        },
-        {
-          button: /code_block/,
-          role: "code",
-          revert: false,
-        },
-      ];
-
       const assertUnformatted = () =>
         H.documentContent()
           // Converting to a heading currently adds a newline, which generates a new paragraph
@@ -94,27 +47,24 @@ describe("rich-text input in documents", () => {
 
       H.documentFormattingMenu().should("exist");
 
-      formatTests.forEach((formatTest) => {
-        const { button, revert = true } = formatTest;
-        H.documentFormattingMenu()
-          .findByRole("button", { name: button })
-          .click();
-        ("selector" in formatTest
-          ? H.documentContent().find(formatTest.selector)
-          : H.documentContent().findByRole(formatTest.role)
-        ).should("contain.text", content);
-        if (revert) {
-          H.documentFormattingMenu()
-            .findByRole("button", { name: button })
-            .click();
-          assertUnformatted();
-        }
-      });
+      cy.log("mark button");
+      H.documentFormattingMenu()
+        .findByRole("button", { name: /text_bold/ })
+        .click();
+      H.documentContent().findByRole("strong").should("contain.text", content);
+      H.documentFormattingMenu()
+        .findByRole("button", { name: /text_bold/ })
+        .click();
+      assertUnformatted();
+
+      cy.log("block button");
+      H.documentFormattingMenu().findByRole("button", { name: /H1/ }).click();
+      H.documentContent().findByRole("heading").should("contain.text", content);
+      H.documentFormattingMenu().findByRole("button", { name: /H1/ }).click();
+      assertUnformatted();
 
       cy.log("markdown syntax");
       H.clearDocumentContent();
-      // Clearing keeps the code block; backspace turns it back into a paragraph
-      H.documentContent().type("{backspace}");
       H.documentContent().click();
 
       H.addToDocument("# This is a heading level 1");
