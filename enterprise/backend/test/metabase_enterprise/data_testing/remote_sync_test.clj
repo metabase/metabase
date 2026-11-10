@@ -316,3 +316,31 @@
           (testing "on a read-write instance, a superuser can update a test of a synced card"
             (is (=? {:name "Renamed"}
                     (mt/user-http-request :crowberto :put 200 (str "ee/card-test/" (:id t)) {:name "Renamed"})))))))))
+
+(deftest dirty-list-shows-card-tests-under-their-cards-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncTask :model/Card :model/CardTest]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}
+                       :model/Card       gone   {:name "Gone card" :collection_id (:id synced)}
+                       :model/CardTest   t      {:card_id (:id card) :name "Edited test"}
+                       :model/CardTest   _t     {:card_id (:id gone) :name "Test of deleted card"}]
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                        {:branch "main" :message "Push"})]
+            (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id))))
+          (t2/update! :model/CardTest :id (:id t) {:description "changed"})
+          (t2/delete! :model/Card :id (:id gone))
+          (let [by-name (into {}
+                              (comp (filter (comp #{"cardtest"} :model)) (map (juxt :name identity)))
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))]
+            (testing "a changed card test is listed with its card as parent, under its card's collection"
+              (is (=? {:id          (:id t)
+                       :model       "cardtest"
+                       :sync_status "update"
+                       :parent      {:model "card" :id (:id card) :name "Synced card"}
+                       :collection  {:id (:id synced) :name "Synced"}}
+                      (by-name "Edited test"))))
+            (testing "a test deleted with its card has no parent and no collection"
+              (is (=? {:id 0 :model "cardtest" :sync_status "delete"} (by-name "Test of deleted card")))
+              (is (not-any? #(contains? (by-name "Test of deleted card") %) [:parent :collection])))))))))
