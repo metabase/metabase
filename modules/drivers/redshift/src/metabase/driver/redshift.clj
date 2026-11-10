@@ -1074,10 +1074,18 @@
           owners  (->> (concat (relation-owners-in-schema     conn schema-name)
                                (default-acl-grantors-in-schema conn schema-name))
                        distinct
-                       (remove #(= % me))
-                       (map (fn [o] {:owner o})))]
+                       (remove #(= % me)))]
       (when (seq owners)
-        (driver.postgres/raise-unmemberable-default-priv-owners! schema-name owners)))))
+        ;; Redshift has no role membership to grant: the remedies are owning the objects, or a superuser login
+        (throw (ex-info (format (str "The admin connection's login %s is not a member of %d role(s) that own objects "
+                                     "or default privileges in schema %s: %s. On Redshift it cannot act for them, so "
+                                     "the workspace user would lose access to their future tables. Make the login "
+                                     "the owner of those objects, or connect as a superuser, and retry.")
+                                (quote-field me) (count owners) (quote-schema schema-name)
+                                (str/join ", " owners))
+                        {:status-code 412
+                         :schema      schema-name
+                         :owners      (vec owners)}))))))
 
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
