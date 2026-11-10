@@ -2215,29 +2215,37 @@
 
 (deftest tool-executor-metrics-test
   (mt/with-prometheus-system! [_ system]
-    (testing "every tool call observes its wait time, the wait on calls it runs after included"
-      (analytics/clear! :metabase-metabot/tool-executor-wait-ms)
-      (let [slow-ms 50
-            tools   (assoc test-util/TOOLS
-                           "slow" {:tool-name   "slow"
-                                   :doc         "Sleeps, and runs alone."
+    (doseq [metric [:metabase-metabot/tool-executor-utilization
+                    :metabase-metabot/tool-executor-queue-depth
+                    :metabase-metabot/tool-executor-wait-ms]]
+      (analytics/clear! metric))
+    (testing "a call with no ordering dependency observes pool utilization, queue depth, and its wait for a thread;
+              a call that waits on a runs-alone call observes nothing"
+      (let [tools  (assoc test-util/TOOLS
+                          "alone" {:tool-name   "alone"
+                                   :doc         "Runs alone."
                                    :schema      [:=> [:cat [:map {:closed true}]] :any]
                                    :runs-alone? true
-                                   :fn          (fn [_] (Thread/sleep ^long slow-ms) "done")})
-            chunks  (test-util/parts->aisdk-chunks
-                     [{:type :start :id "msg-1"}
-                      {:type :tool-input :id "call-1" :function "slow" :arguments {}}
-                      {:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
-            result  (into [] (self.core/tool-executor-xf tools) chunks)
-            wait    (mt/metric-value system :metabase-metabot/tool-executor-wait-ms)]
+                                   :fn          (fn [_] "done")})
+            chunks (test-util/parts->aisdk-chunks
+                    [{:type :start :id "msg-1"}
+                     {:type :tool-input :id "call-1" :function "alone" :arguments {}}
+                     {:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
+            result (into [] (self.core/tool-executor-xf tools) chunks)]
         (is (= #{"call-1" "call-2"} (set (map :toolCallId (take-last 2 result)))))
-        (is (== 2 (:count wait)))
-        (is (<= slow-ms (:sum wait)) "call-2 waits for the slow call it runs after")))
-    (testing "the pull collector publishes the pool's size, active count, and queue length"
+        ;; call-1 has no `after`, so it is observed. call-2 waits on call-1 and is not.
+        (let [utilization (mt/metric-value system :metabase-metabot/tool-executor-utilization)
+              depth       (mt/metric-value system :metabase-metabot/tool-executor-queue-depth)
+              wait        (mt/metric-value system :metabase-metabot/tool-executor-wait-ms)]
+          (is (== 1 (:count utilization)))
+          (is (<= 0.0 (:sum utilization) 1.0))
+          (is (== 1 (:count depth)))
+          (is (<= 0 (:sum depth)))
+          (is (== 1 (:count wait)))
+          (is (<= 0 (:sum wait))))))
+    (testing "the pull collector publishes the pool size"
       ((:f (analytics.core/pull-collector ::self.core/tool-executor)))
-      (is (== 20 (mt/metric-value system :metabase-metabot/tool-executor-pool-size)))
-      (is (<= 0 (mt/metric-value system :metabase-metabot/tool-executor-active)))
-      (is (<= 0 (mt/metric-value system :metabase-metabot/tool-executor-queued))))))
+      (is (== 20 (mt/metric-value system :metabase-metabot/tool-executor-pool-size))))))
 
 (deftest call-llm-prometheus-test
   (llm.tu/with-default-connections
