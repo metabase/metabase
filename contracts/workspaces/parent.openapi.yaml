@@ -19,8 +19,27 @@ info:
     `x-source` points at the implementation, relative to the repo root.
     `EE` below means `enterprise/backend/src/metabase_enterprise/workspaces/`.
 
-    Every route needs a session or API key, the `:workspaces` premium feature (402 otherwise), and a superuser
-    (403 otherwise).
+    Every route needs a session, an API key, or (hardening) a scoped credential (see `components.securitySchemes`),
+    the `:workspaces` premium feature (402 otherwise), and a superuser (403 otherwise).
+
+    Contract version (hardening, TBD-contract-version): every response carries `X-Metabase-Workspaces-Version: 2`.
+    master sends no such header; a client that does not see it must assume master's behavior everywhere.
+
+    Request bodies are marked `additionalProperties: false`, but the server ignores unknown keys (it strips
+    undeclared keys on every endpoint): a misspelled key returns 200 and changes nothing.
+
+    Engines: a database is eligible when its driver reports `:workspace`. A plugin driver whose parent is
+    `:postgres` or `:mysql` inherits the flag unless it opts out, and `:mysql` also serves MariaDB. Metabase tests
+    Postgres, MySQL, Redshift, ClickHouse and SQL Server; hardening #86589 leaves only Postgres eligible. Words such
+    as "user", "role" and "PUBLIC" below are Postgres terms; other engines have the same concept under another name
+    (a login, the `public` role on SQL Server).
+
+    Facts a client can rely on (master):
+    - `created_at` and `updated_at` use the parent's app-DB clock.
+    - The workspace password is the same on every `GET /{id}/config`.
+    - Create has no time bound, and it continues after the client disconnects. The workspace row commits before
+      any warehouse statement, so a name absent from `GET /` means no object from that create exists now, not
+      that none will appear.
 servers:
   - url: "{parent}/api/ee/workspace-manager"
     variables:
@@ -30,6 +49,7 @@ servers:
 security:
   - session: []
   - apiKey: []
+  - workspaceManagerOAuth: [mb:workspace-manager]
 
 paths:
   /:
@@ -41,6 +61,8 @@ paths:
       responses:
         "200":
           description: Every workspace, each with its databases. No credentials.
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Workspace" } }
@@ -51,12 +73,25 @@ paths:
       summary: Create a workspace on one or more databases and provision it. Blocks until done.
       description: |
         For each database, the parent stores `input_schemas` (every schema that has an active synced table, at this
-        moment), then creates one scratch namespace and one warehouse user. The user reads the input schemas and
-        writes only to the scratch namespace.
+        moment), then creates one scratch namespace and one warehouse user.
+
+        Write boundary: Metabase grants the user no write privilege outside the scratch namespace. Privileges the
+        warehouse grants to PUBLIC (Postgres, Redshift) or to the `public` role (SQL Server) still apply, for
+        example CREATE on `public` on Postgres 14 and older and on Redshift. master refuses an input schema where
+        PUBLIC has CREATE (500); hardening #86588 refuses (412) any schema where PUBLIC has CREATE, in any database
+        the user can connect to.
+
+        Read boundary: the input schemas, plus what the engine grants every login (catalogs, objects granted to
+        PUBLIC, other databases on a Postgres cluster, ClickHouse `system.*` while
+        `select_from_system_db_requires_grant` is off). Tables created in an input schema after the create:
+        - Postgres, Redshift: readable only if the parent's admin login created them (`ALTER DEFAULT PRIVILEGES`
+          without `FOR ROLE`).
+        - ClickHouse, SQL Server: readable (the grant covers the schema).
 
         The workspace and its rows are committed before provisioning, so a crash leaves a record. On a provisioning
         failure the parent tears down every database. Names are not unique: a caller that needs idempotent create
-        must pick a unique name and look it up with `GET /` after a lost response.
+        must pick a unique name and look it up with `GET /` after a lost response. A 400, 403 or 404 leaves
+        nothing; after any 500, look the workspace up by name.
 
         `input_schemas` is fixed at create. A schema added to the warehouse later is not readable until the
         workspace is recreated (or `POST /{id}/schemas`, proposed, exists).
@@ -78,6 +113,8 @@ paths:
             one entry per requested id and every entry is `provisioned`.
 
             hardening (#86601): only returned when every database is `provisioned`.
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Workspace" }
@@ -87,10 +124,16 @@ paths:
             Invalid body; or a database is not eligible (driver lacks `:workspace`, the database-local setting
             `database-enable-workspaces` is off, or it is a router database).
 
+            master: MySQL is eligible, and its creates succeed but are unusable: `input_schemas` is empty, so the
+            user gets no read grant and the sidecar cannot connect to the production database. hardening (#86589)
+            makes it ineligible.
+
             hardening (#86612): also a database whose driver has schemas but which has no synced input schemas
             ("sync it first").
 
             hardening (#86589): only Postgres reports `:workspace`, so every other engine is ineligible.
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             text/plain: { schema: { type: string } }
             application/json: { schema: { $ref: "#/components/schemas/ValidationError" } }
@@ -99,29 +142,38 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: |
-            hardening (#86587, via #86601): the warehouse already has the role the workspace would create, or a
-            lock is held. Nothing is left behind (`cleanup_required: false`).
+            hardening (#86587, via #86601): a principal or namespace the workspace would create already exists and is
+            not this row's (on Postgres: the role), or a lock is held. Nothing is left behind
+            (`cleanup_required: false`). #86587 checks this on Postgres only; on master every engine adopts the
+            existing user (see `output_namespace`).
           x-status: hardening
           x-pr: [86587, 86601]
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
         "412":
           description: |
-            hardening (#86588, via #86601): a warehouse precondition failed, named in `message`: the admin login
-            lacks a privilege or role membership, PUBLIC can write to an input schema, or PUBLIC lacks CONNECT.
-            Nothing is left behind (`cleanup_required: false`).
+            hardening (#86588, via #86601): a warehouse precondition failed, named in `message`. The preconditions
+            are per engine. On Postgres: the admin login lacks a privilege or role membership, PUBLIC can write to a
+            schema, or PUBLIC lacks CONNECT. Nothing is left behind (`cleanup_required: false`).
           x-status: hardening
           x-pr: [86588, 86601]
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
         "500":
           x-pr: [86601]
           description: |
             master: provisioning failed and cleanup succeeded. Nothing is left in the warehouse; if deleting the
-            Workspace row then failed, that row (with no databases) is left behind.
+            Workspace row then failed, that row (with no databases) is left behind. Also a repeated database id, or
+            a `name` longer than 254 characters (the raw app-DB error, even when stack traces are hidden).
 
             hardening (#86601): also provisioning failed and cleanup failed, or the workspace row delete failed.
             Then `cleanup_required` is true, the workspace is kept, and the caller must `DELETE` it.
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
 
@@ -135,6 +187,8 @@ paths:
       x-source: EE/api/workspace_manager.clj:94
       responses:
         "200":
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/Workspace" } }
           description: The workspace.
@@ -153,10 +207,17 @@ paths:
             schema:
               type: object
               additionalProperties: false
+              description: Unknown keys are ignored, so `{}` returns 200 and changes nothing.
               properties:
-                name: { type: string, pattern: "\\S", description: Not unique. Must not be blank. }
+                name:
+                  type: string
+                  pattern: "\\S"
+                  maxLength: 254
+                  description: Not unique. Must not be blank.
       responses:
         "200":
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/Workspace" } }
           description: The renamed workspace.
@@ -169,18 +230,51 @@ paths:
       summary: Tear down every database's warehouse objects, then delete the workspace. Blocks. Safe to retry.
       description: |
         Works from any state. Each database is either fully torn down (row deleted) or kept. Remap rows for the
-        scratch namespace are cleared whenever destroy is attempted, even if it fails; a teardown that fails
-        earlier (60 s lock timeout, identifier computation) leaves them. If any teardown fails, the workspace stays with the failed rows and
-        the combined error is returned.
+        scratch namespace are cleared in the parent's own app DB only (normally there are none) whenever destroy
+        is attempted, even if it fails; a teardown that fails earlier (60 s lock timeout, identifier computation)
+        leaves them. A sidecar's remap rows are untouched. If any teardown fails, the workspace stays with the
+        failed rows and the combined error is returned.
+
+        DELETE during a running create, master: each database's teardown waits up to 60 s for that row's lock.
+        Three outcomes:
+        - DELETE returns 204, and the create returns 500 "WorkspaceDatabase not found".
+        - DELETE returns 500 after the lock timeout, and the create returns 200.
+        - DELETE wins every row, and the create returns 500.
+        Nothing is provisioned after a 204. hardening (TBD-delete-during-create): DELETE answers 409 instead, and
+        changes nothing.
+
+        Concurrent DELETEs each return 204, 404, or 500 after the lock wait.
+
+        Sessions: only SQL Server ends the workspace user's sessions. On other engines DELETE may 500 while a
+        sidecar is connected as that user, possibly on every retry; stop the sidecar first.
       x-status: master
       x-source: EE/core.clj:303, EE/provisioning.clj:217
       responses:
-        "204": { description: Gone from the parent and the warehouse. }
+        "204":
+          description: Gone from the parent and the warehouse.
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
         "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: |
+            hardening (TBD-delete-during-create): a create (or another request) holds a database of this workspace.
+            Nothing was changed. Retry after the create ends.
+          x-status: hardening
+          x-pr: [TBD-delete-during-create]
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
         "500":
-          description: Teardown failed for at least one database. Retry the delete.
+          description: |
+            Teardown failed for at least one database; `message` joins each failure with "; ". A message naming
+            the cluster lock (for example "Timed out waiting for the cluster lock row") means a create or another
+            delete held the row: retry. Any other failure can be permanent (for example a sidecar still connected
+            as the workspace user); retrying it may never succeed, so stop retrying and call a person.
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
 
@@ -190,14 +284,27 @@ paths:
     get:
       operationId: getWorkspaceConfig
       summary: The sidecar's config.yml. The only response that carries a warehouse password.
+      description: |
+        Besides the workspace password, the file carries parent secrets that pass through the Database's
+        `details`: an enabled SSH tunnel's credential, `additional-options`, and on master the client-certificate
+        fields. Treat the file as a parent secret. BigQuery (not eligible today) would also carry the parent's own
+        `service-account-json`, which its workspace connection impersonates from.
       x-status: master
       x-source: EE/api/workspace_manager.clj:132, EE/config.clj:112
       responses:
         "200":
-          description: A config.yml attachment. Format in `config.schema.json`.
+          x-pr: [86585]
+          description: |
+            A config.yml attachment. Format in `config.schema.json`.
+
+            master: also 200 for a workspace with no databases (after a failed row delete); `workspace.databases`
+            is then empty, which `config.schema.json` forbids, and the sidecar refuses to boot.
+
+            hardening (#86585): SSH known hosts are inlined, and every Secret `-id` and `-options` key is dropped.
           headers:
             Content-Disposition:
               schema: { type: string, const: 'attachment; filename="config.yml"' }
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/x-yaml:
               schema: { $ref: "./config.schema.json" }
@@ -205,8 +312,23 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: At least one database is not `provisioned`. Plain-text body.
+          x-pr: [86585, TBD-config-no-templates]
+          description: |
+            At least one database is not `provisioned`. Plain-text body.
+
+            A `provisioning` row means a create is running, or one was interrupted (a crash leaves the row in
+            `provisioning`, and nothing moves it on). The two look the same. If no create is running, DELETE the
+            workspace.
+
+            hardening (#86585): also a database that uses SSL client-certificate auth, whose SSH known-hosts Secret
+            cannot be resolved, or whose Secret cannot be read.
+
+            hardening (TBD-config-no-templates): also when an emitted value contains `{{`. The sidecar expands
+            `{{env X}}` templates at boot, so the parent never emits one. The message names each database and
+            field path, never the value.
           x-source: EE/config.clj:131
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             text/plain: { schema: { type: string } }
 
@@ -219,8 +341,9 @@ paths:
       description: |
         Lets an agent read a schema created after the workspace, or narrow what it reads. Adapted to master's
         model (one scratch namespace per database), so it only changes read grants and `input_schemas`. Needs a
-        revoke driver method; master has only `grant-workspace-read-access!`. A running sidecar must re-fetch
-        `/{id}/config` to pick up the new sync filter. Linear: ENG-14446.
+        revoke driver method; master has only `grant-workspace-read-access!`. The sidecar reads config.yml only at
+        boot, so a running sidecar must fetch `/{id}/config` again and restart with the new config to pick up the
+        new sync filter. Linear: ENG-14446.
       x-status: proposed
       requestBody:
         required: true
@@ -229,6 +352,7 @@ paths:
             schema:
               type: object
               additionalProperties: false
+              description: Unknown keys are ignored.
               required: [database_id]
               properties:
                 database_id: { type: integer }
@@ -236,6 +360,8 @@ paths:
                 remove: { type: array, items: { type: string, minLength: 1 } }
       responses:
         "200":
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/Workspace" } }
           description: The workspace with its new `input_schemas`.
@@ -243,7 +369,41 @@ paths:
 components:
   securitySchemes:
     session: { type: apiKey, in: header, name: X-Metabase-Session }
-    apiKey: { type: apiKey, in: header, name: X-API-KEY }
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+      description: |
+        master: an unscoped API key in the Administrators group, which reaches the whole API.
+
+        hardening (TBD-manager-scope): an API key created with `scope: "workspace-manager"` (`POST /api/api-key`)
+        reaches the workspace-manager routes and gets 403 on every other route. Its group must still be
+        Administrators (the routes stay superuser-only). Use it for MB Code and CI instead of an unscoped
+        superuser key.
+    workspaceManagerOAuth:
+      type: oauth2
+      x-status: hardening
+      x-pr: [TBD-manager-scope]
+      description: |
+        hardening (TBD-manager-scope): an OAuth access token from the parent's own OAuth server with the scope
+        `mb:workspace-manager`. The token reaches the workspace-manager routes and gets 403 on every other route.
+        The token's user must be a superuser. Clients register through `/oauth/register` (dynamic client
+        registration) with this scope. Not on master.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://metabase.example.com/oauth/authorize
+          tokenUrl: https://metabase.example.com/oauth/token
+          scopes:
+            mb:workspace-manager: The workspace-manager routes, and nothing else.
+
+  headers:
+    WorkspacesVersion:
+      description: |
+        hardening (TBD-contract-version): the workspaces contract version this parent implements. Absent on
+        master. A client that does not see it must assume master's behavior.
+      x-status: hardening
+      x-pr: [TBD-contract-version]
+      schema: { type: string, const: "2" }
 
   parameters:
     WorkspaceId:
@@ -259,18 +419,28 @@ components:
         `status: "error-premium-feature-not-available"`, or only `{"message": "Something went wrong"}` when the
         instance hides stack traces.
       x-source: src/metabase/premium_features/token_check.clj:766
+      headers:
+        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
         application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
     Forbidden:
       description: Not a superuser. Body is the plain-text message.
+      headers:
+        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
         text/plain: { schema: { type: string } }
     NotFound:
-      description: No such workspace or database. Body is the plain-text message.
+      description: |
+        No such workspace or database. Body is the plain-text message. On routes with `{id}`, the row is read
+        before the superuser check, so a non-superuser gets 404 for a missing id and 403 for an existing one.
+      headers:
+        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
         text/plain: { schema: { type: string } }
     Invalid:
       description: The body failed validation.
+      headers:
+        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
         application/json: { schema: { $ref: "#/components/schemas/ValidationError" } }
 
@@ -278,9 +448,14 @@ components:
     CreateWorkspaceRequest:
       type: object
       additionalProperties: false
+      description: Unknown keys are ignored.
       required: [name, database_ids]
       properties:
-        name: { type: string, pattern: "\\S", description: Not unique. Must not be blank. }
+        name:
+          type: string
+          pattern: "\\S"
+          maxLength: 254
+          description: Not unique. Must not be blank. master answers a longer name with 500, not 400.
         database_ids:
           type: array
           minItems: 1
@@ -290,12 +465,21 @@ components:
 
     WorkspaceStatus:
       type: string
-      enum: [unprovisioned, provisioning, provisioned, deprovisioning]
+      enum: [unprovisioned, provisioning, provisioned, deprovisioning, teardown_failed]
       description: |
         unprovisioned -> provisioning (create) -> provisioned, or back to unprovisioned on failure.
-        A teardown whose destroy fails forces the row to unprovisioned; one that fails before destroy (lock timeout,
-        identifier computation) leaves the status unchanged. No API moves a row to deprovisioning.
+        No API moves a row to deprovisioning.
+
+        master: a teardown whose destroy fails forces the row to `unprovisioned` and empties `output_namespace`;
+        one that fails before destroy (lock timeout, identifier computation) leaves the status unchanged. So
+        `unprovisioned` means either "nothing created yet" or "warehouse objects may remain". Deleting the
+        parent's Database deletes its `unprovisioned` rows, which erases the only record of such leftovers.
+
+        hardening (TBD-teardown-failed): a failed destroy sets `teardown_failed` instead, and the row keeps
+        `output_namespace`. A `teardown_failed` row blocks deleting its Database and makes `GET /{id}/config`
+        answer 409; a retried DELETE tears it down again. master never returns `teardown_failed`.
       x-source: EE/provisioning.clj:96-280
+      x-pr: [TBD-teardown-failed]
 
     WorkspaceDatabase:
       type: object
@@ -309,15 +493,26 @@ components:
           description: |
             Every schema with an active synced table at create. Empty on schemaless engines (MySQL), and on master
             also on a database that has not synced any table; hardening #86612 refuses the latter.
+
+            master: MySQL creates succeed but are unusable, because an empty list grants no read access; hardening
+            #86589 makes MySQL ineligible.
         output_namespace:
           type: string
           description: |
             The scratch schema (a database on MySQL), `mb__isolation_<slug>_<id>`: `<slug>` derives from the parent's
             site UUID, `<id>` is this WorkspaceDatabase row's id. Empty until provisioned.
+
+            Unique per site UUID only: two parents with one site UUID (a staging parent restored from production's
+            app DB) make the same names. master adopts an existing user on every engine and resets its password,
+            and a later DELETE drops the other parent's schema and user. hardening #86587 refuses an existing
+            role (409), on Postgres only.
         status: { $ref: "#/components/schemas/WorkspaceStatus" }
         database:
           type: [object, "null"]
-          description: The parent's Database, with `details` removed.
+          description: |
+            The parent's Database, with `details` removed. It still carries `admin_details` and
+            `write_data_details` with passwords masked; the admin user name, host and `additional-options` are
+            sent. The same caller can read them through `GET /api/database/{id}`. Treat the object as opaque.
 
     Workspace:
       type: object
@@ -343,7 +538,7 @@ components:
         databases:
           type: array
           items: { $ref: "#/components/schemas/WorkspaceDatabase" }
-          description: Always present in practice; treat missing as empty.
+          description: Always present (`[]` when empty); treat missing as empty.
 
     ErrorBody:
       type: object
@@ -356,7 +551,8 @@ components:
 
     CreateFailure:
       description: |
-        master: a 500 with `message` (several failures joined by "; ").
+        master: a 500 whose `message` is the first provisioning error's message (create fails fast; only DELETE
+        joins failures with "; "). The raw driver text is sent even when stack traces are hidden.
         hardening (#86601): the error keeps the driver's own status (409, 412) and adds `cleanup_required`.
       allOf:
         - $ref: "#/components/schemas/ErrorBody"
