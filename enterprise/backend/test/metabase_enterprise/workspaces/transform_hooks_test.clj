@@ -233,12 +233,12 @@
                             (fn [& args]
                               (when (= (Thread/currentThread) @refused-thread)
                                 (deliver refused-resolved true)
-                                @running-started)
+                                (deref running-started 60000 ::timeout))
                               (apply real-check args))
                             transforms-base.i/execute-base!
                             (fn [& args]
                               (deliver running-started true)
-                              @refused-done
+                              (deref refused-done 60000 ::timeout)
                               (apply real-base args))]
                 (let [refused (future
                                 (reset! refused-thread (Thread/currentThread))
@@ -246,7 +246,7 @@
                                      :ran
                                      (catch Throwable t (:error (ex-data t)))
                                      (finally (deliver refused-done true))))
-                      _       @refused-resolved
+                      _       (is (not= ::timeout (deref refused-resolved 60000 ::timeout)))
                       running (future (transforms.execute/execute! transform {:run-method :manual}))]
                   (is (= :already-running (deref refused 60000 ::timeout)))
                   (is (nil? (deref running 60000 ::timeout)))))
