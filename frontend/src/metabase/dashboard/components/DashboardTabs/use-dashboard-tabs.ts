@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { UniqueIdentifier } from "@dnd-kit/core";
 
 import { trackTabDuplicated } from "metabase/dashboard/analytics";

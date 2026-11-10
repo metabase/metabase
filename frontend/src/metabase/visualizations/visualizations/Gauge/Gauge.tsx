@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";

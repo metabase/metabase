@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import { is_coerceable } from "cljs/metabase.types.core";
 import { getNullDisplayValue } from "metabase/utils/constants";
 import { getGlobalSettingsForColumn } from "metabase/viz-core";

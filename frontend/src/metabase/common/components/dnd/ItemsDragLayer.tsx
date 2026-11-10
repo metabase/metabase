@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Component } from "react";
 import { DragLayer, type XYCoord } from "react-dnd";
 import { msgid, ngettext } from "ttag";

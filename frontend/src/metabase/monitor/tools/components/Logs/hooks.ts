@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useListLogsQuery } from "metabase/api/logger";

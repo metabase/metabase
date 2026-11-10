@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useCallback, useMemo, useState } from "react";
 
 import type { SortDirection } from "metabase-types/api";

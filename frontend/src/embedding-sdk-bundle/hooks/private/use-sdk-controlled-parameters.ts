@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
 import { useLatest } from "react-use";
 import { isEqual } from "underscore";
