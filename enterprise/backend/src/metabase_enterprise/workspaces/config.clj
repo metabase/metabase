@@ -9,6 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secrets]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
@@ -113,7 +114,7 @@
   "The `:secret` connection properties whose value the config carries, each with the detail that turns it on. Both are
    public: the root certificate verifies the warehouse, and the known hosts verify the SSH tunnel's host key. Without
    the known hosts the child's tunnel would skip host-key verification, so a known-hosts Secret that can't be resolved
-   is refused rather than dropped."
+   is refused rather than dropped. Only uploaded Secrets ship (`inlined-secret-entries`)."
   [{:label      "SSL root certificate"
     :name       "ssl-root-cert"
     :enabled-by :ssl
@@ -129,31 +130,56 @@
     :value      :tunnel-known-hosts-value
     :required?  true}])
 
-(defn- unreadable-secret [db label cause]
-  (ex-info (format "The %s of database %s can't be read on this instance" label (pr-str (:name db)))
+(defn- refuse-secret
+  "A 409 that names the database of the refused Secret."
+  [db message-format label]
+  (ex-info (format message-format label (pr-str (:name db)))
            {:status-code 409
-            :database_id (:id db)}
-           cause))
+            :database_id (:id db)}))
+
+(defn- shippable-secret-value
+  "`bs` as text when it is printable ASCII, as PEM certificates and known-hosts lines are; else as a base64 `data:` URI,
+   which the child's config-file import decodes back to the same bytes. Decoding binary content such as a DER
+   certificate as UTF-8 would corrupt it."
+  [^bytes bs]
+  (if (every? (fn [b] (let [b (long b)] (or (<= 32 b 126) (contains? #{9 10 13} b)))) bs)
+    (u/bytes-to-string bs)
+    (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs))))
 
 (defn- inlined-secret-entries
-  "The keys `secret` adds to the config when the connection uses it: the value of its Secret, or a value the driver
-   keeps in `:details` as is (Postgres doesn't store the known hosts as a Secret). A Secret the parent can't read (e.g.
-   a missing local file) is a 409 naming the database rather than an opaque 500."
-  [db details {:keys [label enabled-by id options value required?] secret-name :name}]
+  "The keys an inlined secret (an entry of `inlined-secrets`) adds to the config when the connection uses it: the value
+   of its uploaded Secret, or a value the driver keeps in `:details` as is (Postgres doesn't store the known hosts as a
+   Secret). An optional Secret whose row is gone is dropped. These cases are a 409 naming the database:
+
+   - the Secret is a file path on the parent's server: its contents could be any file the server can read, so they
+     don't ship, and the admin has to upload the file instead.
+   - a required Secret's row is gone."
+  [db details {:keys [label enabled-by id options value required?]}]
   (cond
     (not (get details enabled-by))
     nil
 
     (get details id)
-    (let [secret-value (try
-                         (secrets/value-as-string (:engine db) details secret-name)
-                         (catch Exception e
-                           (throw (unreadable-secret db label e))))]
-      (when (and required? (nil? secret-value))
-        (throw (unreadable-secret db label nil)))
-      (when secret-value
+    (let [{:keys [source] secret-value :value} (secrets/latest-for-id (get details id))]
+      (cond
+        (and (nil? secret-value) required?)
+        (throw (refuse-secret db (str "The %s of database %s no longer exist on this instance. Enter them again in the "
+                                      "database's connection settings; without them the workspace would not verify the "
+                                      "SSH host key.")
+                              label))
+
+        (nil? secret-value)
+        nil
+
+        ;; the secrets model reads a Secret with no source as uploaded
+        (not= :uploaded (or source :uploaded))
+        (throw (refuse-secret db (str "The %s of database %s is a file on this instance's server, which workspaces "
+                                      "don't copy. Upload the file in the database's connection settings instead.")
+                              label))
+
+        :else
         {options "uploaded"
-         value   secret-value}))
+         value   (shippable-secret-value secret-value)}))
 
     :else
     (select-keys details [options value])))
@@ -165,17 +191,19 @@
    `inlined-secrets`, is dropped. The values of the `inlined-secrets` whose feature is on ship instead, for the child's
    config-file import to store as Secrets of its own.
 
-   The client certificate and key are not inlined (MBC10-87), so a connection that authenticates with them is a 409:
-   the child would otherwise fail only when it connects."
+   The client certificate and key are not inlined, so a connection that authenticates with them is a 409: the child
+   would otherwise fail only when it connects."
   [db details]
   (when (and (:ssl details) (:ssl-use-client-auth details))
-    (throw (ex-info (format "Database %s uses SSL client-certificate authentication, which workspace sidecars don't support"
+    (throw (ex-info (format (str "Database %s uses SSL client-certificate authentication, which workspaces don't "
+                                 "support. Remove the database from the workspace, or turn off client-certificate "
+                                 "authentication for it.")
                             (pr-str (:name db)))
                     {:status-code 409
                      :database_id (:id db)})))
   (let [;; the `-id`/`-options` naming follows `metabase.secrets.models.secret`. The inlined secrets are listed on
-        ;; their own: Postgres nests the SSH-tunnel properties so that `secret-conn-props-by-name` doesn't list
-        ;; `tunnel-known-hosts`.
+        ;; their own: Postgres puts the SSH-tunnel properties in a nested vector, which `secret-conn-props-by-name`
+        ;; does not read, so it does not list `tunnel-known-hosts`.
         secret-names (into (set (map :name inlined-secrets))
                            (keys (secrets/secret-conn-props-by-name (:engine db))))
         ;; an inlined secret's `-value` is dropped too: `inlined-secret-entries` adds it back only when its feature
@@ -291,12 +319,15 @@
   Each database entry merges the underlying `metabase_database.details`, minus the
   parent's login properties (`parent-login-keys`), with the WorkspaceDatabase's
   override credentials, drops SSH-tunnel secrets the tunnel does not use
-  (`drop-unused-tunnel-secrets`), and adds `schema-filters-*` keys
+  (`drop-unused-tunnel-secrets`), replaces every Secret id with the value of the
+  inlined secrets in use (`inline-secrets`), and adds `schema-filters-*` keys
   derived from `:input_schemas`. Per-database workspace entries carry the
   expanded `{:db ?, :schema ?}` namespace map directly — the same shape the
   `instance-workspace` setting stores. Returns nil when the workspace does not
   exist. Throws a 409 `ex-info` when a workspace database is not `:provisioned`,
-  or its `:additional-options` set a login (`check-additional-options!`)."
+  its `:additional-options` set a login (`check-additional-options!`), it uses SSL
+  client-certificate auth, or an inlined secret in use can't ship
+  (`inlined-secret-entries`)."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
