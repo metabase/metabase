@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "metabase/contracts/workspaces/config.schema.json",
   "title": "Workspace config.yml (parent -> sidecar)",
-  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Also carries parent secrets that pass through `details`: an enabled tunnel's credential, `additional-options`; on master, client-cert fields. Treat it as a parent secret. The parent's file contains no template forms; templating is for sections the caller adds. master copies `details` as-is, so a parent value can hold `{{env X}}`, which the sidecar expands at boot; hardening (#86787): the parent answers 409 instead of emitting a value that contains `{{`. Built by EE/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
+  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Also carries parent secrets that pass through `details`: an enabled tunnel's credential, `additional-options`; on master, client-cert fields. Treat it as a parent secret. The parent's file contains no template forms; templating is for sections the caller adds. master copies `details` as-is, so a parent value can hold `{{env X}}`, which the sidecar expands at boot; hardening (#86787): the parent answers 409 instead of emitting a value that contains `{{`. Built by enterprise/backend/src/metabase_enterprise/workspaces/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
   "x-status": "master",
   "type": "object",
   "required": ["version", "config"],
@@ -69,7 +69,7 @@
     },
     "workspaceDetails": {
       "type": "object",
-      "description": "master: the parent database's own details, overlaid with the workspace login and a sync filter (EE/config.clj:51). Any other parent field passes through. Engine-specific connection fields are open.",
+      "description": "master: the parent database's own details, overlaid with the workspace login and a sync filter (enterprise/backend/src/metabase_enterprise/workspaces/config.clj:51). Any other parent field passes through. Engine-specific connection fields are open.",
       "required": ["user", "let-user-control-scheduling"],
       "properties": {
         "user": { "type": "string", "description": "The workspace user, not the parent's login." },

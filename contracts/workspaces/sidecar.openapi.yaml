@@ -105,6 +105,7 @@ paths:
                       - { $ref: "#/components/schemas/WorkspaceInstance" }
                       - { type: "null" }
           description: "`data` is null when the instance is not in workspace mode."
+        "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       operationId: setCurrentWorkspace
@@ -137,6 +138,7 @@ paths:
           description: The stored workspace.
         "400":
           description: Invalid body, or the workspace is locked by deployment config (`config.yml` or `MB_INSTANCE_WORKSPACE`).
+        "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
     delete:
       operationId: clearCurrentWorkspace
@@ -151,6 +153,7 @@ paths:
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
         "400": { description: Locked by deployment config. }
+        "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /table-remappings:
@@ -165,6 +168,7 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/TableRemapping" } }
           description: Remap rows.
+        "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       operationId: shadowTable
@@ -216,6 +220,19 @@ components:
       schema: { type: string, const: "2" }
 
   responses:
+    FeatureMissing:
+      description: |
+        The instance's token lacks the `:workspaces` feature. Body has `message` and
+        `status: "error-premium-feature-not-available"`, or only `{"message": "Something went wrong"}` when the
+        instance hides stack traces.
+      x-source: enterprise/backend/src/metabase_enterprise/api_routes/routes.clj:175, src/metabase/premium_features/token_check.clj:766
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              status: { type: string }
     Forbidden:
       description: Not a superuser on the sidecar. Plain-text body.
       content:

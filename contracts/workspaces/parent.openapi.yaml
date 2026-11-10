@@ -69,6 +69,7 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Workspace" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
@@ -133,11 +134,10 @@ paths:
 
             hardening (#86612): also a database whose driver has schemas but which has no synced input schemas
             ("sync it first").
-          headers:
-            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             text/plain: { schema: { type: string } }
             application/json: { schema: { $ref: "#/components/schemas/ValidationError" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -150,8 +150,6 @@ paths:
             every engine adopts the existing user (see `output_namespace`).
           x-status: hardening
           x-pr: [86587, 86601, 86797, 86798, 86799, 86801]
-          headers:
-            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
         "412":
@@ -161,8 +159,6 @@ paths:
             schema, or PUBLIC lacks CONNECT. Nothing is left behind (`cleanup_required: false`).
           x-status: hardening
           x-pr: [86588, 86601]
-          headers:
-            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
         "500":
@@ -174,8 +170,6 @@ paths:
 
             hardening (#86601): also provisioning failed and cleanup failed, or the workspace row delete failed.
             Then `cleanup_required` is true, the workspace is kept, and the caller must `DELETE` it.
-          headers:
-            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/CreateFailure" } }
 
@@ -194,6 +188,7 @@ paths:
           content:
             application/json: { schema: { $ref: "#/components/schemas/Workspace" } }
           description: The workspace.
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -224,6 +219,7 @@ paths:
             application/json: { schema: { $ref: "#/components/schemas/Workspace" } }
           description: The renamed workspace.
         "400": { $ref: "#/components/responses/Invalid" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -268,6 +264,7 @@ paths:
           description: Gone from the parent and the warehouse.
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -278,8 +275,6 @@ paths:
             (kebab-case, as the exception's data is rendered).
           x-status: hardening
           x-pr: [86789]
-          headers:
-            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
         "500":
@@ -288,8 +283,6 @@ paths:
             the cluster lock (for example "Timed out waiting for the cluster lock row") means a create or another
             delete held the row: retry. Any other failure can be permanent (for example a sidecar still connected
             as the workspace user); retrying it may never succeed, so stop retrying and call a person.
-          headers:
-            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
 
@@ -323,6 +316,7 @@ paths:
           content:
             application/x-yaml:
               schema: { $ref: "./config.schema.json" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "402": { $ref: "#/components/responses/FeatureMissing" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -342,8 +336,6 @@ paths:
             `{{env X}}` templates at boot, so the parent never emits one. The message names each database and
             field path, never the value.
           x-source: EE/config.clj:131
-          headers:
-            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             text/plain: { schema: { type: string } }
 
@@ -428,34 +420,35 @@ components:
       schema: { type: integer, minimum: 1 }
 
   responses:
+    Unauthenticated:
+      description: |
+        No valid session or API key. Body is the plain-text `Unauthenticated`. hardening (#86790): carries the
+        version header, which the workspaces routes add outside the auth check.
+      x-source: src/metabase/api/routes/common.clj:86
+      headers:
+        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
+      content:
+        text/plain: { schema: { type: string } }
     FeatureMissing:
       description: |
         The instance's token lacks the `:workspaces` feature. Body has `message` and
         `status: "error-premium-feature-not-available"`, or only `{"message": "Something went wrong"}` when the
         instance hides stack traces.
       x-source: src/metabase/premium_features/token_check.clj:766
-      headers:
-        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
         application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } }
     Forbidden:
       description: Not a superuser. Body is the plain-text message.
-      headers:
-        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
         text/plain: { schema: { type: string } }
     NotFound:
       description: |
         No such workspace or database. Body is the plain-text message. On routes with `{id}`, the row is read
         before the superuser check, so a non-superuser gets 404 for a missing id and 403 for an existing one.
-      headers:
-        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
         text/plain: { schema: { type: string } }
     Invalid:
       description: The body failed validation.
-      headers:
-        X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
       content:
         application/json: { schema: { $ref: "#/components/schemas/ValidationError" } }
 
@@ -480,7 +473,13 @@ components:
 
     WorkspaceStatus:
       type: string
-      enum: [unprovisioned, provisioning, provisioned, deprovisioning, teardown_failed]
+      oneOf:
+        - type: string
+          enum: [unprovisioned, provisioning, provisioned, deprovisioning]
+        - type: string
+          enum: [teardown_failed]
+          x-status: hardening
+          x-pr: [86788]
       description: |
         unprovisioned -> provisioning (create) -> provisioned, or back to unprovisioned on failure.
         No API moves a row to deprovisioning.
