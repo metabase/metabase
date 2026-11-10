@@ -441,6 +441,10 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
+(def ^:private CardDisplay
+  "The display type of a Card, normalized from its name."
+  (mu/with-api-error-message ::lib.schema.common/keyword (deferred-tru "value must be a non-blank string.")))
+
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
   [:map {:closed true}
@@ -452,7 +456,7 @@
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description            {:optional true} [:maybe ms/NonBlankString]]
-   [:display                ::lib.schema.common/keyword]
+   [:display                CardDisplay]
    [:visualization_settings ms/VisualizationSettings]
    [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
@@ -535,7 +539,7 @@
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
-   [:display                {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:display                {:optional true} [:maybe CardDisplay]]
    [:description            {:optional true} [:maybe :string]]
    [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
    [:archived               {:optional true} [:maybe :boolean]]
