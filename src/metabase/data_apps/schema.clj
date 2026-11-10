@@ -91,6 +91,10 @@
    bytes?
    [:fn {:error/message "must be less than 10 MiB"} #(<= (alength ^bytes %) max-bundle-bytes)]])
 
+(mr/def ::bundle-text
+  "The text of a data app's bundle file."
+  [:string {:max max-bundle-bytes}])
+
 (mr/def ::data-app
   "A DataApp as selected from the app DB: every column of `:data_app`."
   [:merge
@@ -127,7 +131,7 @@
    [:version         {:optional true} ::version]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
-(mr/def ::data-app.insert
+(mr/def ::data-app.create
   "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, name, and bundle path required."
   [:merge
    ::data-app.update
