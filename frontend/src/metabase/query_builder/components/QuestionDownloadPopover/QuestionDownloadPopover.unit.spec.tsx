@@ -8,9 +8,9 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
@@ -37,7 +37,7 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
   });
 
   const metadata = createMockMetadataFromState(state);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = new Question(card, metadata);
 
   setupCardQueryDownloadEndpoint(card, "json");
 

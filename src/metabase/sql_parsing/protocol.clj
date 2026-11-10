@@ -1,7 +1,8 @@
 (ns metabase.sql-parsing.protocol
   "The strongly-typed protocol implemented by the sqlglot SQL parsers (currently
   [[metabase.sql-parsing.graal]]). Callers go through [[metabase.sql-parsing.core]], which owns the
-  JVM-side pre/post-processing and invokes these methods on the implementation.")
+  JVM-side pre/post-processing and invokes these methods on the implementation. Every parser throws [[call-failed-ex]] when a
+  call fails.")
 
 (set! *warn-on-reflection* true)
 
@@ -40,3 +41,15 @@
     reconstructed from the parsed AST.")
   (transpile-sql [parser sql from-dialect to-dialect]
     "Transpile the SQL from one dialect to another, as a keywordized result map."))
+
+(defn call-failed-ex
+  "The uniform exception for a Python-side sqlglot failure, thrown by every transport so callers can
+  handle parse errors without knowing which backend ran ([[metabase.sql-parsing.core/parse-error?]]).
+  `error` is the Python error rendered as `ErrorType: message`."
+  ([error]
+   (call-failed-ex error nil))
+  ([error cause]
+   (ex-info (str "sqlglot call failed: " error)
+            {:sql-parsing/error             true
+             :sql-parsing/python-error-type (some->> error (re-find #"^\w+"))}
+            cause)))

@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -218,6 +219,6 @@ function createMetricSearchResults() {
 }
 
 function createEmptyQuery(): Query {
-  const question = Question.create();
+  const question = Question.create({ metadata: createMockMetadata() });
   return question.query();
 }

@@ -647,6 +647,7 @@ export type CardQueryMetadata = {
   databases: Database[];
   tables: Table[];
   fields: Field[];
+  cards: Card[];
 };
 
 export type ListCardsRequest = {

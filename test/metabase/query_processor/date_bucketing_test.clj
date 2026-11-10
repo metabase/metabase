@@ -1634,7 +1634,7 @@
                                                                   :display-name "Date"
                                                                   :type :dimension
                                                                   :widget-type native-type
-                                                                  :dimension (mt/$ids !minute.orders.created_at)}}
+                                                                  :field-id  (mt/id :orders :created_at)}}
                                                  :parameters [{:type native-type
                                                                :name "date"
                                                                :target [:dimension [:template-tag "date"]]
@@ -1687,7 +1687,7 @@
                                                      :display-name "Date Range"
                                                      :type :dimension
                                                      :widget-type :date/all-options
-                                                     :dimension (mt/$ids $checkins.timestamp)}}
+                                                     :field-id  (mt/$ids %checkins.timestamp)}}
                                     :parameters [{:type :date/range
                                                   :name "created_at"
                                                   :target [:dimension [:template-tag "date_range"]]

@@ -45,7 +45,7 @@
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
-   (org.postgresql.jdbc PgConnection)
+   (org.postgresql.jdbc AutoSave PgConnection)
    (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
@@ -851,7 +851,7 @@
 
         :else
         (perf/postwalk #(if (h2x/identifier? %)
-                          (sql.qp/json-query :postgres % stored-field)
+                          (sql.qp/json-query driver % stored-field)
                           %)
                        identifier))
 
@@ -1153,6 +1153,23 @@
                            :sql    (str stmt)
                            :type   driver-api/qp.error-type.invalid-query}))
           (throw e))))))
+
+(defmethod driver/do-with-test-connection :postgres
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc)
+   driver
+   database
+   (fn [^Connection conn]
+     ;; A failed statement aborts a Postgres transaction, and every later statement then fails with "current
+     ;; transaction is aborted". With autosave, pgjdbc sets a savepoint before each statement and rolls back to it when
+     ;; the statement fails, so the statements after it run, and the temp tables created before it remain.
+     (let [^PgConnection pg-conn (.unwrap conn PgConnection)
+           autosave              (.getAutosave pg-conn)]
+       (.setAutosave pg-conn AutoSave/ALWAYS)
+       (try
+         (f conn)
+         (finally
+           (.setAutosave pg-conn autosave)))))))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for Postgres that dispatches on type."

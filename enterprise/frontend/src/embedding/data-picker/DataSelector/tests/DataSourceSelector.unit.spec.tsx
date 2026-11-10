@@ -245,11 +245,7 @@ function setup({
     },
   });
 
-  setupDatabasesEndpoints(
-    databases,
-    { hasSavedQuestions: availableModels.includes("card") },
-    { saved: true },
-  );
+  setupDatabasesEndpoints(databases);
 
   setupCollectionsEndpoints({
     collections: libraryCollection ? [libraryCollection] : [],
@@ -506,7 +502,6 @@ describe("DataSourceSelector", () => {
       // the database's tables, so only the schema list can tell there are two schemas
       fetchMock.get({
         url: "path:/api/database",
-        query: { saved: true },
         response: {
           data: databases.map((database) => ({
             ...database,
@@ -1136,7 +1131,6 @@ describe("DataSourceSelector", () => {
       });
       fetchMock.get({
         url: "path:/api/database",
-        query: { saved: true },
         response: () =>
           databaseListResponse.then(() => ({
             data: DATABASES,

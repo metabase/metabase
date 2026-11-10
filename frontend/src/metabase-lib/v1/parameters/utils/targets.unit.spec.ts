@@ -6,8 +6,6 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
 import {
   getParameterColumns,
   getParameterTargetField,
@@ -20,7 +18,6 @@ import {
   createMockCard,
   createMockColumn,
   createMockParameter,
-  createMockSavedQuestionsDatabase,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -44,18 +41,13 @@ import {
 import { isDimensionTarget } from "metabase-types/guards";
 
 const sampleDb = createSampleDatabase();
-const savedQuestionsDb = createMockSavedQuestionsDatabase();
 
 const metadata = createMockMetadata({
-  databases: [sampleDb, savedQuestionsDb],
+  databases: [sampleDb],
 });
 
-// Unjustified type cast. FIXME
-const db = metadata.database(SAMPLE_DB_ID) as Database;
-// Unjustified type cast. FIXME
-const productsTable = metadata.table(PRODUCTS_ID) as Table;
 const provider = createMetadataProvider({
-  databaseId: db.id,
+  databaseId: SAMPLE_DB_ID,
   metadata,
 });
 
@@ -289,7 +281,7 @@ describe("parameters/utils/targets", () => {
         Lib.createTestNativeQuery(provider, {
           query: "select * from PRODUCTS where {{foo}}",
           templateTags: {
-            foo: { type: "dimension", dimension: PRODUCTS.CATEGORY },
+            foo: { type: "dimension", "field-id": PRODUCTS.CATEGORY },
           },
         }),
       );
@@ -303,7 +295,11 @@ describe("parameters/utils/targets", () => {
     });
 
     it("should return the target field", () => {
-      const question = productsTable.question();
+      const question = createQuestion(
+        Lib.createTestQuery(provider, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      );
       const parameter = createMockParameter();
       const target: ParameterDimensionTarget = [
         "dimension",
@@ -839,7 +835,7 @@ function createModel(
 ) {
   const card = createMockCard({ type: "model", result_metadata });
   const metadata = createMockMetadata({
-    databases: [sampleDb, savedQuestionsDb],
+    databases: [sampleDb],
     questions: [card],
   });
 

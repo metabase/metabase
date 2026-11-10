@@ -93,7 +93,6 @@
 ;; Segments can be created by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
-;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
@@ -106,14 +105,13 @@
                     :unrestricted
                     (:db_id table)
                     (u/the-id table))))
-          (remote-sync/table-editable? table))))
+          (remote-sync/can-write? :model/TableUserSettings (:id table)))))
   ([_model pk]
    (mi/can-write? (segments.db/segment pk))))
 
 ;; Segments can be created by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
-;; But ONLY if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
@@ -126,38 +124,16 @@
                    :unrestricted
                    (:db_id table)
                    (u/the-id table))))
-         (remote-sync/table-editable? table))))
+         (remote-sync/can-write? :model/TableUserSettings (:id table)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
-  "Batched hydration for :can_write on segments. First hydrates :table for all segments,
-   then pre-fetches collection is_remote_synced values for those tables, and calls can-write?
-   on each segment. This avoids N+1 queries when checking permissions for multiple segments."
+  "Batched hydration for :can_write on segments, hydrating their tables first."
   [_model k segments]
-  (let [segments-with-tables (t2/hydrate (remove nil? segments) :table)
-        ;; Get all unique collection IDs from the hydrated tables
-        collection-ids (->> segments-with-tables
-                            (keep (comp :collection_id :table))
-                            distinct)
-        ;; Batch fetch is_remote_synced for all collections
-        collection-synced-map (if (seq collection-ids)
-                                (into {}
-                                      (map (juxt :id :is_remote_synced))
-                                      (segments.db/collections collection-ids))
-                                {})
-        ;; Associate collection info with each segment's table
-        segments-with-collection (for [segment segments-with-tables
-                                       :let [table (:table segment)
-                                             coll-id (:collection_id table)]]
-                                   (if (and table coll-id)
-                                     (assoc-in segment [:table :collection]
-                                               {:id coll-id
-                                                :is_remote_synced (get collection-synced-map coll-id false)})
-                                     segment))]
-    (mi/instances-with-hydrated-data
-     segments k
-     #(u/index-by :id mi/can-write? segments-with-collection)
-     :id
-     {:default false})))
+  (mi/instances-with-hydrated-data
+   segments k
+   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? segments) :table))
+   :id
+   {:default false}))
 
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
@@ -292,3 +268,8 @@
   (mapv (fn [{:keys [definition]}]
           (serialization/import-mbql-dependencies definition))
         entities))
+
+(defmethod remote-sync/spec :model/Segment
+  [_model]
+  {:parent               (fn [{:keys [table_id]}] [:model/TableUserSettings table_id])
+   :synced-filter-clause segments.db/synced-segments-clause})

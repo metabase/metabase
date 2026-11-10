@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -223,3 +224,8 @@
                                                  (select-keys settings (user-settings/user-set-table-columns settings))))
     (when (:field_order entity)
       (table/update-field-positions! (warehouse-schema.db/table table_id)))))
+
+(defmethod remote-sync/spec :model/TableUserSettings
+  [_model]
+  {:label                (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
+   :synced-filter-clause warehouse-schema.db/synced-table-user-settings-clause})

@@ -786,17 +786,9 @@ describe("scenarios > embedding > full app", () => {
       cy.signInAsAdmin();
       createLibraryWithTable();
       cy.signInAsNormalUser();
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/database",
-        query: {
-          saved: "true",
-        },
-      }).as("getDatabases");
 
       cy.log("test not providing `entity_types`");
       startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-      cy.wait("@getDatabases");
       H.popover().within(() => {
         cy.findByText("Models").should("be.visible");
         cy.findByText("Raw Data").should("be.visible");
@@ -1168,18 +1160,10 @@ describe("scenarios > embedding > full app", () => {
           type: "metric",
           collection_id: null,
         });
-        cy.intercept({
-          method: "GET",
-          pathname: "/api/database",
-          query: {
-            saved: "true",
-          },
-        }).as("getDatabases");
       });
 
       it("should select a metric as the starting data source", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        cy.wait("@getDatabases");
         selectCard({
           cardName: ordersCountCardDetails.name,
           cardType: "metric",
@@ -1196,7 +1180,6 @@ describe("scenarios > embedding > full app", () => {
 
       it("should not be able to join a metric", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        cy.wait("@getDatabases");
         selectTable({ tableName: "Orders" });
 
         H.getNotebookStep("data").button("Join data").click();

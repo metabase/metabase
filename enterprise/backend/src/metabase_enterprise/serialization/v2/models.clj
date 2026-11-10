@@ -85,6 +85,8 @@
    :model/BookmarkOrdering
    :model/CacheConfig
    :model/CardBookmark
+   ;; Until card tests have a serialization spec.
+   :model/CardTest
    :model/ChannelTemplate
    :model/CloudMigration
    :model/CollectionBookmark
@@ -157,7 +159,6 @@
    :model/QueryTable
    :model/RecentViews
    :model/ReplacementRun
-   :model/RemoteSyncObject
    :model/RemoteSyncTask
    :model/ResultMetadataStatus
    :model/Revision
@@ -184,7 +185,7 @@
    :model/TransformJobRun
    :model/TransformRun
    :model/TransformRunCancelation
-   :model/TransformTestRun
+   :model/DataTestRun
    :model/Undo
    :model/User
    :model/UserKeyValue

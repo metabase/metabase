@@ -2,7 +2,7 @@
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import type { Metadata } from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import type {
   JsMetricDefinition,
   MeasureId,
@@ -48,7 +48,7 @@ import type {
   TimeFilterParts,
 } from "./types";
 
-export function metadataProvider(jsMetadata: Metadata): MetadataProvider {
+export function metadataProvider(jsMetadata: JsMetadata): MetadataProvider {
   return LibMetric.metadataProvider(jsMetadata) as MetadataProvider;
 }
 

@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
@@ -233,3 +234,7 @@
           (when-let [collection-entity-id (or collection resource_collection_id)]
             [[:model/Collection collection-entity-id]]))
         entities))
+
+(defmethod remote-sync/spec :model/DataApp
+  [_model]
+  {})

@@ -29,6 +29,8 @@ import type { Card } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  SAMPLE_DB_ID,
+  createOrdersTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -59,11 +61,15 @@ function buildSavedQuestion(card: Card): Question {
     questions: [card],
   });
   const metadata = createMockMetadataFromState(createMockState({ entities }));
-  return checkNotNull(metadata.question(card.id));
+  return new Question(card, metadata);
 }
 
 function buildPristineTableQuestion(): Question {
-  return checkNotNull(tableMetadata.table(ORDERS_ID)).newQuestion();
+  return Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+    DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+    metadata: tableMetadata,
+  }).setDefaultDisplay();
 }
 
 const tableMetadata = createMockMetadataFromState(
@@ -333,7 +339,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       const question = buildPristineTableQuestion();
       const expectedUrl = Urls.table({
         id: ORDERS_ID,
-        name: question.metadata().table(ORDERS_ID)?.display_name,
+        name: createOrdersTable().display_name,
       });
 
       window.history.replaceState({}, "", "/table/anything");

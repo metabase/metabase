@@ -65,7 +65,7 @@ module.exports = (env) => {
         },
         {
           test: /\.(tsx?|jsx?)$/,
-          exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+          exclude: /node_modules|cljs/,
           use: [
             {
               loader: "builtin:swc-loader",

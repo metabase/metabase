@@ -1,5 +1,6 @@
 ---
 title: User provisioning with SCIM
+summary: Use SCIM to create, update, and deactivate Metabase accounts automatically from your identity provider.
 ---
 
 # User provisioning with SCIM

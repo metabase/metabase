@@ -27,7 +27,6 @@ import {
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import Field from "metabase-lib/v1/metadata/Field";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -157,7 +156,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           type: "string/=",
           hasVariableTemplateTagTarget: false,
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: 1 })],
         },
       ]);
     });
@@ -184,7 +183,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           type: "string/=",
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: 1 })],
           hasVariableTemplateTagTarget: false,
         },
       ]);
@@ -212,7 +211,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           type: "string/=",
-          fields: [expect.any(Field)],
+          fields: [expect.objectContaining({ id: 1 })],
           hasVariableTemplateTagTarget: true,
         },
       ]);
@@ -240,7 +239,10 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           type: "string/=",
-          fields: [expect.any(Field), expect.any(Field)],
+          fields: [
+            expect.objectContaining({ id: 1 }),
+            expect.objectContaining({ id: 2 }),
+          ],
           hasVariableTemplateTagTarget: false,
         },
       ]);

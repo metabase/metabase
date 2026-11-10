@@ -44,17 +44,18 @@ export function EmbeddingDataPicker({
     });
 
   const databaseId = Lib.databaseID(query);
-  const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
-  const selectedSource = getSelectedSource(pickerInfo);
+  const selectedSource = getSelectedSource(query, table);
+  const selectedCardId =
+    selectedSource?.type === "card" ? selectedSource.id : undefined;
   const { data: card } = useGetCardQuery(
-    pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
+    selectedCardId != null ? { id: selectedCardId } : skipToken,
   );
   /**
    * This is when we change the starting query source, and `card` is already cached.
    * If we use `card` as is, it will use the cached data from a different query source
    * which is incorrect.
    */
-  const normalizedCard = pickerInfo?.cardId ? card : undefined;
+  const normalizedCard = selectedCardId != null ? card : undefined;
   const entityTypesFromRedux = useSelector(getEntityTypes);
   const dataPickerFromRedux = useSelector(getDataPicker);
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
@@ -173,13 +174,14 @@ export function EmbeddingDataPicker({
 }
 
 function getSelectedSource(
-  pickerInfo: Lib.PickerInfo | null | undefined,
+  query: Lib.Query,
+  table: Lib.TableMetadata | Lib.CardMetadata | undefined,
 ): DataSource | undefined {
-  if (pickerInfo?.cardId != null) {
-    return { type: "card", id: pickerInfo.cardId };
+  if (Lib.isCardMetadata(table)) {
+    return { type: "card", id: Lib.pickerInfo(query, table).id };
   }
-  if (pickerInfo?.tableId != null) {
-    return { type: "table", id: pickerInfo.tableId };
+  if (Lib.isTableMetadata(table)) {
+    return { type: "table", id: Lib.pickerInfo(query, table).id };
   }
   return undefined;
 }

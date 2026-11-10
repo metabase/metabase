@@ -5,8 +5,15 @@
    [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
+
+(mu/defn synced-snippets-clause :- [:fn vector?]
+  "The clause over the NativeQuerySnippet table aliased `alias` selecting the snippets remote sync syncs."
+  [alias :- :keyword]
+  [:= (u/qualified-key alias :archived) false])
 
 (mu/defn snippets-by-archived
   "The NativeQuerySnippets whose archived flag is `archived`, in case-insensitive name order."
@@ -17,6 +24,16 @@
   "The NativeQuerySnippet with `id`, or nil."
   [id :- ::lib.schema.id/native-query-snippet]
   (t2/select-one :model/NativeQuerySnippet :id id))
+
+(mu/defn writable-snippet-ids :- [:set ::lib.schema.id/native-query-snippet]
+  "The ids among `ids` of the NativeQuerySnippets remote sync lets be written."
+  [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
+  (if (seq ids)
+    (set (t2/select-pks-set :model/NativeQuerySnippet
+                            {:where [:and
+                                     [:in :id ids]
+                                     (remote-sync/can-write-filter-clause :model/NativeQuerySnippet :native_query_snippet)]}))
+    #{}))
 
 (mu/defn snippet-name-exists?
   "Whether a NativeQuerySnippet named `snippet-name` exists."

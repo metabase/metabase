@@ -1,5 +1,6 @@
 ---
 title: "IP addresses to whitelist"
+summary: The IP addresses Metabase Cloud connects from in each region, to add to your firewall or security group rules.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true

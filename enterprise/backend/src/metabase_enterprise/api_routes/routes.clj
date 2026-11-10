@@ -21,6 +21,9 @@
    [metabase-enterprise.data-apps.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
+   [metabase-enterprise.data-testing.api]
+   [metabase-enterprise.data-testing.card-api]
+   [metabase-enterprise.data-testing.run-api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
@@ -45,7 +48,6 @@
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
-   [metabase-enterprise.transform-testing.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
@@ -120,6 +122,7 @@
    "/apps"                         (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
+   "/card-test"                    (premium-handler metabase-enterprise.data-testing.card-api/routes :transforms-testing)
    "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    ;; The sandbox donor GET can be accessed without auth (an iframe src cannot carry session auth), so it lives in
@@ -136,6 +139,7 @@
    ;; Endpoint is superuser-only so it's not exposed to regular users in the meantime.
    "/data-complexity-score"        metabase-enterprise.data-complexity-score.api/routes
    "/data-studio"                  (premium-handler metabase-enterprise.data-studio.api/routes :library)
+   "/data-test-run"                (premium-handler metabase-enterprise.data-testing.run-api/routes :transforms-testing)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections)
@@ -159,7 +163,7 @@
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
-   "/transform-test"               (premium-handler metabase-enterprise.transform-testing.api/routes :transforms-testing)
+   "/transform-test"               (premium-handler metabase-enterprise.data-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)

@@ -1,5 +1,6 @@
 ---
 title: List of expressions
+summary: Every aggregation and function you can use in custom expressions, with syntax and examples.
 redirect_from:
   - /docs/latest/users-guide/expressions-list
 ---

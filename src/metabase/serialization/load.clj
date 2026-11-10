@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [import load])
   (:require
    [clojure.walk :as walk]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.models.interface :as mi]
    [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
@@ -194,13 +195,13 @@
 
 (defn- prerequisites
   "The map from each of `ks`, the `[model ref]` keys of entities, to `{:all keys :stripped keys}`: the keys among them
-  of the entities that the entity `read` returns for it, and its child entities, refer to, whole and without the keys
-  that close its dependency cycles. A reference to a child entity is to its parent. `read` is a fn of a batch of keys,
-  returning their entities, and only the references of the entities stay in memory."
-  [ks read]
+  of the entities that the entity `read-batch` returns for it, and its child entities, refer to, whole and without the
+  keys that close its dependency cycles. A reference to a child entity is to its parent. `read-batch` is a fn of a
+  batch of keys, returning their entities, and only the references of the entities stay in memory."
+  [ks read-batch]
   (let [refs    (into {}
                       (comp (partition-all serialization.util/batch-size)
-                            (mapcat (fn [batch] (batch-references (map vector batch (read (vec batch)))))))
+                            (mapcat (fn [batch] (batch-references (map vector batch (read-batch (vec batch)))))))
                       ks)
         parents (into {} (for [[k {:keys [children]}] refs, child-key children] [child-key k]))
         among   (fn [ks-refs] (into #{} (comp (map #(get parents % %)) (filter refs)) ks-refs))]
@@ -209,12 +210,12 @@
                          :stripped (some-> stripped among)}))))
 
 (defn load-order
-  "The keys `ks` of the entities `read` returns for a batch of them, `[model ref]`, as batches to load in order, each
-  `{:model model :keys [...] :strip keys}`: every entity after the entities among them it refers to. A dependency cycle
-  is broken by one of its entities, which comes first in a batch without the `:strip` keys that close the cycle, and
-  again later whole."
-  [ks read]
-  (let [prereqs (prerequisites ks read)
+  "The keys `ks` of the entities `read-batch` returns for a batch of them, `[model ref]`, as batches to load in order,
+  each `{:model model :keys [...] :strip keys}`: every entity after the entities among them it refers to. A dependency
+  cycle is broken by one of its entities, which comes first in a batch without the `:strip` keys that close the cycle,
+  and again later whole."
+  [ks read-batch]
+  (let [prereqs (prerequisites ks read-batch)
         batches (fn [ks strip]
                   (for [[model ks] (group-by first (sort-by pr-str ks))]
                     {:model model :keys (vec ks) :strip strip}))]
@@ -275,15 +276,26 @@
             (log/warnf "Skipping %s: %s" (ex-message error) (ex-message (ex-cause error))))
           errors)))))
 
+(defn do-with-import-transaction
+  "Calls `thunk`, which should do the whole import, in one transaction of the app DB (see [[with-import-transaction]]),
+  marking the dependents of what it changes once at its end, and retrying it on a transient DB error."
+  [thunk]
+  (protocol/transact protocol.app-db/store {:retries 3} #(dependencies.hooks/with-batched-marks (thunk))))
+
+(defmacro with-import-transaction
+  "Runs `body`, which should do the whole import, in one transaction of the app DB, so it lands whole or not at all."
+  [& body]
+  `(do-with-import-transaction (fn [] ~@body)))
+
 (defn load-all
   "Loads the entities with the `[model ref]` keys `ks` into the app DB in one transaction, every entity after what it
-  depends on. `read` is a fn of a batch of keys returning their entities, called a batch at a
+  depends on. `read-batch` is a fn of a batch of keys returning their entities, called a batch at a
   time so that the whole import need not fit in memory. Retries the whole import on a transient DB error. With
   `continue-on-error`, an entity that fails to load is left out and its error returned; otherwise the first failure
   rolls the whole import back. With `skip-schema-validation`, queries load even when this instance's query schema
   rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
-  [ks read & {:keys [continue-on-error skip-schema-validation store] :or {store protocol.app-db/store}}]
-  (let [order (load-order ks read)
+  [ks read-batch & {:keys [continue-on-error skip-schema-validation store] :or {store protocol.app-db/store}}]
+  (let [order (load-order ks read-batch)
         opts  {:create-missing?         true
                :skip-schema-validation? (boolean skip-schema-validation)}]
     (protocol/transact
@@ -299,7 +311,7 @@
                                                               (mapv #(cond-> %
                                                                        strip (-> (as-> e (apply dissoc e strip))
                                                                                  (assoc :serdes/stripped strip)))
-                                                                    (read (vec batch)))
+                                                                    (read-batch (vec batch)))
                                                               opts
                                                               continue-on-error))))
                                  keys)))

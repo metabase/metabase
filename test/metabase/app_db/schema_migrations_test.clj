@@ -4711,3 +4711,177 @@
         (testing "rolling back restores the column with previews enabled"
           (migrate! :down 64)
           (is (true? (:collection_preview (card)))))))))
+
+(deftest data-test-run-test
+  (testing "pwaj0l..k4zf7x: transform_test_run becomes data_test_run, and the rollback restores it"
+    (impl/test-migrations ["pwaj0l" "k4zf7x"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                              :last_name     "Owner"
+                                                              :email         "data-test-owner@test.com"
+                                                              :entity_id     (u/generate-nano-id)
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            transform-id (t2/insert-returning-pk! :transform {:name        (mt/random-name)
+                                                              :source      "{}"
+                                                              :target      "{}"
+                                                              :source_type "native"
+                                                              :creator_id  user-id
+                                                              :entity_id   (u/generate-nano-id)
+                                                              :created_at  :%now
+                                                              :updated_at  :%now})
+            insert-test  (fn []
+                           (t2/insert-returning-pk! :transform_test {:entity_id    (u/generate-nano-id)
+                                                                     :transform_id transform-id
+                                                                     :creator_id   user-id
+                                                                     :name         (mt/random-name)
+                                                                     :inputs       "[]"
+                                                                     :expectations "[]"
+                                                                     :created_at   :%now
+                                                                     :updated_at   :%now}))
+            test-id      (insert-test)
+            deleted-id   (insert-test)
+            run-row      (fn [id] {:transform_test_id id, :initiated_by user-id, :status "passed"})
+            kept-run     (t2/insert-returning-pk! :transform_test_run (run-row test-id))
+            deleted-run  (t2/insert-returning-pk! :transform_test_run (run-row deleted-id))
+            ;; Read the boundary before the changesets run: on MySQL the marker row that a run writes can share a
+            ;; changeset's position, so a deployment id read after the run can be the changeset's own.
+            boundary     (with-open [conn (.getConnection (mdb/data-source))]
+                           (liquibase/with-liquibase [liquibase conn]
+                             (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+        (t2/delete! :transform_test :id deleted-id)
+        (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id deleted-run))
+            "before the migration, deleting a test nulls the test id of its runs")
+        (is (thrown? Exception (t2/insert! :transform_test_run (run-row Integer/MAX_VALUE)))
+            "before the migration a run must name a test that exists")
+        (migrate!)
+        (let [dangling-run (t2/insert-returning-pk! :data_test_run {:test_type "transform", :test_id deleted-id, :status "passed"})]
+          (testing "the runs keep their test, and are transform runs"
+            (is (=? {:test_id test-id, :test_type "transform", :status "passed", :initiated_by user-id}
+                    (t2/select-one :data_test_run :id kept-run)))
+            (is (=? {:test_id nil, :test_type "transform"}
+                    (t2/select-one :data_test_run :id deleted-run))))
+          (testing "the old table is gone"
+            (is (thrown? Exception (t2/select :transform_test_run))))
+          (testing "test_id has no foreign key any more"
+            (is (some? (t2/insert-returning-pk! :data_test_run {:test_type "card", :test_id Integer/MAX_VALUE, :status "passed"})))
+            (let [other-test (insert-test)
+                  run        (t2/insert-returning-pk! :data_test_run {:test_type "transform", :test_id other-test, :status "passed"})]
+              (t2/delete! :transform_test :id other-test)
+              (is (= other-test (t2/select-one-fn :test_id :data_test_run :id run)))
+              (t2/delete! :data_test_run :id run)))
+          (testing "a new run must name its test type"
+            (is (thrown? Exception (t2/insert! :data_test_run {:test_id test-id, :status "started"}))))
+          (when (= :postgres (mdb/db-type))
+            (testing "the id sequence follows the table name"
+              (is (= "data_test_run_id_seq"
+                     (:seq (t2/query-one ["SELECT to_regclass('data_test_run_id_seq')::text AS seq"]))))))
+          (let [card-run (t2/select-one-pk :data_test_run :test_type "card")]
+            (is (some? card-run))
+            (with-open [conn (.getConnection (mdb/data-source))]
+              (liquibase/with-liquibase [liquibase conn]
+                (rollback/rollback-to-deployment! conn liquibase boundary)))
+            (testing "rollback restores transform_test_run"
+              (is (thrown? Exception (t2/select :data_test_run)))
+              (is (=? {:transform_test_id test-id, :status "passed", :initiated_by user-id}
+                      (t2/select-one :transform_test_run :id kept-run)))
+              (is (not (contains? (t2/select-one :transform_test_run :id kept-run) :test_type)))
+              (is (=? {:transform_test_id nil} (t2/select-one :transform_test_run :id deleted-run)))
+              (when (= :postgres (mdb/db-type))
+                (is (= "transform_test_run_id_seq"
+                       (:seq (t2/query-one ["SELECT to_regclass('transform_test_run_id_seq')::text AS seq"]))))))
+            (testing "rollback deletes the runs of other test types, and nulls an id that names no transform test"
+              (is (= 3 (t2/count :transform_test_run)) "the card run is gone")
+              (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id dangling-run))))
+            (testing "rollback restores the foreign key"
+              (is (thrown? Exception (t2/insert! :transform_test_run (run-row Integer/MAX_VALUE))))
+              (t2/delete! :transform_test :id test-id)
+              (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id kept-run))))
+            (is (nil? (t2/select-one :transform_test_run :id card-run)))))))))
+
+(deftest sync-library-collection-test
+  (doseq [[label settings synced?] [["read-write instance syncing a repository syncs the Library"
+                                     {"remote-sync-url" "https://example.com/repo.git" "remote-sync-type" "read-write"}
+                                     true]
+                                    ["read-only instance leaves the Library"
+                                     {"remote-sync-url" "https://example.com/repo.git" "remote-sync-type" "read-only"}
+                                     false]
+                                    ["instance without remote sync leaves the Library"
+                                     {"remote-sync-type" "read-write"}
+                                     false]]]
+    (testing (str "tlmp7c: " label)
+      (impl/test-migrations ["tlmp7c"] [migrate!]
+        (doseq [[k v] settings]
+          (t2/insert! :setting {:key k :value v}))
+        (let [insert!    (fn [location entity-id]
+                           (t2/insert-returning-pk! :collection {:name       (mt/random-name)
+                                                                 :slug       "c"
+                                                                 :location   location
+                                                                 :entity_id  entity-id
+                                                                 :created_at :%now}))
+              library-id (or (t2/select-one-pk :collection :entity_id "librarylibrarylibrary")
+                             (insert! "/" "librarylibrarylibrary"))
+              child-id   (insert! (format "/%d/" library-id) (u/generate-nano-id))
+              other-id   (insert! "/" (u/generate-nano-id))
+              synced?*   #(t2/select-one-fn :is_remote_synced :collection :id %)]
+          (migrate!)
+          (is (= synced? (synced?* library-id)))
+          (is (= synced? (synced?* child-id)))
+          (is (false? (synced?* other-id))))))))
+
+(deftest card-test-table-test
+  (testing "t1jz0k..c65vs3: card_test holds the tests of a card, and the rollback drops it"
+    (impl/test-migrations ["t1jz0k" "c65vs3"] [migrate!]
+      (let [user-id   (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                           :last_name     "Owner"
+                                                           :email         "card-test-owner@test.com"
+                                                           :entity_id     (u/generate-nano-id)
+                                                           :date_joined   :%now
+                                                           :password      "password"
+                                                           :password_salt "salt"})
+            db-id     (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            card-id   (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                             :entity_id              (u/generate-nano-id)
+                                                             :display                "table"
+                                                             :dataset_query          "{}"
+                                                             :visualization_settings "{}"
+                                                             :creator_id             user-id
+                                                             :database_id            db-id
+                                                             :created_at             :%now
+                                                             :updated_at             :%now})
+            boundary  (with-open [conn (.getConnection (mdb/data-source))]
+                        (liquibase/with-liquibase [liquibase conn]
+                          (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
+            card-test (fn [entity-id]
+                        {:entity_id    entity-id
+                         :card_id      card-id
+                         :creator_id   user-id
+                         :name         "Revenue ignores refunds"
+                         :inputs       "[]"
+                         :expectations "[]"})]
+        (migrate!)
+        (let [entity-id (u/generate-nano-id)
+              test-id   (t2/insert-returning-pk! :card_test (card-test entity-id))]
+          (testing "a card test is stored with its timestamps"
+            (is (=? {:card_id card-id :creator_id user-id :entity_id entity-id :created_at some? :updated_at some?}
+                    (t2/select-one :card_test :id test-id))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception (t2/insert! :card_test (card-test entity-id)))))
+          (testing "a card test must name a card that exists"
+            (is (thrown? Exception (t2/insert! :card_test (assoc (card-test (u/generate-nano-id)) :card_id Integer/MAX_VALUE)))))
+          (when (= :postgres (mdb/db-type))
+            (testing "entity_id compares byte by byte"
+              (is (= "C" (:collation_name (t2/query-one ["SELECT collation_name FROM information_schema.columns
+                                                          WHERE table_name = 'card_test' AND column_name = 'entity_id'"]))))))
+          (testing "deleting the card deletes its tests"
+            (t2/delete! :report_card :id card-id)
+            (is (nil? (t2/select-one :card_test :id test-id)))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops card_test"
+          (is (thrown? Exception (t2/select :card_test))))))))

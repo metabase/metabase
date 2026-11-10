@@ -231,11 +231,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]
-   _body
-   request]
+    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        _           (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
         card (get-card resolved-id)]
     (cond-> card
       legacy-mbql?
@@ -659,12 +656,8 @@
   "Get all of the required query metadata for a card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   _query-params
-   _body
-   request]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -748,10 +741,7 @@
         ;; through the model, so that each card's checks run and its hooks move what moves with it
         (doseq [card  cards
                 :when (not (:collection_position card))]
-          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))
-        (doseq [card cards]
-          (collection/check-for-remote-sync-update card)))
-      ;; what a single card's update publishes too: remote sync listens to learn what entered or left its scope
+          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil})))
       (doseq [card cards]
         (events/publish-event! :event/card-update {:object          (queries-rest.db/card (u/the-id card))
                                                    :previous-object (get before (u/the-id card))

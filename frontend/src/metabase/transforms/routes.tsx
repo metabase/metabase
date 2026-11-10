@@ -1,8 +1,8 @@
 import {
+  PLUGIN_DATA_TESTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_REPLACEMENT,
   PLUGIN_TRANSFORMS_PYTHON,
-  PLUGIN_TRANSFORMS_TESTING,
 } from "metabase/plugins";
 import { Route } from "metabase/router";
 
@@ -155,7 +155,7 @@ export function getDataStudioTransformRoutes() {
       <Route path=":transformId/run" lazy={transformRunPage} />
       <Route path=":transformId/settings" lazy={transformSettingsPage} />
       <Route path=":transformId/indexes" lazy={transformIndexesPage} />
-      {PLUGIN_TRANSFORMS_TESTING.getTransformTestRoutes()}
+      {PLUGIN_DATA_TESTING.getTransformTestRoutes()}
       {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route

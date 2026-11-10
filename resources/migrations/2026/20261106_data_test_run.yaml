@@ -1,0 +1,154 @@
+## Turn transform_test_run into data_test_run, the run history of every kind of test: a run names its test by test_type
+## and test_id, with no foreign key, since test_id can point into a different table for each test type. The rollback of
+## the changeset that adds test_type first deletes the runs of other test types and nulls every test_id that names no
+## transform_test row, so the foreign key can come back.
+
+databaseChangeLog:
+  - changeSet:
+      id: pwaj0l
+      author: galdre
+      comment: Drop the foreign key from transform_test_run.transform_test_id to transform_test
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_test_run
+            constraintName: fk_transform_test_run_transform_test_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform_test_run
+            baseColumnNames: transform_test_id
+            referencedTableName: transform_test
+            referencedColumnNames: id
+            constraintName: fk_transform_test_run_transform_test_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: h4tq9z
+      author: galdre
+      comment: Rename transform_test_run to data_test_run
+      changes:
+        - renameTable:
+            oldTableName: transform_test_run
+            newTableName: data_test_run
+
+  - changeSet:
+      id: q7sn4e
+      author: galdre
+      comment: Rename the id sequence of data_test_run to data_test_run_id_seq, the name the copy command resets
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: ALTER SEQUENCE transform_test_run_id_seq RENAME TO data_test_run_id_seq
+      rollback:
+        - sql:
+            sql: ALTER SEQUENCE data_test_run_id_seq RENAME TO transform_test_run_id_seq
+
+  - changeSet:
+      id: t2rk8m
+      author: galdre
+      comment: Set the remarks of data_test_run
+      changes:
+        - setTableRemarks:
+            tableName: data_test_run
+            remarks: A run of a test and its outcome
+      rollback:
+        - setTableRemarks:
+            tableName: data_test_run
+            remarks: An execution of a transform test and its outcome
+
+  - changeSet:
+      id: m8xk2c
+      author: galdre
+      comment: Rename data_test_run.transform_test_id to test_id
+      changes:
+        - renameColumn:
+            tableName: data_test_run
+            oldColumnName: transform_test_id
+            newColumnName: test_id
+            columnDataType: int
+
+  - changeSet:
+      id: c9dv3w
+      author: galdre
+      comment: Set the remarks of data_test_run.test_id
+      changes:
+        - setColumnRemarks:
+            tableName: data_test_run
+            columnName: test_id
+            columnDataType: int
+            remarks: The test that was run, in the table of its test_type; set to null when the test is deleted through its model, and left naming no test by a delete that skips model hooks
+      rollback:
+        - setColumnRemarks:
+            tableName: data_test_run
+            columnName: test_id
+            columnDataType: int
+            remarks: The transform test that was run
+
+  - changeSet:
+      id: r5vd7e
+      author: galdre
+      comment: Add data_test_run.test_type
+      changes:
+        - addColumn:
+            tableName: data_test_run
+            columns:
+              - column:
+                  name: test_type
+                  type: varchar(50)
+                  remarks: The kind of test that was run, which selects the table test_id points into
+                  defaultValue: transform
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DELETE FROM data_test_run WHERE test_type <> 'transform'
+        - sql:
+            sql: UPDATE data_test_run SET test_id = NULL WHERE test_id IS NOT NULL AND test_id NOT IN (SELECT id FROM transform_test)
+        - dropColumn:
+            tableName: data_test_run
+            columnName: test_type
+
+  - changeSet:
+      id: b6hy1p
+      author: galdre
+      comment: Drop the default of data_test_run.test_type, which only backfilled the existing runs
+      changes:
+        - dropDefaultValue:
+            tableName: data_test_run
+            columnName: test_type
+            columnDataType: varchar(50)
+      rollback:
+        - addDefaultValue:
+            tableName: data_test_run
+            columnName: test_type
+            columnDataType: varchar(50)
+            defaultValue: transform
+
+  - changeSet:
+      id: w3nb6y
+      author: galdre
+      comment: Index data_test_run.test_type and test_id
+      changes:
+        - createIndex:
+            tableName: data_test_run
+            indexName: idx_data_test_run_test_type_test_id
+            columns:
+              - column:
+                  name: test_type
+              - column:
+                  name: test_id
+
+  - changeSet:
+      id: k4zf7x
+      author: galdre
+      comment: Drop the index on data_test_run.test_id alone, which idx_data_test_run_test_type_test_id replaces
+      changes:
+        - dropIndex:
+            tableName: data_test_run
+            indexName: idx_transform_test_run_transform_test_id
+      rollback:
+        - createIndex:
+            tableName: data_test_run
+            indexName: idx_transform_test_run_transform_test_id
+            columns:
+              - column:
+                  name: test_id

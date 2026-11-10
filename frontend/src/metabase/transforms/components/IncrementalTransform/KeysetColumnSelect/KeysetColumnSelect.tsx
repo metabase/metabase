@@ -50,7 +50,7 @@ export function getSourceFieldOptions(
       continue;
     }
 
-    const { fieldId } = Lib.fieldValuesSearchInfo(query, column);
+    const { id: fieldId } = Lib.pickerInfo(query, column);
     if (fieldId == null || seenFieldIds.has(fieldId)) {
       continue;
     }

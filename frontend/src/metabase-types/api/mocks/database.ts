@@ -2,7 +2,6 @@ import type {
   Database,
   DatabaseData,
   DatabaseFeature,
-  SavedQuestionDatabase,
 } from "metabase-types/api";
 
 export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
@@ -31,7 +30,6 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   engine: "H2",
   can_upload: false,
   is_sample: false,
-  is_saved_questions: false,
   created_at: "2015-01-01T20:10:30.200",
   updated_at: "2015-01-01T20:10:30.200",
   timezone: "UTC",
@@ -58,10 +56,4 @@ export const createMockDatabaseData = (
   is_full_sync: false,
   is_on_demand: false,
   ...opts,
-});
-
-export const createMockSavedQuestionsDatabase = (): SavedQuestionDatabase => ({
-  id: -1337,
-  name: "Saved Questions",
-  is_saved_questions: true,
 });

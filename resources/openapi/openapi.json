@@ -2631,6 +2631,1168 @@
         },
         "type" : "object"
       },
+      "metabase-enterprise.data-testing.expectations.empty.result" : {
+        "anyOf" : [ {
+          "additionalProperties" : false,
+          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
+          "properties" : {
+            "columns" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.result-column"
+              },
+              "type" : "array"
+            },
+            "error" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "type" : "object"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.status"
+            },
+            "type" : {
+              "const" : "empty"
+            }
+          },
+          "required" : [ "name", "type", "status" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
+          "properties" : {
+            "columns" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.result-column"
+              },
+              "type" : "array"
+            },
+            "error" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "type" : "object"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.status"
+            },
+            "type" : {
+              "const" : "empty"
+            }
+          },
+          "required" : [ "name", "type", "status" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "description" : "The rows the query returned, and the columns describing them.",
+          "properties" : {
+            "columns" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.result-column"
+              },
+              "type" : "array"
+            },
+            "error" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "type" : "object"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "sample" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.row"
+              },
+              "type" : "array"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.status"
+            },
+            "truncated" : {
+              "type" : "integer"
+            },
+            "type" : {
+              "const" : "empty"
+            }
+          },
+          "required" : [ "name", "type", "status", "columns", "sample", "truncated" ],
+          "type" : "object"
+        } ],
+        "description" : "What an `empty` expectation found.\n\n  A pass carries nothing beyond the shared keys. A failure adds the rows the query returned as\n  `:sample`, with `:columns` describing them; the sample is capped, and `:truncated` is how many\n  rows that cap dropped."
+      },
+      "metabase-enterprise.data-testing.expectations.equals.cell-mismatch" : {
+        "additionalProperties" : false,
+        "description" : "A cell that differs between the one missing row and the one extra row.",
+        "properties" : {
+          "actual" : {
+            "anyOf" : [ {
+              "anyOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "number"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "column" : {
+            "type" : "string"
+          },
+          "expected" : {
+            "anyOf" : [ {
+              "anyOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "number"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "column", "expected", "actual" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.expectations.equals.result" : {
+        "anyOf" : [ {
+          "additionalProperties" : false,
+          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
+          "properties" : {
+            "columns" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.result-column"
+              },
+              "type" : "array"
+            },
+            "error" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "type" : "object"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.status"
+            },
+            "type" : {
+              "const" : "equals"
+            }
+          },
+          "required" : [ "name", "type", "status" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "description" : "The comparison's findings, reported in full on a pass as well as a failure.",
+          "properties" : {
+            "cell-mismatches" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.expectations.equals.cell-mismatch"
+              },
+              "type" : "array"
+            },
+            "columns" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.result-column"
+              },
+              "type" : "array"
+            },
+            "error" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "type" : "object"
+            },
+            "extra-rows" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.row"
+              },
+              "type" : "array"
+            },
+            "missing-rows" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.row"
+              },
+              "type" : "array"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "row-counts" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "actual" : {
+                  "type" : "integer"
+                },
+                "expected" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "actual", "expected" ],
+              "type" : "object"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.status"
+            },
+            "truncated" : {
+              "type" : "integer"
+            },
+            "type" : {
+              "const" : "equals"
+            }
+          },
+          "required" : [ "name", "type", "status", "columns", "row-counts", "extra-rows", "missing-rows", "cell-mismatches", "truncated" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "description" : "The comparison's findings, reported in full on a pass as well as a failure.",
+          "properties" : {
+            "cell-mismatches" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.expectations.equals.cell-mismatch"
+              },
+              "type" : "array"
+            },
+            "columns" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.result-column"
+              },
+              "type" : "array"
+            },
+            "error" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "message" : {
+                  "type" : "string"
+                },
+                "type" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type", "message" ],
+              "type" : "object"
+            },
+            "extra-rows" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.row"
+              },
+              "type" : "array"
+            },
+            "missing-rows" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.row"
+              },
+              "type" : "array"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "row-counts" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "actual" : {
+                  "type" : "integer"
+                },
+                "expected" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "actual", "expected" ],
+              "type" : "object"
+            },
+            "status" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.status"
+            },
+            "truncated" : {
+              "type" : "integer"
+            },
+            "type" : {
+              "const" : "equals"
+            }
+          },
+          "required" : [ "name", "type", "status", "columns", "row-counts", "extra-rows", "missing-rows", "cell-mismatches", "truncated" ],
+          "type" : "object"
+        } ],
+        "description" : "What an `equals` expectation found.\n\n  Unless `:status` is `error`, every key is present on a pass as well as a failure:\n  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.\n  `:row-counts` sets the output's row count against the number of rows the expectation declared.\n  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.\n  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped."
+      },
+      "metabase-enterprise.data-testing.schema..card-test.create" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to create a card test.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "card_id", "name", "inputs", "expectations" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..card-test.response" : {
+        "additionalProperties" : false,
+        "description" : "A card test as the read endpoints return it, with its newest run.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "last_run" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.data-test-run"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "card_id", "creator_id", "created_at", "updated_at", "last_run" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..card-test.update" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to update a card test. Omitted fields are left unchanged.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..data-test-run.response" : {
+        "additionalProperties" : false,
+        "description" : "A test run as the API returns it, with the user who started it.",
+        "properties" : {
+          "end_time" : {
+            "anyOf" : [ {
+              "description" : "value must be a valid date/time/datetime",
+              "format" : "date-time",
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "initiated_by" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "initiated_by_user" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_heartbeat" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "start_time" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-status"
+          },
+          "test_id" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "test_type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.test-type"
+          }
+        },
+        "required" : [ "id", "test_type", "test_id", "initiated_by", "start_time", "end_time", "status", "last_heartbeat", "initiated_by_user" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..data-test-runs.response" : {
+        "additionalProperties" : false,
+        "description" : "A page of test runs.",
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..data-test-run.response"
+            },
+            "type" : "array"
+          },
+          "limit" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "offset" : {
+            "type" : "integer"
+          },
+          "total" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "data", "limit", "offset", "total" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..expectation-result.base" : {
+        "additionalProperties" : false,
+        "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
+        "properties" : {
+          "columns" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.result-column"
+            },
+            "type" : "array"
+          },
+          "error" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "message" : {
+                "type" : "string"
+              },
+              "type" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "type", "message" ],
+            "type" : "object"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.status"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "type", "status" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..expectation.empty" : {
+        "additionalProperties" : false,
+        "description" : "A check that a SQL query over the output of the query under test returns no rows.",
+        "properties" : {
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "sql" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "type" : {
+            "const" : "empty"
+          }
+        },
+        "required" : [ "type", "name", "sql" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..expectation.equals" : {
+        "anyOf" : [ {
+          "additionalProperties" : false,
+          "description" : "Test data returned by a SQL query run against the Database of the query under test.",
+          "properties" : {
+            "format" : {
+              "const" : "sql"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "sql" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "type" : {
+              "const" : "equals"
+            }
+          },
+          "required" : [ "type", "name", "format", "sql" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
+          "properties" : {
+            "columns" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.column"
+              },
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "format" : {
+              "const" : "rows"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "rows" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.row"
+              },
+              "type" : "array"
+            },
+            "type" : {
+              "const" : "equals"
+            }
+          },
+          "required" : [ "type", "name", "format", "columns", "rows" ],
+          "type" : "object"
+        } ],
+        "description" : "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns."
+      },
+      "metabase-enterprise.data-testing.schema..test.definition" : {
+        "additionalProperties" : false,
+        "description" : "A test as a client writes it, without the subject it covers.",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..transform-test.create" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to create a transform test.",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "transform_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
+          }
+        },
+        "required" : [ "transform_id", "name", "inputs", "expectations" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..transform-test.response" : {
+        "additionalProperties" : false,
+        "description" : "A transform test as the read endpoints return it, with its newest run.",
+        "properties" : {
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "last_run" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.data-test-run"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "transform_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "transform_id", "creator_id", "created_at", "updated_at", "last_run" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..transform-test.update" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to update a transform test. Omitted fields are left unchanged.",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "transform_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
+          }
+        },
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.card-test" : {
+        "additionalProperties" : false,
+        "description" : "A saved card test.",
+        "properties" : {
+          "card_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "card_id", "creator_id", "created_at", "updated_at" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.column" : {
+        "additionalProperties" : false,
+        "description" : "A column of inline test data, with the type its cells are cast to.\n\n  A cast target, which on some engines is not a type name the warehouse ever reports: MySQL takes\n  `SIGNED` and reports `BIGINT`.",
+        "properties" : {
+          "cast_type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "cast_type" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.data-test-run" : {
+        "additionalProperties" : false,
+        "description" : "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete\n  that skips model hooks (raw SQL, a database cascade) leaves a `:test_id` that names no test; such a run is never\n  listed or shown as `last_run`.",
+        "properties" : {
+          "end_time" : {
+            "anyOf" : [ {
+              "description" : "value must be a valid date/time/datetime",
+              "format" : "date-time",
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "initiated_by" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_heartbeat" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "start_time" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-status"
+          },
+          "test_id" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "test_type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.test-type"
+          }
+        },
+        "required" : [ "id", "test_type", "test_id", "initiated_by", "start_time", "end_time", "status", "last_heartbeat" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.expectation" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..expectation.equals"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..expectation.empty"
+        } ],
+        "description" : "A check on the output of the query under test."
+      },
+      "metabase-enterprise.data-testing.schema.expectation-result" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-testing.expectations.equals.result"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-testing.expectations.empty.result"
+        } ],
+        "description" : "What one expectation found. Each type owns the schema of its own result, registered under the key\n  named here."
+      },
+      "metabase-enterprise.data-testing.schema.expectations" : {
+        "description" : "The checks run against the output of the query under test. Names must be unique within a test,\n  case-sensitively.",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectation"
+        },
+        "type" : "array"
+      },
+      "metabase-enterprise.data-testing.schema.input" : {
+        "anyOf" : [ {
+          "additionalProperties" : false,
+          "description" : "Test data returned by a SQL query run against the Database of the query under test.",
+          "properties" : {
+            "format" : {
+              "const" : "sql"
+            },
+            "sql" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "table" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.table"
+            }
+          },
+          "required" : [ "table", "format", "sql" ],
+          "type" : "object"
+        }, {
+          "additionalProperties" : false,
+          "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
+          "properties" : {
+            "columns" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.column"
+              },
+              "minItems" : 1,
+              "type" : "array"
+            },
+            "format" : {
+              "const" : "rows"
+            },
+            "rows" : {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.row"
+              },
+              "type" : "array"
+            },
+            "table" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.table"
+            }
+          },
+          "required" : [ "table", "format", "columns", "rows" ],
+          "type" : "object"
+        } ],
+        "description" : "An input table of the query under test, replaced with test data."
+      },
+      "metabase-enterprise.data-testing.schema.inputs" : {
+        "description" : "Test data for the tables the query under test reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.input"
+        },
+        "type" : "array"
+      },
+      "metabase-enterprise.data-testing.schema.result-column" : {
+        "additionalProperties" : false,
+        "description" : "A column reported by a test run, with its database native type.",
+        "properties" : {
+          "database_type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "name", "database_type" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.row" : {
+        "additionalProperties" : {
+          "anyOf" : [ {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "number"
+            }, {
+              "type" : "string"
+            } ]
+          }, {
+            "type" : "null"
+          } ]
+        },
+        "description" : "A row of inline test data, keyed by column name.",
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.rows-data" : {
+        "additionalProperties" : false,
+        "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
+        "properties" : {
+          "columns" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.column"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          },
+          "format" : {
+            "const" : "rows"
+          },
+          "rows" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.row"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "format", "columns", "rows" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.run-result" : {
+        "additionalProperties" : false,
+        "description" : "The outcome of a test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
+        "properties" : {
+          "expectations" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectation-result"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.status"
+          },
+          "tables" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "required" : [ "status", "expectations", "tables" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.run-status" : {
+        "description" : "The persisted lifecycle state of a test run.",
+        "enum" : [ "started", "passed", "failed", "error", "timeout" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.data-testing.schema.sql-data" : {
+        "additionalProperties" : false,
+        "description" : "Test data returned by a SQL query run against the Database of the query under test.",
+        "properties" : {
+          "format" : {
+            "const" : "sql"
+          },
+          "sql" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "format", "sql" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.status" : {
+        "description" : "The outcome of a test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
+        "enum" : [ "passed", "failed", "error" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.data-testing.schema.table" : {
+        "additionalProperties" : false,
+        "description" : "A table read by the query under test, by schema and name.",
+        "properties" : {
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.test-type" : {
+        "description" : "The kind of test a run ran. It selects the table that `test_id` points into.",
+        "enum" : [ "transform", "card" ],
+        "type" : "string"
+      },
+      "metabase-enterprise.data-testing.schema.transform-test" : {
+        "additionalProperties" : false,
+        "description" : "A saved transform test.",
+        "properties" : {
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "transform_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "transform_id", "creator_id", "created_at", "updated_at" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema.user" : {
+        "additionalProperties" : false,
+        "description" : "The user who started a run.",
+        "properties" : {
+          "common_name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "first_name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "last_name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name" ],
+        "type" : "object"
+      },
       "metabase-enterprise.dependencies.api.action-entity" : {
         "properties" : {
           "data" : {
@@ -4371,1001 +5533,6 @@
         }, {
           "type" : "string"
         } ]
-      },
-      "metabase-enterprise.transform-testing.expectations.empty.result" : {
-        "anyOf" : [ {
-          "additionalProperties" : false,
-          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
-          "properties" : {
-            "columns" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
-              },
-              "type" : "array"
-            },
-            "error" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "message" : {
-                  "type" : "string"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "type", "message" ],
-              "type" : "object"
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "status" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
-            },
-            "type" : {
-              "const" : "empty"
-            }
-          },
-          "required" : [ "name", "type", "status" ],
-          "type" : "object"
-        }, {
-          "additionalProperties" : false,
-          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
-          "properties" : {
-            "columns" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
-              },
-              "type" : "array"
-            },
-            "error" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "message" : {
-                  "type" : "string"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "type", "message" ],
-              "type" : "object"
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "status" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
-            },
-            "type" : {
-              "const" : "empty"
-            }
-          },
-          "required" : [ "name", "type", "status" ],
-          "type" : "object"
-        }, {
-          "additionalProperties" : false,
-          "description" : "The rows the query returned, and the columns describing them.",
-          "properties" : {
-            "columns" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
-              },
-              "type" : "array"
-            },
-            "error" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "message" : {
-                  "type" : "string"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "type", "message" ],
-              "type" : "object"
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "sample" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
-              },
-              "type" : "array"
-            },
-            "status" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
-            },
-            "truncated" : {
-              "type" : "integer"
-            },
-            "type" : {
-              "const" : "empty"
-            }
-          },
-          "required" : [ "name", "type", "status", "columns", "sample", "truncated" ],
-          "type" : "object"
-        } ],
-        "description" : "What an `empty` expectation found.\n\n  A pass carries nothing beyond the shared keys. A failure adds the rows the query returned as\n  `:sample`, with `:columns` describing them; the sample is capped, and `:truncated` is how many\n  rows that cap dropped."
-      },
-      "metabase-enterprise.transform-testing.expectations.equals.cell-mismatch" : {
-        "additionalProperties" : false,
-        "description" : "A cell that differs between the one missing row and the one extra row.",
-        "properties" : {
-          "actual" : {
-            "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "number"
-              }, {
-                "type" : "string"
-              } ]
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "column" : {
-            "type" : "string"
-          },
-          "expected" : {
-            "anyOf" : [ {
-              "anyOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "number"
-              }, {
-                "type" : "string"
-              } ]
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "column", "expected", "actual" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.expectations.equals.result" : {
-        "anyOf" : [ {
-          "additionalProperties" : false,
-          "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
-          "properties" : {
-            "columns" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
-              },
-              "type" : "array"
-            },
-            "error" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "message" : {
-                  "type" : "string"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "type", "message" ],
-              "type" : "object"
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "status" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
-            },
-            "type" : {
-              "const" : "equals"
-            }
-          },
-          "required" : [ "name", "type", "status" ],
-          "type" : "object"
-        }, {
-          "additionalProperties" : false,
-          "description" : "The comparison's findings, reported in full on a pass as well as a failure.",
-          "properties" : {
-            "cell-mismatches" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.expectations.equals.cell-mismatch"
-              },
-              "type" : "array"
-            },
-            "columns" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
-              },
-              "type" : "array"
-            },
-            "error" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "message" : {
-                  "type" : "string"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "type", "message" ],
-              "type" : "object"
-            },
-            "extra-rows" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
-              },
-              "type" : "array"
-            },
-            "missing-rows" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
-              },
-              "type" : "array"
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "row-counts" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "actual" : {
-                  "type" : "integer"
-                },
-                "expected" : {
-                  "type" : "integer"
-                }
-              },
-              "required" : [ "actual", "expected" ],
-              "type" : "object"
-            },
-            "status" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
-            },
-            "truncated" : {
-              "type" : "integer"
-            },
-            "type" : {
-              "const" : "equals"
-            }
-          },
-          "required" : [ "name", "type", "status", "columns", "row-counts", "extra-rows", "missing-rows", "cell-mismatches", "truncated" ],
-          "type" : "object"
-        }, {
-          "additionalProperties" : false,
-          "description" : "The comparison's findings, reported in full on a pass as well as a failure.",
-          "properties" : {
-            "cell-mismatches" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.expectations.equals.cell-mismatch"
-              },
-              "type" : "array"
-            },
-            "columns" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
-              },
-              "type" : "array"
-            },
-            "error" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "message" : {
-                  "type" : "string"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "type", "message" ],
-              "type" : "object"
-            },
-            "extra-rows" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
-              },
-              "type" : "array"
-            },
-            "missing-rows" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
-              },
-              "type" : "array"
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "row-counts" : {
-              "additionalProperties" : false,
-              "properties" : {
-                "actual" : {
-                  "type" : "integer"
-                },
-                "expected" : {
-                  "type" : "integer"
-                }
-              },
-              "required" : [ "actual", "expected" ],
-              "type" : "object"
-            },
-            "status" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
-            },
-            "truncated" : {
-              "type" : "integer"
-            },
-            "type" : {
-              "const" : "equals"
-            }
-          },
-          "required" : [ "name", "type", "status", "columns", "row-counts", "extra-rows", "missing-rows", "cell-mismatches", "truncated" ],
-          "type" : "object"
-        } ],
-        "description" : "What an `equals` expectation found.\n\n  Unless `:status` is `error`, every key is present on a pass as well as a failure:\n  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.\n  `:row-counts` sets the output's row count against the number of rows the expectation declared.\n  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.\n  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped."
-      },
-      "metabase-enterprise.transform-testing.schema..expectation-result.base" : {
-        "additionalProperties" : false,
-        "description" : "What every expectation result carries: which expectation this is, and how it came out.\n\n  A `:status` of `error` means this one expectation could not be evaluated while the rest of the\n  run still reported; `:error` then says why, and nothing else is reported for it.",
-        "properties" : {
-          "columns" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.result-column"
-            },
-            "type" : "array"
-          },
-          "error" : {
-            "additionalProperties" : false,
-            "properties" : {
-              "message" : {
-                "type" : "string"
-              },
-              "type" : {
-                "type" : "string"
-              }
-            },
-            "required" : [ "type", "message" ],
-            "type" : "object"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
-          },
-          "type" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "name", "type", "status" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema..expectation.empty" : {
-        "additionalProperties" : false,
-        "description" : "A check that a SQL query over the transform output returns no rows.",
-        "properties" : {
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "sql" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "type" : {
-            "const" : "empty"
-          }
-        },
-        "required" : [ "type", "name", "sql" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema..expectation.equals" : {
-        "anyOf" : [ {
-          "additionalProperties" : false,
-          "description" : "Test data returned by a SQL query run against the transform's source database.",
-          "properties" : {
-            "format" : {
-              "const" : "sql"
-            },
-            "name" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "sql" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "type" : {
-              "const" : "equals"
-            }
-          },
-          "required" : [ "type", "name", "format", "sql" ],
-          "type" : "object"
-        }, {
-          "additionalProperties" : false,
-          "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
-          "properties" : {
-            "columns" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.column"
-              },
-              "minItems" : 1,
-              "type" : "array"
-            },
-            "format" : {
-              "const" : "rows"
-            },
-            "name" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "rows" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
-              },
-              "type" : "array"
-            },
-            "type" : {
-              "const" : "equals"
-            }
-          },
-          "required" : [ "type", "name", "format", "columns", "rows" ],
-          "type" : "object"
-        } ],
-        "description" : "A check that the transform output holds exactly the declared rows, over exactly the declared columns."
-      },
-      "metabase-enterprise.transform-testing.schema..transform-test-run.response" : {
-        "additionalProperties" : false,
-        "description" : "A transform test run as the API returns it, with the user who started it.",
-        "properties" : {
-          "end_time" : {
-            "anyOf" : [ {
-              "description" : "value must be a valid date/time/datetime",
-              "format" : "date-time",
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "initiated_by" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "initiated_by_user" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.user"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "last_heartbeat" : {
-            "description" : "value must be a valid date/time/datetime",
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "start_time" : {
-            "description" : "value must be a valid date/time/datetime",
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-status"
-          },
-          "transform_test_id" : {
-            "anyOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "minimum" : 1,
-              "type" : "integer"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "transform_test_id", "initiated_by", "start_time", "end_time", "status", "last_heartbeat", "initiated_by_user" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema..transform-test-runs.response" : {
-        "additionalProperties" : false,
-        "description" : "A page of transform test runs.",
-        "properties" : {
-          "data" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test-run.response"
-            },
-            "type" : "array"
-          },
-          "limit" : {
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "offset" : {
-            "type" : "integer"
-          },
-          "total" : {
-            "type" : "integer"
-          }
-        },
-        "required" : [ "data", "limit", "offset", "total" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema..transform-test.create" : {
-        "additionalProperties" : false,
-        "description" : "What a client sends to create a transform test.",
-        "properties" : {
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "transform_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-          }
-        },
-        "required" : [ "transform_id", "name", "inputs", "expectations" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema..transform-test.definition" : {
-        "additionalProperties" : false,
-        "description" : "A transform test as a client writes it, without the transform it covers.",
-        "properties" : {
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "name", "inputs", "expectations" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema..transform-test.response" : {
-        "additionalProperties" : false,
-        "description" : "A transform test as the read endpoints return it, with its newest run.",
-        "properties" : {
-          "created_at" : {
-            "description" : "value must be a valid date/time/datetime",
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "creator_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-          },
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "entity_id" : {
-            "type" : "string"
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
-          },
-          "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
-          },
-          "last_run" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test-run"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "transform_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-          },
-          "updated_at" : {
-            "description" : "value must be a valid date/time/datetime",
-            "format" : "date-time",
-            "type" : "string"
-          }
-        },
-        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "transform_id", "creator_id", "created_at", "updated_at", "last_run" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema..transform-test.update" : {
-        "additionalProperties" : false,
-        "description" : "What a client sends to update a transform test. Omitted fields are left unchanged.",
-        "properties" : {
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "transform_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-          }
-        },
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.column" : {
-        "additionalProperties" : false,
-        "description" : "A column of inline test data, with the type its cells are cast to.\n\n  A cast target, which on some engines is not a type name the warehouse ever reports: MySQL takes\n  `SIGNED` and reports `BIGINT`.",
-        "properties" : {
-          "cast_type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "name", "cast_type" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.expectation" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..expectation.equals"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..expectation.empty"
-        } ],
-        "description" : "A check on the output of the transform under test."
-      },
-      "metabase-enterprise.transform-testing.schema.expectation-result" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.expectations.equals.result"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.expectations.empty.result"
-        } ],
-        "description" : "What one expectation found. Each type owns the schema of its own result, registered under the key\n  named here."
-      },
-      "metabase-enterprise.transform-testing.schema.expectations" : {
-        "description" : "The checks run against the transform's output. Names must be unique within a test,\n  case-sensitively.",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectation"
-        },
-        "type" : "array"
-      },
-      "metabase-enterprise.transform-testing.schema.input" : {
-        "anyOf" : [ {
-          "additionalProperties" : false,
-          "description" : "Test data returned by a SQL query run against the transform's source database.",
-          "properties" : {
-            "format" : {
-              "const" : "sql"
-            },
-            "sql" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            },
-            "table" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.table"
-            }
-          },
-          "required" : [ "table", "format", "sql" ],
-          "type" : "object"
-        }, {
-          "additionalProperties" : false,
-          "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
-          "properties" : {
-            "columns" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.column"
-              },
-              "minItems" : 1,
-              "type" : "array"
-            },
-            "format" : {
-              "const" : "rows"
-            },
-            "rows" : {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
-              },
-              "type" : "array"
-            },
-            "table" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.table"
-            }
-          },
-          "required" : [ "table", "format", "columns", "rows" ],
-          "type" : "object"
-        } ],
-        "description" : "An input table of the transform under test, replaced with test data."
-      },
-      "metabase-enterprise.transform-testing.schema.inputs" : {
-        "description" : "Test data for the tables the transform reads. Every table it reads needs one, and an input for\n  a table it does not read is refused.",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.input"
-        },
-        "type" : "array"
-      },
-      "metabase-enterprise.transform-testing.schema.result-column" : {
-        "additionalProperties" : false,
-        "description" : "A column reported by a test run, with its database native type.",
-        "properties" : {
-          "database_type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "name", "database_type" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.row" : {
-        "additionalProperties" : {
-          "anyOf" : [ {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "number"
-            }, {
-              "type" : "string"
-            } ]
-          }, {
-            "type" : "null"
-          } ]
-        },
-        "description" : "A row of inline test data, keyed by column name.",
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.rows-data" : {
-        "additionalProperties" : false,
-        "description" : "Test data written out in the request: the columns, with the type each is cast to, and the rows.\n\n  A row's keys are the declared column names, exactly: the query reads each row by those names, so a key that names\n  no column would be dropped and a column a row leaves out would become a null cell, neither of which the author\n  asked for.",
-        "properties" : {
-          "columns" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.column"
-            },
-            "minItems" : 1,
-            "type" : "array"
-          },
-          "format" : {
-            "const" : "rows"
-          },
-          "rows" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.row"
-            },
-            "type" : "array"
-          }
-        },
-        "required" : [ "format", "columns", "rows" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.run-result" : {
-        "additionalProperties" : false,
-        "description" : "The outcome of a transform test run.\n\n  `:tables` maps each temp table the run created to the table it stood in for.",
-        "properties" : {
-          "expectations" : {
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectation-result"
-            },
-            "type" : "array"
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.status"
-          },
-          "tables" : {
-            "additionalProperties" : {
-              "type" : "string"
-            },
-            "type" : "object"
-          }
-        },
-        "required" : [ "status", "expectations", "tables" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.run-status" : {
-        "description" : "The persisted lifecycle state of a transform test run.",
-        "enum" : [ "started", "passed", "failed", "error", "timeout" ],
-        "type" : "string"
-      },
-      "metabase-enterprise.transform-testing.schema.sql-data" : {
-        "additionalProperties" : false,
-        "description" : "Test data returned by a SQL query run against the transform's source database.",
-        "properties" : {
-          "format" : {
-            "const" : "sql"
-          },
-          "sql" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "format", "sql" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.status" : {
-        "description" : "The outcome of a transform test run, or of one of its expectations.\n\n  `:error` is an expectation outcome only: that expectation's own query could not be run, while\n  the rest of the run completed and still reported.",
-        "enum" : [ "passed", "failed", "error" ],
-        "type" : "string"
-      },
-      "metabase-enterprise.transform-testing.schema.table" : {
-        "additionalProperties" : false,
-        "description" : "A table read by the transform under test, by schema and name.",
-        "properties" : {
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "schema" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "name" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.transform-test" : {
-        "additionalProperties" : false,
-        "description" : "A saved transform test: the transform it covers, the inputs that stand in for its source\n  tables, and the expectations checked against its output.",
-        "properties" : {
-          "created_at" : {
-            "description" : "value must be a valid date/time/datetime",
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "creator_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-          },
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "entity_id" : {
-            "type" : "string"
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
-          },
-          "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "transform_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-          },
-          "updated_at" : {
-            "description" : "value must be a valid date/time/datetime",
-            "format" : "date-time",
-            "type" : "string"
-          }
-        },
-        "required" : [ "name", "inputs", "expectations", "id", "entity_id", "transform_id", "creator_id", "created_at", "updated_at" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.transform-test-run" : {
-        "additionalProperties" : false,
-        "description" : "A persisted execution of a transform test.",
-        "properties" : {
-          "end_time" : {
-            "anyOf" : [ {
-              "description" : "value must be a valid date/time/datetime",
-              "format" : "date-time",
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "initiated_by" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "last_heartbeat" : {
-            "description" : "value must be a valid date/time/datetime",
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "start_time" : {
-            "description" : "value must be a valid date/time/datetime",
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-status"
-          },
-          "transform_test_id" : {
-            "anyOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "minimum" : 1,
-              "type" : "integer"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "transform_test_id", "initiated_by", "start_time", "end_time", "status", "last_heartbeat" ],
-        "type" : "object"
-      },
-      "metabase-enterprise.transform-testing.schema.user" : {
-        "additionalProperties" : false,
-        "description" : "The user who started a run.",
-        "properties" : {
-          "common_name" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "email" : {
-            "type" : "string"
-          },
-          "first_name" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
-          },
-          "last_name" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "email", "first_name", "last_name" ],
-        "type" : "object"
       },
       "metabase-enterprise.transforms-inspector.schema..lens-params.request" : {
         "$ref" : "#/components/schemas/metabase-enterprise.transforms-inspector.schema.lens-params",
@@ -46565,6 +46732,232 @@
         "tags" : [ "/api/ee/billing" ]
       }
     },
+    "/api/ee/card-test" : {
+      "get" : {
+        "description" : "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio\n  access.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
+        "operationId" : "get-api-ee-card-test",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "card-id",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.response"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/card-test",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "post" : {
+        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other\n  `{{...}}` is refused.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
+        "operationId" : "post-api-ee-card-test",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.create"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.card-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/card-test",
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
+    "/api/ee/card-test/{id}" : {
+      "delete" : {
+        "description" : "Delete a card test.",
+        "operationId" : "delete-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "get" : {
+        "description" : "Get a card test with its newest run.\n\n  A card test, with its inputs and expectations, is readable by every user who can read its card.",
+        "operationId" : "get-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      },
+      "put" : {
+        "description" : "Update a card test.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
+        "operationId" : "put-api-ee-card-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..card-test.update"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.card-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/card-test/{id}",
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
+    "/api/ee/card-test/{id}/run" : {
+      "post" : {
+        "description" : "Run a card test. Needs read access to the test, permission to run its card's query, and native query access to the\n  database of that query.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
+        "operationId" : "post-api-ee-card-test-id-run",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/card-test/{id}/run",
+        "tags" : [ "/api/ee/card-test" ]
+      }
+    },
     "/api/ee/cloud-add-ons/addons" : {
       "get" : {
         "description" : "Get addons information from the Metabase Store API.",
@@ -49789,6 +50182,93 @@
         },
         "summary" : "GET /api/ee/data-studio/table/{id}/publishing-info",
         "tags" : [ "/api/ee/data-studio/table" ]
+      }
+    },
+    "/api/ee/data-test-run" : {
+      "get" : {
+        "description" : "List the runs of the tests of `test-type` that the caller can read, newest first. With `test-id`, only the runs of\n  that test. Without it, the caller needs Data Studio access. The runs of a test that was deleted are not listed.",
+        "operationId" : "get-api-ee-data-test-run",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "test-type",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.test-type"
+          }
+        }, {
+          "in" : "query",
+          "name" : "test-id",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "statuses",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-status"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "start-time",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "end-time",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..data-test-runs.response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/data-test-run",
+        "tags" : [ "/api/ee/data-test-run" ]
       }
     },
     "/api/ee/database-replication/connection/{database-id}" : {
@@ -55944,7 +56424,7 @@
               "application/json" : {
                 "schema" : {
                   "items" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.response"
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..transform-test.response"
                   },
                   "type" : "array"
                 }
@@ -55970,7 +56450,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.create"
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..transform-test.create"
               }
             }
           }
@@ -55980,7 +56460,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test"
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.transform-test"
                 }
               }
             },
@@ -55994,52 +56474,6 @@
           }
         },
         "summary" : "POST /api/ee/transform-test",
-        "tags" : [ "/api/ee/transform-test" ]
-      }
-    },
-    "/api/ee/transform-test/run" : {
-      "post" : {
-        "description" : "Run a transform test that is not saved, of a transform that need not be saved either, as `POST /:id/run` runs a\n  saved one. Needs what saving the test needs, apart from remote sync.",
-        "operationId" : "post-api-ee-transform-test-run",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "additionalProperties" : false,
-                "properties" : {
-                  "test" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.definition"
-                  },
-                  "transform" : {
-                    "$ref" : "#/components/schemas/metabase.transforms.schema..transform.definition"
-                  }
-                },
-                "required" : [ "transform", "test" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-result"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/ee/transform-test/run",
         "tags" : [ "/api/ee/transform-test" ]
       }
     },
@@ -56096,7 +56530,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.response"
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..transform-test.response"
                 }
               }
             },
@@ -56129,7 +56563,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.update"
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..transform-test.update"
               }
             }
           }
@@ -56139,7 +56573,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test"
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.transform-test"
                 }
               }
             },
@@ -56157,82 +56591,8 @@
       }
     },
     "/api/ee/transform-test/{id}/run" : {
-      "get" : {
-        "description" : "List the runs of a transform test, newest first.",
-        "operationId" : "get-api-ee-transform-test-id-run",
-        "parameters" : [ {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        }, {
-          "in" : "query",
-          "name" : "statuses",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-status"
-              },
-              "type" : "array"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "start-time",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "description" : "value must be a non-blank string.",
-              "minLength" : 1,
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "end-time",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "description" : "value must be a non-blank string.",
-              "minLength" : 1,
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test-runs.response"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/ee/transform-test/{id}/run",
-        "tags" : [ "/api/ee/transform-test" ]
-      },
       "post" : {
-        "description" : "Run a transform test, which reading it is enough to do.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation\n  reports what it found — including one that could not be evaluated, which comes back as that\n  expectation's own `:error` rather than discarding the answers of the others.\n\n  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`\n  naming which refusal it was, as [[refusing]] describes.",
+        "description" : "Run a transform test. Needs read access to the test and its transform, and native query access to the transform's\n  source database: a test's inputs and expectations are SQL run on that database.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation\n  reports what it found — including one that could not be evaluated, which comes back as that\n  expectation's own `:error` rather than discarding the answers of the others.\n\n  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`\n  naming which refusal it was, as [[refusing]] describes.",
         "operationId" : "post-api-ee-transform-test-id-run",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
@@ -56249,7 +56609,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-result"
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
                 }
               }
             },
@@ -73581,75 +73941,6 @@
         "tags" : [ "/api/table" ]
       }
     },
-    "/api/table/card__:id/fks" : {
-      "get" : {
-        "description" : "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint\n   serves mainly as a placeholder to avoid having to change anything on the frontend.",
-        "operationId" : "get-api-table-card__:id-fks",
-        "parameters" : [ {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/table/card__:id/fks",
-        "tags" : [ "/api/table" ]
-      }
-    },
-    "/api/table/card__:id/query_metadata" : {
-      "get" : {
-        "description" : "Return metadata for the 'virtual' table for a Card.",
-        "operationId" : "get-api-table-card__:id-query_metadata",
-        "parameters" : [ {
-          "description" : "value must be an integer greater than zero.",
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "additionalProperties" : false,
-                "properties" : { },
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/table/card__:id/query_metadata",
-        "tags" : [ "/api/table" ]
-      }
-    },
     "/api/table/{id}" : {
       "get" : {
         "description" : "Get `Table` with ID.",
@@ -74981,111 +75272,6 @@
           }
         },
         "summary" : "POST /api/testing/mcp/seed-tool-call",
-        "tags" : [ "/api/testing" ]
-      }
-    },
-    "/api/testing/metabot/seed-ai-usage" : {
-      "delete" : {
-        "description" : "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then\n  clear the metabot limit cache.  Intended only for E2E tests.",
-        "operationId" : "delete-api-testing-metabot-seed-ai-usage",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "additionalProperties" : false,
-                "properties" : {
-                  "user_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
-                  }
-                },
-                "required" : [ "user_id" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "deleted" : {
-                      "type" : "integer"
-                    }
-                  },
-                  "required" : [ "deleted" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "DELETE /api/testing/metabot/seed-ai-usage",
-        "tags" : [ "/api/testing" ]
-      },
-      "post" : {
-        "description" : "Insert `count` messages of AI usage for the given `user_id`: one `ai_usage_log` row each, from the chat source and\n  under its own `request_id`, so a message limit counts each row as one message. Then clear the metabot limit cache\n  so limit checks re-evaluate immediately. Intended only for E2E tests.",
-        "operationId" : "post-api-testing-metabot-seed-ai-usage",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "additionalProperties" : false,
-                "properties" : {
-                  "count" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
-                  },
-                  "user_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
-                  }
-                },
-                "required" : [ "user_id", "count" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "inserted" : {
-                      "type" : "integer"
-                    }
-                  },
-                  "required" : [ "inserted" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/testing/metabot/seed-ai-usage",
         "tags" : [ "/api/testing" ]
       }
     },

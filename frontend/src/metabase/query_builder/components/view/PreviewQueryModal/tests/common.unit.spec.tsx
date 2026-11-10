@@ -53,7 +53,7 @@ describe("PreviewQueryModal (OSS)", () => {
           Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
             query: "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}}",
           }),
-          { category: tag },
+          [tag],
         ),
       ),
     });

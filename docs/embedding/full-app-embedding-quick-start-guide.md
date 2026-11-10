@@ -1,5 +1,6 @@
 ---
 title: "Full app embedding quickstart"
+summary: Embed the whole Metabase app in your own app with JWT single sign-on, with each customer's access scoped to their own data.
 redirect_from:
   - /docs/latest/embedding/interactive-embedding-quickstart
   - /docs/latest/embedding/interactive-embedding-quickstart-guide

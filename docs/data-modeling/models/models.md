@@ -1,5 +1,6 @@
 ---
 title: "Models"
+summary: Curate data from one or more tables into a reusable starting point for new questions, with your own column metadata. Consider transforms as an alternative.
 redirect_from:
   - /docs/latest/data-modeling/models
   - /docs/latest/users-guide/models
@@ -101,7 +102,7 @@ You can specify whether a column should appear in the table view, or just in a d
 - Table and detail views
 - Detail views only
 
-### Display as
+### Display as text, link, or image
 
 - Text
 - Link (it's a URL people should be able to click on)

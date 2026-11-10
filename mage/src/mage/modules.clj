@@ -708,7 +708,7 @@
 (def cloud-drivers
   "Drivers that run on cloud infrastructure and require secrets. These are more expensive to run,
   since they need round trip times, so we skip them on PRs unless specifically needed."
-  #{:athena :bigquery :databricks :redshift :snowflake})
+  #{:athena :bigquery :databricks :motherduck :redshift :snowflake})
 
 (def ^:private all-drivers
   "All driver test jobs in drivers.yml, in order."
@@ -721,6 +721,7 @@
    :mongo
    :mongo-ssl
    :mongo-sharded-cluster
+   :motherduck
    :mysql-mariadb
    :oracle
    :postgres
@@ -742,6 +743,7 @@
    "databricks" [:databricks]
    "druid-jdbc" [:druid-jdbc]
    "mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
+   "motherduck" [:motherduck]
    "oracle" [:oracle]
    "presto-jdbc" [:presto-jdbc]
    "redshift" [:redshift]

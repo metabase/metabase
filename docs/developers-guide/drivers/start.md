@@ -1,5 +1,6 @@
 ---
 title: Guide to writing a Metabase driver
+summary: Write your own Metabase driver for a data source Metabase doesn't support yet.
 ---
 
 # Guide to writing a Metabase driver
