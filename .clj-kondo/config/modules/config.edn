@@ -140,6 +140,7 @@
            warehouses
            workspaces}
    :model-exports #{:model/Action
+                    :model/ActionSecret
                     :model/HttpAction
                     :model/ImplicitAction
                     :model/QueryAction}
@@ -155,7 +156,7 @@
   actions.rest
   {:team "Gadget"
    :ns-prefix "metabase.actions-rest"
-   :api  #{metabase.actions-rest.api}
+   :api  #{metabase.actions-rest.api metabase.actions-rest.secret-api}
    :uses #{actions
            analytics
            api
@@ -1834,6 +1835,7 @@
            util
            util.classloader}
    :model-imports #{:model/Action
+                    :model/ActionSecret
                     :model/Card
                     :model/Channel
                     :model/ChannelTemplate

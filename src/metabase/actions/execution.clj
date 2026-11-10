@@ -115,10 +115,10 @@
                             (or slug id)))
                         parameters)]
       (api/check (empty? missing) 400 (tru "Missing values for the required parameters {0}." (pr-str (vec missing)))))
-    (actions.http/send! (actions.http/request action (into {}
-                                                           (keep (fn [{:keys [id slug]}]
-                                                                   (when slug [slug (get request-parameters id)])))
-                                                           parameters)))))
+    (actions.http/send-action-request! action (into {}
+                                                    (keep (fn [{:keys [id slug]}]
+                                                            (when slug [slug (get request-parameters id)])))
+                                                    parameters))))
 
 (mu/defn- implicit-action-table
   "The Table, with its Fields, that the implicit `action` writes to: its model's source Table when it has a model."

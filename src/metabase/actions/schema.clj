@@ -337,3 +337,53 @@
    [:select-keys ::http-action [:method :url :query_params :headers :body]]
    [:map {:closed true}
     [:serdes/meta {:optional true} ::models.schema/external-meta]]])
+
+(mr/def ::action-secret.name
+  "The name templates refer to a secret by, as `{{secrets.<name>}}`."
+  [:re
+   {:error/message "name must be letters, digits and underscores"}
+   #"^[A-Za-z0-9_]+$"])
+
+(mr/def ::action-secret.allowed-hosts
+  "The hosts a secret may be sent to."
+  [:sequential {:min 1} ::lib.schema.common/non-blank-string])
+
+(mr/def ::action-secret
+  "An ActionSecret as the API returns it: every column but its value."
+  [:map {:closed true}
+   [:id            pos-int?]
+   [:name          :string]
+   [:allowed_hosts [:sequential :string]]
+   [:creator_id    [:maybe ::lib.schema.id/user]]
+   [:creator       {:optional true} [:maybe ::users.schema/user]]
+   [:created_at    (ms/InstanceOfClass java.time.temporal.Temporal)]
+   [:updated_at    (ms/InstanceOfClass java.time.temporal.Temporal)]])
+
+(mr/def ::action-secret.with-value
+  "The name, value and allowed hosts of an ActionSecret, which only sending a request reads."
+  [:map {:closed true}
+   [:name          :string]
+   [:value         :string]
+   [:allowed_hosts [:sequential :string]]])
+
+(mr/def ::action-secret.update
+  "What an update (or insert) of an ActionSecret accepts: every column of `:action_secret` except `id`, all optional."
+  [:map {:closed true}
+   [:name          {:optional true} ::action-secret.name]
+   [:value         {:optional true} ::lib.schema.common/non-blank-string]
+   [:allowed_hosts {:optional true} ::action-secret.allowed-hosts]
+   [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::action-secret.create-request
+  "The REST API body that creates an ActionSecret."
+  [:map {:closed true}
+   [:name          ::action-secret.name]
+   [:value         ::lib.schema.common/non-blank-string]
+   [:allowed_hosts ::action-secret.allowed-hosts]])
+
+(mr/def ::action-secret.update-request
+  "The REST API body that updates an ActionSecret; a blank or missing value keeps the current one."
+  [:map {:closed true}
+   [:name          {:optional true} ::action-secret.name]
+   [:value         {:optional true} [:maybe :string]]
+   [:allowed_hosts {:optional true} ::action-secret.allowed-hosts]])

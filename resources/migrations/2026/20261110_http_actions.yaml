@@ -46,3 +46,72 @@ databaseChangeLog:
                   name: body
                   type: ${text.type}
                   remarks: JSON template of the request body
+
+  - changeSet:
+      id: k8vq3t
+      author: ranquild
+      comment: Add action_secret
+      changes:
+        - createTable:
+            tableName: action_secret
+            remarks: A named secret that HTTP actions can send to its allowed hosts
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: The secret id
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name templates refer to the secret by
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: idx_action_secret_name
+              - column:
+                  name: value
+                  type: ${text.type}
+                  remarks: The secret, encrypted when an encryption key is set
+                  constraints:
+                    nullable: false
+              - column:
+                  name: allowed_hosts
+                  type: ${text.type}
+                  remarks: JSON array of the hosts the secret may be sent to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who created the secret
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the secret was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the secret was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: r2mx9d
+      author: ranquild
+      comment: Add FK constraint on action_secret.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action_secret
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_action_secret_creator_id
+            onDelete: SET NULL

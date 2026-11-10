@@ -102,6 +102,7 @@
     :model/ImplicitAction
     :model/QueryAction
     :model/HttpAction
+    :model/ActionSecret
     :model/DashboardTab
     :model/ModelIndex
     :model/ModelIndexValue

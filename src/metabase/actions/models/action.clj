@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.actions.actions :as actions]
    [metabase.actions.db :as actions.db]
+   [metabase.actions.models.action-secret]
    [metabase.actions.models.http-action]
    [metabase.actions.models.implicit-action]
    [metabase.actions.models.query-action]

@@ -1,10 +1,13 @@
 (ns metabase.actions.http
-  "The request of an HTTP action: its templates filled in with parameter values, and sent."
+  "The request of an HTTP action: its templates filled in with parameter values and secrets, and sent."
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.actions.schema :as actions.schema]
+   [metabase.actions.secrets :as actions.secrets]
    [metabase.actions.settings :as actions.settings]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
@@ -18,6 +21,10 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private timeout-ms 10000)
+
+(def ^:private secret-prefix "secrets.")
+
+(def ^:private redacted "***")
 
 (mr/def ::request
   "The clj-http request of an HTTP action."
@@ -122,18 +129,28 @@
               :else           x))]
     (render body)))
 
+(defn- placeholder-secret-name
+  "The name of the secret the placeholder `placeholder-name` refers to, as `secrets.<name>`, or nil."
+  [placeholder-name]
+  (when (str/starts-with? placeholder-name secret-prefix)
+    (subs placeholder-name (count secret-prefix))))
+
+(defn- action-placeholder-names
+  "The names of the placeholders in the templates of the HTTP `action`."
+  [action]
+  (into #{} (mapcat (comp template-names parse-template)) (action-templates action)))
+
 (mu/defn check-http-action
   "Throws a 400 when `action` is an HTTP action without a method or URL, or with a placeholder that names none of its
-  parameters' slugs."
+  parameters' slugs and no secret."
   [{:keys [parameters method url], :as action} :- ::actions.schema/action.executable]
   (when (= :http (keyword (:type action)))
     (when-not (and method url)
       (throw (ex-info (tru "An HTTP action needs a method and a URL.") {:status-code 400})))
     (let [slugs   (into #{} (keep :slug) parameters)
           unknown (into (sorted-set)
-                        (comp (mapcat (comp template-names parse-template))
-                              (remove slugs))
-                        (action-templates action))]
+                        (remove (some-fn slugs placeholder-secret-name))
+                        (action-placeholder-names action))]
       (when (seq unknown)
         (throw (ex-info (tru "No parameter has the slug {0}." (str/join ", " unknown)) {:status-code 400}))))))
 
@@ -203,3 +220,47 @@
         (throw (request-error (tru "The request failed with status {0}." (:status response)) response)))
       {:response-status (:status response)
        :response-body   (response-body response)})))
+
+(defn- check-secret-hosts
+  "Throws a 400 unless the host of `url` is allowed for each of `secrets`."
+  [url secrets]
+  (let [host (some-> url io/as-url .getHost u/lower-case-en)]
+    (doseq [{secret-name :name, :keys [allowed_hosts]} secrets
+            :when (not (some #(= host (u/lower-case-en %)) allowed_hosts))]
+      (throw (ex-info (tru "The secret {0} can''t be sent to {1}." secret-name (str host)) {:status-code 400})))))
+
+(defn- redact
+  "`x` with every secret in `values` replaced in its strings."
+  [x values]
+  (walk/postwalk (fn [form]
+                   (if (string? form)
+                     (reduce #(str/replace %1 %2 redacted) form values)
+                     form))
+                 x))
+
+(defn- redact-error
+  "The ExceptionInfo `e` with every secret in `values` replaced in its message and response body."
+  [^clojure.lang.ExceptionInfo e values]
+  (ex-info (redact (ex-message e) values)
+           (m/update-existing (ex-data e) :response-body redact values)
+           (ex-cause e)))
+
+(mu/defn send-action-request! :- [:map {:closed true}
+                                  [:response-status :int]
+                                  [:response-body   :any]]
+  "Sends the request of the HTTP `action` with `values`, a map of parameter slug to value, and the secrets it uses, which
+  go only to their allowed hosts and never back to the caller."
+  [action :- ::actions.schema/action.executable
+   values :- [:map-of :string ::actions.schema/execute-parameter-value]]
+  (let [secrets       (actions.secrets/request-secrets
+                       (into #{} (keep placeholder-secret-name) (action-placeholder-names action)))
+        secret-values (into [] (comp (map :value) (remove str/blank?)) (vals secrets))
+        req           (request action (into values
+                                            (map (fn [[secret-name {:keys [value]}]]
+                                                   [(str secret-prefix secret-name) value]))
+                                            secrets))]
+    (check-secret-hosts (:url req) (vals secrets))
+    (try
+      (redact (send! req) secret-values)
+      (catch clojure.lang.ExceptionInfo e
+        (throw (redact-error e secret-values))))))

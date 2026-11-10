@@ -72,7 +72,8 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  [:model/AgentApiCallLog
+  [:model/ActionSecret
+   :model/AgentApiCallLog
    :model/AiUsageLog
    :model/AnalysisFinding
    :model/AnalysisFindingError

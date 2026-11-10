@@ -10,6 +10,7 @@
    [metabase.actions.http]
    [metabase.actions.models.action]
    [metabase.actions.scope]
+   [metabase.actions.secrets]
    [potemkin :as p]))
 
 (comment
@@ -19,7 +20,8 @@
   metabase.actions.hierarchy/keep-me
   metabase.actions.http/keep-me
   metabase.actions.models.action/keep-me
-  metabase.actions.scope/keep-me)
+  metabase.actions.scope/keep-me
+  metabase.actions.secrets/keep-me)
 
 (p/import-vars
  [metabase.actions.actions
@@ -71,4 +73,10 @@
   publish-action-success!]
  [metabase.actions.scope
   hydrate-scope
-  normalize-scope])
+  normalize-scope]
+ [metabase.actions.secrets
+  create-secret!
+  delete-secret!
+  secret
+  secrets
+  update-secret!])
