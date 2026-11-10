@@ -267,6 +267,10 @@
         (t2/update! :model/Database :id db-id {:details {:additional-options "user=parent_admin"}})
         (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config"))
         (t2/update! :model/Database :id db-id {:details {}}))
+      (testing "422, not a retryable 409, when an emitted value contains a template form"
+        (t2/update! :model/Workspace :id ws-id {:name "Cfg {{env HOME}}"})
+        (mt/user-http-request :crowberto :get 422 (str "ee/workspace-manager/" ws-id "/config"))
+        (t2/update! :model/Workspace :id ws-id {:name "Cfg WS"}))
       (testing "409 when a database is not :provisioned"
         (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
         (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
