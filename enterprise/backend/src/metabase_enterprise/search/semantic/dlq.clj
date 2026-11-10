@@ -348,7 +348,9 @@
 
 (defn- failure-outcome [ex gate-docs]
   (let [now         (.instant clock)
-        ex-category (categorize-error ex)
+        ;; A failed batch doesn't say which of its documents caused the error, so only a single document is held
+        ;; to the permanent policy. Batch shrinking isolates the culprit on later retries.
+        ex-category (if (next gate-docs) :transient (categorize-error ex))
         ex-policy   ({:transient transient-policy, :permanent permanent-policy} ex-category transient-policy)]
     ;; The DLQ catches the exception, so this is the only place its cause reaches the logs.
     (log/warnf "Semantic indexing failed for a batch of %d (%s error, will retry): %s"

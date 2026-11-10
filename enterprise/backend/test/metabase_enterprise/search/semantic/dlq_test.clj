@@ -376,4 +376,18 @@
                 (is (= 1 (count dlq-docs)))
                 (is (= 43 (:retry_count dlq-entry)))
                 (is (= now (:last_attempted_at dlq-entry)))
-                (is (= (.plus now ^Duration (semantic.dlq/next-delay 43 policy)) (:attempt_at dlq-entry)))))))))))
+                (is (= (.plus now ^Duration (semantic.dlq/next-delay 43 policy)) (:attempt_at dlq-entry))))))))
+      (testing "a permanent error holds a lone document to the permanent policy, but not a batch it can't be pinned on"
+        (let [now (Instant/parse "2025-01-01T13:14:33Z")]
+          (with-redefs [rand                         (constantly 1.0)
+                        semantic.index/upsert-index! (fn [& _] (throw (SQLException. "boom" "54000")))
+                        semantic.dlq/clock           (reify InstantSource (instant [_] now))]
+            (let [upserts  [(first gate-docs) (assoc (first gate-docs) :id "card_3" :model_id "3")]
+                  attempts (fn [docs]
+                             (->> (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 42) docs))
+                                  :failures
+                                  (map (comp :attempt_at :dlq-entry))
+                                  set))
+                  after    #(.plus now ^Duration (semantic.dlq/next-delay 43 %))]
+              (is (= #{(after semantic.dlq/permanent-policy)} (attempts (take 1 upserts))))
+              (is (= #{(after semantic.dlq/transient-policy)} (attempts upserts))))))))))
