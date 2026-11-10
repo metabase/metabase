@@ -14,6 +14,7 @@ import {
   NEAR_MEMBRANE_SANDBOX_HOST_URL,
   getSubpathSafeUrl,
 } from "metabase/urls";
+import { isDataAppBrokerMode } from "metabase-enterprise/data-apps/broker/iframe-broker";
 import { createDataAppSandbox } from "metabase-enterprise/data-apps/sandbox/sandbox";
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
@@ -90,7 +91,8 @@ export const fetchDataAppBundleCode = async (
 ): Promise<FetchedDataAppBundle> => {
   let res: Response;
   try {
-    // Use metabase/client fetch for SDK auth headers.
+    // Use metabase/client fetch for SDK auth headers. On the isolated origin, the broker
+    // carries this request (see `installDataAppFetchBroker`).
     res = await api.fetch({
       method: "GET",
       url: `/api/ee/apps/${encodeURIComponent(name)}/bundle`,
@@ -145,7 +147,11 @@ export const instantiateDataAppBundle = async (
     label,
     targetWindow,
     allowedHosts,
-    realmHostUrl: getSubpathSafeUrl(NEAR_MEMBRANE_SANDBOX_HOST_URL),
+    // On the isolated origin there is no realm host, so Near-Membrane uses its default
+    // `about:blank` realm; see the data-app `script-src` in `security.clj`.
+    realmHostUrl: isDataAppBrokerMode()
+      ? undefined
+      : getSubpathSafeUrl(NEAR_MEMBRANE_SANDBOX_HOST_URL),
     endowments: {
       React,
       reactDom: ReactDOM,

@@ -19,12 +19,18 @@ export interface LoadedApp {
 
 /**
  * Loads a data-app bundle in the near-membrane sandbox and watches for crashes.
- * Embedded apps install CSP before creating the sandbox and return errors for
- * display inside the iframe. Internal apps report errors to the host's DataAppView.
+ * Embedded apps return errors for display inside the iframe. Internal apps report
+ * errors to the host's DataAppView.
+ *
+ * With `installContentSecurityPolicy` (the default for embedded apps), the bundle's
+ * CSP is installed before the sandbox is created.
  */
 export const useDataAppBundle = (
   name: string,
-  { embedded = false }: { embedded?: boolean } = {},
+  {
+    embedded = false,
+    installContentSecurityPolicy = embedded,
+  }: { embedded?: boolean; installContentSecurityPolicy?: boolean } = {},
 ): {
   data: LoadedApp | null;
   failed: boolean;
@@ -51,8 +57,8 @@ export const useDataAppBundle = (
 
       // Ensure CSP is installed *before* the bundle code evaluates.
       // If CSP were to be installed after, it won't apply to already evaluated bundle.
-      if (embedded) {
-        installContentSecurityPolicy(contentSecurityPolicy);
+      if (installContentSecurityPolicy) {
+        insertContentSecurityPolicyMeta(contentSecurityPolicy);
       }
 
       const { component, providerProps } = await instantiateDataAppBundle(
@@ -91,7 +97,7 @@ export const useDataAppBundle = (
     return () => {
       cancelled = true;
     };
-  }, [name, embedded]);
+  }, [name, embedded, installContentSecurityPolicy]);
 
   useEffect(() => {
     // The bundle runs in a Near-Membrane sandbox that can throw errors which
@@ -131,7 +137,7 @@ export const useDataAppBundle = (
  * CSP contains allowed hosts which we don't want to expose without auth.
  * We do client-side auth first, then fetch and inject the CSP next.
  */
-function installContentSecurityPolicy(policy: string | null | undefined) {
+function insertContentSecurityPolicyMeta(policy: string | null | undefined) {
   const cspErrorMessage = t`Something went wrong while loading this app. Try refreshing the page.`;
 
   if (!policy?.trim()) {

@@ -37,6 +37,7 @@ type SetupOpts = {
   allowedHosts?: string[];
   contentSecurityPolicy?: string | null;
   embedded?: boolean;
+  installContentSecurityPolicy?: boolean;
   error?: Error;
   app?: LoadedApp;
 };
@@ -46,6 +47,7 @@ function setup({
   allowedHosts = [],
   contentSecurityPolicy = null,
   embedded = false,
+  installContentSecurityPolicy,
   error,
   app,
 }: SetupOpts = {}) {
@@ -63,7 +65,9 @@ function setup({
     // `load` event once the sandbox is given a realm-host document.
     mockedInstantiate.mockResolvedValue(app);
   }
-  return renderHook(() => useDataAppBundle("sales", { embedded }));
+  return renderHook(() =>
+    useDataAppBundle("sales", { embedded, installContentSecurityPolicy }),
+  );
 }
 
 describe("useDataAppBundle", () => {
@@ -270,6 +274,47 @@ describe("useDataAppBundle", () => {
 
       expect(getCspMetaTag()).toBeNull();
       expect(mockedInstantiate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("installContentSecurityPolicy without embedding (isolated origin)", () => {
+    beforeEach(() => {
+      jest.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    it("installs CSP policy before evaluating bundle, fetching it as an internal app", async () => {
+      mockedInstantiate.mockImplementation(async () => {
+        expect(getCspMetaTag()?.getAttribute("content")).toBe(CSP_POLICY);
+
+        return LOADED_APP;
+      });
+
+      const { result } = setup({
+        contentSecurityPolicy: CSP_POLICY,
+        installContentSecurityPolicy: true,
+      });
+
+      await waitFor(() => expect(result.current.data).toEqual(LOADED_APP));
+      expect(mockedFetch).toHaveBeenCalledWith("sales", { embedded: false });
+    });
+
+    it("reports a missing CSP to the parent, not inside the iframe", async () => {
+      const { result } = setup({
+        contentSecurityPolicy: null,
+        installContentSecurityPolicy: true,
+        app: LOADED_APP,
+      });
+
+      await waitFor(() => expect(result.current.failed).toBe(true));
+      expect(mockedInstantiate).not.toHaveBeenCalled();
+      expect(result.current.error).toBeNull();
+      expect(mockedReport).toHaveBeenCalledWith(
+        false,
+        expect.objectContaining({
+          message:
+            "Something went wrong while loading this app. Try refreshing the page.",
+        }),
+      );
     });
   });
 });

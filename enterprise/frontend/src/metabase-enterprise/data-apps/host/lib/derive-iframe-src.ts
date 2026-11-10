@@ -9,14 +9,19 @@ import * as Urls from "metabase/urls";
  * own URL — we intentionally don't re-sync the parent → iframe direction
  * after initial mount). Trailing characters after the name segment are
  * preserved verbatim.
+ *
+ * With `isolatedOrigin` (from `MB_ISOLATED_ORIGIN`), the iframe is served from that origin.
  */
-export function deriveIframeSrc(name: string): string {
+export function deriveIframeSrc(
+  name: string,
+  isolatedOrigin: string | null,
+): string {
   const prefix = Urls.dataApp(name);
   const path = window.location.pathname;
   const index = path.indexOf(prefix);
   const tail = index >= 0 ? path.slice(index + prefix.length) : "";
+  const embedPath = `${Urls.DATA_APP_EMBED_PREFIX}/${encodeURIComponent(name)}${tail}`;
+  const safePath = Urls.getSubpathSafeUrl(embedPath);
 
-  return Urls.getSubpathSafeUrl(
-    `${Urls.DATA_APP_EMBED_PREFIX}/${encodeURIComponent(name)}${tail}`,
-  );
+  return isolatedOrigin ? `${isolatedOrigin}${safePath}` : safePath;
 }
