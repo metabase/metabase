@@ -1,11 +1,11 @@
 import type {
   CollectionType,
-  RegularCollectionId,
+  RemoteSyncEntityId,
   RemoteSyncUnsyncedDependency,
 } from "metabase-types/api";
 
 export type DependencyGroupCollection = {
-  id: RegularCollectionId;
+  id: RemoteSyncEntityId;
   name: string;
   type: CollectionType | null;
 };
