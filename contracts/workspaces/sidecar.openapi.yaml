@@ -13,6 +13,18 @@ info:
 
     Every route needs a session or API key, the `:workspaces` premium feature (402 otherwise), and a superuser
     on the sidecar (403 otherwise).
+
+    #86735 (hardening) makes workspace mode two ordinary settings, so the settings API, env vars and `config.yml`
+    set it as well as `/current`:
+    - `workspaces-enabled`: instance setting, boolean, env `MB_WORKSPACES_ENABLED`. On = this instance is a
+      workspace. `PUT /api/setting/workspaces-enabled` returns 400 on an instance that has workspaces of its own
+      (a parent). Turning it off by any route deletes every remap row.
+    - `database-workspace-schema`: database-local string, set with `PUT /api/database/{id}`
+      `{"settings": {"database-workspace-schema": "..."}}`. The schema that database's transforms write to
+      (on MySQL, a database name).
+
+    `/current` becomes a wrapper over them (`WorkspaceInstanceSettings`). `name`, `input_schemas`, `can_write`,
+    the `instance-workspace` setting and `MB_INSTANCE_WORKSPACE` go away.
 servers:
   - url: "{sidecar}/api/ee/workspace-instance"
     variables:
@@ -30,6 +42,8 @@ paths:
       summary: The workspace this instance is in, or null.
       x-status: master
       x-source: EE/api/workspace_instance.clj:74
+      x-pr: 86735
+      description: "#86735: `data` becomes `WorkspaceInstanceSettings`, or null when `workspaces-enabled` is off."
       responses:
         "200":
           content:
@@ -51,7 +65,13 @@ paths:
         Keyed by database id (config.yml keys by database name). The sidecar must already have the databases,
         connected as the workspace user; this call does not carry credentials. The ids are not checked against
         the instance's databases.
+
+        #86735: the body and response become `WorkspaceInstanceSettings`. It turns `workspaces-enabled` on, sets
+        each listed database's `database-workspace-schema` and clears it on every other database. 400 for an
+        unknown database id, on a parent, or while `MB_WORKSPACES_ENABLED=false`. No config lock. Writes the schemas
+        first and turns the flag on last, in one transaction; a database dropped from the list loses its remap rows.
       x-status: master
+      x-pr: 86735
       x-source: EE/api/workspace_instance.clj:91, src/metabase/workspaces/core.clj:68
       requestBody:
         required: true
@@ -69,7 +89,9 @@ paths:
     delete:
       operationId: clearCurrentWorkspace
       summary: Leave workspace mode and delete every remap row.
+      description: "#86735: turns `workspaces-enabled` off. 400 only while `MB_WORKSPACES_ENABLED=true` (the env var wins)."
       x-status: master
+      x-pr: 86735
       x-source: EE/api/workspace_instance.clj:107
       responses:
         "204": { description: Not in workspace mode. }
@@ -180,6 +202,28 @@ components:
         can_write:
           type: boolean
           description: False when deployment config set the workspace; POST and DELETE then return 400.
+
+    WorkspaceInstanceSettings:
+      x-status: hardening
+      x-pr: 86735
+      description: |
+        Each database with a `database-workspace-schema`. A list, not a map keyed by id: request decoding silently
+        drops map entries that don't validate, so a malformed body would become a workspace with no databases.
+        The `{db, schema}` the sidecar writes to is derived: `schema` is this value, `db` is the database's own
+        catalog on SQL Server and BigQuery; on MySQL the value is the `db`.
+      type: object
+      additionalProperties: false
+      required: [databases]
+      properties:
+        databases:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [database_id, schema]
+            properties:
+              database_id: { type: integer }
+              schema: { type: string, minLength: 1 }
 
     TableRemapping:
       type: object

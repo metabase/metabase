@@ -23,7 +23,14 @@
             ]
           }
         },
-        "workspace": { "$ref": "#/$defs/workspaceSection" }
+        "workspace": { "$ref": "#/$defs/workspaceSection" },
+        "settings": {
+          "type": "object",
+          "x-status": "hardening",
+          "x-pr": 86735,
+          "description": "#86735: the settings form. `workspaces-enabled: true` here plus `settings.database-workspace-schema` on each workspace database does what the `workspace` section does. The parent still emits only the `workspace` section; switching it is a later PR, since mbcode checks for that section.",
+          "properties": { "workspaces-enabled": { "type": "boolean" } }
+        }
       }
     }
   },
@@ -35,7 +42,15 @@
       "properties": {
         "name": { "type": "string", "description": "The parent's database name. Key into workspace.databases." },
         "engine": { "type": "string" },
-        "details": { "$ref": "#/$defs/workspaceDetails" }
+        "details": { "$ref": "#/$defs/workspaceDetails" },
+        "settings": {
+          "type": "object",
+          "x-status": "hardening",
+          "x-pr": 86735,
+          "properties": {
+            "database-workspace-schema": { "type": "string", "minLength": 1, "description": "The schema this database's transforms write to (MySQL: a database name)." }
+          }
+        }
       }
     },
     "workspaceDetails": {
@@ -109,7 +124,8 @@
     "workspaceSection": {
       "type": "object",
       "required": ["name", "databases"],
-      "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400.",
+      "x-pr": 86735,
+      "description": "Loaded into the sidecar's instance-workspace setting at boot. Its presence locks the workspace: POST/DELETE /api/ee/workspace-instance/current then return 400. #86735: translated into workspaces-enabled plus each database's database-workspace-schema (output.schema, or output.db on MySQL); name and input_schemas are accepted and ignored; no lock.",
       "properties": {
         "name": { "type": "string", "pattern": "\\S" },
         "databases": {
