@@ -823,11 +823,15 @@
                                     (is (= [{:n 3}] (vec rows))
                                         "B's iso output reflects rewriter routing B's SELECT to A's iso table"))))))))))
                   (finally
-                    (ws/clear-instance-workspace!)
                     (t2/update! :model/Database :id (:id ws-db) {:details admin-details})
                     (try (ws/delete-workspace! ws-id)
                          (catch Throwable t
-                           (log/warn t "delete-workspace! failed during native-transform repro cleanup")))))))
+                           (log/warn t "delete-workspace! failed during native-transform repro cleanup")))
+                    ;; After deprovisioning, not before: this test runs inside the harness's app-DB
+                    ;; transaction, and clearing deletes every remap row on that connection.
+                    ;; Teardown then deletes the workspace's remap rows on another connection and
+                    ;; waits on those row locks until it times out (seen on MariaDB).
+                    (ws/clear-instance-workspace!)))))
             (finally
               (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name tgt-a-name)
                    (catch Throwable _ nil))

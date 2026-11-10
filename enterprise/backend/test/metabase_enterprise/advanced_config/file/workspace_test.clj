@@ -6,6 +6,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
@@ -205,13 +206,16 @@
 
 (deftest bigquery-3-slot-section-test
   (testing "BigQuery workspace: project + dataset in the :output map"
-    (mt/with-empty-h2-app-db!
-      (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
-        (advanced-config.file.workspace/apply-workspace-section!
-         {:name "ws"
-          :databases {:bq-prod {:input_schemas ["core"]
-                                :output        {:db "metabase-prod" :schema "ws_alice"}}}})
-        (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id)))))))
+    ;; db-workspace-namespace expands the stored schema through the driver, so it needs
+    ;; the driver on the classpath.
+    (when (workspaces.tu/driver-loadable? :bigquery-cloud-sdk)
+      (mt/with-empty-h2-app-db!
+        (mt/with-temp [:model/Database {db-id :id} {:name "bq-prod" :engine :bigquery-cloud-sdk :details {:project-id "metabase-prod"}}]
+          (advanced-config.file.workspace/apply-workspace-section!
+           {:name "ws"
+            :databases {:bq-prod {:input_schemas ["core"]
+                                  :output        {:db "metabase-prod" :schema "ws_alice"}}}})
+          (is (= {:db "metabase-prod" :schema "ws_alice"} (ws/db-workspace-namespace db-id))))))))
 
 ;;; ----------------------------------------- per-driver YAML fixtures -----------------------------------------
 ;;;
@@ -281,14 +285,17 @@
           (testing "validates against the workspace section spec"
             (is (true? (s/valid? :metabase-enterprise.advanced-config.file.workspace/config-file-spec section))
                 (str driver " fixture must satisfy the section spec")))
-          (testing "round-trips through apply-workspace-section! into the setting"
-            (mt/with-empty-h2-app-db!
-              (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
-                                                          :engine  (:engine expectations)
-                                                          :details (:details expectations)}]
-                (advanced-config.file.workspace/apply-workspace-section! section)
-                (is (= (:output expectations) (ws/db-workspace-namespace db-id))
-                    (str driver " setting output matches fixture"))))))))))
+          ;; db-workspace-namespace expands the stored schema through the driver, so this
+          ;; part needs the driver on the classpath.
+          (when (workspaces.tu/driver-loadable? (:engine expectations))
+            (testing "round-trips through apply-workspace-section! into the settings"
+              (mt/with-empty-h2-app-db!
+                (mt/with-temp [:model/Database {db-id :id} {:name    (:db-name expectations)
+                                                            :engine  (:engine expectations)
+                                                            :details (:details expectations)}]
+                  (advanced-config.file.workspace/apply-workspace-section! section)
+                  (is (= (:output expectations) (ws/db-workspace-namespace db-id))
+                      (str driver " setting output matches fixture")))))))))))
 
 ;;; ----------------------------------------- settings form ----------------------------------------
 ;;;

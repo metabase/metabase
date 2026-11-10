@@ -266,4 +266,3 @@
                                        :to_table_name   "orders"})
     (let [remappings (ws/list-remappings)]
       (is (some #(= "orders" (:from_table_name %)) remappings)))))
-
