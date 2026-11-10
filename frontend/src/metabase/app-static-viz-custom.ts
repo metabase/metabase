@@ -1,5 +1,4 @@
 import "metabase/static-viz/polyfill";
-
 import {
   initializeContext,
   registerCustomVizPlugin as registerCustomVizPluginImpl,

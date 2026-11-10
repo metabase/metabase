@@ -1,6 +1,4 @@
-// eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
-
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import { mutateColors } from "metabase/ui/colors/colors";
 import MetabaseSettings from "metabase/utils/settings";
