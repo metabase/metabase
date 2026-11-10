@@ -41,8 +41,8 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
-  createMockActionParameter,
   createMockQueryAction as _createMockQueryAction,
+  createMockActionParameter,
   createMockCard,
   createMockCardQueryMetadata,
   createMockColumn,
