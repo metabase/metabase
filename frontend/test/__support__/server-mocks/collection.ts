@@ -22,6 +22,8 @@ export interface CollectionEndpoints {
   rootCollection?: Collection;
   trashCollection?: Collection;
   currentUserId?: number;
+  /** Collections only returned by `GET /api/collection/tree`, such as tenant namespaces. */
+  treeOnlyCollections?: Collection[];
 }
 
 export function setupCollectionsEndpoints({
@@ -29,6 +31,7 @@ export function setupCollectionsEndpoints({
   rootCollection = createMockCollection(ROOT_COLLECTION),
   trashCollection = mockTrashCollection,
   currentUserId,
+  treeOnlyCollections = [],
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection, {
     name: "collection-root",
@@ -79,7 +82,7 @@ export function setupCollectionsEndpoints({
     const requestedNamespaces =
       namespaces.length > 0 ? namespaces : namespace ? [namespace] : null;
 
-    return collections.filter((collection) => {
+    return [...collections, ...treeOnlyCollections].filter((collection) => {
       // Filter out other users' personal collections if requested
       // But keep the current user's personal collection
       if (
