@@ -54,8 +54,8 @@
 
 (mu/defn update-auth-identity!
   "Update `auth-identity` with `columns`, merging `metadata` into its existing `:metadata`."
-  [auth-identity :- [:map [:id pos-int?]]
-   columns       :- [:maybe :map]
+  [auth-identity :- ::auth-identity.schema/auth-identity
+   columns       :- [:maybe ::auth-identity.schema/auth-identity.update]
    metadata      :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
   (t2/update! :model/AuthIdentity :id (:id auth-identity)
               (assoc columns :metadata (merge (:metadata auth-identity) metadata))))
