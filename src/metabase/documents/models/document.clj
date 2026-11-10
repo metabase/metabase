@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -10,15 +9,16 @@
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
@@ -156,11 +156,14 @@
    when moving a document. Uses the same permission pattern as check-allowed-to-change-collection.
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
-  (when old-collection-id
-    (api/write-check :model/Collection old-collection-id))
-  (when new-collection-id
-    (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
-    (api/write-check :model/Collection new-collection-id)))
+  (if old-collection-id
+    (api/write-check :model/Collection old-collection-id)
+    (api/write-check collection/root-collection))
+  (if new-collection-id
+    (do
+      (api/check-400 (documents.db/unarchived-collection-exists? new-collection-id))
+      (api/write-check :model/Collection new-collection-id))
+    (api/write-check collection/root-collection)))
 
 ;;; ------------------------------------------------ Write orchestration -------------------------------------------
 
@@ -366,9 +369,7 @@
                              ;; collection permissions *and* the content gate, and the gate adjudicates the
                              ;; warehouse data the body embeds, so a document the creator may not read must not
                              ;; come back rendered.
-                             (u/prog1 (get-document document-id)
-                               (when (collections/remote-synced-collection? (:collection_id <>))
-                                 (collections/check-non-remote-synced-dependencies <>)))))]
+                             (get-document document-id)))]
     ;; Publish event after successful creation
     (events/publish-event! :event/document-create
                            {:object created-document
@@ -428,8 +429,7 @@
                                               (contains? body :document))
                                          (assoc :is_placeholder false)))
         (when (seq pairings)
-          (card/carry-pairings-for-document! document-id pairings)))
-      (collections/check-for-remote-sync-update existing-document))
+          (card/carry-pairings-for-document! document-id pairings))))
     (let [updated-document (hydrate-document document-id)]
       ;; Publish appropriate events
       (if (:archived document-updates)
@@ -584,50 +584,20 @@
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
-(defn- ast-model->entity
-  "The database row identified by the smart-link/card-embed `model` (\"card\", \"dataset\", \"table\", or
-  \"dashboard\") and `id`, or nil."
-  [model id]
-  (case model
-    ("card" "dataset") (documents.db/card id)
-    "table"            (documents.db/table id)
-    "dashboard"        (documents.db/dashboard id)))
-
 (def ^:private model->serdes-model
   {"card"      "Card"
    "dataset"   "Card"
    "dashboard" "Dashboard"
    "table"     "Table"})
 
-(def ^:private non-portable-card-embed-attrs
-  "`cardEmbed` attrs holding a raw local database id that serdes cannot rewrite into a portable
+(def ^:private local-id-card-embed-attrs
+  "`cardEmbed` attrs holding a raw local database id that serdes cannot rewrite into a
   reference, and so must not travel. `:stored_result_id` points at a `stored_result` row — an
   ephemeral cached-snapshot record, not a first-class serdes entity — so exporting the integer
   verbatim would, on import, either dangle or silently resolve to an unrelated instance's
   snapshot. Dropping it degrades a static (snapshot-backed) embed to a live embed of the Card,
-  which is portable and renders the same query."
+  which travels and renders the same query."
   ["stored_result_id"])
-
-(defn- id->entity-id
-  [{{:strs [model] :or {model "card"}} :attrs type :type :as node}]
-  (let [id-key (if (= prose-mirror/smart-link-type type) "entityId" "id")
-        id (prose-mirror/node-entity-id node)
-        node (cond-> node
-               (= prose-mirror/card-embed-type type)
-               (update :attrs #(apply dissoc % non-portable-card-embed-attrs)))]
-    (if-let [db-model (and id (ast-model->entity model id))]
-      (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
-      (u/prog1 node
-        (log/warnf "entity_id not found for %s at id: %s" model id)))))
-
-(defn- entity-id->id
-  [{:keys [attrs type] :as node}]
-  (let [id-key (if (= prose-mirror/smart-link-type type) "entityId" "id")
-        id (:id (serdes/load-find-local (get attrs id-key)))]
-    (if id
-      (assoc-in node [:attrs id-key] id)
-      (u/prog1 node
-        (log/warn "Model not found at path" (get attrs id-key))))))
 
 (defn- serdes-rewritable-node?
   "The AST nodes whose ids serdes rewrites between database ids and entity ids.
@@ -636,50 +606,92 @@
   runs in both directions and the two directions see different shapes: on export `:id` is a raw
   database id, but on import it is a serdes path (a vector of `{:model :id}` maps). A guard that
   expected a positive integer would therefore pass on export and silently skip every node on import,
-  leaving the path unresolved. The id-shape checks belong in the readers — [[id->entity-id]] guards
-  on `prose-mirror/node-entity-id`, and [[entity-id->id]] on what `load-find-local` resolves to."
+  leaving the path unresolved. The id-shape checks belong in the readers, `walk-export-node` and `walk-import-node`."
   [node]
   (contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type node)))
 
-(defn- export-document-content
-  "Transform cardEmbed / smartLink nodes to use entity IDs instead of database IDs"
-  [document serdes-key _]
-  (serdes-key
-   (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast document serdes-rewritable-node? id->entity-id)
-     document)))
+(defn- table-path
+  "The path a document names the Table with the `[db-name schema table-name]` reference `table-ref` by."
+  [[db-name schema table-name]]
+  (filterv some? [{:model "Database" :id db-name}
+                  (when schema {:model "Schema" :id schema})
+                  {:model "Table" :id table-name}]))
 
-(defn- import-document-content
-  "Transform live cardEmbed / smartLink nodes to use database IDs instead of entity IDs.
+(defn- table-path->ref
+  "The `[db-name schema table-name]` reference of the Table a document names by `path`."
+  [path]
+  (let [id-of (fn [model] (some #(when (= model (:model %)) (:id %)) path))]
+    [(id-of "Database") (id-of "Schema") (id-of "Table")]))
 
-  Ingested YAML keywordizes every key, attrs included, so the document is normalized first --
-  stringifying attrs keys -- before [[entity-id->id]] reads them; it and the app-DB `:in` transform
-  that runs after this must only ever see string-keyed attrs."
-  [document serdes-key _]
-  (serdes-key
-   (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast (update document :document prose-mirror/normalize-document)
-                              serdes-rewritable-node? entity-id->id)
-     document)))
+(defn- walk-export-node
+  "`node`, a cardEmbed or smartLink, with its database id replaced by the path of the entity it names, which `visit`
+  resolves, or unchanged when that entity no longer exists."
+  [visit {{:strs [model] :or {model "card"}} :attrs type :type :as node}]
+  (let [id-key       (if (= prose-mirror/smart-link-type type) "entityId" "id")
+        id           (prose-mirror/node-entity-id node)
+        node         (cond-> node
+                       (= prose-mirror/card-embed-type type)
+                       (update :attrs #(apply dissoc % local-id-card-embed-attrs)))
+        serdes-model (model->serdes-model model)
+        path         (when (and id serdes-model)
+                       (if (= serdes-model "Table")
+                         (when-let [table-ref (serialization/found-or-nil #(visit :model/Table id))]
+                           (cond-> table-ref
+                             (not (serialization/collecting? visit)) table-path))
+                         (when-let [entity-id (serialization/found-or-nil
+                                               #(visit (keyword "model" serdes-model) id))]
+                           [{:model serdes-model :id entity-id}])))]
+    (if path
+      (assoc-in node [:attrs id-key] path)
+      (u/prog1 node
+        (log/warnf "entity_id not found for %s at id: %s" model id)))))
 
-(defmethod serdes/make-spec "Document"
-  [_model-name _opts]
+(defn- walk-import-node
+  "`node`, a cardEmbed or smartLink, with the path it names replaced by the id `visit` resolves it to, or unchanged
+  when that entity is missing."
+  [visit {:keys [attrs type] :as node}]
+  (let [id-key                        (if (= prose-mirror/smart-link-type type) "entityId" "id")
+        path                          (get attrs id-key)
+        {:keys [model] entity-id :id} (when (sequential? path) (last path))
+        id                            (cond
+                                        (= model "Table") (visit :model/Table (table-path->ref path))
+                                        (some? model)     (serialization/found-or-nil
+                                                           #(visit (keyword "model" model) entity-id)))]
+    (if id
+      (assoc-in node [:attrs id-key] id)
+      (u/prog1 node
+        (log/warn "Model not found at path" path)))))
+
+(defn- walk-export-document
+  "The exported `:document` of `document`, its node ids replaced by the entity paths `visit` resolves them to."
+  [visit document]
+  (:document
+   (cond-> document
+     (= (:content_type document) prose-mirror/prose-mirror-content-type)
+     (prose-mirror/update-ast serdes-rewritable-node? (partial walk-export-node visit)))))
+
+(defn- walk-import-document
+  "The `:document` of `entity`, normalized, its entity paths replaced by the ids `visit` resolves them to."
+  [visit entity]
+  (:document
+   (cond-> entity
+     (= (:content_type entity) prose-mirror/prose-mirror-content-type)
+     (-> (update :document prose-mirror/normalize-document)
+         (prose-mirror/update-ast serdes-rewritable-node? (partial walk-import-node visit))))))
+
+(defmethod serialization/spec :model/Document [_]
   {:schema    ::documents.schema/external-document
-   :copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder]
-   :transform {:document {:export-with-context export-document-content
-                          :import-with-context import-document-content}
-               :collection_id (serdes/fk :model/Collection)
-               :creator_id (serdes/fk :model/User)}
-   :defaults {:archived          false
-              :archived_directly false}})
-
-(defmethod serdes/extract-query "Document"
-  [model-name {:keys [collection-set filter-column filter-ids] :as opts}]
-  (documents.db/documents-for-serdes-reducible collection-set
-                                               filter-column
-                                               filter-ids
-                                               (serdes/extract-order-columns model-name opts)))
+   :copy      [:archived :archived_directly :content_type :entity_id :name :collection_position]
+   :skip      [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id
+               :is_placeholder]
+   :transform {:document      {:export (fn [store documents _ _]
+                                         (serialization/export-in-bulk store documents walk-export-document))
+                               :import (fn [store entities _ opts]
+                                         (serialization/import-in-bulk store entities opts walk-import-document))}
+               :collection_id (serialization/fk-transform :model/Collection)
+               :creator_id    serialization/user-transform}
+   :defaults  {:archived          false
+               :archived_directly false}})
 
 (defn- document-deps
   [{:keys [content_type] :as document}]
@@ -700,45 +712,6 @@
                                        :else
                                        nil))))))
 
-(defmethod serdes/deserialization-dependencies "Document"
-  [{:keys [collection_id] :as document}]
-  (set (concat
-        (document-deps document)
-        (when collection_id #{[{:model "Collection" :id collection_id}]}))))
-
-(defmethod serdes/serialization-dependencies "Document"
-  ;; Embedded cards and smart-links become content references (each must be part of the export); the containing
-  ;; Collection is included too, though a selective export may legitimately omit it.
-  [_model-name {:keys [collection_id content_type] :as document}]
-  (set
-   (concat
-    (when collection_id [[{:model "Collection" :id collection_id}]])
-    (when (= content_type prose-mirror/prose-mirror-content-type)
-      (concat
-       (for [embedded-card-id (prose-mirror/card-ids document)]
-         [{:model "Card" :id embedded-card-id}])
-       (for [{{model "model"} :attrs :as node}
-             (prose-mirror/collect-ast document
-                                       #(when (= prose-mirror/smart-link-type (:type %)) %))
-             :let  [link-id (prose-mirror/node-entity-id node)]
-             :when (and link-id (contains? model->serdes-model model))]
-         [{:model (model->serdes-model model) :id link-id}]))))))
-
-(defmethod serdes/descendants "Document"
-  [_model-name id _opts]
-  (when-let [document (documents.db/document id)]
-    (when (= prose-mirror/prose-mirror-content-type (:content_type document))
-      (merge
-       (into {}
-             (for [embedded-card-id (prose-mirror/card-ids document)]
-               {["Card" embedded-card-id] {"Document" id}}))
-       (into {}
-             (for [{{model "model"} :attrs :as node} (prose-mirror/collect-ast document
-                                                                               #(when (= prose-mirror/smart-link-type (:type %)) %))
-                   :let  [link-id (prose-mirror/node-entity-id node)]
-                   :when (and link-id (contains? model->serdes-model model))]
-               {[(model->serdes-model model) link-id] {"Document" id}}))))))
-
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
   (public-sharing/add-public-uuid-prefix model))
@@ -746,3 +719,43 @@
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
   (public-sharing/add-public-uuid-prefix-if-changed model))
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defn- path-key
+  "The `[model ref]` of the entity a document names by `path`."
+  [path]
+  (let [{:keys [model id]} (last path)]
+    (if (= model "Table")
+      [:model/Table (table-path->ref path)]
+      [(keyword "model" model) id])))
+
+(defmethod serialization/import-dependencies :model/Document [_ entities]
+  (mapv (fn [{:keys [collection_id] :as document}]
+          (set (concat (map path-key (document-deps document))
+                       (when collection_id #{[:model/Collection collection_id]}))))
+        entities))
+
+(defn- linked-entities
+  "The `[model-name id]` of the cards `document` embeds and the entities it smart-links."
+  [document]
+  (when (= prose-mirror/prose-mirror-content-type (:content_type document))
+    (concat
+     (for [card-id (prose-mirror/card-ids document)]
+       ["Card" card-id])
+     (for [{{model "model"} :attrs :as node}
+           (prose-mirror/collect-ast document #(when (= prose-mirror/smart-link-type (:type %)) %))
+           :let  [link-id (prose-mirror/node-entity-id node)]
+           :when (and link-id (contains? model->serdes-model model))]
+       [(model->serdes-model model) link-id]))))
+
+(defmethod serialization/export-dependencies :model/Document [_ documents]
+  (mapv (fn [{:keys [collection_id] :as document}]
+          (set (concat (when collection_id [[:model/Collection collection_id]])
+                       (for [[model-name id] (linked-entities document)]
+                         [(keyword "model" model-name) id]))))
+        documents))
+
+(defmethod remote-sync/spec :model/Document
+  [_model]
+  {:synced-filter-clause documents.db/synced-documents-clause})

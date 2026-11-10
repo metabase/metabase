@@ -9,7 +9,6 @@
    [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -31,6 +30,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
@@ -232,11 +232,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]
-   _body
-   request]
+    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        _           (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
         card (get-card resolved-id)]
     (cond-> card
       legacy-mbql?
@@ -549,7 +546,6 @@
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_preview     {:optional true} [:maybe :boolean]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -661,21 +657,13 @@
   "Get all of the required query metadata for a card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   _query-params
-   _body
-   request]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -719,10 +707,13 @@
           (reverse (range starting-position (+ (count sorted-cards) starting-position)))
           (reverse sorted-cards)))))
 
+(defn- write-check-collection-or-root [collection-id-or-nil]
+  (if collection-id-or-nil
+    (api/write-check :model/Collection collection-id-or-nil)
+    (api/write-check collection/root-collection)))
+
 (defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
-  ;; if moving to a collection, make sure we have write perms for it
-  (when new-collection-id-or-nil
-    (api/write-check :model/Collection new-collection-id-or-nil))
+  (write-check-collection-or-root new-collection-id-or-nil)
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards  (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil) ; poisioned NULLs = ick
@@ -731,9 +722,9 @@
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
-      ;; ...and check that we have write permissions for the old collections if applicable
-      (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
-        (api/write-check :model/Collection old-collection-id))
+      ;; ...and check that we have write permissions for the old collections, root included
+      (doseq [old-collection-id (set (map :collection_id cards))]
+        (write-check-collection-or-root old-collection-id))
       ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
@@ -747,10 +738,7 @@
         ;; through the model, so that each card's checks run and its hooks move what moves with it
         (doseq [card  cards
                 :when (not (:collection_position card))]
-          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))
-        (doseq [card cards]
-          (collection/check-for-remote-sync-update card)))
-      ;; what a single card's update publishes too: remote sync listens to learn what entered or left its scope
+          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil})))
       (doseq [card cards]
         (events/publish-event! :event/card-update {:object          (queries-rest.db/card (u/the-id card))
                                                    :previous-object (get before (u/the-id card))
@@ -759,11 +747,7 @@
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/collections"
+(api.macros/defendpoint :post "/collections" :- [:map {:closed true} [:status [:= :ok]]]
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [_route-params
@@ -775,18 +759,6 @@
   {:status :ok})
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
-
-(defn- metric-card-without-query-breakouts
-  [card]
-  (if-not (= :metric (:type card))
-    card
-    (let [metadata-provider (lib-be/application-database-metadata-provider (:database_id card))
-          query             (lib/query metadata-provider (:dataset_query card))]
-      (cond-> card
-        (and (= 1 (count (:stages query)))
-             (lib/mbql-stage? query -1)
-             (seq (lib/breakouts query -1)))
-        (assoc :dataset_query (lib/remove-all-breakouts query))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -814,10 +786,9 @@
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort]}
+   {:keys [parameters ignore_cache dashboard_id stored_result_id sort]}
    :- [:map {:closed true}
        [:ignore_cache       {:default false} :boolean]
-       [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
        [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
        [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
@@ -839,15 +810,8 @@
          :parameters parameters
          :ignore-cache ignore_cache
          :dashboard-id dashboard_id
-         :card-transform (cond
-                           ;; Collection previews start from the aggregate so no usable default stays scalar
-                           collection_preview (comp qp.dashboard/card-with-default-metric-dimension
-                                                    metric-card-without-query-breakouts)
-                           dashboard_id       qp.dashboard/card-with-default-metric-dimension)
-         :context (cond
-                    collection_preview :collection
-                    dashboard_id       :dashboard
-                    :else              :question)
+         :card-transform (when dashboard_id qp.dashboard/card-with-default-metric-dimension)
+         :context (if dashboard_id :dashboard :question)
          :middleware   {:process-viz-settings? false})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -926,12 +890,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:card-id/public_link"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :delete "/:card-id/public_link" :- ::api/generic-204-no-content
   "Delete the publicly-accessible link to this Card."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
@@ -948,11 +908,8 @@
                             :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:card-id/query"
+  :- ::qp.streaming/query-result-response
   "Run the query associated with a Card."
   {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map {:closed true}

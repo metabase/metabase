@@ -358,6 +358,7 @@
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
+                      {:name "admin-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -469,20 +470,21 @@
                                                  :fields       [[:field "s" {:base-type :type/Text}]]
                                                  :limit        3}})]
         (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
-          (is (= [["SELECT"
+          (is (= [["WITH \"__mb_stage_0\" AS ("
+                   "  SELECT"
+                   "    \"public\".\"table\".\"field\" \"field\","
+                   "    SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
+                   "  FROM"
+                   "    \"public\".\"table\""
+                   ")"
+                   "SELECT"
                    "  *"
                    "FROM"
                    "  ("
                    "    SELECT"
                    "      \"__mb_source\".\"s\" \"s\""
                    "    FROM"
-                   "      ("
-                   "        SELECT"
-                   "          \"public\".\"table\".\"field\" \"field\","
-                   "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
-                   "        FROM"
-                   "          \"public\".\"table\""
-                   "      ) \"__mb_source\""
+                   "      \"__mb_stage_0\" \"__mb_source\""
                    "  )"
                    "WHERE"
                    "  rownum <= 3"]]

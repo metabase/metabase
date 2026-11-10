@@ -304,6 +304,9 @@
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
+    ;; starts the pinned server an app DB snapshot is generated from (metabase.app-db.snapshot-test-util.server);
+    ;; every other test DB is started outside the JVM and reached through MB_<DB>_TEST_*
+    org.testcontainers/testcontainers {:mvn/version "1.21.4"}
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
@@ -549,6 +552,7 @@
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/test"
+    "modules/drivers/motherduck/test"
     "modules/drivers/oracle/test"
     "modules/drivers/presto-jdbc/test"
     "modules/drivers/redshift/test"

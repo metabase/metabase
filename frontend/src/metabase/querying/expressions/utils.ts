@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { CompileError } from "./errors";
 import type { Node } from "./pratt";
 

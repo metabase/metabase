@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useCallback } from "react";
 
 import { skipToken } from "metabase/api/api";

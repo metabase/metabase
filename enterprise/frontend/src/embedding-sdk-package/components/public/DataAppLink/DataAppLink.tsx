@@ -1,12 +1,16 @@
+import cx from "classnames";
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
 
 import {
   getPageBasename,
+  isEmbeddedDataApp,
   navigate,
 } from "embedding-sdk-package/lib/private/data-app-routing";
 
+import S from "./DataAppLink.module.css";
+
 export interface DataAppLinkProps extends Omit<
-  AnchorHTMLAttributes<HTMLAnchorElement>,
+  AnchorHTMLAttributes<HTMLElement>,
   "href"
 > {
   to: string;
@@ -14,14 +18,9 @@ export interface DataAppLinkProps extends Omit<
 }
 
 /**
- * Internal-only navigation link inside a data app.
- *
- * Renders a plain anchor rather than a router `<Link>`: a data app is mounted
- * outside the app's route tree, so it has no router context to read.
- *
- * The `href` is the app's page in Metabase, so opening the link in a new tab or
- * copying its address lands on the app rather than on its iframe, which refuses
- * to load as a top-level page. A plain click navigates inside the app.
+ * Navigates inside a Data App without requiring a router context.
+ * Embedded apps use a button because a standalone tab cannot obtain the host's
+ * credentials. Internal apps use links to the app's regular Metabase page.
  */
 export const DataAppLink = ({
   to,
@@ -29,17 +28,24 @@ export const DataAppLink = ({
   onClick,
   target,
   rel,
+  className,
   ...rest
 }: DataAppLinkProps) => {
-  const href = getPageBasename() + to;
+  const embedded = isEmbeddedDataApp();
 
   const isExternalTarget = target != null && target !== "_self";
   const resolvedRel = rel ?? (isExternalTarget ? "noopener noreferrer" : rel);
 
-  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = (event: MouseEvent<HTMLElement>) => {
     onClick?.(event);
 
     if (event.defaultPrevented) {
+      return;
+    }
+
+    if (embedded) {
+      event.preventDefault();
+      navigate(to);
       return;
     }
 
@@ -64,9 +70,23 @@ export const DataAppLink = ({
     navigate(to);
   };
 
+  if (embedded) {
+    return (
+      <button
+        {...rest}
+        type="button"
+        className={cx(S.button, className)}
+        onClick={handleClick}
+      >
+        {children}
+      </button>
+    );
+  }
+
   return (
     <a
-      href={href}
+      href={getPageBasename() + to}
+      className={className}
       target={target}
       rel={resolvedRel}
       onClick={handleClick}

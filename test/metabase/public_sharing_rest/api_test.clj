@@ -339,7 +339,7 @@
                                          :name         "price"
                                          :display-name "Price"
                                          :type         :dimension
-                                         :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                                         :field-id     (mt/id :venues :price)
                                          :widget-type  :category}
                     "snippet: greeting" {:type         :snippet
                                          :name         "snippet: greeting"
@@ -580,7 +580,7 @@
                        :name         "price"
                        :display-name "Price"
                        :type         :dimension
-                       :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :price)))
+                       :field-id     (mt/id :venues :price)
                        :widget-type  :category}})
            :parameters [{:id "_PRICE_" :type :category :target [:dimension [:template-tag "price"]]}]})]
         (is (=? {:status     "completed"
@@ -706,7 +706,7 @@
                                   {:database (mt/id)
                                    :type     :native
                                    :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
-                                              :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                              :template-tags {"venue_id" {:field-id (mt/id :venues :id),
                                                                           :display-name "Venue ID",
                                                                           :id           "_VENUE_ID_",
                                                                           :name         "venue_id",
@@ -807,7 +807,7 @@
                                                            :display-name "Date"
                                                            :id           "_DATE_"
                                                            :type         "dimension"
-                                                           :dimension    [:field (mt/id :checkins :date) nil]
+                                                           :field-id     (mt/id :checkins :date)
                                                            :widget-type  "date/quarter-year"}}}}))
 
 (deftest make-sure-csv--etc---downloads-take-editable-params-into-account---6407----
@@ -1149,7 +1149,7 @@
                                     {:database (mt/id)
                                      :type     :native
                                      :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
-                                                :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil]
+                                                :template-tags {"venue_id" {:field-id (mt/id :venues :id)
                                                                             :display-name "Venue ID"
                                                                             :id           "_VENUE_ID_"
                                                                             :name         "venue_id"
@@ -1625,7 +1625,7 @@
                                                                   :name         "category"
                                                                   :display-name "Category"
                                                                   :type         :dimension
-                                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                  :field-id     (mt/id :venues :category_id)
                                                                   :widget-type  :id}})))]
           (is (= {:_CATEGORY_ [{:id                 (mt/id :venues :category_id)
                                 :table_id           (mt/id :venues)
@@ -1740,13 +1740,13 @@
                                                                             :name         "id"
                                                                             :display-name "ID"
                                                                             :type         :dimension
-                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                                                            :field-id     (mt/id :venues :id)
                                                                             :widget-type  :id}
                                                                 "category" {:id           "_CATEGORY_"
                                                                             :name         "category"
                                                                             :display-name "Category"
                                                                             :type         :dimension
-                                                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                            :field-id     (mt/id :venues :category_id)
                                                                             :widget-type  :id}})))]
           (testing ":name_field of a PK, the :dimensions :human_readable_field, and no FK :target without a session"
             (is (= {:_ID_       [(assoc venues-id :name_field venues-name, :dimensions [])]
@@ -1772,7 +1772,7 @@
                                                                                     :name         "category"
                                                                                     :display-name "Category"
                                                                                     :type         :dimension
-                                                                                    :dimension    (lib/ref (lib.metadata/field mp (mt/id :venues :category_id)))
+                                                                                    :field-id     (mt/id :venues :category_id)
                                                                                     :widget-type  :id}}))}
                        :model/DashboardCard _    {:dashboard_id       (:id dash)
                                                   :card_id            (:id card)
@@ -1916,7 +1916,7 @@
                                                                           :name         "NAME"
                                                                           :display_name "Name"
                                                                           :type         :dimension
-                                                                          :dimension    [:field (mt/id :venues :name) nil]
+                                                                          :field-id     (mt/id :venues :name)
                                                                           :required     true}}}}
                                       :name       "native card with field filter"
                                       :parameters [{:id     param-field-values
@@ -1933,7 +1933,7 @@
                                                                         :name         "ID"
                                                                         :display_name "Id"
                                                                         :type         :dimension
-                                                                        :dimension    [:field (mt/id :people :id) nil]
+                                                                        :field-id     (mt/id :people :id)
                                                                         :required     true}}}}
                                       :name       "native card with named field filter"
                                       :parameters [{:id     param-labeled-field-values
@@ -2099,7 +2099,7 @@
                                                    :display-name "D"
                                                    :type         :dimension
                                                    :widget-type  :date/all-options
-                                                   :dimension    [:field (mt/id :orders :created_at) nil]}}}}
+                                                   :field-id     (mt/id :orders :created_at)}}}}
    :parameters    [{:id     "d"
                     :type   :date/all-options
                     :name   "D"

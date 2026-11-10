@@ -1,13 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useField } from "formik";
 import type { KeyboardEventHandler } from "react";
 import { t } from "ttag";
 
 import { SemanticTypePicker } from "metabase/metadata/components";
-import type { Field } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 interface Props {
   className?: string;
-  field: Field;
+  field: DatasetColumn;
   tabIndex: number | undefined;
   onChange: (value: string | null) => void;
   onKeyDown: KeyboardEventHandler<HTMLInputElement>;

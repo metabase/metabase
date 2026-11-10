@@ -576,7 +576,7 @@ describe("issue 17160", () => {
             name: "CATEGORY",
             "display-name": "CATEGORY",
             type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
+            "field-id": PRODUCTS.CATEGORY,
             "widget-type": "category",
             default: null,
           },

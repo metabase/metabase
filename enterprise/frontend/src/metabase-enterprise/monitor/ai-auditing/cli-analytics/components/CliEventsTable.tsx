@@ -314,6 +314,7 @@ function CliEventsTableInner({
             />
             <TreeTable
               instance={treeTableInstance}
+              static
               hierarchical={false}
               ariaLabel={t`Calls`}
               emptyState={<MonitorEmptyState label={t`No calls found`} />}

@@ -1,5 +1,6 @@
 ---
 title: ConvertTimezone
+summary: Shift timestamps into a different time zone so time-based cutoffs in your reports land on the right day.
 ---
 
 # ConvertTimezone

@@ -4,7 +4,7 @@ import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
-import type { CurrencyStyle } from "./formatting";
+import type { CurrencyPosition, CurrencyStyle } from "./formatting";
 import type { GroupMappings } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
@@ -37,6 +37,7 @@ export interface NumberFormattingSettings {
 export interface CurrencyFormattingSettings {
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   currency_in_header?: boolean;
 }
 
@@ -48,6 +49,7 @@ export const engineKeys = [
   "druid-jdbc",
   "druid",
   "mongo",
+  "motherduck",
   "mysql",
   "oracle",
   "postgres",
@@ -805,8 +807,6 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-branch"?: string | null;
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
-  "remote-sync-transforms"?: boolean | null;
-  "remote-sync-custom-collections-enabled"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

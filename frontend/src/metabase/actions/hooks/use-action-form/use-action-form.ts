@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 

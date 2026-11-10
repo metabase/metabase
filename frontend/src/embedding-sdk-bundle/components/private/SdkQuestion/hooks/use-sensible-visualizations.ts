@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useEffect, useMemo, useState } from "react";
 
 import { logUnavailableCustomVizMessage } from "embedding-sdk-bundle/lib/log-unavailable-custom-viz";

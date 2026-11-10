@@ -348,13 +348,13 @@
               "template_tags" {"checkin_date" {:name         "checkin_date"
                                                :display-name "Checkin Date"
                                                :type         :dimension
-                                               :dimension    [:field 14 nil]}}}}
+                                               :field-id     14}}}}
     {:type   :native
      :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
               :template-tags {"checkin_date" {:name         "checkin_date"
                                               :display-name "Checkin Date"
                                               :type         :dimension
-                                              :dimension    [:field 14 nil]
+                                              :field-id     14
                                               :widget-type  :category}}}}}))
 
 (deftest ^:parallel normalize-template-tags-test-2
@@ -364,24 +364,24 @@
      {"checkin_date" {:name         "checkin_date"
                       :display_name "looks/like-a-keyword"
                       :type         :dimension
-                      :dimension    [:field 14 nil]}})
+                      :field-id     14}})
     (query-with-template-tags
      {"checkin_date" {:name         "checkin_date"
                       :display-name "looks/like-a-keyword"
                       :type         :dimension
-                      :dimension    [:field 14 nil]
+                      :field-id     14
                       :widget-type  :category}})
 
     (query-with-template-tags
      {:checkin_date {:name         :checkin_date
                      :display-name "Checkin Date"
                      :type         :dimension
-                     :dimension    [:field 14 nil]}})
+                     :field-id     14}})
     (query-with-template-tags
      {"checkin_date" {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field 14 nil]
+                      :field-id     14
                       :widget-type  :category}})}))
 
 (deftest ^:parallel normalize-template-tags-test-3
@@ -390,24 +390,24 @@
    {(query-with-template-tags
      {"checkin_date" {:display_name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field 14 nil]}})
+                      :field-id     14}})
     (query-with-template-tags
      {"checkin_date" {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field 14 nil]
+                      :field-id     14
                       :widget-type  :category}})
 
     (query-with-template-tags
      {"checkin_date" {:name         "something_else"
                       :display_name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field 14 nil]}})
+                      :field-id     14}})
     (query-with-template-tags
      {"checkin_date" {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field 14 nil]
+                      :field-id     14
                       :widget-type  :category}})}))
 
 (deftest ^:parallel normalize-template-tags-test-4
@@ -422,7 +422,7 @@
      {"names_list" {:name         "names_list"
                     :display-name "Names List"
                     :type         :dimension
-                    :dimension    [:field 49 nil]
+                    :field-id     49
                     :widget-type  :category}})}))
 
 (deftest ^:parallel normalize-template-tags-test-5
@@ -439,12 +439,11 @@
                     :display-name "Names List"
                     :type         :dimension
                     :widget-type  :string/=
-                    :dimension    [:field 49 nil]}})}))
+                    :field-id     49}})}))
 
 (deftest ^:parallel normalize-template-tags-test-6
   (normalize-tests
    "`:dimension` should get normalized"
-   ;; doesn't get converted to `:field` here because that happens during the canonicalization step.
    {(query-with-template-tags
      {"checkin_date" {:name         "checkin_date"
                       :display_name "Checkin Date"
@@ -454,7 +453,7 @@
      {"checkin_date" {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field 14 nil]
+                      :field-id     14
                       :widget-type  :category}})}))
 
 (deftest ^:parallel normalize-template-tags-test-7
@@ -465,14 +464,14 @@
                       :display-name "Checkin Date"
                       :type         :dimension
                       :widget-type  :string/=
-                      :dimension    [:field 1 nil]
+                      :field-id     1
                       :default      ["a" "b"]}})
     (query-with-template-tags
      {"checkin_date" {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
                       :widget-type  :string/=
-                      :dimension    [:field 1 nil]
+                      :field-id     1
                       :default      ["a" "b"]}})}))
 
 (deftest ^:parallel normalize-template-tags-test-8
@@ -1287,7 +1286,7 @@
                                                        :display-name "Names List"
                                                        :type         :dimension
                                                        :widget-type  :category
-                                                       :dimension    [:field 49 nil]}}}
+                                                       :field-id     49}}}
             :parameters [{:type   :text
                           :target [:dimension [:template-tag "names_list"]]
                           :value  ["BBQ" "Bakery" "Bar"]}]}
@@ -1370,7 +1369,7 @@
                                              :name "name"
                                              :display-name "Name"
                                              :type :dimension
-                                             :dimension [:field 14 nil]  ;; field normalized
+                                             :field-id  14  ;; field normalized
                                              :widget-type :string/=      ;; widget-type normalize
                                              :default ["Hudson Borer"]}} ;; default values not keyworded
                      :query "select * from PEOPLE where {{name}}"}
@@ -1381,7 +1380,7 @@
                                               :name "name"
                                               :display-name "Name"
                                               :type "dimension"
-                                              :dimension ["field" 14 nil]
+                                              :field-id  14
                                               :widget-type "string/="
                                               :default ["Hudson Borer"]}}
                       :query "select * from PEOPLE where {{name}}"}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { geoAlbersUsa, geoMercator, geoPath } from "d3";
 import type { Feature } from "geojson";
 

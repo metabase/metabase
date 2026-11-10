@@ -8,13 +8,17 @@ import {
 } from "react";
 import type { ResizableBoxProps } from "react-resizable";
 
+import { getEngineNativeType } from "metabase/databases/utils/engine";
+import {
+  type UseInlineSqlEditResult,
+  useInlineSQLPrompt,
+} from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import { DatasetNotebook } from "./DatasetNotebook";
@@ -43,6 +47,56 @@ type DatasetQueryEditorProps = ComponentProps<typeof NativeQueryEditor> & {
   onResizeStop: ResizableBoxProps["onResizeStop"];
 };
 
+type DatasetNativeQueryEditorProps = Omit<DatasetQueryEditorProps, "height"> & {
+  inlineSQLPrompt?: UseInlineSqlEditResult;
+};
+
+function DatasetNativeQueryEditor({
+  question,
+  isActive,
+  inlineSQLPrompt,
+  ...props
+}: DatasetNativeQueryEditorProps) {
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
+  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
+
+  return (
+    <>
+      <NativeQueryEditor
+        {...props}
+        question={question}
+        isInitiallyOpen
+        canAutoOpenDataReference={!isMetabotSidebarOpen}
+        hasSqlGenerationAccess={hasSqlGenerationAccess}
+        extensions={inlineSQLPrompt?.extensions}
+        proposedQuestion={inlineSQLPrompt?.proposedQuestion}
+        onAcceptProposed={inlineSQLPrompt?.handleAcceptProposed}
+        onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
+      >
+        {isActive && (
+          <NativeQueryEditor.TopBar>
+            <NativeQueryEditor.Sidebar />
+            <NativeQueryEditor.VisibilityToggler />
+          </NativeQueryEditor.TopBar>
+        )}
+        {isActive && <NativeQueryEditor.RunButton />}
+      </NativeQueryEditor>
+      {inlineSQLPrompt?.portalElement}
+    </>
+  );
+}
+
+// useInlineSQLPrompt registers a SQL buffer with Metabot on mount, so only SQL models may render this
+function DatasetSqlQueryEditor(props: Omit<DatasetQueryEditorProps, "height">) {
+  const inlineSQLPrompt = useInlineSQLPrompt(props.question, "qb");
+
+  return (
+    <DatasetNativeQueryEditor {...props} inlineSQLPrompt={inlineSQLPrompt} />
+  );
+}
+
 function DatasetQueryEditorInner({
   question,
   isActive,
@@ -51,10 +105,12 @@ function DatasetQueryEditorInner({
   ...props
 }: DatasetQueryEditorProps) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isMetabotSidebarOpen = useSelector((state) =>
-    getMetabotVisible(state, "omnibot"),
-  );
-  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
+  const NativeEditor =
+    getEngineNativeType(
+      Lib.databaseDisplayInfo(question.query())?.engine ?? undefined,
+    ) === "sql"
+      ? DatasetSqlQueryEditor
+      : DatasetNativeQueryEditor;
 
   const [isResizing, setResizing] = useState(false);
 
@@ -93,23 +149,12 @@ function DatasetQueryEditorInner({
   return (
     <QueryEditorContainer isActive={isActive}>
       {isNative ? (
-        <NativeQueryEditor
+        <NativeEditor
           {...props}
           question={question}
-          query={checkNotNull(question.legacyNativeQuery())} // memoized query
-          isInitiallyOpen
-          canAutoOpenDataReference={!isMetabotSidebarOpen}
-          hasSqlGenerationAccess={hasSqlGenerationAccess}
+          isActive={isActive}
           onSetDatabaseId={onSetDatabaseId}
-        >
-          {isActive && (
-            <NativeQueryEditor.TopBar>
-              <NativeQueryEditor.Sidebar />
-              <NativeQueryEditor.VisibilityToggler />
-            </NativeQueryEditor.TopBar>
-          )}
-          {isActive && <NativeQueryEditor.RunButton />}
-        </NativeQueryEditor>
+        />
       ) : (
         // @ts-expect-error TODO: Fix types in DatasetQueryEditor
         <DatasetNotebook

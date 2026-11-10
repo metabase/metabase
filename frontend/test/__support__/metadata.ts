@@ -1,5 +1,9 @@
 import { createMockSettingsState, createMockState } from "__support__/state";
 import type { MetadataSelectorOpts } from "metabase/metadata-store";
+import {
+  type EntitiesStateOpts,
+  createMockEntitiesState,
+} from "metabase/metadata-store/mocks";
 // Reaches past the barrel on purpose. `getMetadata` is private to the module,
 // and this file is the only door left to it: the v1 `Question` still takes a
 // `Metadata` in its constructor, so specs that build one need this. See
@@ -7,9 +11,6 @@ import type { MetadataSelectorOpts } from "metabase/metadata-store";
 import { getMetadata } from "metabase/metadata-store/selectors";
 import type { State } from "metabase/redux/store";
 import type { Settings } from "metabase-types/api";
-
-import type { EntitiesStateOpts } from "./store";
-import { createMockEntitiesState } from "./store";
 
 export function createMockMetadata(
   entities: EntitiesStateOpts = {},

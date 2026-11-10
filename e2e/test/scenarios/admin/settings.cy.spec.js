@@ -661,7 +661,7 @@ describe("scenarios > admin > localization", () => {
               name: "date_range",
               "display-name": "Date range",
               type: "dimension",
-              dimension: ["field", ORDERS.CREATED_AT, null],
+              "field-id": ORDERS.CREATED_AT,
               "widget-type": "date/all-options",
               default: "past220weeks",
               required: true,

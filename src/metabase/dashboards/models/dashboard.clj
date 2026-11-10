@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.db :as dashboards.db]
@@ -15,7 +14,6 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -25,7 +23,9 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
@@ -369,8 +369,7 @@
                                dashcard))]
       (check-dashcard-parameter-mapping-permissions dashcards-to-add)
       (add-dashcards! dashboard dashcards-to-add)
-      (cond-> dashboard
-        (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
+      dashboard)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
@@ -404,108 +403,64 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- dashcard-sort-key
-  "The sort key fn for the dashcards of `dashboard` in its file: the position and the `entity_id` of their tab, then
-  row, column and `entity_id`, so the order does not depend on local ids."
-  [dashboard]
-  (let [tab-order (into {} (map (juxt :id (juxt :position :entity_id))) (:tabs dashboard))]
-    (juxt (comp tab-order :dashboard_tab_id) :row :col :entity_id)))
+(defmethod serialization/spec :model/Dashboard [_]
+  {:schema             ::dashboards.schema/external-dashboard
+   :copy               [:archived :archived_directly :auto_apply_filters :caveats :collection_position
+                        :description :embedding_params :enable_embedding :embedding_type :entity_id :name
+                        :points_of_interest :position :public_uuid :show_in_getting_started :width]
+   :skip               [:initially_published_at :view_count :last_viewed_at :cache_ttl :public_uuid_prefix]
+   :transform          {:collection_id     (serialization/fk-transform :model/Collection)
+                        :creator_id        serialization/user-transform
+                        :made_public_by_id serialization/user-transform
+                        :parameters        serialization/parameters-transform}
+   :children           {:tabs      :model/DashboardTab
+                        :dashcards :model/DashboardCard}
+   :defaults           {:archived                false
+                        :archived_directly       false
+                        :auto_apply_filters      true
+                        :enable_embedding        false
+                        :show_in_getting_started false}})
 
-(defmethod serdes/make-spec "Dashboard" [_model-name opts]
-  {:schema    ::dashboards.schema/external-dashboard
-   :copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
-               :description :embedding_params :enable_embedding :embedding_type :entity_id :name
-               :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [:initially_published_at
-               ;; those stats are inherently local state
-               :view_count :last_viewed_at
-               ;; this is deprecated
-               :cache_ttl
-               ;; always re-derived from public_uuid on import
-               :public_uuid_prefix]
-   :transform {:collection_id          (serdes/fk :model/Collection)
-               :creator_id             (serdes/fk :model/User)
-               :made_public_by_id      (serdes/fk :model/User)
-               :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :entity_id)} opts))
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by-parent dashcard-sort-key} opts))}
-   :coerce    {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
-   :defaults  {:archived                false
-               :archived_directly       false
-               :auto_apply_filters      true
-               :enable_embedding        false
-               :show_in_getting_started false}})
+(def ^:private export-walkers
+  "The dependency walkers for Dashboard rows with database ids."
+  {:mbql                   serialization/export-mbql-dependencies
+   :parameters             serialization/export-parameters-dependencies
+   :visualization-settings serialization/export-visualization-settings-dependencies})
 
-(defn- serdes-deps-dashcard
-  [allow-int-ids? {:keys [action_id card_id parameter_mappings visualization_settings series]}]
+(def ^:private import-walkers
+  "The dependency walkers for Dashboard entities, which hold references."
+  {:mbql                   serialization/import-mbql-dependencies
+   :parameters             serialization/import-parameters-dependencies
+   :visualization-settings serialization/import-visualization-settings-dependencies})
+
+(defn- dashcard-dependencies
+  "The dependencies of a dashcard, found with the `walkers` of [[export-walkers]] or [[import-walkers]]."
+  [{:keys [action_id card_id parameter_mappings visualization_settings series]} {:keys [mbql visualization-settings]}]
   (set
    (concat
-    (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
-    (serdes/visualization-settings-deps allow-int-ids? visualization_settings)
-    (when card_id   #{[{:model "Card" :id card_id}]})
-    (when action_id #{[{:model "Action" :id action_id}]})
-    (for [s series] [{:model "Card" :id (:card_id s)}]))))
+    (mapcat mbql parameter_mappings)
+    (visualization-settings visualization_settings)
+    (when card_id   #{[:model/Card card_id]})
+    (when action_id #{[:model/Action action_id]})
+    (for [s series] [:model/Card (:card_id s)]))))
 
-(defn- dashboard-deps
-  "The serdes dependencies of a Dashboard as `:serdes/meta` paths. Expects `:dashcards` (with `:series`) inlined — the
-  ingested shape, which the raw path hydrates first. `allow-int-ids?` selects raw-appdb vs serialized ref semantics. Shared by
-  [[serdes/deserialization-dependencies]] (allow-int-ids? false) and [[serdes/serialization-dependencies]] (allow-int-ids? true)."
-  [allow-int-ids? {:keys [collection_id dashcards parameters]}]
-  (->> (map #(serdes-deps-dashcard allow-int-ids? %) dashcards)
+(defn- dashboard-dependencies
+  "The dependencies of a Dashboard with its `:dashcards` and their `:series`, found with `walkers`."
+  [dashboard {:keys [parameters] :as walkers}]
+  (->> (map #(dashcard-dependencies % walkers) (:dashcards dashboard))
        (reduce set/union #{})
-       (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (serdes/parameters-deps allow-int-ids? parameters))))
+       (set/union (when-let [id (:collection_id dashboard)] #{[:model/Collection id]}))
+       (set/union (parameters (:parameters dashboard)))))
 
-(defn- without-unloaded-action-dashcards
-  "`ingested` without the dashcards whose action has no local row."
-  [{:keys [dashcards] :as ingested}]
-  (if-let [action-eids (not-empty (into #{} (keep :action_id) dashcards))]
-    (let [loaded (dashboards.db/action-entity-ids-in action-eids)]
-      (assoc ingested :dashcards (filterv #(or (nil? (:action_id %)) (contains? loaded (:action_id %))) dashcards)))
-    ingested))
+(defn- export-dashboard-dependencies
+  "The `[model id]` dependencies of a Dashboard row with its `:dashcards` and their `:series`."
+  [dashboard]
+  (dashboard-dependencies dashboard export-walkers))
 
-(defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (serdes/default-load-one! (without-unloaded-action-dashcards ingested) maybe-local))
-
-(defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
-  (dashboard-deps false dashboard))
-
-(defmethod serdes/descendants "Dashboard" [_model-name id _opts]
-  (let [dashcards (dashboards.db/dashcard-serdes-columns id)
-        dashboard (dashboards.db/dashboard id)
-        dash-id   id]
-    (merge-with
-     merge
-     ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
-     ;; here. So their actions, and their cards both direct, mentioned in their parameters viz settings, and related
-     ;; via dashboard card series.
-     (into {} (for [{:keys [id card_id parameter_mappings]} dashcards
-                    ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
-                    card-id (cond-> (set (keep :card_id parameter_mappings))
-                              card_id (conj card_id))]
-                {["Card" card-id] {"DashboardCard" id "Dashboard" dash-id}}))
-     (when (not-empty dashcards)
-       (into {} (for [{:keys [id card_id dashboardcard_id]} (dashboards.db/dashcard-series-columns (map :id dashcards))]
-                  {["Card" card_id] {"DashboardCardSeries" id
-                                     "DashboardCard"       dashboardcard_id
-                                     "Dashboard"           dash-id}})))
-     (into {} (for [{:keys [id action_id]} dashcards
-                    :when action_id]
-                {["Action" action_id] {"DashboardCard" id
-                                       "Dashboard"     dash-id}}))
-     (into {} (for [dc dashcards]
-                (serdes/visualization-settings-descendants (:visualization_settings dc) {"DashboardCard" id
-                                                                                         "Dashboard"     dash-id})))
-     ;; parameter with values_source_type = "card" will depend on a card
-     (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
-                {["Card" card-id] {"Dashboard" dash-id}})))))
-
-(defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
-  ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
-  ;; expects, then reuse the same walk as deserialization.
-  (dashboard-deps true (-> dashboard
-                           (t2/hydrate :dashcards)
-                           (update :dashcards #(t2/hydrate % :series)))))
+(defn- import-dashboard-dependencies
+  "The `[model ref]` dependencies of a Dashboard entity."
+  [dashboard]
+  (dashboard-dependencies dashboard import-walkers))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -580,3 +535,32 @@
                             (when (setting/get :enable-public-sharing)
                               [:= :report_dashboard.public_uuid nil])
                             (staleness/collection-filter :report_dashboard.collection_id args)]})
+
+;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
+
+(defmethod serialization/import-dependencies :model/Dashboard [_ entities]
+  (mapv import-dashboard-dependencies entities))
+
+(defn- dashcards-with-series
+  "The map from Dashboard id to the dashcards of the Dashboards with `dashboard-ids`, each with its `:series`."
+  [dashboard-ids]
+  (let [dashcards (when (seq dashboard-ids) (dashboards.db/dashcards-serdes-columns (vec dashboard-ids)))
+        series    (group-by :dashboardcard_id (when (seq dashcards)
+                                                (dashboards.db/dashcard-series-columns (mapv :id dashcards))))]
+    (group-by :dashboard_id (map #(assoc % :series (get series (:id %))) dashcards))))
+
+(defmethod serialization/export-dependencies :model/Dashboard [_ dashboards]
+  (let [dashcards (dashcards-with-series (keep :id dashboards))]
+    (mapv #(export-dashboard-dependencies (assoc % :dashcards (get dashcards (:id %)))) dashboards)))
+
+;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
+
+(defmethod serialization/before-load :model/Dashboard [_ items]
+  (let [action-eids    (into #{} (comp (mapcat (comp :dashcards :entity)) (keep :action_id)) items)
+        loaded         (if (seq action-eids) (dashboards.db/action-entity-ids-in action-eids) #{})
+        keep-dashcard? #(or (nil? (:action_id %)) (contains? loaded (:action_id %)))]
+    (mapv #(m/update-existing-in % [:entity :dashcards] (partial filterv keep-dashcard?)) items)))
+
+(defmethod remote-sync/spec :model/Dashboard
+  [_model]
+  {:synced-filter-clause dashboards.db/synced-dashboards-clause})

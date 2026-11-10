@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import _ from "underscore";
 
 import { CARD_SIZE_DEFAULTS_JSON } from "cljs/metabase.dashboards.constants";

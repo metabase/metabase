@@ -197,9 +197,11 @@
    (every? #(and
              (mi/can-read? :model/Card (u/the-id %))
              (can-read-attachments? %)) cards)
-   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
-   ;; make sure we have write permissions for that collection
-   (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))
+   ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
+   (cond
+     (some? collection-id) (mi/can-write? :model/Collection collection-id)
+     (some? dashboard-id)  true
+     :else                 (mi/can-write? collection/root-collection))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
    (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
 
@@ -308,15 +310,10 @@
    :id
    {:default []}))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *allow-hydrate-archived-cards*
-  "By default the :cards hydration method only return active cards,
-  but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
-  false)
-
 (mu/defn- cards* :- [:sequential HybridPulseCard]
+  "The non-archived Cards of the Pulses with `pulse-ids`."
   [pulse-ids :- [:sequential ms/PositiveInt]]
-  (pulse.db/pulse-cards-for-pulses pulse-ids *allow-hydrate-archived-cards*))
+  (pulse.db/pulse-cards-for-pulses pulse-ids))
 
 (methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
   [_model k pulses]

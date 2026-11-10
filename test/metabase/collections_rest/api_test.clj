@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
@@ -19,7 +20,6 @@
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -31,8 +31,6 @@
    (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections :row-lock))
 
@@ -299,18 +297,14 @@
     (with-collection-hierarchy! [a b]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
         (mt/with-temp [:model/Card _ {:name "Personal Card"
-                                      :collection_preview false
                                       :collection_id (:id personal-collection)}
                        :model/Card _ {:name "Personal Model"
                                       :type :model
-                                      :collection_preview false
                                       :collection_id (:id personal-collection)}
                        :model/Card _ {:name "A Card"
-                                      :collection_preview false
                                       :collection_id (:id a)}
                        :model/Card _ {:name "B Model"
                                       :type :model
-                                      :collection_preview false
                                       :collection_id (:id b)}]
           (is (=? [{:here ["card"] :below ["dataset"] :children [{:here ["dataset"]}]}
                    {:here ["card" "dataset"]}]
@@ -639,11 +633,10 @@
                                                                        :entity_id @#'collection/library-metrics-entity-id))})
                lib-items    (:data (mt/user-http-request :crowberto :get 200
                                                          (str "collection/" (:id library) "/items")))]
-           (testing "Data, Metrics, and Dashboards collections are all marked as is_library_root"
+           (testing "Data and Metrics collections are both marked as is_library_root"
              (let [roots (filter :is_library_root lib-items)]
                (is (= #{collection/library-data-collection-type
-                        collection/library-metrics-collection-type
-                        collection/library-dashboards-collection-type}
+                        collection/library-metrics-collection-type}
                       (set (map :type roots))))))
            (testing "User-created subcollections inside Data do NOT have is_library_root"
              (let [data-items (:data (mt/user-http-request :crowberto :get 200
@@ -691,7 +684,6 @@
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/the-id collection-or-id-or-nil))]
       (mt/with-temp [:model/Card          {card-id :id}                     {:name               "Birthday Card"
-                                                                             :collection_preview false
                                                                              :collection_id      collection-id-or-nil}
                      :model/Dashboard     {dashboard-id :id}                {:name          "Dine & Dashboard"
                                                                              :collection_id collection-id-or-nil}
@@ -782,7 +774,6 @@
                   :location            nil
                   :name                (:name card)
                   :collection_position nil
-                  :collection_preview  true
                   :database_id         (mt/id)
                   :display             "table"
                   :description         nil
@@ -1379,7 +1370,7 @@
         (with-some-children-of-collection! collection
           (is (partial= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
                                                 {:name               "Birthday Card", :description nil,     :model     "card",
-                                                 :collection_preview false,           :display     "table", :entity_id true}
+                                                 :display "table", :entity_id true}
                                                 {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
                                                 {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
                             (assoc-in [1 :fully_parameterized] true))
@@ -1400,7 +1391,7 @@
                           (mt/boolean-ids-and-timestamps
                            (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "dashboard")))))
             (is (partial= [(-> {:name               "Birthday Card", :description nil,     :model     "card",
-                                :collection_preview false,           :display     "table", :entity_id true}
+                                :display "table", :entity_id true}
                                default-item
                                (assoc :fully_parameterized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
@@ -2230,7 +2221,7 @@
   (testing "GET /api/collection/root/items"
     (testing "Make sure you can see everything for Users that can see everything"
       (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
-                          :collection_preview false, :display "table"}
+                          :display "table"}
                          default-item
                          (assoc :fully_parameterized true))
                      (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
@@ -2761,7 +2752,7 @@
                          :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
-                                :collection_preview false,           :display     "table"}
+                                :display "table"}
                                default-item
                                (assoc :fully_parameterized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
@@ -2797,7 +2788,6 @@
              [{:name                "Business Card"
                :description         nil
                :collection_position nil
-               :collection_preview  true
                :display             "table"
                :moderated_status    nil
                :entity_id           (:entity_id card)
@@ -2844,7 +2834,7 @@
                                                                                   :param1 {:type         "dimension"
                                                                                            :display-name "Param 1"
                                                                                            :required     true
-                                                                                           :dimension    [:field 1 nil]}}
+                                                                                           :field-id     1}}
                                                                   :query         "select {{param0}}, {{param1}}"}}}]
         (is (partial= [{:name               "Business Card"
                         :entity_id          (:entity_id card)
@@ -2907,7 +2897,7 @@
                                                                                   :param2 {:type         :number
                                                                                            :display-name "Param 2"}
                                                                                   :param3 {:type         "dimension"
-                                                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                                                           :field-id     (mt/id :venues :id)
                                                                                            :display-name "Param 3"}}
                                                                   :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
         (is (partial= [{:name               "Business Card"
@@ -3509,6 +3499,46 @@
         (mt/user-http-request :crowberto :put 500 (str "collection/" (u/the-id a)) {:parent_id (u/the-id b)})
         (is (= location-before
                (t2/select-one-fn :location :model/Collection :id (u/the-id a))))))))
+
+(deftest move-collection-to-namespace-root-checks-that-root-test
+  (testing "PUT /api/collection/:id checks write perms on the root of the collection's own namespace"
+    ;; without EE, snippet collections have no-op perms
+    (when config/ee-available?
+      (mt/with-premium-features #{:snippet-collections}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (let [all-users     (perms/all-users-group)
+                  snippets-root (assoc collection/root-collection :namespace "snippets")]
+              (letfn [(location-after-move [user status archived?]
+                        (mt/with-temp [:model/Collection parent {:namespace "snippets"}
+                                       :model/Collection folder {:namespace "snippets"
+                                                                 :location  (collection/children-location parent)}]
+                          (doseq [coll [parent folder]]
+                            ;; a folder created under a granted root already inherited the grant
+                            (perms/revoke-collection-permissions! all-users coll)
+                            (perms/grant-collection-readwrite-permissions! all-users coll))
+                          (let [url (str "collection/" (u/the-id folder))]
+                            (when archived?
+                              (mt/user-http-request :crowberto :put 200 url {:archived true}))
+                            (mt/user-http-request user :put status url
+                                                  (cond-> {:parent_id nil} archived? (assoc :archived false))))
+                          (t2/select-one-fn :location :model/Collection :id (u/the-id folder))))
+                      (with-root-write [root f]
+                        (perms/grant-collection-readwrite-permissions! all-users root)
+                        (try
+                          (f)
+                          (finally
+                            (perms/revoke-collection-permissions! all-users root))))]
+                (doseq [archived? [false true]]
+                  (testing (if archived? "unarchive to root" "move to root")
+                    (testing "write on the default root but not the snippets root is not enough"
+                      (with-root-write collection/root-collection
+                        #(is (not= "/" (location-after-move :rasta 403 archived?)))))
+                    (testing "write on the snippets root is enough without write on the default root"
+                      (with-root-write snippets-root
+                        #(is (= "/" (location-after-move :rasta 200 archived?)))))
+                    (testing "an admin can do it"
+                      (is (= "/" (location-after-move :crowberto 200 archived?))))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |

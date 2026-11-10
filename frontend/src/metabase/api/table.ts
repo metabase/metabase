@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import type { ThunkAction, UnknownAction } from "@reduxjs/toolkit";
 
 import type {
@@ -266,6 +267,7 @@ export const tableApi = Api.injectEndpoints({
 
 export const {
   useListTablesQuery,
+  useLazyListTablesQuery,
   useGetTableQuery,
   useLazyGetTableQuery,
   useGetTableQueryMetadataQuery,

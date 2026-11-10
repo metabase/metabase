@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
@@ -30,16 +31,18 @@ import {
   Icon,
   Loader,
   Menu,
+  Modal,
   Radio,
   Stack,
+  Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
+import { useTableCard } from "metabase-enterprise/sandboxes/hooks/use-table-card";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
-import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type {
   GroupId,
@@ -158,20 +161,16 @@ const EditSandboxingModal = ({
 
   if (loadingCard || loadingTabe) {
     return (
-      <Center p="2rem">
+      <Center>
         <Loader />
       </Center>
     );
   }
 
   return (
-    <div>
-      <h2
-        className={CS.p3}
-      >{t`Configure row and column security for this table`}</h2>
-
-      <div>
-        <div className={cx(CS.px3, CS.pb3)}>
+    <>
+      <Stack gap="xl">
+        <div>
           {hasSavedQuestionSandboxingFeature ? (
             <div>
               <div className={CS.pb2}>
@@ -211,7 +210,7 @@ const EditSandboxingModal = ({
           )}
         </div>
         {shouldUseSavedQuestion && (
-          <div className={cx(CS.px3, CS.pb3)}>
+          <div>
             <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
@@ -287,7 +286,7 @@ const EditSandboxingModal = ({
         )}
         {(!shouldUseSavedQuestion || policy.card_id != null) &&
           (hasAttributesOptions || hasValidMappings ? (
-            <div className={cx(CS.p3, CS.borderTop, CS.borderBottom)}>
+            <div>
               {shouldUseSavedQuestion && (
                 <div className={CS.pb2}>
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
@@ -305,46 +304,35 @@ const EditSandboxingModal = ({
               />
             </div>
           ) : (
-            <div className={CS.px3}>
-              <AttributeOptionsEmptyState
-                title={
-                  shouldUseSavedQuestion
-                    ? t`To add additional filters, your users need to have some attributes`
-                    : t`For this option to work, your users need to have some attributes`
-                }
-              />
-            </div>
-          ))}
-      </div>
-
-      <div className={CS.p3}>
-        {isValid && (
-          <div className={CS.pb1}>
-            <PolicySummary
-              policy={normalizedPolicy}
-              policyTable={policyTable}
+            <AttributeOptionsEmptyState
+              title={
+                shouldUseSavedQuestion
+                  ? t`To add additional filters, your users need to have some attributes`
+                  : t`For this option to work, your users need to have some attributes`
+              }
             />
-          </div>
+          ))}
+        {isValid && (
+          <PolicySummary policy={normalizedPolicy} policyTable={policyTable} />
         )}
+      </Stack>
 
-        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
-          <Button onClick={onCancel}>{t`Cancel`}</Button>
-          <ActionButton
-            className={CS.ml1}
-            actionFn={savePolicy}
-            variant="filled"
-            disabled={!canSave}
-          >
-            {t`Save`}
-          </ActionButton>
-        </div>
+      <Modal.Footer>
         {error && (
-          <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
+          <Text c="feedback-negative" flex={1}>
             {getErrorMessage(error, t`An error occurred.`)}
-          </div>
+          </Text>
         )}
-      </div>
-    </div>
+        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <ActionButton
+          actionFn={savePolicy}
+          variant="filled"
+          disabled={!canSave}
+        >
+          {t`Save`}
+        </ActionButton>
+      </Modal.Footer>
+    </>
   );
 };
 
@@ -452,6 +440,7 @@ interface TargetNameProps {
 }
 
 const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
+  const tableCard = useTableCard(policyTable);
   if (Array.isArray(target)) {
     if (
       (target[0] === "variable" || target[0] === "dimension") &&
@@ -471,11 +460,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
         <QuestionLoader
           questionHash={undefined}
           questionId={policy.card_id}
-          questionObject={
-            policy.card_id == null && policyTable
-              ? getRawDataQuestionForTable(policyTable)
-              : null
-          }
+          questionObject={policy.card_id == null ? tableCard : null}
           includeSensitiveFields
         >
           {({ question }) => {

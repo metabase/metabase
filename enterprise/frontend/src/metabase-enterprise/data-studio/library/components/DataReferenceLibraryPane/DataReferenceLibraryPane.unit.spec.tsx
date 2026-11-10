@@ -37,20 +37,27 @@ const setup = (opts: SetupOpts = {}) => {
   const onBack = jest.fn();
   const onClose = jest.fn();
 
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupSearchEndpoints(tables);
 
-  renderWithProviders(
+  const renderPane = (databaseId: DatabaseId | undefined) => (
     <DataReferenceLibraryPane
       type="library"
       onBack={onBack}
       onClose={onClose}
       onItemClick={onItemClick}
-      queryDatabaseId={queryDatabaseId}
-    />,
+      queryDatabaseId={databaseId}
+    />
   );
+  const { rerender } = renderWithProviders(renderPane(queryDatabaseId));
 
-  return { onItemClick, onBack, onClose };
+  return {
+    onItemClick,
+    onBack,
+    onClose,
+    changeQueryDatabase: (databaseId: DatabaseId) =>
+      rerender(renderPane(databaseId)),
+  };
 };
 
 describe("DataReferenceLibraryPane", () => {
@@ -78,6 +85,36 @@ describe("DataReferenceLibraryPane", () => {
     expect(otherDatabases.getByText("Banana")).toBeInTheDocument();
     expect(otherDatabases.getByText("Mango")).toBeInTheDocument();
     expect(otherDatabases.getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  it("regroups the tables when the query database changes", async () => {
+    const { changeQueryDatabase } = setup({
+      tables: [
+        libraryTable({ id: 1, name: "Orders", database_id: TARGET_DB_ID }),
+        libraryTable({ id: 2, name: "Products", database_id: TARGET_DB_ID }),
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+    expect(
+      within(screen.getByTestId("library-tables-current-database")).getByText(
+        "Orders",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("library-tables-other-databases"),
+    ).not.toBeInTheDocument();
+
+    changeQueryDatabase(2);
+
+    const currentDatabase = within(
+      screen.getByTestId("library-tables-current-database"),
+    );
+    expect(currentDatabase.getByText("No tables")).toBeInTheDocument();
+    const otherDatabases = within(
+      screen.getByTestId("library-tables-other-databases"),
+    );
+    expect(otherDatabases.getByText("Orders")).toBeInTheDocument();
+    expect(otherDatabases.getByText("Products")).toBeInTheDocument();
   });
 
   it("shows a 'No tables' message in this database when only other databases have tables", async () => {

@@ -23,10 +23,7 @@ class DatabaseList extends Component<DatabaseListProps> {
     const { entities, loadingError, loading } = this.props;
 
     const databases = entities
-      .filter((database) => {
-        const exists = Boolean(database?.id && database?.name);
-        return exists && !database.is_saved_questions;
-      })
+      .filter((database) => Boolean(database?.id && database?.name))
       .sort((a, b) => {
         const compared = a.name.localeCompare(b.name);
         return compared !== 0

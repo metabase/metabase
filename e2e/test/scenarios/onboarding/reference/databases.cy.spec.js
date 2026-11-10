@@ -29,27 +29,6 @@ describe("scenarios > reference > databases", () => {
       .and("contain", "My definitely profitable business");
   });
 
-  it("should let an admin start to edit and cancel without saving", () => {
-    cy.visit("/reference/databases/1");
-    cy.button(/Edit/).trigger("click");
-    cy.findByPlaceholderText("Nothing interesting yet")
-      .invoke("val")
-      .as("originalInterestingDetails");
-    cy.findByPlaceholderText("Nothing interesting yet").type(
-      "Turns out it's not",
-    );
-    cy.button("Cancel").click();
-    cy.button(/Edit/).should("be.visible");
-    H.main().should("not.contain", "Turns out it's not");
-    cy.button(/Edit/).trigger("click");
-    cy.get("@originalInterestingDetails").then((originalValue) => {
-      cy.findByPlaceholderText("Nothing interesting yet").should(
-        "have.value",
-        originalValue,
-      );
-    });
-  });
-
   describe("multiple databases sorting order", () => {
     beforeEach(() => {
       ["d", "b", "a", "c"].forEach((name) => {

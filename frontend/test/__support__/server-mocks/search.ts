@@ -64,7 +64,7 @@ export function setupEmbeddingDataPickerDecisionEndpoints(
     name: "entity-count",
     url: "path:/api/search",
     query: {
-      models: ["dataset", "table"],
+      models: ["dataset", "table", "metric"],
       limit: 0,
     },
     response: {

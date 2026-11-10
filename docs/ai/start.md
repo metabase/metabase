@@ -1,5 +1,6 @@
 ---
 title: "AI in Metabase"
+summary: Set up and control AI in Metabase, including Metabot in the app and in Slack, AI providers, usage limits, and the MCP server for AI clients.
 ---
 
 # AI in Metabase

@@ -14,14 +14,9 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
@@ -33,12 +28,11 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.match :as match]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
@@ -142,110 +136,6 @@
              :write
              :none))))
 
-(defn- card-database-supports-nested-queries? [{{database-id :database, :as query} :dataset_query, :as _card}]
-  (when database-id
-    (when-let [driver (driver.u/database->driver database-id)]
-      (when-let [database (some-> query not-empty lib.metadata/database)]
-        (driver.u/supports? driver :nested-queries database)))))
-
-(defn- card-has-ambiguous-columns?
-  "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
-   clojure.java.jdbc 'helpfully' does for us automatically.
-   Presence of ambiguous columns disqualifies a query for use as a source query because something like
-
-     SELECT name
-     FROM (
-       SELECT x.name, y.name
-       FROM x
-       LEFT JOIN y on x.id = y.id
-     )
-
-   would be ambiguous. Too many things break when attempting to use a query like this. In the future, this may be
-   supported, but it will likely require rewriting the source SQL query to add appropriate aliases (this is even
-   trickier if the source query uses `SELECT *`)."
-  [{result-metadata :result_metadata, query :dataset_query, :as _card}]
-  (and (lib/native-only-query? query)
-       (some (partial re-find #"_2$")
-             (map (comp name :name) result-metadata))))
-
-(mu/defn- card-uses-unnestable-aggregation?
-  "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
-  with those aggregations as source queries. This function determines whether `card` is using one of those queries so
-  we can filter it out in Clojure-land."
-  [{query :dataset_query, :as _card} :- ::queries.schema/card]
-  (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
-
-(defn card-can-be-used-as-source-query?
-  "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
-  [card]
-  (and (card-database-supports-nested-queries? card)
-       (not (or (card-uses-unnestable-aggregation? card)
-                (card-has-ambiguous-columns? card)))))
-
-(defn- ids-of-dbs-that-support-source-queries []
-  ;; the nested-queries check only reads the engine — don't realize full rows (decrypted :details etc.) for it
-  (set (keep (fn [{:keys [id engine]}]
-               (try
-                 (when (driver.u/supports? (keyword engine) :nested-queries nil)
-                   id)
-                 (catch Throwable e
-                   (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
-             (warehouses-rest.db/database-engines))))
-
-(mu/defn- source-query-cards
-  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [card-type :- ::queries.schema/card.type
-   & {:keys [collection-scope xform], :or {xform identity}}
-   :- [:maybe [:map {:closed true}
-               [:collection-scope {:optional true}
-                [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
-               [:xform {:optional true} [:maybe [:fn ifn?]]]]]]
-  (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
-    (transduce
-     (comp (map (partial mi/do-after-select :model/Card))
-           (filter card-can-be-used-as-source-query?)
-           xform)
-     (completing conj #(t2/hydrate % :collection :metrics))
-     []
-     (warehouses-rest.db/source-query-cards-reducible
-      card-type ids-of-dbs-that-support-source-queries collection-scope))))
-
-(mu/defn- source-query-cards-exist?
-  "Truthy if a single Card that can be used as a source query exists."
-  [card-type :- ::queries.schema/card.type]
-  (seq (source-query-cards card-type :xform (take 1))))
-
-(mu/defn- cards-virtual-tables
-  "Return a sequence of 'virtual' Table metadata for eligible Cards.
-   (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
-   Builder.)"
-  [card-type :- ::queries.schema/card.type
-   & {:keys [include-fields?]}
-   :- [:maybe [:map {:closed true} [:include-fields? {:optional true} [:maybe :boolean]]]]]
-  (schema.table/cards->virtual-tables (source-query-cards card-type)
-                                      :include-fields? include-fields?))
-
-(mu/defn- saved-cards-virtual-db-metadata
-  [card-type :- ::queries.schema/card.type
-   & {:keys [include-tables? include-fields?]}
-   :- [:maybe [:map {:closed true}
-               [:include-tables? {:optional true} [:maybe :boolean]]
-               [:include-fields? {:optional true} [:maybe :boolean]]]]]
-  (when (lib-be/enable-nested-queries)
-    (cond-> {:name               (trs "Saved Questions")
-             :id                 lib.schema.id/saved-questions-virtual-database-id
-             :features           #{:basic-aggregations}
-             :is_saved_questions true}
-      include-tables? (assoc :tables (cards-virtual-tables card-type
-                                                           :include-fields? include-fields?)))))
-
-;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
-(defn- add-saved-questions-virtual-database [dbs & options]
-  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :question options)]
-    ;; only add the 'Saved Questions' DB if there are Cards that can be used
-    (cond-> dbs
-      (and (source-query-cards-exist? :question) virtual-db-metadata) (concat [virtual-db-metadata]))))
-
 (defn- filter-databases-by-data-model-perms
   "Filters the provided list of databases by data model perms, returning only the databases for which the current user
   can fully or partially edit the data model. If the user does not have data access for any databases, returns only the
@@ -283,8 +173,6 @@
 (defn- dbs-list
   [& {:keys [include-tables?
              include-schemas?
-             include-saved-questions-db?
-             include-saved-questions-tables?
              include-editable-data-model?
              include-analytics?
              include-stubs?
@@ -311,7 +199,6 @@
       true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
-      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
@@ -331,8 +218,6 @@
   * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible
     tables the current user can read), matching the per-DB `/api/database/:id/schemas`
     response. Lets clients avoid N round-trips when populating a database/schema picker.
-
-  * `saved` means we should include the saved questions virtual database. Default: `false`.
 
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those
@@ -354,7 +239,7 @@
   lacks permission to change the database details."
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
+   {:keys [include include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
            include_stubs router_database_id can-query]}
    :- [:map {:closed true}
        [:include                     {:optional true} (mu/with-api-error-message
@@ -362,7 +247,6 @@
                                                        (deferred-tru "include must be either empty, ''tables'', or ''schemas''"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
        [:include_stubs               {:default false} [:maybe :boolean]]
-       [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
        [:include_only_uploadable     {:default false} [:maybe :boolean]]
@@ -370,12 +254,9 @@
        [:can-query                   {:optional true} [:maybe :boolean]]]]
   (let [include-tables?                 (= include "tables")
         include-schemas?                (= include "schemas")
-        include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
                                                       :include-schemas?                include-schemas?
-                                                      :include-saved-questions-db?     saved
-                                                      :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
                                                       :exclude-uneditable-details?     only-editable?
                                                       :include-analytics?              include_analytics
@@ -509,20 +390,6 @@
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
 ;; Since the normal `:id` param in the normal version of the endpoint will never match with negative numbers
-;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
-;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
-;; match the virtual ID (and nothing else).
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get ["/:virtual-db/metadata" :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
-  "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
-   and allowing it to treat the Saved Questions virtual DB just like any other database."
-  []
-  (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
-
 (defn- db-metadata [id include-hidden? include-sensitive-fields? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
                ((if skip-fields?
@@ -909,10 +776,11 @@
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (def ^:private connection-marker-key->details-column
-  {:write-data-connection "write_data_details"})
+  {:write-data-connection "write_data_details"
+   :admin-connection      "admin_details"})
 
 (defn- validate-overlay-details!
-  "Common guardrails for overlay-details (write_data_details).
+  "Common guardrails for overlay-details (write_data_details, admin_details).
    Throws 400 on violation."
   [existing-database overlay-details
    {:keys [marker-key article+noun hidden-fields-fn]}]
@@ -948,6 +816,15 @@
     :article+noun     ["a" "write"]
     :hidden-fields-fn driver.u/fields-hidden-for-write-data-connection}))
 
+(defn- validate-admin-details!
+  "Validates admin_details guardrails. Throws 400 on violation."
+  [existing-database admin-details]
+  (validate-overlay-details!
+   existing-database admin-details
+   {:marker-key       :admin-connection
+    :article+noun     ["an" "admin"]
+    :hidden-fields-fn driver.u/fields-hidden-for-admin-connection}))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -957,7 +834,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [name engine details write_data_details is_full_sync is_on_demand description caveats
+   {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
            points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]
     :as   body}
    :- [:map {:closed true}
@@ -966,6 +843,7 @@
        [:refingerprint      {:optional true} [:maybe :boolean]]
        [:details            {:optional true} [:maybe ms/DatabaseDetails]]
        [:write_data_details {:optional true} [:maybe ms/DatabaseDetails]]
+       [:admin_details      {:optional true} [:maybe ms/DatabaseDetails]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
        [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
@@ -983,8 +861,13 @@
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (when (some? write_data_details)
     (premium-features/assert-has-feature :writable-connection (tru "Writable Connection")))
+  (when (some? admin_details)
+    (premium-features/assert-has-feature :workspaces (tru "Admin Connection")))
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
+                    {:status-code 400})))
+  (when (:admin-connection details)
+    (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (warehouses-rest.db/database id))
         ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
@@ -995,16 +878,22 @@
                                                           {:status-code 400})))
         _                               (when write_data_details
                                           (validate-write-data-details! existing-database write_data_details))
+        _                               (when admin_details
+                                          (validate-admin-details! existing-database admin_details))
         incoming-details                details
         incoming-write-data-details     write_data_details
+        incoming-admin-details          admin_details
         engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
         details-with-secrets            (when incoming-details
                                           (upsert-sensitive-fields existing-database incoming-details :details engine-changed?))
         write-data-details-with-secrets (when  write_data_details
                                           (upsert-sensitive-fields existing-database write_data_details :write_data_details engine-changed?))
+        admin-details-with-secrets      (when admin_details
+                                          (upsert-sensitive-fields existing-database admin_details :admin_details engine-changed?))
         ;; verify that we can connect to the database if details OR `:engine` have changed.
         details-changed?                (some-> details-with-secrets (not= (:details existing-database)))
         write-details-changed?          (some-> write-data-details-with-secrets (not= (:write_data_details existing-database)))
+        admin-details-changed?          (some-> admin-details-with-secrets (not= (:admin_details existing-database)))
         main-conn-error                 (when (or details-changed? engine-changed?)
                                           (warehouses/test-database-connection (or engine (:engine existing-database))
                                                                                (or details-with-secrets (driver.conn/default-details existing-database))))
@@ -1015,9 +904,16 @@
                                             (warehouses/test-database-connection (or engine (:engine would-be-database))
                                                                                  (merge (driver.conn/details-for-exact-type would-be-database :default)
                                                                                         (driver.conn/details-for-exact-type would-be-database :write-data)))))
+        admin-conn-error                (when (or admin-details-changed? engine-changed?)
+                                          (let [would-be-database (cond-> existing-database
+                                                                    details-with-secrets       (assoc :details details-with-secrets)
+                                                                    admin-details-with-secrets (assoc :admin_details admin-details-with-secrets))]
+                                            (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                 (merge (driver.conn/details-for-exact-type would-be-database :default)
+                                                                                        (driver.conn/details-for-exact-type would-be-database :admin)))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
-    (if-let [conn-error (or main-conn-error write-conn-error)]
+    (if-let [conn-error (or main-conn-error write-conn-error admin-conn-error)]
       ;; failed to connect, return error
       {:status 400
        :body   conn-error}
@@ -1055,6 +951,8 @@
                                  {:provider_name provider_name})
                                (when (contains? body :write_data_details)
                                  {:write_data_details write-data-details-with-secrets})
+                               (when (contains? body :admin_details)
+                                 {:admin_details admin-details-with-secrets})
                                (when schedules
                                  (sync.schedules/schedule-map->cron-strings schedules)))
             pending-db        (merge existing-database updates)]
@@ -1093,15 +991,12 @@
               add-expanded-schedules
               ;; return the DB with the passed in details in place
               (m/update-existing :details #(merge incoming-details %))
-              (m/update-existing :write_data_details #(merge incoming-write-data-details %))))))))
+              (m/update-existing :write_data_details #(merge incoming-write-data-details %))
+              (m/update-existing :admin_details #(merge incoming-admin-details %))))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1121,12 +1016,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/sync_schema"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/sync_schema" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1155,12 +1046,8 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/dismiss_spinner"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/dismiss_spinner" :- [:map {:closed true} [:status [:= :ok]]]
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
   [{:keys [id]} :- [:map {:closed true}
@@ -1188,12 +1075,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/rescan_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/rescan_values" :- [:map {:closed true} [:status [:= :ok]]]
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1220,12 +1103,8 @@
 ;;
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:id/discard_values"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+(api.macros/defendpoint :post "/:id/discard_values" :- [:map {:closed true} [:status [:= :ok]]]
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
@@ -1279,34 +1158,6 @@
   (schema.table/database-schemas id {:include-editable-data-model? include_editable_data_model
                                      :include-hidden?              include_hidden
                                      :can-query?                   can-query}))
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get ["/:virtual-db/schemas"
-                              :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
-  "Returns a list of all the schemas found for the saved questions virtual database."
-  []
-  (when (lib-be/enable-nested-queries)
-    (->> (cards-virtual-tables :question)
-         (map :schema)
-         distinct
-         (sort-by u/lower-case-en))))
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get ["/:virtual-db/datasets"
-                              :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
-  "Returns a list of all the datasets found for the saved questions virtual database."
-  []
-  (when (lib-be/enable-nested-queries)
-    (->> (cards-virtual-tables :model)
-         (map :schema)
-         distinct
-         (sort-by u/lower-case-en))))
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
@@ -1385,23 +1236,6 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get ["/:virtual-db/schema/:schema"
-                              :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
-  "Returns a list of Tables for the saved questions virtual database."
-  [{:keys [schema]} :- [:map {:closed true}
-                        [:schema :string]]]
-  (when (lib-be/enable-nested-queries)
-    (->> (source-query-cards
-          :question
-          :collection-scope (if (= schema (schema.table/root-collection-schema-name))
-                              :root
-                              (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))))
-         (map schema.table/card->virtual-table))))
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
@@ -1420,23 +1254,6 @@
         (if-let [err-map (warehouses/test-database-connection engine connection-details)]
           (merge err-map {:status "error"})
           {:status "ok"})))))
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
-                              :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
-  "Returns a list of Tables for the datasets virtual database."
-  [{:keys [schema]} :- [:map {:closed true}
-                        [:schema :string]]]
-  (when (lib-be/enable-nested-queries)
-    (->> (source-query-cards
-          :model
-          :collection-scope (if (= schema (schema.table/root-collection-schema-name))
-                              :root
-                              (api/check-404 (not-empty (warehouses-rest.db/collection-ids-named schema)))))
-         (map schema.table/card->virtual-table))))
 
 ;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------
 

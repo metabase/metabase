@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 export const convertParameterValuesBySlugToById = (
   valuesBySlug: Record<string, any> | undefined,
   params: { id: string; slug: string }[],

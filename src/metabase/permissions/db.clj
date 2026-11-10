@@ -307,9 +307,10 @@
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
 (mu/defn magic-group
-  "The ID, name, and type of the magic PermissionsGroup of `magic-group-type`, or nil."
+  "The ID, name, type, and tenant flag of the magic PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
-  (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type))
+  (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type :is_tenant_group]
+                 :magic_group_type magic-group-type))
 
 (mu/defn group-id-by-magic-type
   "The ID of the PermissionsGroup of `magic-group-type`, or nil."
@@ -347,10 +348,10 @@
   (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in group-ids]))
 
 (mu/defn groups-by-ids
-  "The ID, name, and magic type of the requested groups, ordered by name."
+  "The ID, name, magic type, and tenant flag of the requested groups, ordered by name."
   [group-ids :- [:set ms/PositiveInt]]
   (if (seq group-ids)
-    (t2/select [:model/PermissionsGroup :id :name :magic_group_type]
+    (t2/select [:model/PermissionsGroup :id :name :magic_group_type :is_tenant_group]
                :id [:in group-ids]
                {:order-by [:%lower.name]})
     []))

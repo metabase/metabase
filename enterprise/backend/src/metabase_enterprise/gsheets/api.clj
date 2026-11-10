@@ -372,11 +372,7 @@
                    :sync_started_at (seconds-from-epoch-now))
             (throw-error 502 (tru "Error requesting sync") response)))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/connection"
+(api.macros/defendpoint :delete "/connection" :- [:map {:closed true} [:status [:= "not-connected"]]]
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
   (analytics.event/track-event! :snowplow/simple_event {:event "sheets_disconnected"})
@@ -400,7 +396,6 @@
 
   (do
     ;; This is what the notify endpoint calls to do a sync on the attached dwh:
-    #_{:clj-kondo/ignore [:metabase/modules]}
     (require '[metabase.sync.sync-metadata :as sync-metadata])
     (sync-metadata/sync-db-metadata!
      (:id (gsheets.db/attached-dwh-database)))))

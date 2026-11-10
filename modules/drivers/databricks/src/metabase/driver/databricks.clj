@@ -21,6 +21,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :refer [not-empty]]
    [ring.util.codec :as codec])
@@ -65,6 +66,7 @@
                               :native-parameters               true
                               :nested-queries                  true
                               :set-timezone                    true
+                              :stage-ctes                      true
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
@@ -115,10 +117,6 @@
 (defn- split-catalog+schema
   [schema]
   (str/split schema #"\."))
-
-(defmethod sql.qp/use-ctes-for-stages? :databricks
-  [_driver]
-  true)
 
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
   [_driver [tag identifier-type components :as _identifier]]
@@ -303,14 +301,27 @@
   (when (nil? auth-mode)
     [(assoc details :auth-mode (infer-auth-mode details))]))
 
-(defn- wif-jdbc-properties
-  [{:keys [wif-token wif-token-file-path wif-client-id]}]
-  (let [token     (cond
-                    (not (str/blank? wif-token-file-path))
-                    (str/trim (slurp (driver-api/ensure-readable-path! wif-token-file-path)))
+(def ^:private hosted-allowed-wif-providers
+  ;; OIDC is the only WIF mode on Metabase Cloud where the identity is admin-supplied. AWS/AZURE
+  ;; pull an attestation from the Metabase Cloud host, which would authenticate as Metabase Cloud.
+  #{"OIDC"})
 
-                    (not (str/blank? wif-token))
-                    wif-token)
+(defn- wif-jdbc-properties
+  [{:keys [wif-provider wif-token wif-token-file-path wif-client-id]}]
+  (when (and (driver-api/is-hosted?)
+             (not (contains? hosted-allowed-wif-providers wif-provider)))
+    (throw (ex-info (tru (str "Workload identity federation with the {0} provider is not available "
+                              "on Metabase Cloud. Use OIDC with an explicit token.")
+                         wif-provider)
+                    {:wif-provider wif-provider})))
+  (let [token     (case wif-provider
+                    "OIDC" (cond
+                             (not (str/blank? wif-token-file-path))
+                             (str/trim (slurp (driver-api/ensure-readable-path! wif-token-file-path)))
+
+                             (not (str/blank? wif-token))
+                             wif-token)
+                    (driver.u/wif-ambient-token-file wif-provider))
         expiry-ms (u/ignore-exceptions (some-> token driver.u/jwt-expiry-ms))]
     (cond-> {:AuthMech         11
              :Auth_Flow        0

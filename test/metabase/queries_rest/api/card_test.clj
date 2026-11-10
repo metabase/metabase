@@ -68,7 +68,6 @@
   {:archived               false
    :collection_id          nil
    :collection_position    nil
-   :collection_preview     true
    :dataset_query          {}
    :type                   "question"
    :description            nil
@@ -284,8 +283,8 @@
         (is (mt/user-http-request :rasta :post 403 (format "card/%d/query" (:id card))
                                   {:stored_result_id (:id composite)})
             "denied because one of the card's source snapshots is not viewable, even though the requested row is")))))
-(deftest dashboard-and-collection-context-metric-query-uses-default-dimension-test
-  (testing "POST card query endpoints use collection-specific metric dimension fallbacks (UXW-4769, UXW-4771, UXW-4958)"
+(deftest dashboard-context-metric-query-uses-default-dimension-test
+  (testing "POST card query endpoints use the metric's default dimension on dashboards (UXW-4769, UXW-4771, UXW-4958)"
     (mt/dataset test-data
       (let [mp           (mt/metadata-provider)
             orders       (lib.metadata/table mp (mt/id :orders))
@@ -317,35 +316,24 @@
                 canonical      (mt/user-http-request :crowberto :post 202 path)
                 stored-metadata (t2/select-one-fn :result_metadata :model/Card :id metric-id)]
             (is (= "CREATED_AT" (-> canonical mt/cols first :name)))
-            (testing "without a curated default, dashboards keep the saved breakout and collection previews are scalar"
-              (let [dashboard-result  (mt/user-http-request :crowberto :post 202 path
-                                                            {:dashboard_id dashboard-id})
-                    collection-result (mt/user-http-request :crowberto :post 202 path
-                                                            {:collection_preview true})]
-                (is (= "CREATED_AT" (-> dashboard-result mt/cols first :name)))
-                (is (= 1 (count (mt/cols collection-result))))
-                (is (= 1 (count (mt/rows collection-result))))))
+            (testing "without a curated default, dashboards keep the saved breakout"
+              (is (= "CREATED_AT" (-> (mt/user-http-request :crowberto :post 202 path {:dashboard_id dashboard-id})
+                                      mt/cols first :name))))
             (t2/update! :model/Card :id metric-id {:dimensions [(assoc dimension :default true)]})
             (doseq [query-path [path (format "card/pivot/%d/query" metric-id)]]
               (let [result (mt/user-http-request :crowberto :post 202 query-path {:dashboard_id dashboard-id})]
                 (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
                 (is (= stored-metadata
                        (t2/select-one-fn :result_metadata :model/Card :id metric-id)))))
-            (let [result (mt/user-http-request :crowberto :post 202 path {:collection_preview true})]
-              (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
-              (is (= stored-metadata
-                     (t2/select-one-fn :result_metadata :model/Card :id metric-id))))
+            (testing "the removed collection preview flag is ignored, so the query keeps its saved breakout"
+              (is (= "CREATED_AT" (-> (mt/user-http-request :crowberto :post 202 path {:collection_preview true})
+                                      mt/cols first :name))))
             (t2/update! :model/Card :id metric-id {:dimensions [(assoc dimension
                                                                        :default true
                                                                        :status :status/orphaned)]})
-            (testing "an orphaned default keeps the saved dashboard breakout and makes collection previews scalar"
-              (let [dashboard-result  (mt/user-http-request :crowberto :post 202 path
-                                                            {:dashboard_id dashboard-id})
-                    collection-result (mt/user-http-request :crowberto :post 202 path
-                                                            {:collection_preview true})]
-                (is (= "CREATED_AT" (-> dashboard-result mt/cols first :name)))
-                (is (= 1 (count (mt/cols collection-result))))
-                (is (= 1 (count (mt/rows collection-result))))))
+            (testing "an orphaned default keeps the saved dashboard breakout"
+              (is (= "CREATED_AT" (-> (mt/user-http-request :crowberto :post 202 path {:dashboard_id dashboard-id})
+                                      mt/cols first :name))))
             (is (= stored-metadata
                    (t2/select-one-fn :result_metadata :model/Card :id metric-id)))
             (mt/user-http-request :crowberto :post 404 path {:dashboard_id Integer/MAX_VALUE})))))))
@@ -357,7 +345,7 @@
                          {:database (mt/id)
                           :type     :native
                           :native   {:query         "SELECT id FROM venues where {{venue_id}}"
-                                     :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
+                                     :template-tags {"venue_id" {:field-id (mt/id :venues :id),
                                                                  :display-name "Venue ID",
                                                                  :id           "_VENUE_ID_",
                                                                  :name         "venue_id",
@@ -970,8 +958,7 @@
                                                                :parameters             "abc"})))))
 
 (defn- malformed-native-dataset-query
-  "Payload from #74615: legacy-envelope native query whose template-tag :dimension uses an
-  MBQL 5 field reference shape ([:field {opts} id] instead of legacy [:field id opts])."
+  "Legacy-envelope native query whose template-tag `:field-id` is not a Field ID (#74615)."
   []
   {:type     :native
    :database (mt/id)
@@ -981,9 +968,7 @@
                                     :display-name "DF"
                                     :type         :dimension
                                     :widget-type  :date/range
-                                    :dimension    [:field
-                                                   {:base-type :type/DateTime}
-                                                   (mt/id :orders :created_at)]}}}})
+                                    :field-id     "created_at"}}}})
 
 (deftest ^:parallel post-card-with-malformed-dataset-query-returns-400-test
   (testing "POST /api/card with structurally malformed :dataset_query returns 400 with the specific error, not 500 (#74615)"
@@ -2072,13 +2057,27 @@
       (is (= 1
              (t2/select-one-fn :collection_position :model/Card :id (u/the-id card)))))))
 
-(deftest can-we-change-the-collection-preview-flag-of-a-card-
-  (mt/with-temp [:model/Card card]
-    (with-cards-in-writeable-collection! card
-      (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
-                            {:collection_preview false})
-      (is (= false
-             (t2/select-one-fn :collection_preview :model/Card :id (u/the-id card)))))))
+(deftest collection-preview-is-ignored-on-card-update-test
+  (testing "PUT /api/card/:id ignores the removed collection preview flag"
+    (mt/with-temp [:model/Card card]
+      (with-cards-in-writeable-collection! card
+        (is (not (contains? (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
+                                                  {:collection_preview false})
+                            :collection_preview)))))))
+
+(deftest collection-preview-is-ignored-on-card-create-test
+  (testing "POST /api/card ignores the removed collection preview flag"
+    (mt/with-model-cleanup [:model/Card]
+      (is (not (contains? (mt/user-http-request :crowberto :post 200 "card"
+                                                (assoc (card-with-name-and-query "Preview card")
+                                                       :collection_preview true))
+                          :collection_preview))))))
+
+(deftest card-responses-omit-collection-preview-test
+  (testing "GET /api/card/:id no longer returns the removed collection preview flag"
+    (mt/with-temp [:model/Card card]
+      (is (not (contains? (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card)))
+                          :collection_preview))))))
 
 (deftest ---and-unset--unpin--it-as-well-
   (mt/with-temp [:model/Card card {:collection_position 1}]
@@ -3453,6 +3452,27 @@
               :collections ["Horseshoe Collection" "Horseshoe Collection"]}
              (POST-card-collections! :rasta 403 nil [card-1 card-2]))))))
 
+(deftest bulk-move-to-or-from-root-requires-root-write-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (perms/grant-collection-read-permissions! (perms-group/all-users) collection/root-collection)
+    (mt/with-temp [:model/Collection collection {:name "Writable Collection"}
+                   :model/Card       card-1     {:collection_id (u/the-id collection)}
+                   :model/Card       card-2     {:collection_id (u/the-id collection)}
+                   :model/Card       root-card  {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      (testing "moving cards into root without root write perms is forbidden"
+        (is (= {:response    "You don't have permissions to do that."
+                :collections ["Writable Collection" "Writable Collection"]}
+               (POST-card-collections! :rasta 403 nil [card-1 card-2]))))
+      (testing "moving a card out of root without root write perms is forbidden"
+        (is (= {:response    "You don't have permissions to do that."
+                :collections [nil]}
+               (POST-card-collections! :rasta 403 collection [root-card]))))
+      (testing "a user with root write perms can move cards into root"
+        (is (= {:response    {:status "ok"}
+                :collections [nil nil]}
+               (POST-card-collections! :crowberto 200 nil [card-1 card-2])))))))
+
 (deftest check-that-we-aren-t-allowed-to-move-cards-if-we-don-t-have-permissions-for-the-card
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection  collection {}
@@ -3884,7 +3904,7 @@
                                                                          :name         "NAME"
                                                                          :display_name "Name"
                                                                          :type         :dimension
-                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :field-id     (mt/id :venues :name)
                                                                          :required     true}}}}
                                      :name       "native card with field filter"
                                      :parameters [{:id     "name_param_id"
@@ -3900,7 +3920,7 @@
                                                                        :name         "ID"
                                                                        :display_name "Id"
                                                                        :type         :dimension
-                                                                       :dimension    [:field (mt/id :people :id) nil]
+                                                                       :field-id     (mt/id :people :id)
                                                                        :required     true}}}}
                                      :name       "native card with named field filter"
                                      :parameters [{:id     "id"
@@ -4253,7 +4273,7 @@
                                                            :name         "ID"
                                                            :display_name "ID"
                                                            :type         :dimension
-                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                           :field-id     (mt/id :venues :id)
                                                            :required     true}}}}
                          :name       "native card with ID field filter"
                          :parameters [{:id     param-key,
@@ -4471,7 +4491,7 @@
                                                                                              :name         "FILTER"
                                                                                              :display-name "Filter"
                                                                                              :type         :dimension
-                                                                                             :dimension    [:field (mt/id :venues :name) nil]
+                                                                                             :field-id     (mt/id :venues :name)
                                                                                              :widget-type  :string/=
                                                                                              :default      nil}}}}
                                :name                   "Bad Card"
@@ -4605,28 +4625,28 @@
                            :display-name "Id"
                            :id           "_id_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :id) nil]
+                           :field-id     (mt/id :people :id)
                            :widget-type  :id
                            :default      nil}
                 "name"    {:name         "name"
                            :display-name "Name"
                            :id           "_name_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :name) nil]
+                           :field-id     (mt/id :people :name)
                            :widget-type  :category
                            :default      nil}
                 "source"  {:name         "source"
                            :display-name "Source"
                            :id           "_soure_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :people :source) nil]
+                           :field-id     (mt/id :people :source)
                            :widget-type  :category
                            :default      nil}
                 "user_id" {:name         "user_id"
                            :display-name "User"
                            :id           "_user_id_"
                            :type         :dimension
-                           :dimension    [:field (mt/id :orders :user_id) nil]
+                           :field-id     (mt/id :orders :user_id)
                            :widget-type  :id
                            :default      nil}}}
     :database (mt/id)}
@@ -4655,8 +4675,8 @@
                               {:id (mt/id :orders :user_id)}
                               {:id (mt/id :people :source)}
                               {:id (mt/id :people :name)}])
-            :tables (sort-by :id
-                             [{:id (str "card__" card-id-2)}])
+            :tables empty?
+            :cards [{:id card-id-2}]
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
@@ -4674,13 +4694,18 @@
         (api.test-util/before-and-after-deleted-card
          card-id-1
          #(testing "Before delete"
-            (doseq [[card-id table-id] [[card-id-1 (mt/id :products)]
-                                        [card-id-2 (str "card__" card-id-1)]]]
-              (is (=?
-                   {:fields empty?
-                    :tables [{:id table-id}]
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id)))))
+            (is (=?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
+                  :cards empty?
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-1)))
+            (is (=?
+                 {:fields empty?
+                  :tables [{:id (mt/id :products)}]
+                  :cards [{:id card-id-1}]
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-2))))
          #(testing "After delete"
             ;; card-id-1 is deleted, so it should return 404
             (is (= "Not found."
@@ -4688,6 +4713,7 @@
             ;; card-id-2 still exists but its source is gone, so it should return empty metadata
             (is (=? {:fields empty?
                      :tables empty?
+                     :cards empty?
                      :databases [{:id (mt/id) :engine string?}]}
                     (query-metadata 200 card-id-2)))))))))
 
@@ -4861,7 +4887,6 @@
                                        :collection_id          coll-id
                                        :dashboard_id           home-dash-id
                                        :collection_position    nil
-                                       :collection_preview     true
                                        :result_metadata        (:result_metadata card)}))))
       (testing "the other dashboard still has its dashcard"
         (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id other-dash-id))))))
@@ -5537,9 +5562,8 @@
                   (card-query-post-request
                     []
                     (mt/user-http-request :rasta :post 202 (str "card/" (:id model) "/query")
-                                          {:collection_preview false
-                                           :ignore_cache       false
-                                           :parameters         []}))
+                                          {:ignore_cache false
+                                           :parameters   []}))
                   ;; Query cache should get invalidated on following request.
                   (card-put-request [result_metadata]
                     (mt/user-http-request :rasta :put 200
@@ -5707,7 +5731,10 @@
                                 {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                   "select 1 as A, 2 as B, 3 as C, 4 as D")})
           (let [cols (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" tgt))
-                          :tables first :fields (map :name))]
+                          :cards
+                          (m/find-first #(= (:id %) src))
+                          :result_metadata
+                          (map :name))]
             (is (some #{"D"} cols))))))))
 
 (deftest copy-card-preserves-non-default-display-test

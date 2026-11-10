@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import { useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";

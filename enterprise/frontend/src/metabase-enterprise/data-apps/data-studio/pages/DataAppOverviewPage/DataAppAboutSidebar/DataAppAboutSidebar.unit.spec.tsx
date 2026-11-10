@@ -15,13 +15,18 @@ import { DataAppAboutSidebar } from "./DataAppAboutSidebar";
 type SetupOpts = {
   repoStatus?: DataAppRepoStatus;
   isRepoStatusUnavailable?: boolean;
+  allowedHosts?: string[];
 };
 
 function setup({
   repoStatus = { configured: false, url: null },
   isRepoStatusUnavailable = false,
+  allowedHosts = [],
 }: SetupOpts) {
-  const app = createMockDataApp({ name: "sales" });
+  const app = createMockDataApp({
+    name: "sales",
+    allowed_hosts: allowedHosts,
+  });
   setupDataAppGroupsEndpoint(app.name, []);
   if (isRepoStatusUnavailable) {
     setupDataAppRepoStatusEndpointWithError("Server error");
@@ -76,6 +81,24 @@ describe("DataAppAboutSidebar", () => {
     expect(
       await screen.findByText("No repository connected"),
     ).toBeInTheDocument();
+  });
+
+  it("lists the external hosts the app can connect to, wildcards included", async () => {
+    setup({
+      allowedHosts: ["https://en.wikipedia.org", "https://*.acme.com"],
+    });
+
+    expect(
+      await screen.findByText("https://en.wikipedia.org"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("https://*.acme.com")).toBeInTheDocument();
+    expect(screen.queryByText("No external hosts")).not.toBeInTheDocument();
+  });
+
+  it("says when the app can't connect to any external host", async () => {
+    setup({ allowedHosts: [] });
+
+    expect(await screen.findByText("No external hosts")).toBeInTheDocument();
   });
 
   it("says when the repository can't be loaded", async () => {

@@ -113,6 +113,9 @@ describe("scenarios > joins", () => {
         cy.findByText("Our analytics").click();
         cy.findByText(JOINED_QUESTION_NAME).click();
       });
+      H.getNotebookStep("join")
+        .findByLabelText("Right table")
+        .should("contain.text", JOINED_QUESTION_NAME);
 
       H.visualize();
 
@@ -306,15 +309,7 @@ describe("scenarios > joins", () => {
           query: {
             "source-table": `card__${id}`,
             aggregation: [["count"]],
-            breakout: [
-              [
-                "field",
-                PRODUCTS.CATEGORY,
-                {
-                  "source-field": ORDERS.PRODUCT_ID,
-                },
-              ],
-            ],
+            breakout: [["field", "CATEGORY", { "base-type": "type/Text" }]],
           },
           display: "bar",
         };
@@ -333,7 +328,7 @@ describe("scenarios > joins", () => {
 
         cy.findByTestId("qb-filters-panel").should(
           "contain",
-          "Orders → Category is Doohickey",
+          "Product → Category is Doohickey",
         );
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.findAllByTestId("header-cell")

@@ -25,6 +25,23 @@ unless they say otherwise.
 - `eslint.config.mjs` in the repo root supplies the parsers and plugins for the
   ESLint side of the compatibility tests.
 
+## Type-aware rules
+
+`oxlint-tsgolint` runs the rules that need type information, such as
+`@typescript-eslint/no-unsafe-return`. ESLint does not run them: `eslint.config.mjs`
+turns them off because it has no type information. They apply to the files the
+root `tsconfig.json` type-checks, except tests and stories; `config.mjs` reads
+the scope from `tsconfig.json`. They read types from the compiled CLJS output, so
+`bun run lint-oxlint` builds CLJS first and CI compiles it before linting.
+`lint-oxlint-pure` reuses the existing build; a stale or missing one can change
+the results.
+
+Files that had `no-unsafe-*` violations when the rules were enabled start with a
+`/* eslint-disable ... -- FIXME: any-typed values */` comment that lists the
+rules each file breaks. To clean up a file, remove the comment, fix what the
+rules report, and lint again. Lint reports a rule in the comment that no longer
+finds a problem, so remove it from the comment when the file stops breaking it.
+
 ## After a dependency upgrade
 
 Run `bun run lint-config-update` and review the snapshot changes. `createConfig`

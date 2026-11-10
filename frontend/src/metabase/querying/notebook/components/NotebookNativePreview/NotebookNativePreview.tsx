@@ -48,12 +48,11 @@ export const NotebookNativePreview = ({
   readOnly,
   disableConvert,
 }: NotebookNativePreviewProps) => {
-  const database = question.database();
-  const metadataProvider = useMetadataProvider(database?.id ?? null);
-  const engine = database?.engine;
+  const sourceQuery = question.query();
+  const metadataProvider = useMetadataProvider(Lib.databaseID(sourceQuery));
+  const engine = Lib.databaseDisplayInfo(sourceQuery)?.engine ?? undefined;
   const engineType = getEngineNativeType(engine);
 
-  const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
   const payload = Lib.toJsQuery(sourceQuery);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);

@@ -6,7 +6,6 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.data-apps.core :as data-apps]
    [metabase.lib.schema.literal]
    [metabase.user-key-value.models.user-key-value :as user-key-value]
    [metabase.user-key-value.models.user-key-value.types :as types]
@@ -25,9 +24,7 @@
    _query-params
    {v :value, expires-at :expires_at} :- [:map {:closed true}
                                           [:value      {:optional true} [:maybe [:or :string number? :boolean ms/OpaqueJSONObject [:sequential [:or :string number? :boolean ms/OpaqueJSONObject]]]]]
-                                          [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-user-key-value nmspace k))
+                                          [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
   (try
     (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
                                                           {:key k
@@ -54,11 +51,7 @@
   {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
-                                    [:namespace ms/NonBlankString]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-user-key-value nmspace k))
+                                    [:namespace ms/NonBlankString]]]
   (user-key-value/retrieve api/*current-user-id* nmspace k))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -83,9 +76,5 @@
   {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
-                                    [:namespace ms/NonBlankString]]
-   _query-params
-   _body
-   request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-user-key-value nmspace k))
+                                    [:namespace ms/NonBlankString]]]
   (user-key-value/delete! api/*current-user-id* nmspace k))

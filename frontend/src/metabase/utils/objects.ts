@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 export const getObjectEntries = <K extends string, V>(
   obj: Record<K, V>,
 ): [K, V][] => {

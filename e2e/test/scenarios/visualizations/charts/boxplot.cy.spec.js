@@ -455,8 +455,9 @@ describe("scenarios > visualizations > boxplot", () => {
     H.openSeriesSettings("Average of Price");
     H.popover().within(() => {
       cy.findByText("Formatting").click();
-      cy.findByLabelText("Style").click();
-      cy.findByText("Currency").click();
+      cy.findByTestId("chart-settings-widget-number_style")
+        .findByText("$1.23")
+        .click();
     });
 
     // Verify formatted value appears in labels (should have $ prefix)

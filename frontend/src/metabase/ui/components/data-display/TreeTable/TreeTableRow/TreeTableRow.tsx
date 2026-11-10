@@ -49,6 +49,22 @@ interface TreeTableRowContentProps<
   rowProps?: Record<string, unknown>;
   hierarchical?: boolean;
   isClickable?: boolean;
+  isStatic?: boolean;
+}
+
+function getRowTabIndex({
+  isStatic,
+  isDisabled,
+  isKeyboardFocused,
+}: {
+  isStatic?: boolean;
+  isDisabled?: boolean;
+  isKeyboardFocused: boolean;
+}): number | undefined {
+  if (isStatic) {
+    return undefined;
+  }
+  return isKeyboardFocused && !isDisabled ? 0 : -1;
 }
 
 function getRowSelectionState<TData extends TreeNodeData>(
@@ -92,6 +108,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   rowProps,
   hierarchical = false,
   isClickable,
+  isStatic,
 }: TreeTableRowContentProps<TData>) {
   const isKeyboardFocused = activeRowId === row.id;
   const isSelected = selectedRowId === row.id;
@@ -115,11 +132,12 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
     <Flex
       {...rowProps}
       role="row"
-      tabIndex={isDisabled ? -1 : isKeyboardFocused ? 0 : -1}
+      tabIndex={getRowTabIndex({ isStatic, isDisabled, isKeyboardFocused })}
       data-keyboard-active={isKeyboardFocused ? true : undefined}
       data-disabled={isDisabled ? true : undefined}
       className={cx(S.content, classNames?.row, {
         [S.clickable]: isClickable,
+        [S.static]: isStatic,
         [S.active]: isActive,
         [classNames?.rowActive ?? ""]: isActive && classNames?.rowActive,
         [S.disabled]: isDisabled,
@@ -257,6 +275,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   renderSubRow,
   hierarchical = true,
   isClickable,
+  isStatic,
 }: TreeTableRowProps<TData>) {
   const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
 
@@ -292,6 +311,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
       rowProps={rowProps}
       hierarchical={hierarchical}
       isClickable={isClickable}
+      isStatic={isStatic}
     />
   );
 

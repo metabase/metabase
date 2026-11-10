@@ -149,9 +149,7 @@
                   (mcp.session/resolve-query-handle session-id api/*current-user-id* handle)]
       {:query encoded_query :prompt prompt})))
 
-(api.macros/defendpoint :post "/feedback" :- [:map
-                                              [:status [:= 204]]
-                                              [:body :nil]]
+(api.macros/defendpoint :post "/feedback" :- ::api/generic-204-no-content
   "Persist MCP Apps visualization feedback."
   [_route-params
    _query-params
