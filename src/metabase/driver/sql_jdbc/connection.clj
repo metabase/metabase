@@ -265,9 +265,11 @@
         (:placeholder port-info))))
 
 (defn- select-internal-keys-for-spec
-  "Keep the ssh tunnel keys and others that might be carried on a connection spec or on details."
+  "Keep the ssh tunnel keys and others that might be carried on a connection spec or on details. `:tunnel-client` is
+  the SSH client made for this tunnel alone, which [[ssh/close-tunnel!]] stops when the pool is destroyed."
   [spec-or-details]
-  (select-keys spec-or-details [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))
+  (select-keys spec-or-details [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-client
+                                :tunnel-entrance-port :tunnel-entrance-host]))
 
 (defenterprise set-role-if-supported!
   "Sets the connection impersonation role of the current user, or the default role, on the connection `conn` to
