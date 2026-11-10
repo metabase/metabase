@@ -60,6 +60,7 @@ import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { closeInlinePrompt, inlinePrompt } from "./inline-prompt";
 import { getFunctionList } from "./on-device-completion";
+import { useParameterHints } from "./parameter-hints";
 import { useAiCompletion } from "./use-ai-completion";
 import { hasActiveSnippet, useInitialClause } from "./utils";
 
@@ -428,16 +429,20 @@ export function Editor(props: EditorProps) {
     isEnabled: inline && !readOnly && !isProposing,
   });
 
+  const parameterHintsExtensions = useParameterHints();
+
   const extensions = useMemo(
     () =>
       isProposing
         ? [
             ...baseExtensions,
+            ...parameterHintsExtensions,
             unifiedMergeView({ original: source, mergeControls: false }),
             ...diffControlsExtensions,
           ]
         : [
             ...baseExtensions,
+            ...parameterHintsExtensions,
             ...aiCompletionExtensions,
             ...inlinePromptExtensions,
           ],
@@ -448,6 +453,7 @@ export function Editor(props: EditorProps) {
       diffControlsExtensions,
       aiCompletionExtensions,
       inlinePromptExtensions,
+      parameterHintsExtensions,
     ],
   );
 

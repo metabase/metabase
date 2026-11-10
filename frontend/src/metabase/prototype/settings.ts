@@ -18,6 +18,20 @@ export const EXPRESSION_AI_COMPLETION_SETTING: SegmentedPrototypeSetting = {
   defaultValue: "server",
 };
 
+export const EXPRESSION_PARAMETER_HINTS_SETTING: SegmentedPrototypeSetting = {
+  key: "expression-parameter-hints",
+  type: "segmented",
+  label: "Parameter name hints in custom expressions",
+  description:
+    "Labels with the parameter name before the arguments of a function call, like the inlay hints of VS Code.",
+  options: [
+    { value: "off", label: "Off" },
+    { value: "literals", label: "Literals" },
+    { value: "all", label: "All" },
+  ],
+  defaultValue: "all",
+};
+
 export const EXPRESSION_AI_COMPLETION_DELAY_SETTING: NumberPrototypeSetting = {
   key: "expression-ai-completion-delay",
   type: "number",
@@ -36,4 +50,5 @@ export const EXPRESSION_AI_COMPLETION_DELAY_SETTING: NumberPrototypeSetting = {
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   EXPRESSION_AI_COMPLETION_SETTING,
   EXPRESSION_AI_COMPLETION_DELAY_SETTING,
+  EXPRESSION_PARAMETER_HINTS_SETTING,
 ];
