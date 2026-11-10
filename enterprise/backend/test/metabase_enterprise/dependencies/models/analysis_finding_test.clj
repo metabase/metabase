@@ -32,7 +32,7 @@
                 version  models.analysis-finding/*current-analysis-finding-version*
                 selected #(into [] (filter (comp ids :entity_id))
                                 (dependencies.db/take-pending-analysis-finding-statuses!
-                                 :card 100000 version models.dependency/current-dependency-analysis-version))]
+                                 :card 100000 version models.dependency/current-dependency-analysis-version {}))]
             (doseq [card-id (disj ids blocked)]
               (deps.test/record-dependencies-computed! :card card-id))
             (doseq [card-id [current changed]]

@@ -18,12 +18,15 @@
 
 (mu/defn- run-batch! :- [:maybe ms/PositiveInt]
   "Re-derive a batch of stale cards, returning when to run again: a second from now when it took any, or nil."
-  []
-  (when (premium-features/has-feature? :dependencies)
-    (let [taken (deps.result-metadata/update-result-metadata! (deps.settings/dependency-result-metadata-batch-size))]
-      (when (pos? taken)
-        (log/debug "Processed" taken "entities for result metadata")
-        1))))
+  ([]
+   (run-batch! {}))
+  ([opts :- [:map {:closed true} [:reported-only? {:optional true} :boolean]]]
+   (when (premium-features/has-feature? :dependencies)
+     (let [taken (deps.result-metadata/update-result-metadata!
+                  (deps.settings/dependency-result-metadata-batch-size) opts)]
+       (when (pos? taken)
+         (log/debug "Processed" taken "entities for result metadata")
+         1)))))
 
 (task/defjob UpdateResultMetadata
   "Re-derive the result metadata of the MBQL cards depending on changed entities."
@@ -44,9 +47,12 @@
    :run-batch!       #'run-batch!})
 
 (mu/defn run-batch-in-place! :- ::task.util/batch-outcome
-  "Run a batch of the UpdateResultMetadata job now rather than on its schedule."
-  []
-  (task.util/run-batch-in-place! job))
+  "Run a batch of the UpdateResultMetadata job now rather than on its schedule; with `reported-only?`, of only the cards
+  the findings report lists or something depends on."
+  ([]
+   (run-batch-in-place! {}))
+  ([opts :- [:map {:closed true} [:reported-only? {:optional true} :boolean]]]
+   (task.util/run-batch-in-place! (assoc job :run-batch! #(run-batch! opts)))))
 
 (mu/defn enabled? :- :boolean
   "Whether the UpdateResultMetadata job runs."
