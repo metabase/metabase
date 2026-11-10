@@ -278,3 +278,8 @@ export function isAfterValue(prefix: string) {
 export function getComparedColumn(prefix: string) {
   return /(\[(?:[^\]\\]|\\.)+\])\s*!?=\s*$/.exec(prefix)?.[1] ?? null;
 }
+
+/** True when the cursor is in code, not inside a text or a column name. */
+export function isInCode(prefix: string) {
+  return scan(prefix).kind === "code";
+}

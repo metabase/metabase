@@ -41,12 +41,14 @@ import {
   useExpressionSidebarHost,
 } from "../ExpressionSidebar";
 import { FunctionBrowser } from "../FunctionBrowser";
+import { useGenerateExpression } from "../GenerateExpressionPrompt";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
+import { InlinePrompt } from "./InlinePrompt";
 import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
@@ -55,6 +57,7 @@ import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { describeCursor, getColumnType } from "./cursor-context";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { closeInlinePrompt, inlinePrompt } from "./inline-prompt";
 import { getFunctionList } from "./on-device-completion";
 import { useAiCompletion } from "./use-ai-completion";
 import { hasActiveSnippet, useInitialClause } from "./utils";
@@ -87,6 +90,8 @@ export type EditorProps = {
   renderShortcutsMenu?: (helpers: ShortcutsMenuHelpers) => ReactNode;
   /** The column name, which the AI completion uses as a hint. */
   name?: string;
+  /** True when the AI can suggest a new column name. */
+  hasDefaultName?: boolean;
   /** Called with the column name of an accepted AI suggestion. */
   onAcceptName?: (name: string) => void;
   initialSource?: string;
@@ -142,6 +147,7 @@ export function Editor(props: EditorProps) {
     inline = false,
     renderShortcutsMenu,
     name,
+    hasDefaultName = false,
     onAcceptName,
   } = props;
 
@@ -257,10 +263,49 @@ export function Editor(props: EditorProps) {
     Object.assign(window, { __expressionEditorDebug: debug });
   }, [validate, expressionMode, database, availableColumns, query, stageIndex]);
 
-  const proposeSource = useCallback((source: string, name?: string) => {
-    setProposal({ source, name });
-    requestAnimationFrame(() => ref.current?.view?.focus());
-  }, []);
+  // Formats an AI suggestion like the format button does. A source that does
+  // not compile stays as it is, so that the editor can show its error.
+  const formatProposedSource = useCallback(
+    async (source: string) => {
+      const { expressionClause } = diagnoseAndCompile({
+        source,
+        expressionMode,
+        query,
+        stageIndex,
+        expressionIndex,
+        database,
+        availableColumns,
+        availableMetrics,
+      });
+      if (expressionClause == null) {
+        return source;
+      }
+      return format(expressionClause, {
+        query,
+        stageIndex,
+        availableColumns,
+        printWidth: 55, // the same as the format button
+      }).catch(() => source);
+    },
+    [
+      expressionMode,
+      query,
+      stageIndex,
+      expressionIndex,
+      database,
+      availableColumns,
+      availableMetrics,
+    ],
+  );
+
+  const proposeSource = useCallback(
+    async (source: string, name?: string) => {
+      const formatted = await formatProposedSource(source);
+      setProposal({ source: formatted, name });
+      requestAnimationFrame(() => ref.current?.view?.focus());
+    },
+    [formatProposedSource],
+  );
 
   const handleProposedNameChange = useCallback((name: string) => {
     setProposal((proposal) => proposal && { ...proposal, name });
@@ -292,6 +337,77 @@ export function Editor(props: EditorProps) {
     onRejectProposed: handleRejectProposed,
   });
 
+  // "@" in the code opens a prompt to the AI at the cursor.
+  const promptContainer = useMemo(() => document.createElement("span"), []);
+  const [promptPos, setPromptPos] = useState<number | null>(null);
+  const [promptError, setPromptError] = useState<string>();
+  const {
+    generate,
+    cancel: cancelGenerate,
+    isLoading: isGenerating,
+  } = useGenerateExpression({
+    query,
+    stageIndex,
+    expressionMode,
+    availableColumns,
+    name,
+    hasDefaultName,
+    validate,
+  });
+
+  const handlePromptChange = useCallback(
+    (pos: number | null) => {
+      setPromptPos(pos);
+      setPromptError(undefined);
+      if (pos == null) {
+        cancelGenerate();
+      }
+    },
+    [cancelGenerate],
+  );
+
+  const inlinePromptExtensions = useMemo(
+    () =>
+      inline && !readOnly && !isProposing
+        ? inlinePrompt({
+            container: promptContainer,
+            onChange: handlePromptChange,
+          })
+        : [],
+    [inline, readOnly, isProposing, promptContainer, handlePromptChange],
+  );
+
+  const handleClosePrompt = useCallback(() => {
+    const view = ref.current?.view;
+    if (view) {
+      closeInlinePrompt(view);
+    }
+  }, []);
+
+  const handleSubmitPrompt = useCallback(
+    async (prompt: string) => {
+      if (promptPos == null) {
+        return;
+      }
+      setPromptError(undefined);
+      const result = await generate({
+        prompt,
+        source: sourceRef.current,
+        cursor: promptPos,
+      });
+      if (result == null) {
+        return;
+      }
+      if ("message" in result) {
+        setPromptError(result.message);
+        return;
+      }
+      handleClosePrompt();
+      proposeSource(result.expression, result.name);
+    },
+    [promptPos, generate, handleClosePrompt, proposeSource],
+  );
+
   const aiCompletionExtensions = useAiCompletion({
     query,
     stageIndex,
@@ -311,13 +427,18 @@ export function Editor(props: EditorProps) {
             unifiedMergeView({ original: source, mergeControls: false }),
             ...diffControlsExtensions,
           ]
-        : [...baseExtensions, ...aiCompletionExtensions],
+        : [
+            ...baseExtensions,
+            ...aiCompletionExtensions,
+            ...inlinePromptExtensions,
+          ],
     [
       isProposing,
       baseExtensions,
       source,
       diffControlsExtensions,
       aiCompletionExtensions,
+      inlinePromptExtensions,
     ],
   );
 
@@ -423,7 +544,11 @@ export function Editor(props: EditorProps) {
           id={id}
           ref={ref}
           data-testid="custom-expression-query-editor"
-          placeholder={t`Type your expression, press '[' for columns…`}
+          placeholder={
+            promptPos == null
+              ? t`Type your expression, press '[' for columns…`
+              : undefined
+          }
           className={S.editor}
           extensions={extensions}
           readOnly={readOnly || isFormatting}
@@ -444,6 +569,16 @@ export function Editor(props: EditorProps) {
               : undefined
           }
         />
+        {promptPos != null &&
+          createPortal(
+            <InlinePrompt
+              isLoading={isGenerating}
+              error={promptError}
+              onSubmit={handleSubmitPrompt}
+              onClose={handleClosePrompt}
+            />,
+            promptContainer,
+          )}
         {proposal != null && (
           <ExpressionDiffControls
             portalTarget={portalTarget}
@@ -455,7 +590,9 @@ export function Editor(props: EditorProps) {
           />
         )}
         <Errors
-          error={isSnippetActive || isProposing ? null : error}
+          error={
+            isSnippetActive || isProposing || promptPos != null ? null : error
+          }
           source={source}
         />
 
@@ -524,7 +661,8 @@ export function Editor(props: EditorProps) {
           </Flex>
         )}
 
-        {portal}
+        {/* The help popup would cover the diff controls and the prompt. */}
+        {!isProposing && promptPos == null && portal}
       </LayoutMain>
 
       {openSidebar != null &&

@@ -2,22 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils/errors";
 /* eslint-disable boundaries/element-types -- reuse the Metabot prompt input until this is past the prototype */
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { MetabotSendButton } from "metabase/metabot/components/MetabotSendButton";
 import { MetabotWorkingIndicator } from "metabase/metabot/components/MetabotWorkingIndicator";
 /* eslint-enable boundaries/element-types */
-import { formatIdentifier } from "metabase/querying/expressions";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import S from "./GenerateExpressionPrompt.module.css";
-import { useGenerateExpressionMutation } from "./api";
-
-// The first try, then retries that get the editor's errors for the earlier tries.
-const MAX_ATTEMPTS = 3;
+import { useGenerateExpression } from "./use-generate-expression";
 
 type GenerateExpressionPromptProps = {
   query: Lib.Query;
@@ -51,20 +46,18 @@ export function GenerateExpressionPrompt({
   onClose,
 }: GenerateExpressionPromptProps) {
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
-  const [generateExpression] = useGenerateExpressionMutation();
-  const requestRef = useRef<ReturnType<typeof generateExpression> | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { generate, cancel, isLoading } = useGenerateExpression({
+    query,
+    stageIndex,
+    expressionMode,
+    availableColumns,
+    name,
+    hasDefaultName,
+    validate,
+  });
   const [error, setError] = useState<string>();
 
   const isSubmitDisabled = !value.trim() || isLoading;
-
-  const cancelRequest = useCallback(() => {
-    requestRef.current?.abort();
-    requestRef.current = null;
-    setIsLoading(false);
-  }, []);
-
-  useEffect(() => cancelRequest, [cancelRequest]);
 
   const handleSubmit = useCallback(async () => {
     const prompt = promptInputRef.current?.getValue?.().trim() ?? "";
@@ -72,73 +65,21 @@ export function GenerateExpressionPrompt({
       return;
     }
     setError(undefined);
-    setIsLoading(true);
-    const columns = availableColumns.map((column) =>
-      formatIdentifier(
-        Lib.displayInfo(query, stageIndex, column).longDisplayName,
-      ),
-    );
-    const previousAttempts: { expression: string; error: string }[] = [];
-
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      const request = generateExpression({
-        prompt,
-        source: getSource(),
-        expression_mode: expressionMode,
-        columns,
-        name,
-        has_default_name: hasDefaultName,
-        previous_attempts: previousAttempts,
-      });
-      requestRef.current = request;
-      const result = await request;
-      if (requestRef.current !== request) {
-        return;
-      }
-      if (!result.data) {
-        requestRef.current = null;
-        setIsLoading(false);
-        if (!isAborted(result.error)) {
-          setError(getErrorMessage(result.error));
-        }
-        return;
-      }
-
-      if ("message" in result.data) {
-        requestRef.current = null;
-        setIsLoading(false);
-        setError(result.data.message);
-        return;
-      }
-
-      const { expression, name: generatedName } = result.data;
-      const validationError = validate(expression);
-      // After the last try, show the expression anyway. The editor shows its error.
-      if (validationError == null || attempt === MAX_ATTEMPTS) {
-        requestRef.current = null;
-        setIsLoading(false);
-        onGenerate(expression, generatedName);
-        return;
-      }
-      previousAttempts.push({ expression, error: validationError });
+    const result = await generate({ prompt, source: getSource() });
+    if (result == null) {
+      return;
     }
-  }, [
-    generateExpression,
-    getSource,
-    validate,
-    expressionMode,
-    availableColumns,
-    name,
-    hasDefaultName,
-    query,
-    stageIndex,
-    onGenerate,
-  ]);
+    if ("message" in result) {
+      setError(result.message);
+    } else {
+      onGenerate(result.expression, result.name);
+    }
+  }, [generate, getSource, onGenerate]);
 
   const handleClose = useCallback(() => {
-    cancelRequest();
+    cancel();
     onClose();
-  }, [cancelRequest, onClose]);
+  }, [cancel, onClose]);
 
   useEffect(() => {
     return tinykeys(
@@ -175,7 +116,7 @@ export function GenerateExpressionPrompt({
           <MetabotSendButton
             aria-label={isLoading ? t`Stop generating` : t`Generate`}
             isResponding={isLoading}
-            onClick={isLoading ? cancelRequest : handleSubmit}
+            onClick={isLoading ? cancel : handleSubmit}
             disabled={!isLoading && isSubmitDisabled}
           />
         </Tooltip>
@@ -206,14 +147,5 @@ export function GenerateExpressionPrompt({
         </Button>
       </Flex>
     </Box>
-  );
-}
-
-function isAborted(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "name" in error &&
-    error.name === "AbortError"
   );
 }

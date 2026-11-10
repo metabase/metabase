@@ -4,6 +4,7 @@ import type * as Lib from "metabase-lib";
 type GenerateExpressionRequest = {
   prompt: string;
   source: string;
+  cursor?: number;
   expression_mode: Lib.ExpressionMode;
   columns: string[];
   name?: string;

@@ -162,6 +162,7 @@ export function InlineExpressionEditor({
               )
         }
         name={name}
+        hasDefaultName={hasDefaultName}
         onAcceptName={handleAcceptName}
         inline
       />
