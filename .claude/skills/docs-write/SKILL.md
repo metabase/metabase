@@ -1,12 +1,16 @@
 ---
 name: docs-write
 description: Write documentation following Metabase's conversational, clear, and user-focused style. Use when creating or editing documentation files (markdown, MDX, etc.).
-allowed-tools: Read, Write, Grep, Bash, Glob
+allowed-tools:
+  - Edit(docs/**/*.md)
+  - Bash(bun run prettier --write *)
 ---
 
 # Documentation Writing Skill
 
-@./../_shared/metabase-style-guide.md
+@${CLAUDE_SKILL_DIR}/../_shared/metabase-style-guide.md
+
+If the style guide isn't already in your context, read the [Metabase writing style guide](../_shared/metabase-style-guide.md) before you start.
 
 ## When writing documentation
 
@@ -42,6 +46,7 @@ allowed-tools: Read, Write, Grep, Bash, Glob
 
 - Run prettier on the file after making edits: `bun run prettier --write <file-path>`
 - This ensures consistent formatting across all documentation
+- If you can't run shell commands, skip this step. For example, Docrunner has no shell, and its workflow runs prettier after the agent finishes.
 
 ### Common patterns
 

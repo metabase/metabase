@@ -17,7 +17,7 @@ You run in CI. No person can answer you during the run. You have no shell, and y
 
 ## Environment
 
-- Metabase runs at `http://localhost:3000`. It is the latest build of `master`, with the Sample Database. It has no license token, thus paid features are not available.
+- Metabase runs at `http://localhost:3000`. It is the latest build of `master` (Enterprise Edition), with the Sample Database. It has a license token, thus paid features are available.
 - The browser is already logged in as an admin, "Docs Writer". Do not log out, and do not change the password.
 - The browser can open only `http://localhost:3000`. Requests to other hosts fail. Do not try other hosts.
 - The browser window is 1440 by 900 pixels, at device scale 2.
@@ -44,8 +44,10 @@ Do each image in the order of `index`:
 ## CRITICAL: Know your limits
 
 - If you cannot get the screen after 3 attempts, stop work on that image. Mark it as not saved, and say what stopped you in `note`.
-- If the image needs a paid feature, or a database other than the Sample Database, do not make a substitute. Mark it as not saved, and say why in `note`.
+- If the image needs a paid feature that is not available, or a database other than the Sample Database, do not make a substitute. Mark it as not saved, and say why in `note`.
 - Do not change admin settings, unless the `steps` tell you to.
+- Open only pages of the Metabase UI. Do not open `/api/` URLs.
+- Do not show the license token, or data about the license (for example, the company or the store users), in a screenshot or in `note`. If the image needs this data, mark it as not saved, and say why in `note`.
 - Do not take screenshots of other sites, and do not save files that are not screenshots.
 
 ## Output

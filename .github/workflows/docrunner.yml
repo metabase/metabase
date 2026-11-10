@@ -213,6 +213,63 @@ jobs:
           } > .docrunner/context.md
           echo "Linked PRs: ${prs[*]:-none}"
 
+      # While a skill is active, Claude Code uses its `allowed-tools` as allow rules, also in dontAsk mode. Thus each
+      # grant of docs-write and docs-review must be a rule that the agent step already permits or denies:
+      # `Edit(docs/**/*.md)`, or a Bash rule (the Bash deny is stronger than a grant). `hooks` can run commands.
+      # An `@` import that does not resolve gives no error, and the skill then loads without that file.
+      # The agent needs no other skill, thus this step removes the other skills and the commands. A new skill
+      # cannot change what the agent can do. "Restore the skills" puts them back after the agent.
+      - name: Check the docs skills
+        if: steps.existing.outputs.url == ''
+        run: |
+          T="$RUNNER_TEMP/docrunner"
+          find .claude/skills -mindepth 1 -maxdepth 1 ! -name docs-write ! -name docs-review ! -name _shared \
+            -exec rm -rf -- {} +
+          rm -rf .claude/commands
+          errors=()
+          for skill in docs-write docs-review; do
+            f=".claude/skills/$skill/SKILL.md"
+            if [ ! -f "$f" ]; then
+              errors+=("\`$f\` does not exist.")
+              continue
+            fi
+            # The front matter: the lines between the first two `---` lines.
+            front=$(awk 'NR == 1 { if ($0 != "---") exit; next } $0 == "---" { exit } { print }' "$f")
+            if grep -qE '^hooks:' <<< "$front"; then
+              errors+=("\`$f\` has \`hooks\`.")
+            fi
+            # The value of `allowed-tools`: on the same line, or a list on the next lines. An unknown grant fails.
+            grants=$(awk '/^allowed-tools:/ { on = 1; sub(/^allowed-tools:/, ""); print; next }
+                          on && /^[^[:space:]-]/ { on = 0 }
+                          on { print }' <<< "$front" \
+              | grep -oE '[A-Za-z_][A-Za-z0-9_]*(\([^)]*\))?' || true)
+            while IFS= read -r g; do
+              case "$g" in
+                '' | 'Edit(docs/**/*.md)' | Bash | 'Bash('*')') ;;
+                *) errors+=("\`$f\` grants \`$g\`. Docrunner permits only \`Edit(docs/**/*.md)\` and Bash rules.") ;;
+              esac
+            done <<< "$grants"
+            # Claude Code resolves an import from the working folder, or from `${CLAUDE_SKILL_DIR}`.
+            while IFS= read -r line; do
+              path=${line#@}
+              path=${path//'${CLAUDE_SKILL_DIR}'/.claude/skills/$skill}
+              if [ ! -f "$path" ]; then
+                errors+=("\`$f\` imports \`$line\`, but that file does not exist.")
+              fi
+            done < <(grep -E '^@[^[:space:]]+$' "$f" || true)
+          done
+          if [ "${#errors[@]}" -gt 0 ]; then
+            {
+              echo "Docrunner did not run, because a docs skill is not safe, or a file of it is missing:"
+              echo
+              printf -- '- %s\n' "${errors[@]}"
+            } > "$T/reason.md"
+            cat "$T/reason.md"
+            echo "::error::A docs skill did not pass the checks."
+            exit 1
+          fi
+          echo "The docs skills pass the checks."
+
       # Tool rules (see https://code.claude.com/docs/en/permissions):
       # - dontAsk denies each call that no allow rule permits. Reads are permitted only in the working folder,
       #   because no rule allows a bare Read, Glob, or Grep. Thus no reads of /proc or of the home folder.
@@ -220,8 +277,9 @@ jobs:
       #   later give them back when Bash is denied. The action installs 2.1.150. Do not name Glob or Grep in
       #   --allowedTools: a bare allow rule permits searches outside the working folder. Do not use --tools for them:
       #   before 2.1.162, it ignores these names. "Find the status" fails the run if the agent did not have them.
-      # - Skill is off, because a skill grants its `allowed-tools` (docs-write lists Bash and Write). The agent reads
-      #   the skill files as text.
+      # - The Skill tool loads only docs-write and docs-review: in dontAsk mode, a skill with `allowed-tools` loads only
+      #   if an allow rule names it. "Check the docs skills" removes the other skills, and checks the grants of these two.
+      #   Do not deny Skill: a deny is stronger than the allow rules, and then no skill loads.
       # - `Edit(docs/**/*.md)` controls the Edit and Write tools. The agent can write only Markdown files in `docs/`.
       #   Thus it cannot write a config file that a later step runs, for example `docs/.prettierrc.mjs`.
       # - `Read(./.git/**)`: the action puts the job token in `.git/config`.
@@ -240,8 +298,8 @@ jobs:
             --model ${{ env.DOCRUNNER_MODEL }}
             --max-turns ${{ env.DOCRUNNER_MAX_TURNS }}
             --permission-mode dontAsk
-            --allowedTools "Edit(docs/**/*.md)"
-            --disallowedTools "Bash,Skill,NotebookEdit,WebFetch,WebSearch,Agent,Monitor,Read(//proc/**),Read(./.git/**)"
+            --allowedTools "Edit(docs/**/*.md),Skill(docs-write),Skill(docs-review)"
+            --disallowedTools "Bash,NotebookEdit,WebFetch,WebSearch,Agent,Monitor,Read(//proc/**),Read(./.git/**)"
             --json-schema '{"type":"object","additionalProperties":false,"required":["status","title","body","images"],"properties":{"status":{"type":"string","enum":["done","no-change"]},"title":{"type":"string"},"body":{"type":"string"},"images":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["path","shows","steps"],"properties":{"path":{"type":"string","pattern":"^docs/([A-Za-z0-9_-]+/)*images/[A-Za-z0-9_-][A-Za-z0-9_.-]*[.]png$"},"shows":{"type":"string"},"steps":{"type":"string"}}}}}}'
 
       - name: Remove the token from the git remote
@@ -249,6 +307,11 @@ jobs:
         run: |
           git remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
           git config --unset-all "http.https://github.com/.extraheader" || true
+
+      # The tool rules do not let the agent write in `.claude/`, thus this restores only what "Check the docs skills" removed.
+      - name: Restore the skills
+        if: always() && steps.claude.outcome != 'skipped'
+        run: git checkout -- .claude
 
       # The tool rules permit only Markdown files in `docs/`. This step makes sure of it, because a later step can run
       # code from a file in the workspace (prettier loads a JS config). `--others` without `--exclude-standard` also
@@ -338,11 +401,24 @@ jobs:
             if [ -z "$title" ]; then
               title="docs: draft for #$ISSUE"
             fi
+            # The prompt tells the agent to load both docs skills. A skill that the agent did not load is not an error,
+            # but the writer must know about it.
+            missing=""
+            for s in docs-write docs-review; do
+              if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ] || ! jq -e --arg s "$s" \
+                  'any(.[] | select(.type == "assistant") | .message.content[]?;
+                       .type == "tool_use" and .name == "Skill" and .input.skill == $s)' "$EXEC_FILE" > /dev/null 2>&1; then
+                missing="${missing:+$missing and }\`$s\`"
+              fi
+            done
             {
               jq -r "$SANITIZE_JQ"' .body | sanitize' <<< "$RESULT"
               if [ "$images" != '[]' ]; then
                 printf '\n## Images\n\nThe `screenshots` job tries to add these images in a second commit. Examine each image.\n\n'
                 jq -r "$SANITIZE_JQ"' .[] | "- `\(.path)`: \(.shows | gsub("\\s+"; " ") | sanitize)\n  - Steps: \(.steps | gsub("\\s+"; " ") | sanitize)"' <<< "$images"
+              fi
+              if [ -n "$missing" ]; then
+                printf '\n## Skills\n\nDocrunner did not load %s. Examine the style of the change.\n' "$missing"
               fi
               printf '\n---\n\nResolves #%s\n\n' "$ISSUE"
               printf 'Check the backport label. For a feature that is only on `master`, change it to `no-backport`.\n\n'
@@ -508,12 +584,24 @@ jobs:
             <<< "$IMAGES" > .docrunner/images.json
           cp .docrunner/images.json "$RUNNER_TEMP/docrunner/out/images.json"
 
-      # metabase-enterprise-head is the build of master. No license token, thus no paid features.
+      # metabase-enterprise-head is the build of master. The license token turns on the paid features.
+      # The PR environments use the same token. The image runs in prod mode, thus it checks the token on
+      # token-check.metabase.com, and a staging token (for example STAGING_MB_ALL_FEATURES_TOKEN) does not work.
+      # Only this step gets the token. `--env NAME` without a value copies it from the environment, thus it is not in
+      # the command line. Metabase does not return a setting from an env var through the API, thus the browser
+      # cannot show the token.
       - name: Start Metabase
+        env:
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
         run: |
           T="$RUNNER_TEMP/docrunner"
-          docker run --detach --name metabase --publish 127.0.0.1:3000:3000 \
-            --env MB_CHECK_FOR_UPDATES=false --env MB_ANON_TRACKING_ENABLED=false \
+          args=(--env MB_CHECK_FOR_UPDATES=false --env MB_ANON_TRACKING_ENABLED=false)
+          if [ -n "$MB_PREMIUM_EMBEDDING_TOKEN" ]; then
+            args+=(--env MB_PREMIUM_EMBEDDING_TOKEN)
+          else
+            echo "::warning::The secret PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN is empty. Metabase starts without paid features."
+          fi
+          docker run --detach --name metabase --publish 127.0.0.1:3000:3000 "${args[@]}" \
             metabase/metabase-enterprise-head:latest
           for _ in $(seq 1 90); do
             if curl --silent --fail "$MB_URL/api/health" | grep -q '"ok"'; then break; fi
@@ -544,6 +632,15 @@ jobs:
           done
           if [ "$synced" != true ]; then
             echo "::warning::The first sync of the Sample Database is not complete after 2 minutes. Screenshots can show missing data."
+          fi
+
+          # The feature names are not secret. The token is.
+          features=$(curl --silent --show-error --fail -H "X-Metabase-Session: $session" "$MB_URL/api/session/properties" \
+            | jq -r '[."token-features" // {} | to_entries[] | select(.value == true) | .key] | sort | join(", ")')
+          if [ -n "$features" ]; then
+            echo "Paid features: $features"
+          else
+            echo "::warning::The license token gives no paid features. Screenshots of paid features are not possible."
           fi
 
           # The browser starts logged in. The agent does not get the password.

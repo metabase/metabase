@@ -1,7 +1,6 @@
 ---
 name: docs-review
 description: Review documentation changes for compliance with the Metabase writing style guide. Use when reviewing pull requests, files, or diffs containing documentation markdown files.
-allowed-tools: Read, Grep, Bash, Glob
 metadata:
   metareview:
     title: Docs review
@@ -14,11 +13,13 @@ metadata:
 
 # Documentation Review Skill
 
-@./../_shared/metabase-style-guide.md
+@${CLAUDE_SKILL_DIR}/../_shared/metabase-style-guide.md
+
+If the style guide isn't already in your context, read the [Metabase writing style guide](../_shared/metabase-style-guide.md) before you start.
 
 ## Review mode detection
 
-**IMPORTANT: Before starting the review, determine which mode to use:**
+**IMPORTANT: Before starting the review, determine which mode to use.** If the request names a mode (for example, Docrunner asks for local review mode), use that mode. Otherwise:
 
 1. **PR review mode**: If the `mcp__github__create_pending_pull_request_review` tool is available, you are reviewing a GitHub PR
    - Use the pending review workflow to post all issues as one cohesive review
