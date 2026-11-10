@@ -11,6 +11,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import (java.io Closeable)
@@ -390,4 +391,16 @@
                                   set))
                   after    #(.plus now ^Duration (semantic.dlq/next-delay 43 %))]
               (is (= #{(after semantic.dlq/permanent-policy)} (attempts (take 1 upserts))))
-              (is (= #{(after semantic.dlq/transient-policy)} (attempts upserts))))))))))
+              (is (= #{(after semantic.dlq/transient-policy)} (attempts upserts)))))))
+      (testing "a permanent failure is logged once, by document and SQLState, without the message"
+        (let [upserts [(first gate-docs) (assoc (first gate-docs) :id "card_3" :model_id "3")]]
+          (mt/with-dynamic-fn-redefs [semantic.index/upsert-index!
+                                      (fn [& _] (throw (SQLException. "row holds the private description" "54000")))]
+            (log.capture/with-log-messages-for-level [logs [metabase-enterprise.search.semantic.dlq :warn]]
+              (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 1) (take 1 upserts)))
+              (is (=? [{:level :warn, :message #".*card_1.*SQLState 54000.*"}] (logs)))
+              (is (not-any? #(re-find #"private description" (:message %)) (logs))))
+            (testing "and a failed batch, which may only be collateral, is not"
+              (log.capture/with-log-messages-for-level [logs [metabase-enterprise.search.semantic.dlq :warn]]
+                (semantic.dlq/try-batch! pgvector index (map #(assoc % :retry_count 1) upserts))
+                (is (empty? (logs)))))))))))

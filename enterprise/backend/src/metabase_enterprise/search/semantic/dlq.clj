@@ -346,15 +346,27 @@
      :attempt_at        (.plus attempted-at ^Duration (next-delay new-retry-count retry-policy))
      :last_attempted_at attempted-at}))
 
+(defn- error-summary
+  "The class of `ex`'s root cause, and the SQLState of the first SQL error in its chain, if any.
+  Leaves out the message, which for a Postgres data error can quote the document's text."
+  [ex]
+  (let [chain (u/full-exception-chain ex)
+        sql   (some #(when (instance? SQLException %) %) chain)]
+    (cond-> (.getName (class (last chain)))
+      sql (str " (SQLState " (.getSQLState ^SQLException sql) ")"))))
+
 (defn- failure-outcome [ex gate-docs]
   (let [now         (.instant clock)
         ;; A failed batch doesn't say which of its documents caused the error, so only a single document is held
         ;; to the permanent policy. Batch shrinking isolates the culprit on later retries.
         ex-category (if (next gate-docs) :transient (categorize-error ex))
         ex-policy   ({:transient transient-policy, :permanent permanent-policy} ex-category transient-policy)]
-    ;; The DLQ catches the exception, so this is the only place its cause reaches the logs.
-    (log/warnf "Semantic indexing failed for a batch of %d (%s error, will retry): %s"
-               (count gate-docs) (name ex-category) (ex-message (last (u/full-exception-chain ex))))
+    ;; The DLQ catches the exception, so this is the only place a document that keeps failing says why.
+    ;; Transient failures stay at debug: an outage fails every batch, and other logs report it.
+    (if (= :permanent ex-category)
+      (log/warnf "Semantic indexing of %s failed with %s; retrying on the permanent backoff"
+                 (:id (first gate-docs)) (error-summary ex))
+      (log/debugf "Semantic indexing of a batch of %d failed with %s" (count gate-docs) (error-summary ex)))
     (log/debug ex "Semantic indexing failure")
     {:failures (mapv (fn [gate-doc]
                        {:gate-doc gate-doc
