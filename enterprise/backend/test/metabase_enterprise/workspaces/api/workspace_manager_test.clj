@@ -200,6 +200,30 @@
          (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-failure"))
              "the retry's workspace holds the freed key"))))))
 
+(deftest create-idempotency-retry-after-failed-cleanup-test
+  (testing "a retry of a create whose provisioning and cleanup both failed replays the 500 and provisions nothing"
+    (do-with-eligible-database!
+     (fn [db-id]
+       (let [inits  (atom 0)
+             wedged (reify provisioning/Provisioner
+                      (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                      (init!    [_ _ _ _]   (swap! inits inc) (throw (ex-info "Connection refused" {})))
+                      (grant!   [_ _ _ _ _] nil)
+                      (destroy! [_ _ _ _]   (throw (ex-info "warehouse down" {}))))]
+         (with-redefs [provisioning/dispatching-provisioner wedged]
+           ;; master keeps the workspace and answers 200; with #86601 this first create is the 500 too
+           (let [{ws-id :id} (create-with-key 200 "retry-after-failed-cleanup" "Wedged" db-id)]
+             (is (=? {:databases [{:status "unprovisioned"}]}
+                     (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+             (is (=? {:workspace_id ws-id :cleanup_required true}
+                     (create-with-key 500 "retry-after-failed-cleanup" "Wedged" db-id)))
+             (is (= 1 @inits) "the retry provisioned nothing")
+             (is (= 1 (t2/count :model/Workspace :idempotency_key "retry-after-failed-cleanup"))
+                 "the key stays on the kept workspace")
+             (testing "deleting the kept workspace finishes the cleanup"
+               (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                 (mt/user-http-request :crowberto :delete 204 (str "ee/workspace-manager/" ws-id)))))))))))
+
 (deftest create-without-idempotency-key-test
   (testing "without an Idempotency-Key, two identical creates make two workspaces"
     (do-with-eligible-database!

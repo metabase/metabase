@@ -290,10 +290,23 @@
 (defn- retried-workspace
   "The workspace `ws-id` that an earlier create with the same idempotency key made,
   hydrated, for a retry of that create. Refuses (409, `workspace_busy`) while that
-  create is still provisioning."
+  create is still provisioning. When the earlier create failed and kept the
+  workspace because its cleanup failed too, some database is not `:provisioned`:
+  the retry replays that failure as a 500 with `cleanup_required`, and the key stays
+  taken until the workspace is deleted."
   [ws-id]
   (assert-workspace-not-busy ws-id)
-  (workspace/get-workspace ws-id))
+  (let [ws (workspace/get-workspace ws-id)]
+    (when-not (every? #(= :provisioned (:status %)) (:databases ws))
+      (let [message "An earlier create with this idempotency key failed, and its cleanup did not finish. Delete the workspace, then create it again with a new key."]
+        (throw (ex-info message
+                        {:status-code      500
+                         :message          message
+                         :errors           {:_error message}
+                         :workspace_id     ws-id
+                         :cleanup_required true
+                         :response/keys    #{:workspace_id :cleanup_required}}))))
+    ws))
 
 (defn create-workspace!
   "Create a new Workspace, attach the databases with ids `database_ids` — each must
@@ -315,8 +328,9 @@
 
    An optional `idempotency_key` makes the create safe to retry. It is stored on the
    Workspace row, unique per creator. When the creator already has a workspace with
-   that key, nothing is provisioned: the call returns that workspace, or refuses with
-   409 (`workspace_busy`) while it is still provisioning. The rest of a retry's params
+   that key, nothing is provisioned: the call returns that workspace, refuses with
+   409 (`workspace_busy`) while it is still provisioning, or answers 500 with
+   `cleanup_required` when that create failed and kept the workspace. The rest of a retry's params
    are not compared with the original's. A failed create whose cleanup deleted its
    workspace frees the key."
   [{:keys [name creator_id database_ids idempotency_key]}]
