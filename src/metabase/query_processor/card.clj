@@ -432,7 +432,12 @@
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
         ;; wrapping the qp (rather than the `:make-run`) covers every card/dashcard/embed/public endpoint
-        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals qp card viz-dashcard export-format)
+        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals
+                     qp card viz-dashcard export-format
+                     ;; a referenced card is cached like one placed on this dashboard
+                     (fn [goal-card goal-query]
+                       (-> (cache-strategy goal-card dashboard-id)
+                           (enrich-strategy goal-query))))
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)

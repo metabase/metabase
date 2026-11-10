@@ -1126,6 +1126,27 @@
                  t/offset-date-time
                  (.withNano 0)))))))
 
+(deftest ^:parallel average-query-time-and-last-query-started-ignore-dynamic-goal-runs-test
+  (testing "a dynamic goal's runs of a card aren't the card's own runs"
+    (let [now       (t/offset-date-time)
+          yesterday (t/minus now (t/days 1))]
+      (mt/with-temp
+        [:model/Card           card {}
+         :model/QueryExecution _qe1 {:card_id      (:id card)
+                                     :started_at   yesterday
+                                     :cache_hit    false
+                                     :running_time 50}
+         :model/QueryExecution _qe2 {:card_id      (:id card)
+                                     :context      :dynamic-goal
+                                     :started_at   now
+                                     :cache_hit    false
+                                     :running_time 950}]
+        (is (= 50 (-> card (t2/hydrate :average_query_time) :average_query_time int)))
+        (is (= (.withNano yesterday 0)
+               (-> (-> card (t2/hydrate :last_query_start) :last_query_start)
+                   t/offset-date-time
+                   (.withNano 0))))))))
+
 (deftest save-mbql5-card-test
   (testing "App DB CRUD should work for a Card with an MBQL 5 query (#39024)"
     (let [metadata-provider (mt/metadata-provider)

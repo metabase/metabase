@@ -9,11 +9,13 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.db :as qp.db]
+   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.referenced-entities :as referenced-entities]
    [metabase.test :as mt]
@@ -182,11 +184,15 @@
       (is (nil? (get-in response [:data :referenced_entities]))))))
 
 (deftest ^:parallel referenced-query-info-test
-  (let [info #(:info (#'referenced-entities/referenced-query {} %1 %2 1))]
-    (testing "a referenced card stamps its id, which is what the warehouse query remark reports"
-      (is (= {:context :question, :card-id 7} (info "card" 7))))
+  (let [mp    (mt/metadata-provider)
+        query #(#'referenced-entities/referenced-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                       %1 %2 1 {:parent-info {:dashboard-id 3}})]
+    (testing "a referenced card is recorded under its own context, with its id and the chart's dashboard"
+      (is (=? {:info       {:context :dynamic-goal, :card-id 7, :dashboard-id 3}
+               :middleware {:userland-query? true}}
+              (query "card" 7))))
     (testing "a measure has no card id to stamp, so it must not borrow the key"
-      (is (= {:context :question} (info "measure" 7))))))
+      (is (not (contains? (:info (query "measure" 7)) :card-id))))))
 
 (deftest viz-settings->goal-specs-test
   (testing "GoalSource references are extracted from the dynamic-goal viz settings and grouped by entity"
@@ -594,6 +600,7 @@
               (#'referenced-entities/referenced-entities-result [{:type "card" :id card-1}
                                                                  {:type "card" :id card-2}]
                                                                 1
+                                                                nil
                                                                 nil))))
         (is (= 2 @runs))
         (is (= ::cancel @seen))))))
@@ -737,3 +744,99 @@
         (is (= "failed" (:status result)))
         (is (= "too-many-rows" (:error_type result)))
         (is (re-find #"more rows than the requested maximum" (:error result)))))))
+
+;;; ---------------------------------------------------------------------------------------------------------
+;;; Goal runs are recorded as QueryExecutions
+;;; ---------------------------------------------------------------------------------------------------------
+
+(defn- goal-executions!
+  "Flush pending QueryExecution writes, then return the ones a dynamic goal recorded, matching `where`."
+  [& where]
+  (process-userland-query/flush-execution-metadata!)
+  (apply t2/select [:model/QueryExecution :card_id :context :executor_id :dashboard_id :cache_hit :error]
+         :context :dynamic-goal where))
+
+(deftest goal-run-records-query-execution-test
+  (testing "a goal source card's run is recorded as a QueryExecution, as the viewer, on the chart's dashboard"
+    (let [{:keys [goal chart]} (goal-chart-cards)]
+      (mt/with-temp [:model/Card          {goal-id :id}     goal
+                     :model/Card          {chart-id :id}    (chart goal-id)
+                     :model/Dashboard     {dash-id :id}     {}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id chart-id}]
+        (let [response (mt/user-http-request :rasta :post 202
+                                             (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                     dash-id dashcard-id chart-id))]
+          (is (= "completed" (:status (ref-entity response :card goal-id))))
+          (is (=? [{:card_id      goal-id
+                    :executor_id  (mt/user->id :rasta)
+                    :dashboard_id dash-id
+                    :cache_hit    false
+                    :error        nil}]
+                  (goal-executions! :card_id goal-id))))))))
+
+(deftest goal-run-is-not-a-view-test
+  (testing "a goal run doesn't put the goal source card in the viewer's recent views; opening the chart does"
+    (let [{:keys [goal chart]} (goal-chart-cards)]
+      (mt/with-temp [:model/Card {goal-id :id} goal
+                     :model/Card {chart-id :id} (chart goal-id)]
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" chart-id))
+        (let [recent? #(t2/exists? :model/RecentViews :user_id (mt/user->id :rasta) :model "card" :model_id %)]
+          (is (true? (recent? chart-id)))
+          (is (false? (recent? goal-id))))))))
+
+(deftest measure-goal-run-records-no-card-test
+  (testing "a measure goal's QueryExecution has no card_id, since a measure isn't a card"
+    (mt/with-temp [:model/Measure       {measure-id :id}  {:name       "Venue count"
+                                                           :table_id   (mt/id :venues)
+                                                           :definition (venues-count-measure)}
+                   :model/Card          {chart-id :id}    (goal-chart "measure" measure-id)
+                   :model/Dashboard     {dash-id :id}     {}
+                   :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id chart-id}]
+      (mt/user-http-request :crowberto :post 202
+                            (format "dashboard/%d/dashcard/%d/card/%d/query" dash-id dashcard-id chart-id))
+      (is (=? [{:card_id nil :executor_id (mt/user->id :crowberto)}]
+              (goal-executions! :dashboard_id dash-id))))))
+
+(deftest public-goal-run-has-no-executor-test
+  (testing "a goal run behind a public link is recorded with no executor, like the chart's own run"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                     :model/Card {uuid :public_uuid} (assoc (goal-chart "card" goal-id)
+                                                            :public_uuid (str (random-uuid)))]
+        (client/client :get 202 (str "public/card/" uuid "/query"))
+        (is (=? [{:card_id goal-id :executor_id nil}]
+                (goal-executions! :card_id goal-id)))))))
+
+(deftest failed-goal-run-records-error-test
+  (testing "a goal source that fails is recorded with its error, fails the goal, and leaves the chart completed"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM no_such_table"})}
+                   :model/Card {chart-id :id} (goal-chart "card" goal-id)]
+      (let [response (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
+            goal     (ref-entity response :card goal-id)]
+        (is (= "completed" (:status response)))
+        (is (=? {:status "failed" :error #"(?is).*no_such_table.*"} goal))
+        (is (=? [{:card_id goal-id :error #"(?is).*no_such_table.*"}]
+                (goal-executions! :card_id goal-id)))))))
+
+(deftest goal-runs-use-the-card-cache-test
+  (testing "a goal source card runs under its cache strategy, so a repeat view is served from the cache"
+    (let [{:keys [goal chart]} (goal-chart-cards)]
+      (mt/with-model-cleanup [:model/CacheConfig]
+        (cache-config/store! (mt/user->id :crowberto)
+                             {:model    "root"
+                              :model_id 0
+                              :strategy {:type :ttl :multiplier 99999 :min_duration_ms 0}})
+        (mt/with-temp [:model/Card {goal-id :id} goal
+                       :model/Card {chart-id :id} (chart goal-id)]
+          (let [view! #(mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id)
+                                             {:ignore_cache %})]
+            (view! false)
+            ;; the strategy's average execution time is read from the first run's record
+            (process-userland-query/flush-execution-metadata!)
+            (view! false)
+            (testing "the repeat view's goal run is a cache hit"
+              (is (=? [{:cache_hit false} {:cache_hit true}]
+                      (sort-by :cache_hit (goal-executions! :card_id goal-id)))))
+            (testing "refreshing the chart refreshes its goal too"
+              (view! true)
+              (is (= 2 (count (filter (comp false? :cache_hit) (goal-executions! :card_id goal-id))))))))))))

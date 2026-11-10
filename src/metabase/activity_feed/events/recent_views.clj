@@ -49,9 +49,9 @@
   [topic {:keys [card-id user-id context] :as _event}]
   (try
     (let [user-id (or user-id api/*current-user-id*)]
-      ;; we don't want to count pinned card views or document cards
+      ;; we don't want to count pinned card views, document cards, or cards run as another chart's dynamic goal
       (when (and user-id
-                 (not (#{:collection :dashboard :dashboard-subscription} context))
+                 (not (#{:collection :dashboard :dashboard-subscription :dynamic-goal} context))
                  (not (activity-feed.db/card-document-id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
