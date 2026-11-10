@@ -226,6 +226,7 @@
                                                               schema table-name])))))]
           (try
             (jdbc/execute! spec ["CREATE TABLE public.ws_drop_failed (id INT)"])
+            (t2/insert! :model/Table {:db_id (mt/id) :schema "public" :name "ws_drop_failed" :active true})
             (with-pg-workspace-transform! "ws_drop_failed_iso" "ws_drop_failed"
               (fn [transform]
                 ;; The run writes its copy, then fails before recording the remapping.
@@ -240,8 +241,11 @@
                 (is (not (exists? "ws_drop_failed_iso" "public__ws_drop_failed"))
                     "the workspace copy is dropped")
                 (is (exists? "public" "ws_drop_failed")
-                    "the canonical table is untouched")))
+                    "the canonical table is untouched")
+                (is (true? (t2/select-one-fn :active :model/Table :db_id (mt/id) :schema "public" :name "ws_drop_failed"))
+                    "the canonical Table row stays active: no remapping makes it stand in for the dropped copy")))
             (finally
+              (t2/delete! :model/Table :db_id (mt/id) :schema "public" :name "ws_drop_failed")
               (jdbc/execute! spec ["DROP TABLE IF EXISTS public.ws_drop_failed"]))))))))
 
 (deftest refused-overlapping-run-keeps-remapping-test
