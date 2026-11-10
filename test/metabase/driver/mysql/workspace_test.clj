@@ -21,6 +21,12 @@
     (is (= "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER ON `mb__ws_1`.* TO `mb_user_1`@'%'"
            (last (#'mysql/init-workspace-isolation-sqls false "mb__ws_1" "mb_user_1" "pw"))))))
 
+(deftest quote-grant-db-test
+  (testing "with wildcards on, `_`, `%` and the escape character `\\` itself are escaped"
+    (is (= "`a\\\\\\_b\\%`" (#'mysql/quote-grant-db true "a\\_b%"))))
+  (testing "with partial_revokes on they are literal, so nothing is escaped"
+    (is (= "`a\\_b%`" (#'mysql/quote-grant-db false "a\\_b%")))))
+
 (deftest grant-workspace-read-access-sqls-test
   (testing "the bound database is always granted, once, and `_` and `%` in the names are escaped"
     (is (= ["GRANT SELECT ON `test\\_data`.* TO `u`@'%'"

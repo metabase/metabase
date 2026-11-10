@@ -1407,10 +1407,11 @@
 
 (defn- quote-grant-db
   "`db` quoted as the database of a `GRANT ... ON db.*`. When `_` and `%` are wildcards there, a grant on `mb_ws`
-  would also cover `mbXws`: they are escaped, so the grant covers `db` alone."
+  would also cover `mbXws`: they are escaped, so the grant covers `db` alone. `\\` is the escape character there,
+  so it is escaped too."
   [wildcards? db]
   (quote-schema (cond-> db
-                  wildcards? (str/replace #"[_%]" "\\\\$0"))))
+                  wildcards? (str/replace #"[\\\\_%]" "\\\\$0"))))
 
 (defn- mysql-user-exists?
   "Check if a MySQL user exists."
