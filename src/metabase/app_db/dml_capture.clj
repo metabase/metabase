@@ -107,10 +107,6 @@
     ;; running the DELETE before the actual statement.
     (map? query)
     (not (or
-          ;; PostgreSQL's DELETE ... USING has no portable SELECT restatement in the model pipeline (and may
-          ;; duplicate target rows).
-          ;; Capture is deliberately best-effort, so leave those statements uncaptured.
-          (contains? query :using)
           ;; A CTE can modify data (PostgreSQL's `WITH ... DELETE`), and the snapshot select would run it a second
           ;; time.
           (contains? query :with)
@@ -126,6 +122,7 @@
 ;; to nonsense.
 ;; The `{:delete [...], :from [...]}` spelling needs no case: Honey SQL cannot compile a top-level `:delete`, so such
 ;; a delete fails whether or not it is captured.
+;; PostgreSQL's `:using` needs none for the same reason: Funny SQL cannot compile it.
 (defn- delete-query->select-query
   "Restate an explicit HoneySQL DELETE map as a map a SELECT can be built from."
   [query]
@@ -139,8 +136,10 @@
 ;; aborted.
 (defn- pre-image-rows
   "Select the rows a delete statement is about to affect, narrowed to `fields`, as plain raw-value maps.
-  The select is built and compiled through the model's pipeline, so its conditions keep the statement's exact
+  The select is built and compiled through the model's pipeline, so its conditions keep the statement's
   semantics, and runs on the current connection, inside any transaction the statement itself runs in.
+  The one difference is that the select also runs the model's `before-select` methods, which the DELETE does not.
+  A model whose `before-select` adds conditions would get a snapshot that misses rows, so it should not opt in.
   Returns nil, skipping capture, for a query [[restatable-as-select?]] rejects, for one that fails to build or
   compile as a select, and for a statement matching more than [[max-pre-image-rows]] rows.
   Throws when the select itself fails to execute."
@@ -186,6 +185,11 @@
   (let [fields (when-not (::captured? parsed-args)
                  (try
                    (capture-fields model :delete)
+                   ;; Capture is still skipped and the delete still runs, but the interrupt is the caller's to see.
+                   (catch InterruptedException e
+                     (.interrupt (Thread/currentThread))
+                     (log/warnf e "Skipping DML capture for %s: interrupted in capture-fields" model)
+                     nil)
                    (catch Exception e
                      (log/warnf e "Skipping DML capture for %s: capture-fields failed" model)
                      nil)))]

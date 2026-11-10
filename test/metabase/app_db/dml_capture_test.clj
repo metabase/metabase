@@ -227,6 +227,20 @@
       (is (empty? (events)))
       (is (false? (t2/exists? ::bird :id id))))))
 
+(deftest capture-fields-interrupt-test
+  (testing "an interrupt from capture-fields skips capture, the delete still runs, and the interrupt status is restored"
+    (reset-capture!)
+    (let [id (t2/insert-returning-pk! ::bird (bird 76 "capture-fields-interrupt"))
+          ;; `capture-fields` is a multimethod, which with-dynamic-fn-redefs refuses.
+          [deleted interrupted?] (with-redefs [dml-capture/capture-fields
+                                               (fn [_model _op] (throw (InterruptedException. "capture-fields interrupted")))]
+                                   ;; Reading the status also clears it, so later work runs on a thread that is not
+                                   ;; interrupted.
+                                   [(t2/delete! ::bird :id id) (Thread/interrupted)])]
+      (is (= [1 true] [deleted interrupted?]))
+      (is (empty? (events)))
+      (is (false? (t2/exists? ::bird :id id))))))
+
 (deftest pre-image-sql-error-propagates-test
   (reset-capture!)
   (let [id (t2/insert-returning-pk! ::bird (bird 71 "sql-error"))]
@@ -302,8 +316,6 @@
       (with-redefs [t2.pipeline/build (fn [& _] (swap! build-calls inc))]
         (are [query] (nil? (#'dml-capture/pre-image-rows
                             :toucan.query-type/select.instances ::bird [:id] {} query))
-          ;; DELETE ... USING
-          {:delete-from (keyword table-name), :using [:other_table], :where [:= :group_id 112]}
           ;; a CTE, which the snapshot would run a second time
           {:with  [[:doomed {:select [:id], :from [(keyword table-name)]}]]
            :where [:in :id {:select [:id], :from [:doomed]}]}
