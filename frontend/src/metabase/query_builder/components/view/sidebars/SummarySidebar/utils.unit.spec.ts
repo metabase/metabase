@@ -15,6 +15,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import type {
+  SummaryDimensionItem,
   SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
@@ -23,6 +24,7 @@ import {
   addField,
   areQueriesEqual,
   canDropOnWell,
+  changeDimensionBucket,
   changeValueOperator,
   clearWell,
   dropOnWell,
@@ -400,6 +402,130 @@ describe("getDimensionItems", () => {
       "Created At: Month",
       "Product → Category",
     ]);
+  });
+});
+
+describe("grouping buckets", () => {
+  const query = createOrdersQuery({
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [
+          { type: "column", name: "CREATED_AT", unit: "month" },
+          { type: "column", name: "TOTAL", binning: { strategy: "default" } },
+          {
+            type: "column",
+            sourceFieldId: ORDERS.PRODUCT_ID,
+            name: "CATEGORY",
+          },
+        ],
+      },
+    ],
+  });
+
+  function getBucketNames({ bucketOptions }: SummaryDimensionItem) {
+    return bucketOptions.map((option) => option.displayName);
+  }
+
+  function getSelectedBucketNames({ bucketOptions }: SummaryDimensionItem) {
+    return bucketOptions
+      .filter((option) => option.isSelected)
+      .map((option) => option.displayName);
+  }
+
+  function changeBucket(
+    query: Lib.Query,
+    itemIndex: number,
+    bucketName: string,
+  ) {
+    const item = getDimensionItems(query, STAGE_INDEX)[itemIndex];
+    const option = item.bucketOptions.find(
+      (option) => option.displayName === bucketName,
+    );
+    if (option == null) {
+      throw new Error(`No bucket named ${bucketName}`);
+    }
+    return changeDimensionBucket(query, STAGE_INDEX, item, option);
+  }
+
+  it("offers a date grouping its units, the common seven up front, then no bucket", () => {
+    const [createdAt] = getDimensionItems(query, STAGE_INDEX);
+    const names = getBucketNames(createdAt);
+
+    expect(names.slice(0, createdAt.initialBucketOptionCount)).toEqual([
+      "Minute",
+      "Hour",
+      "Day",
+      "Week",
+      "Month",
+      "Quarter",
+      "Year",
+    ]);
+    expect(names).toContain("Day of week");
+    expect(names.at(-1)).toBe("Don't bin");
+    expect(getSelectedBucketNames(createdAt)).toEqual(["Month"]);
+  });
+
+  it("offers a number grouping its binning strategies, then no binning", () => {
+    const [, total] = getDimensionItems(query, STAGE_INDEX);
+
+    expect(getBucketNames(total)).toEqual([
+      "Auto bin",
+      "10 bins",
+      "50 bins",
+      "100 bins",
+      "Don't bin",
+    ]);
+    expect(total.initialBucketOptionCount).toBe(5);
+    expect(getSelectedBucketNames(total)).toEqual(["Auto bin"]);
+  });
+
+  it("offers nothing to a grouping that has no units or bins", () => {
+    const [, , category] = getDimensionItems(query, STAGE_INDEX);
+
+    expect(category.bucketOptions).toEqual([]);
+  });
+
+  it("changes a date grouping's unit in place", () => {
+    const yearly = changeBucket(query, 0, "Year");
+
+    expect(getDimensionLabels(yearly)).toEqual([
+      "Created At: Year",
+      "Total: Auto binned",
+      "Product → Category",
+    ]);
+    const [createdAt] = getDimensionItems(yearly, STAGE_INDEX);
+    expect(getSelectedBucketNames(createdAt)).toEqual(["Year"]);
+  });
+
+  it("changes a number grouping's bins in place", () => {
+    const binned = changeBucket(query, 1, "50 bins");
+
+    expect(getDimensionLabels(binned)).toEqual([
+      "Created At: Month",
+      "Total: 50 bins",
+      "Product → Category",
+    ]);
+    const [, total] = getDimensionItems(binned, STAGE_INDEX);
+    expect(getSelectedBucketNames(total)).toEqual(["50 bins"]);
+  });
+
+  it("takes the unit and the bins off", () => {
+    const unbinned = changeBucket(
+      changeBucket(query, 0, "Don't bin"),
+      1,
+      "Don't bin",
+    );
+
+    expect(getDimensionLabels(unbinned)).toEqual([
+      "Created At",
+      "Total",
+      "Product → Category",
+    ]);
+    const [createdAt, total] = getDimensionItems(unbinned, STAGE_INDEX);
+    expect(getSelectedBucketNames(createdAt)).toEqual(["Don't bin"]);
+    expect(getSelectedBucketNames(total)).toEqual(["Don't bin"]);
   });
 });
 

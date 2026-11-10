@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Icon, Menu, UnstyledButton } from "metabase/ui";
+import { Ellipsified, Icon, Menu, UnstyledButton } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import S from "../SummarySidebar.module.css";
@@ -27,7 +27,7 @@ export function ColumnValueMenu({
           className={S.chipButton}
           aria-label={t`Change how ${item.label} is calculated`}
         >
-          <span className={S.chipLabel}>{item.label}</span>
+          <Ellipsified fw="inherit">{item.label}</Ellipsified>
           <Icon name="chevrondown" size={10} />
         </UnstyledButton>
       </Menu.Target>

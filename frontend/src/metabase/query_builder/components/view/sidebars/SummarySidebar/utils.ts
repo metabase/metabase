@@ -6,6 +6,7 @@ import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import type {
+  SummaryBucketOption,
   SummaryDimensionItem,
   SummaryDragItem,
   SummaryField,
@@ -17,7 +18,18 @@ import type {
 } from "./types";
 
 const DEFAULT_OPERATOR_SHORT_NAMES = ["sum", "distinct"];
+type DimensionBucketOptions = Pick<
+  SummaryDimensionItem,
+  "bucketOptions" | "initialBucketOptionCount"
+>;
+
 const VALUE_SECTION_KEYS = ["measures", "metrics"];
+const INITIAL_TEMPORAL_OPTION_COUNT = 7;
+const INITIAL_BINNING_OPTION_COUNT = 5;
+const NO_BUCKET_OPTIONS: DimensionBucketOptions = {
+  bucketOptions: [],
+  initialBucketOptionCount: 0,
+};
 
 function toFieldItem(
   { name, displayName }: { name: string; displayName: string },
@@ -278,6 +290,79 @@ export function getValueItems(
   );
 }
 
+function getBucketOption(
+  query: Lib.Query,
+  stageIndex: number,
+  bucket: Lib.Bucket,
+  column: Lib.ColumnMetadata,
+): SummaryBucketOption {
+  const info = Lib.displayInfo(query, stageIndex, bucket);
+  return {
+    displayName: info.displayName,
+    isSelected: info.selected === true,
+    column,
+  };
+}
+
+function getBucketOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.BreakoutClause,
+): DimensionBucketOptions {
+  const column = Lib.breakoutColumn(query, stageIndex, clause);
+  if (column == null) {
+    return NO_BUCKET_OPTIONS;
+  }
+  const strategies = Lib.availableBinningStrategies(query, stageIndex, column);
+  if (strategies.length > 0) {
+    return {
+      bucketOptions: [
+        ...strategies.map((strategy) =>
+          getBucketOption(
+            query,
+            stageIndex,
+            strategy,
+            Lib.withBinning(column, strategy),
+          ),
+        ),
+        {
+          displayName: t`Don't bin`,
+          isSelected: Lib.binning(column) == null,
+          column: Lib.withBinning(column, null),
+        },
+      ],
+      initialBucketOptionCount: INITIAL_BINNING_OPTION_COUNT,
+    };
+  }
+  const units = Lib.availableTemporalBuckets(query, stageIndex, column);
+  if (units.length > 0) {
+    const selectedUnit = Lib.temporalBucket(column);
+    return {
+      bucketOptions: [
+        ...units.map((unit) =>
+          getBucketOption(
+            query,
+            stageIndex,
+            unit,
+            Lib.withTemporalBucket(column, unit),
+          ),
+        ),
+        {
+          displayName: t`Don't bin`,
+          isSelected:
+            selectedUnit == null ||
+            Lib.displayInfo(query, stageIndex, selectedUnit).shortName ===
+              "default",
+          // an explicit default keeps the column from getting its default unit back
+          column: Lib.withTemporalBucket(column, "default"),
+        },
+      ],
+      initialBucketOptionCount: INITIAL_TEMPORAL_OPTION_COUNT,
+    };
+  }
+  return NO_BUCKET_OPTIONS;
+}
+
 export function getDimensionItems(
   query: Lib.Query,
   stageIndex: number,
@@ -287,6 +372,7 @@ export function getDimensionItems(
     clause,
     key: breakoutNames[index],
     label: Lib.displayInfo(query, stageIndex, clause).longDisplayName,
+    ...getBucketOptions(query, stageIndex, clause),
   }));
 }
 
@@ -530,4 +616,13 @@ export function changeValueOperator(
   return clause
     ? Lib.replaceClause(query, stageIndex, item.clause, clause)
     : query;
+}
+
+export function changeDimensionBucket(
+  query: Lib.Query,
+  stageIndex: number,
+  item: SummaryDimensionItem,
+  option: SummaryBucketOption,
+): Lib.Query {
+  return Lib.replaceClause(query, stageIndex, item.clause, option.column);
 }

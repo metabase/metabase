@@ -1,8 +1,7 @@
-import { Icon } from "metabase/ui";
+import { Ellipsified, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
-import S from "../SummarySidebar.module.css";
 import type { SummaryValueItem } from "../types";
 
 import { ColumnValueMenu } from "./ColumnValueMenu";
@@ -45,7 +44,7 @@ export function ValueChip({
       ) : (
         <>
           <Icon name={VALUE_ICONS[item.kind]} size={12} />
-          <span className={S.chipLabel}>{item.label}</span>
+          <Ellipsified fw="inherit">{item.label}</Ellipsified>
         </>
       )}
     </WellChip>
