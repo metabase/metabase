@@ -187,6 +187,7 @@
              #"Cannot connect to a private or internal network address"
              (#'bigquery/database-details->client
               {:project-id             "my-project"
+               :auth-mode              "credential-config"
                :credential-config-json (credential-config-json :credential_source (azure-imds-credential-source))})))))))
 
 (deftest client-without-service-account-key-test
@@ -198,7 +199,8 @@
     (try
       (System/setProperty prop "env-project")
       (testing "a credential configuration file (Workload Identity Federation) builds a client"
-        (let [details {:credential-config-json (credential-config-json)}
+        (let [details {:credential-config-json (credential-config-json)
+                       :auth-mode              "credential-config"}
               client  (#'bigquery/database-details->client (assoc details :billing-project-id "billing"))]
           (is (instance? ExternalAccountCredentials (.getCredentials (.getOptions ^BigQuery client))))
           (testing "whose jobs run in the billing project when one is set"
@@ -209,7 +211,8 @@
       (testing "with neither file, the server's Application Default Credentials build the client"
         (let [adc (GoogleCredentials/create (AccessToken. "token" nil))]
           (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credentials (constantly adc)]
-            (let [client (#'bigquery/database-details->client {:project-id "data"})]
+            (let [client (#'bigquery/database-details->client {:project-id "data"
+                                                               :auth-mode  "application-default"})]
               (is (identical? adc (.getCredentials (.getOptions ^BigQuery client))))
               (is (= "env-project" (.getProjectId (.getOptions ^BigQuery client))))))))
       (finally

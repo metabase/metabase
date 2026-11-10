@@ -143,7 +143,7 @@
 (mu/defn- database-details->client
   ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
-  (let [base-creds   (bigquery.common/database-details->service-account-credential details)
+  (let [base-creds   (bigquery.common/database-details->credentials details)
         ;; Check if we should impersonate a different service account
         ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
         ;; so the 1-hour lifetime is just the initial token validity period.
