@@ -131,7 +131,7 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+  (dissoc field :unique_field_helper))
 
 (defn- enforce-effective-type-invariant
   "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.
@@ -420,8 +420,9 @@
                :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
-               :unique_field_helper :visibility_type]
-   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
+               :visibility_type]
+   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
+               :unique_field_helper]
    :children  {:dimensions :model/Dimension}
    :transform {:table_id           table-transform
                :fk_target_field_id field-transform
