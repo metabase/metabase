@@ -32,19 +32,20 @@
              (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
 
 (defn- chart-memory
-  "A memory atom holding generated charts `A`, `B` and `C` over a real query, in conversation `conversation-id`."
+  "A memory atom holding generated charts `A`, `B` and `C` over `query` (by default the venues table), in conversation
+  `conversation-id`."
   ([] (chart-memory nil))
-  ([conversation-id]
-   (let [query (venues-query)]
-     (atom (cond-> {:state   {:queries {"q-1" query}
-                              :charts  (into {}
-                                             (for [id ["A" "B" "C"]]
-                                               [id {:chart_id               id
-                                                    :query_id               "q-1"
-                                                    :queries                [query]
-                                                    :visualization_settings {:chart_type :bar}}]))}
-                    :context {}}
-             conversation-id (assoc :conversation-id conversation-id))))))
+  ([conversation-id] (chart-memory conversation-id (venues-query)))
+  ([conversation-id query]
+   (atom (cond-> {:state   {:queries {"q-1" query}
+                            :charts  (into {}
+                                           (for [id ["A" "B" "C"]]
+                                             [id {:chart_id               id
+                                                  :query_id               "q-1"
+                                                  :queries                [query]
+                                                  :visualization_settings {:chart_type :bar}}]))}
+                  :context {}}
+           conversation-id (assoc :conversation-id conversation-id)))))
 
 (def ^:private tool-names
   "Every tool a recovery step names here."
@@ -624,28 +625,45 @@
            (is (not (re-find slot-only output)))
            (is (re-find #"name=\"Plain revenue\"" output))))))))
 
+(defn- curated-chart-query
+  "A query over the curated question `curated-id`."
+  [curated-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/card mp curated-id))))
+
 (deftest curated-only-chart-test
   (curated-dashboard!
-   (fn [{:keys [dash-id curated-metabot]}]
+   (fn [{:keys [curated-id dash-id curated-metabot]}]
      (mt/with-model-cleanup [:model/Card]
-       (testing "a chart from the conversation is added and shown, though its question isn't curated"
-         (let [output (as-metabot
-                       curated-metabot
-                       #(binding [shared/*memory-atom* (chart-memory)]
-                          (:output (call {:dashboard_id dash-id
-                                          :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]}
-                                         :internal))))]
-           (is (= 2 (count (dashcards dash-id))))
-           (is (re-find #"name=\"Venues\" display=\"bar\"" output))))))))
+       (as-metabot
+        curated-metabot
+        (fn []
+          (testing "a chart that reads an uncurated table is refused, and nothing is saved"
+            (let [cards (t2/count :model/Card)]
+              (is (=? {:class :recoverable
+                       :code  ::recoverable.common/not-curated
+                       :text  #"(?s)`chart A` is not available: this Metabot only uses curated content.*"}
+                      (binding [shared/*memory-atom* (chart-memory)]
+                        (failure {:dashboard_id dash-id
+                                  :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]}))))
+              (is (= cards (t2/count :model/Card)))
+              (is (= 1 (count (dashcards dash-id))))))
+          (testing "a chart that reads a curated question is added and shown, though its new question isn't curated"
+            (let [output (binding [shared/*memory-atom* (chart-memory nil (curated-chart-query curated-id))]
+                           (:output (call {:dashboard_id dash-id
+                                           :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]}
+                                          :internal)))]
+              (is (= 2 (count (dashcards dash-id))))
+              (is (re-find #"name=\"Venues\" display=\"bar\"" output))))))))))
 
 (deftest curated-only-conversation-chart-test
   (curated-dashboard!
-   (fn [{:keys [dash-id curated-metabot]}]
+   (fn [{:keys [curated-id dash-id curated-metabot]}]
      (mt/with-model-cleanup [:model/Card]
        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
          (as-metabot
           curated-metabot
-          #(binding [shared/*memory-atom* (chart-memory convo-id)]
+          #(binding [shared/*memory-atom* (chart-memory convo-id (curated-chart-query curated-id))]
              (call {:dashboard_id dash-id
                     :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]}
                    :internal)
@@ -685,7 +703,15 @@
      (testing "with curation off, an uncurated question is added"
        (as-metabot open-metabot
                    #(call {:dashboard_id dash-id, :ops [{:op "add_card", :id -1, :card_id plain-id}]} :internal))
-       (is (= [plain-id plain-id] (map :card_id (dashcards dash-id))))))))
+       (is (= [plain-id plain-id] (map :card_id (dashcards dash-id)))))
+     (testing "with curation off, a chart that reads an uncurated table is added"
+       (mt/with-model-cleanup [:model/Card]
+         (as-metabot open-metabot
+                     #(binding [shared/*memory-atom* (chart-memory)]
+                        (call {:dashboard_id dash-id
+                               :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]}
+                              :internal)))
+         (is (= 3 (count (dashcards dash-id)))))))))
 
 ;;; ------------------------------------------------ Arguments -----------------------------------------------------
 

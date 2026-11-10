@@ -531,16 +531,13 @@
 
 (defn- requested-charts
   "The charts the ops name, in order, each `{:chart-id :name :dataset_query :display}`.
-  Each must be in the conversation, and the user must be able to run its query.
-  A chart that several ops name takes the name from the first."
+  Each must be one [[save-entity/savable-chart]] accepts. A chart that several ops name takes the name from the first."
   [ops]
   (->> ops
        (filter :chart_id)
        (m/distinct-by :chart_id)
        (mapv (fn [{:keys [chart_id] :as op}]
-               (let [{:keys [dataset_query] :as chart} (save-entity/resolve-chart chart_id)]
-                 (save-entity/check-query-permissions! dataset_query)
-                 (assoc chart :chart-id chart_id :name (:name op)))))))
+               (assoc (save-entity/savable-chart chart_id) :chart-id chart_id :name (:name op))))))
 
 (defn- save-chart!
   "Saves `chart` as a question of the dashboard with `dashboard-id`, and returns `{:chart-id :card-id :card}`.
@@ -645,8 +642,8 @@
 (defn- card-shown-fn
   "A predicate on the cards of `dashcards`: whether the result may show a card's id, name and display.
   The user must be able to read it. Under [[shared/curated-only?]] it must also be curated, or saved from a chart of
-  this conversation: one in `saved-charts`, or one an earlier call saved. Charts come from queries already held to
-  curated sources."
+  this conversation: one in `saved-charts`, or one an earlier call saved. Such a card isn't curated: its id and name
+  are shown because this conversation saved them, and a tool that later uses the card judges it again."
   [dashcards saved-charts]
   (if-not (shared/curated-only?)
     mi/can-read?

@@ -15,6 +15,7 @@
    [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
@@ -157,7 +158,7 @@
                :text (str "Use `construct_notebook_query` to make a chart without the invalid query content,"
                           " then retry with its chart ID.")}]})
 
-(defn check-query-permissions!
+(defn- check-query-permissions!
   "Require permission to run `dataset-query`.
   A permission refusal ends the turn; invalid query content can be corrected by the agent."
   [dataset-query]
@@ -184,7 +185,7 @@
   (or (first (:queries chart))
       (get (shared/current-queries-state) (:query_id chart))))
 
-(defn resolve-chart
+(defn- resolve-chart
   "Look up the generated chart from agent memory and return the pieces needed to
   build a card: a legacy `dataset_query` and a `display` keyword. Mirrors the
   lookup in `edit_chart` / `links/resolve-chart-link`."
@@ -205,6 +206,18 @@
      :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
                         (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))
+
+(defn savable-chart
+  "The chart `chart-id` from agent memory as `{:dataset_query :display}`, ready to save as a card.
+  Throws when the chart is unknown or the user can't run its query, and, when this Metabot uses only curated
+  content, when the query reads anything uncurated."
+  [chart-id]
+  (let [{:keys [dataset_query] :as chart} (resolve-chart chart-id)]
+    (check-query-permissions! dataset_query)
+    ;; A chart may hold a query from the user's viewing context, which nothing judged on the way in.
+    (when (shared/curated-only?)
+      (curation/check-curated-query! (str "chart " chart-id) dataset_query))
+    chart))
 
 (defn personal-collection-id
   "The current user's personal collection ID. Throws [[no-personal-collection!]] when the user has none."
@@ -366,9 +379,8 @@
      :metabot/writes? true})
 
   (handle [_ {:keys [chart_id destination description] question-name :name} _ctx]
-    (let [{:keys [dataset_query display]} (resolve-chart chart_id)
-          _    (check-query-permissions! dataset_query)
-          args {:name          question-name
+    (let [{:keys [dataset_query display]} (savable-chart chart_id)
+          args {:name         question-name
                 :description    description
                 :dataset_query  dataset_query
                 :display        display
