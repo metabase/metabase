@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -85,6 +86,7 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
   "List all Workspaces."
+  {:scope api-scope.workspace-manager/workspace-manager}
   []
   (api/check-superuser)
   (into [] (comp (filter mi/can-read?)
@@ -93,6 +95,7 @@
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
+  {:scope api-scope.workspace-manager/workspace-manager}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/read-check :model/Workspace id)
   (present-workspace (api/check-404 (ws/get-workspace id))))
@@ -100,6 +103,7 @@
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
    for workspaces) and provision it (blocking)."
+  {:scope api-scope.workspace-manager/workspace-manager}
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (present-workspace
@@ -108,6 +112,7 @@
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
+  {:scope api-scope.workspace-manager/workspace-manager}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
@@ -122,6 +127,7 @@
   deleted) or kept; when any teardown fails the workspace is kept too — with the
   failed rows, so the delete can be retried — and the combined failure is
   returned as the error. 204 on success, no response body."
+  {:scope api-scope.workspace-manager/workspace-manager}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
@@ -136,6 +142,7 @@
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
   of the workspace's databases is not `:provisioned`."
+  {:scope api-scope.workspace-manager/workspace-manager}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (let [config (api/check-404 (ws.config/build-workspace-config id))]

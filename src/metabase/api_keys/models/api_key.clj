@@ -205,11 +205,12 @@
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
 (mu/defn create-api-key-with-new-user!
-  "Create a new API key and a new user for that key at the same time."
-  [{:keys [key-name group-id]}
+  "Create a new API key and a new user for that key at the same time, with `scope` when given."
+  [{:keys [key-name group-id scope]}
    :- [:map {:closed true}
        [:key-name ::api-keys.schema/name]
-       [:group-id {:optional true} pos-int?]]]
+       [:group-id {:optional true} pos-int?]
+       [:scope    {:optional true} ::api-keys.schema/scope]]]
   (api/checkp (not (api-keys.db/api-key-name-exists? key-name))
               "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
@@ -223,11 +224,12 @@
         (when group-id
           (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (api-keys.db/insert-api-key!
-             {:user_id                user-id
-              :name                   key-name
-              ::api-keys/unhashed-key unhashed-key
-              :updated_by_id          api/*current-user-id*
-              :creator_id             api/*current-user-id*})
+             (cond-> {:user_id                user-id
+                      :name                   key-name
+                      ::api-keys/unhashed-key unhashed-key
+                      :updated_by_id          api/*current-user-id*
+                      :creator_id             api/*current-user-id*}
+               scope (assoc :scope scope)))
             (assoc :unmasked_key unhashed-key))))))
 
 (mu/defn regenerate! :- [:map

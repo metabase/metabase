@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
@@ -160,6 +161,43 @@
         (mt/user-http-request :crowberto :delete 204 (format "api-key/%s" id))
         (is (= "Unauthenticated"
                (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" api-key}}})))))))
+
+(deftest workspace-manager-api-key-test
+  (testing "POST /api/api-key with scope workspace-manager makes a key that is listed with its scope"
+    (mt/with-empty-h2-app-db!
+      (let [{api-key :unmasked_key, id :id, :as resp}
+            (mt/user-http-request :crowberto :post 200 "api-key"
+                                  {:group_id (:id (perms-group/admin))
+                                   :name     "CI workspaces"
+                                   :scope    "workspace-manager"})]
+        (is (= "workspace-manager" (:scope resp)))
+        (is (= :workspace-manager (t2/select-one-fn :scope :model/ApiKey :id id)))
+        (is (= [{:name "CI workspaces", :scope "workspace-manager"}]
+               (map #(select-keys % [:name :scope]) (mt/user-http-request :crowberto :get 200 "api-key"))))
+        (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count")))
+        (testing "it authenticates, but only on endpoints tagged with its scope"
+          (is (=? {:error "scope_not_permitted"}
+                  (client/client :get 403 "setting" {:request-options {:headers {"x-api-key" api-key}}})))
+          (is (=? {:error "unsupported_scope"}
+                  (client/client :get 403 "user/current" {:request-options {:headers {"x-api-key" api-key}}}))))
+        (testing "an unscoped admin key still reaches them"
+          (let [{unscoped :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
+                                                               {:group_id (:id (perms-group/admin))
+                                                                :name     "full admin"})]
+            (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" unscoped}}}))))))))
+
+(deftest api-keys-with-an-unknown-scope-fail-closed-test
+  (testing "a key whose scope the REST API does not know fails closed, even with a user (product SCIM keys have none)"
+    (let [unhashed (api-key/generate-key)]
+      (mt/with-temp [:model/ApiKey _ {::api-keys/unhashed-key unhashed
+                                      :name                   "SCIM key with a user"
+                                      :user_id                (mt/user->id :crowberto)
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :updated_by_id          (mt/user->id :crowberto)
+                                      :scope                  :scim}]
+        (is (= "Unauthenticated"
+               (client/client :get 401 "user/current"
+                              {:request-options {:headers {"x-api-key" (u.secret/expose unhashed)}}})))))))
 
 (deftest api-keys-can-be-updated
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}

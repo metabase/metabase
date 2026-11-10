@@ -343,7 +343,8 @@
   {:team "Security Engineering"
    :api  #{metabase.api-scope.core
            metabase.api-scope.data-app
-           metabase.api-scope.init}
+           metabase.api-scope.init
+           metabase.api-scope.workspace-manager}
    :uses #{util}}
 
   api.eid-translation
@@ -4789,6 +4790,7 @@
            metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :uses #{api
+           api-scope
            app-db
            cache
            database-routing

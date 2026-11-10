@@ -22,6 +22,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
@@ -140,8 +141,15 @@
     (u.password/verify-password passed-api-key "" stored-hash)
     (u.password/do-useless-hash)))
 
+(def ^:private api-key-scope->token-scopes
+  "The `:token-scopes` of a request authenticated by an API key, by the key's `scope` column. A key whose scope is not
+  here does not authenticate: SCIM keys belong to the SCIM endpoints alone."
+  {nil                 nil
+   "workspace-manager" #{api-scope.workspace-manager/workspace-manager}})
+
 (mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
-  "Return User ID and superuser status for an API Key with `api-key-id"
+  "Return User ID and superuser status for an API Key with `api-key-id`. A `workspace-manager` key also sets
+  `:token-scopes`, so it reaches only the endpoints tagged with that scope."
   [api-key :- [:maybe :string]]
   (when (and api-key
              (init-status/complete?))
@@ -159,10 +167,13 @@
       (let [user-info (-> (server.db/api-key-user-info (api-key/prefix api-key)
                                                        (premium-features/enable-advanced-permissions?))
                           (m/update-existing :is-group-manager? boolean))]
-        (when (matching-api-key? user-info api-key)
-          (-> user-info
-              (dissoc :api-key)
-              (assoc :embedding/auth-method "api-key")))))))
+        (when (and (matching-api-key? user-info api-key)
+                   (contains? api-key-scope->token-scopes (:api-key-scope user-info)))
+          (let [token-scopes (api-key-scope->token-scopes (:api-key-scope user-info))]
+            (-> user-info
+                (dissoc :api-key :api-key-scope)
+                (cond-> token-scopes (assoc :token-scopes token-scopes))
+                (assoc :embedding/auth-method "api-key"))))))))
 
 (mr/def ::oauth-bearer
   "Fns that authenticate a request by its OAuth bearer token, the scope that grants full access, the scopes that make
