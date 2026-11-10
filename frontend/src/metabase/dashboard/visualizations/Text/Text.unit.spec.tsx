@@ -190,6 +190,18 @@ describe("Text", () => {
     });
 
     describe("Edit/Focused", () => {
+      it("should display and focus an empty textarea when the card was just added", () => {
+        setup({
+          dashcard: createMockVirtualDashCard({ justAdded: true }),
+          settings: getSettingsWithText(""),
+          isEditing: true,
+        });
+
+        const textarea = screen.getByTestId("editing-dashboard-text-input");
+        expect(textarea).toHaveFocus();
+        expect(textarea).toHaveValue("");
+      });
+
       it("should display and focus textarea when clicked", async () => {
         const options = {
           settings: getSettingsWithText(""),
