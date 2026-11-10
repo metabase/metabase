@@ -74,8 +74,9 @@
      instructions (assoc :instructions instructions))))
 
 (def mcp-access-disabled-message
-  "The refusal for a user whose groups grant no MCP access, at `initialize` and on requests of a session opened
-  before an admin turned MCP off."
+  "The explanation for a user whose groups grant no MCP access. Such a user still connects, so that the reason reaches
+  them: MCP clients replace the reason an HTTP refusal gives with their own generic text, but pass `initialize`
+  instructions and tool results to the model unchanged."
   (message/msg [(str "MCP access is not enabled for your account. "
                      "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]))
 
@@ -372,10 +373,6 @@
       (and batch? (some #(and (valid-message? %) (= "initialize" (:method %))) body))
       (json-response 400 (jsonrpc-error nil -32600 (message/msg ["initialize must not be batched"])))
 
-      (and (not batch?) (valid-message? body) (= "initialize" (:method body))
-           (not (mcp.perms/enabled? (mcp.perms/policy-for-current-user))))
-      (json-response 403 (jsonrpc-error (:id body) v2.common/error-code-invalid-request mcp-access-disabled-message))
-
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
       (let [params           (:params body)
@@ -384,7 +381,10 @@
                                   (mcp/inline-ui-enabled-for-client? (get-in params [:clientInfo :name])))
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
-            init-response (handle-initialize (:id body) params capabilities instructions)]
+            init-response    (handle-initialize (:id body) params capabilities
+                                                (if (mcp.perms/enabled? (mcp.perms/policy-for-current-user))
+                                                  instructions
+                                                  (message/render mcp-access-disabled-message)))]
         ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
         ;; here, from the on-thread request, and never overwritten.
         (mcp.usage/record-mcp-session!
