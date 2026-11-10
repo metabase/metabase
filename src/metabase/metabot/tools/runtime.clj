@@ -162,14 +162,31 @@
           ""
           in))
 
-(defn- argument-error-text
-  "The sentence for the argument at the path `in`, given the distinct `texts` of its errors."
-  [arguments in texts]
-  (let [argument (str "`" (argument-path in) "`")]
-    (condp = texts
-      ["disallowed key"]       (str argument " is not a supported argument.")
-      ["missing required key"] (str argument " is required.")
-      (str argument " " (str/join "; " texts) "; received " (json-type-name (get-in arguments in)) "."))))
+(defn- field-names
+  "The fields below the argument at the path `in` that `errors` are about, such as `` `hour`, `day_of_week` ``."
+  [in errors]
+  (str/join ", " (for [error-in (distinct (map :in errors))]
+                   (str "`" (argument-path (subvec error-in (count in))) "`"))))
+
+(defn- problem
+  "What is wrong with the argument at the path `in`, given the Malli `errors` reported under it, such as
+  \"is required.\"."
+  [arguments in errors]
+  ;; Errors reported deeper than `in` come from inside a value of the right type, under an `:or`.
+  (let [about-value? (every? #(= in (:in %)) errors)
+        texts        (vec (distinct (map :text errors)))]
+    (cond
+      (and about-value? (= texts ["disallowed key"]))       "is not a supported argument."
+      (and about-value? (= texts ["missing required key"])) "is required."
+      (= texts ["disallowed key"])                          (str "has unsupported fields: " (field-names in errors) ".")
+      ;; The alternatives of an `:or` each need some of these fields, not all of them.
+      (= texts ["missing required key"])                    (str "is missing required fields, from among "
+                                                                 (field-names in errors) ".")
+      :else                                                 (str (str/join "; " texts)
+                                                                 (when about-value?
+                                                                   (str "; received "
+                                                                        (json-type-name (get-in arguments in))))
+                                                                 "."))))
 
 (defn- reported-path
   "The argument path to report the Malli `error` under: the data path of the outermost `:or` the error is inside, with
@@ -186,15 +203,17 @@
             (range (inc (count path))))
       in))
 
-(defn- error-texts-by-path
-  "Pairs of an argument path and the distinct texts of its errors, from the Malli `explanation`, sorted by path."
-  [{:keys [schema errors]}]
-  (let [texts (reduce (fn [acc error]
-                        (update acc (reported-path schema error) (fnil conj [])
-                                (or (me/error-message error {:unknown false}) "is not valid")))
-                      {}
-                      errors)]
-    (sort-by (comp argument-path key) (update-vals texts (comp vec distinct)))))
+(defn- problems
+  "The problems in `arguments` that the Malli `explanation` describes, one per argument path, sorted by path. Each is a
+  map of the path `:in` and its [[problem]]."
+  [arguments {:keys [schema errors]}]
+  (let [by-path (group-by :reported
+                          (for [error errors]
+                            {:reported (vec (reported-path schema error))
+                             :in       (vec (:in error))
+                             :text     (or (me/error-message error {:unknown false}) "is not valid")}))]
+    (for [in (sort-by argument-path (keys by-path))]
+      {:in in :problem (problem arguments in (by-path in))})))
 
 (defn- invalid-arguments-message
   "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match.
@@ -203,8 +222,8 @@
   (when-let [explanation (mr/explain schema arguments)]
     (str "Invalid tool arguments: "
          (if (map? arguments)
-           (str/join " " (for [[in texts] (error-texts-by-path explanation)]
-                           (argument-error-text arguments in texts)))
+           (str/join " " (for [{:keys [in problem]} (problems arguments explanation)]
+                           (str "`" (argument-path in) "` " problem)))
            (str "expected an object of named arguments; received " (json-type-name arguments) ".")))))
 
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------

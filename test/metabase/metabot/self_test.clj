@@ -1041,6 +1041,33 @@
       (is (re-find #"`ops\[3\]` " error))
       (is (not (re-find #"`ops` |`ops\[0\]`" error))))))
 
+(deftest ^:parallel alternative-tool-argument-received-test
+  (let [schema [:map {:closed true}
+                [:schedule [:or
+                            [:map {:closed true} [:frequency [:= "hourly"]]]
+                            [:map {:closed true} [:frequency [:= "daily"]] [:hour [:int {:max 23}]]]]]
+                [:ops {:optional true} [:sequential [:or
+                                                     [:map {:closed true} [:card_id :int]]
+                                                     [:map {:closed true} [:text :string]]]]]]]
+    (testing "a value of the right type with errors inside it does not say what it received"
+      (is (= "Invalid tool arguments: `schedule` should be \"hourly\"; disallowed key; should be at most 23."
+             (validation-error schema {:schedule {:frequency "daily" :hour 25}}))))
+    (testing "a value of the wrong type says what it received"
+      (is (= "Invalid tool arguments: `schedule` invalid type; received a string."
+             (validation-error schema {:schedule "daily"}))))
+    (testing "a value that was sent but lacks the fields every alternative needs is not called missing"
+      (is (= "Invalid tool arguments: `schedule` is missing required fields, from among `frequency`, `hour`."
+             (validation-error schema {:schedule {}})))
+      (is (= (str "Invalid tool arguments: `ops[1]` is missing required fields, from among `card_id`, `text`."
+                  " `schedule` is required.")
+             (validation-error schema {:ops [{:card_id 1} {}]}))))
+    (testing "a value with only keys no alternative supports names them"
+      (is (= "Invalid tool arguments: `ops[0]` has unsupported fields: `nope`."
+             (validation-error [:map [:ops [:sequential [:or
+                                                         [:map {:closed true} [:card_id {:optional true} :int]]
+                                                         [:map {:closed true} [:text {:optional true} :string]]]]]]
+                               {:ops [{:nope 1}]}))))))
+
 (deftest ^:parallel qualified-tool-argument-validation-test
   (testing "a qualified key is named with its namespace, so the model can find the key it sent"
     (is (= (str "Invalid tool arguments: `destination.lib/type` is not a supported argument."
