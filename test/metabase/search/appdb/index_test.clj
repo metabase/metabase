@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
@@ -697,17 +696,25 @@
           (search.index/delete-obsolete-tables!)
           (is (not (search.index/exists? orphan))))))))
 
-(deftest sweep-under-the-cluster-lock-still-drops-orphans-test
+(deftest leased-reindex-still-drops-orphans-test
   (when (search/supports-index?)
-    (with-temp-index-version "sweep-under-lock-test"
+    (with-temp-index-version "sweep-under-lease-test"
       (search.index/reset-index!)
-      (let [orphan (search.index/gen-table-name)]
+      (let [orphan           (search.index/gen-table-name)
+            sweep            (mt/original-fn #'search.index/delete-obsolete-tables!)
+            in-transaction?s (atom [])]
         (search.index/create-table! orphan)
-        ;; Deferring the drops inside a transaction is only safe because this lock opens none on h2.
-        ;; Pin that here, so making it transactional fails a test instead of silently stopping the sweep.
-        (testing "the lock leaves the sweep able to drop an orphan"
-          (cluster-lock/with-cluster-lock ::sweep-test-lock
-            (search.index/delete-obsolete-tables!))
+        ;; The sweep defers its drops while any transaction is open, so it is only safe because the production
+        ;; caller -- a reindex under the search lease -- holds none. Pin that here, so a transaction appearing on
+        ;; that path fails a test instead of silently stopping the sweep.
+        (testing "a reindex under the lease sweeps outside any transaction and drops the orphan"
+          (mt/with-dynamic-fn-redefs [search.index/delete-obsolete-tables!
+                                      (fn []
+                                        (swap! in-transaction?s conj (mdb/in-transaction?))
+                                        (sweep))]
+            (search/reindex! {:async? false}))
+          (is (seq @in-transaction?s))
+          (is (every? false? @in-transaction?s))
           (is (not (search.index/exists? orphan))))))))
 
 (deftest strip-junk-chars-test

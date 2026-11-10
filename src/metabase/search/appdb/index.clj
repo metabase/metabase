@@ -165,20 +165,11 @@
     (log/infof "Dropped %d orphan indexes: %s" (count dropped) dropped)
     dropped))
 
-(defn- ddl-commits-caller-transaction?
-  "Whether dropping a table here would commit the transaction the caller is holding."
-  []
-  ;; Dropping a table is DDL, which h2 and mysql commit implicitly.
-  ;; Postgres keeps DDL inside the transaction, where it does no harm.
-  ;; Mysql cannot reach this while the appdb engine supports postgres and h2 only, but listing it means
-  ;; adding support does not quietly bring the rollback failure back.
-  (and (mdb/in-transaction?) (contains? #{:h2 :mysql} (mdb/db-type))))
-
 (defn delete-obsolete-tables!
   "Prune obsolete index metadata, then drop the index tables that leaves unreferenced.
   Best effort: failures are logged and never propagate.
   Does nothing while mocking tables, where the pending table lives in an atom with no metadata row.
-  Skips the drops when they would commit the caller's transaction, leaving those tables to a later sweep."
+  Skips the drops while the caller holds a transaction, leaving those tables to a later sweep."
   []
   (when-not *mocking-tables*
     (try
@@ -186,9 +177,10 @@
       (search.lease/do-with-ddl-connection
        #(search-index-metadata/delete-obsolete! % (index-version)))
       ;; Drop any indexes that are no longer referenced.
-      ;; A sweep outside the caller's transaction gets the rest.
-      (if (ddl-commits-caller-transaction?)
-        (log/debug "Deferring orphan index drops: dropping here would commit the caller's transaction")
+      ;; The drops run on their own DDL connection and commit there, so inside a caller's transaction they would
+      ;; outlive its rollback on every database. A sweep outside the caller's transaction gets the rest.
+      (if (mdb/in-transaction?)
+        (log/debug "Deferring orphan index drops while the caller holds a transaction")
         (drop-orphan-indexes!))
       (catch Exception e
         (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))
