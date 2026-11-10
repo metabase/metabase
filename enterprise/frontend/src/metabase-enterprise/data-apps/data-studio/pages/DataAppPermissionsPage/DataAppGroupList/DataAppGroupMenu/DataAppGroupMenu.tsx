@@ -23,12 +23,12 @@ export function DataAppGroupMenu({ app, group }: DataAppGroupMenuProps) {
 
   const handleRemove = () => {
     showConfirmation({
-      title: t`Remove ${groupName} from ${app.display_name}?`,
+      title: t`Remove ${groupName} from ${app.name}?`,
       message: t`People in this group will no longer be able to open the app, unless another of their groups has access.`,
       confirmButtonText: t`Remove access`,
       onConfirm: async () => {
         const { error } = await removeGroup({
-          name: app.name,
+          slug: app.slug,
           group_id: group.id,
         });
         if (error) {

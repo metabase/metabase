@@ -23,18 +23,16 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
   const handleToggleEnabled = () => {
     const enabled = !app.enabled;
     showConfirmation({
-      title: enabled
-        ? t`Make ${app.display_name} live?`
-        : t`Make ${app.display_name} a draft?`,
+      title: enabled ? t`Make ${app.name} live?` : t`Make ${app.name} a draft?`,
       message: enabled
-        ? t`People in its groups will be able to open it at ${Urls.dataApp(app.name)}.`
+        ? t`People in its groups will be able to open it at ${Urls.dataApp(app.slug)}.`
         : t`Nobody will be able to open it until you make it live again. This doesn’t change the app.`,
       confirmButtonText: enabled ? t`Make live` : t`Make draft`,
       confirmButtonProps: { color: "brand" },
       onConfirm: async () => {
-        const { error } = await setDataAppEnabled({ name: app.name, enabled });
+        const { error } = await setDataAppEnabled({ slug: app.slug, enabled });
         if (error) {
-          sendErrorToast(t`Failed to update ${app.display_name}`);
+          sendErrorToast(t`Failed to update ${app.name}`);
         } else {
           if (enabled) {
             trackDataAppMadeLive(app.id);
@@ -42,9 +40,7 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
             trackDataAppMadeDraft(app.id);
           }
           sendSuccessToast(
-            enabled
-              ? t`${app.display_name} is live`
-              : t`${app.display_name} is a draft`,
+            enabled ? t`${app.name} is live` : t`${app.name} is a draft`,
           );
         }
       },
@@ -69,7 +65,7 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
           {isDataAppOpenable(app) && (
             <Menu.Item
               component="a"
-              href={Urls.getSubpathSafeUrl(Urls.dataApp(app.name))}
+              href={Urls.getSubpathSafeUrl(Urls.dataApp(app.slug))}
               target="_blank"
               rel="noreferrer"
               leftSection={<Icon name="external" />}

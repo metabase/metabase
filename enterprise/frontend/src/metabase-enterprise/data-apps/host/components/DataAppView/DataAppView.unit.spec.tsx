@@ -21,7 +21,7 @@ jest.mock("metabase-enterprise/api", () => ({
 const mockedGetApp = jest.mocked(useGetDataAppQuery);
 
 type SetupOpts = {
-  name?: string;
+  slug?: string;
   data?: ReturnType<typeof createMockDataApp>;
   isLoading?: boolean;
   error?: unknown;
@@ -29,7 +29,7 @@ type SetupOpts = {
 };
 
 function setup({
-  name = "sales",
+  slug = "sales",
   data,
   isLoading = false,
   error,
@@ -45,22 +45,22 @@ function setup({
 
   renderWithProviders(
     <>
-      {/* The empty-name case has no `:name` segment to match. */}
+      {/* The empty-slug case has no `:slug` segment to match. */}
       <Route path="/" element={<DataAppView enableDrafts={enableDrafts} />} />
       <Route
-        path=":name"
+        path=":slug"
         element={<DataAppView enableDrafts={enableDrafts} />}
       />
     </>,
-    { withRouter: true, initialRoute: `/${name}` },
+    { withRouter: true, initialRoute: `/${slug}` },
   );
 }
 
 describe("DataAppView", () => {
   afterEach(() => jest.clearAllMocks());
 
-  it("shows a not-found screen when the name is empty", () => {
-    setup({ name: "" });
+  it("shows a not-found screen when the slug is empty", () => {
+    setup({ slug: "" });
 
     expect(screen.getByText("Data app not found")).toBeInTheDocument();
   });
@@ -137,7 +137,7 @@ describe("DataAppView", () => {
   });
 
   it("renders the app inside an iframe once metadata resolves", () => {
-    setup({ data: createMockDataApp({ display_name: "Sales" }) });
+    setup({ data: createMockDataApp({ name: "Sales" }) });
 
     const iframe = screen.getByTitle("Sales");
     expect(iframe).toBeInTheDocument();
@@ -158,7 +158,7 @@ describe("DataAppView", () => {
   }
 
   function setupIframe() {
-    setup({ data: createMockDataApp({ display_name: "Sales" }) });
+    setup({ data: createMockDataApp({ name: "Sales" }) });
     return screen.getByTitle<HTMLIFrameElement>("Sales");
   }
 

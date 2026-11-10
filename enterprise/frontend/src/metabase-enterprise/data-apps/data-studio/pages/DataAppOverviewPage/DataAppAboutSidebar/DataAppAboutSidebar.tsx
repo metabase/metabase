@@ -26,8 +26,8 @@ type DataAppAboutSidebarProps = {
 };
 
 export function DataAppAboutSidebar({ app }: DataAppAboutSidebarProps) {
-  const { data: groups = [] } = useGetDataAppGroupsQuery(app.name);
-  const appUrl = Urls.dataApp(app.name);
+  const { data: groups = [] } = useGetDataAppGroupsQuery(app.slug);
+  const appUrl = Urls.dataApp(app.slug);
 
   return (
     <AboutSidebar flex="0 0 360px" data-testid="data-app-about-sidebar">
@@ -71,14 +71,14 @@ export function DataAppAboutSidebar({ app }: DataAppAboutSidebarProps) {
           )}
         </MetadataCard>
       </AboutSubSection>
-      <DataAppRepositorySection slug={app.name} />
+      <DataAppRepositorySection slug={app.slug} />
       <AboutSubSection title={t`Group access`} mt="xxl">
         <MetadataCard>
           {groups.length > 0 ? (
             groups.map((group) => (
               <MetadataRow key={group.id} icon="group">
                 <MetadataRowLink
-                  to={Urls.dataStudioDataAppPermissions(app.name)}
+                  to={Urls.dataStudioDataAppPermissions(app.slug)}
                 >
                   {group.name}
                 </MetadataRowLink>

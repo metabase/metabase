@@ -35,15 +35,19 @@ function setup() {
     name: "Support",
     member_count: 12,
   });
-  setupDataAppGroupsEndpoint("sales", [support]);
-  setupAddDataAppGroupsEndpoint("sales", [
+  const app = createMockDataApp({
+    slug: "sales",
+    name: "Sales",
+  });
+  setupDataAppGroupsEndpoint(app.slug, [support]);
+  setupAddDataAppGroupsEndpoint(app.slug, [
     support,
     createMockDataAppGroup({ id: 4, name: "Finance", member_count: 4 }),
   ]);
   const onClose = jest.fn<void, []>();
   renderWithProviders(
     <AddDataAppGroupsModal
-      app={createMockDataApp({ name: "sales", display_name: "Sales" })}
+      app={createMockDataApp({ slug: "sales", name: "Sales" })}
       onClose={onClose}
     />,
   );

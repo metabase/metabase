@@ -2,15 +2,15 @@ export type DataAppId = number;
 
 /**
  * A data app: its manifest fields, plus a bundle cached in the app DB and
- * served at `/apps/:name`.
+ * served at `/apps/:slug`.
  */
 export interface DataApp {
   id: DataAppId;
   /** Stable identifier shared by the app's copies across instances. */
   entity_id: string;
   /** The app's slug. */
+  slug: string;
   name: string;
-  display_name: string;
   /** Optional one-line summary of what the app does. */
   description: string | null;
   /** Data app contract version the app was built for; 1 when the manifest declares none. */
@@ -50,8 +50,7 @@ export interface DataAppRepoStatus {
 }
 
 export interface SetDataAppEnabledRequest {
-  /** The app's slug. */
-  name: string;
+  slug: string;
   enabled: boolean;
 }
 
@@ -62,12 +61,12 @@ export interface DataAppGroup {
 }
 
 export interface AddDataAppGroupsRequest {
-  name: string;
+  slug: string;
   group_ids: number[];
 }
 
 export interface RemoveDataAppGroupRequest {
-  name: string;
+  slug: string;
   group_id: number;
 }
 

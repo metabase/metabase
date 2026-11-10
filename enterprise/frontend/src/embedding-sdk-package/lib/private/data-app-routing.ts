@@ -5,7 +5,7 @@ const escapeRegExp = (str: string): string =>
   str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Captures the Metabase subpath install root (`/mb` in `/mb/embed/apps/sales/…`,
-// empty without one) and the data-app `:name` segment.
+// empty without one) and the data-app `:slug` segment.
 const DATA_APP_IFRAME_PATH_RE = new RegExp(
   `^(.*?)${escapeRegExp(DataAppUrls.DATA_APP_EMBED_PREFIX)}/([^/]+)`,
 );
