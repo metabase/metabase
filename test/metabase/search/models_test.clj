@@ -15,6 +15,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 ;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
@@ -202,6 +203,27 @@
         (mt/with-dynamic-fn-redefs [search/delete! (fn [_model _ids] (throw (ex-info "purge failed" {})))]
           (t2/delete! :model/Database :id db-id))
         (is (= 0 (indexed-count "action" action-id)))))))
+
+(deftest database-delete-tombstones-later-chunks-despite-an-earlier-failure-test
+  (testing "one tombstone chunk throwing does not cost the chunks after it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+      (with-redefs [database/tombstone-chunk-size 1]
+        (mt/with-temp [:model/Database {db-id :id}    {}
+                       :model/Card     {fail-card :id} {:name "Db Chunk Failure Model", :type :model, :database_id db-id}
+                       :model/Card     {ok-card :id}   {:name "Db Chunk Survivor Model", :type :model, :database_id db-id}]
+          (is (= 1 (indexed-count "dataset" fail-card)))
+          (is (= 1 (indexed-count "dataset" ok-card)))
+          (let [real-delete! (mt/original-fn #'search/delete!)]
+            (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids]
+                                                         (if (contains? (set ids) fail-card)
+                                                           (throw (ex-info "purge failed" {}))
+                                                           (real-delete! model ids)))]
+              (t2/delete! :model/Database :id db-id)))
+          (is (= 1 (indexed-count "dataset" fail-card))
+              "the chunk whose delete! throws is left for the reindex")
+          (is (= 0 (indexed-count "dataset" ok-card))
+              "a later chunk still gets tombstoned despite an earlier chunk's failure"))))))
 
 (deftest database-delete-survives-a-failed-cascade-enumeration-test
   (testing "a search error while enumerating a deleted database's cascades is logged, and the delete still succeeds"

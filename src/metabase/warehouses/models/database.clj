@@ -426,6 +426,11 @@
         (when (pos? deleted)
           (recur))))))
 
+(def ^:private tombstone-chunk-size
+  "How many card ids share one [[metabase.search.core/after-commit!]] step when tombstoning a deleted
+  database's cards. Each step is caught and logged on its own, so a failed chunk costs only the ids in it."
+  1000)
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
@@ -463,11 +468,12 @@
     ;; Index mutations must see committed state. The shared ingestion queue serializes these tombstones after any
     ;; older re-index that may already have read a soon-to-be-deleted card.
     (when (or (seq gone) (seq cascading))
-      (search/after-commit! "database delete"
-                            ;; One tombstone per 1,000 cards, so a failed ingestion batch loses only the chunks in it.
-                            (fn [] (doseq [chunk (partition-all 1000 gone)]
-                                     (search/delete! :model/Card chunk)))
-                            (fn [] (search/reconcile-cascading-documents! cascading)))))
+      (apply search/after-commit! "database delete"
+             ;; after-commit! catches and logs each step on its own and still runs the rest, so chunking the
+             ;; tombstones into their own steps keeps a failed chunk from costing the ones after it.
+             (concat (for [chunk (partition-all tombstone-chunk-size gone)]
+                       (fn [] (search/delete! :model/Card chunk)))
+                     [(fn [] (search/reconcile-cascading-documents! cascading))]))))
   (try
     (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
     (catch Throwable e
