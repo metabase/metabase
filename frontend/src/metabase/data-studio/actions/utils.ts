@@ -309,7 +309,7 @@ export function hasSinglePrimaryKey(table: Table): boolean {
   return (table.fields ?? []).filter(isPK).length === 1;
 }
 
-export const TEMPLATE_VARIABLE_REGEX = /\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/g;
+const TEMPLATE_VARIABLE_REGEX = /\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/g;
 
 const PARAMETER_TYPE_BY_FIELD_TYPE: Record<FieldType, ParameterType> = {
   string: "string/=",
@@ -432,6 +432,34 @@ function getTemplates(
       .filter(({ name }) => name.trim().length > 0)
       .map(({ name, value }) => [name.trim(), value]),
   );
+}
+
+export type HttpActionRequestPart = "url" | "queryParams" | "headers" | "body";
+
+export type HttpActionRequestVariable = {
+  name: string;
+  parts: HttpActionRequestPart[];
+};
+
+export function getHttpActionRequestVariables(
+  request: HttpActionRequest,
+): HttpActionRequestVariable[] {
+  const templatesByPart: [HttpActionRequestPart, string[]][] = [
+    ["url", [request.url]],
+    ["queryParams", request.queryParams.map(({ value }) => value)],
+    ["headers", request.headers.map(({ value }) => value)],
+    ["body", [request.body]],
+  ];
+  const partsByName = new Map<string, HttpActionRequestPart[]>();
+  templatesByPart.forEach(([part, templates]) => {
+    templates.flatMap(getTemplateVariableNames).forEach((name) => {
+      const parts = partsByName.get(name) ?? [];
+      if (!parts.includes(part)) {
+        partsByName.set(name, [...parts, part]);
+      }
+    });
+  });
+  return Array.from(partsByName, ([name, parts]) => ({ name, parts }));
 }
 
 export function getHttpActionRequest(

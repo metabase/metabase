@@ -13,6 +13,7 @@ import {
   canEditActionQuery,
   getFieldSettingsFromQuery,
   getHttpActionDefinition,
+  getHttpActionRequestVariables,
 } from "./utils";
 
 const STATUS_TAG: TemplateTag = {
@@ -230,5 +231,22 @@ describe("getHttpActionDefinition", () => {
     expect(
       getHttpActionDefinition({ ...REQUEST, ...change }, [], {}),
     ).toBeNull();
+  });
+});
+
+describe("getHttpActionRequestVariables", () => {
+  it("lists each variable once with parts of request that use it", () => {
+    expect(
+      getHttpActionRequestVariables({
+        method: "POST",
+        url: "https://crm.example.com/deals/{{deal_id}}",
+        queryParams: [{ name: "q", value: "{{reason}}" }],
+        headers: [],
+        body: '{"deal": "{{deal_id}}", "reason": "{{ reason }}"}',
+      }),
+    ).toEqual([
+      { name: "deal_id", parts: ["url", "body"] },
+      { name: "reason", parts: ["queryParams", "body"] },
+    ]);
   });
 });

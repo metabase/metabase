@@ -251,7 +251,9 @@ describe("ActionDefinitionPage", () => {
       expect(await screen.findByRole("textbox", { name: "URL" })).toHaveValue(
         "https://crm.example.com/deals/{{deal_id}}",
       );
-      expect(screen.getByRole("textbox", { name: "URL" })).toBeDisabled();
+      expect(screen.getByRole("textbox", { name: "URL" })).toHaveAttribute(
+        "readonly",
+      );
       expect(screen.getByLabelText("Method")).toHaveValue("PUT");
       expect(screen.getByDisplayValue("X-Source")).toBeInTheDocument();
       expect(screen.getByText("No query parameters")).toBeInTheDocument();

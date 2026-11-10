@@ -151,6 +151,9 @@ describe("NewActionPage", () => {
       screen.getByRole("textbox", { name: "URL" }),
       "https://crm.example.com/deals/{{{{deal_id}}",
     );
+    const variables = screen.getByRole("complementary", { name: "Variables" });
+    expect(within(variables).getByText("{{deal_id}}")).toBeInTheDocument();
+    expect(within(variables).getByText("URL")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await userEvent.type(await screen.findByLabelText("Name"), "Discount");
     await userEvent.click(
