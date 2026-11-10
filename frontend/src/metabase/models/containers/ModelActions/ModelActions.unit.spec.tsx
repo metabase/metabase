@@ -8,6 +8,7 @@ import {
   setupCardsUsingModelEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupExecuteActionEndpoint,
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
@@ -19,8 +20,10 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { getDefaultFieldSettings } from "metabase/actions/utils";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import { Route, redirect } from "metabase/router";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { Outlet, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
@@ -38,6 +41,7 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
+  createMockActionParameter,
   createMockQueryAction as _createMockQueryAction,
   createMockCard,
   createMockCardQueryMetadata,
@@ -264,7 +268,14 @@ async function setup({
   const baseUrl = `/model/${slug}/detail`;
 
   const { router } = renderWithProviders(
-    <>
+    <Route
+      element={
+        <>
+          <Outlet />
+          <UndoListing />
+        </>
+      }
+    >
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
         <Route path="actions" element={<ModelActions />}>
@@ -273,7 +284,7 @@ async function setup({
         </Route>
       </Route>
       <Route path="/question/:slug" element={null} />
-    </>,
+    </Route>,
     { withRouter: true, initialRoute: baseUrl, storeInitialState },
   );
 
@@ -795,6 +806,328 @@ describe("ModelActions", () => {
       expect(
         screen.queryByText("Disable basic actions"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("action list changes", () => {
+    const modelCard = createStructuredModelCard();
+
+    it("lists the most recently created actions first", async () => {
+      const actions = [
+        createMockImplicitQueryAction({
+          id: 1,
+          name: "Delete",
+          kind: "row/delete",
+          model_id: modelCard.id,
+          created_at: "2024-01-01T00:00:00Z",
+        }),
+        createMockImplicitQueryAction({
+          id: 2,
+          name: "Update",
+          kind: "row/update",
+          model_id: modelCard.id,
+          created_at: "2024-01-02T00:00:00Z",
+        }),
+        createMockImplicitQueryAction({
+          id: 3,
+          name: "Create",
+          kind: "row/create",
+          model_id: modelCard.id,
+          created_at: "2024-01-03T00:00:00Z",
+        }),
+      ];
+      await setupActions({ model: modelCard, actions });
+
+      const listItems = within(
+        screen.getByRole("list", { name: "Action list" }),
+      ).getAllByRole("listitem");
+      expect(listItems.map((item) => item.getAttribute("aria-label"))).toEqual([
+        "Create",
+        "Update",
+        "Delete",
+      ]);
+    });
+
+    it("names the action in the delete confirmation and removes it from the list", async () => {
+      const action = createMockQueryAction({
+        name: "Delete Order",
+        model_id: modelCard.id,
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      await openActionMenu(action);
+      await userEvent.click(await screen.findByText("Delete"));
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        within(dialog).getByText("Delete Delete Order?"),
+      ).toBeInTheDocument();
+
+      fetchMock.modifyRoute(`model-${modelCard.id}-actions-list`, {
+        response: [],
+      });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Delete" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("listitem", { name: action.name }),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("asks for confirmation and shows the empty state after disabling basic actions", async () => {
+      const actions = createMockImplicitCUDActions(modelCard.id);
+      await setupActions({ model: modelCard, actions });
+
+      await openHeaderActionsMenu();
+      await userEvent.click(await screen.findByText("Disable basic actions"));
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        within(dialog).getByText("Disable basic actions?"),
+      ).toBeInTheDocument();
+
+      fetchMock.modifyRoute(`model-${modelCard.id}-actions-list`, {
+        response: [],
+      });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Disable" }),
+      );
+
+      expect(
+        await screen.findByText("No actions have been created yet."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("list", { name: "Action list" }),
+      ).not.toBeInTheDocument();
+      for (const action of actions) {
+        expect(
+          screen.queryByRole("listitem", { name: action.name }),
+        ).not.toBeInTheDocument();
+      }
+    });
+  });
+
+  describe("running actions", () => {
+    const modelCard = createStructuredModelCard();
+
+    const ID_PARAMETER = createMockActionParameter({
+      id: "id",
+      "display-name": "ID",
+      type: "type/Integer",
+    });
+    const USER_ID_PARAMETER = createMockActionParameter({
+      id: "user_id",
+      "display-name": "User ID",
+      type: "type/Integer",
+    });
+    const TEAM_NAME_PARAMETER = createMockActionParameter({
+      id: "team_name",
+      "display-name": "Team Name",
+      type: "type/Text",
+    });
+    const CREATED_AT_PARAMETER = createMockActionParameter({
+      id: "created_at",
+      "display-name": "Created At",
+      type: "type/Text",
+      required: false,
+    });
+    const TOTAL_PARAMETER = createMockActionParameter({
+      id: "total",
+      "display-name": "Total",
+      type: "type/Text",
+      required: true,
+    });
+    const STATUS_PARAMETER = createMockActionParameter({
+      id: "current_status",
+      "display-name": "Current Status",
+      type: "type/Text",
+    });
+
+    async function runAction(action: WritebackAction) {
+      const listItem = screen.getByRole("listitem", { name: action.name });
+      await userEvent.click(within(listItem).getByLabelText("Run"));
+      const modal = await screen.findByTestId("action-execute-modal");
+      await waitForLoaderToBeRemoved();
+      return modal;
+    }
+
+    function createQueryActionWithStatus(statusSettings: {
+      hidden: boolean;
+      required: boolean;
+    }) {
+      return createMockQueryAction({
+        id: 10,
+        name: "Demo Action",
+        model_id: modelCard.id,
+        database_id: TEST_DATABASE_WITH_ACTIONS.id,
+        parameters: [TOTAL_PARAMETER, STATUS_PARAMETER],
+        visualization_settings: {
+          type: "form",
+          fields: {
+            [TOTAL_PARAMETER.id]: getDefaultFieldSettings({
+              id: TOTAL_PARAMETER.id,
+              required: true,
+            }),
+            [STATUS_PARAMETER.id]: getDefaultFieldSettings({
+              id: STATUS_PARAMETER.id,
+              ...statusSettings,
+            }),
+          },
+        },
+      });
+    }
+
+    it("shows field and form errors when an implicit action violates a constraint", async () => {
+      const action = createMockImplicitQueryAction({
+        id: 2,
+        name: "Update",
+        kind: "row/update",
+        model_id: modelCard.id,
+        database_id: TEST_DATABASE_WITH_ACTIONS.id,
+        parameters: [ID_PARAMETER, USER_ID_PARAMETER],
+      });
+      setupExecuteActionEndpoint(action.id, {
+        status: 400,
+        body: {
+          message: "Unable to update the record.",
+          errors: {
+            user_id: 'This value does not exist in table "people".',
+          },
+        },
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      await userEvent.type(within(modal).getByLabelText("ID"), "1");
+      await userEvent.type(within(modal).getByLabelText("User ID"), "999999");
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Update" }),
+      );
+
+      expect(
+        await within(modal).findByText(
+          'This value does not exist in table "people".',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(modal).getByText("Unable to update the record."),
+      ).toBeInTheDocument();
+      expect(within(modal).getByLabelText("User ID")).toBeInTheDocument();
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("action-execute-modal"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("hides hidden fields and shows a success toast after running an implicit create action", async () => {
+      const action = createMockImplicitQueryAction({
+        id: 1,
+        name: "Create",
+        kind: "row/create",
+        model_id: modelCard.id,
+        database_id: TEST_DATABASE_WITH_ACTIONS.id,
+        parameters: [TEAM_NAME_PARAMETER, CREATED_AT_PARAMETER],
+        visualization_settings: {
+          type: "form",
+          fields: {
+            [TEAM_NAME_PARAMETER.id]: getDefaultFieldSettings({
+              id: TEAM_NAME_PARAMETER.id,
+            }),
+            [CREATED_AT_PARAMETER.id]: getDefaultFieldSettings({
+              id: CREATED_AT_PARAMETER.id,
+              hidden: true,
+              required: false,
+            }),
+          },
+        },
+      });
+      setupExecuteActionEndpoint(action.id, {
+        body: { "created-row": { id: 1, team_name: "Zebras" } },
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      expect(
+        within(modal).queryByLabelText("Created At"),
+      ).not.toBeInTheDocument();
+      await userEvent.type(within(modal).getByLabelText("Team Name"), "Zebras");
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Save" }),
+      );
+
+      expect(await screen.findByText("Successfully saved")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("action-execute-modal"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("hides an optional hidden field and shows a success toast after running a query action", async () => {
+      const action = createQueryActionWithStatus({
+        hidden: true,
+        required: false,
+      });
+      setupExecuteActionEndpoint(action.id, { body: { "rows-affected": 1 } });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      expect(
+        within(modal).queryByLabelText("Current Status"),
+      ).not.toBeInTheDocument();
+      await userEvent.type(within(modal).getByLabelText("Total"), "1");
+      await userEvent.click(
+        within(modal).getByRole("button", { name: action.name }),
+      );
+
+      expect(
+        await screen.findByText(`${action.name} ran successfully`),
+      ).toBeInTheDocument();
+    });
+
+    it("can't be submitted when a required field is hidden", async () => {
+      const action = createQueryActionWithStatus({
+        hidden: true,
+        required: true,
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      expect(
+        within(modal).queryByLabelText("Current Status"),
+      ).not.toBeInTheDocument();
+      await userEvent.type(within(modal).getByLabelText("Total"), "1");
+
+      expect(
+        within(modal).getByRole("button", { name: action.name }),
+      ).toBeDisabled();
+    });
+
+    it("requires a visible required field before it can be submitted", async () => {
+      const action = createQueryActionWithStatus({
+        hidden: false,
+        required: true,
+      });
+      await setupActions({ model: modelCard, actions: [action] });
+
+      const modal = await runAction(action);
+      await userEvent.type(within(modal).getByLabelText("Total"), "1");
+      const submitButton = within(modal).getByRole("button", {
+        name: action.name,
+      });
+      expect(submitButton).toBeDisabled();
+
+      await userEvent.type(
+        within(modal).getByLabelText("Current Status"),
+        "active",
+      );
+      await waitFor(() => expect(submitButton).toBeEnabled());
     });
   });
 
