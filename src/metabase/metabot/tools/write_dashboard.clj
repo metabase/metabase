@@ -14,6 +14,7 @@
   A successful call returns the saved dashboard to the model and sends the frontend a `dashboard_saved` data part."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -541,34 +542,52 @@
        (mapv (fn [{:keys [chart_id] :as op}]
                (assoc (save-entity/savable-chart chart_id) :chart-id chart_id :name (:name op))))))
 
+(defn- aggregation-refs->indexes
+  "`stage` with each `[:aggregation opts uuid]` ref to one of its own aggregations naming that aggregation's index."
+  [{:keys [aggregation] :as stage}]
+  (let [uuid->index (into {}
+                          (map-indexed (fn [i [_tag opts]] [(:lib/uuid opts) i]))
+                          aggregation)]
+    (walk/postwalk (fn [form]
+                     (if (and (vector? form)
+                              (= 3 (count form))
+                              (= :aggregation (first form))
+                              (contains? uuid->index (nth form 2)))
+                       (assoc form 2 (uuid->index (nth form 2)))
+                       form))
+                   stage)))
+
 (defn- comparable-query
   "`query` as MBQL 5, without the uuids, metadata provider and conversion marker that normalizing regenerates, so a
   chart's legacy query compares equal to the question saved from it."
   [query]
   (-> (lib-be/normalize-query query)
       (dissoc :lib/metadata :lib.convert/converted?)
+      ;; An aggregation ref names its aggregation by uuid, and each normalization mints new ones.
+      (update :stages #(mapv aggregation-refs->indexes %))
       lib/remove-lib-uuids))
 
 (defn- reusable-card-id
   "The id of a question of the dashboard with `dashboard-id` that was saved from `chart-id` in the conversation with
-  `conversation-id` and holds `dataset-query`, or nil."
-  [conversation-id chart-id dashboard-id dataset-query]
+  `conversation-id`, and holds `dataset-query` shown as `display`, or nil."
+  [conversation-id chart-id dashboard-id dataset-query display]
   ;; The viewing context names a chart after the saved question the user is viewing, so the same chart id can hold
-  ;; an edited query on a later turn. Matching the query keeps that edit from being dropped for the old question.
+  ;; an edited query or display on a later turn. Matching both keeps that edit from being dropped for the old question.
   (let [wanted (comparable-query dataset-query)]
-    (some (fn [{:keys [id dataset_query]}]
-            (when (= wanted (comparable-query dataset_query))
+    (some (fn [{:keys [id dataset_query] :as card}]
+            (when (and (= (keyword display) (keyword (:display card)))
+                       (= wanted (comparable-query dataset_query)))
               id))
           (metabot.db/conversation-dashboard-questions conversation-id chart-id dashboard-id))))
 
 (defn- save-chart!
   "Saves `chart` as a question of the dashboard with `dashboard-id`, and returns `{:chart-id :card-id :card}`.
-  A question already saved from the chart, with the same query, to this dashboard in this conversation is reused,
-  without a `:card`."
+  A question already saved from the chart, with the same query and display, to this dashboard in this conversation is
+  reused, without a `:card`."
   [dashboard-id {:keys [chart-id name dataset_query display]}]
   (let [conversation-id (shared/current-conversation-id)]
     (if-let [card-id (some-> conversation-id
-                             (reusable-card-id chart-id dashboard-id dataset_query))]
+                             (reusable-card-id chart-id dashboard-id dataset_query display))]
       {:chart-id chart-id, :card-id card-id}
       (let [card (queries/create-card! {:name                   name
                                         :dataset_query          dataset_query

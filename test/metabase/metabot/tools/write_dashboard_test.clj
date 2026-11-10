@@ -32,18 +32,19 @@
              (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
 
 (defn- chart-memory
-  "A memory atom holding generated charts `A`, `B` and `C` over `query` (by default the venues table), in conversation
-  `conversation-id`."
+  "A memory atom holding generated charts `A`, `B` and `C` over `query` (by default the venues table), shown as
+  `chart-type` (by default `:bar`), in conversation `conversation-id`."
   ([] (chart-memory nil))
   ([conversation-id] (chart-memory conversation-id (venues-query)))
-  ([conversation-id query]
+  ([conversation-id query] (chart-memory conversation-id query :bar))
+  ([conversation-id query chart-type]
    (atom (cond-> {:state   {:queries {"q-1" query}
                             :charts  (into {}
                                            (for [id ["A" "B" "C"]]
                                              [id {:chart_id               id
                                                   :query_id               "q-1"
                                                   :queries                [query]
-                                                  :visualization_settings {:chart_type :bar}}]))}
+                                                  :visualization_settings {:chart_type chart-type}}]))}
                   :context {}}
            conversation-id (assoc :conversation-id conversation-id)))))
 
@@ -253,6 +254,39 @@
               (is (= [nil 5] (map (comp lib/current-limit :dataset_query) cards)))
               (is (= (map :id cards)
                      (map :card_id (dashcards dash-id)))))))))))
+
+(deftest retry-reuses-aggregated-question-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
+                   :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp    (mt/metadata-provider)
+              query (as-> (venues-query) q
+                      (lib/aggregate q (lib/count))
+                      (lib/breakout q (lib.metadata/field mp (mt/id :venues :price)))
+                      (lib/order-by q (lib/aggregation-ref q 0) :desc))]
+          (binding [shared/*memory-atom* (chart-memory convo-id query)]
+            (dotimes [_ 2]
+              (call {:dashboard_id dash-id
+                     :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues by price"}]}))))
+        (testing "a chart sorted by its own aggregate, added twice, becomes one question on two dashcards"
+          (is (= 1 (t2/count :model/Card :dashboard_id dash-id)))
+          (is (= 2 (count (dashcards dash-id)))))))))
+
+(deftest reseeded-chart-display-saves-new-question-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
+                   :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [chart-type [:bar :line]]
+          (binding [shared/*memory-atom* (chart-memory convo-id (venues-query) chart-type)]
+            (call {:dashboard_id dash-id
+                   :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]})))
+        (testing "a chart shown another way under the same id is saved again, and the new question is placed"
+          (let [cards (t2/select :model/Card :dashboard_id dash-id {:order-by [[:id :asc]]})]
+            (is (= [:bar :line] (map :display cards)))
+            (is (= (map :id cards)
+                   (map :card_id (dashcards dash-id))))))))))
 
 ;;; -------------------------------------------------- Editing -----------------------------------------------------
 
