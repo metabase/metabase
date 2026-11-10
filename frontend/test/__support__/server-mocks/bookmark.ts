@@ -6,6 +6,13 @@ export function setupBookmarksEndpoints(bookmarks: Bookmark[]) {
   fetchMock.get("path:/api/bookmark", bookmarks);
 }
 
+export function setupCreateBookmarkEndpoint({
+  item_id,
+  type,
+}: Pick<Bookmark, "item_id" | "type">) {
+  fetchMock.post(`path:/api/bookmark/${type}/${item_id}`, {});
+}
+
 export function setupBookmarksEndpointsWithError({
   error,
   status = 500,
