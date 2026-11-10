@@ -58,7 +58,7 @@
   (let [deps (deps.calculation/calculate-deps entity-type entity)
         own  {entity-type #{(:id entity)}}]
     (t2/with-transaction [_]
-      (when (seq (models.dependency/new-dependencies entity-type (:id entity) deps))
+      (when (pos? (or (models.dependency/replace-dependencies! entity-type (:id entity) deps) 0))
         (when (= :card entity-type)
           (dependencies.db/mark-result-metadata-statuses-stale! own))
         (when (some #{entity-type} (deps.analysis-finding/analyzed-types))
@@ -66,7 +66,6 @@
         (when (= :snippet entity-type)
           (dependencies.db/mark-analysis-finding-statuses-stale!
            (models.dependency/transitive-dependents {:snippet [entity]}))))
-      (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (drop-stale-dependents! entity-type entity))))
 
 (mu/defn- remove-deleted-entity-batch! :- ms/IntGreaterThanOrEqualToZero
