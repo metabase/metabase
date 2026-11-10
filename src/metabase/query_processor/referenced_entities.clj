@@ -156,21 +156,45 @@
              (group-by (juxt :type :id) specs)))
 
 (defn- specs-result
-  "`(entity-result spec)` for each spec, as `{type-string {id-string result}}`; nil when there are none."
+  "`(entity-result spec)` for each deduped spec, as `{type-string {id-string result}}`; nil when there are none."
   [specs entity-result]
-  (when (seq specs)
-    (perf/not-empty
-     (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
-               ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
-               (assoc-in acc [entity-type (str id)] (entity-result spec)))
-             {}
-             ;; don't start the next one if the client already hung up
-             (take-while (fn [_] (not (qp.pipeline/canceled?))) (dedupe-specs specs))))))
+  (perf/not-empty
+   (reduce (fn [acc {entity-type :type, :keys [id] :as spec}]
+             ;; string keys so the map serializes to JSON as `{"card": {"1": {...}}}`
+             (assoc-in acc [entity-type (str id)] (entity-result spec)))
+           {}
+           ;; don't start the next one if the client already hung up
+           (take-while (fn [_] (not (qp.pipeline/canceled?))) specs))))
+
+(defn- refused-entity
+  [entity-type id message]
+  (log/warnf "Refused referenced %s %s: %s" entity-type id message)
+  {:status "failed"
+   :error  message})
+
+(defn- refusals
+  "`check-entities`'s refusals for `specs`. If the check throws an exception, every spec is refused: an unchecked
+  reference must not run, and a failed check must not fail the main query."
+  [check-entities specs]
+  (try
+    (check-entities specs)
+    (catch Exception e
+      (log/error e "Failed to check referenced entities; refusing them all")
+      (let [message (tru "Could not check whether this reference may be used.")]
+        (into {} (map (fn [{entity-type :type, :keys [id]}] [[entity-type id] message])) specs)))))
 
 (defn- referenced-entities-result
-  "Run each spec and return `{type-string {id-string result}}`, nil when there are none."
-  [specs max-rows]
-  (specs-result specs #(run-referenced-entity % max-rows)))
+  "Run each spec and return `{type-string {id-string result}}`, nil when there are none. `check-entities`, when given,
+  returns `{[type id] message}` for the deduped specs that may not run; those fail with that message instead of
+  running."
+  [specs max-rows check-entities]
+  (when (seq specs)
+    (let [specs   (dedupe-specs specs)
+          refused (if check-entities (refusals check-entities specs) {})]
+      (specs-result specs (fn [{entity-type :type, :keys [id] :as spec}]
+                            (if-let [message (get refused [entity-type id])]
+                              (refused-entity entity-type id message)
+                              (run-referenced-entity spec max-rows)))))))
 
 (defn- inject-referenced-entities
   [rff result]
@@ -182,7 +206,8 @@
   "A failed entry per spec, `{type-string {id-string result}}`, running nothing. Failed rather than left out: a client
   takes a missing entry as unanswered and asks for it again."
   [specs]
-  (specs-result specs (constantly {:status "failed", :error_type "withheld"})))
+  (when (seq specs)
+    (specs-result (dedupe-specs specs) (constantly {:status "failed", :error_type "withheld"}))))
 
 (defn- maybe-wrap-qp
   "Wrap a qp fn `(fn [query rff])` to inject `(result-fn specs)` under `data.referenced_entities`. It's called when
@@ -205,9 +230,10 @@
   1)
 
 (defn maybe-wrap-rff-for-goals
-  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_entities`."
-  [rff specs]
-  (if-let [result (referenced-entities-result specs goal-max-rows)]
+  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_entities`.
+  `check-entities`, when given, refuses specs before they run (see [[referenced-entities-result]])."
+  [rff specs check-entities]
+  (if-let [result (referenced-entities-result specs goal-max-rows check-entities)]
     (inject-referenced-entities rff result)
     rff))
 
@@ -256,5 +282,5 @@
                    (viz-settings->goal-specs display viz-settings effective-settings)
                    (if withhold?
                      withheld-result
-                     #(referenced-entities-result % goal-max-rows)))
+                     #(referenced-entities-result % goal-max-rows nil)))
     qp))

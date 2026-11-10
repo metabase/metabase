@@ -83,6 +83,13 @@
       (throw (data-app-error (tru "A data app can use only metrics from the Library, not the metrics {0}." (format-ids external))))))
   nil)
 
+(defn- card-refusal
+  "The message refusing `data-app` the card with `card-id`."
+  [data-app card-id]
+  (if (preview? data-app)
+    (tru "A data app''s dev preview cannot use saved cards but Library metrics, not the card {0}." (str card-id))
+    (tru "A data app can use only the cards in its own collection and Library metrics, not the card {0}." (str card-id))))
+
 (defenterprise-schema check-card :- :nil
   "Throws a 400 unless the card with `card-id` is a Library metric, or `data-app` is an app and the card is in its
   collection, after a read check of the card; a dev preview uses no saved card but Library metrics."
@@ -90,14 +97,22 @@
   [data-app :- ::data-apps.schema/data-app-info
    card-id  :- ::lib.schema.id/card]
   (let [card (api/read-check :model/Card card-id)]
-    (when (seq (data-apps.db/external-metric-ids #{card-id}))
-      (when (preview? data-app)
-        (throw (data-app-error (tru "A data app''s dev preview cannot use saved cards but Library metrics, not the card {0}."
-                                    (str card-id)))))
-      (when-not (in-app-collection? data-app card)
-        (throw (data-app-error (tru "A data app can use only the cards in its own collection and Library metrics, not the card {0}."
-                                    (str card-id)))))))
+    (when (and (seq (data-apps.db/external-metric-ids #{card-id}))
+               (or (preview? data-app) (not (in-app-collection? data-app card))))
+      (throw (data-app-error (card-refusal data-app card-id)))))
   nil)
+
+(defenterprise-schema referenced-entity-refusals :- [:map-of [:tuple :string :int] :string]
+  "Refusal messages for the referenced-entity `specs` that `data-app` may not run, keyed by `[type id]`."
+  :feature :data-apps
+  [data-app :- ::data-apps.schema/data-app-info
+   specs    :- [:sequential [:map [:type :string] [:id :int]]]]
+  (let [{card-ids true, invalid-ids false} (group-by pos-int? (keep #(when (= "card" (:type %)) (:id %)) specs))
+        external (some->> (not-empty (set card-ids))
+                          (data-apps.db/external-card-ids (app-collection-id data-app))
+                          not-empty
+                          data-apps.db/external-metric-ids)]
+    (into {} (map (fn [card-id] [["card" card-id] (card-refusal data-app card-id)])) (concat invalid-ids external))))
 
 (defenterprise-schema check-action :- :nil
   "Throws a 400 unless `data-app` is an app and the action with `action-id` is in its collection, after a read check of

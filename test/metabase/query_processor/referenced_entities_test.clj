@@ -593,7 +593,8 @@
             (binding [qp.pipeline/*canceled-chan* outer-chan]
               (#'referenced-entities/referenced-entities-result [{:type "card" :id card-1}
                                                                  {:type "card" :id card-2}]
-                                                                1))))
+                                                                1
+                                                                nil))))
         (is (= 2 @runs))
         (is (= ::cancel @seen))))))
 
