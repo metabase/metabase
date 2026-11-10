@@ -126,14 +126,11 @@
 (mu/defn- report :- ::report
   "The lint report of the `failed` entities."
   [failed :- [:sequential ::deps.findings/failed-entity]]
-  (let [results  (vec (for [entity failed, error (:errors entity)] (result entity error)))
-        used     (select-keys rules (map :ruleId results))
-        severity (fn [{:keys [ruleId]}] (get-in rules [ruleId :severity]))
-        errors   (count (filter #(= :error (severity %)) results))
-        warnings (count (filter #(= :warning (severity %)) results))]
-    {:status   (if (pos? errors) :failed :passed)
-     :summary  {:errors   errors
-                :warnings warnings
+  (let [results (vec (for [entity failed, error (:errors entity)] (result entity error)))
+        counts  (frequencies (map #(get-in rules [(:ruleId %) :severity]) results))]
+    {:status   (if (:error counts) :failed :passed)
+     :summary  {:errors   (:error counts 0)
+                :warnings (:warning counts 0)
                 :entities (count failed)}
      :entities (into {}
                      (map (fn [{:keys [entity_id id type collection_id], entity-name :name}]
@@ -141,10 +138,10 @@
                                         :type type
                                         :data {:name entity-name :collection_id collection_id}}]))
                      failed)
-     :rules    used
+     :rules    (select-keys rules (map :ruleId results))
      :results  results}))
 
-(api.macros/defendpoint :get "/" :- ::report
+(api.macros/defendpoint :post "/" :- ::report
   "The lint report of the instance's content, for superusers: every card, transform and segment whose query analysis
   found an error, with each error as a `result` naming the entity, the rule it breaks and the entity that caused it
   when the analysis traced one. The analysis the background jobs owe is run first, so the report reflects every write

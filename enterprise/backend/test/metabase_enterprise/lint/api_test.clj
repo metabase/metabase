@@ -2,11 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.lint.api :as lint.api]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
@@ -17,58 +17,44 @@
   [:model/Card :model/Dependency :model/DependencyStatus
    :model/AnalysisFinding :model/AnalysisFindingError :model/AnalysisFindingStatus])
 
+(defn- create-card!
+  [user card-name card-type query]
+  (card/create-card! {:name                   card-name
+                      :database_id            (mt/id)
+                      :display                :table
+                      :query_type             :query
+                      :type                   card-type
+                      :dataset_query          query
+                      :visualization_settings {}}
+                     user))
+
 (defn- create-model-card!
   "A model of the orders table."
   [user card-name]
-  (let [mp (mt/metadata-provider)]
-    (card/create-card! {:name                   card-name
-                        :database_id            (mt/id)
-                        :display                :table
-                        :query_type             :query
-                        :type                   :model
-                        :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        :visualization_settings {}}
-                       user)))
+  (create-card! user card-name :model (deps.test/table-query :orders)))
 
 (defn- create-model-of-card!
   "A model of everything `source-card` returns."
   [user source-card card-name]
-  (let [mp (mt/metadata-provider)]
-    (card/create-card! {:name                   card-name
-                        :database_id            (mt/id)
-                        :display                :table
-                        :query_type             :query
-                        :type                   :model
-                        :dataset_query          (lib/query mp (lib.metadata/card mp (:id source-card)))
-                        :visualization_settings {}}
-                       user)))
+  (create-card! user card-name :model (deps.test/card-query (:id source-card))))
 
 (defn- create-card-filtering-model-total!
   "A question on `model-card` that filters on its TOTAL column, which only the orders table has."
   [user model-card card-name]
-  (let [mp    (mt/metadata-provider)
-        query (lib/query mp (lib.metadata/card mp (:id model-card)))
+  (let [query (deps.test/card-query (:id model-card))
         total (first (filter #(= (:id %) (mt/id :orders :total)) (lib/filterable-columns query)))]
-    (card/create-card! {:name                   card-name
-                        :database_id            (mt/id)
-                        :display                :table
-                        :query_type             :query
-                        :type                   :question
-                        :dataset_query          (lib/filter query (lib/> total 100))
-                        :visualization_settings {}}
-                       user)))
+    (create-card! user card-name :question (lib/filter query (lib/> total 100)))))
 
 (defn- break-model-card!
   "Point `model-card` at the products table, which has no TOTAL column."
   [model-card]
-  (let [mp (mt/metadata-provider)]
-    (card/update-card! {:card-before-update model-card
-                        :card-updates       {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}})))
+  (card/update-card! {:card-before-update model-card
+                      :card-updates       {:dataset_query (deps.test/table-query :products)}}))
 
 (defn- lint-report
   "The lint report as Crowberto, which drains the analysis jobs first."
   []
-  (mt/user-http-request :crowberto :get 200 "ee/lint"))
+  (mt/user-http-request :crowberto :post 200 "ee/lint"))
 
 (defn- entity-results
   "The results of `report` on the entity with `entity-id`."
@@ -79,13 +65,22 @@
   (is (= (set (mc/children (mr/resolve-schema ::lib.schema.validate/validate-error-type)))
          (set (keys @#'lint.api/rules)))))
 
+(deftest every-analysis-error-type-has-a-message-test
+  (doseq [error-type (mc/children (mr/resolve-schema ::lib.schema.validate/validate-error-type))
+          detail     [nil "DETAIL"]
+          cause      [nil
+                      {:type :card, :id 1, :entity_id "entity-id", :name "Cause"}
+                      {:type :card, :id 1, :entity_id nil, :name nil}]]
+    (testing (pr-str error-type detail cause)
+      (is (string? (#'lint.api/message {:type error-type, :detail detail, :cause cause}))))))
+
 (deftest requires-superuser-test
   (mt/with-premium-features #{:dependencies}
     (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 "ee/lint")))))
+           (mt/user-http-request :rasta :post 403 "ee/lint")))))
 
 (deftest ^:synchronized broken-card-with-cause-test
-  (testing "GET /api/ee/lint reports an entity broken by another, with that entity as the cause"
+  (testing "POST /api/ee/lint reports an entity broken by another, with that entity as the cause"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "lint@test.com"}]
         (mt/with-model-cleanup cleanup-models
@@ -115,7 +110,7 @@
                      (get-in report [:rules :missing-column]))))))))))
 
 (deftest ^:synchronized broken-native-sql-without-cause-test
-  (testing "GET /api/ee/lint reports native SQL reading an unknown table, with no cause to trace it to"
+  (testing "POST /api/ee/lint reports native SQL reading an unknown table, with no cause to trace it to"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup cleanup-models
         (mt/with-temp [:model/Card native-card {:name          "Lint native"
@@ -130,7 +125,7 @@
                    (entity-results report (:entity_id native-card))))))))))
 
 (deftest ^:synchronized archived-and-internal-content-left-out-test
-  (testing "GET /api/ee/lint leaves out archived entities and content Metabase manages itself"
+  (testing "POST /api/ee/lint leaves out archived entities and content Metabase manages itself"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "lint@test.com"}]
         (mt/with-model-cleanup cleanup-models
@@ -151,7 +146,7 @@
               (is (not (contains? (:entities report) (keyword (:entity_id internal-card))))))))))))
 
 (deftest ^:synchronized passed-when-nothing-is-broken-test
-  (testing "GET /api/ee/lint answers `passed` with no results once a broken entity is fixed"
+  (testing "POST /api/ee/lint answers `passed` with no results once a broken entity is fixed"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "lint@test.com"}]
         (mt/with-model-cleanup cleanup-models
@@ -168,7 +163,7 @@
             (is (= [] (entity-results (lint-report) (:entity_id dependent-card))))))))))
 
 (deftest ^:synchronized broken-through-intermediate-card-test
-  (testing "GET /api/ee/lint reports an entity broken through a card whose result metadata has to be re-derived first"
+  (testing "POST /api/ee/lint reports an entity broken through a card whose result metadata has to be re-derived first"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "lint@test.com"}]
         (mt/with-model-cleanup cleanup-models
@@ -187,15 +182,15 @@
     (mt/with-model-cleanup cleanup-models
       (mt/with-temp [:model/Card native-card {:name          "Lint native"
                                               :dataset_query (mt/native-query {:query "SELECT * FROM orderz"})}]
-        (testing "GET /api/ee/lint fails rather than answer from stale findings when a job is disabled"
+        (testing "POST /api/ee/lint fails rather than answer from stale findings when a job is disabled"
           (mt/with-temporary-setting-values [dependency-entity-check-batch-size 0]
             (is (= "The analysis cannot run while one of its jobs is disabled by its batch size."
-                   (mt/user-http-request :crowberto :get 503 "ee/lint")))))
-        (testing "GET /api/ee/lint fails when the app DB is read-only"
+                   (mt/user-http-request :crowberto :post 503 "ee/lint")))))
+        (testing "POST /api/ee/lint fails when the app DB is read-only"
           (mt/with-temporary-setting-values [read-only-mode true]
             (is (= "The analysis cannot run while Metabase is in read-only mode."
-                   (mt/user-http-request :crowberto :get 503 "ee/lint")))))
-        (testing "GET /api/ee/lint runs the analysis once it can"
+                   (mt/user-http-request :crowberto :post 503 "ee/lint")))))
+        (testing "POST /api/ee/lint runs the analysis once it can"
           (let [report (lint-report)]
             (is (= "failed" (:status report)))
             (is (= 1 (count (entity-results report (:entity_id native-card)))))))))))

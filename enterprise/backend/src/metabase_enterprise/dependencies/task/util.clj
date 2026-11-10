@@ -40,26 +40,30 @@
   [{:keys [job-key]} :- Job]
   (keyword "metabase-enterprise.dependencies.task" job-key))
 
-(mu/defn- batch-lock-contention? :- :boolean
-  "Whether `e` is the failure to take the [[batch-lock]] of `job`, rather than a lock its batch takes."
-  [job :- Job
-   e   :- (ms/InstanceOfClass Throwable)]
-  (let [lock (batch-lock job)]
-    (boolean (some #{(str (namespace lock) "/" (name lock))} (:lock-names (ex-data e))))))
+(mu/defn run-locked! :- :any
+  "Call `thunk` holding the cluster lock `lock`, and return what it returns, or `busy` when another runner holds the
+  lock; the failure to take a lock `thunk` itself takes is rethrown. The lock is detached so that the work commits as
+  it goes, and taken without retrying, since every caller tries again itself."
+  [lock  :- :keyword
+   thunk :- [:fn {:error/message "a function"} ifn?]
+   busy  :- [:or ms/PositiveInt [:= :busy]]]
+  (let [lock-name (str (namespace lock) "/" (name lock))]
+    (try
+      (cluster-lock/with-detached-cluster-lock {:lock lock :retry-config {:max-retries 0}}
+        (thunk))
+      (catch Throwable e
+        (if (some #{lock-name} (:lock-names (ex-data e)))
+          busy
+          (throw e))))))
 
 (mu/defn- run-batch-locked! :- :any
-  "Run a batch of `job` holding its cluster lock, and return what it returns, or `::busy` when another runner holds
-  the lock. Taking a batch selects the pending statuses and then inserts the missing ones, so two runners taking at
-  once would process the same entities. Quartz keeps each job to one scheduled run at a time across the cluster, but
-  not a batch run in place, on any node. The lock is detached so that the batch commits entity by entity."
-  [{:keys [run-batch!] :as job} :- Job]
-  (try
-    (cluster-lock/with-detached-cluster-lock {:lock (batch-lock job)}
-      (run-batch!))
-    (catch Throwable e
-      (if (batch-lock-contention? job e)
-        ::busy
-        (throw e)))))
+  "Run a batch of `job` holding its cluster lock, and return what it returns, or `busy` when another runner holds the
+  lock. Taking a batch selects the pending statuses and then inserts the missing ones, so two runners taking at once
+  would process the same entities. Quartz keeps each job to one scheduled run at a time across the cluster, but not a
+  batch run in place, on any node."
+  [{:keys [run-batch!] :as job} :- Job
+   busy                         :- [:or ms/PositiveInt [:= :busy]]]
+  (run-locked! (batch-lock job) run-batch! busy))
 
 (mu/defn- job-delay :- ms/IntGreaterThanOrEqualToZero
   "A random delay in seconds between `delay - variance` and `delay + variance` minutes."
@@ -120,13 +124,10 @@
    {:keys [job-name batch-size] :as job} :- Job]
   (if (pos? (batch-size))
     (try
-      (let [delay-in-seconds (run-batch-locked! job)]
-        (cond
-          (= ::busy delay-in-seconds) (do
-                                        (log/debug "Job" job-name "has a batch running elsewhere, trying again.")
-                                        (schedule-run! scheduler job 1))
-          (some? delay-in-seconds)    (schedule-run! scheduler job delay-in-seconds)
-          :else                       (log/debug "Job" job-name "has nothing more to do, stopping.")))
+      ;; a batch running elsewhere is tried again in a second
+      (if-some [delay-in-seconds (run-batch-locked! job 1)]
+        (schedule-run! scheduler job delay-in-seconds)
+        (log/debug "Job" job-name "has nothing more to do, stopping."))
       (catch Throwable e
         (schedule-run! scheduler job (next-run-delay job))
         (throw e)))
@@ -141,11 +142,11 @@
   "Run a batch of `job` now rather than on its schedule, under the lock its scheduled runs hold."
   [{:keys [batch-size] :as job} :- Job]
   (if (pos? (batch-size))
-    (let [delay-in-seconds (run-batch-locked! job)]
+    (let [delay-in-seconds (run-batch-locked! job :busy)]
       (cond
-        (= ::busy delay-in-seconds) :busy
-        (some? delay-in-seconds)    :worked
-        :else                       :idle))
+        (= :busy delay-in-seconds) :busy
+        (some? delay-in-seconds)   :worked
+        :else                      :idle))
     :disabled))
 
 (mu/defn trigger-run! :- :any
