@@ -478,7 +478,9 @@ const metadataDiff = createReducer<Record<string, Partial<Field>>>(
         const { name, changes } = action.payload;
         return {
           ...state,
-          [name]: state[name] ? deepMerge(state[name], changes) : changes,
+          [name]: Object.hasOwn(state, name)
+            ? deepMerge(state[name], changes)
+            : changes,
         };
       })
       .addCase(CANCEL_QUESTION_CHANGES, () => ({}));
