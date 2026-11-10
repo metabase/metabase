@@ -928,21 +928,27 @@
       (testing "and the calls whose input comes after the error are dropped"
         (is (not-any? #(= "late" (:toolCallId %)) result))))))
 
-(deftest tool-executor-xf-runs-a-call-the-pool-starts-after-an-error-test
-  (testing "a call whose input completed before an :error chunk runs, even if the pool starts it after the error"
+(deftest tool-executor-xf-never-starts-a-complete-call-after-an-error-test
+  (testing "a call whose input completed before an :error chunk never runs if the pool has not started it"
     (let [release (promise)
           busy    (java.util.concurrent.CountDownLatch. 20)
-          pool    @#'self.core/tool-executor]
+          pool    @#'self.core/tool-executor
+          ran     (atom false)
+          tools   (update-in test-util/TOOLS ["get-time" :fn]
+                             (fn [get-time]
+                               (fn [args]
+                                 (reset! ran true)
+                                 (get-time args))))]
       ;; Hold every thread of the pool, so that no call starts until the stream has ended
       (dotimes [_ 20]
         (.execute ^java.util.concurrent.Executor pool ^Runnable #(do (.countDown busy) @release)))
       (try
         (is (.await busy 5 java.util.concurrent.TimeUnit/SECONDS))
-        (let [chunks (concat (test-util/parts->aisdk-chunks
-                              [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "UTC"}}])
-                             [{:type :error :errorText "Overloaded"}])
+        (let [chunks  (concat (test-util/parts->aisdk-chunks
+                               [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "UTC"}}])
+                              [{:type :error :errorText "Overloaded"}])
               errored (promise)
-              result  (future (into [] (comp (self.core/tool-executor-xf test-util/TOOLS)
+              result  (future (into [] (comp (self.core/tool-executor-xf tools)
                                              (map (fn [chunk]
                                                     (when (= :error (:type chunk))
                                                       (deliver errored true))
@@ -950,8 +956,9 @@
                                     chunks))]
           (is (deref errored 5000 false))
           (deliver release true)
-          (is (= ["call-1"] (keep #(when (= :tool-output-available (:type %)) (:toolCallId %))
-                                  (deref result 5000 nil)))))
+          (is (= (vec chunks) (deref result 5000 nil))
+              "the stream passes through, with no result for call-1")
+          (is (not @ran)))
         (finally
           (deliver release true))))))
 
@@ -2294,10 +2301,21 @@
                                              :cacheReadTokens     800}
                         :model "test-model" :id "msg-1"}
                        {:type :tool-input :id "call-3" :function "lookup_jane_doe_4165551234"
-                        :arguments {:tz "UTC"}}])]
+                        :arguments {:tz "UTC"}}])
+            done     {"call-1" (promise) "call-2" (promise)}
+            run-tool (mt/original-fn #'self.core/run-tool)]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                     (constantly (concat (drop-last 2 chunks)
-                                                        [{:type :error :errorText "Overloaded"}]))]
+                                                        ;; A call that has not started when the error comes never
+                                                        ;; runs, so the error comes once call-1 and call-2 are done
+                                                        (lazy-seq
+                                                         (run! #(deref % 5000 nil) (vals done))
+                                                         [{:type :error :errorText "Overloaded"}])))
+                                    self.core/run-tool
+                                    (fn [tool-call-id & args]
+                                      (let [result (apply run-tool tool-call-id args)]
+                                        (some-> (done tool-call-id) (deliver true))
+                                        result))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
               (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
