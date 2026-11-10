@@ -12,8 +12,12 @@
    [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.autogen-dashboard :as autogen]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.core :as tools]
@@ -237,6 +241,48 @@
                   (-> (read-uris metabot :internal (str "metabase://dashboard/" dash-id))
                       first
                       (get-in [:content :structured-output :parameters])))))))))
+
+(defn- first-request-text!
+  "The text of the first LLM request a turn of the agent loop makes for `opts`, with the LLM mocked to answer at once."
+  [opts]
+  (let [requests (atom [])]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider "anthropic/claude-opus-5-5"]
+      (mt/with-dynamic-fn-redefs [claude/claude (fn [llm-opts]
+                                                  (swap! requests conj (claude/claude-request-body llm-opts))
+                                                  (mut/mock-llm-response [{:type :text :text "Done."}]))]
+        (reduce (fn [_ _]) nil (agent/run-agent-loop opts))))
+    (str/join "\n" (filter string? (tree-seq coll? seq (first @requests))))))
+
+(deftest viewing-context-dashboard-filters-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mapping (fn [card-id] {:parameter_id "date", :card_id card-id, :target [:dimension [:field 1 nil]]})]
+      (mt/with-temp [:model/Collection    {official :id}   {:authority_level "official"}
+                     :model/Card          {curated-id :id} {:collection_id official}
+                     :model/Card          {plain-id :id}   {}
+                     :model/Dashboard     {dash-id :id}    {:collection_id official
+                                                            :parameters    [{:id "date", :name "Date", :slug "date"
+                                                                             :type :date/all-options}]}
+                     :model/DashboardCard {curated-dc :id} {:dashboard_id       dash-id
+                                                            :card_id            curated-id
+                                                            :parameter_mappings [(mapping curated-id)]}
+                     :model/DashboardCard {plain-dc :id}   {:dashboard_id       dash-id
+                                                            :card_id            plain-id
+                                                            :parameter_mappings [(mapping plain-id)]}
+                     :model/Metabot       curated          {:name "curated metabot", :use_verified_content true}
+                     :model/Metabot       open             {:name "open metabot", :use_verified_content false}]
+        (let [connected (fn [metabot]
+                          (second (re-find #"connected_dashcards=\"([^\"]*)\""
+                                           (first-request-text!
+                                            {:messages   [{:role :user :content "What does this dashboard show?"}]
+                                             :state      {}
+                                             :profile-id :internal
+                                             :metabot    metabot
+                                             :context    {:user_is_viewing [{:type "dashboard" :id dash-id}]}}))))]
+          (testing "the dashboard in view lists only the dashcards of curated questions under a filter"
+            (is (= (str curated-dc) (connected curated))))
+          (testing "without use_verified_content it lists every dashcard"
+            (is (= (str curated-dc ", " plain-dc) (connected open)))))))))
 
 (deftest excluded-signals-test
   (testing "search never returns these, so they aren't curated whatever their signals"
