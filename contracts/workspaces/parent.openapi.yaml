@@ -22,7 +22,7 @@ info:
     Every route needs a session, an API key, or (hardening) a scoped credential (see `components.securitySchemes`),
     the `:workspaces` premium feature (402 otherwise), and a superuser (403 otherwise).
 
-    Contract version (hardening, TBD-contract-version): every 2xx response (and the 401) carries `X-Metabase-Workspaces-Version: 2`; errors thrown by an endpoint (400-500) and the 402 do not.
+    Contract version (hardening, #86790): every 2xx response (and the 401) carries `X-Metabase-Workspaces-Version: 2`; errors thrown by an endpoint (400-500) and the 402 do not.
     master sends no such header; a client that does not see it must assume master's behavior everywhere.
 
     Request bodies are marked `additionalProperties: false`, but the server ignores unknown keys (it strips
@@ -240,7 +240,7 @@ paths:
         - DELETE returns 204, and the create returns 500 "WorkspaceDatabase not found".
         - DELETE returns 500 after the lock timeout, and the create returns 200.
         - DELETE wins every row, and the create returns 500.
-        Nothing is provisioned after a 204. hardening (TBD-delete-during-create): DELETE answers 409 instead, and
+        Nothing is provisioned after a 204. hardening (#86789): DELETE answers 409 instead, and
         changes nothing.
 
         Concurrent DELETEs each return 204, 404, or 500 after the lock wait.
@@ -259,10 +259,11 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: |
-            hardening (TBD-delete-during-create): a create (or another request) holds a database of this workspace.
-            Nothing was changed. Retry after the create ends.
+            hardening (#86789): a create (or another request) holds a database of this workspace.
+            Nothing was changed. Retry after the create ends. The body carries `"error-code": "workspace_busy"`
+            (kebab-case, as the exception's data is rendered).
           x-status: hardening
-          x-pr: [TBD-delete-during-create]
+          x-pr: [86789]
           headers:
             X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
@@ -312,7 +313,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          x-pr: [86585, TBD-config-no-templates]
+          x-pr: [86585, 86787]
           description: |
             At least one database is not `provisioned`. Plain-text body.
 
@@ -323,7 +324,7 @@ paths:
             hardening (#86585): also a database that uses SSL client-certificate auth, whose SSH known-hosts Secret
             cannot be resolved, or whose Secret cannot be read.
 
-            hardening (TBD-config-no-templates): also when an emitted value contains `{{`. The sidecar expands
+            hardening (#86787): also when an emitted value contains `{{`. The sidecar expands
             `{{env X}}` templates at boot, so the parent never emits one. The message names each database and
             field path, never the value.
           x-source: EE/config.clj:131
@@ -376,16 +377,16 @@ components:
       description: |
         master: an unscoped API key in the Administrators group, which reaches the whole API.
 
-        hardening (TBD-manager-scope): an API key created with `scope: "workspace-manager"` (`POST /api/api-key`)
+        hardening (#86791): an API key created with `scope: "workspace-manager"` (`POST /api/api-key`)
         reaches the workspace-manager routes and gets 403 on every other route. Its group must still be
         Administrators (the routes stay superuser-only). Use it for MB Code and CI instead of an unscoped
         superuser key.
     workspaceManagerOAuth:
       type: oauth2
       x-status: hardening
-      x-pr: [TBD-manager-scope]
+      x-pr: [86791]
       description: |
-        hardening (TBD-manager-scope): an OAuth access token from the parent's own OAuth server with the scope
+        hardening (#86791): an OAuth access token from the parent's own OAuth server with the scope
         `mb:workspace-manager`. The token reaches the workspace-manager routes and gets 403 on every other route.
         The token's user must be a superuser. Clients register through `/oauth/register` (dynamic client
         registration) with this scope. Not on master.
@@ -399,10 +400,10 @@ components:
   headers:
     WorkspacesVersion:
       description: |
-        hardening (TBD-contract-version): the workspaces contract version this parent implements. Absent on
+        hardening (#86790): the workspaces contract version this parent implements. Absent on
         master. A client that does not see it must assume master's behavior.
       x-status: hardening
-      x-pr: [TBD-contract-version]
+      x-pr: [86790]
       schema: { type: string, const: "2" }
 
   parameters:
@@ -475,11 +476,11 @@ components:
         `unprovisioned` means either "nothing created yet" or "warehouse objects may remain". Deleting the
         parent's Database deletes its `unprovisioned` rows, which erases the only record of such leftovers.
 
-        hardening (TBD-teardown-failed): a failed destroy sets `teardown_failed` instead, and the row keeps
+        hardening (#86788): a failed destroy sets `teardown_failed` instead, and the row keeps
         `output_namespace`. A `teardown_failed` row blocks deleting its Database and makes `GET /{id}/config`
         answer 409; a retried DELETE tears it down again. master never returns `teardown_failed`.
       x-source: EE/provisioning.clj:96-280
-      x-pr: [TBD-teardown-failed]
+      x-pr: [86788]
 
     WorkspaceDatabase:
       type: object

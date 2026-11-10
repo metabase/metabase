@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "metabase/contracts/workspaces/config.schema.json",
   "title": "Workspace config.yml (parent -> sidecar)",
-  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Also carries parent secrets that pass through `details`: an enabled tunnel's credential, `additional-options`; on master, client-cert fields. Treat it as a parent secret. The parent's file contains no template forms; templating is for sections the caller adds. master copies `details` as-is, so a parent value can hold `{{env X}}`, which the sidecar expands at boot; hardening (TBD-config-no-templates): the parent answers 409 instead of emitting a value that contains `{{`. Built by EE/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
+  "description": "What GET /api/ee/workspace-manager/{id}/config returns, and what a sidecar loads at boot from MB_CONFIG_FILE_PATH. The only artifact that carries a warehouse password. Also carries parent secrets that pass through `details`: an enabled tunnel's credential, `additional-options`; on master, client-cert fields. Treat it as a parent secret. The parent's file contains no template forms; templating is for sections the caller adds. master copies `details` as-is, so a parent value can hold `{{env X}}`, which the sidecar expands at boot; hardening (#86787): the parent answers 409 instead of emitting a value that contains `{{`. Built by EE/config.clj:112, loaded by enterprise/backend/src/metabase_enterprise/advanced_config/file/workspace.clj. x-status follows parent.openapi.yaml. A caller may add other config.yml sections (settings, ...) before boot; the parent emits only these.",
   "x-status": "master",
   "type": "object",
   "required": ["version", "config"],
@@ -34,14 +34,14 @@
             "workspace-id": {
               "type": "integer",
               "x-status": "hardening",
-              "x-pr": "TBD-identity",
-              "description": "Settings form of workspace.id, if the sidecar stores it as a setting (per TBD-identity)."
+              "x-pr": 86792,
+              "description": "Settings form of workspace.id, if the sidecar stores it as a setting (per #86792)."
             },
             "workspace-parent-url": {
               "type": "string",
               "x-status": "hardening",
-              "x-pr": "TBD-identity",
-              "description": "Settings form of workspace.parent_url, if the sidecar stores it as a setting (per TBD-identity)."
+              "x-pr": 86792,
+              "description": "Settings form of workspace.parent_url, if the sidecar stores it as a setting (per #86792)."
             }
           }
         }
@@ -145,13 +145,13 @@
         "id": {
           "type": "integer",
           "x-status": "hardening",
-          "x-pr": "TBD-identity",
+          "x-pr": 86792,
           "description": "The parent workspace's id (the {id} of /api/ee/workspace-manager/{id})."
         },
         "parent_url": {
           "type": "string",
           "x-status": "hardening",
-          "x-pr": "TBD-identity",
+          "x-pr": 86792,
           "description": "The parent Metabase's URL, so the sidecar can name the instance it came from."
         },
         "databases": {

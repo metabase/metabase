@@ -68,7 +68,7 @@ paths:
       description: |
         #86735: `data` becomes `WorkspaceInstanceSettings`, or null when `workspaces-enabled` is off.
 
-        Hardening (TBD-identity): `data` also carries `workspace_id` and `parent_url`, so a caller can tell which
+        Hardening (#86792): `data` also carries `workspace_id` and `parent_url`, so a caller can tell which
         parent workspace the sidecar serves.
       responses:
         "200":
@@ -99,7 +99,7 @@ paths:
         unknown database id, on a parent, or while `MB_WORKSPACES_ENABLED=false`. No config lock. Writes the schemas
         first and turns the flag on last, in one transaction; a database dropped from the list loses its remap rows.
 
-        Hardening (TBD-identity): the body and response carry `workspace_id` and `parent_url`.
+        Hardening (#86792): the body and response carry `workspace_id` and `parent_url`.
       x-status: master
       x-pr: 86735
       x-source: EE/api/workspace_instance.clj:91, src/metabase/workspaces/core.clj:68
@@ -189,7 +189,7 @@ components:
   headers:
     WorkspacesVersion:
       x-status: hardening
-      x-pr: TBD-contract-version
+      x-pr: 86790
       description: |
         The contract version this instance implements. `2` on an instance with the hardening PRs. Absent on master,
         so a client treats a missing header as the master contract.
@@ -263,12 +263,12 @@ components:
         workspace_id:
           type: [integer, "null"]
           x-status: hardening
-          x-pr: TBD-identity
+          x-pr: 86792
           description: The id of the parent workspace this sidecar serves. Null when not set.
         parent_url:
           type: [string, "null"]
           x-status: hardening
-          x-pr: TBD-identity
+          x-pr: 86792
           description: The parent Metabase's site URL. Null when not set.
         databases:
           type: array
