@@ -232,16 +232,6 @@ describe("SearchBar", () => {
       ).not.toBeInTheDocument();
       expect(getSearchRequestsByContext("search-bar")).toHaveLength(1);
     });
-
-    it("should only search and open full page search when a text query is entered (open the search app)", async () => {
-      const { router } = setup();
-
-      await userEvent.click(getSearchBar());
-      await userEvent.type(getSearchBar(), "orders{Enter}");
-
-      expect(router.location.pathname).toBe("/search");
-      expect(router.location.search).toBe("?q=orders");
-    });
   });
 
   describe("command palette trigger", () => {

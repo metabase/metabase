@@ -186,8 +186,10 @@ describe("SearchApp", () => {
       await setup({ searchText: "oisin" });
 
       expect(screen.getByText('Results for "oisin"')).toBeInTheDocument();
+      const searchApp = within(screen.getByTestId("search-app"));
+      expect(searchApp.getByText("Didn't find anything")).toBeInTheDocument();
       expect(
-        screen.getByText("There weren't any results for your search."),
+        searchApp.getByText("There weren't any results for your search."),
       ).toBeInTheDocument();
       expect(screen.queryByLabelText("pagination")).not.toBeInTheDocument();
     });
@@ -248,18 +250,6 @@ describe("SearchApp", () => {
       const params = new URL(searchRequests[0].url).searchParams;
       expect(params.get("context")).toBe("search-app");
       expect(params.get("q")).toBe("orders");
-    });
-  });
-
-  describe("empty state", () => {
-    it("should work for user without data permissions (metabase#16855) (empty state on the search page)", async () => {
-      await setup({ searchText: "product" });
-
-      const searchApp = within(screen.getByTestId("search-app"));
-      expect(searchApp.getByText("Didn't find anything")).toBeInTheDocument();
-      expect(
-        searchApp.getByText("There weren't any results for your search."),
-      ).toBeInTheDocument();
     });
   });
 

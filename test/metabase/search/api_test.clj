@@ -1694,10 +1694,8 @@
               public-items  #{["dashboard" dash-public]
                               ["dashboard" dash-sub-public]
                               ["collection" coll-sub-public]}]
-          (is (empty? (set/intersection crowberto-items rasta-all))
-              "rasta must not see crowberto's personal collection items")
           (is (= (into rasta-items public-items) rasta-all)
-              "rasta sees their own personal items plus public items")
+              "rasta sees only their own personal items plus public items, none of crowberto's")
           (testing "positive control: admin with `all` sees everyone's items"
             (is (= (into (into rasta-items crowberto-items) public-items) crowberto-all)))))
       (testing "getting models should return only models that are applied"
