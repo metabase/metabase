@@ -133,7 +133,8 @@
 (defrecord LegacyTool [tool-var]
   tools/Tool
   (declaration [_]
-    (let [{:keys [tool-name doc schema scope capabilities title-fn prompt system-instructions decode]}
+    (let [{:keys [tool-name doc schema scope capabilities title-fn prompt system-instructions decode
+                  available? unavailable-note replaces]}
           (meta tool-var)]
       (cond-> {:name        tool-name
                :description (description doc)
@@ -141,6 +142,9 @@
         scope               (assoc :scope scope)
         capabilities        (assoc :metabot/capabilities capabilities)
         title-fn            (assoc :metabot/title-fn title-fn)
+        available?          (assoc :metabot/available? available?)
+        unavailable-note    (assoc :metabot/unavailable-note unavailable-note)
+        replaces            (assoc :metabot/replaces replaces)
         ;; Carried so nothing is lost in the adaptation. No consumer reads them, and a converted
         ;; tool declares none of them.
         prompt              (assoc :metabot/prompt prompt)

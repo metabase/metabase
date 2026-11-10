@@ -47,6 +47,7 @@
 (p/import-vars
  [tools.error
   defrecoverable
+  search-steps
   unrecoverable!])
 
 ;;; ------------------------------------------------ Renderable ----------------------------------------------------
@@ -128,7 +129,16 @@
    ;; Set by a tool whose call changes state that other calls read, such as a stored query. In one model response,
    ;; `metabase.metabot.self.core/tool-executor-xf` starts its call once the calls before it have finished, and the
    ;; calls after it once it has finished.
-   [:metabot/runs-alone?    {:optional true} [:maybe :boolean]]])
+   [:metabot/runs-alone?    {:optional true} [:maybe :boolean]]
+   ;; Whether the tool can serve this turn, as a function of `{:metabot ... :profile-id ...}`. Missing means always.
+   ;; `metabase.metabot.agent.profiles/resolve-tools` offers only the tools whose check passes, so several tools can
+   ;; share a name when at most one of them is available at a time.
+   [:metabot/available?       {:optional true} [:maybe ifn?]]
+   ;; What the system prompt says about the tool on a turn it isn't offered, as a function of the same context:
+   ;; `{:purpose ... :missing ... :reason ... :workaround ...}`. A tool without one is left out of the prompt.
+   [:metabot/unavailable-note {:optional true} [:maybe ifn?]]
+   ;; Names of tools this one took over. A call to one of them names this tool instead of failing as unknown.
+   [:metabot/replaces         {:optional true} [:maybe [:set :string]]]])
 
 (mr/def ::result
   "What [[handle]] returns. Success only — a failure is thrown.

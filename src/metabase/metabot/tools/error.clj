@@ -304,6 +304,21 @@
 ;;; agent cannot tell the two apart from the wording, only from where it appears. Tool code does not
 ;;; call these; the framework does.
 
+(def ^:private agent-loop-search-tool-names
+  "The tools that search Metabase content in the Metabot agent loop, one per matcher."
+  ["semantic_search" "fulltext_search" "substring_search"])
+
+(defn search-steps
+  "One recovery step per search tool, each naming its own tool, so [[recovery-steps-for-tools]] keeps the ones the
+  current surface offers. `text` takes a tool name and returns that step's text.
+
+  By default the steps cover `search`, which the Agent API offers, as well as the agent loop's tools. Pass
+  `:agent-loop-only? true` for an error only the agent loop renders."
+  [text & {:keys [agent-loop-only?]}]
+  (mapv (fn [tool-name] {:uses #{tool-name} :text (text tool-name)})
+        (cond->> agent-loop-search-tool-names
+          (not agent-loop-only?) (cons "search"))))
+
 (defn recovery-steps-for-tools
   "The subset of `recovery` whose steps only name tools in `tool-names`.
 
