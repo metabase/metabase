@@ -33,9 +33,10 @@
    [ring.util.codec :as codec])
   (:import
    (java.io ByteArrayInputStream)
-   (java.security KeyFactory KeyStore PrivateKey)
+   (java.security KeyFactory KeyStore PrivateKey SecureRandom)
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
+   (java.util ArrayList Collections)
    (javax.net SocketFactory)
    (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
 
@@ -1101,13 +1102,15 @@
 (defn random-workspace-password
   "Generate a random password suitable for most database engines.
    Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
-   by cycling through the character sets. Result is shuffled for randomness."
+   by cycling through the character sets. Result is shuffled for randomness.
+   Every random draw comes from `SecureRandom`, since the password guards a database login."
   []
-  (->> (cycle workspace-password-char-sets)
-       (take (+ 32 (rand-int 32)))
-       (map rand-nth)
-       shuffle
-       (apply str)))
+  (let [rng   (SecureRandom.)
+        chars (ArrayList. ^java.util.Collection
+               (map (fn [^String char-set] (.charAt char-set (.nextInt rng (count char-set))))
+                    (take (+ 32 (.nextInt rng 32)) (cycle workspace-password-char-sets))))]
+    (Collections/shuffle chars rng)
+    (apply str chars)))
 
 (defn- redact-msg
   "Replace all `secrets` in `msg` with `****`."
