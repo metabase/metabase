@@ -40,7 +40,7 @@
   (mdb/memoize-for-application-db
    (fn []
      (u/prog1 (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type :is_tenant_group]
-                            :magic_group_type magic-group-type)
+                             :magic_group_type magic-group-type)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
