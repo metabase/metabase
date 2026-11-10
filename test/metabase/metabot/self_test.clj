@@ -998,7 +998,10 @@
              (validation-error schema {:limit 999}))))
     (testing "arguments that aren't an object at all"
       (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
-             (validation-error schema ["orders"]))))))
+             (validation-error schema ["orders"])))))
+  (testing "a schema with no message of its own reports that the argument is not valid"
+    (is (= "Invalid tool arguments: `even` is not valid; received a number."
+           (validation-error [:map [:even [:fn even?]]] {:even 1})))))
 
 (deftest ^:parallel nested-tool-argument-validation-test
   (let [schema [:map {:closed true}

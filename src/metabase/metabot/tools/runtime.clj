@@ -190,7 +190,7 @@
   [{:keys [schema errors]}]
   (let [texts (reduce (fn [acc error]
                         (update acc (reported-path schema error) (fnil conj [])
-                                (or (me/error-message error) "is not valid")))
+                                (or (me/error-message error {:unknown false}) "is not valid")))
                       {}
                       errors)]
     (sort-by (comp argument-path key) (update-vals texts (comp vec distinct)))))
