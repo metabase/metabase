@@ -41,6 +41,7 @@
   create-card!
   card-exposed-timeline-ids
   dashcard-hides-card-events?
+  remove-unreadable-timelines
   with-copy-source-card]
  [metabase.queries.card-write-checks
   actual-collection-id

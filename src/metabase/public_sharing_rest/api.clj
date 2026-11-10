@@ -303,36 +303,45 @@
                                                        (m/remove-keys hidden-parameter-ids fields)))
         (select-keys action-public-keys))))
 
-(defn- public-dashcard-timeline-ids
-  [{:keys [card] :as dashcard}]
+(defn- public-card-timeline-ids
+  [card]
   (when (and (pos-int? (:id card))
-             (false? (:archived card))
-             (not (queries/dashcard-hides-card-events? dashcard)))
+             (false? (:archived card)))
     (not-empty (queries/card-exposed-timeline-ids card))))
 
 (defn- public-timeline-events
   [timeline-ids]
-  ;; A public dashboard authorizes its saved event selection without granting collection access.
+  ;; A public dashboard or document authorizes its saved event selection without granting collection access.
   (when (seq timeline-ids)
     (when-let [active-ids (not-empty (public-sharing-rest.db/active-timeline-ids timeline-ids))]
       (public-sharing-rest.db/active-timeline-events active-ids))))
 
-(defn- public-dashcard-timeline-events
-  [{{settings :visualization_settings} :card, :as dashcard} events]
-  (let [timeline-ids (public-dashcard-timeline-ids dashcard)
+(defn- card-timeline-events
+  [{settings :visualization_settings :as card} events]
+  (let [timeline-ids (public-card-timeline-ids card)
         excluded-ids (:timeline.excluded_timeline_event_ids settings)
         excluded-ids (if (sequential? excluded-ids) (set excluded-ids) #{})]
     (filterv #(and (contains? timeline-ids (:timeline_id %))
                    (not (contains? excluded-ids (:id %))))
              events)))
 
+(defn- public-cards-timeline-events
+  "A map of card id -> the timeline events that card shows publicly, in timestamp order, for each of the saved `cards`.
+  Events carry only the columns safe to expose publicly."
+  [cards]
+  (let [events (public-timeline-events (into #{} (mapcat public-card-timeline-ids) cards))]
+    (into {} (map (juxt :id #(card-timeline-events % events))) cards)))
+
 (defn- public-dashcards
   [dashcards]
-  (let [events (public-timeline-events (into #{} (mapcat public-dashcard-timeline-ids) dashcards))]
+  (let [shows-events? (complement queries/dashcard-hides-card-events?)
+        card-events   (public-cards-timeline-events (into [] (comp (filter shows-events?) (keep :card)) dashcards))]
     (for [dashcard dashcards]
       (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id
                                  :size_y :parameter_mappings :visualization_settings :action :inline_parameters])
-          (assoc :timeline_events (public-dashcard-timeline-events dashcard events))
+          (assoc :timeline_events (if (shows-events? dashcard)
+                                    (get card-events (-> dashcard :card :id) [])
+                                    []))
           (update :card remove-card-non-public-columns)
           (update :series (fn [series]
                             (for [series series]
@@ -851,9 +860,10 @@
 
   We filter out collection_id, creator_id, public_uuid, and other sensitive fields to prevent unauthenticated users
   from discovering internal organizational structure, permissions boundaries, or who created the document. Only the
-  document content itself, basic metadata, and embedded cards are safe to expose publicly."
+  document content itself, basic metadata, embedded cards, and the events those cards show are safe to expose
+  publicly."
   [document]
-  (select-keys document [:id :name :document :created_at :updated_at :cards]))
+  (select-keys document [:id :name :document :created_at :updated_at :cards :card_timeline_events]))
 
 (defn- public-document
   "Fetch a public document with all embedded cards hydrated upfront.
@@ -866,11 +876,12 @@
   (let [document     (-> (api/check-404 (public-sharing-rest.db/public-document document-id))
                          ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
                          (t2/hydrate :cards))
-        embedded-ids (set (prose-mirror/card-ids document))]
+        embedded-ids (set (prose-mirror/card-ids document))
+        cards        (select-keys (:cards document) embedded-ids)]
     (-> document
         ;; Filter sensitive fields from all cards before exposing publicly
-        (update :cards #(-> (select-keys % embedded-ids)
-                            (update-vals remove-card-non-public-columns)))
+        (assoc :cards (update-vals cards remove-card-non-public-columns)
+               :card_timeline_events (public-cards-timeline-events (vals cards)))
         (dissoc :content_type)
         remove-document-non-public-columns)))
 
@@ -896,7 +907,8 @@
 
   Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).
   Includes all embedded Cards with their metadata hydrated so the frontend doesn't need to make separate
-  requests for each card — just like public Dashboards do."
+  requests for each card — just like public Dashboards do — and, under `:card_timeline_events`, the timeline events
+  each Card shows, keyed by Card ID."
   [{:keys [uuid]} :- [:map {:closed true}
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)

@@ -2551,6 +2551,44 @@
 (defn- public-dashboard [dashboard]
   (mt/client :get 200 (str "public/dashboard/" (:public_uuid dashboard))))
 
+(deftest public-cards-timeline-events-test
+  (mt/with-temp [:model/Timeline timeline {}
+                 :model/Timeline unrelated {}
+                 :model/Timeline archived {:archived true}
+                 :model/Timeline deleted {}
+                 :model/TimelineEvent event {:timeline_id (:id timeline)}
+                 :model/TimelineEvent excluded {:timeline_id (:id timeline)}
+                 :model/TimelineEvent _archived-event {:timeline_id (:id timeline) :archived true}
+                 :model/TimelineEvent _unrelated-event {:timeline_id (:id unrelated)}
+                 :model/TimelineEvent _on-archived {:timeline_id (:id archived)}
+                 :model/Card selecting {:display "line"
+                                        :visualization_settings
+                                        {:timeline.selected_timeline_ids       [(:id timeline) (:id archived) (:id deleted)]
+                                         :timeline.excluded_timeline_event_ids [(:id excluded)]}}
+                 :model/Card unselected {:display "line"}
+                 :model/Card unsupported-display {:display "table"
+                                                  :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                 :model/Card disabled {:display "line"
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]
+                                                                :timeline_events.enabled        false}}
+                 :model/Card archived-card {:display "line"
+                                            :archived true
+                                            :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+    (t2/delete! :model/Timeline :id (:id deleted))
+    (let [cards       [selecting unselected unsupported-display disabled archived-card]
+          card-events (#'api.public/public-cards-timeline-events
+                       (t2/select :model/Card :id [:in (map :id cards)]))]
+      (testing "a card shows the non-archived events of its selected, non-archived timelines, minus its exclusions"
+        (is (= {(:id selecting)           [(:id event)]
+                (:id unselected)          []
+                (:id unsupported-display) []
+                (:id disabled)            []
+                (:id archived-card)       []}
+               (update-vals card-events #(mapv :id %)))))
+      (testing "events carry only the columns safe to expose publicly"
+        (is (= #{:id :timeline_id :name :description :icon :timestamp :timezone :time_matters :archived :created_at}
+               (set (keys (first (get card-events (:id selecting)))))))))))
+
 (deftest public-and-signed-dashboard-timeline-selections-test
   (let [secret (u.random/secure-hex 32)]
     (mt/with-temporary-setting-values [enable-public-sharing true
@@ -2559,21 +2597,14 @@
       (mt/with-temp [:model/Collection collection {}
                      :model/Timeline first-timeline  {:collection_id (:id collection)}
                      :model/Timeline second-timeline {:collection_id (:id collection)}
-                     :model/Timeline unrelated       {:collection_id (:id collection)}
-                     :model/Timeline archived        {:collection_id (:id collection) :archived true}
-                     :model/Timeline missing         {}
                      :model/TimelineEvent first-event  {:timeline_id (:id first-timeline)}
                      :model/TimelineEvent excluded     {:timeline_id (:id first-timeline)}
-                     :model/TimelineEvent _archived    {:timeline_id (:id first-timeline) :archived true}
                      :model/TimelineEvent second-event {:timeline_id (:id second-timeline)}
-                     :model/TimelineEvent _unrelated   {:timeline_id (:id unrelated)}
-                     :model/TimelineEvent _on-archived {:timeline_id (:id archived)}
                      :model/Dashboard dashboard (public-dashboard-properties)
                      :model/Card first-card
                      {:display "line"
                       :collection_id (:id collection)
-                      :visualization_settings {:timeline.selected_timeline_ids [(:id first-timeline)
-                                                                                (:id archived) (:id missing)]
+                      :visualization_settings {:timeline.selected_timeline_ids [(:id first-timeline)]
                                                :timeline.excluded_timeline_event_ids [(:id excluded)]}}
                      :model/Card second-card
                      {:display "line"
@@ -2587,7 +2618,6 @@
                      :model/DashboardCard unselected-dashcard {:dashboard_id (:id dashboard)
                                                                :card_id (:id unselected-card)}
                      :model/DashboardCard empty-dashcard {:dashboard_id (:id dashboard) :card_id (:id empty-card)}]
-        (t2/delete! :model/Timeline :id (:id missing))
         (perms/revoke-collection-permissions! (perms-group/all-users) collection)
         (let [token (jwt/sign {:resource {:dashboard (:id dashboard)} :params {}} secret)
               expected {(:id first-dashcard) [(:id first-event)]

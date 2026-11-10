@@ -2186,6 +2186,33 @@
         (is (= [] (get-in (t2/select-one :model/Card :id (:id card))
                           [:visualization_settings :timeline.selected_timeline_ids])))))))
 
+(deftest remove-unreadable-timelines-test
+  (mt/with-temp [:model/Collection restricted {}
+                 :model/Timeline readable {}
+                 :model/Timeline private {:collection_id (:id restricted)}
+                 :model/Timeline deleted {}]
+    (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+    (t2/delete! :model/Timeline :id (:id deleted))
+    (let [card     {:display                :line
+                    :visualization_settings {:timeline.selected_timeline_ids [(:id readable) (:id private) (:id deleted)]
+                                             :timeline.excluded_timeline_event_ids []
+                                             :graph.show_values                    true}}
+          selected #(get-in % [:visualization_settings :timeline.selected_timeline_ids])]
+      (testing "keeps only the timelines the current user can read, and every other setting"
+        (is (= (assoc-in card [:visualization_settings :timeline.selected_timeline_ids] [(:id readable)])
+               (mt/with-test-user :rasta (card/remove-unreadable-timelines card)))))
+      (testing "keeps every existing timeline for a user who can read them all"
+        (is (= [(:id readable) (:id private)]
+               (selected (mt/with-test-user :crowberto (card/remove-unreadable-timelines card))))))
+      (testing "drops malformed entries"
+        (is (= [(:id readable)]
+               (selected (mt/with-test-user :rasta
+                           (card/remove-unreadable-timelines
+                            (assoc-in card [:visualization_settings :timeline.selected_timeline_ids]
+                                      [(:id readable) (:id private) "oops"])))))))
+      (testing "leaves the card unchanged without a current user"
+        (is (= card (mt/with-current-user nil (card/remove-unreadable-timelines card))))))))
+
 (deftest skip-dimension-backfill-skips-only-upgrade-24-test
   (testing "card-schema/*skip-dimension-backfill?* skips the 24 dimension backfill and nothing else (#83937)"
     (mt/with-temp [:model/Card {card-id :id} {:type          :metric

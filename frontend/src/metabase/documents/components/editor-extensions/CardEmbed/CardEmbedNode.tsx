@@ -75,6 +75,8 @@ import { NativeQueryModal } from "./modals/NativeQueryModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
 
+const NO_TIMELINE_EVENTS: TimelineEvent[] = [];
+
 const STATIC_CARD_SORTS: ReadonlyArray<StoredResultSort> = [
   "value_asc",
   "value_desc",
@@ -305,6 +307,9 @@ export const CardEmbedComponent = memo(
         : undefined;
 
     const isExternalDocument = externalCardData != null;
+    const externalTimelineEvents = isExternalDocument
+      ? (externalCardData.timelineEvents[id] ?? NO_TIMELINE_EVENTS)
+      : undefined;
     const regularCardData = host.useCardData({
       id,
       skip: !shouldLoadData,
@@ -846,9 +851,20 @@ export const CardEmbedComponent = memo(
                           ? undefined
                           : handleUpdateVisualizationSettings
                       }
-                      onOpenTimelines={handleOpenTimelines}
-                      onSelectTimelineEvents={handleSelectTimelineEvents}
-                      onDeselectTimelineEvents={handleDeselectTimelineEvents}
+                      timelineEvents={externalTimelineEvents}
+                      onOpenTimelines={
+                        isExternalDocument ? undefined : handleOpenTimelines
+                      }
+                      onSelectTimelineEvents={
+                        isExternalDocument
+                          ? undefined
+                          : handleSelectTimelineEvents
+                      }
+                      onDeselectTimelineEvents={
+                        isExternalDocument
+                          ? undefined
+                          : handleDeselectTimelineEvents
+                      }
                       selectedTimelineEventIds={selectedTimelineEventIds}
                       getExtraDataForClick={() => ({})}
                       isEditing={false}

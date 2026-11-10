@@ -31,5 +31,7 @@
 
 (defmethod revision/revert-to-revision! :model/Document
   [model id user-id serialized-document]
+  ;; A revert points the document back at cards it already owns rather than copying any, so their timeline selections
+  ;; come back as saved, including timelines the reverting user cannot read.
   ((get-method revision/revert-to-revision! :default)
    model id user-id (apply dissoc serialized-document excluded-columns-for-document-revision)))

@@ -185,7 +185,7 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     H.timelineEventChip("Secret release").should("be.visible");
   });
 
-  it("should not show events on a public document", () => {
+  it("should show only saved events read-only on a public document for anonymous and signed-in viewers", () => {
     cy.get<CardId>("@questionId").then((id) => {
       H.createDocument({
         name: "Document with events",
@@ -206,7 +206,13 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     });
     H.visitPublicDocument("@documentId");
 
-    expectChartWithoutEvents();
+    expectSharedDocumentEvents();
+
+    cy.log("a signed-in viewer sees the same read-only events");
+    cy.signInAsAdmin();
+    cy.reload();
+
+    expectSharedDocumentEvents();
   });
 
   it("should not show events in a question embed preview", () => {
@@ -263,6 +269,12 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     cy.get("@previewTimelineRequests.all").should("have.length", 0);
   });
 });
+
+function expectSharedDocumentEvents() {
+  expectReadOnlyDashboardEvents();
+  cy.findByTestId("document-timeline-sidebar").should("not.exist");
+  cy.get("@getTimelines.all").should("have.length", 0);
+}
 
 function expectSharedDashboardEvents() {
   expectReadOnlyDashboardEvents();

@@ -124,9 +124,10 @@ export const PublicDocument = () => {
   const externalCardDataValue = useMemo(
     () => ({
       cards: document?.cards ?? {},
+      timelineEvents: document?.card_timeline_events ?? {},
       documentUuid: uuid,
     }),
-    [document?.cards, uuid],
+    [document?.cards, document?.card_timeline_events, uuid],
   );
 
   return (
