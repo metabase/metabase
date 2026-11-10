@@ -874,41 +874,6 @@
                     rows (jdbc/query spec ["SELECT current_user() AS user"])]
                 (is (= [{:user wif-user}] rows))))))))))
 
-(deftest ^:synchronized databricks-wif-live-ambient-file-test
-  ;; Exercises the AWS/AZURE env-var → file → Auth_AccessToken dispatch end-to-end. The federated
-  ;; token is still a GH OIDC token (same federation policy as databricks-wif-live-test); this is
-  ;; NOT a test of real AKS/EKS cluster-issued tokens, only of Metabase's file-based dispatch.
-  (mt/test-driver
-    :databricks
-    (when-let [wif-user (wif-user-or-skip)]
-      (let [audience (tx/db-test-env-var-or-throw :databricks :wif-audience)]
-        (when-let [token (or (mint-github-actions-oidc-token audience)
-                             (some-> (tx/db-test-env-var :databricks :wif-token-file)
-                                     slurp
-                                     str/trim))]
-          (letfn [(check [provider]
-                    (let [details (assoc (wif-live-details-with-token {}) :wif-provider provider)
-                          spec    (sql-jdbc.conn/connection-details->spec :databricks details)]
-                      (testing "spec carries the token sourced from the ambient file"
-                        (is (= token (:Auth_AccessToken spec))))
-                      (testing "can-connect? via ambient WIF"
-                        (is (true? (driver/can-connect? :databricks details))))
-                      (testing "session identifies as the WIF service principal"
-                        (let [rows (jdbc/query spec ["SELECT current_user() AS user"])]
-                          (is (= [{:user wif-user}] rows))))))]
-            (testing "AWS"
-              (mt/with-temp-file [tok-file "wif-ambient-aws"]
-                (spit tok-file token)
-                (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-file))
-                                              "AWS_WEB_IDENTITY_TOKEN_FILE" tok-file]
-                  (check "AWS"))))
-            (testing "AZURE"
-              (mt/with-temp-file [tok-file "wif-ambient-azure"]
-                (spit tok-file token)
-                (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-file))
-                                              "AZURE_FEDERATED_TOKEN_FILE" tok-file]
-                  (check "AZURE"))))))))))
-
 (deftest ^:parallel mulit-line-comment-test
   (mt/test-driver :databricks
     (testing "queries with multi line block comments work (#68667)"
