@@ -60,7 +60,7 @@ function getInitialRoute(page: Page) {
   }
 }
 
-const DEPRECATED_AGENT_API_LABEL = "Keep using the deprecated Agent API";
+const DEPRECATED_AGENT_API_LABEL = "Agent API (deprecated)";
 
 const deprecatedAgentApiSwitch = () =>
   screen.findByRole("switch", { name: DEPRECATED_AGENT_API_LABEL });
@@ -72,7 +72,6 @@ const getLastSettingUpdateCall = (settingKey: string) =>
 
 type SetupOpts = {
   aiFeaturesEnabled?: boolean;
-  agentApiEnabled?: boolean;
   deprecatedAgentApiEnabled?: boolean;
   deprecatedAgentApiEnvName?: string;
   enableEmbedding?: boolean;
@@ -88,7 +87,6 @@ type SetupOpts = {
 
 const setup = async ({
   aiFeaturesEnabled = true,
-  agentApiEnabled = true,
   deprecatedAgentApiEnabled = false,
   deprecatedAgentApiEnvName,
   enableEmbedding = false,
@@ -109,7 +107,6 @@ const setup = async ({
 
   const settings = createMockSettings({
     "ai-features-enabled?": aiFeaturesEnabled,
-    "agent-api-enabled?": agentApiEnabled,
     "deprecated-agent-api-enabled?": deprecatedAgentApiEnabled,
     "embedded-metabot-enabled?": true,
     "llm-metabot-configured?": isConfigured,
@@ -199,7 +196,9 @@ describe("AISettingsPage", () => {
     expect(screen.getByText("Metabot settings")).toBeInTheDocument();
     expect(screen.getByText("Enable Metabot")).toBeInTheDocument();
     expect(screen.queryByText("MCP server")).not.toBeInTheDocument();
-    expect(screen.queryByText("Agent API")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Agent API (deprecated)"),
+    ).not.toBeInTheDocument();
 
     expect(
       screen.getByText("Enable Metabot", {
@@ -237,7 +236,7 @@ describe("AISettingsPage", () => {
     await setup({ page: "mcp", isConfigured: false });
 
     expect(screen.getByRole("switch", { name: "MCP server" })).toBeEnabled();
-    expect(screen.getByRole("switch", { name: "Agent API" })).toBeEnabled();
+    expect(await deprecatedAgentApiSwitch()).toBeEnabled();
   });
 
   it.each([false, true])(
@@ -251,9 +250,7 @@ describe("AISettingsPage", () => {
           checked: deprecatedAgentApiEnabled,
         }),
       ).toBeInTheDocument();
-      expect(await deprecatedAgentApiSwitch()).toHaveAccessibleDescription(
-        /The Agent API is deprecated/,
-      );
+      expect(screen.getByText(/removed in Metabase 68/)).toBeInTheDocument();
     },
   );
 
@@ -281,20 +278,6 @@ describe("AISettingsPage", () => {
     ).toHaveTextContent("MB_DEPRECATED_AGENT_API_ENABLED");
     expect(toggle).toBeChecked();
     expect(toggle).toBeDisabled();
-    expect(toggle).toHaveAccessibleDescription(
-      /set by the MB_DEPRECATED_AGENT_API_ENABLED environment variable/,
-    );
-  });
-
-  it("hides the deprecated Agent API opt-in while the Agent API is off", async () => {
-    await setup({ page: "mcp", agentApiEnabled: false });
-
-    expect(
-      await screen.findByRole("switch", { name: "Agent API" }),
-    ).not.toBeChecked();
-    expect(
-      screen.queryByRole("switch", { name: DEPRECATED_AGENT_API_LABEL }),
-    ).not.toBeInTheDocument();
   });
 
   it("disables MCP settings when all AI features are disabled", async () => {
@@ -305,7 +288,7 @@ describe("AISettingsPage", () => {
         selector: '[aria-disabled="true"] *',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("switch", { name: "Agent API" })).toBeDisabled();
+    expect(await deprecatedAgentApiSwitch()).toBeDisabled();
   });
 
   it.each([FIXED_METABOT_ENTITY_IDS.EMBEDDED, "2"])(

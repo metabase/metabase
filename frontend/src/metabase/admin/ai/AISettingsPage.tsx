@@ -1,4 +1,4 @@
-import { type ReactNode, useId } from "react";
+import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -20,11 +20,10 @@ import {
   useSettingSwitch,
 } from "metabase/settings";
 import {
-  SettingHeader,
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/settings-components";
-import { Box, Divider, Flex, Stack, Switch, Tabs, Text } from "metabase/ui";
+import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIModelSettingsSection } from "./AIModelSettingsSection";
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
@@ -41,7 +40,6 @@ const MODELS_SECTION_ID = "models";
 const METABOT_SECTION_ID = "metabot";
 const MCP_SECTION_ID = "mcp";
 const AGENT_API_SECTION_ID = "agent-api";
-const DEPRECATED_AGENT_API_SETTING_ID = "deprecated-agent-api";
 const AI_FEATURES_ENABLED_SECTION_ID = "ai-features-enabled";
 const METABOT_SETTINGS_PATH = "/admin/metabot";
 const METABOT_ID_QUERY_PARAM = "metabot_id";
@@ -125,88 +123,27 @@ export function McpSettingsPage() {
 }
 
 function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
-  const {
-    value: agentApiEnabledValue,
-    updateSetting: updateAgentApiSetting,
-    isLoading: isUpdatingAgentApi,
-  } = useAdminSetting("agent-api-enabled?");
-  const isAgentApiEnabled = agentApiEnabledValue !== false;
-
+  const { checked, envName, isBusy, onChange } = useSettingSwitch(
+    "deprecated-agent-api-enabled?",
+  );
   const { url: agentApiDocsUrl } = useDocsUrl("ai/agent-api");
-
-  const handleAgentApiChange = async (checked: boolean) => {
-    await updateAgentApiSetting({
-      key: "agent-api-enabled?",
-      value: checked,
-    });
-  };
+  const isSetByEnv = envName != null;
 
   return (
     <ToggleSettingsSection
-      checked={isAgentApiEnabled}
-      description={jt`Enable external access to the Agent API. ${(
+      checked={checked}
+      description={jt`The Agent API is deprecated and will be removed in Metabase 68. Use the MCP server for your agents instead. Until then the Agent API is opt-in: turn it on to keep using it. ${(
         <ExternalLink key="docs" href={agentApiDocsUrl}>
           {t`Learn more`}
         </ExternalLink>
       )}`}
-      disabled={disabled || isUpdatingAgentApi}
+      disabled={disabled || isSetByEnv || isBusy}
       id={AGENT_API_SECTION_ID}
-      onChange={handleAgentApiChange}
-      title={t`Agent API`}
+      onChange={onChange}
+      title={t`Agent API (deprecated)`}
     >
-      {isAgentApiEnabled && <DeprecatedAgentApiToggle />}
+      {isSetByEnv && <SetByEnvVar varName={envName} />}
     </ToggleSettingsSection>
-  );
-}
-
-function DeprecatedAgentApiToggle() {
-  const { checked, envName, isBusy, onChange } = useSettingSwitch(
-    "deprecated-agent-api-enabled?",
-  );
-  const label = t`Keep using the deprecated Agent API`;
-  const isSetByEnv = envName != null;
-  const descriptionId = useId();
-  const envMessageId = useId();
-
-  return (
-    <Box>
-      <SettingHeader
-        id={DEPRECATED_AGENT_API_SETTING_ID}
-        title={t`Deprecation`}
-        description={
-          <span id={descriptionId}>
-            {t`The Agent API is deprecated and will be removed in a future version. It's off by default. Turn this on to keep using it until then.`}
-          </span>
-        }
-      />
-      <Flex align="center" gap="lg" mt="lg">
-        <Switch
-          id={DEPRECATED_AGENT_API_SETTING_ID}
-          aria-label={label}
-          aria-describedby={
-            isSetByEnv ? `${descriptionId} ${envMessageId}` : descriptionId
-          }
-          checked={checked}
-          disabled={isSetByEnv}
-          // aria-disabled, not disabled, so focus stays on the switch during a write
-          aria-disabled={isBusy || undefined}
-          onChange={(e) => {
-            if (!isBusy) {
-              onChange(e.target.checked);
-            }
-          }}
-          w="auto"
-        />
-        <Text c={checked ? "text-primary" : "text-secondary"} fw="500">
-          {label}
-        </Text>
-      </Flex>
-      {isSetByEnv && (
-        <Box id={envMessageId}>
-          <SetByEnvVar varName={envName} />
-        </Box>
-      )}
-    </Box>
   );
 }
 

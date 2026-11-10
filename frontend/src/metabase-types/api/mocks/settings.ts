@@ -390,7 +390,6 @@ export const createMockSettings = (
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
   "ai-features-enabled?": true,
-  "agent-api-enabled?": true,
   "metabot-enabled?": true,
   "metabot-name": "Metabot",
   "metabot-icon": "metabot",

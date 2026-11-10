@@ -121,7 +121,6 @@ export const createMockMcpToolPermissionsResponse = (
  */
 export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "admin-email",
-  "agent-api-enabled?",
   "ai-features-enabled?",
   "airgap-enabled",
   "allowed-iframe-hosts",
