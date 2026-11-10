@@ -8,7 +8,8 @@
 (defn- synced?
   "Whether the row of `model` with `pk` is synced."
   [model pk]
-  (t2/exists? model {:where [:and [:= :id pk] [:in :id (remote-sync/synced-ids-clause model)]]}))
+  (let [pk-column (first (t2/primary-keys model))]
+    (t2/exists? model {:where [:and [:= pk-column pk] [:in pk-column (remote-sync/synced-ids-clause model nil)]]})))
 
 (deftest synced-models-test
   (testing "content models define which of their rows are synced"
@@ -69,3 +70,76 @@
   (testing "changes show under the collection of their row, and a collection's under itself"
     (is (= 2 (remote-sync/synced-collection-id :model/Card {:id 1 :collection_id 2})))
     (is (= 1 (remote-sync/synced-collection-id :model/Collection {:id 1 :location "/"})))))
+
+(deftest synced-rows-per-model-test
+  (mt/with-temp [:model/Collection        synced          {:name "Synced" :is_remote_synced true :location "/"}
+                 :model/Collection        unsynced        {:name "Unsynced" :location "/"}
+                 :model/Table             synced-table    {:db_id (mt/id) :name "synced_table"}
+                 :model/Table             unsynced-table  {:db_id (mt/id) :name "unsynced_table"}
+                 :model/TableUserSettings _               {:table_id      (:id synced-table)
+                                                           :is_published  true
+                                                           :collection_id (:id synced)}
+                 :model/TableUserSettings _               {:table_id      (:id unsynced-table)
+                                                           :is_published  true
+                                                           :collection_id (:id unsynced)}
+                 :model/Field             synced-field    {:table_id (:id synced-table) :name "SYNCED"}
+                 :model/Field             unsynced-field  {:table_id (:id unsynced-table) :name "UNSYNCED"}
+                 :model/FieldUserSettings _               {:field_id (:id synced-field) :display_name "Synced"}
+                 :model/FieldUserSettings _               {:field_id (:id unsynced-field) :display_name "Unsynced"}
+                 :model/Segment           synced-seg      {:table_id (:id synced-table) :name "Synced segment"}
+                 :model/Segment           unsynced-seg    {:table_id (:id unsynced-table) :name "Unsynced segment"}
+                 :model/Measure           synced-measure  {:table_id (:id synced-table) :name "Synced measure"}
+                 :model/Measure           unsynced-measure {:table_id (:id unsynced-table) :name "Unsynced measure"}
+                 :model/Document          synced-doc      {:name "Synced" :collection_id (:id synced)}
+                 :model/Document          unsynced-doc    {:name "Unsynced" :collection_id (:id unsynced)}
+                 :model/Timeline          synced-tl       {:name "Synced" :collection_id (:id synced)}
+                 :model/Timeline          unsynced-tl     {:name "Unsynced" :collection_id (:id unsynced)}
+                 :model/TimelineEvent     synced-event    {:timeline_id (:id synced-tl)}
+                 :model/TimelineEvent     unsynced-event  {:timeline_id (:id unsynced-tl)}
+                 :model/Dashboard         synced-dash     {:collection_id (:id synced)}
+                 :model/Dashboard         unsynced-dash   {:collection_id (:id unsynced)}
+                 :model/DashboardTab      synced-tab      {:dashboard_id (:id synced-dash) :name "Synced" :position 0}
+                 :model/DashboardTab      unsynced-tab    {:dashboard_id (:id unsynced-dash) :name "Unsynced" :position 0}
+                 :model/Collection        actions-folder  {:name "Actions" :namespace "data-actions" :location "/"}
+                 :model/Card              unsynced-model  {:type :model :collection_id (:id unsynced)}
+                 :model/Action            synced-action   {:name "Synced" :type :implicit :collection_id (:id actions-folder)}
+                 :model/Action            unsynced-action {:name "Unsynced" :type :implicit :model_id (:id unsynced-model)}
+                 :model/ImplicitAction    _               {:action_id (:id synced-action) :kind "row/create" :table_id (mt/id :venues)}
+                 :model/ImplicitAction    _               {:action_id (:id unsynced-action) :kind "row/create"}
+                 :model/Action            synced-query    {:name "Synced query" :type :query :collection_id (:id actions-folder)}
+                 :model/Action            unsynced-query  {:name "Unsynced query" :type :query :model_id (:id unsynced-model)}
+                 :model/QueryAction       _               {:action_id     (:id synced-query)
+                                                           :database_id   (mt/id)
+                                                           :dataset_query (mt/native-query {:query "SELECT 1"})}
+                 :model/QueryAction       _               {:action_id     (:id unsynced-query)
+                                                           :database_id   (mt/id)
+                                                           :dataset_query (mt/native-query {:query "SELECT 1"})}
+                 :model/PythonLibrary     library         {:path "synced" :source "def synced(): pass"}
+                 :model/DataApp           app             {}
+                 :model/Transform         transform       {}]
+    (doseq [[model synced-pk unsynced-pk] [[:model/TableUserSettings (:id synced-table) (:id unsynced-table)]
+                                           [:model/FieldUserSettings (:id synced-field) (:id unsynced-field)]
+                                           [:model/Segment (:id synced-seg) (:id unsynced-seg)]
+                                           [:model/Measure (:id synced-measure) (:id unsynced-measure)]
+                                           [:model/Document (:id synced-doc) (:id unsynced-doc)]
+                                           [:model/Timeline (:id synced-tl) (:id unsynced-tl)]
+                                           [:model/TimelineEvent (:id synced-event) (:id unsynced-event)]
+                                           [:model/DashboardTab (:id synced-tab) (:id unsynced-tab)]
+                                           [:model/Action (:id synced-action) (:id unsynced-action)]
+                                           [:model/ImplicitAction (:id synced-action) (:id unsynced-action)]
+                                           [:model/QueryAction (:id synced-query) (:id unsynced-query)]
+                                           [:model/PythonLibrary (:id library) nil]
+                                           [:model/DataApp (:id app) nil]]]
+      (testing (str model " syncs the rows of synced content, and not the others")
+        (is (synced? model synced-pk))
+        (when unsynced-pk
+          (is (not (synced? model unsynced-pk))))))
+    (mt/with-temp [:model/TableIndex    index {:transform_id (:id transform) :index_name "idx" :structured {:kind :btree :name "idx" :columns [{:name "id"}]}}
+                   :model/TransformTest test  {:transform_id (:id transform)
+                                               :name         "Test"
+                                               :creator_id   (mt/user->id :crowberto)
+                                               :inputs       []
+                                               :expectations []}]
+      (testing "the indexes and tests of a transform sync with it"
+        (is (synced? :model/TableIndex (:id index)))
+        (is (synced? :model/TransformTest (:id test)))))))
