@@ -13,8 +13,6 @@ import * as Urls from "metabase/urls";
 import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import type { FieldId, Table } from "metabase-types/api";
 
-import { SemanticReviewButton } from "../SemanticReview";
-
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableAttributesEditSingle } from "./TableAttributesEditSingle";
@@ -135,7 +133,6 @@ const TableSectionBase = ({
               table={table}
               activeFieldId={activeFieldId}
               getFieldHref={getFieldHref}
-              actions={!readOnly && <SemanticReviewButton table={table} />}
             />
           </Tabs.Panel>
 

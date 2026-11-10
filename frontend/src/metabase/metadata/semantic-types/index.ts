@@ -43,8 +43,6 @@ export {
   SEMANTIC_TYPES_STORAGE_KEY,
   type SemanticTable,
   type SemanticTypesUpdate,
-  useSchemaSuggestions,
   useSemanticTypes,
   useTableSemantics,
 } from "./semantic-types";
-export { type Suggestion, getSuggestions } from "./review";

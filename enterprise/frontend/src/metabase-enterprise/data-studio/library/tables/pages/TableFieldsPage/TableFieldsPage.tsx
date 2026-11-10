@@ -11,7 +11,6 @@ import {
   FieldActionsMenu,
   FieldDetails,
 } from "metabase/data-studio/data-model/pages/DataModel/FieldDetailsPanel";
-import { SemanticReviewButton } from "metabase/data-studio/data-model/pages/DataModel/SemanticReview";
 import { TableFieldsTab } from "metabase/data-studio/data-model/pages/DataModel/TableSection/TableFieldsTab";
 import {
   FieldEmptyState,
@@ -87,15 +86,12 @@ export function TableFieldsPage() {
               Urls.dataStudioTableFields(tableId, fieldId)
             }
             actions={
-              <>
-                {table.can_write && <SemanticReviewButton table={table} />}
-                {!table.db?.is_attached_dwh && (
-                  <Button
-                    leftSection={<Icon name="gear_settings_filled" />}
-                    onClick={openSyncModal}
-                  >{t`Sync options`}</Button>
-                )}
-              </>
+              !table.db?.is_attached_dwh && (
+                <Button
+                  leftSection={<Icon name="gear_settings_filled" />}
+                  onClick={openSyncModal}
+                >{t`Sync options`}</Button>
+              )
             }
           />
         </Stack>
