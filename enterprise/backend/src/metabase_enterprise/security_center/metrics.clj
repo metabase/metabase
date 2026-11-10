@@ -9,6 +9,8 @@
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.initialization-status.core :as init-status]
+   [metabase.premium-features.core :as premium-features]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.util.log :as log])
   (:import
@@ -104,3 +106,17 @@
     (catch Exception e
       (log/warnf "Failed to set :metabase-security-center/health-checks-last-run-timestamp-seconds metric: %s"
                  (ex-message e)))))
+
+(defn- refresh-health-check-gauges!
+  []
+  (when (and (init-status/complete?)
+             (premium-features/security-center-enabled?))
+    (set-health-check-gauges! (health-checks/run-checks))
+    (set-health-checks-last-run!)))
+
+;; The gauges live in each process, and a restart clears them. The job and the endpoints set them only on the process
+;; that ran them. A scrape reaches every process, so each one sets its own series from the stored results.
+;; `run-checks` does no slow work: a background check reads its stored result.
+(defmethod analytics.core/pull-collector ::health-check-gauges [_]
+  {:min-interval-s 300
+   :f              refresh-health-check-gauges!})

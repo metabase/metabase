@@ -2,9 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.metrics :as metrics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.initialization-status.core :as init-status]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -161,3 +164,40 @@
             (metrics/set-health-checks-last-run!)
             (is (= 1793966400.0
                    (mt/metric-value system :metabase-security-center/health-checks-last-run-timestamp-seconds)))))))))
+
+(def ^:private stored-results
+  {:read-only-connections {:result {:databases []}, :checked_at "2026-11-06T10:00:00Z"}})
+
+(defn- run-health-check-collector!
+  [& {:keys [complete? enabled?]}]
+  (mt/with-dynamic-fn-redefs [init-status/complete?                     (constantly complete?)
+                              premium-features/security-center-enabled? (constantly enabled?)]
+    ((:f (analytics.core/pull-collector ::metrics/health-check-gauges)))))
+
+(deftest health-check-gauges-pull-collector-test
+  (testing "runs at most once every 5 minutes"
+    (is (= 300 (:min-interval-s (analytics.core/pull-collector ::metrics/health-check-gauges)))))
+  (mt/with-premium-features #{:admin-security-center}
+    (mt/with-temporary-setting-values [security-center-health-check-results stored-results]
+      (let [status-gauge   #(mt/metric-value % :metabase-security-center/health-checks
+                                             {:check_id "read-only-connections", :severity "high", :status "pass"})
+            last-run-gauge #(mt/metric-value % :metabase-security-center/health-checks-last-run-timestamp-seconds)]
+        (testing "sets the status gauge and the last-run gauge from the stored result, and refreshes nothing"
+          (let [refreshes (atom 0)]
+            ;; the refresh of read-only-connections starts with this query
+            (mt/with-dynamic-fn-redefs [security-center.db/databases-with-details #(do (swap! refreshes inc) [])]
+              (mt/with-prometheus-system! [_ system]
+                (run-health-check-collector! :complete? true, :enabled? true)
+                (is (= 1.0 (status-gauge system)))
+                (is (= 1793959200.0 (last-run-gauge system)))
+                (is (zero? @refreshes))))))
+        (testing "sets nothing before the initialization is complete"
+          (mt/with-prometheus-system! [_ system]
+            (run-health-check-collector! :complete? false, :enabled? true)
+            (is (= 0.0 (status-gauge system)))
+            (is (= 0.0 (last-run-gauge system)))))
+        (testing "sets nothing when Security Center is off"
+          (mt/with-prometheus-system! [_ system]
+            (run-health-check-collector! :complete? true, :enabled? false)
+            (is (= 0.0 (status-gauge system)))
+            (is (= 0.0 (last-run-gauge system)))))))))

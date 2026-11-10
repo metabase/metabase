@@ -4682,6 +4682,7 @@
            app-db
            audit-app
            channel
+           core.initialization-status
            database-routing
            driver
            events
@@ -4693,7 +4694,6 @@
            security-center
            session
            settings
-           startup
            system
            task
            util
