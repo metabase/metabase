@@ -90,8 +90,11 @@ export function getCreatedCollectionUrl(collection: Collection): string {
       expandedIds: expandedIds.slice(LIBRARY_SECTION_FOLDER_DEPTH),
     });
   }
+  if (collection.type === "library-metrics") {
+    return Urls.dataStudioMetrics({ expandedIds });
+  }
   if (PLUGIN_LIBRARY.isLibraryCollectionType(collection.type)) {
-    return Urls.dataStudioLibrary({ expandedIds });
+    return Urls.dataStudioPublishedData({ expandedIds });
   }
   return Urls.collection(collection);
 }

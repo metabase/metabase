@@ -41,7 +41,7 @@ export function TableHeader({ table, ...rest }: TableHeaderProps) {
             {path?.map((collection, i) => (
               <Link
                 key={collection.id}
-                to={Urls.dataStudioLibrary({
+                to={Urls.dataStudioPublishedData({
                   expandedIds: path.slice(1, i + 1).map((c) => c.id),
                 })}
               >

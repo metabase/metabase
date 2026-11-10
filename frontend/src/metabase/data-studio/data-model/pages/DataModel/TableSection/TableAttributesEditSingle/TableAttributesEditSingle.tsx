@@ -19,7 +19,6 @@ import * as Urls from "metabase/urls";
 import type { Table, TableDataSource, UserId } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
-import { TableRowNounRow, TableSubjectRow } from "../TableSubject";
 
 import S from "./TableAttributesEditSingle.module.css";
 
@@ -142,12 +141,6 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
         />
 
         <TableDataLayerRow table={table} disabled={readOnly} />
-
-        <TableSubjectRow table={table} disabled={readOnly} />
-
-        <TableRowNounRow table={table} disabled={readOnly} form="singular" />
-
-        <TableRowNounRow table={table} disabled={readOnly} form="plural" />
 
         <DetailsRow
           label={t`Source`}

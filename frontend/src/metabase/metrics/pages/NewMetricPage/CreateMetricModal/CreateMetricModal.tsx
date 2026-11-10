@@ -30,7 +30,8 @@ interface CreateMetricModalProps {
   query: Lib.Query;
   defaultValues: Partial<NewMetricValues>;
   triggeredFrom: "data_studio" | "main_app";
-  onCreate: (card: Card) => void;
+  /** The form keeps its saving state until a returned promise settles */
+  onCreate: (card: Card) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -78,7 +79,7 @@ function CreateMetricForm({
       const request = getCreateRequest(query, values);
       const card = await createCard(request).unwrap();
       trackMetricCreated("success", triggeredFrom, card.id);
-      onCreate(card);
+      await onCreate(card);
     } catch (error) {
       trackMetricCreated("failure", triggeredFrom, null);
       throw error;

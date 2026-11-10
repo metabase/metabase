@@ -7,11 +7,7 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import {
-  DataSourceInput,
-  EntityTypeInput,
-  UserInput,
-} from "metabase/metadata/components";
+import { DataSourceInput, UserInput } from "metabase/metadata/components";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   Box,
@@ -31,6 +27,7 @@ import type { Table, TableDataSource, UserId } from "metabase-types/api";
 import { PublishingInfo } from "../PublishingInfo";
 
 import S from "./DescriptionSection.module.css";
+import { SubjectSection } from "./SubjectSection";
 
 type DescriptionSectionProps = {
   table: Table;
@@ -87,25 +84,6 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
     }
   };
 
-  const handleEntityTypeChange = async (entityType: Table["entity_type"]) => {
-    const { error } = await updateTable({
-      id: table.id,
-      entity_type: entityType,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update entity type`);
-    } else {
-      sendSuccessToast(t`Entity type updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          entity_type: table.entity_type,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
   const handleOwnerEmailChange = async (email: string | null) => {
     const { error } = await updateTable({
       id: table.id,
@@ -156,23 +134,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
 
   return (
     <Stack gap={0} align="stretch" data-testid="table-description-sidebar">
-      {/* Entity Type Selector */}
-      <Flex justify="space-between" align="center" px="xl" py="lg">
-        <Text size="md" c="text-secondary">
-          {t`Entity type`}
-        </Text>
-        <EntityTypeInput
-          value={table.entity_type ?? "entity/GenericTable"}
-          label={null}
-          onChange={handleEntityTypeChange}
-          classNames={{
-            input: S.input,
-            label: S.label,
-            section: table.entity_type ? S.sectionLabel : "",
-          }}
-          className={S.gridLabelInput}
-        />
-      </Flex>
+      <SubjectSection table={table} />
 
       <Divider />
 

@@ -131,7 +131,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           {PLUGIN_LIBRARY.isEnabled ? (
             PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
           ) : (
-            <Route path="library" lazy={libraryUpsellPage} />
+            <Route path="library/*" lazy={libraryUpsellPage} />
           )}
           {PLUGIN_LIBRARY.isEnabled ? (
             PLUGIN_LIBRARY.getDataStudioDashboardRoutes()
@@ -221,5 +221,5 @@ function getIndexPath(state: State) {
   if (canAccessTransforms(state)) {
     return Urls.transformList();
   }
-  return Urls.dataStudioLibrary();
+  return Urls.dataStudioPublishedData();
 }

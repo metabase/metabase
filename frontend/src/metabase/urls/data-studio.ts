@@ -111,8 +111,20 @@ function getExpandedIdsQueryString({ expandedIds }: ExpandedIdsParams) {
   return `?${params.toString()}`;
 }
 
-export function dataStudioLibrary(params: ExpandedIdsParams = {}) {
-  return `${ROOT_URL}/library${getExpandedIdsQueryString(params)}`;
+export function dataStudioLibrary() {
+  return `${ROOT_URL}/library`;
+}
+
+export function dataStudioPublishedData(params: ExpandedIdsParams = {}) {
+  return `${dataStudioLibrary()}/tables${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioSuggestedTables() {
+  return `${dataStudioLibrary()}/tables/suggested`;
+}
+
+export function dataStudioMetrics(params: ExpandedIdsParams = {}) {
+  return `${dataStudioLibrary()}/metrics${getExpandedIdsQueryString(params)}`;
 }
 
 export function dataStudioSnippets(params: ExpandedIdsParams = {}) {

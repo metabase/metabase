@@ -7,6 +7,7 @@ import { useSelector } from "metabase/redux";
 import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { useHasDataSubfolders } from "../../../../hooks/use-has-data-subfolders";
 import type { TableModalState, TableModalTable } from "../../TableModal";
 
 export type TableMoreMenuProps = {
@@ -18,6 +19,9 @@ export function TableMoreMenu({ table, onOpenModal }: TableMoreMenuProps) {
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  // Tables only live in the Data folder and its subfolders: with no
+  // subfolders there's nowhere to move them
+  const { hasSubfolders } = useHasDataSubfolders();
 
   const dbId = "db_id" in table ? table.db_id : table.database_id;
 
@@ -49,16 +53,18 @@ export function TableMoreMenu({ table, onOpenModal }: TableMoreMenuProps) {
           )}
           {!remoteSyncReadOnly && (
             <>
-              <Menu.Item
-                leftSection={<Icon name="move" />}
-                onClick={(event) => {
-                  onOpenModal({ type: "move", table });
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-              >
-                {t`Move`}
-              </Menu.Item>
+              {hasSubfolders && (
+                <Menu.Item
+                  leftSection={<Icon name="move" />}
+                  onClick={(event) => {
+                    onOpenModal({ type: "move", table });
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  {t`Move`}
+                </Menu.Item>
+              )}
               <Menu.Item
                 leftSection={<Icon name="unpublish" />}
                 onClick={(event) => {
