@@ -932,8 +932,8 @@
         requests             (atom [])]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
-      (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
-                                  metabot-search/search (constantly [])
+      (mt/with-dynamic-fn-redefs [profiles/get-profile           (comp #(assoc % :max-iterations 2) get-profile)
+                                  metabot-search/search-by-query (constantly [])
                                   snippets/list-native-query-snippets
                                   (constantly [])
                                   openrouter/openrouter (fn [request]
@@ -1456,7 +1456,7 @@
                                                                  :arguments {:query "orders"}}])
                                                               (do (reset! next-input input)
                                                                   (mut/mock-llm-response [{:type :text :text "Found it."}]))))
-                                    metabot-search/search (constantly [])]
+                                    metabot-search/search-by-query (constantly [])]
           (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
                             :state      {}
                             :profile-id :internal
@@ -1487,7 +1487,7 @@
                                                                {:type :tool-input-available :toolCallId "call-1" :toolName "search"}]
                                                               (do (reset! next-input input)
                                                                   (mut/mock-llm-response [{:type :text :text "Found it."}]))))
-                                    metabot-search/search (constantly [])]
+                                    metabot-search/search-by-query (constantly [])]
           (run-agent-loop! {:messages   [{:role :user :content "Show me orders"}]
                             :state      {}
                             :profile-id :internal
