@@ -10,7 +10,6 @@ import { hasActiveSnippet } from "metabase/querying/components/expressions/Edito
 type Handlers = {
   onSubmit: () => void;
   onCancel: () => void;
-  onNavigate: (direction: "backward" | "forward") => boolean;
 };
 
 export function useFormulaKeymap(handlers: Handlers) {
@@ -23,7 +22,7 @@ export function useFormulaKeymap(handlers: Handlers) {
         transaction.newDoc.lines > 1 ? [] : transaction,
       ),
       EditorView.contentAttributes.of({ "aria-label": t`Formula` }),
-      // DOM handlers give formula navigation priority over the editor's Tab keymaps.
+      // DOM handlers cancel empty formulas before the editor's Tab keymaps.
       Prec.highest(
         EditorView.domEventHandlers({
           keydown: (event, view) => {
@@ -42,13 +41,7 @@ export function useFormulaKeymap(handlers: Handlers) {
               latest.current.onCancel();
               return true;
             }
-            const handled = latest.current.onNavigate(
-              event.shiftKey ? "backward" : "forward",
-            );
-            if (handled) {
-              event.preventDefault();
-            }
-            return handled;
+            return false;
           },
         }),
       ),

@@ -22,14 +22,11 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     stageIndex,
     database,
     expressionMode,
-    initialClause,
     initialSource,
-    initialName = "",
     onEditorCreate,
     onNameChange,
     onSubmit,
     onCancel,
-    onNavigate,
   } = props;
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const availableColumns = useMemo(
@@ -43,17 +40,13 @@ export function useFormulaEditor(props: FormulaEditorProps) {
         : undefined,
     [query, stageIndex, expressionMode],
   );
-  const { source, hasTyped, handleChange, handleCreate } = useFormulaSource({
-    query,
-    stageIndex,
-    initialClause,
+  const { source, handleChange, handleCreate } = useFormulaSource({
     initialSource,
-    availableColumns,
     onEditorCreate,
     onChange: () => setErrorMessage(null),
   });
   const hasFormula = source.trim().length > 0;
-  const formulaName = initialName.trim() || getDefaultFormulaName(source);
+  const formulaName = getDefaultFormulaName(source);
   const liveName = hasFormula ? formulaName : "";
   const nameChangeRef = useLatest(onNameChange);
   useEffect(() => {
@@ -88,20 +81,9 @@ export function useFormulaEditor(props: FormulaEditorProps) {
       onSubmit(expression);
     }
   };
-  const handleNavigate = (direction: "backward" | "forward") => {
-    if (!onNavigate) {
-      return false;
-    }
-    if (!hasTyped.current) {
-      return onNavigate(direction, null);
-    }
-    const expression = getExpression();
-    return expression === null || onNavigate(direction, expression);
-  };
   const keys = useFormulaKeymap({
     onSubmit: handleSubmit,
     onCancel,
-    onNavigate: handleNavigate,
   });
   const [completionTooltip, completionTooltipPortal] = useCustomTooltip({
     getPosition: getTooltipPosition,

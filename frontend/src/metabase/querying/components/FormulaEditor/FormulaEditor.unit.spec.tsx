@@ -3,7 +3,6 @@ import type { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { format } from "metabase/querying/expressions";
 import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import {
@@ -17,14 +16,9 @@ import type { FormulaEditorProps, NamedExpression } from "./types";
 
 jest.unmock("@uiw/react-codemirror");
 
-type SetupOpts = Partial<
-  Pick<
-    FormulaEditorProps,
-    "initialSource" | "initialName" | "initialClause" | "onEditorCreate"
-  >
->;
+type SetupOpts = Pick<FormulaEditorProps, "initialSource">;
 
-async function setup({ onEditorCreate: onCreate, ...options }: SetupOpts = {}) {
+async function setup(options: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const onSubmit = jest.fn<void, [NamedExpression]>();
   const onCancel = jest.fn<void, []>();
@@ -39,14 +33,13 @@ async function setup({ onEditorCreate: onCreate, ...options }: SetupOpts = {}) {
       onSubmit={onSubmit}
       onCancel={onCancel}
       onEditorCreate={(view) => {
-        onCreate?.(view);
         created.resolve(view);
       }}
       {...options}
     />,
   );
   const view = await created.promise;
-  return { view, query, onSubmit, onCancel };
+  return { view, onSubmit, onCancel };
 }
 
 async function replaceFormula(view: EditorView, source: string) {
@@ -79,19 +72,6 @@ describe("FormulaEditor", () => {
     expect(screen.getByRole("button", { name: "Add column" })).toBeDisabled();
   });
 
-  it("preserves an existing name after editing the formula", async () => {
-    const { view, onSubmit } = await setup({
-      initialName: "Adjusted total",
-      initialClause: Lib.expressionClause("+", [1, 2]),
-    });
-    await waitFor(() => expect(view.state.doc.toString()).toBe("1 + 2"));
-    expect(view.state.selection.main.head).toBe(view.state.doc.length);
-    await replaceFormula(view, "1 + 3");
-    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onSubmit.mock.calls[0]?.[0].name).toBe("Adjusted total");
-  });
-
   it("keeps invalid formulas open and clears the error after an edit", async () => {
     const { view, onSubmit } = await setup({ initialSource: "1 +" });
     await userEvent.click(screen.getByRole("button", { name: "Add column" }));
@@ -102,29 +82,6 @@ describe("FormulaEditor", () => {
     await userEvent.click(screen.getByRole("textbox", { name: "Formula" }));
     await userEvent.keyboard("{Enter}");
     expect(onSubmit).toHaveBeenCalledTimes(1);
-  });
-
-  it("preserves text entered before the initial formula finishes formatting", async () => {
-    const initialClause = Lib.expressionClause("+", [1, 2]);
-    const { view, query } = await setup({
-      initialClause,
-      onEditorCreate: (view) => {
-        view.dispatch({
-          changes: { from: 0, insert: "3 + 4" },
-          selection: { anchor: 5 },
-          userEvent: "input.type",
-        });
-      },
-    });
-    await act(async () => {
-      await format(initialClause, {
-        query,
-        stageIndex: -1,
-        availableColumns: Lib.expressionableColumns(query, -1),
-      });
-    });
-    expect(view.state.doc.toString()).toBe("3 + 4");
-    expect(view.state.selection.main.head).toBe(5);
   });
 
   it.each(["/", "{Tab}", "{Shift>}{Tab}{/Shift}"])(
