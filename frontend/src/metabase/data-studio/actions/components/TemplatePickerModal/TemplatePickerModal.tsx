@@ -1,5 +1,13 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Icon, Modal, NavLink, ScrollArea, Stack, Tabs } from "metabase/ui";
+import {
+  Icon,
+  Modal,
+  NavLink,
+  ScrollArea,
+  Stack,
+  Tabs,
+  Text,
+} from "metabase/ui";
 
 export type TemplatePickerItem = {
   id: string;
@@ -55,8 +63,7 @@ export function TemplatePickerModal({
                   {category.items.map((item) => (
                     <NavLink
                       key={item.id}
-                      label={item.name}
-                      description={item.description}
+                      label={<TemplatePickerItemLabel item={item} />}
                       rightSection={<Icon name="chevronright" />}
                       onClick={() => onSelect(item.id)}
                     />
@@ -68,5 +75,20 @@ export function TemplatePickerModal({
         </Tabs>
       )}
     </Modal>
+  );
+}
+
+type TemplatePickerItemLabelProps = {
+  item: TemplatePickerItem;
+};
+
+function TemplatePickerItemLabel({ item }: TemplatePickerItemLabelProps) {
+  return (
+    <Stack gap="xs" py="xs">
+      <Text fw="bold">{item.name}</Text>
+      <Text size="sm" c="text-secondary">
+        {item.description}
+      </Text>
+    </Stack>
   );
 }

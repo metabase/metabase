@@ -44,7 +44,7 @@ export function ActionListPage() {
     error: databasesError,
   } = useActionDatabases();
   const isAdmin = useSelector(getUserIsAdmin);
-  const canCreate = isAdmin && canCreateActions(databases);
+  const canCreateDatabaseActions = canCreateActions(databases);
   const {
     tree,
     rootCollection,
@@ -74,7 +74,13 @@ export function ActionListPage() {
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
       emptyMessage={t`No actions yet`}
-      createMenu={canCreate && <ActionsCreateMenu />}
+      createMenu={
+        isAdmin && (
+          <ActionsCreateMenu
+            canCreateDatabaseActions={canCreateDatabaseActions}
+          />
+        )
+      }
       pageMenu={{
         label: t`Data action options`,
         actions: [
@@ -110,7 +116,13 @@ function ActionRowMenu({ item: { data }, onOpenModal }: ActionRowMenuProps) {
   return <CollectionRowMenu collection={data} onOpenModal={onOpenModal} />;
 }
 
-function ActionsCreateMenu() {
+type ActionsCreateMenuProps = {
+  canCreateDatabaseActions: boolean;
+};
+
+function ActionsCreateMenu({
+  canCreateDatabaseActions,
+}: ActionsCreateMenuProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
@@ -146,19 +158,23 @@ function ActionsCreateMenu() {
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{t`Create your action with…`}</Menu.Label>
-          <Menu.Item
-            leftSection={<FixedSizeIcon name="table2" />}
-            onClick={openPicker}
-          >
-            {t`Table`}
-          </Menu.Item>
-          <Menu.Item
-            component={ForwardRefLink}
-            to={Urls.newDataStudioAction("query")}
-            leftSection={<FixedSizeIcon name="sql" />}
-          >
-            {t`SQL query`}
-          </Menu.Item>
+          {canCreateDatabaseActions && (
+            <>
+              <Menu.Item
+                leftSection={<FixedSizeIcon name="table2" />}
+                onClick={openPicker}
+              >
+                {t`Table`}
+              </Menu.Item>
+              <Menu.Item
+                component={ForwardRefLink}
+                to={Urls.newDataStudioAction("query")}
+                leftSection={<FixedSizeIcon name="sql" />}
+              >
+                {t`SQL query`}
+              </Menu.Item>
+            </>
+          )}
           <Menu.Item
             component={ForwardRefLink}
             to={Urls.newDataStudioAction("http")}

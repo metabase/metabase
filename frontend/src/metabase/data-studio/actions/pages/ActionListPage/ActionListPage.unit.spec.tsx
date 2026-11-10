@@ -150,7 +150,7 @@ describe("ActionListPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not offer to create anything without an actions-enabled database, but still links to the archive", async () => {
+  it("offers only HTTP actions and collections without an actions-enabled database", async () => {
     setup({
       databases: [
         createMockDatabase({
@@ -160,20 +160,11 @@ describe("ActionListPage", () => {
       ],
     });
 
-    expect(await screen.findByText("No actions yet")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /New/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "New action" }),
-    ).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /New/ }));
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Data action options" }),
-    );
     expect(
-      screen.getByRole("menuitem", { name: /View archived actions/ }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["HTTP request", "Template", "Collection"]);
   });
 
   it.each([undefined, "read-only"] as const)(
