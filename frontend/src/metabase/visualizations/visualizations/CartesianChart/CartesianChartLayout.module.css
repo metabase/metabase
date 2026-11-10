@@ -1,0 +1,4 @@
+/* a class rule on purpose: other stylesheets zero it through the global CardVisualization class */
+.root {
+  padding: var(--cartesian-chart-padding);
+}

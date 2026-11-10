@@ -86,8 +86,8 @@
   (handle [_ {:keys [chart_id new_viz_settings title description]} _ctx]
     (let [new-viz (keyword (get new_viz_settings :chart_type))
           chart (get (shared/current-charts-state) chart_id)
-          query (or (first (:queries chart))
-                    (get (shared/current-queries-state) (:query_id chart)))
+          query (or (get (shared/current-queries-state) (:query_id chart))
+                    (first (:queries chart)))
 
           {:keys [new-chart-data result]}
           (edit-chart-tools/edit-chart

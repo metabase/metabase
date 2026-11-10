@@ -27,6 +27,8 @@
 
 (set! *warn-on-reflection* true)
 
+(events/derive! :event/field-update :metabase/event)
+
 (comment
   ;; idk why condo complains on this not being used when it is, in a keyword down there
   lib.schema.metadata/used)

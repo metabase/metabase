@@ -10,9 +10,9 @@
    [metabase-enterprise.serialization.v2.storage.files :as v2.storage.files]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features]
+   [metabase.serialization.core :as serialization]
    [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -52,8 +52,7 @@
   ;;(when-not (load/compatible? path)
   ;;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
-  (serdes/with-cache
-    (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
+  (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts))
 
 (mu/defn v2-load!
   "SerDes v2 load entry point.
@@ -71,7 +70,7 @@
                      (reset! err e))
                    (catch Exception e
                      (reset! err e)))
-        imported (into (sorted-set) (map (comp :model last)) (:seen report))]
+        imported (into (sorted-set) (map (comp name first)) (:seen report))]
     (analytics/track-event! :snowplow/serialization
                             {:event         :serialization
                              :direction     "import"
@@ -79,7 +78,7 @@
                              :duration_ms   (int (u/since-ms timer))
                              :models        (str/join "," imported)
                              :count         (if (contains? imported "Setting")
-                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                              (inc (count (remove #(= :model/Setting (first %)) (:seen report))))
                                               (count (:seen report)))
                              :error_count   (count (:errors report))
                              :success       (nil? @err)
@@ -107,9 +106,9 @@
         err    (atom nil)
         opts   (cond-> opts
                  (seq collection-ids)
-                 (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
+                 (assoc :targets (v2.extract/make-targets-of-type :model/Collection collection-ids)))
         report (try
-                 (serdes/with-cache
+                 (serialization/with-export-transaction
                    (-> (v2.extract/extract opts)
                        (v2.storage/store! (v2.storage.files/file-writer path))))
                  (catch Exception e

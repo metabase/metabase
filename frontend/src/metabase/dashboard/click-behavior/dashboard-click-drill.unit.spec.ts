@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { ClickBehavior } from "metabase-types/api";
@@ -310,7 +311,7 @@ describe("getDashboardDrillLinkUrl", () => {
 describe("DashboardClickAction", () => {
   it("creates a click-behavior action for the configured chart behavior", () => {
     const actions = DashboardClickAction({
-      question: new Question(createMockCard()),
+      question: new Question(createMockCard(), createMockMetadata()),
       clicked: {
         column: metricColumn,
         dimensions: [{ column: dimensionColumn, value: "Gadget" }],
@@ -330,7 +331,7 @@ describe("DashboardClickAction", () => {
 
   it("returns no action when no click behavior is configured for the clicked target", () => {
     const actions = DashboardClickAction({
-      question: new Question(createMockCard()),
+      question: new Question(createMockCard(), createMockMetadata()),
       clicked: {
         column: metricColumn,
         dimensions: [{ column: dimensionColumn, value: "Gadget" }],

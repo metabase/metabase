@@ -5,7 +5,6 @@ import { useUpdateFieldMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, type StackProps, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field, FieldId, Table } from "metabase-types/api";
@@ -39,7 +38,7 @@ const FieldSectionBase = ({
   onTrackMetadataChange,
   ...stackProps
 }: FieldSectionBaseProps & StackProps) => {
-  const id = getRawTableFieldId(field);
+  const id = field.id;
   const readOnly = !table.can_write;
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =

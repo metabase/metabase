@@ -1,4 +1,4 @@
-import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { TableId } from "metabase-types/api";
 
 import type { PopoverProps } from "../Popover";
 import { Popover } from "../Popover";
@@ -8,7 +8,7 @@ import { TableInfo } from "../TableInfo";
 export type TableInfoPopoverProps = Omit<PopoverProps, "content"> &
   Omit<TableInfoProps, "tableId"> & {
     table: {
-      id: string | number;
+      id: TableId;
       description?: string | null;
     };
   };
@@ -21,7 +21,7 @@ export function TableInfoPopover({
   table,
   ...rest
 }: TableInfoPopoverProps) {
-  const shouldHavePopover = table.description && !isVirtualCardId(table.id);
+  const shouldHavePopover = Boolean(table.description);
 
   if (!shouldHavePopover) {
     return null;

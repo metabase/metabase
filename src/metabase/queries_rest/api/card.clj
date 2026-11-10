@@ -9,7 +9,6 @@
    [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -232,11 +231,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]
-   _body
-   request]
+    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        _           (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
         card (get-card resolved-id)]
     (cond-> card
       legacy-mbql?
@@ -549,7 +545,6 @@
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_preview     {:optional true} [:maybe :boolean]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -661,12 +656,8 @@
   "Get all of the required query metadata for a card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   _query-params
-   _body
-   request]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -750,10 +741,7 @@
         ;; through the model, so that each card's checks run and its hooks move what moves with it
         (doseq [card  cards
                 :when (not (:collection_position card))]
-          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))
-        (doseq [card cards]
-          (collection/check-for-remote-sync-update card)))
-      ;; what a single card's update publishes too: remote sync listens to learn what entered or left its scope
+          (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil})))
       (doseq [card cards]
         (events/publish-event! :event/card-update {:object          (queries-rest.db/card (u/the-id card))
                                                    :previous-object (get before (u/the-id card))
@@ -778,18 +766,6 @@
   {:status :ok})
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
-
-(defn- metric-card-without-query-breakouts
-  [card]
-  (if-not (= :metric (:type card))
-    card
-    (let [metadata-provider (lib-be/application-database-metadata-provider (:database_id card))
-          query             (lib/query metadata-provider (:dataset_query card))]
-      (cond-> card
-        (and (= 1 (count (:stages query)))
-             (lib/mbql-stage? query -1)
-             (seq (lib/breakouts query -1)))
-        (assoc :dataset_query (lib/remove-all-breakouts query))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -817,10 +793,9 @@
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort]}
+   {:keys [parameters ignore_cache dashboard_id stored_result_id sort]}
    :- [:map {:closed true}
        [:ignore_cache       {:default false} :boolean]
-       [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
        [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
        [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
@@ -842,15 +817,8 @@
          :parameters parameters
          :ignore-cache ignore_cache
          :dashboard-id dashboard_id
-         :card-transform (cond
-                           ;; Collection previews start from the aggregate so no usable default stays scalar
-                           collection_preview (comp qp.dashboard/card-with-default-metric-dimension
-                                                    metric-card-without-query-breakouts)
-                           dashboard_id       qp.dashboard/card-with-default-metric-dimension)
-         :context (cond
-                    collection_preview :collection
-                    dashboard_id       :dashboard
-                    :else              :question)
+         :card-transform (when dashboard_id qp.dashboard/card-with-default-metric-dimension)
+         :context (if dashboard_id :dashboard :question)
          :middleware   {:process-viz-settings? false})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -1,5 +1,6 @@
 ---
 title: "Data modeling overview"
+summary: Use Data Studio to transform your data, edit metadata, build a semantic layer, and track lineage. Also covers editable tables, models, and the schema viewer.
 redirect_from:
   - /docs/latest/data-modeling
 ---

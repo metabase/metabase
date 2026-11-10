@@ -25,16 +25,3 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-
-.BackButtonLabel {
-  font-size: 16px;
-  color: var(--mb-color-text-primary);
-  margin-left: 0.5rem;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  word-wrap: anywhere;
-
-  &:hover {
-    color: var(--mb-color-core-brand);
-  }
-}

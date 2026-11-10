@@ -22,7 +22,6 @@
         "graph.show_values": true,
         "graph.metrics": ["Y"]
       },
-      "collection_preview": true,
       "entity_id": "pQcB_6Cjn77S5-8s728_5",
       "display": "bar",
       "parameter_mappings": [],

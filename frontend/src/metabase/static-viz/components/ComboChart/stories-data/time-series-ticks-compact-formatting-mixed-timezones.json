@@ -15,7 +15,6 @@
         "graph.dimensions": ["X"],
         "graph.metrics": ["Y"]
       },
-      "collection_preview": true,
       "entity_id": "nJx1lnzoiCaIdN1LUk6JM",
       "display": "line",
       "parameter_mappings": [],

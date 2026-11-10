@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
+import { hasPrimarySource } from "metabase/querying/common/utils";
 import { getQuestionSteps } from "metabase/querying/notebook/utils/steps";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
@@ -19,7 +20,7 @@ interface NotebookStepListProps {
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   const query = question.query();
-  const isNew = !readOnly && !Lib.sourceTableOrCardId(query);
+  const isNew = !readOnly && !hasPrimarySource(query);
 
   if (isNew) {
     return {
@@ -37,7 +38,7 @@ export function NotebookStepList({
   updateQuestion,
   readOnly = false,
 }: NotebookStepListProps) {
-  const database = question.database();
+  const databaseInfo = Lib.databaseDisplayInfo(question.query());
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
     getInitialOpenSteps(question, readOnly),
   );
@@ -49,8 +50,8 @@ export function NotebookStepList({
     if (!question) {
       return [];
     }
-    return getQuestionSteps(question, database ?? undefined, openSteps);
-  }, [database, question, openSteps]);
+    return getQuestionSteps(question, databaseInfo ?? undefined, openSteps);
+  }, [databaseInfo, question, openSteps]);
 
   const handleStepOpen = useCallback((id: INotebookStep["id"]) => {
     setOpenSteps((openSteps) => ({ ...openSteps, [id]: true }));

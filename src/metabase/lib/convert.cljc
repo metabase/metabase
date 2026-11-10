@@ -19,6 +19,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
@@ -314,7 +315,7 @@
 
 (defmethod ->mbql5 :mbql.stage/native
   [stage]
-  (m/update-existing stage :template-tags update-vals (fn [tag] (m/update-existing tag :dimension ->mbql5))))
+  (m/update-existing stage :template-tags update-vals lib.schema.template-tag/normalize-dimension))
 
 (defmethod ->mbql5 :mbql/join
   [join]

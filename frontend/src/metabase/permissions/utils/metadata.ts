@@ -1,11 +1,11 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
-  ConcreteTableId,
   DatabaseId,
   PermissionsDatabase,
   SchemaName,
   Table,
   TableEntityId,
+  TableId,
 } from "metabase-types/api";
 
 /**
@@ -55,7 +55,7 @@ export const tableToTableEntityId = (table: Table) => ({
   databaseId: table.db_id,
   schemaName: table.schema ?? "",
   // A permission entity always names a real warehouse table, never a card.
-  tableId: table.id as ConcreteTableId,
+  tableId: table.id as TableId,
 });
 
 /**

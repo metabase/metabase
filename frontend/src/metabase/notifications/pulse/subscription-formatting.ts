@@ -112,39 +112,6 @@ function formatDayOfWeek(day: ScheduleDayType) {
   );
 }
 
-const WEEKLY_SCHEDULES: Record<ScheduleDayType, (hour: string) => string> = {
-  sun: (hour) => t`Sundays at ${hour}`,
-  mon: (hour) => t`Mondays at ${hour}`,
-  tue: (hour) => t`Tuesdays at ${hour}`,
-  wed: (hour) => t`Wednesdays at ${hour}`,
-  thu: (hour) => t`Thursdays at ${hour}`,
-  fri: (hour) => t`Fridays at ${hour}`,
-  sat: (hour) => t`Saturdays at ${hour}`,
-};
-
-/** When a subscription sends, as a title, like "Daily at 8:00 AM". */
-export function formatSubscriptionSchedule(channel: ChannelSchedule): string {
-  return match(getSubscriptionSchedule(channel))
-    .with({ type: "hourly" }, () => t`Hourly`)
-    .with({ type: "daily" }, ({ hour }) => t`Daily at ${formatHour(hour)}`)
-    .with({ type: "weekly" }, ({ day, hour }) =>
-      WEEKLY_SCHEDULES[day](formatHour(hour)),
-    )
-    .with({ type: "monthly", day: P.nullish }, ({ frame, hour }) => {
-      const frameText = formatFrame(frame);
-      const hourText = formatHour(hour);
-      return t`Monthly on the ${frameText} calendar day at ${hourText}`;
-    })
-    .with({ type: "monthly", day: P.nonNullable }, ({ frame, day, hour }) => {
-      const frameText = formatFrame(frame);
-      const dayText = formatDayOfWeek(day);
-      const hourText = formatHour(hour);
-      return t`Monthly on the ${frameText} ${dayText} at ${hourText}`;
-    })
-    .with({ type: "unset" }, () => t`Schedule not set`)
-    .exhaustive();
-}
-
 /**
  * How and when a subscription sends, like "Emailed daily at 8:00 AM" or
  * "Sent to #sales hourly".

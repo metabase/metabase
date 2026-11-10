@@ -336,7 +336,6 @@ export const getDatabasesPermissionEditor = createSelector(
     } else if (groupId != null) {
       permissionSubject = "schemas";
       entities = databases
-        .filter((db) => !db.is_saved_questions)
         .filter((db) => !PLUGIN_AUDIT.isAuditDb(db))
         .filter((db) => !db.router_database_id)
         .map((database) => {

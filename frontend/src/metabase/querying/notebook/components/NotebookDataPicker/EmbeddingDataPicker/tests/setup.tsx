@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
@@ -92,6 +93,6 @@ function createSearchResults() {
 }
 
 function createEmptyQuery(): Query {
-  const question = Question.create();
+  const question = Question.create({ metadata: createMockMetadata() });
   return question.query();
 }

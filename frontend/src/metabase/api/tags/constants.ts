@@ -104,3 +104,23 @@ export const TAG_TYPE_MAPPING = {
   exploration: "exploration",
   "data-app": "data-app",
 } as const;
+
+export const REMOTE_SYNC_CONTENT_TAG_TYPES = [
+  "action",
+  "card",
+  "collection",
+  "dashboard",
+  "data-app",
+  "document",
+  "field",
+  "glossary",
+  "measure",
+  "segment",
+  "snippet",
+  "table",
+  "table-index",
+  "timeline",
+  "timeline-event",
+  "transform",
+  "transform-tag",
+] as const satisfies readonly TagType[];

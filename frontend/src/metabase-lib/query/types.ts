@@ -1,13 +1,17 @@
 import type {
   CardId,
+  DatabaseFeature,
   DatabaseId,
+  DatabaseNativePermissions,
   DatasetColumn,
   DatetimeUnit,
+  FieldFormattingSettings,
   FieldId,
   FieldValuesType,
   JoinConditionOperator,
   RowValue,
   SchemaId,
+  SchemaName,
   TableId,
   TableVisibilityType,
 } from "metabase-types/api";
@@ -42,6 +46,11 @@ export type Query = unknown & { _opaque: typeof QuerySymbol };
 declare const MetadataProviderSymbol: unique symbol;
 export type MetadataProvider = unknown & {
   _opaque: typeof MetadataProviderSymbol;
+};
+
+declare const DatabaseMetadataSymbol: unique symbol;
+export type DatabaseMetadata = unknown & {
+  _opaque: typeof DatabaseMetadataSymbol;
 };
 
 declare const TableMetadataSymbol: unique symbol;
@@ -155,14 +164,26 @@ export type BucketDisplayInfo = {
   isTemporalExtraction?: boolean;
 };
 
+export type DatabaseDisplayInfo = {
+  name: string;
+  displayName: string;
+  engine: string | null;
+  features: DatabaseFeature[];
+  nativePermissions: DatabaseNativePermissions | null;
+  isSample: boolean;
+  isActionsEnabled: boolean;
+  autoRunQueries: boolean;
+};
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
+  description?: string;
   isSourceTable?: boolean;
   isSourceCard?: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
-  schema: SchemaId;
+  schema?: SchemaName | null;
   isQuestion?: boolean;
   isModel?: boolean;
   isMetric?: boolean;
@@ -635,12 +656,25 @@ export const isBrushClickObject = (
   clicked.column != null &&
   clicked.event != null;
 
-export interface FieldValuesSearchInfo {
+export interface FieldSearchInfo {
   fieldId: FieldId | null;
   searchField: ColumnMetadata | null;
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }
+
+export type ParameterFieldInfo = {
+  id: FieldId;
+  displayName: string;
+  searchFieldDisplayName: string | null;
+  isString: boolean;
+  isBoolean: boolean;
+  isDate: boolean;
+  isNumeric: boolean;
+  settings: FieldFormattingSettings | null;
+  hasFieldValues: FieldValuesType;
+  hasRemappedValues: boolean;
+};
 
 export type QueryDisplayInfo = {
   isNative: boolean;
@@ -675,4 +709,17 @@ export type JsColumnTypeInfo = {
   base_type?: string;
   effective_type?: string | null;
   semantic_type?: string | null;
+};
+
+export type TablePickerInfo = {
+  id: TableId;
+};
+
+export type CardPickerInfo = {
+  id: CardId;
+};
+
+export type ColumnPickerInfo = {
+  id: FieldId | null;
+  tableId: TableId | null;
 };

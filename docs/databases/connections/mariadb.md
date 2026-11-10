@@ -1,5 +1,6 @@
 ---
 title: MariaDB
+summary: Connect Metabase to MariaDB, including which versions are supported and every connection setting.
 ---
 
 # MariaDB

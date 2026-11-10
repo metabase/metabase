@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
@@ -377,8 +376,7 @@
                (reset! changes-stats
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-           (collections/check-for-remote-sync-update current-dash))
+                        (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
          true))
       (let [dashboard (dashboards.db/dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
@@ -460,14 +458,6 @@
              :discard []}
             (filter :card_id dashcards))))
 
-(defn- reference-metrics
-  "Moves the metrics in `cards`' `:copy` to `:reference`, since a dashboards-only collection can't hold copies of them."
-  [{:keys [copy] :as cards}]
-  (let [metric? (fn [[_ card]] (= :metric (keyword (:type card))))]
-    (-> cards
-        (assoc :copy (into {} (remove metric?) copy))
-        (update :reference merge (into {} (filter metric?) copy)))))
-
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
@@ -477,18 +467,14 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        dashboards-only?                 (collections/library-dashboards-collection? dest-coll-id)
-        {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
-                                           dashboards-only? reference-metrics)]
+        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (queries/create-card!
                                    (cond-> to-copy
                                      true                    (assoc :collection_id dest-coll-id)
                                      same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                     (or (:dashboard_id to-copy)
-                                         dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
-                                                                 (dissoc :collection_position)))
+                                     (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
                                    @api/*current-user*
                                    ;; creating cards from a transaction. wait until tx complete to signal event
                                    true
@@ -628,12 +614,9 @@
                                                                             id->referenced-card
                                                                             id->new-tab-id))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
-                           (u/prog1 (cond-> dash
-                                      (seq uncopied)
-                                      (assoc :uncopied uncopied))
-                             (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
-                                                                           collection_id)
-                               (collections/check-non-remote-synced-dependencies <>)))))]
+                           (cond-> dash
+                             (seq uncopied)
+                             (assoc :uncopied uncopied))))]
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
                              :dashboard-id (u/the-id dashboard)})
