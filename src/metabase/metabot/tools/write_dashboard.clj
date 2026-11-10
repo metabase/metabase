@@ -113,11 +113,6 @@
   "The dashboard attributes the writer takes as the model sends them. The `collection_id` and `clear` are resolved."
   [:name :description :archived])
 
-(defn- without-nils
-  "The map `m` without the keys whose value is nil."
-  [m]
-  (into {} (remove (comp nil? val)) m))
-
 ;;; --------------------------------------------------- Errors -----------------------------------------------------
 
 (tools/defrecoverable invalid-request!
@@ -336,13 +331,12 @@
     (save-entity/destination-archived! {:kind :dashboard, :id (:id dashboard)})))
 
 (defn- target-dashboard
-  "The dashboard `args` edit, hydrated for the compiler, or nil on a create.
+  "The dashboard `args` edit, unhydrated, or nil on a create. [[save!]] rereads it to compile against.
   Throws unless the user can edit it, and when it is in the trash and `args` don't restore it."
   [{:keys [dashboard_id archived]}]
   (when dashboard_id
-    (let [dashboard (-> (tools/with-entity {:kind :dashboard, :id dashboard_id}
-                          (api/read-check :model/Dashboard dashboard_id))
-                        (t2/hydrate [:dashcards :series :card] :tabs))]
+    (let [dashboard (tools/with-entity {:kind :dashboard, :id dashboard_id}
+                      (api/read-check :model/Dashboard dashboard_id))]
       (when-not (mi/can-write? dashboard)
         (dashboard-not-writable! {:dashboard-id dashboard_id}))
       (check-not-trashed! dashboard archived)
@@ -639,8 +633,8 @@
      :metabot/writes? true})
 
   (handle [_ args {:keys [profile-id]}]
-    (let [{:keys [dashboard_id ops] :as args} (cond-> (without-nils args)
-                                                (:ops args) (update :ops (partial mapv without-nils)))
+    (let [{:keys [dashboard_id ops] :as args} (cond-> (u/remove-nils args)
+                                                (:ops args) (update :ops (partial mapv u/remove-nils)))
           ;; Who may write is checked before anything about the payload.
           dashboard (target-dashboard args)
           attrs     (dashboard-attrs args (nil? dashboard))]
