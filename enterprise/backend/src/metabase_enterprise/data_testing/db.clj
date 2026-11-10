@@ -5,14 +5,16 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn synced-transform-tests-clause :- [:fn vector?]
   "The clause over the TransformTest table aliased `alias` selecting the tests of the transforms remote sync syncs."
-  [alias :- :keyword]
-  (remote-sync/synced-fk-clause alias :transform_id :model/Transform))
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
 (mu/defn transform-tests :- [:sequential ::data-testing.schema/transform-test]
   "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."

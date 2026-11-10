@@ -651,6 +651,7 @@
            app-db
            audit-app
            events
+           lib
            lib.be
            lib.schema
            models
@@ -1165,6 +1166,7 @@
   {:team "UX West"
    :api  #{metabase.formatter.core}
    :uses #{appearance
+           lib.schema
            lib.types
            models
            query-processor
@@ -1385,7 +1387,8 @@
           metabase.lib.schema.temporal-bucketing
           metabase.lib.schema.test-spec
           metabase.lib.schema.util
-          metabase.lib.schema.validate}
+          metabase.lib.schema.validate
+          metabase.lib.schema.visualization-settings}
    :uses #{lib lib.types util}}
 
   lib.source-swap
@@ -2461,7 +2464,7 @@
   remote-sync
   {:team       "Data Apps"
    :codeowners true
-   :api  #{metabase.remote-sync.core}
+   :api  #{metabase.remote-sync.core metabase.remote-sync.schema}
    :uses #{premium-features serialization util}}
 
   request
@@ -2671,6 +2674,7 @@
            lib.metadata
            lib.schema
            models
+           parameters.schema
            util
            util.config}
    :model-imports #{:model/Card
@@ -2941,6 +2945,7 @@
            driver
            events
            interestingness
+           lib
            lib.metadata
            lib.schema
            models
