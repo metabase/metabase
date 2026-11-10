@@ -217,6 +217,16 @@
       (is (empty? (events)))
       (is (false? (t2/exists? ::bird :id id))))))
 
+(deftest capture-fields-failure-skips-capture-test
+  (testing "an exception from capture-fields is logged, capture is skipped, and the delete still runs"
+    (reset-capture!)
+    (let [id (t2/insert-returning-pk! ::bird (bird 75 "capture-fields-error"))]
+      ;; `capture-fields` is a multimethod, which with-dynamic-fn-redefs refuses.
+      (with-redefs [dml-capture/capture-fields (fn [_model _op] (throw (ex-info "capture-fields failed" {})))]
+        (is (= 1 (t2/delete! ::bird :id id))))
+      (is (empty? (events)))
+      (is (false? (t2/exists? ::bird :id id))))))
+
 (deftest pre-image-sql-error-propagates-test
   (reset-capture!)
   (let [id (t2/insert-returning-pk! ::bird (bird 71 "sql-error"))]

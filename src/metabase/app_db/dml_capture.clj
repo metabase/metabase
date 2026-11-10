@@ -64,7 +64,8 @@
   "The columns guaranteed present in `:rows` when capturing `op` statements against `model`.
   Only `:delete` is captured today.
   Return nil or empty to leave that op uncaptured.
-  Rows are narrowed to these columns."
+  Rows are narrowed to these columns.
+  Methods must not query the database: a failed query aborts an enclosing PostgreSQL transaction."
   {:arglists '([model op])}
   (fn [model _op] (keyword model)))
 
@@ -183,7 +184,11 @@
   "Capture the pre-image of the rows a DELETE statement matches, then deliver one `:delete` event."
   [rf query-type model parsed-args resolved-query]
   (let [fields (when-not (::captured? parsed-args)
-                 (capture-fields model :delete))]
+                 (try
+                   (capture-fields model :delete)
+                   (catch Exception e
+                     (log/warnf e "Skipping DML capture for %s: capture-fields failed" model)
+                     nil)))]
     (if (empty? fields)
       (next-method rf query-type model parsed-args resolved-query)
       (let [rows (pre-image-rows :toucan.query-type/select.instances
