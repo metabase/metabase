@@ -93,12 +93,12 @@
                                          {:serdes/meta [{:model "CustomVizPlugin"}] :identifier "absent-viz"}]))))))
 
 (deftest spec-test
-  (testing "spec copies identity fields and bundle_hash, skips dev/error state"
+  (testing "spec copies identity fields, skips dev/error state and the bundle_hash its hooks compute"
     (let [spec (serialization/spec-of :model/CustomVizPlugin)]
       (is (contains? (set (:copy spec)) :identifier))
       (is (contains? (set (:copy spec)) :display_name))
       (is (contains? (set (:copy spec)) :manifest))
-      (is (contains? (set (:copy spec)) :bundle_hash))
+      (is (contains? (set (:skip spec)) :bundle_hash))
       (is (contains? (set (:skip spec)) :dev_bundle_url))
       (is (contains? (set (:skip spec)) :error_message)))))
 

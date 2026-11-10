@@ -5,13 +5,11 @@ collection_id: cOlDaShBoArDs0ExAmPlx
 parameters:
 - id: c0000001-0000-0000-0000-000000000001
   name: Category
-  position: 0
   sectionId: string
   slug: category
   type: string/=
 - id: c0000002-0000-0000-0000-000000000002
   name: Date Range
-  position: 1
   sectionId: date
   slug: date_range
   type: date/range

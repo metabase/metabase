@@ -777,8 +777,7 @@
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "audit-replace-viz"
                                                       :display_name "audit-replace-viz"
                                                       :status       :active
-                                                      :bundle       (.getBytes "old" "UTF-8")
-                                                      :bundle_hash  "old-sha"}]
+                                                      :bundle       (.getBytes "old" "UTF-8")}]
         (multipart-upload! :crowberto 200 (str "ee/custom-viz-plugin/" id "/bundle")
                            (cvp.tu/valid-bundle-bytes "audit-replace-viz")
                            :method :put)
@@ -789,9 +788,9 @@
                 :model    "CustomVizPlugin"
                 :model_id id}
                entry))
-          (is (= "old-sha" (get-in entry [:details :previous :bundle_hash]))
+          (is (= (cache/bytes-hash (.getBytes "old" "UTF-8")) (get-in entry [:details :previous :bundle_hash]))
               "old bundle_hash is recorded under :previous")
-          (is (not= "old-sha" (get-in entry [:details :new :bundle_hash]))
+          (is (not= (cache/bytes-hash (.getBytes "old" "UTF-8")) (get-in entry [:details :new :bundle_hash]))
               "new bundle_hash differs from the old one"))))))
 
 ;;; ------------------------------------------------ Dev Mode Gating ------------------------------------------------
