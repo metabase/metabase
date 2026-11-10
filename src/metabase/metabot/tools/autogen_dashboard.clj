@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
@@ -12,6 +13,14 @@
 (set! *warn-on-reflection* true)
 
 ;;; Source Resolution
+
+(defn- check-curated-source!
+  "Under [[shared/curated-only?]], reject the X-ray source `model` / `id` unless it is curated. The resolver loads
+  the row without a read check, so the readable variant judges only an entity the current user can read, and an
+  unreadable one doesn't reveal whether it's curated."
+  [model id]
+  (when (shared/curated-only?)
+    (curation/check-curated-readable-subject! (str (case model "card" "question" model) " " id) [model id])))
 
 (defn- resolve-source
   "Resolve the source entity from the provided source parameters.
@@ -23,6 +32,7 @@
       (when-not table
         (throw (ex-info (str "Table not found with ID: " table_id)
                         {:agent-error? true :table-id table_id})))
+      (check-curated-source! "table" table_id)
       {:entity table
        :path (str "/auto/dashboard/table/" table_id)})
 
@@ -31,6 +41,7 @@
       (when-not model
         (throw (ex-info (str "Model not found with ID: " model_id)
                         {:agent-error? true :model-id model_id})))
+      (check-curated-source! "card" model_id)
       {:entity model
        :path (str "/auto/dashboard/model/" model_id)})
 
@@ -39,6 +50,7 @@
       (when-not metric
         (throw (ex-info (str "Metric not found with ID: " metric_id)
                         {:agent-error? true :metric-id metric_id})))
+      (check-curated-source! "metric" metric_id)
       {:entity metric
        :path (str "/auto/dashboard/metric/" metric_id)})
 
@@ -47,6 +59,7 @@
       (when-not report
         (throw (ex-info (str "Report/Question not found with ID: " report_id)
                         {:agent-error? true :report-id report_id})))
+      (check-curated-source! "card" report_id)
       {:entity report
        :path (str "/auto/dashboard/question/" report_id)})
 
@@ -60,6 +73,9 @@
                         {:agent-error? true
                          :query-id query_id
                          :available-queries (keys queries-state)})))
+      ;; a query the conversation holds may come from the user's viewing context, which nothing judged
+      (when (shared/curated-only?)
+        (curation/check-curated-query! (str "query " query_id) query))
       ;; For queries, we create a transient card-like structure
       {:entity {:dataset_query query}
        :path (str "/auto/dashboard/adhoc/" query_id)})
