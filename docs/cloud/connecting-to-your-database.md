@@ -13,7 +13,7 @@ layout: new-docs
 
 Metabase Cloud connects to your database from three fixed IP addresses in your Metabase's region. If your database has a public endpoint, allow those addresses on the database port in your firewall or security group. If your database is in a private network, such as a private subnet in an AWS VPC, connect through an SSH tunnel to a bastion host in that network. SSH tunnels are available on every Metabase Cloud plan.
 
-## Metabase Cloud IP addresses
+## Metabase Cloud IP addresses to whitelist on your database
 
 Allow the three addresses for your Metabase's region. These are the same addresses listed on [IP addresses to whitelist](./ip-addresses-to-whitelist.md).
 
