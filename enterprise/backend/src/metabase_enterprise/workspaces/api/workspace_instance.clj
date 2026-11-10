@@ -65,12 +65,14 @@
 (api.macros/defendpoint :post "/current" :- WorkspaceInstance
   "Make this instance a workspace: turn `workspaces-enabled` on and set each listed
   database's `database-workspace-schema`, clearing it on every other database. Sets the
-  parent identity from `:workspace_id` and `:parent_url`, clearing whichever is absent.
+  parent identity from `:workspace_id` and `:parent_url`, clearing whichever is absent;
+  400 when `MB_WORKSPACE_ID` or `MB_WORKSPACE_PARENT_URL` sets either to another value.
   The same settings can be set through the settings API, env vars, or `config.yml`."
   [_route-params
    _query-params
    body :- WorkspaceInstance]
   (api/check-superuser)
+  (ws/check-identity-not-set-by-env-var! (:workspace_id body) (:parent_url body))
   (ws/set-instance-workspace! (into {} (map (juxt :database_id :schema)) (:databases body)))
   (ws/set-instance-identity! (:workspace_id body) (:parent_url body))
   (present-workspace-instance (ws/instance-workspace)))

@@ -91,7 +91,7 @@
                    (ws/instance-workspace)))))))))
 
 (deftest apply-workspace-section-sets-parent-identity-test
-  (testing "the section's :id and :parent_url become the parent identity, and a later boot without them clears it"
+  (testing "the section's :id and :parent_url become the parent identity, a later boot with only :id clears :parent_url"
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
         (let [section (workspace-section "ws-test-db")]
@@ -103,11 +103,22 @@
                   :parent-url   "https://parent.example.com"
                   :databases    {db-id "mb__isolation_44490_1933"}}
                  (ws/instance-workspace)))
-          (advanced-config.file.workspace/apply-workspace-section! section)
-          (is (= {:workspace-id nil
+          (advanced-config.file.workspace/apply-workspace-section! (assoc section :id 7))
+          (is (= {:workspace-id 7
                   :parent-url   nil
                   :databases    {db-id "mb__isolation_44490_1933"}}
                  (ws/instance-workspace))))))))
+
+(deftest apply-workspace-section-without-identity-keeps-settings-identity-test
+  (testing "a section without :id or :parent_url keeps the identity the settings section set (review follow-up)"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database {db-id :id} {:name "ws-test-db" :engine :postgres}]
+        (ws/set-instance-identity! 42 "https://parent.example.com")
+        (advanced-config.file.workspace/apply-workspace-section! (workspace-section "ws-test-db"))
+        (is (= {:workspace-id 42
+                :parent-url   "https://parent.example.com"
+                :databases    {db-id "mb__isolation_44490_1933"}}
+               (ws/instance-workspace)))))))
 
 (deftest re-apply-replaces-atom-test
   (testing "re-applying with a different config replaces the setting — no mismatch detection, file is the truth"

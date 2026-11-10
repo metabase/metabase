@@ -116,6 +116,31 @@
       (is (re-find #"MB_WORKSPACES_ENABLED"
                    (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current"))))))
 
+(deftest post-current-rejects-identity-env-var-mismatch-test
+  (testing "POST /ee/workspace-instance/current returns 400, and writes nothing, when MB_WORKSPACE_ID sets another id (review follow-up)"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {}}
+      (mt/with-temp-env-var-value! [:mb-workspace-id "7"]
+        (is (re-find #"MB_WORKSPACE_ID"
+                     (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                                           {:workspace_id 42
+                                            :databases    [{:database_id (mt/id) :schema "ws_api_install"}]})))
+        (is (false? (ws.settings/workspaces-enabled)))
+        (testing "the same id as the env var is accepted"
+          (is (= 7 (:workspace_id (mt/user-http-request :crowberto :post 200 "ee/workspace-instance/current"
+                                                        {:workspace_id 7 :databases []})))))))
+    (mt/with-temp-env-var-value! [:mb-workspace-parent-url "https://env.example.com"]
+      (is (re-find #"MB_WORKSPACE_PARENT_URL"
+                   (mt/user-http-request :crowberto :post 400 "ee/workspace-instance/current"
+                                         {:parent_url "https://parent.example.com" :databases []}))))))
+
+(deftest delete-current-rejects-when-identity-env-var-set-test
+  (testing "DELETE /ee/workspace-instance/current returns 400, and leaves the workspace on, when MB_WORKSPACE_ID is set (review follow-up)"
+    (mt/with-temp-env-var-value! [:mb-workspace-id "7"]
+      (ws/set-instance-workspace! {})
+      (is (re-find #"MB_WORKSPACE_ID"
+                   (mt/user-http-request :crowberto :delete 400 "ee/workspace-instance/current")))
+      (is (true? (ws.settings/workspaces-enabled))))))
+
 (deftest delete-current-superuser-only-test
   (testing "DELETE /ee/workspace-instance/current requires data analyst or superuser"
     (is (= "You don't have permissions to do that."

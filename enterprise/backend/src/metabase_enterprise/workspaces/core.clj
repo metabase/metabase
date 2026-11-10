@@ -155,12 +155,27 @@
       (ws.settings/workspaces-enabled! true)))
   nil)
 
+(defn check-identity-not-set-by-env-var!
+  "Throw a 400 when `MB_WORKSPACE_ID` or `MB_WORKSPACE_PARENT_URL` holds a value other
+   than `workspace-id` or `parent-url` (nil means cleared): the env var wins over the
+   stored value, so a write would report success and change nothing. Call it before
+   other writes so a refused request changes nothing."
+  [workspace-id parent-url]
+  (doseq [[setting-name wanted] [[:workspace-id workspace-id]
+                                 [:workspace-parent-url parent-url]]
+          :let [env-value (setting/env-var-value setting-name)]
+          :when (and env-value (not= (some-> wanted str) env-value))]
+    (throw (ex-info (str (name setting-name) " is set to " env-value " by the "
+                         (setting/env-var-name setting-name) " env var and can't be changed at runtime.")
+                    {:status-code 400}))))
+
 (mu/defn set-instance-identity! :- :nil
   "Record which parent workspace this instance serves: the parent's workspace id and
    its site URL. Either may be nil, which clears it. Informational: no workspace
-   behavior reads them."
+   behavior reads them. Throws a 400 when an env var sets either to another value."
   [workspace-id :- [:maybe ms/PositiveInt]
    parent-url   :- [:maybe ms/NonBlankString]]
+  (check-identity-not-set-by-env-var! workspace-id parent-url)
   (ws.settings/workspace-id! workspace-id)
   (ws.settings/workspace-parent-url! parent-url)
   nil)
@@ -181,9 +196,11 @@
    [[set-instance-identity!]]), and delete every `:model/TableRemapping` row.
    Leaves each database's `database-workspace-schema` in place; it has no effect
    while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`,
-   since that value wins over the stored one."
+   `MB_WORKSPACE_ID` or `MB_WORKSPACE_PARENT_URL` is set, since that value wins over the
+   stored one."
   []
   (check-not-set-by-env-var! false)
+  (check-identity-not-set-by-env-var! nil nil)
   (ws.settings/workspaces-enabled! false)
   (set-instance-identity! nil nil)
   ;; The setting's :on-change deletes them only when the value changes; delete them
