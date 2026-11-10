@@ -78,7 +78,7 @@
       (let [db (audit-app.db/insert-returning-database!
                 {:name canonical-db-name
                  :description "Development database for analytics views and content"
-                 :engine (name db-type)
+                 :engine (keyword db-type)
                  :details {:is-audit-dev true}
                  :is_audit false ; Important: not an audit DB
                  :is_full_sync true

@@ -676,7 +676,7 @@
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
-                                 :database     engine
+                                 :database     (u/qualified-name engine)
                                  :database-id  (u/the-id <>)
                                  :source       connection_source
                                  :dbms-version (:version (driver/dbms-version (keyword engine) (driver.u/lib-database (u/the-id <>))))}))
@@ -684,7 +684,7 @@
       (do
         (analytics/track-event! :snowplow/database
                                 {:event    :database-connection-failed
-                                 :database engine
+                                 :database (u/qualified-name engine)
                                  :source   connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
