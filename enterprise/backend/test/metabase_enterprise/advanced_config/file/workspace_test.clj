@@ -7,6 +7,7 @@
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.driver.settings :as driver.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
@@ -317,3 +318,27 @@
         (let [db-id (t2/select-one-pk :model/Database :name "ws-settings-db")]
           (is (true? (ws/workspace-mode?)))
           (is (= {:schema "ws_alice"} (ws/db-workspace-namespace db-id))))))))
+
+(deftest databases-section-schema-change-deletes-remappings-test
+  (testing "databases[].settings changing database-workspace-schema of an existing database deletes its remap rows"
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (mt/with-premium-features #{:config-text-file :workspaces}
+        (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+          (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :h2 :details (:details (mt/db))}]
+            (workspaces.tu/with-workspace-db! db-id "ws_old"
+              (fn []
+                (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "PUBLIC" :from_table_name "VENUES"
+                                                   :to_db "" :to_schema "ws_old" :to_table_name "PUBLIC__VENUES"})
+                (let [initialize! (fn [schema]
+                                    (advanced-config.file/initialize!
+                                     {:version 1
+                                      :config  {:databases [{:name     db-name
+                                                             :engine   "h2"
+                                                             :details  (:details (mt/db))
+                                                             :settings {:database-workspace-schema schema}}]}}))]
+                  (testing "unchanged schema keeps the rows"
+                    (initialize! "ws_old")
+                    (is (= 1 (t2/count :model/TableRemapping :database_id db-id))))
+                  (testing "changed schema deletes them"
+                    (initialize! "ws_new")
+                    (is (zero? (t2/count :model/TableRemapping :database_id db-id)))))))))))))

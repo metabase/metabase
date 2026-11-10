@@ -4783,6 +4783,7 @@
            cache
            database-routing
            driver
+           events
            lib.metadata
            lib.schema
            models

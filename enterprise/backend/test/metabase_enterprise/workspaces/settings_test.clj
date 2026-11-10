@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -97,3 +98,20 @@
                                            :to_db "" :to_schema "ws" :to_table_name "public__t"}))
       (ws/set-instance-workspace! {db-b "ws_b"})
       (is (= [db-b] (t2/select-fn-vec :database_id :model/TableRemapping))))))
+
+(deftest put-database-schema-change-deletes-remappings-test
+  (testing "PUT /api/database/:id changing database-workspace-schema deletes that database's remap rows"
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db))}]
+        (workspaces.tu/with-workspace-db! db-id "ws_old"
+          (fn []
+            (t2/insert! :model/TableRemapping {:database_id db-id :from_db "" :from_schema "PUBLIC" :from_table_name "VENUES"
+                                               :to_db "" :to_schema "ws_old" :to_table_name "PUBLIC__VENUES"})
+            (testing "unchanged schema, after trimming, keeps the rows"
+              (mt/user-http-request :crowberto :put 200 (str "database/" db-id)
+                                    {:settings {:database-workspace-schema " ws_old "}})
+              (is (= 1 (t2/count :model/TableRemapping :database_id db-id))))
+            (testing "changed schema deletes them"
+              (mt/user-http-request :crowberto :put 200 (str "database/" db-id)
+                                    {:settings {:database-workspace-schema "ws_new"}})
+              (is (zero? (t2/count :model/TableRemapping :database_id db-id))))))))))

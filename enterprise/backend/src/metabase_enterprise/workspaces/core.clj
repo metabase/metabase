@@ -152,6 +152,17 @@
       (ws.settings/workspaces-enabled! true)))
   nil)
 
+(defn delete-stale-table-remappings!
+  "Delete the remap rows of `database` when its trimmed `database-workspace-schema`
+   differs from that of `previous-database`, the same row before the write. Those rows
+   point at the old schema and would keep redirecting reads there. For writes that skip
+   [[set-instance-workspace!]]: `PUT /api/database/:id` and the `config.yml` loader."
+  [previous-database database]
+  (let [schema (comp #(some-> % str/trim) database-workspace-schema)]
+    (when (not= (schema previous-database) (schema database))
+      (ws.db/delete-table-remappings-of-database! (:id database))))
+  nil)
+
 (defn clear-instance-workspace!
   "Turn `workspaces-enabled` off and delete every `:model/TableRemapping` row.
    Leaves each database's `database-workspace-schema` in place; it has no effect
