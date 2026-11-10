@@ -332,7 +332,7 @@ describe("dashboard/actions/cards", () => {
       ).toBe(true);
       expect(getCardData(store)).toBeNull();
 
-      store.dispatch(performUndo(store.getState().undo[0].id));
+      performUndo(store.getState().undo[0].id)(store.dispatch, store.getState);
 
       await waitFor(() =>
         expect(
@@ -357,7 +357,7 @@ describe("dashboard/actions/cards", () => {
 
       const [undo] = store.getState().undo;
       expect(undo.message).toBe("Removed card");
-      store.dispatch(performUndo(undo.id));
+      performUndo(undo.id)(store.dispatch, store.getState);
 
       await waitFor(() =>
         expect(

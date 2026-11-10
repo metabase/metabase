@@ -272,7 +272,6 @@ function getMappedVariableOptions() {
     dashcard: createMockVirtualDashCard({
       parameter_mappings: [
         {
-          card_id: 1,
           parameter_id: parameter.id,
           target: buildTextTagTarget("foo"),
         },
