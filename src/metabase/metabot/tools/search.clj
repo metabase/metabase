@@ -1143,9 +1143,10 @@
    :workaround "search for the likely words, and give synonyms as `or` alternatives where the search tool allows"})
 
 (def ^:private semantic-query-schema
-  [:string {:min         1
-            :description (str "What you're looking for, described in plain words. Write a short description of the "
-                              "data, not keywords or operators.")}])
+  [:and
+   {:description (str "What you're looking for, described in plain words. Write a short description of the data, "
+                      "not keywords or operators.")}
+   ms/NonBlankString])
 
 (defn- keyword-query-schema
   [ops description]

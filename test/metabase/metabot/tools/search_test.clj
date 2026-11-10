@@ -1960,6 +1960,15 @@
                    :max-semantic-distance 0.8}
                   @captured)))))))
 
+(deftest semantic-search-rejects-a-blank-query-test
+  (testing "a blank semantic_search query is an argument error, not an empty search"
+    (mt/with-test-user :rasta
+      (let [searched? (atom false)]
+        (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (reset! searched? true) [])]
+          (is (=? {:error {:class :validation :code :invalid-arguments}}
+                  (invoke-search [#'search/semantic-search-tool] {:query "   "}))))
+        (is (false? @searched?))))))
+
 (deftest vector-only-reaches-the-search-context-test
   (mt/with-test-user :rasta
     (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)

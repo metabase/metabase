@@ -1421,7 +1421,7 @@
   "What a caller is told `read_resource` is. Without `agent-loop?`, the chart and query URIs and the
   `save_entity` note are left out, since they need the agent loop's conversation state and tools."
   [agent-loop?]
-  (str "Read detailed information about Metabase resources. Copy URIs from `search` or navigation results.\n"
+  (str "Read detailed information about Metabase resources. Copy URIs from search or navigation results.\n"
        "Entity IDs are numeric. Use `collection/root` for the root collection. Schema names are case-sensitive\n"
        "and URI path segments must be URL-encoded.\n\n"
        "Shortened URI echoes and error text end with ...[truncated]. Reuse the original URI for another read.\n\n"
