@@ -5,9 +5,10 @@
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
-   [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
-   [metabase-enterprise.dependencies.task.util :as task.util]
+   [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
+   [metabase.cloud-migration.core :as cloud-migration]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -19,31 +20,32 @@
 
 ;;; ------------------------------------------- Draining the jobs -------------------------------------------
 
-(def ^:private max-drain-batches
-  "How many batches [[drain-pending!]] runs one job for before it gives up. Each batch takes up to the job's batch size,
-  and an entity whose processing fails stays pending until the job gives up on it after `dependency-max-failures`
-  tries, so a drain that runs this long is stuck rather than busy."
-  1000)
+(def ^:private job-batches
+  "The jobs' batches, in the order their work flows: computing dependencies decides which result metadata and findings
+  are stale, and the analysis reads result metadata."
+  [task.dependency/run-batch-in-place!
+   task.result-metadata/run-batch-in-place!
+   task.analysis-finding/run-batch-in-place!])
 
-(mu/defn- drain! :- :nil
-  "Run `run-batch!`, which answers whether it took any entity, until it takes none."
-  [job-name   :- :string
-   run-batch! :- fn?]
-  (loop [runs 1]
-    (when (task.util/run-batch-locked! run-batch!)
-      (when (>= runs max-drain-batches)
-        (throw (ex-info (tru "The {0} job did not finish within {1} batches" job-name max-drain-batches)
-                        {:status-code 500, :job job-name})))
-      (recur (inc runs)))))
-
-(defn drain-pending!
-  "Run the dependency job, then the analysis job, until each has nothing left to do, so that the findings reflect every
-  write committed before the call. A write marks what it makes stale in its own transaction, so nothing committed is
-  missed; only the jobs' scheduling is deferred, and this runs their batches in place."
+(mu/defn drain-pending! :- :nil
+  "Run the dependency, result metadata and analysis jobs in place until none has anything left to do, so that the
+  findings reflect every write committed before the call. A write marks what it makes stale in its own transaction, so
+  nothing committed is missed; only the jobs' scheduling is deferred. Throws when the findings cannot be made current:
+  the app DB is read-only, or a job is disabled."
   []
-  (drain! "dependency" task.dependency/update-dependencies!)
-  (drain! "analysis" #(pos? (deps.analysis-finding/analyze-batch!
-                             (deps.settings/dependency-entity-check-batch-size)))))
+  (when (cloud-migration/read-only-mode)
+    (throw (ex-info (tru "The analysis cannot run while Metabase is in read-only mode.")
+                    {:status-code 503})))
+  (loop [job 0, idle 0]
+    ;; a job that worked may have made any job's entities stale, so the drain is done only once every job in a row
+    ;; finds nothing
+    (when (< idle (count job-batches))
+      (case ((job-batches job))
+        :worked   (recur job 0)
+        :idle     (recur (rem (inc job) (count job-batches)) (inc idle))
+        :busy     (recur job idle)
+        :disabled (throw (ex-info (tru "The analysis cannot run while one of its jobs is disabled by its batch size.")
+                                  {:status-code 503}))))))
 
 ;;; ------------------------------------------- Reading the findings -------------------------------------------
 
@@ -95,6 +97,10 @@
            :errors        []})
         (dependencies.db/failed-analysis-entities entity-type (entity-columns entity-type))))
 
+(def ^:private query-batch-size
+  "How many ids one query names: an instance can have more failed entities than a statement takes parameters."
+  1000)
+
 (def ^:private cause-columns
   "The columns a cause is described by, per type; a table has no `entity_id`."
   {:table     [:id :name]
@@ -111,8 +117,9 @@
                     rows)
         found (into {}
                     (mapcat (fn [[source-type ids]]
-                              (for [row (dependencies.db/entities-with-columns
-                                         source-type (cause-columns source-type) (vec ids))]
+                              (for [batch (partition-all query-batch-size ids)
+                                    row   (dependencies.db/entities-with-columns
+                                           source-type (cause-columns source-type) (vec batch))]
                                 [[source-type (:id row)] row])))
                     (u/group-by first second refs))]
     (into {}
@@ -129,7 +136,8 @@
   [entities :- [:sequential ::failed-entity]]
   (let [rows  (into []
                     (mapcat (fn [[entity-type entities]]
-                              (dependencies.db/finding-errors-for-entities entity-type (mapv :id entities))))
+                              (mapcat #(dependencies.db/finding-errors-for-entities entity-type (mapv :id %))
+                                      (partition-all query-batch-size entities))))
                     (group-by :type entities))
         cause (causes rows)]
     (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)

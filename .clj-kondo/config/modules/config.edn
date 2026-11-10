@@ -4250,6 +4250,7 @@
            api
            app-db
            batch-processing
+           cloud-migration
            collections
            database-routing
            dependencies

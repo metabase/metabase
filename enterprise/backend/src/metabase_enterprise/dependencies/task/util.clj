@@ -7,9 +7,11 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
    (java.util Date)
@@ -33,14 +35,31 @@
   "A Quartz scheduler, or nil when none is running."
   [:maybe (ms/InstanceOfClass Scheduler)])
 
-(defonce ^:private batch-monitor (Object.))
+(mu/defn- batch-lock :- :keyword
+  "The cluster lock a batch of `job` holds."
+  [{:keys [job-key]} :- Job]
+  (keyword "metabase-enterprise.dependencies.task" job-key))
 
-(defn run-batch-locked!
-  "Call `run-batch!` holding the lock every job's batch holds, and return what it returns. Taking a batch selects the
-  pending statuses and then inserts the missing ones, so two runners taking at once would process the same entities;
-  Quartz keeps each job to one run at a time, but a batch run outside Quartz has to take this lock to be as safe."
-  [run-batch!]
-  (locking batch-monitor (run-batch!)))
+(mu/defn- batch-lock-contention? :- :boolean
+  "Whether `e` is the failure to take the [[batch-lock]] of `job`, rather than a lock its batch takes."
+  [job :- Job
+   e   :- (ms/InstanceOfClass Throwable)]
+  (let [lock (batch-lock job)]
+    (boolean (some #{(str (namespace lock) "/" (name lock))} (:lock-names (ex-data e))))))
+
+(mu/defn- run-batch-locked! :- :any
+  "Run a batch of `job` holding its cluster lock, and return what it returns, or `::busy` when another runner holds
+  the lock. Taking a batch selects the pending statuses and then inserts the missing ones, so two runners taking at
+  once would process the same entities. Quartz keeps each job to one scheduled run at a time across the cluster, but
+  not a batch run in place, on any node. The lock is detached so that the batch commits entity by entity."
+  [{:keys [run-batch!] :as job} :- Job]
+  (try
+    (cluster-lock/with-detached-cluster-lock {:lock (batch-lock job)}
+      (run-batch!))
+    (catch Throwable e
+      (if (batch-lock-contention? job e)
+        ::busy
+        (throw e)))))
 
 (mu/defn- job-delay :- ms/IntGreaterThanOrEqualToZero
   "A random delay in seconds between `delay - variance` and `delay + variance` minutes."
@@ -98,16 +117,36 @@
   asks for one, and after [[next-run-delay]] when it throws, before rethrowing, so a failure doesn't stop it until the
   next write."
   [scheduler                                     :- MaybeScheduler
-   {:keys [run-batch! job-name batch-size] :as job} :- Job]
+   {:keys [job-name batch-size] :as job} :- Job]
   (if (pos? (batch-size))
     (try
-      (if-some [delay-in-seconds (run-batch-locked! run-batch!)]
-        (schedule-run! scheduler job delay-in-seconds)
-        (log/debug "Job" job-name "has nothing more to do, stopping."))
+      (let [delay-in-seconds (run-batch-locked! job)]
+        (cond
+          (= ::busy delay-in-seconds) (do
+                                        (log/debug "Job" job-name "has a batch running elsewhere, trying again.")
+                                        (schedule-run! scheduler job 1))
+          (some? delay-in-seconds)    (schedule-run! scheduler job delay-in-seconds)
+          :else                       (log/debug "Job" job-name "has nothing more to do, stopping.")))
       (catch Throwable e
         (schedule-run! scheduler job (next-run-delay job))
         (throw e)))
     (log/debug "Job" job-name "has a batch size that isn't positive, stopping.")))
+
+(mr/def ::batch-outcome
+  "What became of a batch run in place: it took entities (`:worked`) or found none (`:idle`), another runner held the
+  job's lock throughout (`:busy`), or a batch size that isn't positive disables the job (`:disabled`)."
+  [:enum :worked :idle :busy :disabled])
+
+(mu/defn run-batch-in-place! :- ::batch-outcome
+  "Run a batch of `job` now rather than on its schedule, under the lock its scheduled runs hold."
+  [{:keys [batch-size] :as job} :- Job]
+  (if (pos? (batch-size))
+    (let [delay-in-seconds (run-batch-locked! job)]
+      (cond
+        (= ::busy delay-in-seconds) :busy
+        (some? delay-in-seconds)    :worked
+        :else                       :idle))
+    :disabled))
 
 (mu/defn trigger-run! :- :any
   "Schedule a run of `job` a second from now, unless a batch size that isn't positive disables it."
