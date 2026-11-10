@@ -384,6 +384,22 @@
           (is (=? {:status :passed}
                   (data-testing.runner/run-test! :transform transform transform-test))))))))
 
+(deftest transform-with-a-repeated-column-name-is-refused-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (let [mp                            (mt/metadata-provider)
+          {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
+      (mt/with-temp [:model/Transform transform
+                     {:source {:type  :query
+                               :query (lib/native-query mp (str "SELECT id, id FROM " schema "." table))}
+                      :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}]
+        (testing "a transform whose output repeats a column name is refused before its output table is created"
+          (let [e (try (run-test! schema table transform one-row
+                                  [{:type :empty :name "none" :sql (str "SELECT * FROM " schema ".people_summary")}])
+                       nil
+                       (catch ExceptionInfo e e))]
+            (is (= ::data-testing.errors/duplicate-output-columns (:error-type (ex-data e))))
+            (is (re-find #"(?i)named: id\." (ex-message e)))))))))
+
 (deftest validate-test-blank-target-name-gets-typed-refusal-test
   (testing "a test missing an input is refused missing-inputs whatever the target is named"
     (mt/test-driver :h2
@@ -409,3 +425,16 @@
         (testing "with a blank target name"
           (is (= {:error-type ::data-testing.errors/missing-inputs}
                  (refusal ""))))))))
+
+(deftest case-only-repeats-are-refused-where-column-names-ignore-case-test
+  (let [columns [{:name "id" :database_type "INTEGER"} {:name "ID" :database_type "INTEGER"}]
+        check   (fn [driver]
+                  (try (#'data-testing.runner/check-output-columns! driver columns)
+                       nil
+                       (catch ExceptionInfo e (:error-type (ex-data e)))))]
+    (testing "MySQL and SQL Server compare column names without regard to case"
+      (is (= ::data-testing.errors/duplicate-output-columns (check :mysql)))
+      (is (= ::data-testing.errors/duplicate-output-columns (check :sqlserver))))
+    (testing "Postgres and H2 keep both names"
+      (is (nil? (check :postgres)))
+      (is (nil? (check :h2))))))

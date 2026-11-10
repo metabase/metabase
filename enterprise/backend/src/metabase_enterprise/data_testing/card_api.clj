@@ -55,7 +55,8 @@
   `{{...}}` is refused.
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
-  A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table."
+  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
+  On a database that ignores case in column names, two names that differ only in case are one name."
   [_route-params
    _query-params
    {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]
@@ -67,7 +68,8 @@
   "Update a card test.
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
-  A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table."
+  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
+  On a database that ignores case in column names, two names that differ only in case are one name."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -94,7 +96,8 @@
   database of that query.
 
   A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.
-  A card whose result has two columns of one name, case aside, cannot be tested: the run stores the result in a table.
+  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.
+  On a database that ignores case in column names, two names that differ only in case are one name.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.

@@ -32,7 +32,7 @@
    ::unsupported-driver         422  ; The database does not support testing.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
    ::query-failed               422  ; The query under test would not run.
-   ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name, case aside.
+   ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
 

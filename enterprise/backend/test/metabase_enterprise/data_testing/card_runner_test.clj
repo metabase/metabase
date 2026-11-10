@@ -169,12 +169,17 @@
         (let [{:keys [error-type message]} (run! "SELECT id, id")]
           (is (= ::data-testing.errors/duplicate-output-columns error-type))
           (is (names? message) message)))
-      (testing "names that differ only in case are the same name: expectations match columns regardless of case"
-        (let [{:keys [error-type message]} (run! "SELECT id, name AS \"ID\"")]
-          (is (= ::data-testing.errors/duplicate-output-columns error-type))
-          (is (names? message) message)))
       (testing "control: distinct names run"
         (is (nil? (run! "SELECT id, name")))))))
+
+(deftest card-with-column-names-that-differ-only-in-case-runs-test
+  (mt/test-drivers #{:h2 :postgres}
+    (testing "a database that keeps the case of quoted names stores both columns, so the test runs"
+      (is (= :passed
+             (:status (run-card-test! (native-card (str "SELECT id AS \"id\", name AS \"ID\" FROM "
+                                                        (qualified :people)))
+                                      [(people-input one-person)]
+                                      [{:type :empty :name "none" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}])))))))
 
 (deftest model-and-metric-cards-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)

@@ -33,13 +33,13 @@
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card]
    [metabase-enterprise.data-testing.subject.transform]
-   [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -211,25 +211,40 @@
                                (data-testing.validator/table-label (:table input)))
                           labels)))))
 
+(defmulti column-names-ignore-case?
+  "Whether `driver` treats two column names that differ only in case as one name, so that a table cannot hold both.
+  False unless a driver says otherwise."
+  {:arglists '([driver])}
+  identity
+  :hierarchy #'driver/hierarchy)
+
+(defmethod column-names-ignore-case? :default [_driver] false)
+
+;; MySQL and MariaDB, SQL Server with its default collation, and DuckDB compare column names without regard to case.
+;; Redshift folds quoted names to lower case too, unless `enable_case_sensitive_identifier` is on.
+(doseq [driver [:mysql :sqlserver :motherduck :redshift]]
+  (defmethod column-names-ignore-case? driver [_driver] true))
+
 (mu/defn- check-output-columns! :- :nil
-  "Refuse the output `columns` of the query under test unless their names are distinct, case aside."
-  [columns :- [:sequential ::data-testing.schema/result-column]]
-  ;; A table cannot hold two columns of one name, and an `equals` expectation matches a column name regardless of
-  ;; case, so names that differ only in case are one name here.
-  (when-let [repeated (seq (for [[_folded [column-name & more]] (group-by data-testing.u/fold-identifier
-                                                                          (map :name columns))
-                                 :when (seq more)]
-                             column-name))]
-    (throw (data-testing.errors/ex
-            ::data-testing.errors/duplicate-output-columns
-            (tru "The output of the query under test has more than one column named: {0}. A test stores the output in a table, which needs distinct column names, case aside."
-                 (str/join ", " repeated))
-            {:columns       (vec repeated)
-             :response/keys #{:columns}}))))
+  "Refuse the output `columns` of the query under test unless their names are distinct, as `driver` compares column
+  names."
+  [driver  :- :keyword
+   columns :- [:sequential ::data-testing.schema/result-column]]
+  (let [same-name (if (column-names-ignore-case? driver) u/lower-case-en identity)]
+    (when-let [repeated (seq (for [[_name [column-name & more]] (group-by same-name (map :name columns))
+                                   :when (seq more)]
+                               column-name))]
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/duplicate-output-columns
+              (tru "The output of the query under test has more than one column named: {0}. A run stores the output in a table, which cannot hold two columns of one name."
+                   (str/join ", " repeated))
+              {:columns       (vec repeated)
+               :response/keys #{:columns}})))))
 
 (mu/defn- create-output! :- :nil
   "Run the query under test on `conn`, materializing its output as the temp table `output-table`. Throws
-  `::duplicate-output-columns` when two columns of the output share a name, case aside."
+  `::data-testing.errors/duplicate-output-columns` when two columns of the output share a name, as `driver` compares
+  column names."
   [driver       :- :keyword
    conn         :- ::data-testing.schema/connection
    output-table :- :string
@@ -242,8 +257,9 @@
                          (rethrow-remapped e ::data-testing.errors/query-failed
                                            (tru "The query under test failed to run:")
                                            labels))))]
-    ;; The query reads only the inputs' temp tables, so running it once more to read its column names is cheap.
+    ;; The query reads only the inputs' temp tables, which hold the test's fixture data.
     (check-output-columns!
+     driver
      (:columns (run-query! #(data-testing.executor/run-query driver conn
                                                              [(:query compiled) (vec (:params compiled))] 1))))
     (run-query! #(data-testing.executor/create-temp-table! driver conn output-table compiled))
