@@ -753,7 +753,7 @@
                          [[:model/Collection collection-id]])
                        (when-let [model-id (:model_id action)]
                          [[:model/Card model-id]])
-                       (when (= (:type action) "query")
+                       (when (= (keyword (:type action)) :query)
                          (serialization/import-mbql-dependencies (:dataset_query (first (:query action))))))))
         entities))
 

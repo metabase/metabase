@@ -700,3 +700,14 @@
         (is (= "data_actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
         (is (= "data_apps" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
         (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))
+
+(deftest ^:parallel query-action-import-dependencies-test
+  (testing "query action depends on what its query uses, whether its exported type is keyword or string"
+    (let [card-eid (apply str (repeat 21 \d))]
+      (doseq [action-type [:query "query"]]
+        (testing (pr-str action-type)
+          (is (contains? (first (serialization/import-dependencies
+                                 :model/Action
+                                 [{:type  action-type
+                                   :query [{:dataset_query {:source-card card-eid}}]}]))
+                         [:model/Card card-eid])))))))

@@ -1,6 +1,7 @@
 (ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
+   [clojure.string :as str]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -443,7 +444,9 @@
 
 (def ^:private CardDisplay
   "The display type of a Card, normalized from its name."
-  (mu/with-api-error-message ::lib.schema.common/keyword (deferred-tru "value must be a non-blank string.")))
+  (mu/with-api-error-message
+   [:and ::lib.schema.common/keyword [:fn #(not (str/blank? (name %)))]]
+   (deferred-tru "value must be a non-blank string.")))
 
 (def ^:private CardCreateSchema
   "Schema for creating a new card"

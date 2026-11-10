@@ -944,6 +944,14 @@
                                :visualization_settings ["Value must be a map., received: \"ABC\""]}}
             (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))))
 
+(deftest ^:parallel create-card-blank-display-test
+  (testing "POST /api/card refuses a blank display"
+    (is (=? {:errors {:display "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "card" {:name                   "Blank display"
+                                                               :display                ""
+                                                               :dataset_query          (mt/mbql-query venues)
+                                                               :visualization_settings {}})))))
+
 (deftest ^:parallel create-card-validation-test-1b
   (testing "POST /api/card"
     (is (=? {:errors {:name          "value must be a non-blank string."

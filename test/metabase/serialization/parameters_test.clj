@@ -13,7 +13,6 @@
                          [x])))]
     (is (= [{:id                   "abc"
              :name                 "CATEGORY"
-             :position             0
              :type                 :category
              :values_source_config {:card_id     "Card___1"
                                     :value_field [:field ["DATABASE" "SCHEMA" "TABLE" "FIELD"] nil]}
@@ -46,6 +45,13 @@
                       (protocol.stub/stub-store {:fk (fn [eid _] (parse-long (subs eid 5)))})
                       [exported]
                       {}))))))
+  (testing "export drops the :position an older import stored, so import keeps the order the parameters have since"
+    (let [exported (first (parameters/export-parameters
+                           (protocol.stub/stub-store {})
+                           [[{:id "b" :type :category :position 1} {:id "a" :type :category :position 0}]]))]
+      (is (= [{:id "b" :type :category} {:id "a" :type :category}] exported))
+      (is (= ["b" "a"]
+             (map :id (first (parameters/import-parameters (protocol.stub/stub-store {}) [exported] {})))))))
   (testing "import orders the parameters of an older export by the :position it recorded, and drops it"
     (is (= [{:id "b" :type :category} {:id "a" :type :category}]
            (first (parameters/import-parameters

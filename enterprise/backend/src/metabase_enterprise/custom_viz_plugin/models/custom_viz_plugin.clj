@@ -44,7 +44,7 @@
 
 (t2/define-before-update :model/CustomVizPlugin
   [plugin]
-  (with-bundle-hash plugin))
+  (merge plugin (some-> (t2/changes plugin) with-bundle-hash)))
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)

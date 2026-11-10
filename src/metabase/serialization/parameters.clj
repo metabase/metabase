@@ -36,9 +36,9 @@
 
 (defn walk-export-parameters
   "The :parameters field of a `Card` or `Dashboard` with its ids replaced by what `visit` returns for their
-  references, in their stored order; nil for none."
+  references, in their stored order without the `:position`s that older imports stored; nil for none."
   [visit parameters]
-  (some->> parameters (mapv #(walk-export-parameter visit %))))
+  (some->> parameters (mapv #(walk-export-parameter visit (dissoc % :position)))))
 
 (defn walk-import-parameters
   "The exported :parameters field with its references replaced by what `visit` returns for them, normalized like the
