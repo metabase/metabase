@@ -650,6 +650,7 @@
            app-db
            audit-app
            events
+           lib
            lib.be
            lib.schema
            models
