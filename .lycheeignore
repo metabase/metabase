@@ -15,6 +15,8 @@
 ^https://www\.oreilly\.com/
 # expect: 403
 ^https://platform\.openai\.com/
+# expect: 403
+^https://claude\.ai/
 # redirects to the npm page, which the registry remap can't reach
 # expect: 403
 ^https://metaba\.se/sdk-npm$
