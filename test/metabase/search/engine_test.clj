@@ -227,6 +227,23 @@
             (task.search-index/trigger-init-for-newly-active-engines! (set (search.engine/active-engines)))
             (is (empty? @triggered))))))))
 
+(deftest resolved-engine-prefers-an-additional-semantic-engine-test
+  (testing "semantic serves a search when it is active only as an additional engine"
+    (doseq [configured [:appdb :in-place]]
+      (with-engines {:supported all-engines :configured configured :additional ["semantic"]}
+        (is (not= :search.engine/semantic (search.engine/default-engine))
+            "the configured engine stays the default")
+        (is (= :search.engine/semantic (search.engine/resolved-engine))
+            (str "semantic beside a configured " configured " engine"))
+        (testing "and operator support follows it, even on an app db where the default would not parse operators"
+          (mt/with-dynamic-fn-redefs [mdb/db-type (constantly :h2)]
+            (is (true? (search.engine/tsquery-operators-supported?))))))))
+  (testing "without the additional engine, the configured default serves it"
+    (with-engines {:supported all-engines :configured :appdb :additional []}
+      (is (= :search.engine/appdb (search.engine/resolved-engine)))
+      (mt/with-dynamic-fn-redefs [mdb/db-type (constantly :h2)]
+        (is (false? (search.engine/tsquery-operators-supported?)))))))
+
 (deftest tsquery-operators-supported-test
   (testing "the semantic engine always parses operators — its keyword half runs to_tsquery in pgvector"
     (with-engines {:supported all-engines}
