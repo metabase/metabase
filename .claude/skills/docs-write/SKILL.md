@@ -8,9 +8,7 @@ allowed-tools:
 
 # Documentation Writing Skill
 
-@${CLAUDE_SKILL_DIR}/../_shared/metabase-style-guide.md
-
-If the style guide isn't already in your context, read the [Metabase writing style guide](../_shared/metabase-style-guide.md) before you start.
+Before you start, read the [Metabase writing style guide](../_shared/metabase-style-guide.md).
 
 ## When writing documentation
 
@@ -46,7 +44,6 @@ If the style guide isn't already in your context, read the [Metabase writing sty
 
 - Run prettier on the file after making edits: `bun run prettier --write <file-path>`
 - This ensures consistent formatting across all documentation
-- If you can't run shell commands, skip this step. For example, Docrunner has no shell, and its workflow runs prettier after the agent finishes.
 
 ### Common patterns
 

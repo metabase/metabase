@@ -39,7 +39,8 @@ defaults:
 env:
   ISSUE: ${{ inputs.issue || github.event.issue.number }}
   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-  IMAGE_PATH_RE: '^docs/([A-Za-z0-9_-]+/)*images/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.png$'
+  # The JSON schema of the docs agent also uses this regex, thus it has no backslash.
+  IMAGE_PATH_RE: '^docs/([A-Za-z0-9_-]+/)*images/[A-Za-z0-9_-][A-Za-z0-9_.-]*[.]png$'
   DOCRUNNER_MODEL: claude-opus-5-5
   DOCRUNNER_MAX_TURNS: "100"
   SCREENSHOTS_MODEL: claude-sonnet-5-5
@@ -83,6 +84,11 @@ jobs:
       pr_number: ${{ steps.pr.outputs.pull-request-number }}
       pr_branch: ${{ steps.pr.outputs.pull-request-branch }}
     steps:
+      # The `runner` context is not available in job-level `env`. Thus the first step of each job sets `T` (temporary
+      # files) and `OUT` (the files for the artifact) for all the steps after it, also the `always()` steps.
+      - name: Set the paths
+        run: printf 'T=%s\nOUT=%s\n' "$RUNNER_TEMP/docrunner" "$RUNNER_TEMP/docrunner/out" >> "$GITHUB_ENV"
+
       - name: Check the issue
         id: check
         env:
@@ -92,10 +98,10 @@ jobs:
             echo "::error::The issue must be a number."
             exit 1
           fi
-          mkdir -p "$RUNNER_TEMP/docrunner"
+          mkdir -p "$T"
           gh api -H "Accept: application/vnd.github.full+json" \
-            "repos/$GITHUB_REPOSITORY/issues/$ISSUE" > "$RUNNER_TEMP/docrunner/issue.json"
-          if jq -e '.pull_request' "$RUNNER_TEMP/docrunner/issue.json" > /dev/null; then
+            "repos/$GITHUB_REPOSITORY/issues/$ISSUE" > "$T/issue.json"
+          if jq -e '.pull_request' "$T/issue.json" > /dev/null; then
             echo "::error::#$ISSUE is a pull request. Docrunner reads issues only."
             exit 1
           fi
@@ -134,7 +140,6 @@ jobs:
           LABELED_AT: ${{ github.event.issue.updated_at }}
           VISIBLE_JQ: 'def visible: gsub("\\s(?:alt|title)=\"[^\"]*\""; "");'
         run: |
-          T="$RUNNER_TEMP/docrunner"
           accept="Accept: application/vnd.github.full+json"
           mkdir -p .docrunner/prs
           cutoff="${LABELED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
@@ -216,13 +221,13 @@ jobs:
       # While a skill is active, Claude Code uses its `allowed-tools` as allow rules, also in dontAsk mode. Thus each
       # grant of docs-write and docs-review must be a rule that the agent step already permits or denies:
       # `Edit(docs/**/*.md)`, or a Bash rule (the Bash deny is stronger than a grant). `hooks` can run commands.
-      # An `@` import that does not resolve gives no error, and the skill then loads without that file.
+      # Claude Code does not expand an `@` import in a skill (tested with 2.1.150 and 2.1.322). Thus each skill links to
+      # the style guide, and the agent reads it. A link that does not resolve gives no error, thus this step checks it.
       # The agent needs no other skill, thus this step removes the other skills and the commands. A new skill
       # cannot change what the agent can do. "Restore the skills" puts them back after the agent.
       - name: Check the docs skills
         if: steps.existing.outputs.url == ''
         run: |
-          T="$RUNNER_TEMP/docrunner"
           find .claude/skills -mindepth 1 -maxdepth 1 ! -name docs-write ! -name docs-review ! -name _shared \
             -exec rm -rf -- {} +
           rm -rf .claude/commands
@@ -249,14 +254,16 @@ jobs:
                 *) errors+=("\`$f\` grants \`$g\`. Docrunner permits only \`Edit(docs/**/*.md)\` and Bash rules.") ;;
               esac
             done <<< "$grants"
-            # Claude Code resolves an import from the working folder, or from `${CLAUDE_SKILL_DIR}`.
-            while IFS= read -r line; do
-              path=${line#@}
-              path=${path//'${CLAUDE_SKILL_DIR}'/.claude/skills/$skill}
-              if [ ! -f "$path" ]; then
-                errors+=("\`$f\` imports \`$line\`, but that file does not exist.")
+            # A relative link starts at the folder of the skill.
+            links=$(grep -oE '\]\(\.\./_shared/[^)#]+' "$f" | cut -c3- || true)
+            if [ -z "$links" ]; then
+              errors+=("\`$f\` has no link to the style guide in \`.claude/skills/_shared/\`.")
+            fi
+            while IFS= read -r link; do
+              if [ -n "$link" ] && [ ! -f ".claude/skills/$skill/$link" ]; then
+                errors+=("\`$f\` links to \`$link\`, but that file does not exist.")
               fi
-            done < <(grep -E '^@[^[:space:]]+$' "$f" || true)
+            done <<< "$links"
           done
           if [ "${#errors[@]}" -gt 0 ]; then
             {
@@ -274,9 +281,10 @@ jobs:
       # - dontAsk denies each call that no allow rule permits. Reads are permitted only in the working folder,
       #   because no rule allows a bare Read, Glob, or Grep. Thus no reads of /proc or of the home folder.
       # - The Bash deny removes the shell. On Linux, Claude Code leaves out Glob and Grep by default, and 2.1.119 and
-      #   later give them back when Bash is denied. The action installs 2.1.150. Do not name Glob or Grep in
-      #   --allowedTools: a bare allow rule permits searches outside the working folder. Do not use --tools for them:
-      #   before 2.1.162, it ignores these names. "Find the status" fails the run if the agent did not have them.
+      #   later give them back when Bash is denied. The action installs 2.1.322 (tested). Do not name Glob or Grep in
+      #   --allowedTools: a bare allow rule permits searches outside the working folder. "Find the status" fails the
+      #   run if the agent did not have them.
+      # - `Agent` and `Workflow` start subagents, and `SendMessage` sends messages to other agents. Deny them.
       # - The Skill tool loads only docs-write and docs-review: in dontAsk mode, a skill with `allowed-tools` loads only
       #   if an allow rule names it. "Check the docs skills" removes the other skills, and checks the grants of these two.
       #   Do not deny Skill: a deny is stronger than the allow rules, and then no skill loads.
@@ -288,7 +296,7 @@ jobs:
         if: steps.existing.outputs.url == ''
         continue-on-error: true
         timeout-minutes: 30
-        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
@@ -299,8 +307,8 @@ jobs:
             --max-turns ${{ env.DOCRUNNER_MAX_TURNS }}
             --permission-mode dontAsk
             --allowedTools "Edit(docs/**/*.md),Skill(docs-write),Skill(docs-review)"
-            --disallowedTools "Bash,NotebookEdit,WebFetch,WebSearch,Agent,Monitor,Read(//proc/**),Read(./.git/**)"
-            --json-schema '{"type":"object","additionalProperties":false,"required":["status","title","body","images"],"properties":{"status":{"type":"string","enum":["done","no-change"]},"title":{"type":"string"},"body":{"type":"string"},"images":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["path","shows","steps"],"properties":{"path":{"type":"string","pattern":"^docs/([A-Za-z0-9_-]+/)*images/[A-Za-z0-9_-][A-Za-z0-9_.-]*[.]png$"},"shows":{"type":"string"},"steps":{"type":"string"}}}}}}'
+            --disallowedTools "Bash,NotebookEdit,WebFetch,WebSearch,Agent,Workflow,SendMessage,Monitor,Read(//proc/**),Read(./.git/**)"
+            --json-schema '{"type":"object","additionalProperties":false,"required":["status","title","body","images"],"properties":{"status":{"type":"string","enum":["done","no-change"]},"title":{"type":"string"},"body":{"type":"string"},"images":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["path","shows","steps"],"properties":{"path":{"type":"string","pattern":"${{ env.IMAGE_PATH_RE }}"},"shows":{"type":"string"},"steps":{"type":"string"}}}}}}'
 
       - name: Remove the token from the git remote
         if: always() && steps.claude.outcome != 'skipped'
@@ -359,9 +367,7 @@ jobs:
           RESULT: ${{ steps.claude.outputs.structured_output }}
           EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          T="$RUNNER_TEMP/docrunner"
-          out="$T/out"
-          mkdir -p "$out"
+          mkdir -p "$OUT"
           changed=$(git ls-files --modified --others --exclude-standard -- 'docs/*.md')
 
           if [ -n "$EXISTING_URL" ]; then
@@ -393,16 +399,16 @@ jobs:
 
           images='[]'
           if [ "$status" = done ]; then
-            # The JSON schema also has this rule. This filter is a second check.
-            images=$(jq -c --arg re "$IMAGE_PATH_RE" \
-              '[.images // [] | .[] | select((.path | type) == "string" and (.path | test($re)))] | unique_by(.path) | .[:10]' <<< "$RESULT")
+            # The JSON schema checks each path and the count. "Check the screenshots" checks each path again before the push.
+            # The screenshots job uses `index`.
+            images=$(jq -c '.images // [] | unique_by(.path) | to_entries | map(.value + {index: (.key + 1)})' <<< "$RESULT")
             # `.[0:200]` counts characters, not bytes, thus it does not cut a character in two.
             title=$(jq -r "$SANITIZE_JQ"' .title // "" | gsub("\\s+"; " ") | sub("^ "; "") | sub(" $"; "") | sanitize | .[0:200]' <<< "$RESULT")
             if [ -z "$title" ]; then
               title="docs: draft for #$ISSUE"
             fi
-            # The prompt tells the agent to load both docs skills. A skill that the agent did not load is not an error,
-            # but the writer must know about it.
+            # The prompt tells the agent to load both docs skills, and the skills tell it to read the style guide. If the
+            # agent did not, it is not an error, but the writer must know about it.
             missing=""
             for s in docs-write docs-review; do
               if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ] || ! jq -e --arg s "$s" \
@@ -411,6 +417,12 @@ jobs:
                 missing="${missing:+$missing and }\`$s\`"
               fi
             done
+            if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ] || ! jq -e \
+                'any(.[] | select(.type == "assistant") | .message.content[]?;
+                     .type == "tool_use" and .name == "Read" and (.input.file_path // "" | endswith("_shared/metabase-style-guide.md")))' \
+                "$EXEC_FILE" > /dev/null 2>&1; then
+              missing="${missing:+$missing and }the style guide"
+            fi
             {
               jq -r "$SANITIZE_JQ"' .body | sanitize' <<< "$RESULT"
               if [ "$images" != '[]' ]; then
@@ -431,18 +443,18 @@ jobs:
           echo "Status: $status"
 
           # The files for the artifact.
-          echo "$status" > "$out/status.txt"
+          echo "$status" > "$OUT/status.txt"
           if jq -e . <<< "$RESULT" > /dev/null 2>&1; then
-            jq . <<< "$RESULT" > "$out/agent-result.json"
+            jq . <<< "$RESULT" > "$OUT/agent-result.json"
           fi
           for f in pr-body.md agent-body.md reason.md; do
-            if [ -f "$T/$f" ]; then cp "$T/$f" "$out/$f"; fi
+            if [ -f "$T/$f" ]; then cp "$T/$f" "$OUT/$f"; fi
           done
-          if [ -d .docrunner ]; then cp -R .docrunner "$out/context"; fi
-          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$out/transcript.json"; fi
-          git diff -- 'docs/*.md' > "$out/changes.diff"
+          if [ -d .docrunner ]; then cp -R .docrunner "$OUT/context"; fi
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$OUT/transcript.json"; fi
+          git diff -- 'docs/*.md' > "$OUT/changes.diff"
           git ls-files -z --others --exclude-standard -- 'docs/*.md' \
-            | while IFS= read -r -d '' f; do git diff --no-index -- /dev/null "$f" >> "$out/changes.diff" || true; done
+            | while IFS= read -r -d '' f; do git diff --no-index -- /dev/null "$f" >> "$OUT/changes.diff" || true; done
 
       # The transcript helps to tune the prompt. For a dry run, the diff and the result JSON are the output.
       - name: Upload the results
@@ -500,7 +512,6 @@ jobs:
           PR_URL: ${{ steps.pr.outputs.pull-request-url }}
           EXISTING_URL: ${{ steps.existing.outputs.url }}
         run: |
-          T="$RUNNER_TEMP/docrunner"
           f="$T/comment.md"
           case "$STATUS" in
             done)
@@ -524,10 +535,9 @@ jobs:
                 if [ -s "$T/agent-body.md" ]; then
                   printf '_Docrunner wrote this comment. A person did not review it._\n\n'
                   cat "$T/agent-body.md"
-                else
-                  echo "Docrunner made no change."
+                  printf '\n---\n\n'
                 fi
-                printf '\n---\n\nDocrunner made no change. Run: %s\n' "$RUN_URL"
+                printf 'Docrunner made no change. Run: %s\n' "$RUN_URL"
               } > "$f"
               ;;
             *)
@@ -572,6 +582,10 @@ jobs:
       PR_BRANCH: ${{ needs.docrunner.outputs.pr_branch }}
       MB_URL: http://localhost:3000
     steps:
+      # The same `T` and `OUT` as in the docrunner job.
+      - name: Set the paths
+        run: printf 'T=%s\nOUT=%s\n' "$RUNNER_TEMP/docrunner" "$RUNNER_TEMP/docrunner/out" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -579,10 +593,9 @@ jobs:
       # The agent gets the image list, not the issue text.
       - name: Write the image list
         run: |
-          mkdir -p .docrunner/shots "$RUNNER_TEMP/docrunner/out"
-          jq '[to_entries[] | {index: (.key + 1), path: .value.path, shows: .value.shows, steps: .value.steps}]' \
-            <<< "$IMAGES" > .docrunner/images.json
-          cp .docrunner/images.json "$RUNNER_TEMP/docrunner/out/images.json"
+          mkdir -p .docrunner/shots "$OUT"
+          jq '[.[] | {index, path, shows, steps}]' <<< "$IMAGES" > .docrunner/images.json
+          cp .docrunner/images.json "$OUT/images.json"
 
       # metabase-enterprise-head is the build of master. The license token turns on the paid features.
       # The PR environments use the same token. The image runs in prod mode, thus it checks the token on
@@ -594,7 +607,6 @@ jobs:
         env:
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
         run: |
-          T="$RUNNER_TEMP/docrunner"
           args=(--env MB_CHECK_FOR_UPDATES=false --env MB_ANON_TRACKING_ENABLED=false)
           if [ -n "$MB_PREMIUM_EMBEDDING_TOKEN" ]; then
             args+=(--env MB_PREMIUM_EMBEDDING_TOKEN)
@@ -652,7 +664,6 @@ jobs:
       # Thus the browser also sends all requests to a proxy that does not exist, except requests to localhost.
       - name: Install Playwright MCP
         run: |
-          T="$RUNNER_TEMP/docrunner"
           npm install --prefix "$T/playwright-mcp" --no-save --no-audit --no-fund @playwright/mcp@0.0.83
           "$T/playwright-mcp/node_modules/.bin/playwright" install --with-deps chromium
 
@@ -681,7 +692,7 @@ jobs:
         id: claude
         continue-on-error: true
         timeout-minutes: 30
-        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ github.token }}
@@ -694,7 +705,7 @@ jobs:
             --mcp-config ${{ runner.temp }}/docrunner/mcp.json
             --strict-mcp-config
             --allowedTools "mcp__playwright__browser_navigate,mcp__playwright__browser_navigate_back,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_hover,mcp__playwright__browser_type,mcp__playwright__browser_fill_form,mcp__playwright__browser_press_key,mcp__playwright__browser_select_option,mcp__playwright__browser_drag,mcp__playwright__browser_wait_for,mcp__playwright__browser_resize,mcp__playwright__browser_handle_dialog,mcp__playwright__browser_take_screenshot"
-            --disallowedTools "Bash,Edit,Write,NotebookEdit,Skill,WebFetch,WebSearch,Agent,Monitor,Read(//proc/**),Read(./.git/**),mcp__playwright__browser_evaluate,mcp__playwright__browser_run_code_unsafe,mcp__playwright__browser_file_upload,mcp__playwright__browser_drop,mcp__playwright__browser_tabs"
+            --disallowedTools "Bash,Edit,Write,NotebookEdit,Skill,WebFetch,WebSearch,Agent,Workflow,SendMessage,Monitor,Read(//proc/**),Read(./.git/**),mcp__playwright__browser_evaluate,mcp__playwright__browser_run_code_unsafe,mcp__playwright__browser_file_upload,mcp__playwright__browser_drop,mcp__playwright__browser_tabs"
             --json-schema '{"type":"object","additionalProperties":false,"required":["images"],"properties":{"images":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["index","saved","note"],"properties":{"index":{"type":"integer"},"saved":{"type":"boolean"},"note":{"type":"string"}}}}}}'
 
       # Use only the list from the first job, not the files in the workspace: the agent can write files there.
@@ -707,27 +718,25 @@ jobs:
           RESULT: ${{ steps.claude.outputs.structured_output }}
           EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          T="$RUNNER_TEMP/docrunner"
-          out="$T/out"
           max=$((3 * 1024 * 1024))
-          rm -rf "$out/shots" "$out/all-shots"
-          mkdir -p "$out/shots" "$out/all-shots"
+          rm -rf "$OUT/shots" "$OUT/all-shots"
+          mkdir -p "$OUT/shots" "$OUT/all-shots"
           if jq -e 'type == "object"' <<< "$RESULT" > /dev/null 2>&1; then
-            jq . <<< "$RESULT" > "$out/agent-result.json"
+            jq . <<< "$RESULT" > "$OUT/agent-result.json"
           else
-            echo '{}' > "$out/agent-result.json"
+            echo '{}' > "$OUT/agent-result.json"
           fi
-          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$out/transcript.json"; fi
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$OUT/transcript.json"; fi
 
           results='[]'
           while IFS= read -r item; do
             i=$(jq -r '.index' <<< "$item")
             dest=$(jq -r '.path' <<< "$item")
             src=".docrunner/shots/$i.png"
-            saved=$(jq -r --argjson i "$i" '[.images[]? | select(.index == $i) | .saved][0] // false' "$out/agent-result.json")
-            note=$(jq -r --argjson i "$i" '[.images[]? | select(.index == $i) | .note][0] // "" | gsub("\\s+"; " ")' "$out/agent-result.json")
+            saved=$(jq -r --argjson i "$i" '[.images[]? | select(.index == $i) | .saved][0] // false' "$OUT/agent-result.json")
+            note=$(jq -r --argjson i "$i" '[.images[]? | select(.index == $i) | .note][0] // "" | gsub("\\s+"; " ")' "$OUT/agent-result.json")
             reason=""
-            if [ -f "$src" ] && [ ! -L "$src" ]; then cp "$src" "$out/all-shots/$i.png"; fi
+            if [ -f "$src" ] && [ ! -L "$src" ]; then cp "$src" "$OUT/all-shots/$i.png"; fi
             if ! [[ "$dest" =~ $IMAGE_PATH_RE ]]; then
               reason="the path is not in docs/**/images/*.png"
             elif [ ! -f "$src" ] || [ -L "$src" ]; then
@@ -739,12 +748,12 @@ jobs:
             elif [ "$(stat -c %s "$src")" -gt "$max" ]; then
               reason="the file is larger than 3 MB"
             fi
-            if [ -z "$reason" ]; then cp "$src" "$out/shots/$i.png"; fi
+            if [ -z "$reason" ]; then cp "$src" "$OUT/shots/$i.png"; fi
             results=$(jq -c --argjson i "$i" --arg p "$dest" --arg r "$reason" --arg n "$note" \
               '. + [{index: $i, path: $p, saved: ($r == ""), reason: $r, note: $n}]' <<< "$results")
-          done < <(jq -c 'to_entries[] | {index: (.key + 1), path: .value.path}' <<< "$IMAGES")
+          done < <(jq -c '.[] | {index, path}' <<< "$IMAGES")
 
-          jq . <<< "$results" > "$out/screenshots.json"
+          jq . <<< "$results" > "$OUT/screenshots.json"
           count=$(jq '[.[] | select(.saved)] | length' <<< "$results")
           echo "count=$count" >> "$GITHUB_OUTPUT"
           echo "Screenshots that pass the checks: $count of $(jq length <<< "$results")"
@@ -765,9 +774,9 @@ jobs:
         with:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          # This job writes only to the PR. For a PR, the label and comment endpoints accept `pull-requests: write`.
           permission-contents: write
           permission-pull-requests: write
-          permission-issues: write
 
       # One commit through the API, on top of the PR branch: GitHub signs it, and no git command runs in the
       # workspace that the agent used.
@@ -777,18 +786,16 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
         run: |
-          T="$RUNNER_TEMP/docrunner"
-          out="$T/out"
           head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$PR_BRANCH" --jq '.object.sha')
           base_tree=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$head" --jq '.tree.sha')
           entries='[]'
           while IFS= read -r item; do
             i=$(jq -r '.index' <<< "$item")
             dest=$(jq -r '.path' <<< "$item")
-            jq -n --rawfile content <(base64 -w0 "$out/shots/$i.png") '{content: $content, encoding: "base64"}' > "$T/blob.json"
+            jq -n --rawfile content <(base64 -w0 "$OUT/shots/$i.png") '{content: $content, encoding: "base64"}' > "$T/blob.json"
             sha=$(gh api "repos/$GITHUB_REPOSITORY/git/blobs" --input "$T/blob.json" --jq '.sha')
             entries=$(jq -c --arg p "$dest" --arg s "$sha" '. + [{path: $p, mode: "100644", type: "blob", sha: $s}]' <<< "$entries")
-          done < <(jq -c '.[] | select(.saved)' "$out/screenshots.json")
+          done < <(jq -c '.[] | select(.saved)' "$OUT/screenshots.json")
 
           tree=$(jq -n --arg b "$base_tree" --argjson t "$entries" '{base_tree: $b, tree: $t}' \
             | gh api "repos/$GITHUB_REPOSITORY/git/trees" --input - --jq '.sha')
@@ -813,16 +820,14 @@ jobs:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           SHA: ${{ steps.push.outputs.sha }}
         run: |
-          T="$RUNNER_TEMP/docrunner"
-          out="$T/out"
           f="$T/pr-comment.md"
           {
-            if [ -f "$out/screenshots.json" ]; then
+            if [ -f "$OUT/screenshots.json" ]; then
               echo "Docrunner screenshots. The notes are from the agent, and a person did not review them:"
               echo
               jq -r "$SANITIZE_JQ"' .[] | if .saved
                 then "- Added `\(.path)`. \(.note | sanitize)"
-                else "- Not added: `\(.path)` (\(.reason)). \(.note | sanitize)" end' "$out/screenshots.json"
+                else "- Not added: `\(.path)` (\(.reason)). \(.note | sanitize)" end' "$OUT/screenshots.json"
               echo
               if [ -n "$SHA" ]; then
                 echo "Commit: $SHA. Examine each image: the state, the crop, and the size."

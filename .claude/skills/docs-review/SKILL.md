@@ -13,13 +13,11 @@ metadata:
 
 # Documentation Review Skill
 
-@${CLAUDE_SKILL_DIR}/../_shared/metabase-style-guide.md
-
-If the style guide isn't already in your context, read the [Metabase writing style guide](../_shared/metabase-style-guide.md) before you start.
+Before you start, read the [Metabase writing style guide](../_shared/metabase-style-guide.md).
 
 ## Review mode detection
 
-**IMPORTANT: Before starting the review, determine which mode to use.** If the request names a mode (for example, Docrunner asks for local review mode), use that mode. Otherwise:
+**IMPORTANT: Before starting the review, determine which mode to use.** If the request names a mode, use that mode. Otherwise:
 
 1. **PR review mode**: If the `mcp__github__create_pending_pull_request_review` tool is available, you are reviewing a GitHub PR
    - Use the pending review workflow to post all issues as one cohesive review

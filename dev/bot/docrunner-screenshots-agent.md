@@ -24,9 +24,7 @@ You run in CI. No person can answer you during the run. You have no shell, and y
 
 ## How to operate the UI
 
-Read `.claude/skills/playwright-mcp-metabase/SKILL.md` with the Read tool, and use its rules for Metabase UI components. **Do not use the Skill tool.** Ignore these parts of the skill: the login sections (you are logged in), `$MB_JETTY_PORT` (use port 3000), and `./bin/mage` (you have no shell).
-
-If the Playwright tools are not loaded, load them with ToolSearch: `select:mcp__playwright__browser_navigate,mcp__playwright__browser_navigate_back,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_hover,mcp__playwright__browser_type,mcp__playwright__browser_fill_form,mcp__playwright__browser_press_key,mcp__playwright__browser_select_option,mcp__playwright__browser_drag,mcp__playwright__browser_wait_for,mcp__playwright__browser_resize,mcp__playwright__browser_handle_dialog,mcp__playwright__browser_take_screenshot`
+Read `.claude/skills/playwright-mcp-metabase/SKILL.md` with the Read tool, and use its rules for Metabase UI components. Ignore these parts of the skill: the login sections (you are logged in), `$MB_JETTY_PORT` (use port 3000), and `./bin/mage` (you have no shell).
 
 ## Procedure
 

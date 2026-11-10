@@ -31,7 +31,7 @@ When you stop, write questions for the person who asked. Write each question so 
 
 ## Phase 2: Write
 
-1. Load the `docs-write` skill with the Skill tool, and follow it. The skill includes the Metabase style guide. If you do not see the style guide, read `.claude/skills/_shared/metabase-style-guide.md`.
+1. Load the `docs-write` skill with the Skill tool, and follow it.
 
    Skip the prettier step of the skill: you have no shell, and the workflow runs prettier after you finish.
 
@@ -43,13 +43,12 @@ When you stop, write questions for the person who asked. Write each question so 
 
 1. Load the `docs-review` skill with the Skill tool. Use its local review mode.
 2. Review only the lines that you changed, not the full file.
-3. Fix all findings. Then review the changed lines again. Continue until the review finds no issues.
+3. Fix all findings. Then review the changed lines again. Do the review 2 times at most.
 
 ## Limits
 
 - Edit only `*.md` files in `docs/`. The workflow commits no other file.
 - Do not edit generated files: the `docs/` paths with `# auto-generated` in `.github/CODEOWNERS`. The workflow removes all changes to them. If the request needs a change to a generated file, find its source (the start of the file usually gives the command that generates it), and say in `body` where the source is.
-- Do not delete or rename files.
 - Engineers own `docs/developers-guide/`. If you change a file there, say so in `body`, so that the writer asks an engineer for a review.
 
 ## Images
@@ -74,7 +73,7 @@ When you finish, give the JSON output:
 - `title`: for `done`, the PR title. Start it with `docs: `. Empty for `no-change`.
 - `body`: Markdown.
 
-  - For `done`, the PR body:
+  - For `done`, the PR body. Make it as short as possible:
 
     - `## Changes`: each file that you changed, and what changed.
     - `## Check`: each fact that the writer must confirm, with the code that proves it (file path and line). Also each open question.
@@ -87,5 +86,3 @@ When you finish, give the JSON output:
 - `images`: the list of images. Empty for `no-change`.
 
 **The PR, the comment, and the run transcript are public.** Put in them only facts from this repo and from the issue.
-
-The PR description must be as succinct as possible.
