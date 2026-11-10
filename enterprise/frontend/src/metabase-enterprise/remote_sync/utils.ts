@@ -18,6 +18,7 @@ export type RemoteSyncEntityLinkTarget = {
 const MODEL_ICONS: Record<RemoteSyncEntityModel, IconName> = {
   action: "bolt",
   card: "table2",
+  cardtest: "list",
   collection: "folder",
   dashboard: "dashboard",
   dataapp: "app",
@@ -64,6 +65,8 @@ export const getEntityUrl = ({
       return parent?.model === "transform"
         ? Urls.transformTest(parent.id, id)
         : null;
+    case "cardtest":
+      return null;
     case "action":
       return parent?.model === "card"
         ? Urls.action({ id: parent.id }, id)
