@@ -124,6 +124,38 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   });
 });
 
+describe("scenarios > question > custom column > typing suggestion > keyboard (metabase#49342)", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not be possible to leave the expression input with the Tab key ", () => {
+    // This test used to be a repro for #49342, but the product feature changed
+    // so that the expression input can no longer be tabbed out of.
+
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    H.enterCustomColumnDetails({ formula: "[Tot{Enter}", blur: false });
+    cy.realPress("Tab");
+    H.CustomExpressionEditor.value().should("equal", "[Total]  ");
+    H.CustomExpressionEditor.nameInput().should("not.be.focused");
+
+    cy.log("Shift-tab from name input should stay within the popover");
+    H.CustomExpressionEditor.nameInput().focus();
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().realPress(["Shift", "Tab"]);
+    cy.focused().should("have.attr", "role", "textbox");
+
+    cy.realPress(["Shift", "Tab"]);
+    cy.button("Cancel").should("be.focused");
+
+    cy.realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.nameInput().should("be.focused");
+  });
+});
+
 const addCustomColumn = () => {
   cy.findByTestId("action-buttons").findByText("Custom column").click();
 };
