@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.spec :as serialization.spec]
+   [metabase.util :as u]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
@@ -158,7 +159,7 @@
 
 (defmulti entity-ref
   "The ref of `entity`, an entity of `model`: the exported value of its one identity column, or the vector of the
-  values of several."
+  values of several, with keywords as their names."
   {:arglists '([model entity])}
   (fn [model _entity] model))
 
@@ -166,7 +167,9 @@
   (let [spec   (serialization.spec/spec-of model)
         values (for [k (serialization.spec/identity-columns model)]
                  (let [v (get entity (get-in spec [:transform k :as] k))]
-                   (cond-> v (string? v) str/trim)))]
+                   (cond-> v
+                     (string? v)  str/trim
+                     (keyword? v) u/qualified-name)))]
     (if (next values) (vec values) (first values))))
 
 (defn key-of

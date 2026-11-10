@@ -381,7 +381,7 @@
    [:merge
     [:select-keys ::card [:archived :archived_directly :collection_position :description :display
                           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
-                          :card_schema :result_metadata :collection_id :dimensions :creator_id
+                          :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
                           :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters
                           :dashboard_id :made_public_by_id :document_id]]
     [:map {:closed true}

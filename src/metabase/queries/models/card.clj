@@ -1292,9 +1292,11 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (queries.db/insert-card! (cond-> card-data
-                                                                         metadata
-                                                                         (assoc :result_metadata metadata))))]
+                                              (queries.db/insert-card!
+                                               (lib/normalize ::queries.schema/card.update
+                                                              (cond-> card-data
+                                                                metadata
+                                                                (assoc :result_metadata metadata)))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
@@ -1692,14 +1694,25 @@
     (and (some? result-metadata) (not (serialization/collecting? visit)))
     (lib/normalize ::queries.schema/card.result-metadata)))
 
+(defn- export-database-ids
+  "A transform fn exporting the Database of each card whose query doesn't name it, the only reference of an empty
+  query; the rest leave it out."
+  [store cards ids _opts]
+  (mapv (fn [{:keys [dataset_query]} db-name]
+          (when-not (and (seq dataset_query) (:database dataset_query))
+            db-name))
+        cards
+        (serialization/column-refs store :model/Database ids)))
+
 (defmethod serialization/spec :model/Card [_]
   {:schema    ::queries.schema/external-card
    :copy      [:archived :archived_directly :collection_position :description :display
                :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name :card_schema]
    :skip      [:metabase_version :cache_invalidated_at :view_count :last_used_at :initially_published_at
-               :dataset_query_metrics_v2_migration_backup :cache_ttl :legacy_query :database_id :query_type :table_id
+               :dataset_query_metrics_v2_migration_backup :cache_ttl :legacy_query :query_type :table_id
                :source_card_id :metabot_conversation_id :metabot_chart_id :public_uuid_prefix]
-   :transform {:collection_id          (serialization/fk-transform :model/Collection)
+   :transform {:database_id            (assoc serialization/database-transform :export export-database-ids)
+               :collection_id          (serialization/fk-transform :model/Collection)
                :dashboard_id           (serialization/fk-transform :model/Dashboard)
                :document_id            (serialization/fk-transform :model/Document)
                :creator_id             serialization/user-transform
@@ -1918,11 +1931,12 @@
                       overrides))))))
 
 (defn- keep-local-metadata
-  "The load `item` of a Card without a `:result_metadata` to import keeping the local one, which export leaves out of
-  the cards whose metadata the query derives."
+  "The load `item` of a Card without a `:result_metadata` or `:database_id` to import keeping the local ones, which
+  export leaves out of the cards whose query derives them."
   [item]
   (cond-> item
-    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)))
+    (nil? (get-in item [:row :result_metadata])) (update :row dissoc :result_metadata)
+    (nil? (get-in item [:row :database_id]))     (update :row dissoc :database_id)))
 
 (defmethod serialization/before-load :model/Card [_ items]
   (mapv (comp with-model-metadata keep-local-metadata) items))

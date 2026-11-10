@@ -32,7 +32,7 @@
   [tenant]
   (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
                                                              :name      (format "Tenant Collection: %s" (:name tenant))
-                                                             :namespace "tenant-specific"})]
+                                                             :namespace :tenant-specific})]
     (u/prog1 (assoc tenant :tenant_collection_id tenant-collection-id)
       ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
       ;; of defense.
