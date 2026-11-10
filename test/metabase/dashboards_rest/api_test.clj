@@ -5136,7 +5136,7 @@
      :model/DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id,
                                                      :card_id card-id-1
                                                      :visualization_settings {:column_settings
-                                                                              {"[\"name\", 0]" ;; FE reference that must be json formatted
+                                                                              {"[\"name\",\"ID\"]" ;; FE reference that must be json formatted
                                                                                {:click_behavior {:type :link
                                                                                                  :linkType "dashboard"
                                                                                                  :targetId link-dash}}}}}

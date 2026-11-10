@@ -46,7 +46,7 @@
    ::legacy-reference])
 
 (mr/def ::column-settings.key.name
-  "A `:column_settings` key that names a column."
+  "A `:column_settings` key that wraps the name of a column in `name`."
   [:tuple {:decode/normalize vec}
    [:= {:decode/normalize keyword} :name]
    :string])

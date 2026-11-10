@@ -95,3 +95,16 @@
                              "column_settings" {"[\"name\",\"A\"]"
                                                 {"click_behavior" {"parameterMapping" {"abc" {"target" {"type"      "dimension"
                                                                                                         "dimension" ["dimension" ["field" 3 nil]]}}}}}}}))))))
+
+(deftest ^:parallel normalize-column-settings-keys-test
+  (testing "keys that wrap a legacy ref in ref, a column name in name, or are a bare legacy ref are normalized, others dropped"
+    (is (= {:column_settings {"[\"name\",\"A\"]"              {:a 1}
+                              "[\"ref\",[\"field\",1,null]]" {:a 2}
+                              "[\"field\",2,null]"           {:a 3}}}
+           (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+                          {"column_settings" {"[\"name\", \"A\"]"            {"a" 1}
+                                              "[\"ref\",[\"field-id\",1]]"   {"a" 2}
+                                              "[\"field-id\",2]"             {"a" 3}
+                                              "[\"name\",0]"                 {"a" 4}
+                                              "[\"ref\",[\"weird\"]]"        {"a" 5}
+                                              "[\"REF\",[\"field\",1,null]]" {"a" 6}}})))))
