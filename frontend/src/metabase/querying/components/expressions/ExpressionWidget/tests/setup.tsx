@@ -206,7 +206,7 @@ export async function blurEditor() {
 
 /**
  * Waits until the completion list is open, rendered and ready to accept a key.
- * Resolves with the labels of the rendered options.
+ * Resolves with the labels of the offered options.
  */
 export async function waitForCompletions(): Promise<string[]> {
   await waitFor(() =>
