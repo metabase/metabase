@@ -1035,11 +1035,9 @@
     (let [schema [:map {:closed true}
                   [:ops [:sequential [:or
                                       [:map {:closed true} [:card_id :int]]
-                                      [:map {:closed true} [:text :string]]]]]]
-          error  (validation-error schema {:ops [{:card_id 1} {:nope 1} {:text "ok"} {:nope 2}]})]
-      (is (re-find #"`ops\[1\]` " error))
-      (is (re-find #"`ops\[3\]` " error))
-      (is (not (re-find #"`ops` |`ops\[0\]`" error))))))
+                                      [:map {:closed true} [:text :string]]]]]]]
+      (is (= "Invalid tool arguments: `ops[1]` and `[3]` missing required key; disallowed key."
+             (validation-error schema {:ops [{:card_id 1} {:nope 1} {:text "ok"} {:nope 2}]}))))))
 
 (deftest ^:parallel alternative-tool-argument-received-test
   (let [schema [:map {:closed true}
@@ -1067,6 +1065,32 @@
                                                          [:map {:closed true} [:card_id {:optional true} :int]]
                                                          [:map {:closed true} [:text {:optional true} :string]]]]]]
                                {:ops [{:nope 1}]}))))))
+
+(deftest ^:parallel list-tool-argument-validation-test
+  (let [schema [:map {:closed true}
+                [:ids {:optional true} [:sequential :int]]
+                [:ops {:optional true} [:sequential [:map {:closed true} [:card_id :int]]]]
+                [:name {:optional true} :string]
+                [:tag {:optional true} :string]]]
+    (testing "list indexes are ordered as numbers"
+      (is (= (str "Invalid tool arguments: `ids[3]` should be an integer; received a string."
+                  " `ids[10]` should be an integer; received a boolean.")
+             (validation-error schema {:ids (assoc (vec (range 12)) 3 "a" 10 true)}))))
+    (testing "the same error in several elements of a list is one sentence"
+      (is (= "Invalid tool arguments: `ids[3]` and `[10]` should be an integer; received a string."
+             (validation-error schema {:ids (assoc (vec (range 12)) 3 "a" 10 "b")})))
+      (is (= (str "Invalid tool arguments: `ids[0]`, `[1]`, `[2]` and 197 more should be an integer;"
+                  " received a string. `name` should be a string; received a number.")
+             (validation-error schema {:ids (vec (repeat 200 "x")) :name 5}))))
+    (testing "an argument gets at most five sentences, so a later argument is still reported"
+      (is (= (str "Invalid tool arguments: `ops[0].card_id` should be an integer; received a string."
+                  " `ops[1].card_id` should be an integer; received a string."
+                  " `ops[2].card_id` should be an integer; received a string."
+                  " `ops[3].card_id` should be an integer; received a string."
+                  " `ops[4].card_id` should be an integer; received a string."
+                  " And 2 more problems in `ops`."
+                  " `tag` should be a string; received a number.")
+             (validation-error schema {:ops (vec (repeat 7 {:card_id "x"})) :tag 5}))))))
 
 (deftest ^:parallel qualified-tool-argument-validation-test
   (testing "a qualified key is named with its namespace, so the model can find the key it sent"

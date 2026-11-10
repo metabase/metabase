@@ -162,6 +162,17 @@
           ""
           in))
 
+(defn- compare-paths
+  "Orders two argument paths part by part, so that list indexes compare as numbers: `ops[2]` comes before `ops[10]`."
+  [a b]
+  (or (some (fn [[x y]]
+              (let [c (if (and (int? x) (int? y))
+                        (compare x y)
+                        (compare (str x) (str y)))]
+                (when-not (zero? c) c)))
+            (map vector a b))
+      (compare (count a) (count b))))
+
 (defn- field-names
   "The fields below the argument at the path `in` that `errors` are about, such as `` `hour`, `day_of_week` ``."
   [in errors]
@@ -169,24 +180,67 @@
                    (str "`" (argument-path (subvec error-in (count in))) "`"))))
 
 (defn- problem
-  "What is wrong with the argument at the path `in`, given the Malli `errors` reported under it, such as
-  \"is required.\"."
+  "What is wrong with the argument at the path `in`, given the Malli `errors` reported under it, as a predicate for one
+  argument (`:one`) and for several (`:many`), such as \"is required.\" and \"are required.\"."
   [arguments in errors]
   ;; Errors reported deeper than `in` come from inside a value of the right type, under an `:or`.
   (let [about-value? (every? #(= in (:in %)) errors)
         texts        (vec (distinct (map :text errors)))]
     (cond
-      (and about-value? (= texts ["disallowed key"]))       "is not a supported argument."
-      (and about-value? (= texts ["missing required key"])) "is required."
-      (= texts ["disallowed key"])                          (str "has unsupported fields: " (field-names in errors) ".")
+      (and about-value? (= texts ["disallowed key"]))
+      {:one "is not a supported argument." :many "are not supported arguments."}
+
+      (and about-value? (= texts ["missing required key"]))
+      {:one "is required." :many "are required."}
+
+      (= texts ["disallowed key"])
+      (let [text (str "unsupported fields: " (field-names in errors) ".")]
+        {:one (str "has " text) :many (str "have " text)})
+
+      (= texts ["missing required key"])
       ;; The alternatives of an `:or` each need some of these fields, not all of them.
-      (= texts ["missing required key"])                    (str "is missing required fields, from among "
-                                                                 (field-names in errors) ".")
-      :else                                                 (str (str/join "; " texts)
-                                                                 (when about-value?
-                                                                   (str "; received "
-                                                                        (json-type-name (get-in arguments in))))
-                                                                 "."))))
+      (let [text (str "missing required fields, from among " (field-names in errors) ".")]
+        {:one (str "is " text) :many (str "are " text)})
+
+      :else
+      (let [text (str (str/join "; " texts)
+                      (when about-value?
+                        (str "; received " (json-type-name (get-in arguments in))))
+                      ".")]
+        {:one  text
+         :many (str/replace-first text #"^is " "are ")}))))
+
+(defn- problem-sentences
+  "One sentence per problem in `problems`, each a map of an argument path `:in` and its [[problem]].
+
+  The same problem in several elements of one list is one sentence, such as \"`ids[0]`, `[1]`, `[2]` and 7 more should
+  be an integer; received a string.\", so a mistake the model repeated across a long list does not crowd out the others."
+  [problems]
+  (let [list-key (fn [{:keys [in problem]}]
+                   (if (int? (peek in)) [(pop in) problem] [in]))]
+    (for [[{:keys [in problem]} & more :as group] (sort-by (comp :in first) compare-paths
+                                                           (vals (group-by list-key problems)))]
+      (if (empty? more)
+        (str "`" (argument-path in) "` " (:one problem))
+        ;; The first element by its full path, the rest by index alone.
+        (let [names (cons (str "`" (argument-path in) "`")
+                          (for [p more] (str "`[" (peek (:in p)) "]`")))
+              names (if (< 3 (count group))
+                      (str (str/join ", " (take 3 names)) " and " (- (count group) 3) " more")
+                      (str (str/join ", " (butlast names)) " and " (last names)))]
+          (str names " " (:many problem)))))))
+
+(def ^:private max-sentences-per-argument
+  "How many sentences the errors of one top-level argument get, so that one bad argument cannot push the others past
+  [[max-output-length]]."
+  5)
+
+(defn- capped-sentences
+  "`sentences` for the top-level argument `argument`, with those past [[max-sentences-per-argument]] counted instead."
+  [argument sentences]
+  (let [[kept dropped] (split-at max-sentences-per-argument sentences)]
+    (cond-> (vec kept)
+      (seq dropped) (conj (str "And " (count dropped) " more problems in `" (argument-path [argument]) "`.")))))
 
 (defn- reported-path
   "The argument path to report the Malli `error` under: the data path of the outermost `:or` the error is inside, with
@@ -212,7 +266,7 @@
                             {:reported (vec (reported-path schema error))
                              :in       (vec (:in error))
                              :text     (or (me/error-message error {:unknown false}) "is not valid")}))]
-    (for [in (sort-by argument-path (keys by-path))]
+    (for [in (sort compare-paths (keys by-path))]
       {:in in :problem (problem arguments in (by-path in))})))
 
 (defn- invalid-arguments-message
@@ -222,8 +276,10 @@
   (when-let [explanation (mr/explain schema arguments)]
     (str "Invalid tool arguments: "
          (if (map? arguments)
-           (str/join " " (for [{:keys [in problem]} (problems arguments explanation)]
-                           (str "`" (argument-path in) "` " problem)))
+           (str/join " " (for [argument-problems (partition-by (comp first :in) (problems arguments explanation))
+                               sentence          (capped-sentences (first (:in (first argument-problems)))
+                                                                   (problem-sentences argument-problems))]
+                           sentence))
            (str "expected an object of named arguments; received " (json-type-name arguments) ".")))))
 
 ;;; ------------------------------------------------ Rendering -----------------------------------------------------
