@@ -70,6 +70,10 @@ By default, Metabase will export the first 1048575 rows of results.
 
 When exporting results to an Excel document (.xlsx), Metabase will limit the number of characters per cell to 32,767, which is the [character limit enforced by Excel](https://support.microsoft.com/en-us/excel/excel-specifications-and-limits). If you have a bonkers number of characters in a single cell, Metabase will truncate the content to fit within that limit.
 
+## Setting the field separator for CSV exports
+
+By default, Metabase uses a comma (`,`) to separate fields in CSV exports. You can change the separator character with the [`MB_CSV_FIELD_SEPARATOR`](../configuring-metabase/environment-variables.md#mb_csv_field_separator) environment variable. Common alternatives include a semicolon (`;`), used in some locales, and a tab (`\t`).
+
 ## Exporting results from document cards
 
 You can download results from charts embedded in [documents](../documents/introduction.md).
