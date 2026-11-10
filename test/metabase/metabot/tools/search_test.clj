@@ -180,11 +180,36 @@
       (testing "a database the model picked is named, with the types it leaves out"
         (mt/with-test-user :crowberto
           (is (= ["<no-results>"
-                  (str "Only database " (mt/id) " was searched, so dashboards, collections and documents were left out. "
+                  (str "Only database " (mt/id) " was searched, so collections, dashboards and documents were left out. "
                        "To search everywhere, leave out `database_id`.")
                   retry-note
                   "</no-results>"]
                  (:notes (explain #'search/search-tool {:query "zzz" :database_id (mt/id)} nil))))
+          (testing "only the types the search would have reached are named"
+            (is (= ["<no-results>"
+                    (str "Only database " (mt/id) " was searched, so collections were left out. "
+                         "To search everywhere, leave out `database_id`.")
+                    retry-note
+                    "</no-results>"]
+                   (:notes (explain #'search/nlq-search-tool {:query "zzz" :database_id (mt/id)} nil)))
+                "the NLQ tool's defaults have no dashboards or documents")
+            (is (= ["<no-results>"
+                    "Only these entity types were searched: dashboard, table. If other types could match, add them to `entity_types`."
+                    (str "Only database " (mt/id) " was searched, so dashboards were left out. "
+                         "To search everywhere, leave out `database_id`.")
+                    retry-note
+                    "</no-results>"]
+                   (:notes (explain #'search/search-tool
+                                    {:query "zzz" :database_id (mt/id) :entity_types ["table" "dashboard"]}
+                                    nil))))
+            (is (= ["<no-results>"
+                    "Only these entity types were searched: table. If other types could match, add them to `entity_types`."
+                    retry-note
+                    "</no-results>"]
+                   (:notes (explain #'search/search-tool
+                                    {:query "zzz" :database_id (mt/id) :entity_types ["table"]}
+                                    nil)))
+                "a database narrows nothing when every type searched lives in one"))
           (is (= {:empty_reason "no_match" :notes ["<no-results>" retry-note "</no-results>"]}
                  (explain #'search/sql-search-tool {:query "zzz" :database_id (mt/id)} nil))
               "the SQL tool always searches the editor's database, so that narrows nothing"))))

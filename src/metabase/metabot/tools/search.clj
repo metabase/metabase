@@ -932,24 +932,31 @@
   "What narrowed a search beyond its queries, as sentences for the model. `searched-collection-id` is the collection
   the search actually ran in, which differs from the caller's `collection_id` when a confined Metabot ignored it."
   [default-types {:keys [metabot profile-id]} {:keys [entity_types collection_id database_id]} searched-collection-id]
-  (cond-> []
-    (and (seq entity_types) (not-every? (set entity_types) default-types))
-    (conj (str "Only these entity types were searched: " (str/join ", " (sort (set entity_types)))
-               ". If other types could match, add them to `entity_types`."))
+  (let [left-out (when database_id
+                   (filter databaseless-types (sort (set (or (seq entity_types) default-types)))))]
+    (cond-> []
+      (and (seq entity_types) (not-every? (set entity_types) default-types))
+      (conj (str "Only these entity types were searched: " (str/join ", " (sort (set entity_types)))
+                 ". If other types could match, add them to `entity_types`."))
 
-    (and database_id (some databaseless-types default-types))
-    (conj (str "Only database " database_id " was searched, so dashboards, collections and documents were left out. "
-               "To search everywhere, leave out `database_id`."))
+      (seq left-out)
+      (conj (str "Only database " database_id " was searched, so "
+                 (let [plurals (map #(str % "s") left-out)]
+                   (if (next plurals)
+                     (str (str/join ", " (butlast plurals)) " and " (last plurals))
+                     (first plurals)))
+                 " were left out. "
+                 "To search everywhere, leave out `database_id`."))
 
-    (and collection_id (= collection_id searched-collection-id))
-    (conj (str "Only collection " collection_id " and the collections inside it were searched. "
-               "To search everywhere, leave out `collection_id`."))
+      (and collection_id (= collection_id searched-collection-id))
+      (conj (str "Only collection " collection_id " and the collections inside it were searched. "
+                 "To search everywhere, leave out `collection_id`."))
 
-    (:use_verified_content metabot)
-    (conj "This Metabot searches only curated content, such as verified items and items in official collections.")
+      (:use_verified_content metabot)
+      (conj "This Metabot searches only curated content, such as verified items and items in official collections.")
 
-    (confined-collection-id metabot profile-id)
-    (conj "This Metabot searches only inside its own collection.")))
+      (confined-collection-id metabot profile-id)
+      (conj "This Metabot searches only inside its own collection."))))
 
 (defn- format-search-output
   "Format search results as an LLM-ready string, one XML element per result.
