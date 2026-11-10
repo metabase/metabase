@@ -92,7 +92,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=~
-ExecStart=/usr/bin/java --add-opens java.base/java.nio=ALL-UNNAMED -jar /home/metabase/metabase.jar
+ExecStart=/usr/bin/java -jar /home/metabase/metabase.jar
 EnvironmentFile=/home/metabase/.env
 User=metabase
 Type=simple
