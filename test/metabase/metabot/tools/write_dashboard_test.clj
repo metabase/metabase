@@ -541,6 +541,47 @@
            (is (= 2 (count (dashcards dash-id))))
            (is (re-find #"name=\"Venues\" display=\"bar\"" output))))))))
 
+(deftest curated-only-conversation-chart-test
+  (curated-dashboard!
+   (fn [{:keys [dash-id curated-metabot]}]
+     (mt/with-model-cleanup [:model/Card]
+       (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+         (as-metabot
+          curated-metabot
+          #(binding [shared/*memory-atom* (chart-memory convo-id)]
+             (call {:dashboard_id dash-id
+                    :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues"}]}
+                   :internal)
+             (testing "a chart saved by an earlier call of this conversation shows in full on a later edit"
+               (is (re-find #"name=\"Venues\" display=\"bar\""
+                            (:output (call {:dashboard_id dash-id, :name "Renamed"} :internal))))))))))))
+
+(deftest curated-only-other-conversation-card-test
+  (curated-dashboard!
+   (fn [{:keys [dash-id curated-metabot]}]
+     (mt/with-temp [:model/MetabotConversation {convo-id :id}    {:user_id (mt/user->id :crowberto)}
+                    :model/MetabotConversation {other-id :id}    {:user_id (mt/user->id :crowberto)}
+                    :model/Card                {card-id :id}     {:name                    "Other chat's chart"
+                                                                  :dashboard_id            dash-id
+                                                                  :dataset_query           (venues-query)
+                                                                  :metabot_conversation_id other-id
+                                                                  :metabot_chart_id        "A"}
+                    :model/DashboardCard       {dashcard-id :id} {:dashboard_id dash-id
+                                                                  :card_id      card-id
+                                                                  :row          6
+                                                                  :col          0
+                                                                  :size_x       12
+                                                                  :size_y       6}]
+       (testing "a card saved from another conversation shows its slot only"
+         (let [output (as-metabot
+                       curated-metabot
+                       #(binding [shared/*memory-atom* (chart-memory convo-id)]
+                          (:output (call {:dashboard_id dash-id, :name "Renamed"} :internal))))]
+           (is (re-find (re-pattern (str "<dashcard id=\"" dashcard-id "\" row=\"6\" col=\"0\" size_x=\"12\""
+                                         " size_y=\"6\"/>"))
+                        output))
+           (is (not (re-find #"Other chat's chart" output)))))))))
+
 (deftest curation-off-test
   (curated-dashboard!
    (fn [{:keys [plain-id dash-id open-metabot]}]

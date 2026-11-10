@@ -544,19 +544,22 @@
 
 (defn- card-shown-fn
   "A predicate on the cards of `dashcards`: whether the result may show a card's id, name and display.
-  The user must be able to read it. Under [[shared/curated-only?]] it must also be curated, or saved from a chart in
-  `saved-charts`, which come from queries already held to curated sources."
+  The user must be able to read it. Under [[shared/curated-only?]] it must also be curated, or saved from a chart of
+  this conversation: one in `saved-charts`, or one an earlier call saved. Charts come from queries already held to
+  curated sources."
   [dashcards saved-charts]
   (if-not (shared/curated-only?)
     mi/can-read?
-    (let [card-ids (into #{} (keep (comp :id :card)) dashcards)
-          curated  (if (seq card-ids)
-                     (curation/curated-ids (map #(vector "card" %) card-ids))
-                     #{})
-          charts   (into #{} (map :card-id) saved-charts)]
+    (let [card-ids        (into #{} (keep (comp :id :card)) dashcards)
+          curated         (if (seq card-ids)
+                            (curation/curated-ids (map #(vector "card" %) card-ids))
+                            #{})
+          charts          (into #{} (map :card-id) saved-charts)
+          conversation-id (shared/current-conversation-id)]
       (fn [{card-id :id :as card}]
         (and (mi/can-read? card)
              (or (contains? charts card-id)
+                 (and conversation-id (= conversation-id (:metabot_conversation_id card)))
                  (contains? curated ["card" card-id])))))))
 
 (defn- dashcard-xml
