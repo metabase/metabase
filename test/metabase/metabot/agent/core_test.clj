@@ -2066,7 +2066,7 @@
                                           (mut/mock-llm-response
                                            [{:type :start :id "msg-2"}
                                             {:type :text :text "Done"}]))))
-                                    metabot-search/search
+                                    metabot-search/search-by-query
                                     (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id
@@ -2126,7 +2126,7 @@
                                            :arguments {:query        "test"
                                                        :entity_types     ["table"]}}])
                                         (throw (ex-info "boom on step 2" {}))))
-                                    metabot-search/search
+                                    metabot-search/search-by-query
                                     (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
           (mt/with-log-level [metabase.metabot.agent.core :fatal]
             (snowplow-test/with-fake-snowplow-collector
