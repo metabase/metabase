@@ -502,11 +502,13 @@
 
 ;; A hash index, not a B-tree: a B-tree entry is capped at about 2.7 KB, so long text failed to insert.
 ;; A hash index stores only a hash of the value, and the lookup it serves only needs equality.
+;; The name is the one the B-tree had. Older versions create this index with IF NOT EXISTS at startup, so
+;; while one shares the database (a rolling upgrade or a rollback) it finds the hash index and keeps it.
 (defn content-index-name
   "Returns the name for the hash index on `content` for the given semantic search index configuration.
   It serves the `content IN ..` lookup that reuses embeddings for identical text."
   [index]
-  (index-name index "_content_hash_idx"))
+  (index-name index "_content_idx"))
 
 (defn create-hnsw-index-if-not-exists!
   "Create the HNSW index on the `embedding` column of `index`'s table, if it does not already exist.

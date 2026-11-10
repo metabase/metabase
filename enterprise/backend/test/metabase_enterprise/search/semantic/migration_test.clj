@@ -560,15 +560,14 @@
   (testing "migration 6 replaces the B-tree index on content with a hash index"
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-test-db! {:mode :mock-initialized}
-        (let [pgvector             (semantic.env/get-pgvector-datasource!)
-              index-metadata       (semantic.env/get-index-metadata)
-              table-name           (active-index-table-name! pgvector index-metadata)
-              bare-name            (semantic.util/table-name-part table-name)
-              {:keys [hash btree]} (semantic.tu/content-index-names table-name)]
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
+              index-metadata (semantic.env/get-index-metadata)
+              table-name     (active-index-table-name! pgvector index-metadata)
+              content-index  (semantic.index/content-index-name {:table-name table-name})]
           (semantic.tu/restore-content-btree! pgvector index-metadata table-name)
-          (is (=? {btree #"CREATE INDEX .* USING btree \(content\)"}
-                  (semantic.tu/table-indexes bare-name)))
+          (is (= {content-index :btree} (semantic.tu/content-indexes table-name)))
           (semantic.core/init! (semantic.tu/mock-documents) nil)
-          (let [indexes (semantic.tu/table-indexes bare-name)]
-            (is (=? {hash #"CREATE INDEX .* USING hash \(content\)"} indexes))
-            (is (not (contains? indexes btree)))))))))
+          (is (= {content-index :hash} (semantic.tu/content-indexes table-name)))
+          (testing "and a version from before the migration keeps the hash index when it starts up"
+            (semantic.tu/create-content-index-as-before-migration-6! pgvector table-name)
+            (is (= {content-index :hash} (semantic.tu/content-indexes table-name)))))))))

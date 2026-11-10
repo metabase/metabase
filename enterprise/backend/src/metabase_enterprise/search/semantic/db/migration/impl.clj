@@ -363,17 +363,20 @@
   (alter-index-tables!
    tx index-metadata 6
    (fn [_execute! table-name]
-     (let [index      {:table-name table-name}
-           ;; the old B-tree's name, as [[semantic.index/content-index-name]] built it before migration 6
-           btree-name (semantic.index/hash-identifier-if-exceeds-pg-limit
-                       (str (semantic.util/table-name-part table-name) "_content_idx"))]
+     (let [index     {:table-name table-name}
+           ;; the hash index takes over the B-tree's name; see [[semantic.index/content-index-name]] for why
+           name      (semantic.index/content-index-name index)
+           temp-name (semantic.index/hash-identifier-if-exceeds-pg-limit
+                      (str (semantic.util/table-name-part table-name) "_content_hash_tmp"))
+           qualified #(semantic.util/quote-table (semantic.index/schema-qualified-index-name index %))]
        ;; build the replacement first, so the embedding lookup is never left without an index
        (jdbc/execute! tx [(format "CREATE INDEX IF NOT EXISTS %s ON %s USING hash (content)"
-                                  (semantic.util/quote-ident (semantic.index/content-index-name index))
+                                  (semantic.util/quote-ident temp-name)
                                   (semantic.util/quote-table table-name))])
-       (jdbc/execute! tx [(str "DROP INDEX IF EXISTS "
-                               (semantic.util/quote-table
-                                (semantic.index/schema-qualified-index-name index btree-name)))])))))
+       (jdbc/execute! tx [(str "DROP INDEX IF EXISTS " (qualified name))])
+       (jdbc/execute! tx [(format "ALTER INDEX %s RENAME TO %s"
+                                  (qualified temp-name)
+                                  (semantic.util/quote-ident name))])))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, i.e. the schema of the `index_...` index tables. Migration author is responsible for
