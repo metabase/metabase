@@ -667,6 +667,7 @@ describe("issue 31628", () => {
       .then((ids) => cy.get(`[data-dashcard-key="${ids[index]}"]`));
 
   const scalarContainer = (card) => card.findByTestId("scalar-container");
+  const scalarValue = (card) => card.findByTestId("scalar-value");
   const previousValue = (card) => card.findByTestId("scalar-previous-value");
 
   const moveMouseAway = () => {
@@ -737,7 +738,7 @@ describe("issue 31628", () => {
     H.getDashboardCards().should("have.length", cards.length);
 
     cy.log("scalar 1x2: should truncate value and show value tooltip on hover");
-    scalarContainer(card("scalar1x2")).then(($element) =>
+    scalarValue(card("scalar1x2")).then(($element) =>
       H.assertIsEllipsified($element[0]),
     );
     //TODO: Need to hover on the actual text, not just the container. This is a weird one
@@ -746,7 +747,7 @@ describe("issue 31628", () => {
     moveMouseAway();
 
     cy.log("scalar 2x2: should not truncate value");
-    scalarContainer(card("scalar2x2")).then(($element) =>
+    scalarValue(card("scalar2x2")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
     cy.log("scalar 2x2: should keep the title visible without hovering");
@@ -761,7 +762,7 @@ describe("issue 31628", () => {
     cy.log(
       "scalar 6x3: should not truncate value and should not show value tooltip on hover",
     );
-    scalarContainer(card("scalar6x3")).then(($element) =>
+    scalarValue(card("scalar6x3")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
     scalarContainer(card("scalar6x3")).realHover();
@@ -769,7 +770,7 @@ describe("issue 31628", () => {
     moveMouseAway();
 
     cy.log("smart scalar 2x2: should not truncate value");
-    scalarContainer(card("smart2x2")).then(($element) =>
+    scalarValue(card("smart2x2")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
     cy.log("smart scalar 2x2: should keep the title visible without hovering");
@@ -828,7 +829,7 @@ describe("issue 31628", () => {
       cy.log(
         `${key}: should not truncate value and should not show value tooltip on hover`,
       );
-      scalarContainer(card(key)).then(($element) =>
+      scalarValue(card(key)).then(($element) =>
         H.assertIsNotEllipsified($element[0]),
       );
       scalarContainer(card(key)).realHover();
@@ -867,6 +868,34 @@ describe("issue 31628", () => {
       cy.findByText("36.65%").should("be.visible");
       cy.findByText("98.88%").should("be.visible");
     });
+  });
+});
+
+describe("issue 85061", () => {
+  const LONG_STRING = "This is a long string returned by a SQL query";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should shrink a long string value to fit the scalar card (metabase#85061)", () => {
+    cy.viewport(1440, 800);
+    H.createNativeQuestionAndDashboard({
+      questionDetails: {
+        name: "Long string",
+        display: "scalar",
+        native: { query: `SELECT '${LONG_STRING}' AS long_string` },
+      },
+      cardDetails: { size_x: 12, size_y: 4 },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.getDashboardCard(0)
+      .findByTestId("scalar-value")
+      .should("have.text", LONG_STRING)
+      .and(($element) => H.assertIsNotEllipsified($element[0]));
   });
 });
 
