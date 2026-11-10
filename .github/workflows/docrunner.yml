@@ -48,7 +48,9 @@ env:
   # The bot posts text from the agents, and no person reviews it first. `sanitize` makes this text safer:
   # - A URL that is not on github.com/metabase or metabase.com goes in a code span, thus it is not a link.
   #   First, the filter removes each backslash before `:` or `/`, and escapes each `&` before an entity,
-  #   because Markdown can hide a URL with them.
+  #   because Markdown can hide a URL with them. A browser reads `\` as `/` in a URL, thus `/\host` and `\\host`
+  #   are URLs to other sites. An allowed URL with `..`, `%2e`, or `\` also goes in a code span, because a browser
+  #   opens `https://github.com/metabase/../x` as `https://github.com/x`.
   # - A closing keyword before a GitHub URL puts the URL in a code span. A zero-width space after the `#` of a
   #   closing keyword (for example `Fixes #123`) stops the reference. Thus a merge does not close that issue.
   # - A zero-width space after each `@` stops the mentions, also in code spans.
@@ -56,8 +58,9 @@ env:
     def sanitize:
       gsub("\\\\(?=[:/])"; "")
       | gsub("&(?=#?[A-Za-z0-9]+;)"; "&amp;")
-      | gsub("(?<![A-Za-z0-9_/:.@-])(?<u>(?:https?:|//|www\\.)[^\\s<>()\\[\\]\"'`]+)";
+      | gsub("(?<![A-Za-z0-9_/\\\\:.@-])(?<u>(?:https?:|[/\\\\]{2}|www\\.)[^\\s<>()\\[\\]\"'`]+)";
           if (.u | test("^https://(?:github\\.com/metabase/|(?:[a-z0-9-]+\\.)*metabase\\.com(?:[/?#]|$))"; "i"))
+            and (.u | test("/[.][.]|%2e|\\\\"; "i") | not)
           then .u else "`\(.u)`" end; "i")
       | gsub("(?<k>\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\s*:?\\s*)(?<u>https://github\\.com/[^\\s<>()\\[\\]\"'`]+)";
           "\(.k)`\(.u)`"; "i")
@@ -191,7 +194,11 @@ jobs:
               echo "Not used: #$n. The author cannot write to the repo."
               continue
             fi
-            gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$n/files" < /dev/null | jq -s 'add // []' > "$T/files.json"
+            # The shell has `pipefail`: without the `if`, one failed call stops the step.
+            if ! gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$n/files" < /dev/null | jq -s 'add // []' > "$T/files.json"; then
+              echo "Not used: #$n. Docrunner could not get its changed files."
+              continue
+            fi
             {
               jq -r "$VISIBLE_JQ"' "# Pull request #\(.number): \(.title)\n\nURL: \(.html_url)\nState: \(.state)\(if .merged then ", merged" else "" end)\nBase branch: \(.base.ref)\n\n## Description (rendered HTML)\n\n\(.body_html // "" | visible)\n\n## Changed files\n"' "$T/pr.json"
               jq -r '.[] | "### \(.filename) (\(.status), +\(.additions) -\(.deletions))\n\n" +
@@ -290,6 +297,9 @@ jobs:
       #   Do not deny Skill: a deny is stronger than the allow rules, and then no skill loads.
       # - `Edit(docs/**/*.md)` controls the Edit and Write tools. The agent can write only Markdown files in `docs/`.
       #   Thus it cannot write a config file that a later step runs, for example `docs/.prettierrc.mjs`.
+      # - The `Edit` denies: `docs/**/*.md` also matches Claude Code files. Claude Code loads a nested `CLAUDE.md`
+      #   or skill during the session, when the agent reads a file in that folder. A `CLAUDE.md` can import a file
+      #   with `@`, and a skill can have `hooks`. "Check the docs skills" cannot see a file from the agent.
       # - `Read(./.git/**)`: the action puts the job token in `.git/config`.
       - name: Run the docs agent
         id: claude
@@ -307,7 +317,7 @@ jobs:
             --max-turns ${{ env.DOCRUNNER_MAX_TURNS }}
             --permission-mode dontAsk
             --allowedTools "Edit(docs/**/*.md),Skill(docs-write),Skill(docs-review)"
-            --disallowedTools "Bash,NotebookEdit,WebFetch,WebSearch,Agent,Workflow,SendMessage,Monitor,Read(//proc/**),Read(./.git/**)"
+            --disallowedTools "Bash,NotebookEdit,WebFetch,WebSearch,Agent,Workflow,SendMessage,Monitor,Read(//proc/**),Read(./.git/**),Edit(docs/**/CLAUDE.md),Edit(docs/**/CLAUDE.local.md),Edit(docs/**/AGENTS.md),Edit(docs/**/.claude/**)"
             --json-schema '{"type":"object","additionalProperties":false,"required":["status","title","body","images"],"properties":{"status":{"type":"string","enum":["done","no-change"]},"title":{"type":"string"},"body":{"type":"string"},"images":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["path","shows","steps"],"properties":{"path":{"type":"string","pattern":"${{ env.IMAGE_PATH_RE }}"},"shows":{"type":"string"},"steps":{"type":"string"}}}}}}'
 
       - name: Remove the token from the git remote
@@ -806,12 +816,13 @@ jobs:
           echo "sha=$commit" >> "$GITHUB_OUTPUT"
 
       # optimize-images.yml starts only when a PR gets a label, and only for a PR with `Type:Documentation`.
+      # `|| true`: if a person removed the label, the DELETE gives 404. The next call adds the label again.
       - name: Start the image optimization
         if: steps.push.outcome == 'success'
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
         run: |
-          gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels/Type%3ADocumentation" > /dev/null
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels/Type%3ADocumentation" > /dev/null || true
           gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels" -f "labels[]=Type:Documentation" > /dev/null
 
       - name: Report on the PR
