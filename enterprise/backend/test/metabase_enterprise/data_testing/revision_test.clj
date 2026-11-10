@@ -332,49 +332,49 @@
                                        :revision_id (:id creation)})
                 (is (= old-card (t2/select-one-fn :card_id :model/CardTest :id card-test-id)))))))))))
 
-(defn- check-revisions-require-the-feature
-  "Check that the three revision endpoints refuse the saved test `test-id` of `model`, the revision entity `entity`,
-  with 402 under the premium features `without`, and serve it under `with`. The test's name must be \"Renamed\", its
-  oldest revision \"Original\"."
+(defn- check-revert-requires-the-feature
+  "Check that a revert of the saved test `test-id` of `model`, the revision entity `entity`, is refused with 402 under
+  the premium features `without` and done under `with`, while both history endpoints serve its revisions under both.
+  The test's name must be \"Renamed\", its oldest revision \"Original\"."
   [model entity test-id without with]
   (let [creation-id (:id (last (revisions/revisions model test-id)))
-        requests    [[:get "revision" :entity entity :id test-id]
-                     [:get (str "revision/" entity "/" test-id)]
-                     [:post "revision/revert" {:entity entity :id test-id :revision_id creation-id}]]]
-    (testing (str "without :transforms-testing, every revision endpoint refuses a " entity)
+        revert      {:entity entity :id test-id :revision_id creation-id}
+        history     (fn []
+                      (testing "both history endpoints serve the revisions"
+                        (is (=? [{:is_creation false} {:is_creation true}]
+                                (mt/user-http-request :crowberto :get 200 "revision" :entity entity :id test-id)))
+                        (is (=? [{:is_creation false} {:is_creation true}]
+                                (mt/user-http-request :crowberto :get 200 (str "revision/" entity "/" test-id))))))]
+    (testing (str "without :transforms-testing, a revert of a " entity " is refused")
       (mt/with-premium-features without
-        (doseq [[method & args] requests]
-          (testing (str method " " (first args))
-            (mt/assert-has-premium-feature-error
-             "Transforms Testing"
-             (apply mt/user-http-request :crowberto method 402 args)))))
+        (history)
+        (mt/assert-has-premium-feature-error
+         "Transforms Testing"
+         (mt/user-http-request :crowberto :post 402 "revision/revert" revert)))
       (is (= "Renamed" (t2/select-one-fn :name model :id test-id))))
-    (testing (str "with :transforms-testing, every revision endpoint serves a " entity)
+    (testing (str "with :transforms-testing, a " entity " is reverted")
       (mt/with-premium-features with
-        (is (=? [{:is_creation false} {:is_creation true}]
-                (mt/user-http-request :crowberto :get 200 "revision" :entity entity :id test-id)))
-        (is (=? [{:is_creation false} {:is_creation true}]
-                (mt/user-http-request :crowberto :get 200 (str "revision/" entity "/" test-id))))
-        (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity entity :id test-id :revision_id creation-id})
+        (history)
+        (mt/user-http-request :crowberto :post 200 "revision/revert" revert)
         (is (= "Original" (t2/select-one-fn :name model :id test-id)))))))
 
-(deftest transform-test-revisions-require-feature-test
+(deftest transform-test-revert-requires-feature-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform     {transform-id :id} {}
                      :model/TransformTest {transform-test-id :id} {:transform_id transform-id
                                                                    :name         "Original"}]
         (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
-        (check-revisions-require-the-feature :model/TransformTest "transform-test" transform-test-id
-                                             #{:transforms-basic} #{:transforms-basic :transforms-testing})))))
+        (check-revert-requires-the-feature :model/TransformTest "transform-test" transform-test-id
+                                           #{:transforms-basic} #{:transforms-basic :transforms-testing})))))
 
-(deftest card-test-revisions-require-feature-test
+(deftest card-test-revert-requires-feature-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card     {card-id :id}      {}
                    :model/CardTest {card-test-id :id} {:card_id card-id
                                                        :name    "Original"}]
       (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
-      (check-revisions-require-the-feature :model/CardTest "card-test" card-test-id #{} #{:transforms-testing}))))
+      (check-revert-requires-the-feature :model/CardTest "card-test" card-test-id #{} #{:transforms-testing}))))
 
 (deftest card-test-revert-of-a-test-of-a-card-with-no-query-test
   (mt/with-premium-features #{:transforms-testing}
@@ -399,8 +399,8 @@
                   (mt/user-http-request :crowberto :post 200 "revision/revert" body)
                   (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))))
 
-(deftest card-test-revisions-without-the-feature-answer-402-before-the-read-check-test
-  (testing "Without :transforms-testing, a non-admin who cannot read the card gets 402, also for a missing id"
+(deftest card-test-revert-without-the-feature-answers-402-before-the-write-check-test
+  (testing "Without :transforms-testing, a non-admin who cannot read the card gets 402 for a revert, also of a missing id"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {coll :id}    {}
                      :model/Card       {card-id :id} {:collection_id coll}]
@@ -409,29 +409,32 @@
             (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
             (let [creation-id (:id (last (revisions/revisions :model/CardTest card-test-id)))
                   missing-id  (inc (t2/select-one-fn :id :model/CardTest {:order-by [[:id :desc]]}))
-                  requests    (fn [id]
+                  history     (fn [id]
                                 [[:get "revision" :entity "card-test" :id id]
-                                 [:get (str "revision/card-test/" id)]
-                                 [:post "revision/revert" {:entity "card-test" :id id :revision_id creation-id}]])]
+                                 [:get (str "revision/card-test/" id)]])
+                  revert      (fn [id] [:post "revision/revert" {:entity "card-test" :id id :revision_id creation-id}])
+                  refusals    (fn [requests]
+                                (doseq [[id status] [[card-test-id 403] [missing-id 404]]
+                                        [method & args] (requests id)]
+                                  (testing (str method " " (first args) " " id)
+                                    (apply mt/user-http-request :rasta method status args))))]
               (testing "premise: rasta may not read the test, and the missing id names no test"
                 (mt/with-current-user (mt/user->id :rasta)
                   (is (false? (boolean (mi/can-read? :model/CardTest card-test-id)))))
                 (is (not (t2/exists? :model/CardTest :id missing-id))))
-              (testing "control: with the feature, the read check refuses rasta"
+              (testing "control: with the feature, the read and write checks refuse rasta"
                 (mt/with-premium-features #{:transforms-testing}
-                  (doseq [[method & args] (requests card-test-id)]
-                    (testing (str method " " (first args))
-                      (apply mt/user-http-request :rasta method 403 args)))
-                  (doseq [[method & args] (requests missing-id)]
-                    (testing (str method " " (first args) " of a missing id")
-                      (apply mt/user-http-request :rasta method 404 args)))))
+                  (refusals #(conj (history %) (revert %)))))
               (mt/with-premium-features #{}
-                (doseq [id              [card-test-id missing-id]
-                        [method & args] (requests id)]
-                  (testing (str method " " (first args) " " id)
-                    (mt/assert-has-premium-feature-error
-                     "Transforms Testing"
-                     (apply mt/user-http-request :rasta method 402 args)))))
+                (testing "without the feature, the history endpoints give their usual refusals"
+                  (refusals history))
+                (testing "without the feature, a revert gets 402 before any check of the test"
+                  (doseq [id [card-test-id missing-id]]
+                    (let [[method & args] (revert id)]
+                      (testing (str method " " (first args) " " id)
+                        (mt/assert-has-premium-feature-error
+                         "Transforms Testing"
+                         (apply mt/user-http-request :rasta method 402 args)))))))
               (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))
 
 (deftest card-test-revert-to-a-revision-about-a-deleted-card-test

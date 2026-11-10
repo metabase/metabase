@@ -157,7 +157,7 @@
   [_model object]
   (mi/can-read? (t2/instance :model/TransformTest object)))
 
-(defmethod revision/check-revisions-available ::saved-test
+(defmethod revision/check-revert-available ::saved-test
   [_model]
   (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 

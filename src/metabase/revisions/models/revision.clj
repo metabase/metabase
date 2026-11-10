@@ -86,13 +86,13 @@
   [_model _object]
   true)
 
-(defmulti check-revisions-available
-  "Throw a 402 unless the token has the premium feature that the revisions of `model` need, to list them or revert to
-  one. The default throws nothing."
+(defmulti check-revert-available
+  "Throw a 402 unless the token has the premium feature that a revert of `model` to a revision needs. The default
+  throws nothing."
   {:arglists '([model])}
   mi/dispatch-on-model)
 
-(defmethod check-revisions-available :default
+(defmethod check-revert-available :default
   [_model]
   nil)
 

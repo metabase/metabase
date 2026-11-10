@@ -34,14 +34,12 @@
    (keys entity->model)))
 
 (defn- entity-model
-  "The model named by `entity-name`, with its namespace loaded. Throws a 402 when the token lacks the premium feature
-  that the model's revisions need."
+  "The model named by `entity-name`, with its namespace loaded."
   [entity-name]
   (let [model (entity->model entity-name)]
     (assert (keyword? model))
     ;; Load the model namespace first: it defines the model's revision methods.
     (t2.model/resolve-model model)
-    (revision/check-revisions-available model)
     model))
 
 (defn- model-and-instance [entity-name id]
@@ -127,9 +125,12 @@
                                                      [:id          ms/PositiveInt]
                                                      [:entity      Entity]
                                                      [:revision_id ms/PositiveInt]]]
-  (let [[model instance] (model-and-instance entity id)
-        _                (api/write-check instance)
-        revision         (api/check-404 (revisions.db/revision (name model) id revision-id))]
+  (let [model    (entity-model entity)
+        ;; Before any lookup, so that a refusal does not depend on whether `id` exists.
+        _        (revision/check-revert-available model)
+        instance (revisions.db/entity model id)
+        _        (api/write-check instance)
+        revision (api/check-404 (revisions.db/revision (name model) id revision-id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model :model/Card)
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
