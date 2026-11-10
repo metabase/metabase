@@ -15,7 +15,7 @@ Metabase Cloud connects to your database from three fixed IP addresses in your M
 
 ## Metabase Cloud IP addresses to whitelist on your database
 
-Allow the three addresses for your Metabase's region. These are the same addresses listed on [IP addresses to whitelist](./ip-addresses-to-whitelist.md).
+To allow your Metabase Cloud instance to connect to your database, whitelist the following addresses. These are the same addresses listed on [IP addresses to whitelist](./ip-addresses-to-whitelist.md).
 
 - United States (North Virginia), `us-east-1`: `18.207.81.126`, `3.211.20.157`, and `50.17.234.169`
 - Europe (Frankfurt), `eu-central-1`: `18.192.2.142`, `18.184.191.58`, and `3.65.184.173`
