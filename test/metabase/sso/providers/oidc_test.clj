@@ -10,9 +10,12 @@
    [metabase.sso.oidc.tokens :as oidc.tokens]
    [metabase.sso.providers.oidc]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private test-config
   {:client-id "test-client-id"
@@ -290,7 +293,7 @@
                               oidc.state/validate-oidc-callback
                               (fn [_request _state _provider & _opts]
                                 (cond-> {:valid? true :nonce "test-nonce" :redirect "/"}
-                                  link-user-id (assoc :link-user-id link-user-id)))
+                                  link-user-id (assoc-in [:state-data :link-user-id] link-user-id)))
                               http/post
                               (fn [_url _opts]
                                 {:status 200

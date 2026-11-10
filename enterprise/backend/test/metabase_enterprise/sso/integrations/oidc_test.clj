@@ -239,8 +239,8 @@
         (let [session-key (session/generate-session-key)
               cookies     (fn [response]
                             (str/join "; " (cons (str request/metabase-session-cookie "=" session-key)
-                                                 (map #(first (str/split % #";"))
-                                                      (get-in response [:headers "Set-Cookie"])))))]
+                                                 (for [[cookie-name {:keys [value]}] (:cookies response)]
+                                                   (str cookie-name "=" value)))))]
           (mt/with-temp [:model/User {user-id :id} {:email "oidcuser@example.com"}
                          :model/Session _ {:user_id    user-id
                                            :id         (session/generate-session-id)
@@ -257,8 +257,7 @@
                                                       :code "test-code"
                                                       :state "test-state")]
                 (is (= "/account/authentication" (get-in response [:headers "Location"])))
-                (is (not-any? #(str/starts-with? % (str request/metabase-session-cookie "="))
-                              (get-in response [:headers "Set-Cookie"])))
+                (is (not (contains? (:cookies response) request/metabase-session-cookie)))
                 (is (t2/exists? :model/AuthIdentity :user_id user-id :provider_id "test-oidc-provider-id"))))))))))
 
 ;;; -------------------------------------------------- Open Redirect Protection Tests --------------------------------------------------
