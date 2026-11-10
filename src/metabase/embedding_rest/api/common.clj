@@ -426,23 +426,24 @@
                                                            token-params
                                                            (tile-slug->value (:parameters dashboard) parameter-values))))
 
-(defn- run-tiles-query
-  "Run tiles query `thunk` with database routing off (see above). A query that fails is rethrown with the message
-  public and embedded endpoints are allowed to return (see [[api.public/error-response]])."
-  [thunk]
-  (try
-    (database-routing/with-anonymous-router-access (thunk))
-    (catch Throwable e
-      (let [data (ex-data e)]
-        (throw (if (:status data)
-                 (ex-info (:error (api.public/error-response (assoc data :error (ex-message e)))) data e)
-                 e))))))
+(defn- with-public-error-message
+  "`e` with the message public and embedded endpoints are allowed to return, when it carries a failed query (see
+  [[api.public/error-response]]); any other exception unchanged."
+  [^Throwable e]
+  (let [data (ex-data e)]
+    (if (:status data)
+      (ex-info (:error (api.public/error-response (assoc data :error (ex-message e)))) data e)
+      e)))
 
 (defn process-tiles-query-for-card
   "Like [[metabase.tiles.api/process-tiles-query-for-card]], but takes a pre-loaded Card entity and runs with database
   routing off (see above). Used by the embed tiles endpoints. Returns a Ring response."
   [card parameters zoom x y lat-field lon-field]
-  (run-tiles-query #(api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))
+  (try
+    (database-routing/with-anonymous-router-access
+      (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))
+    (catch Throwable e
+      (throw (with-public-error-message e)))))
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
@@ -527,8 +528,12 @@
   entities and runs with database routing off (see the comment above [[process-query-for-card-with-params]]). Used by
   the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
   [dashboard dashcard card parameters zoom x y lat-field lon-field]
-  (run-tiles-query #(api.public/process-tiles-query-for-dashcard dashboard dashcard card
-                                                                 parameters zoom x y lat-field lon-field)))
+  (try
+    (database-routing/with-anonymous-router-access
+      (api.public/process-tiles-query-for-dashcard dashboard dashcard card
+                                                   parameters zoom x y lat-field lon-field))
+    (catch Throwable e
+      (throw (with-public-error-message e)))))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
