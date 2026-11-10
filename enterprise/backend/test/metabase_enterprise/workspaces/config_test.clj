@@ -6,7 +6,8 @@
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -55,17 +56,15 @@
                    :output        {:schema "mb_isolation_github"}}}
                  (-> cfg :config :workspace :databases))))))))
 
-(deftest build-workspace-config-tunnel-and-secret-properties-test
+(deftest build-workspace-config-drops-unused-tunnel-secrets-test
   (let [tunnel-secrets {:tunnel-pass                   "tunnel-pass"
                         :tunnel-private-key            "tunnel-key"
                         :tunnel-private-key-passphrase "tunnel-key-pass"}
-        ssl-secrets    {:ssl-key-value          "client-key"
-                        :ssl-key-password-value "client-key-pass"}
         details-for    (fn [details]
                          (mt/with-temp [:model/Database {db-id :id}
                                         {:name    "Secret DW" :engine :postgres
-                                         :details (merge {:host "h" :port 5432 :user "admin" :ssl true}
-                                                         tunnel-secrets ssl-secrets details)}
+                                         :details (merge {:host "h" :port 5432 :user "admin"}
+                                                         tunnel-secrets details)}
                                         :model/Workspace {ws-id :id} {:name "secrets" :creator_id (mt/user->id :crowberto)}
                                         :model/WorkspaceDatabase _
                                         {:workspace_id     ws-id :database_id db-id
@@ -82,9 +81,7 @@
              (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "password"}) (keys tunnel-secrets)))))
     (testing "tunnel on with SSH-key auth: only the key and its passphrase ship"
       (is (= {:tunnel-private-key "tunnel-key" :tunnel-private-key-passphrase "tunnel-key-pass"}
-             (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "ssh-key"}) (keys tunnel-secrets)))))
-    (testing ":secret properties never reach the config as values; the Secret table keeps them"
-      (is (= {} (select-keys (details-for {:tunnel-enabled true}) (keys ssl-secrets)))))))
+             (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "ssh-key"}) (keys tunnel-secrets)))))))
 
 (deftest build-workspace-config-three-slot-engine-test
   (when (workspaces.tu/driver-loadable? :sqlserver)
@@ -331,7 +328,9 @@
                (select-keys details [:host :port :user :password :use-auth-provider :auth-provider
                                      :oauth-token-url :oauth-token-headers :azure-managed-identity-client-id])))))))
 
-(deftest build-workspace-config-drops-parent-sqlserver-ad-login-test
+;; Tagged so the driver jobs, which have the SQL Server driver on the classpath, run it; the Enterprise Tests job
+;; doesn't, so there it would pass with no assertions. It needs no SQL Server.
+(deftest ^:mb/driver-tests build-workspace-config-drops-parent-sqlserver-ad-login-test
   (when (workspaces.tu/driver-loadable? :sqlserver)
     (testing "A SQL Server parent on Azure AD auth: `:auth-mode` picks the login, so leaving it in the config would
               make the child connect as the parent's AD identity and ignore the workspace :user/:password. The
@@ -370,3 +369,60 @@
                      (select-keys details [:user :password])))
               (is (not (contains? details :auth-mode)))
               (is (= [] (filterv #(str/starts-with? (name %) "ad-") (keys details)))))))))))
+
+(defn- with-postgres-workspace
+  "Run `f` with the ids of a Postgres database named \"Login DW\" with `details` and of a provisioned workspace over it."
+  [details f]
+  (mt/with-temp [:model/Database {db-id :id} {:name "Login DW" :engine :postgres :details details}
+                 :model/Workspace {ws-id :id} {:name "logins" :creator_id (mt/user->id :crowberto)}
+                 :model/WorkspaceDatabase _
+                 {:workspace_id     ws-id :database_id db-id
+                  :database_details {:user "iso" :password "iso-pass"}
+                  :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+    (f db-id ws-id)))
+
+(defn- login-dw-details [cfg]
+  (->> cfg :config :databases (u/seek #(= "Login DW" (:name %))) :details))
+
+(deftest build-workspace-config-additional-options-carry-no-parent-login-test
+  (testing "control: JDBC options that carry no login ship as is"
+    (with-postgres-workspace
+      {:host "h" :port 5432 :user "parent_admin" :password "parent-pw"
+       :additional-options "sslmode=require&tcpKeepAlive=true"}
+      (fn [_db-id ws-id]
+        (is (= {:user "iso" :password "iso-pass" :additional-options "sslmode=require&tcpKeepAlive=true"}
+               (select-keys (login-dw-details (config/build-workspace-config ws-id))
+                            [:user :password :additional-options]))))))
+  (testing "options that set the parent's login are a 409: pgjdbc lets them override the workspace login, and the
+            config's holder would read them"
+    (doseq [[additional-options option-name] {"user=parent_admin&password=parent-secret" "user"
+                                              "?sslmode=require&PASSWORD=parent-secret"  "PASSWORD"
+                                              "encrypt=true;sslpassword=parent-secret"   "sslpassword"}]
+      (testing additional-options
+        (with-postgres-workspace
+          {:host "h" :port 5432 :additional-options additional-options}
+          (fn [db-id ws-id]
+            (is (=? {:status-code 409 :database_id db-id}
+                    (try
+                      (config/build-workspace-config ws-id)
+                      nil
+                      (catch clojure.lang.ExceptionInfo e
+                        (is (= (str "Database \"Login DW\" sets " option-name " in its additional JDBC connection "
+                                    "options, which would give the workspace the parent's login. Remove it from the "
+                                    "database's connection settings, or remove the database from the workspace.")
+                               (ex-message e)))
+                        (ex-data e)))))))))))
+
+(deftest build-workspace-config-drops-azure-managed-identity-client-id-test
+  (testing "the parent's Azure managed-identity client ID does not ship"
+    (with-postgres-workspace
+      {:host "h" :port 5432 :use-auth-provider true :auth-provider "azure-managed-identity"
+       :azure-managed-identity-client-id "parent-mi-client"}
+      (fn [db-id ws-id]
+        (testing "precondition: the parent stores the client ID in :details"
+          (is (= "parent-mi-client"
+                 (:azure-managed-identity-client-id (t2/select-one-fn :details :model/Database :id db-id)))))
+        (is (= {:host "h" :user "iso" :password "iso-pass"}
+               (select-keys (login-dw-details (config/build-workspace-config ws-id))
+                            [:host :user :password :use-auth-provider :auth-provider
+                             :azure-managed-identity-client-id])))))))
