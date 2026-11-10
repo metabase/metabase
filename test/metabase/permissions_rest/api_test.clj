@@ -215,6 +215,17 @@
       (is (partial= [{:id (:id (perms-group/all-users)), :name "All Users"}]
                     (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
+(deftest groups-list-unpaged-test
+  (testing "GET /api/permissions/group"
+    (testing "an unpaged request returns every group, not just the first default page (metabase#17200)"
+      (let [names (mapv #(str "Group " %) (range 51))]
+        (try
+          (t2/insert! :model/PermissionsGroup (mapv #(array-map :name %) names))
+          (let [returned (set (map :name (mt/user-http-request :crowberto :get 200 "permissions/group")))]
+            (is (= #{} (set (remove returned names)))))
+          (finally
+            (t2/delete! :model/PermissionsGroup :name [:in names])))))))
+
 (deftest fetch-groups-tenancy-filter-test
   (testing "GET /api/permissions/group with tenancy filter"
     (mt/with-premium-features #{:tenants}
