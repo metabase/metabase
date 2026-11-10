@@ -340,3 +340,22 @@
             (is (= fallback-results results))
             (is (= 1 (:metabase-search/semantic-error-fallback @metrics))
                 "Should increment semantic-error-fallback metric on error")))))))
+
+(deftest vector-only-search-never-reaches-a-keyword-engine-test
+  (testing "a vector-only search returns what the vector search found, even below the supplement threshold"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)]
+          (with-search-engine-mocks! [semantic-result] (fn [_] (throw (ex-info "the keyword engine ran" {})))
+            (fn []
+              (is (= [semantic-result]
+                     (semantic.core/results (assoc search-context :vector-only? true))))))))))
+  (testing "a vector-only search that errors fails instead of falling back"
+    (mt/with-premium-features #{:semantic-search}
+      (with-redefs [semantic.pgvector-api/query (fn [& _] (throw (ex-info "Semantic search unavailable" {})))
+                    search.engine/results       (fn [ctx]
+                                                  (case (:search-engine ctx)
+                                                    :search.engine/semantic (semantic.core/results ctx)
+                                                    (throw (ex-info "the keyword engine ran" {}))))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error executing semantic search"
+                              (semantic.core/results (assoc search-context :vector-only? true))))))))
