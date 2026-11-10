@@ -2203,6 +2203,15 @@
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
+(defn ^:export card-metadata
+  "Given an integer `card-id`, returns the card's metadata.
+
+  Returns `nil` (JS `null`) if no matching metadata is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider card-id]
+  (lib.metadata/card query-or-metadata-provider card-id))
+
 (defn ^:export field-metadata
   "Given an integer `field-id`, returns the field's metadata.
 
