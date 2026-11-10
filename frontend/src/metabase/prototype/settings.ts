@@ -1,4 +1,5 @@
 import type {
+  BooleanPrototypeSetting,
   NumberPrototypeSetting,
   PrototypeSetting,
   SegmentedPrototypeSetting,
@@ -32,6 +33,15 @@ export const EXPRESSION_PARAMETER_HINTS_SETTING: SegmentedPrototypeSetting = {
   defaultValue: "all",
 };
 
+export const EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING: BooleanPrototypeSetting =
+  {
+    key: "expression-columns-outside-brackets",
+    type: "boolean",
+    label: "Suggest columns outside [ ] in custom expressions",
+    description: "Off: autocomplete suggests columns only after you type [.",
+    defaultValue: true,
+  };
+
 export const EXPRESSION_AI_COMPLETION_DELAY_SETTING: NumberPrototypeSetting = {
   key: "expression-ai-completion-delay",
   type: "number",
@@ -51,4 +61,5 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   EXPRESSION_AI_COMPLETION_SETTING,
   EXPRESSION_AI_COMPLETION_DELAY_SETTING,
   EXPRESSION_PARAMETER_HINTS_SETTING,
+  EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
 ];

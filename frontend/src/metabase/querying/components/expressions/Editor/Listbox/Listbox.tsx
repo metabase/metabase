@@ -135,6 +135,9 @@ function CompletionItem({
         text={completion.displayLabel ?? completion.label}
         ranges={completion.matches}
       />
+      {completion.hint != null && (
+        <span className={S.hint}>{completion.hint}</span>
+      )}
     </li>
   );
 }

@@ -36,6 +36,15 @@
   overflow-wrap: break-word;
 }
 
+/* Why an option matches, like an alias, when its label does not show it. */
+.hint {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--mb-color-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .highlight {
   font-weight: bold;
 }

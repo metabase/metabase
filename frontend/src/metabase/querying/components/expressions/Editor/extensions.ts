@@ -2,6 +2,10 @@ import type { Extension } from "@codemirror/state";
 import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
+import {
+  EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
+  usePrototypeSetting,
+} from "metabase/prototype";
 import { suggestions } from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
@@ -43,6 +47,9 @@ export function useExtensions(options: Options): Extension[] {
     database,
     extensions: extra = [],
   } = options;
+  const [hasColumnsOutsideBrackets] = usePrototypeSetting(
+    EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
+  );
 
   return useMemo(() => {
     return [
@@ -62,6 +69,7 @@ export function useExtensions(options: Options): Extension[] {
         availableColumns,
         availableMetrics,
         database,
+        columnsOutsideBrackets: hasColumnsOutsideBrackets,
       }),
       tooltips({
         position: "fixed",
@@ -78,6 +86,7 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     availableColumns,
     database,
+    hasColumnsOutsideBrackets,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

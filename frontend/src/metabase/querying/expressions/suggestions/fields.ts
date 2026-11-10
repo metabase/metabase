@@ -13,12 +13,15 @@ export type Options = {
   query: Lib.Query;
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
+  /** False: columns only after "[", not for a bare word. */
+  columnsOutsideBrackets?: boolean;
 };
 
 export function suggestFields({
   query,
   stageIndex,
   availableColumns,
+  columnsOutsideBrackets = true,
 }: Options) {
   const columns = availableColumns.map((column) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);
@@ -41,7 +44,7 @@ export function suggestFields({
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
 
-    if (!token) {
+    if (!token || (!columnsOutsideBrackets && !token.text.startsWith("["))) {
       return null;
     }
 
@@ -61,6 +64,9 @@ export function suggestFields({
       from: token.start,
       to: token.end,
       options,
+      // The matcher filters and orders the options, with abbreviations and
+      // typos that the filter of CodeMirror would drop.
+      filter: false,
     };
   };
 }

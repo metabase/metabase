@@ -1,10 +1,11 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
-import Fuse from "fuse.js";
 
 import type * as Lib from "metabase-lib";
 
 import { CALL, FIELD, IDENTIFIER, type Token } from "../pratt";
 
+import { FUNCTION_ALIASES } from "./aliases";
+import { matchOptions } from "./text-match";
 import type { ExpressionSuggestion } from "./types";
 
 export function expressionClauseCompletion(
@@ -22,7 +23,12 @@ export function expressionClauseCompletion(
     label: clause.displayName,
     displayLabel: clause.displayName,
   });
-  return { ...completion, icon: "function", matches };
+  return {
+    ...completion,
+    icon: "function",
+    matches,
+    aliases: FUNCTION_ALIASES[clause.name],
+  };
 }
 
 export function expressionClauseSnippet(clause: Lib.MBQLClauseFunctionConfig) {
@@ -36,21 +42,8 @@ export function expressionClauseSnippet(clause: Lib.MBQLClauseFunctionConfig) {
 }
 
 export function fuzzyMatcher(options: ExpressionSuggestion[]) {
-  const fuse = new Fuse(options, {
-    keys: ["displayLabel"],
-    includeScore: true,
-    includeMatches: true,
-  });
-
   return function (word: string) {
-    return fuse
-      .search(word)
-      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-      .map((result) => {
-        result.item.matches =
-          result.matches?.flatMap((match) => match.indices) ?? [];
-        return result.item;
-      });
+    return matchOptions(options, word);
   };
 }
 

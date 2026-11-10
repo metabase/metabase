@@ -11,6 +11,8 @@ export type SuggestOptions = {
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
+  /** False: columns only after "[", not for a bare word. */
+  columnsOutsideBrackets?: boolean;
 };
 
 import { suggestAggregations } from "./aggregations";
@@ -20,6 +22,7 @@ import { suggestLiterals } from "./literals";
 import { suggestMeasures } from "./measures";
 import { suggestMetrics } from "./metrics";
 import { suggestSegments } from "./segments";
+import { suggestRelatedColumns, suggestRelatedFunctions } from "./semantic";
 
 export function suggestions(options: SuggestOptions) {
   return autocompletion({
@@ -34,6 +37,9 @@ export function suggestions(options: SuggestOptions) {
       suggestMetrics(options),
       suggestMeasures(options),
       suggestSegments(options),
+      // Last, so that their options come after the text matches.
+      suggestRelatedFunctions(options),
+      suggestRelatedColumns(options),
     ].filter(isNotNull),
   });
 }
