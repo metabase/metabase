@@ -139,6 +139,10 @@
           (mt/with-temp [:model/DataApp _ {:slug        "bundled-app"
                                            :bundle_path "dist/index.js"
                                            :bundle      (.getBytes "console.log(1);" "UTF-8")}]
+            (testing "a changed data app is named by its slug, which its Data Studio URL takes"
+              (is (=? [{:model "dataapp" :name "bundled-app"}]
+                      (filter (comp #{"dataapp"} :model)
+                              (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))
             (testing "a push writes the bundle of a data app, after which the app isn't changed"
               (push!)
               (is (= "console.log(1);"

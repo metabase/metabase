@@ -229,4 +229,4 @@
 
 (defmethod remote-sync/spec :model/DataApp
   [_model]
-  {})
+  {:label :slug})
