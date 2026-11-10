@@ -11,7 +11,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
-   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -77,18 +76,6 @@
         (is (= test-id (t2/select-one-fn :test_id :model/DataTestRun :id other-run))))
       (t2/delete! :model/DataTestRun :id run-id))))
 
-;; `publish-event!` is a methodical multimethod, so the test captures events with a handler on a test-only parent topic
-;; rather than by redefining the var.
-(def ^:private ^:dynamic *deleted-card-tests* nil)
-
-(events/derive! ::card-test-delete-event :metabase/event)
-(events/derive! :event/card-test-delete ::card-test-delete-event)
-
-(methodical/defmethod events/publish-event! ::card-test-delete-event
-  [_topic {card-test :object}]
-  (when *deleted-card-tests*
-    (swap! *deleted-card-tests* conj card-test)))
-
 (deftest deleting-a-card-deletes-its-tests-test
   (mt/with-temp [:model/Card     {card-id :id}  {}
                  :model/CardTest {test-id :id}  {:card_id card-id}
@@ -98,14 +85,16 @@
       (try
         (doseq [run-id run-ids]
           (data-testing.run-tracking/finish-run! run-id :passed))
-        (binding [*deleted-card-tests* published]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (when (= :event/card-test-delete topic)
+                                                (swap! published conj (:id (:object event)))))]
           (t2/delete! :model/Card :id card-id))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/CardTest :card_id card-id))))
         (testing "each test was deleted through its own hook, so its runs stay with no test id"
           (is (= [nil nil] (mapv #(t2/select-one-fn :test_id :model/DataTestRun :id %) run-ids))))
         (testing "each test published one delete event"
-          (is (= [test-id other-id] (sort (map :id @published)))))
+          (is (= [test-id other-id] (sort @published))))
         (finally
           (t2/delete! :model/DataTestRun :id [:in run-ids]))))))
 
