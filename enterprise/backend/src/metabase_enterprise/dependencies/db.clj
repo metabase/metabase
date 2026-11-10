@@ -51,6 +51,7 @@
     sandboxed users.
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
     of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
+  - Field: visible when its table is, and like tables NOT filtered by active/visibility_type.
   - Transform: analysts can view any transform they have source view permission to.
   - Data app: the apps the user can read, none without the data apps feature."
   [entity-type-field :- Column
@@ -131,6 +132,19 @@
                       {:select [:id]
                        :from   [table-name]
                        :where  [:in id-column
+                                (perms/visible-table-filter-select
+                                 :id
+                                 {:user-id user-id :is-superuser? is-superuser?}
+                                 {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]]
+
+                    :model/Field
+                    [:and
+                     [:= entity-type-field (name entity-type)]
+                     [:in entity-id-field
+                      ^:allow-subquery
+                      {:select [:id]
+                       :from   [table-name]
+                       :where  [:in (u/qualified-key table-name :table_id)
                                 (perms/visible-table-filter-select
                                  :id
                                  {:user-id user-id :is-superuser? is-superuser?}
@@ -342,6 +356,7 @@
     {:table-name (case entity-type
                    :card :report_card
                    :table (t2/table-name :model/Table)
+                   :field (t2/table-name :model/Field)
                    :transform :transform
                    :snippet :native_query_snippet
                    :dashboard :report_dashboard
@@ -352,7 +367,7 @@
                    :action :action
                    :data-app :data_app)
      :name-column (case entity-type
-                    (:table :data-app) :entity.display_name
+                    (:table :field :data-app) :entity.display_name
                     :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                     :entity.name)
      :location-column (case entity-type
@@ -370,7 +385,7 @@
                                   :else
                                   (:name (collection.root/root-collection-with-ui-details (action-root-namespace false)))]]
                         :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                        (:segment :measure) :table.display_name
+                        (:field :segment :measure) :table.display_name
                         :data-app nil)}))
 
 (mu/defn- item-query-join :- [:map {:closed true}
@@ -407,7 +422,7 @@
   (case entity-type
     :card #{:collection :dashboard :document}
     (:transform :snippet :dashboard :document :action) #{:collection}
-    (:segment :measure) #{:table}
+    (:field :segment :measure) #{:table}
     :table #{:database}
     #{}))
 

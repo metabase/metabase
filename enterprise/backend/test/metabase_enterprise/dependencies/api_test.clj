@@ -3282,3 +3282,86 @@
           (testing endpoint
             (is (= [] (deps.test/data-app-bundle-reads
                        #(mt/user-http-request :crowberto :get 200 endpoint :id app-id :type "data-app"))))))))))
+
+(defn- total-filter-card
+  "A card map named `card-name` that filters the orders table on its total."
+  [card-name]
+  (let [mp    (mt/metadata-provider)
+        total (lib.metadata/field mp (mt/id :orders :total))]
+    (card-with-query card-name (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                   (lib/filter (lib/> total 10))))))
+
+(deftest ^:synchronized field-dependents-test
+  (testing "GET /api/ee/dependencies/graph/dependents lists the entities that reference a field"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/User user {:email "fields@wherever.com"}]
+          (let [total-id         (mt/id :orders :total)
+                {using-id :id}   (card/create-card! (total-filter-card "Uses the total") user)
+                {unrelated-id :id} (card/create-card! (basic-card "Selects every order") user)
+                _                (deps.test/synchronously-run-dependency-job!)
+                dependent-ids    (fn [field-id]
+                                   (->> (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                              :id field-id :type "field")
+                                        (into #{} (map (juxt :type :id)))))]
+            (testing "a card that references the field is a dependent"
+              (is (contains? (dependent-ids total-id) ["card" using-id])))
+            (testing "a card of the same table that doesn't reference the field is not"
+              (is (not (contains? (dependent-ids total-id) ["card" unrelated-id]))))
+            (testing "a card that references another field of the table is not a dependent of this one"
+              (is (not (contains? (dependent-ids (mt/id :orders :quantity)) ["card" using-id]))))))))))
+
+(deftest ^:synchronized graph-field-root-test
+  (testing "GET /api/ee/dependencies/graph with a field as the root returns the field and its configuration"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/User user {:email "fields@wherever.com"}]
+          (let [total-id (mt/id :orders :total)
+                _        (card/create-card! (total-filter-card "Uses the total") user)
+                _        (deps.test/synchronously-run-dependency-job!)
+                response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                               :id total-id :type "field")]
+            (is (=? {:nodes [{:id               total-id
+                              :type             "field"
+                              :data             {:name            "TOTAL"
+                                                 :table_id        (mt/id :orders)
+                                                 :table           {:id (mt/id :orders)}
+                                                 :visibility_type "normal"
+                                                 :base_type       "type/Float"
+                                                 :active          true}
+                              :dependents_count {:question pos-int?}}]
+                     :edges []}
+                    response))))))))
+
+(deftest ^:synchronized graph-include-fields-test
+  (testing "GET /api/ee/dependencies/graph"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/User user {:email "fields@wherever.com"}]
+          (let [total-id        (mt/id :orders :total)
+                {card-id :id}   (card/create-card! (total-filter-card "Uses the total") user)
+                _               (deps.test/synchronously-run-dependency-job!)
+                graph           (fn [& params]
+                                  (apply mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                         :id card-id :type "card" params))
+                node-keys       (fn [response] (into #{} (map (juxt :type :id)) (:nodes response)))]
+            (testing "leaves fields out by default, so the graph stays at the entity level"
+              (let [response (graph)]
+                (is (= #{["card" card-id] ["table" (mt/id :orders)]} (node-keys response)))
+                (is (not-any? #(= "field" (:to_entity_type %)) (:edges response)))))
+            (testing "shows the fields a card references with include-fields"
+              (let [response (graph :include-fields true)]
+                (is (= #{["card" card-id] ["table" (mt/id :orders)] ["field" total-id]} (node-keys response)))
+                (is (edge-present? (:edges response) "card" card-id "field" total-id))))))))))
+
+(deftest field-dependents-permissions-test
+  (testing "GET /api/ee/dependencies/graph/dependents requires read access to the field's table"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/user-http-request :rasta :get 403 "ee/dependencies/graph/dependents"
+                              :id (mt/id :orders :total) :type "field")))))
+
+(deftest unreferenced-rejects-fields-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced does not list fields, whose use by native queries is unknown"
+    (mt/with-premium-features #{:dependencies}
+      (mt/user-http-request :crowberto :get 400 "ee/dependencies/graph/unreferenced" :types "field"))))

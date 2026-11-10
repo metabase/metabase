@@ -946,7 +946,11 @@
            (is (= #{{:from_entity_type :segment
                      :from_entity_id segment-id
                      :to_entity_type :table
-                     :to_entity_id products-id}}
+                     :to_entity_id products-id}
+                    {:from_entity_type :segment
+                     :from_entity_id segment-id
+                     :to_entity_type :field
+                     :to_entity_id price-field-id}}
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
@@ -956,7 +960,11 @@
            (is (= #{{:from_entity_type :segment
                      :from_entity_id segment-id
                      :to_entity_type :table
-                     :to_entity_id products-id}}
+                     :to_entity_id products-id}
+                    {:from_entity_type :segment
+                     :from_entity_id segment-id
+                     :to_entity_type :field
+                     :to_entity_id category-field-id}}
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "deleting segment removes all dependencies"
@@ -1006,7 +1014,11 @@
              (is (= #{{:from_entity_type :measure
                        :from_entity_id measure-id
                        :to_entity_type :table
-                       :to_entity_id orders-id}}
+                       :to_entity_id orders-id}
+                      {:from_entity_type :measure
+                       :from_entity_id measure-id
+                       :to_entity_type :field
+                       :to_entity_id (mt/id :orders :quantity)}}
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "updating measure definition recalculates dependencies"
@@ -1017,7 +1029,11 @@
              (is (= #{{:from_entity_type :measure
                        :from_entity_id measure-id
                        :to_entity_type :table
-                       :to_entity_id orders-id}}
+                       :to_entity_id orders-id}
+                      {:from_entity_type :measure
+                       :from_entity_id measure-id
+                       :to_entity_type :field
+                       :to_entity_id (mt/id :orders :subtotal)}}
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "deleting measure removes all dependencies"
@@ -1129,6 +1145,10 @@
                          :from_entity_id measure2-id
                          :to_entity_type :table
                          :to_entity_id orders-id}
+                        {:from_entity_type :measure
+                         :from_entity_id measure2-id
+                         :to_entity_type :field
+                         :to_entity_id (mt/id :orders :subtotal)}
                         {:from_entity_type :measure
                          :from_entity_id measure2-id
                          :to_entity_type :measure

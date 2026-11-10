@@ -35,6 +35,9 @@
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields :transform
                :owner :owner_user_id :owner_email]
+   :field     [:name :display_name :description :table :table_id :active :visibility_type
+               :database_type :base_type :effective_type :semantic_type :coercion_strategy
+               :has_field_values :fk_target_field_id :position]
    :card      [:name :type :display :database_id :view_count :query_type
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
@@ -123,6 +126,13 @@
     [:type [:= :table]]
     [:data (fields-for :table)]]])
 
+(mr/def ::field-entity
+  [:merge ::base-entity
+   [:map
+    [:id   ::lib.schema.id/field]
+    [:type [:= :field]]
+    [:data (fields-for :field)]]])
+
 (mr/def ::card-entity
   [:merge ::base-entity
    [:map
@@ -196,6 +206,7 @@
 (mr/def ::entity
   [:multi {:dispatch :type}
    [:table     [:ref ::table-entity]]
+   [:field     [:ref ::field-entity]]
    [:card      [:ref ::card-entity]]
    [:snippet   [:ref ::snippet-entity]]
    [:transform [:ref ::transform-entity]]
@@ -234,6 +245,10 @@
    :metabase.dashboards.schema/dashboard
    ::documents.schema/document
    :metabase.warehouse-schema.schema/table
+   [:merge
+    :metabase.warehouse-schema.schema/field
+    [:map
+     [:table {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]]
    ::transforms.schema/transform
    :metabase.native-query-snippets.schema/native-query-snippet
    :metabase-enterprise.sandbox.schema/sandbox
@@ -273,6 +288,9 @@
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema
                :owner_user_id :owner_email :transform_id]
+   :field     [:id :name :display_name :description :table_id :active :visibility_type
+               :database_type :base_type :effective_type :semantic_type :coercion_strategy
+               :has_field_values :fk_target_field_id :position]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source
@@ -309,12 +327,18 @@
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (mu/defn- readable-graph-dependencies :- ::graph/graph
-  "The upstream dependency graph, restricted to the entities the current user can see."
+  "The upstream dependency graph, restricted to the entities the current user can see, and to entity-level
+  dependencies unless `include-fields`: the fields an entity references come next to the tables they belong to, so
+  they are only shown when asked for."
   ([]
    (readable-graph-dependencies nil))
-  ([opts :- [:maybe [:map {:closed true}
-                     [:include-archived-items {:optional true} [:maybe ::include-archived-items]]]]]
-   (dependency/filtered-graph-dependencies {:visible (current-user-visibility opts)})))
+  ([{:keys [include-fields] :as opts}
+    :- [:maybe [:map {:closed true}
+                [:include-archived-items {:optional true} [:maybe ::include-archived-items]]
+                [:include-fields         {:optional true} [:maybe :boolean]]]]]
+   (dependency/filtered-graph-dependencies
+    (cond-> {:visible (current-user-visibility (dissoc opts :include-fields))}
+      (not include-fields) (assoc :types deps.dependency-types/entity-level-dependency-types)))))
 
 (mu/defn- readable-graph-dependents :- ::graph/graph
   "The downstream dependents graph, restricted to the entities the current user can see, and to broken ones when
@@ -399,6 +423,7 @@
               (->> (map collection.root/hydrate-root-collection))
               (revisions/with-last-edit-info :card))
     :table (t2/hydrate entities :fields :db :transform :owner)
+    :field (t2/hydrate entities [:table :db])
     :transform (-> entities
                    (t2/hydrate :creator :table-with-db-and-fields :last_run :collection :owner)
                    (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :transforms)))))
@@ -469,14 +494,19 @@
 (api.macros/defendpoint :get "/graph" :- ::graph-response
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
   The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which
-  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency."
+  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.
+
+  The fields that MBQL queries, segments and measures reference are dependencies too, left out of the graph unless
+  `include-fields` is true. The fields of native queries are not tracked."
   [_route-params
-   {:keys [id type]} :- [:map {:closed true}
-                         [:id {:optional true} ms/PositiveInt]
-                         [:type {:optional true} ::deps.dependency-types/dependency-types]]]
+   {:keys [id type include-fields]} :- [:map {:closed true}
+                                        [:id {:optional true} ms/PositiveInt]
+                                        [:type {:optional true} ::deps.dependency-types/dependency-types]
+                                        [:include-fields {:optional true} :boolean]]]
   (api/read-check (dependencies.db/entity type id))
   (let [starting-nodes [[type id]]
-        upstream-graph (readable-graph-dependencies {:include-archived-items :all})
+        upstream-graph (readable-graph-dependencies {:include-archived-items :all
+                                                     :include-fields         include-fields})
         downstream-graph (graph/cached-graph (readable-graph-dependents))
         edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all}))
         nodes (vec (into (set starting-nodes)
@@ -498,8 +528,8 @@
   [entity :- ::entity-node]
   (let [data (:data entity)]
     (case (:type entity)
-      (:table :data-app) (:display_name data)
-      :sandbox           nil
+      (:table :field :data-app) (:display_name data)
+      :sandbox                  nil
       (:name data))))
 
 (mu/defn- entity-location :- [:maybe :string]
@@ -513,7 +543,7 @@
       :table                                     (-> data :db :name)
       (:transform :snippet :dashboard :document :action) (-> data :collection :name)
       :sandbox                                   nil
-      (:segment :measure)                        (-> data :table :display_name)
+      (:field :segment :measure)                 (-> data :table :display_name)
       nil)))
 
 (mu/defn- string-matches-query? :- [:maybe :boolean]
@@ -572,7 +602,9 @@
 
    Required parameters:
    - `id`: The ID of the entity
-   - `type`: The type of the entity (card, table, dashboard, etc.)
+   - `type`: The type of the entity (card, table, field, dashboard, etc.). The dependents of a field are the MBQL
+     questions, models, metrics, transforms, segments and measures that reference it; native queries are not tracked
+     at the field level.
 
    Optional parameters:
    - `dependent-types`: Dependency types to filter by. Can be single value or array.
@@ -627,9 +659,11 @@
   #{:name :location :dependents-with-errors :dependents-errors})
 
 (def ^:private types-arg
+  "The entity types of an item list. Fields are not listed: nothing tracks the fields of native queries, so a field
+  without dependents is not known to be unreferenced."
   [:or
-   ::deps.dependency-types/dependency-types
-   [:sequential ::deps.dependency-types/dependency-types]])
+   ::deps.dependency-types/entity-level-dependency-types
+   [:sequential ::deps.dependency-types/entity-level-dependency-types]])
 
 (def ^:private card-types-arg
   [:or
@@ -652,7 +686,7 @@
          include-personal-collections false
          sort-column :name}} :- [:maybe dependency-items-args]]
   (let [types (or types (case query-type
-                          :unreferenced (vec deps.dependency-types/dependency-types)
+                          :unreferenced (vec deps.dependency-types/entity-level-dependency-types)
                           :breaking [:card :table]))
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes have no name or location to search.

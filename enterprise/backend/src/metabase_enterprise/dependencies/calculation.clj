@@ -67,7 +67,8 @@
    :segment (or (lib/all-segment-ids query) #{})
    :table (-> #{}
               (into (lib/all-source-table-ids query))
-              (into (lib/all-implicitly-joined-table-ids query)))})
+              (into (lib/all-implicitly-joined-table-ids query)))
+   :field (lib/all-field-ids query)})
 
 (mu/defn- upstream-deps:native-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/native-only-query]
@@ -77,15 +78,25 @@
     (u/group-by ffirst (comp second first) conj #{} (remove :unresolved-table deps))))
 
 (mu/defn- upstream-deps:query :- ::deps.schema/upstream-deps
+  "The upstream dependencies of `query`. A native query depends on no field but the ones its field filters name:
+  nothing tracks the columns its SQL reads."
   [query :- ::lib.schema/query]
   (if (lib/native-only-query? query)
-    (upstream-deps:native-query query)
+    (let [field-filter-field-ids (lib/all-template-tag-field-ids query)]
+      (cond-> (upstream-deps:native-query query)
+        field-filter-field-ids (assoc :field field-filter-field-ids)))
     (upstream-deps:mbql-query query)))
 
 (mu/defn- upstream-deps:dimension-mappings :- ::deps.schema/upstream-deps
-  "Table dependencies of `dimension-mappings`, gathered from their `:table-id`s."
+  "Table and field dependencies of `dimension-mappings`, gathered from their `:table-id`s and the fields their
+  `:target`s refer to by ID."
   [dimension-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]]
-  {:table (into #{} (keep :table-id) dimension-mappings)})
+  {:table (into #{} (keep :table-id) dimension-mappings)
+   :field (into #{}
+                (keep (fn [{[tag _opts id] :target}]
+                        (when (and (= :field tag) (pos-int? id))
+                          id)))
+                dimension-mappings)})
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
   [{{tables :source-tables} :source :as _py-transform} :- ::transforms.schema/transform]
@@ -201,14 +212,16 @@
   [_ {:keys [table_id definition] :as _segment}]
   {:segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
-            table_id (conj table_id))})
+            table_id (conj table_id))
+   :field (lib/all-field-ids definition)})
 
 (defmethod calculate-deps* :measure
   [_ {:keys [table_id definition] :as _measure}]
   {:measure (or (lib/all-measure-ids definition) #{})
    :segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
-            table_id (conj table_id))})
+            table_id (conj table_id))
+   :field (lib/all-field-ids definition)})
 
 (defmethod calculate-deps* :action
   [_ {action-type :type, model-id :model_id, table-id :table_id, query :dataset_query}]

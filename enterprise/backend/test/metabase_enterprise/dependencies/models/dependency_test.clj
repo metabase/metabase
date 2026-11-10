@@ -77,7 +77,9 @@
                                                                     :condition [:= $id &Products.$products.id]}]})}})
                     (deps.test/synchronously-run-dependency-job!)
                     (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
-                              (depends-on-> :card (:id card1) :table (mt/id :products))}
+                              (depends-on-> :card (:id card1) :table (mt/id :products))
+                              (depends-on-> :card (:id card1) :field (mt/id :orders :id))
+                              (depends-on-> :card (:id card1) :field (mt/id :products :id))}
                             (upstream-of :card (:id card1)))))
                   (testing "to remove a table dep"
                     (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))

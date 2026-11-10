@@ -26,8 +26,9 @@
   - 5: Added the source tables of Python transforms
   - 6: Enabled native entity validation
   - 7: Native queries depend on the cards they reference but no longer on those cards' tables, and record whether
-       they name tables that match nothing"
-  7)
+       they name tables that match nothing
+  - 8: Added the fields that MBQL queries, segments and measures reference"
+  8)
 
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 

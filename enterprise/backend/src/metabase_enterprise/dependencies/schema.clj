@@ -61,6 +61,7 @@
   [:map
    [:card      {:optional true} [:set ::lib.schema.id/card]]
    [:table     {:optional true} [:set ::lib.schema.id/table]]
+   [:field     {:optional true} [:set ::lib.schema.id/field]]
    [:snippet   {:optional true} [:set ::lib.schema.id/snippet]]
    [:transform {:optional true} [:set ::lib.schema.id/transform]]
    [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]
