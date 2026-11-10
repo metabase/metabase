@@ -195,8 +195,10 @@ export const saveDashboardPdf = async ({
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
   if (!gridNode || !(gridNode instanceof HTMLElement)) {
-    console.warn("No dashboard content found", selector);
-    return;
+    // Surfaces as a "Download error" in the downloads status widget (metabase#79301) --
+    // an empty dashboard has no `.react-grid-layout` node to export, so without this the
+    // export silently no-ops and just looks broken.
+    throw new Error(t`This dashboard has no content to export`);
   }
   const cardsBounds = getSortedDashCardBounds(gridNode);
 
