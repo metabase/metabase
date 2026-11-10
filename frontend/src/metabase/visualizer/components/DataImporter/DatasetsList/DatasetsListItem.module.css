@@ -1,5 +1,5 @@
 .WarningIcon {
   position: absolute;
   top: 13px;
-  left: 11px;
+  left: calc(var(--mb-button-padding-x) + 11px);
 }
