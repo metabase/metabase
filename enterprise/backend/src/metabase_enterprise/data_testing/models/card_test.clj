@@ -141,7 +141,8 @@
 
 (defmethod revision/revision-readable? :model/CardTest
   [_model object]
-  (mi/can-read? (t2/instance :model/CardTest object)))
+  ;; An older revision can name a card that has since been deleted; nobody may read a revision about it.
+  (boolean (some-> (data-testing.db/card (:card_id object)) mi/can-read?)))
 
 (defmethod revision/revert-to-revision! :model/CardTest
   [_model id _user-id serialized-instance]

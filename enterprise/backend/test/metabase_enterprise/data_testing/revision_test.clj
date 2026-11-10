@@ -248,3 +248,49 @@
               (t2/update! :model/Card :id card-id {:collection_id coll-id})
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 "revision" :entity "card-test" :id card-test-id))))))))))
+
+(deftest card-test-revision-history-hides-revisions-about-unreadable-cards-test
+  (testing "A non-admin who may read the test's current card does not see a revision about an older card they may not read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {readable :id}     {}
+                     :model/Collection {hidden :id}       {}
+                     :model/Card       {hidden-card :id}  {:collection_id hidden}
+                     :model/Card       {visible-card :id} {:collection_id readable}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-temp [:model/CardTest {card-test-id :id} {:card_id hidden-card :name "Hidden name"}]
+            (t2/update! :model/CardTest :id card-test-id {:card_id visible-card :name "Visible name"})
+            (testing "control: an admin sees both revisions"
+              (let [history (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" card-test-id))]
+                (is (= 2 (count history)))
+                (is (re-find #"Hidden name" (pr-str history)))))
+            (let [history (mt/user-http-request :rasta :get 200 (str "revision/card-test/" card-test-id))]
+              (is (=? [{:is_creation false :diff nil}] history))
+              (is (= 1 (count history)))
+              (is (not (re-find #"Hidden name" (pr-str history)))))))))))
+
+(deftest card-test-revision-history-after-the-old-card-is-deleted-test
+  (testing (str "After a card test moves to another card and the old card is deleted, the history loads, and a non-admin "
+                "sees only the revision about the card that exists")
+    (mt/with-temp [:model/Card {old-card :id} {}
+                   :model/Card {new-card :id} {}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/CardTest {card-test-id :id} {:card_id old-card :name "On the old card"}]
+          (t2/update! :model/CardTest :id card-test-id {:card_id new-card :name "On the new card"})
+          (t2/delete! :model/Card :id old-card)
+          (testing "premise: the old card is gone and the test remains"
+            (is (not (t2/exists? :model/Card :id old-card)))
+            (is (t2/exists? :model/CardTest :id card-test-id)))
+          (testing "an admin"
+            (testing "GET /api/revision/card-test/:id"
+              (is (=? {:status 200 :body [{:is_creation false}]}
+                      (mt/user-http-request-full-response :crowberto :get (str "revision/card-test/" card-test-id)))))
+            (testing "GET /api/revision?entity=card-test"
+              (is (=? {:status 200 :body [{:is_creation false}]}
+                      (mt/user-http-request-full-response :crowberto :get "revision"
+                                                          :entity "card-test" :id card-test-id)))))
+          (testing "a non-admin"
+            (let [history (mt/user-http-request :rasta :get 200 (str "revision/card-test/" card-test-id))]
+              (is (=? [{:is_creation false}] history))
+              (is (= 1 (count history)))
+              (is (not (re-find #"On the old card" (pr-str history)))))))))))
