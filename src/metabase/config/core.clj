@@ -90,8 +90,7 @@
 ;; These are convenience functions for accessing config values that ensures a specific return type
 ;;
 ;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
-;; https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names
-;; for discussion
+;; "Function Naming" in .claude/skills/_shared/clojure-style-guide.md
 (defn config-int  "Fetch a configuration key and parse it as an integer." ^Integer [k] (some-> k config-str Integer/parseInt))
 (defn config-long "Fetch a configuration key and parse it as a Long."     ^Long    [k] (some-> k config-str Long/parseLong))
 (defn config-bool "Fetch a configuration key and parse it as a boolean."  ^Boolean [k] (some-> k config-str Boolean/parseBoolean))
