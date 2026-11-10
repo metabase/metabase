@@ -121,7 +121,11 @@ export const ExpressionStep = ({
   );
 
   const handleCommit = useCallback(
-    (clause: Lib.ExpressionClause, nextName?: string) => {
+    (
+      clause: Lib.ExpressionClause,
+      nextName?: string,
+      { forceName = false }: { forceName?: boolean } = {},
+    ) => {
       const editor = openEditorRef.current;
       if (editor == null) {
         return;
@@ -137,6 +141,7 @@ export const ExpressionStep = ({
         ? Lib.displayInfo(currentQuery, stageIndex, existing).displayName
         : undefined;
       const canRename =
+        forceName ||
         existingName === undefined ||
         isDefaultName(existingName) ||
         autoNamesRef.current.has(existingName);
@@ -151,7 +156,7 @@ export const ExpressionStep = ({
         name,
       );
       const namedClause = Lib.withExpressionName(clause, uniqueName);
-      if (nextName !== undefined && canRename) {
+      if (nextName !== undefined && canRename && !forceName) {
         autoNamesRef.current.add(uniqueName);
       }
 
@@ -306,6 +311,14 @@ export const ExpressionStep = ({
   const editedIndex = openTarget?.kind === "clause" ? openTarget.index : null;
   const editedExpression =
     editedIndex != null ? expressions[editedIndex] : undefined;
+  const editedName =
+    editedExpression != null
+      ? Lib.displayInfo(query, stageIndex, editedExpression).displayName
+      : undefined;
+  const hasDefaultEditedName =
+    editedName === undefined ||
+    isDefaultName(editedName) ||
+    autoNamesRef.current.has(editedName);
 
   const availableColumns = useMemo(
     () =>
@@ -364,6 +377,8 @@ export const ExpressionStep = ({
           reportTimezone={reportTimezone}
           readOnly={readOnly}
           clause={editedExpression}
+          name={editedName}
+          hasDefaultName={hasDefaultEditedName}
           initialSource={pendingSources[pendingKey(openEditor.target)]}
           onSourceChange={handleSourceChange}
           onCommit={handleCommit}

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import type { ExpressionError } from "metabase/querying/expressions";
@@ -24,8 +24,17 @@ export type InlineExpressionEditorProps = {
 
   /** Absent while the pill is a draft */
   clause?: Lib.Expressionable;
+  /** Absent while the pill is a draft */
+  name?: string;
+  /** True when a commit with a name can rename the column without asking. */
+  hasDefaultName: boolean;
 
-  onCommit: (clause: Lib.ExpressionClause, name?: string) => void;
+  /** `forceName` renames the column even when the user named it. */
+  onCommit: (
+    clause: Lib.ExpressionClause,
+    name?: string,
+    options?: { forceName?: boolean },
+  ) => void;
   initialSource?: string;
   onSourceChange?: (source: string, isValid: boolean) => void;
 
@@ -43,6 +52,8 @@ export function InlineExpressionEditor({
   reportTimezone,
   readOnly,
   clause,
+  name,
+  hasDefaultName,
   onCommit,
   initialSource,
   onSourceChange,
@@ -59,6 +70,12 @@ export function InlineExpressionEditor({
   const [shortcutClause, setShortcutClause] = useState<Lib.ExpressionClause>();
   const editorClause = shortcutClause ?? clause;
 
+  // The name of an accepted AI suggestion, which the next valid edit commits.
+  const acceptedNameRef = useRef<string | undefined>(undefined);
+  const handleAcceptName = useCallback((name: string) => {
+    acceptedNameRef.current = name;
+  }, []);
+
   const handleChange = useCallback(
     (
       clause: Lib.ExpressionClause | null,
@@ -71,7 +88,9 @@ export function InlineExpressionEditor({
       onSourceChange?.(source, isValid);
 
       if (isValid && hasSourceChanged) {
-        onCommit(clause);
+        const acceptedName = acceptedNameRef.current;
+        acceptedNameRef.current = undefined;
+        onCommit(clause, acceptedName, { forceName: acceptedName != null });
       }
     },
     [onCommit, onSourceChange],
@@ -127,18 +146,22 @@ export function InlineExpressionEditor({
         renderShortcutsMenu={
           readOnly
             ? undefined
-            : ({ getSource, proposeSource }) => (
+            : ({ getSource, validate, proposeSource }) => (
                 <ShortcutsMenu
                   query={query}
                   stageIndex={stageIndex}
                   expressionMode={expressionMode}
                   availableColumns={availableColumns}
+                  name={name}
+                  hasDefaultName={hasDefaultName}
                   getSource={getSource}
+                  validate={validate}
                   onSubmit={applyShortcut}
                   onGenerate={proposeSource}
                 />
               )
         }
+        onAcceptName={handleAcceptName}
         inline
       />
 

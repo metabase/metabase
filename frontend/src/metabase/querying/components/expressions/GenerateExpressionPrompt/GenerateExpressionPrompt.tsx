@@ -16,15 +16,23 @@ import * as Lib from "metabase-lib";
 import S from "./GenerateExpressionPrompt.module.css";
 import { useGenerateExpressionMutation } from "./api";
 
+// The first try, then retries that get the editor's errors for the earlier tries.
+const MAX_ATTEMPTS = 3;
+
 type GenerateExpressionPromptProps = {
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
+  /** Absent for a column that is not created yet. */
+  name?: string;
+  hasDefaultName: boolean;
   value: string;
   getSource: () => string;
+  /** Returns the editor's error for `source`, or null when it is valid. */
+  validate: (source: string) => string | null;
   onValueChange: (value: string) => void;
-  onGenerate: (expression: string) => void;
+  onGenerate: (expression: string, name?: string) => void;
   onClose: () => void;
 };
 
@@ -33,15 +41,19 @@ export function GenerateExpressionPrompt({
   stageIndex,
   expressionMode,
   availableColumns,
+  name,
+  hasDefaultName,
   value,
   getSource,
+  validate,
   onValueChange,
   onGenerate,
   onClose,
 }: GenerateExpressionPromptProps) {
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
-  const [generateExpression, { isLoading }] = useGenerateExpressionMutation();
+  const [generateExpression] = useGenerateExpressionMutation();
   const requestRef = useRef<ReturnType<typeof generateExpression> | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
 
   const isSubmitDisabled = !value.trim() || isLoading;
@@ -49,6 +61,7 @@ export function GenerateExpressionPrompt({
   const cancelRequest = useCallback(() => {
     requestRef.current?.abort();
     requestRef.current = null;
+    setIsLoading(false);
   }, []);
 
   useEffect(() => cancelRequest, [cancelRequest]);
@@ -59,32 +72,64 @@ export function GenerateExpressionPrompt({
       return;
     }
     setError(undefined);
-    const request = generateExpression({
-      prompt,
-      source: getSource(),
-      expression_mode: expressionMode,
-      columns: availableColumns.map((column) =>
-        formatIdentifier(
-          Lib.displayInfo(query, stageIndex, column).longDisplayName,
-        ),
+    setIsLoading(true);
+    const columns = availableColumns.map((column) =>
+      formatIdentifier(
+        Lib.displayInfo(query, stageIndex, column).longDisplayName,
       ),
-    });
-    requestRef.current = request;
-    const result = await request;
-    if (requestRef.current !== request) {
-      return;
-    }
-    requestRef.current = null;
-    if (result.data) {
-      onGenerate(result.data.expression);
-    } else if (!isAborted(result.error)) {
-      setError(getErrorMessage(result.error));
+    );
+    const previousAttempts: { expression: string; error: string }[] = [];
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const request = generateExpression({
+        prompt,
+        source: getSource(),
+        expression_mode: expressionMode,
+        columns,
+        name,
+        has_default_name: hasDefaultName,
+        previous_attempts: previousAttempts,
+      });
+      requestRef.current = request;
+      const result = await request;
+      if (requestRef.current !== request) {
+        return;
+      }
+      if (!result.data) {
+        requestRef.current = null;
+        setIsLoading(false);
+        if (!isAborted(result.error)) {
+          setError(getErrorMessage(result.error));
+        }
+        return;
+      }
+
+      if ("message" in result.data) {
+        requestRef.current = null;
+        setIsLoading(false);
+        setError(result.data.message);
+        return;
+      }
+
+      const { expression, name: generatedName } = result.data;
+      const validationError = validate(expression);
+      // After the last try, show the expression anyway. The editor shows its error.
+      if (validationError == null || attempt === MAX_ATTEMPTS) {
+        requestRef.current = null;
+        setIsLoading(false);
+        onGenerate(expression, generatedName);
+        return;
+      }
+      previousAttempts.push({ expression, error: validationError });
     }
   }, [
     generateExpression,
     getSource,
+    validate,
     expressionMode,
     availableColumns,
+    name,
+    hasDefaultName,
     query,
     stageIndex,
     onGenerate,

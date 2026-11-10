@@ -33,7 +33,6 @@ import { ActionIcon, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
-import { DiffControls } from "../../CodeMirrorEditor/DiffControls";
 import { useDiffControls } from "../../CodeMirrorEditor/use-diff-controls";
 import { AvailableColumnsBrowser } from "../AvailableColumnsBrowser";
 import type { ExpressionSidebarName } from "../ExpressionSidebar";
@@ -47,6 +46,7 @@ import { LayoutMain, LayoutSidebar } from "../Layout";
 import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./Editor.module.css";
 import { Errors } from "./Errors";
+import { ExpressionDiffControls } from "./ExpressionDiffControls";
 import { InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
@@ -82,6 +82,8 @@ export type EditorProps = {
 
   /** Rendered in the inline toolbar. */
   renderShortcutsMenu?: (helpers: ShortcutsMenuHelpers) => ReactNode;
+  /** Called with the column name of an accepted AI suggestion. */
+  onAcceptName?: (name: string) => void;
   initialSource?: string;
 
   onChange: (
@@ -94,9 +96,16 @@ export type EditorProps = {
 
 export type ShortcutsMenuHelpers = {
   getSource: () => string;
-  /** Show `source` as a diff against the current text, to accept or reject. */
-  proposeSource: (source: string) => void;
+  /** Returns the error for `source`, or null when it is valid. */
+  validate: (source: string) => string | null;
+  /**
+   * Show `source` as a diff against the current text, to accept or reject.
+   * `name` is a suggested column name that the user can change.
+   */
+  proposeSource: (source: string, name?: string) => void;
 };
+
+type Proposal = { source: string; name?: string };
 
 export type EditorChangeMeta = {
   /** False for the initial format pass, so autosaving callers can skip it. */
@@ -113,6 +122,7 @@ export function Editor(props: EditorProps) {
   const {
     id,
     expressionMode = "expression",
+    expressionIndex,
     stageIndex,
     query,
     availableColumns,
@@ -126,6 +136,7 @@ export function Editor(props: EditorProps) {
     initialExpressionClause,
     inline = false,
     renderShortcutsMenu,
+    onAcceptName,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -192,27 +203,60 @@ export function Editor(props: EditorProps) {
   });
 
   // An AI suggestion, shown as a diff against `source` until accepted or rejected.
-  const [proposedSource, setProposedSource] = useState<string | null>(null);
-  const isProposing = proposedSource != null;
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const proposedSource = proposal?.source ?? null;
+  const isProposing = proposal != null;
 
   const sourceRef = useRef(source);
   sourceRef.current = source;
   const getSource = useCallback(() => sourceRef.current, []);
 
-  const proposeSource = useCallback((nextSource: string) => {
-    setProposedSource(nextSource);
+  const validate = useCallback(
+    (source: string) =>
+      diagnoseAndCompile({
+        source,
+        expressionMode,
+        query,
+        stageIndex,
+        expressionIndex: expressionIndex,
+        database,
+        availableColumns,
+        availableMetrics,
+      }).error?.message ?? null,
+    [
+      expressionMode,
+      query,
+      stageIndex,
+      expressionIndex,
+      database,
+      availableColumns,
+      availableMetrics,
+    ],
+  );
+
+  const proposeSource = useCallback((source: string, name?: string) => {
+    setProposal({ source, name });
     requestAnimationFrame(() => ref.current?.view?.focus());
   }, []);
 
+  const handleProposedNameChange = useCallback((name: string) => {
+    setProposal((proposal) => proposal && { ...proposal, name });
+  }, []);
+
   const handleAcceptProposed = useCallback(() => {
-    if (proposedSource != null) {
-      setProposedSource(null);
-      acceptSource(proposedSource);
+    if (proposal == null) {
+      return;
     }
-  }, [proposedSource, acceptSource]);
+    setProposal(null);
+    const name = proposal.name?.trim();
+    if (name) {
+      onAcceptName?.(name);
+    }
+    acceptSource(proposal.source);
+  }, [proposal, acceptSource, onAcceptName]);
 
   const handleRejectProposed = useCallback(() => {
-    setProposedSource(null);
+    setProposal(null);
   }, []);
 
   const {
@@ -240,7 +284,9 @@ export function Editor(props: EditorProps) {
   const handleSourceChange = useCallback(
     (nextSource: string) => {
       if (isProposing) {
-        setProposedSource(nextSource);
+        setProposal(
+          (proposal) => proposal && { ...proposal, source: nextSource },
+        );
       } else {
         onSourceChange(nextSource);
       }
@@ -358,10 +404,12 @@ export function Editor(props: EditorProps) {
               : undefined
           }
         />
-        {isProposing && (
-          <DiffControls
+        {proposal != null && (
+          <ExpressionDiffControls
             portalTarget={portalTarget}
             shortcuts={diffShortcuts}
+            name={proposal.name}
+            onNameChange={handleProposedNameChange}
             onAcceptProposed={handleAcceptProposed}
             onRejectProposed={handleRejectProposed}
           />
@@ -385,7 +433,11 @@ export function Editor(props: EditorProps) {
               !isProposing
             }
             openSidebar={openSidebar}
-            shortcutsMenu={renderShortcutsMenu?.({ getSource, proposeSource })}
+            shortcutsMenu={renderShortcutsMenu?.({
+              getSource,
+              validate,
+              proposeSource,
+            })}
             onFormat={formatExpression}
             onToggleSidebar={toggleSidebar}
           />

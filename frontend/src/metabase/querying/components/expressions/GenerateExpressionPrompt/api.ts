@@ -6,11 +6,15 @@ type GenerateExpressionRequest = {
   source: string;
   expression_mode: Lib.ExpressionMode;
   columns: string[];
+  name?: string;
+  has_default_name?: boolean;
+  previous_attempts?: { expression: string; error: string }[];
 };
 
-type GenerateExpressionResponse = {
-  expression: string;
-};
+type GenerateExpressionResponse =
+  | { expression: string; name?: string }
+  /** The request is not possible with a custom expression. */
+  | { message: string };
 
 const generateExpressionApi = Api.injectEndpoints({
   endpoints: (builder) => ({

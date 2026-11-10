@@ -29,9 +29,12 @@ type ShortcutsMenuProps = {
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
+  name?: string;
+  hasDefaultName: boolean;
   getSource: () => string;
+  validate: (source: string) => string | null;
   onSubmit: (clause: Lib.ExpressionClause, name: string) => void;
-  onGenerate: (expression: string) => void;
+  onGenerate: (expression: string, name?: string) => void;
 };
 
 export function ShortcutsMenu({
@@ -39,7 +42,10 @@ export function ShortcutsMenu({
   stageIndex,
   expressionMode,
   availableColumns,
+  name,
+  hasDefaultName,
   getSource,
+  validate,
   onSubmit,
   onGenerate,
 }: ShortcutsMenuProps) {
@@ -103,9 +109,9 @@ export function ShortcutsMenu({
     onSubmit(clause, name);
   };
 
-  const handleGenerate = (expression: string) => {
+  const handleGenerate = (expression: string, name?: string) => {
     close();
-    onGenerate(expression);
+    onGenerate(expression, name);
   };
 
   return (
@@ -153,8 +159,11 @@ export function ShortcutsMenu({
             stageIndex={stageIndex}
             expressionMode={expressionMode}
             availableColumns={availableColumns}
+            name={name}
+            hasDefaultName={hasDefaultName}
             value={prompt}
             getSource={getSource}
+            validate={validate}
             onValueChange={setPrompt}
             onGenerate={handleGenerate}
             onClose={close}
