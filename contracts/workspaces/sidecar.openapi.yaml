@@ -11,6 +11,20 @@ info:
     from production. Remap rows are written by the transform hook, not through this API.
     (`EE/transform_hooks.clj:11`, `EE/query_processor/middleware.clj`.)
 
+    Workspace mode is not a security boundary. Isolation comes only from the warehouse login. Workspace mode
+    redirects transform output and nothing else: native SQL writes, model persistence and data-grid edits still
+    reach production when the login can write there. `POST /current` checks only the shape of the body, not the
+    namespaces it names (`src/metabase/workspaces/core.clj:46-77,100-112`).
+
+    Remapping follows remap rows, not the mode: queries are rewritten whenever rows exist
+    (`src/metabase/workspaces/core.clj:14-19`). Booting without the `config.yml` `workspace:` section does not
+    turn `workspaces-enabled` off; an app DB that was a sidecar's stays in workspace mode with its remap rows. To
+    leave workspace mode, use a fresh app DB or call `DELETE /current`. `MB_WORKSPACES_ENABLED=false` turns the
+    mode off but leaves the remap rows.
+
+    Request bodies: the server ignores unknown keys instead of rejecting them, also where a schema says
+    `additionalProperties: false` (`src/metabase/api/macros.clj:428-437`).
+
     Every route needs a session or API key, the `:workspaces` premium feature (402 otherwise), and a superuser
     on the sidecar (403 otherwise).
 
@@ -25,6 +39,13 @@ info:
 
     `/current` becomes a wrapper over them (`WorkspaceInstanceSettings`). `name`, `input_schemas`, `can_write`,
     the `instance-workspace` setting and `MB_INSTANCE_WORKSPACE` go away.
+
+    #86735 also:
+    - Fails closed: on a workspace instance, a transform whose database has no `database-workspace-schema` is
+      refused with 400 instead of writing to production. Master writes to production here.
+    - Deletes a database's remap rows whenever its `database-workspace-schema` changes, by any route: `POST
+      /current`, `PUT /api/database/{id}`, and the `config.yml` `databases[].settings` loader. Reads then do not
+      follow old rows into the old schema.
 servers:
   - url: "{sidecar}/api/ee/workspace-instance"
     variables:
@@ -43,9 +64,15 @@ paths:
       x-status: master
       x-source: EE/api/workspace_instance.clj:74
       x-pr: 86735
-      description: "#86735: `data` becomes `WorkspaceInstanceSettings`, or null when `workspaces-enabled` is off."
+      description: |
+        #86735: `data` becomes `WorkspaceInstanceSettings`, or null when `workspaces-enabled` is off.
+
+        Hardening (TBD-identity): `data` also carries `workspace_id` and `parent_url`, so a caller can tell which
+        parent workspace the sidecar serves.
       responses:
         "200":
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json:
               schema:
@@ -70,6 +97,8 @@ paths:
         each listed database's `database-workspace-schema` and clears it on every other database. 400 for an
         unknown database id, on a parent, or while `MB_WORKSPACES_ENABLED=false`. No config lock. Writes the schemas
         first and turns the flag on last, in one transaction; a database dropped from the list loses its remap rows.
+
+        Hardening (TBD-identity): the body and response carry `workspace_id` and `parent_url`.
       x-status: master
       x-pr: 86735
       x-source: EE/api/workspace_instance.clj:91, src/metabase/workspaces/core.clj:68
@@ -80,6 +109,8 @@ paths:
             schema: { $ref: "#/components/schemas/WorkspaceInstanceConfig" }
       responses:
         "200":
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
           content:
             application/json: { schema: { $ref: "#/components/schemas/WorkspaceInstance" } }
           description: The stored workspace.
@@ -94,7 +125,10 @@ paths:
       x-pr: 86735
       x-source: EE/api/workspace_instance.clj:107
       responses:
-        "204": { description: Not in workspace mode. }
+        "204":
+          description: Not in workspace mode.
+          headers:
+            X-Metabase-Workspaces-Version: { $ref: "#/components/headers/WorkspacesVersion" }
         "400": { description: Locked by deployment config. }
         "403": { $ref: "#/components/responses/Forbidden" }
 
@@ -151,6 +185,15 @@ components:
     session: { type: apiKey, in: header, name: X-Metabase-Session }
     apiKey: { type: apiKey, in: header, name: X-API-KEY }
 
+  headers:
+    WorkspacesVersion:
+      x-status: hardening
+      x-pr: TBD-contract-version
+      description: |
+        The contract version this instance implements. `2` on an instance with the hardening PRs. Absent on master,
+        so a client treats a missing header as the master contract.
+      schema: { type: string, const: "2" }
+
   responses:
     Forbidden:
       description: Not a superuser on the sidecar. Plain-text body.
@@ -160,8 +203,8 @@ components:
   schemas:
     TableNamespace:
       description: |
-        Where a table lives. Which keys are set depends on the engine: `schema` on Postgres, Redshift, ClickHouse
-        and Snowflake; `db` and `schema` on SQL Server and BigQuery; `db` on MySQL. At least one is non-null.
+        Where a table lives. Which keys are set depends on the engine: `schema` on Postgres, Redshift and
+        ClickHouse; `db` and `schema` on SQL Server; `db` on MySQL. At least one is non-null.
       type: object
       additionalProperties: false
       properties:
@@ -181,6 +224,7 @@ components:
         output: { $ref: "#/components/schemas/TableNamespace" }
 
     WorkspaceInstanceConfig:
+      description: Unknown keys are ignored.
       type: object
       additionalProperties: false
       required: [name, databases]
@@ -210,11 +254,21 @@ components:
         Each database with a `database-workspace-schema`. A list, not a map keyed by id: request decoding silently
         drops map entries that don't validate, so a malformed body would become a workspace with no databases.
         The `{db, schema}` the sidecar writes to is derived: `schema` is this value, `db` is the database's own
-        catalog on SQL Server and BigQuery; on MySQL the value is the `db`.
+        catalog on SQL Server and BigQuery; on MySQL the value is the `db`. Unknown keys are ignored.
       type: object
       additionalProperties: false
       required: [databases]
       properties:
+        workspace_id:
+          type: [integer, "null"]
+          x-status: hardening
+          x-pr: TBD-identity
+          description: The id of the parent workspace this sidecar serves. Null when not set.
+        parent_url:
+          type: [string, "null"]
+          x-status: hardening
+          x-pr: TBD-identity
+          description: The parent Metabase's site URL. Null when not set.
         databases:
           type: array
           items:
@@ -226,6 +280,10 @@ components:
               schema: { type: string, minLength: 1 }
 
     TableRemapping:
+      description: |
+        A row means a transform run targeted the table, not that the run succeeded. On master the row is written
+        when a run starts and kept after a failed run (`src/metabase/transforms/execute.clj:37`). Check the run's
+        own status in the transform API.
       type: object
       required: [id, database_id, from_db, from_schema, from_table_name, to_db, to_schema, to_table_name, created_at]
       x-source: EE/models/table_remapping.clj:4
@@ -240,4 +298,4 @@ components:
         to_table_name:
           type: string
           description: "`<from_schema>__<from_table_name>`, shortened with a hash when too long (`EE/table_remapping.clj:138`)."
-        created_at: { type: string }
+        created_at: { type: string, description: "The first run that targeted the table, not the latest." }
