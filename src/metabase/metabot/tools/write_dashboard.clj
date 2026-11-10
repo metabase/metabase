@@ -156,6 +156,27 @@
                :text (str "Or ask the user whether to restore the collection from the trash first, or which"
                           " collection to use.")}]})
 
+(tools/defrecoverable collection-not-writable!
+  "The user can see the collection the dashboard would be created in or moved to, but can't save to it.
+  The `:collection-id` is absent for the root collection. `:creating?` is true on a create."
+  {:payload     [:map {:closed true}
+                 [:collection-id {:optional true} :int]
+                 [:creating?     :boolean]]
+   :status-code 403}
+  [{:keys [collection-id creating?]}]
+  {:message  (str "The user can't save dashboards to "
+                  (if collection-id (str "collection " collection-id) "the root collection")
+                  ". Nothing was saved.")
+   :recovery (into [{:uses #{"read_resource"}
+                     :text (str "To use another collection, read `metabase://collections?tree=true` with"
+                                " `read_resource` and pass the id of one with `can_write=true` as `collection_id`.")}]
+                   (if creating?
+                     [{:uses #{}
+                       :text (str "Or omit `collection_id` to create the dashboard in the user's personal"
+                                  " collection, or ask the user which collection to use.")}]
+                     [{:uses #{}
+                       :text "Or ask the user which collection to move it to."}]))})
+
 (tools/defrecoverable dashboard-not-restorable!
   "The dashboard can't be restored to the collection it was trashed from: it went to the trash with that collection,
   or that collection is gone, trashed, or not writable."
@@ -408,15 +429,19 @@
 
 (defn- check-collection-writable!
   "Throws unless the user can save a dashboard to the collection with `collection-id`, nil for the root collection.
-  A collection in the trash is refused."
-  [collection-id]
+  A collection in the trash is refused. `creating?` says whether the dashboard is new, which changes the advice."
+  [collection-id creating?]
   (when collection-id
     (let [collection (tools/with-entity {:kind :collection, :id collection-id}
                        (api/read-check :model/Collection collection-id))]
       (when (:archived collection)
         (collection-trashed! {:collection-id collection-id}))))
-  (save-entity/check-writable! (cond-> {:kind :collection} collection-id (assoc :id collection-id))
-                               #(api/create-check :model/Dashboard {:collection_id collection-id})))
+  (try
+    (api/create-check :model/Dashboard {:collection_id collection-id})
+    (catch clojure.lang.ExceptionInfo e
+      (if (= 403 (:status-code (ex-data e)))
+        (collection-not-writable! (cond-> {:creating? creating?} collection-id (assoc :collection-id collection-id)))
+        (throw e)))))
 
 (defn- check-request!
   "Throws [[invalid-request!]] when the arguments don't make sense together."
@@ -778,7 +803,7 @@
           dashboard (target-dashboard args)
           attrs     (dashboard-attrs args (nil? dashboard))]
       (when (contains? attrs :collection_id)
-        (check-collection-writable! (:collection_id attrs)))
+        (check-collection-writable! (:collection_id attrs) (nil? dashboard)))
       (check-request! args)
       (check-op-sources! dashboard_id ops)
       (check-cards-curated! ops)

@@ -311,8 +311,13 @@
        (perms/grant-collection-read-permissions! (perms-group/all-users) target)
        (mt/with-current-user (mt/user->id :rasta)
          (testing "a move to a collection the user can't write to is refused"
-           (is (=? {:class :recoverable, :code ::save-entity/destination-not-writable}
-                   (failure {:dashboard_id dash-id, :collection_id target-id}))))
+           (is (= {:class :recoverable
+                   :code  ::write-dashboard/collection-not-writable
+                   :text  (str "The user can't save dashboards to collection " target-id ". Nothing was saved.\n"
+                               "To use another collection, read `metabase://collections?tree=true` with"
+                               " `read_resource` and pass the id of one with `can_write=true` as `collection_id`.\n"
+                               "Or ask the user which collection to move it to.")}
+                  (failure {:dashboard_id dash-id, :collection_id target-id}))))
          (testing "the dashboard stays where it was"
            (is (= coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))))))))
 
@@ -462,10 +467,18 @@
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
       (mt/with-current-user (mt/user->id :rasta)
         (testing "a create in a read-only collection is refused"
-          (is (=? {:class :recoverable, :code ::save-entity/destination-not-writable}
-                  (failure {:name "Mine", :collection_id coll-id}))))
+          (is (= {:class :recoverable
+                  :code  ::write-dashboard/collection-not-writable
+                  :text  (str "The user can't save dashboards to collection " coll-id ". Nothing was saved.\n"
+                              "To use another collection, read `metabase://collections?tree=true` with"
+                              " `read_resource` and pass the id of one with `can_write=true` as `collection_id`.\n"
+                              "Or omit `collection_id` to create the dashboard in the user's personal collection,"
+                              " or ask the user which collection to use.")}
+                 (failure {:name "Mine", :collection_id coll-id}))))
         (testing "so is a create in the root collection"
-          (is (=? {:class :recoverable, :code ::save-entity/destination-not-writable}
+          (is (=? {:class :recoverable
+                   :code  ::write-dashboard/collection-not-writable
+                   :text  #"(?s)The user can't save dashboards to the root collection\. .*"}
                   (failure {:name "Mine", :collection_id "root"}))))))))
 
 (deftest other-dashboard-question-test
