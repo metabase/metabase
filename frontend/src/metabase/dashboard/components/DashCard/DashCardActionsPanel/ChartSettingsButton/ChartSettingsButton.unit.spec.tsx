@@ -98,6 +98,10 @@ const setup = ({ series = MOCK_SERIES }: SetupOpts = {}) => {
 };
 
 describe("ChartSettingsButton", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should render the button", () => {
     setup();
     expect(screen.getByLabelText("palette icon")).toBeInTheDocument();
