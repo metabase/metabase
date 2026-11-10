@@ -241,9 +241,6 @@
                                 driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms*
                                                                           transform-timeout-ms)]
                         (run-transform! cancel-chan source-range-params)))]
-            ;; The write has landed, so the remap can't point at a table that was never written. Before the
-            ;; succeed mark, so a failure here fails the run rather than leaving a succeeded run unremapped.
-            (transforms-base.u/record-workspace-target-remapping! transform)
             (when full-create?
               ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
               ;; stays a full rebuild that re-attempts the index).
@@ -259,6 +256,10 @@
                      running-indexes
                      "Index status could not be verified after the transform completed.")))))
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
+            ;; After the write, so the remap can't point at a table that was never written. After the watermark, so
+            ;; when this fails the append that landed is not appended again by the retry. Before the succeed mark,
+            ;; so a failure here fails the run rather than leaving a succeeded run unremapped.
+            (transforms-base.u/record-workspace-target-remapping! transform)
             (transform-run/succeed-started-run! run-id)
             ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
             ;; fail-started-run! after succeed-started-run! has already fired.

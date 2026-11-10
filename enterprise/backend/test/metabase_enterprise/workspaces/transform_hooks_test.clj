@@ -5,9 +5,11 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -192,7 +194,7 @@
       (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
         (with-pg-workspace-transform! "ws_post_success_iso" "ws_post_success"
           (fn [transform]
-            (let [real-complete transforms-base.u/complete-execution!]
+            (let [real-complete (mt/original-fn #'transforms-base.u/complete-execution!)]
               (mt/with-dynamic-fn-redefs [transforms-base.u/complete-execution! (fn [& args]
                                                                                   (apply real-complete args)
                                                                                   (throw (ex-info "post-run step failed" {})))]
@@ -214,6 +216,58 @@
                                     (transforms.execute/execute! transform {:run-method :manual}))))
             (is (= :failed (t2/select-one-fn :status :model/TransformRun :transform_id (:id transform))))
             (is (empty? (t2/select :model/TableRemapping :database_id (mt/id))))))))))
+
+(deftest append-retry-after-record-failure-writes-each-row-once-test
+  (testing "an incremental append run whose remapping can't be recorded fails, and its retry leaves each source row in the workspace copy once"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
+        (let [spec       (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+              iso-schema "ws_append_iso"
+              copy-ids   #(map :id (jdbc/query spec [(format "SELECT id FROM %s.public__ws_append" iso-schema)]))
+              transform  (atom nil)
+              run-append! #(transforms.execute/execute! (t2/select-one :model/Transform :id (:id @transform))
+                                                        {:run-method :manual})]
+          (try
+            (jdbc/execute! spec ["CREATE TABLE public.ws_append_src (id INT, ts INT)"])
+            (jdbc/execute! spec ["INSERT INTO public.ws_append_src SELECT g, g FROM generate_series(1, 5) g"])
+            (sync/sync-database! (mt/id) {:scan :schema})
+            (with-instance-workspace-for-db! iso-schema
+              (fn []
+                (ws.table-remapping/clear-mappings-for-db! (mt/id))
+                (let [mp       (mt/metadata-provider)
+                      table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "public" :name "ws_append_src")
+                      field-id (t2/select-one-pk :model/Field :table_id table-id :name "ts")]
+                  (reset! transform (t2/insert-returning-instance!
+                                     :model/Transform
+                                     {:name       "ws-append"
+                                      :creator_id (mt/user->id :crowberto)
+                                      :source     {:type                        :query
+                                                   :query                       (lib/query mp (lib.metadata/table mp table-id))
+                                                   :source-incremental-strategy {:type                       "checkpoint"
+                                                                                 :checkpoint-filter-field-id field-id}}
+                                      :target     {:type                        "table-incremental"
+                                                   :schema                      "public"
+                                                   :name                        "ws_append"
+                                                   :target-incremental-strategy {:type "append"}}})))
+                (run-append!)
+                (is (= 5 (count (copy-ids))))
+                (jdbc/execute! spec ["INSERT INTO public.ws_append_src SELECT g, g FROM generate_series(6, 8) g"])
+                (mt/with-dynamic-fn-redefs [transforms-base.u/record-workspace-target-remapping!
+                                            (fn [_] (throw (ex-info "record failed" {})))]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"record failed" (run-append!))))
+                (is (= [:succeeded :failed]
+                       (t2/select-fn-vec :status :model/TransformRun :transform_id (:id @transform) {:order-by [[:id :asc]]})))
+                (run-append!)
+                (is (= (range 1 9) (sort (copy-ids)))
+                    "each source row is in the copy once")))
+            (finally
+              (when-let [{transform-id :id} @transform]
+                (t2/delete! :model/TransformRun :transform_id transform-id)
+                (t2/delete! :model/Transform :id transform-id))
+              (ws.table-remapping/clear-mappings-for-db! (mt/id))
+              (t2/delete! :model/Table :db_id (mt/id) :schema "public" :name "ws_append_src")
+              (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" iso-schema)])
+              (jdbc/execute! spec ["DROP TABLE IF EXISTS public.ws_append_src"]))))))))
 
 (deftest refused-overlapping-run-keeps-remapping-test
   (testing "a run refused because the transform is already running leaves the running run's remapping in place"
@@ -280,6 +334,8 @@
           (transforms.execute/execute! python-transform)))
       (is (= "PUBLIC" (get-in @captured [:target :schema]))
           ":schema is unchanged when DB is not workspaced")
+      (is (not (contains? @captured :workspace-canonical-target))
+          "no canonical target travels with the transform, so the record step has nothing to do")
       (is (nil? (t2/select-one :model/TableRemapping
                                :database_id     (mt/id)
                                :from_schema     "PUBLIC"
@@ -316,3 +372,35 @@
                 (finally
                   (t2/delete! :model/Transform :name [:like "ws-target-check %"])
                   (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" iso-schema)]))))))))))
+
+(deftest run-records-its-remapping-after-its-write-test
+  (testing "a run records nothing before its write, and records its remapping once the write returns"
+    (with-instance-workspace-for-db! "ws_test_schema"
+      (fn []
+        (let [rows-at-write (atom ::not-written)
+              transform     (atom nil)]
+          (try
+            (ws.table-remapping/clear-mappings-for-db! (mt/id))
+            (reset! transform (t2/insert-returning-instance!
+                               :model/Transform
+                               {:name   "ws-record-after-write"
+                                :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS X")}
+                                :target {:type :table :schema "PUBLIC" :name "RECORDED"}}))
+            (mt/with-premium-features #{:workspaces :transforms-basic}
+              (with-redefs [driver/schema-exists?             (constantly true)
+                            transforms-base.i/execute-base!   (fn [& _]
+                                                                (reset! rows-at-write (t2/count :model/TableRemapping :database_id (mt/id)))
+                                                                {:status :succeeded})
+                            transforms-base.u/complete-execution! (constantly nil)]
+                (transforms.execute/execute! @transform {:run-method :manual})))
+            (is (zero? @rows-at-write)
+                "nothing is recorded before the write")
+            (is (= [{:from_schema "PUBLIC" :from_table_name "RECORDED" :to_schema "ws_test_schema" :to_table_name "PUBLIC__RECORDED"}]
+                   (t2/select [:model/TableRemapping :from_schema :from_table_name :to_schema :to_table_name] :database_id (mt/id)))
+                "the remapping is recorded after the write")
+            (is (= :succeeded (t2/select-one-fn :status :model/TransformRun :transform_id (:id @transform))))
+            (finally
+              (when-let [{transform-id :id} @transform]
+                (t2/delete! :model/TransformRun :transform_id transform-id)
+                (t2/delete! :model/Transform :id transform-id))
+              (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))))
