@@ -777,7 +777,7 @@ const getDrawnXLabelsOverhang = (
         const label = formatter(
           xAxisModel
             .fromEChartsAxisValue(value)
-            .format("YYYY-MM-DDTHH:mm:ss[Z]"),
+            .format("YYYY-MM-DDTHH:mm:ss.SSS[Z]"),
         );
         return ticksDimensions.getXTickWidth(getPaddedAxisLabel(label)) / 2;
       };

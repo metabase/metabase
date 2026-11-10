@@ -250,6 +250,39 @@ describe("first x-axis label", () => {
     expect(numericAxis.axisLabel?.showMinLabel).toBe(true);
   });
 
+  it("passes milliseconds to the time-series label formatter (metabase#80366)", () => {
+    const xAxis = xAxisFor(
+      createMockCartesianChartModel({
+        xAxisModel: {
+          axisType: "time",
+          interval: { unit: "ms", count: 1 },
+          intervalsCount: 500,
+          range: [
+            dayjs.utc("2025-03-30T00:00:00.000Z"),
+            dayjs.utc("2025-03-30T00:00:00.500Z"),
+          ],
+          formatter: String,
+          toEChartsAxisValue: (value) => String(value),
+          fromEChartsAxisValue: (value) => dayjs.utc(value),
+        },
+      }),
+    );
+    const formatter =
+      xAxis.type === "time" ? xAxis.axisLabel?.formatter : undefined;
+    const tickValue = dayjs.utc("2025-03-30T00:00:00.250Z").valueOf();
+    const tickTime = {
+      level: 0,
+      upperTimeUnit: "millisecond",
+      lowerTimeUnit: "millisecond",
+    } as const;
+
+    expect(typeof formatter).toBe("function");
+    expect(
+      typeof formatter === "function" &&
+        formatter(tickValue, 0, { level: 0, time: tickTime }),
+    ).toContain("2025-03-30T00:00:00.250Z");
+  });
+
   it("still labels histogram bins by their right edge", () => {
     const xAxis = xAxisFor(
       createMockCartesianChartModel({

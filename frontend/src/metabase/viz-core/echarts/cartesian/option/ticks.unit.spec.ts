@@ -56,8 +56,8 @@ describe("getTicksOptions", () => {
 
     expect(unpaddedMin).toBe(dayjs(model.toEChartsAxisValue(first)).valueOf());
     expect(unpaddedMax).toBe(dayjs(model.toEChartsAxisValue(last)).valueOf());
-    expect(model.toEChartsAxisValue(first)).toBe("2025-03-30T00:00:00Z");
-    expect(model.toEChartsAxisValue(last)).toBe("2025-04-01T00:00:00Z");
+    expect(model.toEChartsAxisValue(first)).toBe("2025-03-30T00:00:00.000Z");
+    expect(model.toEChartsAxisValue(last)).toBe("2025-04-01T00:00:00.000Z");
   });
 });
 
