@@ -278,6 +278,18 @@
             (search.ingestion/bulk-ingest! [tombstone reindex])
             (is (true? (indexed?)))))))))
 
+(deftest ^:synchronized failing-run-keeps-later-tombstones-test
+  (testing "a re-index run that throws does not cost the tombstone after it in the same batch"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Failingrunprobe"}]
+        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+          (is (true? (indexed?)))
+          (is (thrown? Exception
+                       (search.ingestion/bulk-ingest! [["card" [:= 1 :this.no_such_column]]
+                                                       (search.ingestion/tombstone "card" [id])]))
+              "the failure still reaches the caller")
+          (is (false? (indexed?))))))))
+
 (deftest curation-signals-surfaced-in-results-test
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
             so Metabot can render them (BOT-1570) — not just stored in the filtering column"

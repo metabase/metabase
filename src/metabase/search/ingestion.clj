@@ -357,17 +357,30 @@
     (update! documents to-delete)))
 
 (defn bulk-ingest!
-  "Process the given search model updates and tombstones, in queue order."
+  "Process the given search model updates and tombstones, in queue order.
+  A run of messages that fails is logged and the later runs still apply; the first failure is then rethrown."
   [updates]
   (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
     (lib-be/with-metadata-provider-cache
       (when (seq (search.engine/active-engines))
         ;; Preserve the queue's relative ordering: an update after a tombstone is authoritative, while a prior update
         ;; must finish before the delete. Only contiguous re-index messages are coalesced.
-        (doseq [messages (partition-by tombstone? updates)]
-          (if (tombstone? (first messages))
-            (apply-tombstones! messages)
-            (ingest-updates! messages)))))))
+        ;; Nothing retries a failed batch, so a failing run must not cost the runs after it, a tombstone above all.
+        ;; The first failure is rethrown once every run has had its turn, so the caller still sees it.
+        (when-some [e (reduce (fn [first-error messages]
+                                (try
+                                  (if (tombstone? (first messages))
+                                    (apply-tombstones! messages)
+                                    (ingest-updates! messages))
+                                  first-error
+                                  (catch InterruptedException e
+                                    (throw e))
+                                  (catch Exception e
+                                    (log/errorf e "Failed to ingest %d search index messages" (count messages))
+                                    (or first-error e))))
+                              nil
+                              (partition-by tombstone? updates))]
+          (throw e))))))
 
 (defn- track-queue-size! []
   (analytics/set-gauge! :metabase-search/queue-size (.size queue)))
