@@ -16,6 +16,12 @@
    opts  :- ::remote-sync.schema/synced-filter-opts]
   (remote-sync/synced-fk-clause alias :transform_id :model/Transform opts))
 
+(mu/defn synced-card-tests-clause :- [:fn vector?]
+  "The clause over the CardTest table aliased `alias` selecting the tests of the cards remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :card_id :model/Card opts))
+
 (mu/defn transform-tests :- [:sequential ::data-testing.schema/transform-test]
   "The TransformTests in name order, only those of the Transform with `:transform-id` when it is given."
   [{:keys [transform-id]} :- [:map {:closed true}

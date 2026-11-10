@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
@@ -166,3 +167,10 @@
   (mapv (fn [{:keys [card_id]}]
           #{[:model/Card card_id]})
         entities))
+
+;;; -------------------------------------------------- Remote sync -------------------------------------------------
+
+(defmethod remote-sync/spec :model/CardTest
+  [_model]
+  {:parent               (fn [{:keys [card_id]}] [:model/Card card_id])
+   :synced-filter-clause data-testing.db/synced-card-tests-clause})
