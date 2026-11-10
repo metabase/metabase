@@ -201,9 +201,27 @@ function getSystemSegmentHint({ status }: ResolvedSystemSegment) {
   }
 }
 
+function getDefaultSegmentKey(segment: DefaultSegment): string {
+  switch (segment.type) {
+    case "all":
+      return "all";
+    case "system":
+      return `system:${segment.role}`;
+    case "custom":
+      return `custom:${segment.segmentId}`;
+  }
+}
+
+type DefaultSegmentChoice = {
+  segment: DefaultSegment;
+  label: string;
+  hint?: string;
+  isDisabled?: boolean;
+};
+
 /**
- * The built-in choices, then "Other" for the table's own segments. "Other"
- * swaps the menu's items rather than opening a second menu.
+ * Every segment the table's questions can start from, in one list: all
+ * records, the table's own segments, then its system segments.
  */
 function DefaultSegmentPicker({
   value,
@@ -222,23 +240,41 @@ function DefaultSegmentPicker({
   isOpenOnMount: boolean;
   onChange: (segment: DefaultSegment) => void;
 }) {
-  const [isShowingCustom, setIsShowingCustom] = useState(false);
-  const builtInChoices: {
-    segment: DefaultSegment;
-    label: string;
-    hint?: string;
-    isDisabled?: boolean;
-  }[] = [
-    { segment: { type: "all" }, label: t`All records` },
-    ...systemSegments.map((systemSegment) => ({
-      segment: { type: "system" as const, role: systemSegment.role },
+  const customChoices: DefaultSegmentChoice[] = customSegments.map(
+    (segment) => ({
+      segment: { type: "custom", segmentId: segment.id },
+      label: segment.name,
+    }),
+  );
+  const systemChoices: DefaultSegmentChoice[] = systemSegments.map(
+    (systemSegment) => ({
+      segment: { type: "system", role: systemSegment.role },
       label: systemSegment.label,
       hint: getSystemSegmentHint(systemSegment),
       isDisabled: systemSegment.status === "not-applicable",
-    })),
-  ];
-  const checkIfSelected = (segment: DefaultSegment) =>
-    isSameSegment(segment, value) ? <Icon name="check" /> : undefined;
+    }),
+  );
+  const renderChoice = (choice: DefaultSegmentChoice) => (
+    <Menu.Item
+      key={getDefaultSegmentKey(choice.segment)}
+      rightSection={
+        isSameSegment(choice.segment, value) ? <Icon name="check" /> : undefined
+      }
+      disabled={choice.isDisabled}
+      onClick={() => onChange(choice.segment)}
+    >
+      {choice.hint != null ? (
+        <Stack gap={2}>
+          <Text c="inherit">{choice.label}</Text>
+          <Text size="sm" c="text-secondary">
+            {choice.hint}
+          </Text>
+        </Stack>
+      ) : (
+        choice.label
+      )}
+    </Menu.Item>
+  );
 
   return (
     <Menu
@@ -246,7 +282,6 @@ function DefaultSegmentPicker({
       width="target"
       defaultOpened={isOpenOnMount}
       disabled={disabled}
-      onClose={() => setIsShowingCustom(false)}
     >
       <Menu.Target>
         <Input
@@ -262,70 +297,18 @@ function DefaultSegmentPicker({
           {label}
         </Input>
       </Menu.Target>
-      <Menu.Dropdown>
-        {isShowingCustom ? (
+      <Menu.Dropdown mah={420} style={{ overflowY: "auto" }}>
+        {renderChoice({ segment: { type: "all" }, label: t`All records` })}
+        {customChoices.length > 0 && (
           <>
-            <Menu.Item
-              leftSection={<Icon name="chevronleft" />}
-              closeMenuOnClick={false}
-              onClick={() => setIsShowingCustom(false)}
-            >
-              {t`Back`}
-            </Menu.Item>
             <Menu.Divider />
             <Menu.Label>{t`Custom segments`}</Menu.Label>
-            {customSegments.length === 0 ? (
-              <Menu.Item disabled>{t`No custom segments yet`}</Menu.Item>
-            ) : (
-              customSegments.map((segment) => {
-                const choice: DefaultSegment = {
-                  type: "custom",
-                  segmentId: segment.id,
-                };
-                return (
-                  <Menu.Item
-                    key={segment.id}
-                    leftSection={<Icon name="segment" />}
-                    rightSection={checkIfSelected(choice)}
-                    onClick={() => onChange(choice)}
-                  >
-                    {segment.name}
-                  </Menu.Item>
-                );
-              })
-            )}
-          </>
-        ) : (
-          <>
-            {builtInChoices.map((choice) => (
-              <Menu.Item
-                key={choice.label}
-                rightSection={checkIfSelected(choice.segment)}
-                disabled={choice.isDisabled}
-                onClick={() => onChange(choice.segment)}
-              >
-                {choice.hint != null ? (
-                  <Stack gap={2}>
-                    <Text c="inherit">{choice.label}</Text>
-                    <Text size="sm" c="text-secondary">
-                      {choice.hint}
-                    </Text>
-                  </Stack>
-                ) : (
-                  choice.label
-                )}
-              </Menu.Item>
-            ))}
-            <Menu.Divider />
-            <Menu.Item
-              rightSection={<Icon name="chevronright" />}
-              closeMenuOnClick={false}
-              onClick={() => setIsShowingCustom(true)}
-            >
-              {value.type === "custom" ? t`Other: ${label}` : t`Other`}
-            </Menu.Item>
+            {customChoices.map(renderChoice)}
           </>
         )}
+        <Menu.Divider />
+        <Menu.Label>{t`System segments`}</Menu.Label>
+        {systemChoices.map(renderChoice)}
       </Menu.Dropdown>
     </Menu>
   );

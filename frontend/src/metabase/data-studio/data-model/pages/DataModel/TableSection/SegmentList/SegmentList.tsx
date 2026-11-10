@@ -140,13 +140,16 @@ export function SegmentList({
   const kindCandidates = groupProposals.kindCandidates;
   const hasGroupProposals =
     matchingGroupProposals.length > 0 || kindCandidates.length > 0;
-  const hasProposals = hasGroupProposals || matchingProposals.length > 0;
-  const hasViewMatches =
-    view === "system"
-      ? systemSegments.length > 0
-      : view === "custom"
-        ? segmentGroups.length > 0 || customSegments.length > 0
-        : hasProposals;
+  const matchingProposalCount =
+    matchingGroupProposals.length + matchingProposals.length;
+  const hasMatches =
+    systemSegments.length > 0 ||
+    segmentGroups.length > 0 ||
+    customSegments.length > 0 ||
+    matchingProposalCount > 0;
+  // A search looks through every view at once, each in its own section
+  const showsView = (viewToShow: SegmentView) =>
+    !isSearching && view === viewToShow;
   const editingGroup =
     editingGroupId != null
       ? getSegmentGroups(table).find(({ id }) => id === editingGroupId)
@@ -158,27 +161,25 @@ export function SegmentList({
       <Stack gap="md">
         <ListSearchBar
           value={query}
-          placeholder={
-            view === "custom"
-              ? t`Search segments and groups`
-              : t`Search segments`
-          }
+          placeholder={t`Search all segments and groups`}
           onChange={setQuery}
         />
-        <SegmentedControl<SegmentView>
-          fullWidth
-          data={getViewOptions()}
-          value={view}
-          onChange={setView}
-        />
+        {!isSearching && (
+          <SegmentedControl<SegmentView>
+            fullWidth
+            data={getViewOptions()}
+            value={view}
+            onChange={setView}
+          />
+        )}
       </Stack>
 
-      {isSearching && !hasViewMatches && (
+      {isSearching && !hasMatches && (
         <ListSearchEmptyState>{t`No segments match "${query}"`}</ListSearchEmptyState>
       )}
 
-      {view === "system" && systemSegments.length > 0 && (
-        <ListSection>
+      {(showsView("system") || isSearching) && systemSegments.length > 0 && (
+        <ListSection title={isSearching ? t`System segments` : undefined}>
           {systemSegments.map((segment) => (
             <SystemSegmentItem
               key={segment.role}
@@ -198,7 +199,7 @@ export function SegmentList({
         </ListSection>
       )}
 
-      {view === "custom" && (!isSearching || segmentGroups.length > 0) && (
+      {(showsView("custom") || (isSearching && segmentGroups.length > 0)) && (
         <ListSection
           title={t`Segment groups`}
           description={t`Named sets of custom segments. When they don't overlap, they split rows into groups to compare.`}
@@ -234,7 +235,7 @@ export function SegmentList({
         </ListSection>
       )}
 
-      {view === "custom" && (!isSearching || customSegments.length > 0) && (
+      {(showsView("custom") || (isSearching && customSegments.length > 0)) && (
         <ListSection
           title={t`Custom segments`}
           action={
@@ -276,7 +277,8 @@ export function SegmentList({
         </ListSection>
       )}
 
-      {view === "proposed" && hasGroupProposals && (
+      {((showsView("proposed") && hasGroupProposals) ||
+        (isSearching && matchingGroupProposals.length > 0)) && (
         <ListSection
           title={t`Proposed segment groups`}
           description={t`Partitions from statuses, flags, and values. Accepting one makes a segment for each of its groups, and the group itself.`}
@@ -303,28 +305,28 @@ export function SegmentList({
         </ListSection>
       )}
 
-      {view === "proposed" &&
-        (!isSearching || matchingProposals.length > 0) && (
-          <ListSection
-            title={t`Proposed segments`}
-            description={t`Rows that reached a milestone, like Activated or Converted, based on date or yes/no columns. Accepting one makes it a custom segment.`}
-          >
-            {matchingProposals.length > 0 ? (
-              matchingProposals.map((proposal) => (
-                <CohortProposalItem
-                  key={proposal.key}
-                  proposal={proposal}
-                  baseQuery={model.baseQuery}
-                  canAccept={canCreateSegment}
-                  onAccept={() => accept(proposal)}
-                  onDismiss={() => dismiss(proposal)}
-                />
-              ))
-            ) : (
-              <ListEmptyItem>{t`No proposed segments`}</ListEmptyItem>
-            )}
-          </ListSection>
-        )}
+      {(showsView("proposed") ||
+        (isSearching && matchingProposals.length > 0)) && (
+        <ListSection
+          title={t`Proposed segments`}
+          description={t`Rows that reached a milestone, like Activated or Converted, based on date or yes/no columns. Accepting one makes it a custom segment.`}
+        >
+          {matchingProposals.length > 0 ? (
+            matchingProposals.map((proposal) => (
+              <CohortProposalItem
+                key={proposal.key}
+                proposal={proposal}
+                baseQuery={model.baseQuery}
+                canAccept={canCreateSegment}
+                onAccept={() => accept(proposal)}
+                onDismiss={() => dismiss(proposal)}
+              />
+            ))
+          ) : (
+            <ListEmptyItem>{t`No proposed segments`}</ListEmptyItem>
+          )}
+        </ListSection>
+      )}
 
       {editingGroupId !== undefined && (
         <SegmentGroupModal
