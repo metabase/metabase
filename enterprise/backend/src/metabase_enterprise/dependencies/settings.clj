@@ -85,3 +85,12 @@
   :default    3
   :setter     :none
   :export?    false)
+
+(defsetting dependency-job-threads
+  "How many entities of a batch a dependency job processes at once. Each one holds an application database connection
+  while it is processed."
+  :visibility :internal
+  :type       :integer
+  :default    4
+  :setter     :none
+  :export?    false)

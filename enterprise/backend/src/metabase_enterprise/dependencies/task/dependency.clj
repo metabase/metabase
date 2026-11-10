@@ -106,20 +106,24 @@
           stale     (into {} (map (juxt :entity_id :stale)) statuses)]
       (when (seq statuses)
         (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
-      (doseq [entity (when (seq statuses)
-                       (dependencies.db/readable-entities #(hydrated-entities entity-type %)
-                                                          (set (keys stale))
-                                                          #(record-failure! entity-type %1 %2)))]
-        (try
-          ;; one commit for the dependencies and the status
-          (t2/with-transaction [_]
-            (compute-deps-for-entity! entity-type entity)
-            (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity))))
-          (catch Throwable e ;; catch OOMs
-            (dependencies.db/throw-unless-app-db-reachable! e)
-            (record-failure! entity-type (:id entity) e)
-            (when-not (instance? Exception e) ;; re-throw Errors
-              (throw e)))))
+      (task.util/run-in-parallel!
+       (deps.settings/dependency-job-threads)
+       (fn [entity]
+         (try
+           ;; one commit for the dependencies and the status
+           (t2/with-transaction [_]
+             (compute-deps-for-entity! entity-type entity)
+             (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity))))
+           (catch Throwable e ;; catch OOMs
+             (dependencies.db/throw-unless-app-db-reachable! e)
+             (record-failure! entity-type (:id entity) e)
+             (when-not (instance? Exception e) ;; re-throw Errors
+               (throw e)))))
+       (if (seq statuses)
+         (dependencies.db/readable-entities #(hydrated-entities entity-type %)
+                                            (set (keys stale))
+                                            #(record-failure! entity-type %1 %2))
+         []))
       (count statuses))))
 
 (mu/defn- update-dependencies! :- [:maybe :boolean]

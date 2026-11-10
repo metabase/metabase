@@ -9,6 +9,7 @@
    [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -172,18 +173,21 @@
                        (map (juxt :card-id identity))
                        (dependencies.db/readable-entities
                         cards-with-states (into #{} (map :entity_id) statuses) record-failure!))]
-        ;; an unreadable card already counted its failure
-        (doseq [{card-id :entity_id, :keys [stale]} (filterv (comp read :entity_id) statuses)]
-          (try
-            ;; one commit for the metadata and the status
-            (t2/with-transaction [_]
-              (let [{:keys [card state]} (read card-id)]
-                (rederive-card! card state))
-              (dependencies.db/clear-result-metadata-status!
-               card-id stale models.result-metadata-status/current-result-metadata-version))
-            (catch Throwable e
-              (dependencies.db/throw-unless-app-db-reachable! e)
-              (record-failure! card-id e)
-              (when-not (instance? Exception e)
-                (throw e)))))))
+        (task.util/run-in-parallel!
+         (deps.settings/dependency-job-threads)
+         (fn [{card-id :entity_id, :keys [stale]}]
+           (try
+             ;; one commit for the metadata and the status
+             (t2/with-transaction [_]
+               (let [{:keys [card state]} (read card-id)]
+                 (rederive-card! card state))
+               (dependencies.db/clear-result-metadata-status!
+                card-id stale models.result-metadata-status/current-result-metadata-version))
+             (catch Throwable e
+               (dependencies.db/throw-unless-app-db-reachable! e)
+               (record-failure! card-id e)
+               (when-not (instance? Exception e)
+                 (throw e)))))
+         ;; an unreadable card already counted its failure
+         (filterv (comp read :entity_id) statuses))))
     (+ (count deleted-ids) (count statuses))))

@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -100,25 +101,28 @@
     (lib-be/with-metadata-provider-cache
       (let [taken (take-pending-statuses! batch-size)]
         (doseq [[entity-type statuses] taken
-                :let   [stale (into {} (map (juxt :entity_id :stale)) statuses)]
-                entity (dependencies.db/readable-entities #(dependencies.db/entities entity-type %)
-                                                          (set (keys stale))
-                                                          (fn [entity-id e]
-                                                            (log/errorf "Reading %s %s failed: %s"
-                                                                        (name entity-type) entity-id (ex-message e))
-                                                            (record-failed-finding! entity-type entity-id e)
-                                                            (record-analysis-failure! entity-type entity-id)))]
-          (try
-            ;; one commit for the finding, its errors and the status
-            (t2/with-transaction [_]
-              (upsert-analysis! entity)
-              (dependencies.db/clear-analysis-finding-status!
-               entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*))
-            (catch Throwable e
-              (dependencies.db/throw-unless-app-db-reachable! e)
-              (log/errorf "Analyzing %s %s failed: %s" (name entity-type) (:id entity) (ex-message e))
-              (record-failed-finding! entity-type (:id entity) e)
-              (record-analysis-failure! entity-type (:id entity))
-              (when-not (instance? Exception e)
-                (throw e)))))
+                :let [stale (into {} (map (juxt :entity_id :stale)) statuses)]]
+          (task.util/run-in-parallel!
+           (deps.settings/dependency-job-threads)
+           (fn [entity]
+             (try
+               ;; one commit for the finding, its errors and the status
+               (t2/with-transaction [_]
+                 (upsert-analysis! entity)
+                 (dependencies.db/clear-analysis-finding-status!
+                  entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*))
+               (catch Throwable e
+                 (dependencies.db/throw-unless-app-db-reachable! e)
+                 (log/errorf "Analyzing %s %s failed: %s" (name entity-type) (:id entity) (ex-message e))
+                 (record-failed-finding! entity-type (:id entity) e)
+                 (record-analysis-failure! entity-type (:id entity))
+                 (when-not (instance? Exception e)
+                   (throw e)))))
+           (dependencies.db/readable-entities #(dependencies.db/entities entity-type %)
+                                              (set (keys stale))
+                                              (fn [entity-id e]
+                                                (log/errorf "Reading %s %s failed: %s"
+                                                            (name entity-type) entity-id (ex-message e))
+                                                (record-failed-finding! entity-type entity-id e)
+                                                (record-analysis-failure! entity-type entity-id)))))
         (+ removed (reduce + (map count (vals taken))))))))

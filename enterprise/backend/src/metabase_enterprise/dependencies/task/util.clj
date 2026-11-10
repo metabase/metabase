@@ -15,6 +15,7 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (java.util Date)
+   (java.util.concurrent ExecutionException Executors Future)
    (java.util.concurrent.locks ReentrantLock)
    (org.quartz Scheduler)))
 
@@ -126,6 +127,26 @@
   "Whether `job` runs, which a batch size that isn't positive prevents."
   [{:keys [batch-size]} :- Job]
   (pos? (batch-size)))
+
+(mu/defn run-in-parallel! :- :nil
+  "Call `f` on each of `xs`, on up to `threads` threads in the caller's dynamic bindings, and return once every call
+  returned, rethrowing the first one's Throwable."
+  [threads :- ms/PositiveInt
+   f       :- [:fn {:error/message "a function"} ifn?]
+   xs      :- [:sequential [:fn {:error/message "a value"} some?]]]
+  (if (or (= 1 threads) (< (count xs) 2))
+    (run! f xs)
+    (let [pool (Executors/newFixedThreadPool (min threads (count xs)))
+          f    (bound-fn* f)]
+      (try
+        (doseq [^Future result (mapv (fn [x] (.submit pool ^Callable (fn [] (f x)))) xs)]
+          (try
+            (.get result)
+            (catch ExecutionException e
+              (throw (or (ex-cause e) e)))))
+        (finally
+          (.shutdownNow pool)))))
+  nil)
 
 (mr/def ::batch-outcome
   "A batch run in place: took entities (`:worked`), found none (`:idle`), or the batch size isn't positive
