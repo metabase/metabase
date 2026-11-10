@@ -18,6 +18,8 @@
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
 ;; database.
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -456,6 +458,48 @@
                                       (mdb/streaming-reducible-query ["SELECT no_such_column FROM report_card"]))]
           (is (= 1 (t2/delete! :model/Card :id card-id))))
         (is (false? (t2/exists? :model/Card :id card-id)))))))
+
+(defn- outcome-and-interrupt
+  "Call `thunk`, returning its `:result` or `:thrown` exception, and whether it left this thread `:interrupted?`.
+  The status is read, and cleared, before any assertion runs, since reporting an assertion clears it."
+  [thunk]
+  (let [outcome (try
+                  {:result (thunk)}
+                  (catch Throwable e
+                    {:thrown e}))]
+    (assoc outcome :interrupted? (Thread/interrupted))))
+
+(deftest cascade-enumeration-interrupt-is-restored-test
+  (testing "an interrupt while enumerating one search-model's cascades skips it and keeps the thread interrupted"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Interrupted Enumeration Model", :type :model}
+                     :model/Action _             {:name "Unenumerated Action", :model_id card-id, :type :query}]
+        (is (= {:result nil, :interrupted? true}
+               (mt/with-dynamic-fn-redefs [search.ingestion/doc-ids (fn [_search-model _where-clause]
+                                                                      (throw (InterruptedException. "interrupted")))]
+                 (outcome-and-interrupt #(cascading-documents-of card-id)))))))))
+
+(deftest dependents-interrupt-is-restored-test
+  (testing "an interrupt in the capture dependents hook skips the enumeration and keeps the thread interrupted"
+    (is (= {:result nil, :interrupted? true}
+           (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances]
+                                                                    (throw (InterruptedException. "interrupted")))]
+             (outcome-and-interrupt #(dml-capture/dependents :model/Card [{:id 1}])))))))
+
+(deftest reconcile-interrupt-stops-and-is-restored-test
+  (testing "an interrupt while reconciling stops the remaining search-models and reaches the caller"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [checked (atom [])
+            outcome (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids
+                                                (fn [search-model _ids]
+                                                  (swap! checked conj search-model)
+                                                  (throw (InterruptedException. "interrupted")))]
+                      (outcome-and-interrupt
+                       #(search/reconcile-cascading-documents! {"action" #{1}, "indexed-entity" #{"1:1"}})))]
+        (is (=? {:thrown       (partial instance? InterruptedException)
+                 :interrupted? true}
+                outcome))
+        (is (= 1 (count @checked)))))))
 
 (deftest capture-fields-failure-keeps-the-delete-test
   (testing "a search error while working out what to capture is logged, and the delete still succeeds uncaptured"
