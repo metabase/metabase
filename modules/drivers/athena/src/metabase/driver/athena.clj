@@ -575,7 +575,9 @@
                   (catch Exception e
                     (log-error e)))]
       (with-open [^ResultSet rs rs]
-        (loop [sync-state-acc init-sync-state, table-name nil, columns []]
+        (loop [sync-state-acc init-sync-state
+               table-name     nil
+               columns        (transient [])]
           (let [row (try
                       (when (.next rs)
                         {:table_name  (.getString rs "TABLE_NAME")
@@ -590,14 +592,14 @@
               sync-state-acc
 
               (and row (= table-name (:table_name row)))
-              (recur sync-state-acc table-name (conj columns row))
+              (recur sync-state-acc table-name (conj! columns row))
 
               :else
               (let [sync-state-acc (cond-> sync-state-acc
-                                     table-name (send-columns table-name columns))]
+                                     table-name (send-columns table-name (persistent! columns)))]
                 (if (or (nil? row) (reduced? sync-state-acc))
                   sync-state-acc
-                  (recur sync-state-acc (:table_name row) [row])))))))
+                  (recur sync-state-acc (:table_name row) (transient [row]))))))))
       init-sync-state)))
 
 (defn- reduce-schema-fields
