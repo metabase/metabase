@@ -14,6 +14,7 @@ import { compileExpression } from "../compile-expression";
 import {
   expressions,
   fields,
+  findField,
   measures,
   metrics,
   query,
@@ -817,4 +818,81 @@ it.skip("should format joined columns properly (metabase#58371)", async () => {
   });
 
   expect(formatted).toBe("[Fieldname That Has A Non Removable Dash]");
+});
+
+describe("compile → format round-trip of column references", () => {
+  async function compileAndFormat({
+    source,
+    query,
+  }: {
+    source: string;
+    query: Lib.Query;
+  }) {
+    const options = {
+      query,
+      stageIndex,
+      expressionMode: "expression" as const,
+    };
+    const res = compileExpression({
+      ...options,
+      source,
+      availableColumns: Lib.expressionableColumns(query, stageIndex),
+    });
+
+    if (res.error) {
+      throw res.error;
+    }
+
+    const formatted = await format(res.expressionClause, {
+      ...options,
+      printWidth: Infinity,
+    });
+
+    return { expressionParts: res.expressionParts, formatted };
+  }
+
+  it("should resolve expressions whose names differ only by case", async () => {
+    const names = ["FOO", "foo", "Foo", "FoO"];
+    const caseQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: names.map((name) => ({
+            name,
+            value: { type: "literal", value: name },
+          })),
+        },
+      ],
+    });
+
+    for (const name of names) {
+      const source = `[${name}]`;
+      const { expressionParts, formatted } = await compileAndFormat({
+        source,
+        query: caseQuery,
+      });
+
+      expect(expressionParts).toEqual(findField(caseQuery, name));
+      expect(formatted).toBe(source);
+    }
+  });
+
+  it("should resolve joined columns written with any separator or case", async () => {
+    const sources = [
+      "[Product → Title]",
+      "[Product.Title]",
+      "[product → title]",
+      "[product.title]",
+    ];
+
+    for (const source of sources) {
+      const { expressionParts, formatted } = await compileAndFormat({
+        source,
+        query,
+      });
+
+      expect(expressionParts).toEqual(fields.products.TITLE);
+      expect(formatted).toBe("[Product → Title]");
+    }
+  });
 });
