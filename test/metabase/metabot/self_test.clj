@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.analytics.core :as analytics.core]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
@@ -2219,7 +2218,7 @@
                     :metabase-metabot/tool-executor-queue-depth
                     :metabase-metabot/tool-executor-wait-ms]]
       (analytics/clear! metric))
-    (testing "a call with no ordering dependency observes pool utilization, queue depth, and its wait for a thread;
+    (testing "an independent call observes pool utilization, queue depth, and its wait for a thread;
               a call that waits on a runs-alone call observes nothing"
       (let [tools  (assoc test-util/TOOLS
                           "alone" {:tool-name   "alone"
@@ -2242,10 +2241,7 @@
           (is (== 1 (:count depth)))
           (is (<= 0 (:sum depth)))
           (is (== 1 (:count wait)))
-          (is (<= 0 (:sum wait))))))
-    (testing "the pull collector publishes the pool size"
-      ((:f (analytics.core/pull-collector ::self.core/tool-executor)))
-      (is (== 20 (mt/metric-value system :metabase-metabot/tool-executor-pool-size))))))
+          (is (<= 0 (:sum wait))))))))
 
 (deftest call-llm-prometheus-test
   (llm.tu/with-default-connections

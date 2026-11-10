@@ -8,7 +8,6 @@
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
    [metabase.analytics-interface.core :as analytics]
-   [metabase.analytics.core :as analytics.core]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
@@ -989,37 +988,31 @@
    20
    (.. (Thread/ofVirtual) (name "tool-executor-") factory)))
 
-(defmethod analytics.core/pull-collector ::tool-executor [_]
-  ;; The pool size is a constant, so one read a minute is plenty.
-  {:min-interval-s 60
-   :f (fn []
-        (analytics/set-gauge! :metabase-metabot/tool-executor-pool-size
-                              (.getMaximumPoolSize ^ThreadPoolExecutor tool-executor)))})
-
 (defn- submit-virtual
   "Submit a thunk to run on a virtual thread, bounded by pool size, once every future in `after` has completed.
   Waiting takes no thread from the pool. Returns a CompletableFuture of the thunk's value.
 
-  A call with no `after` goes straight to the pool, so its submission is a fair sample of what an arriving call
-  sees. For those calls only, observes the pool utilization and queue depth at submission, and the wait from
-  submission to the thunk's start as `tool-executor-wait-ms`. A call with `after` enters the pool only once `after`
-  completes, inside `handleAsync`, so there is no clean arrival point to sample; it is not observed."
+  An independent call, one with no `after`, goes straight to the pool, so its submission is a fair sample of what
+  an arriving call sees. For independent calls only, observes the pool utilization and queue depth at submission,
+  and the wait from submission to the thunk's start as `tool-executor-wait-ms`. A call with `after` enters the pool
+  only once `after` completes, inside `handleAsync`, so there is no clean arrival point to sample; it is not
+  observed."
   [after thunk]
   (if (seq after)
     (.handleAsync (CompletableFuture/allOf (into-array CompletableFuture after))
                   (reify BiFunction (apply [_ _ _] (thunk)))
                   ^ExecutorService tool-executor)
-    (let [^ThreadPoolExecutor pool tool-executor
-          submitted (u/start-timer)]
+    (let [^ThreadPoolExecutor pool tool-executor]
       (analytics/observe! :metabase-metabot/tool-executor-utilization
                           (/ (.getActiveCount pool) (double (.getMaximumPoolSize pool))))
       (analytics/observe! :metabase-metabot/tool-executor-queue-depth (.size (.getQueue pool)))
-      (CompletableFuture/supplyAsync
-       (reify Supplier
-         (get [_]
-           (analytics/observe! :metabase-metabot/tool-executor-wait-ms (u/since-ms submitted))
-           (thunk)))
-       ^ExecutorService tool-executor))))
+      (let [submitted (u/start-timer)]
+        (CompletableFuture/supplyAsync
+         (reify Supplier
+           (get [_]
+             (analytics/observe! :metabase-metabot/tool-executor-wait-ms (u/since-ms submitted))
+             (thunk)))
+         ^ExecutorService tool-executor)))))
 
 (defn- collect-tool-result
   "Normalize tool result into a vector of output chunks.
