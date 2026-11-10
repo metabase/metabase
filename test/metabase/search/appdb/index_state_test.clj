@@ -28,8 +28,7 @@
       (mc/binding handle {:active nil, :pending nil}
                   (fn []
                     (with-bindings {#'search.index/*mocking-tables* true}
-                      (mt/with-dynamic-fn-redefs [search.index/sync-tracking-atoms-if-stale! (constantly nil)
-                                                  search.index/create-table!                 #(swap! created conj %)]
+                      (mt/with-dynamic-fn-redefs [search.index/create-table! #(swap! created conj %)]
                         (let [holder  (future (mc/with-slot-lock handle
                                                 (deliver held true)
                                                 @release))

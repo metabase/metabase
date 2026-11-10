@@ -36,9 +36,9 @@
 
 (defonce ^:private next-sync-at (atom nil))
 
-;; The active and pending index tables. Writers hold its slot lock, since they read the database between the read and
-;; the write. Installing the first root also clears the sync timer, so a root a reload installs, which starts empty,
-;; syncs on its next read instead of waiting out a timer set for the state it replaced.
+;; The active and pending index tables. Writers that read the database before writing this state hold its slot lock.
+;; Installing the first root also clears the sync timer, so a root a reload installs, which starts empty, syncs on its
+;; next read instead of waiting out a timer set for the state it replaced.
 (def ^:private indexes-component
   (system/mutable-component-handle ::indexes (fn []
                                                (reset! next-sync-at nil)
@@ -53,7 +53,9 @@
 (def ^:private ^:dynamic *mocking-tables* false)
 
 (defmethod search.engine/reset-tracking! :search.engine/appdb [_]
-  (mc/reset! indexes-component nil))
+  (mc/reset! indexes-component nil)
+  ;; Cleared after the state, so the next read syncs rather than trusting the blank state until the timer runs out.
+  (reset! next-sync-at nil))
 
 (declare exists?)
 
@@ -72,7 +74,7 @@
       (mc/reset! indexes-component indexes))))
 
 (defn sync-from-restored-db!
-  "Re-sync tracking atoms with the current database state.
+  "Re-sync the tracked index tables with the current database state.
    Used after snapshot restore where the index tables are already present."
   []
   (reset! next-sync-at nil)
@@ -330,13 +332,19 @@
                             (name table-type) table-name (ex-message e))
                 nil)))))))
 
+(defn- stop-tracking!
+  "Stop tracking `table` as the `status` index table.
+  Leaves the state alone if another table has replaced it since the caller read it."
+  [status table]
+  (mc/swap! indexes-component #(cond-> % (= table (get % status)) (assoc status nil))))
+
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch.
 
   `reindex-table`, when non-nil, is the destination captured once at the start of a full reindex (see
   [[index-docs!]]) -- the pending table when a rebuild is staging one, otherwise the active table for an
   initial build. During a reindex we write ONLY to that captured table, so a concurrent resync that
-  transiently blanks the tracking atom can't redirect writes elsewhere mid-rebuild. For incremental and
+  transiently blanks the tracked tables can't redirect writes elsewhere mid-rebuild. For incremental and
   in-place updates (`reindex-table` nil) we dual-write to the active and pending tables so an in-progress
   rebuild stays current."
   [reindex-table documents]
@@ -345,18 +353,18 @@
     (when-let [table (active-table)]
       (when (not (exists? table))
         (log/warnf "Unable to find table %s and no longer tracking it as active", table)
-        (mc/swap! indexes-component assoc :active nil)))
+        (stop-tracking! :active table)))
     (when-let [table (pending-table)]
       (when (not (exists? table))
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
-        (mc/swap! indexes-component assoc :pending nil))))
+        (stop-tracking! :pending table))))
 
   (let [reindexing? (some? reindex-table)
         do-writes   (fn []
                       (let [entries (map document->entry documents)
                             updated (if reindexing?
                                       ;; Full reindex: write only to the table captured for the whole run, so a
-                                      ;; transiently-blanked tracking atom can't redirect writes into the live
+                                      ;; transiently-blanked tracked table can't redirect writes into the live
                                       ;; active table (which would silently drop documents from the new index).
                                       (safe-batch-upsert! :pending (constantly reindex-table) entries)
                                       ;; Incremental / in-place: dual-write so an in-progress rebuild stays
@@ -384,7 +392,7 @@
           ;; Capture the destination table ONCE for the whole reindex: the pending table when a rebuild is
           ;; staging one, otherwise the active table (initial creation populates the freshly-activated table
           ;; directly, with no pending). Resolving this per batch is unsafe -- a concurrent TTL resync of the
-          ;; tracking atom can transiently blank :pending, which would otherwise flip the write target to the
+          ;; tracked tables can transiently blank :pending, which would otherwise flip the write target to the
           ;; live active table mid-rebuild and silently drop documents from the index we are about to activate.
           reindex-table (when reindexing? (or (pending-table) (active-table)))]
       (transduce (comp (partition-all insert-batch-size)
