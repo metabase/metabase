@@ -14,11 +14,9 @@
   A successful call returns the saved dashboard to the model and sends the frontend a `dashboard_saved` data part."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
@@ -542,30 +540,11 @@
        (mapv (fn [{:keys [chart_id] :as op}]
                (assoc (save-entity/savable-chart chart_id) :chart-id chart_id :name (:name op))))))
 
-(defn- aggregation-refs->indexes
-  "`stage` with each `[:aggregation opts uuid]` ref to one of its own aggregations naming that aggregation's index."
-  [{:keys [aggregation] :as stage}]
-  (let [uuid->index (into {}
-                          (map-indexed (fn [i [_tag opts]] [(:lib/uuid opts) i]))
-                          aggregation)]
-    (walk/postwalk (fn [form]
-                     (if (and (vector? form)
-                              (= 3 (count form))
-                              (= :aggregation (first form))
-                              (contains? uuid->index (nth form 2)))
-                       (assoc form 2 (uuid->index (nth form 2)))
-                       form))
-                   stage)))
-
 (defn- comparable-query
-  "`query` as MBQL 5, without the uuids, metadata provider and conversion marker that normalizing regenerates, so a
-  chart's legacy query compares equal to the question saved from it."
+  "A value equal for two forms of the same query, such as a chart's legacy query and the question saved from it."
   [query]
-  (-> (lib-be/normalize-query query)
-      (dissoc :lib/metadata :lib.convert/converted?)
-      ;; An aggregation ref names its aggregation by uuid, and each normalization mints new ones.
-      (update :stages #(mapv aggregation-refs->indexes %))
-      lib/remove-lib-uuids))
+  ;; The results cache's key: its canonical form drops uuids and names each aggregation ref by index, in every stage.
+  (vec (lib-be/query-hash query)))
 
 (defn- reusable-card-id
   "The id of a question of the dashboard with `dashboard-id` that was saved from `chart-id` in the conversation with

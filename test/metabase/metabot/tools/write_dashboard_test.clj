@@ -273,6 +273,28 @@
           (is (= 1 (t2/count :model/Card :dashboard_id dash-id)))
           (is (= 2 (count (dashcards dash-id)))))))))
 
+(deftest retry-reuses-question-joining-aggregated-subquery-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
+                   :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp       (mt/metadata-provider)
+              venue-id (lib.metadata/field mp (mt/id :checkins :venue_id))
+              visits   (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) q
+                         (lib/aggregate q (lib/count))
+                         (lib/breakout q venue-id)
+                         (lib/order-by q (lib/aggregation-ref q 0) :desc))
+              query    (lib/join (venues-query)
+                                 (lib/join-clause visits [(lib/= (lib.metadata/field mp (mt/id :venues :id))
+                                                                 venue-id)]))]
+          (binding [shared/*memory-atom* (chart-memory convo-id query)]
+            (dotimes [_ 2]
+              (call {:dashboard_id dash-id
+                     :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venues by visits"}]}))))
+        (testing "a chart joining a subquery sorted by its own aggregate, added twice, becomes one question"
+          (is (= 1 (t2/count :model/Card :dashboard_id dash-id)))
+          (is (= 2 (count (dashcards dash-id)))))))))
+
 (deftest reseeded-chart-display-saves-new-question-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
