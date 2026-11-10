@@ -1202,3 +1202,24 @@
   (testing "non-batch throwables pass through"
     (let [e (ex-info "boom" {})]
       (is (identical? e (driver.u/batch-exception e))))))
+
+(deftest ^:parallel random-workspace-password-character-classes-test
+  (let [char-sets @#'driver.u/workspace-password-char-sets
+        allowed   (set (apply str char-sets))]
+    (doseq [password (repeatedly 500 driver.u/random-workspace-password)]
+      (testing password
+        (is (<= 32 (count password) 63)
+            "length is 32 to 63")
+        (is (every? allowed password)
+            "every character comes from one of the sets")
+        (doseq [char-set char-sets]
+          (is (some (set char-set) password)
+              (str "contains a character from " char-set)))))))
+
+(deftest random-workspace-password-uses-secure-random-test
+  (testing "no draw goes through clojure.core's java.util.Random-backed fns"
+    (let [boom (fn [& _] (throw (ex-info "java.util.Random path used" {})))]
+      (mt/with-dynamic-fn-redefs [rand-int boom
+                                  rand-nth boom
+                                  shuffle  boom]
+        (is (string? (driver.u/random-workspace-password)))))))
