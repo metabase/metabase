@@ -35,6 +35,7 @@ const NO_EXPANDED_IDS: readonly string[] = [];
 
 type LibraryTreePageProps = {
   title: string;
+  tabs?: ReactNode;
   tree: TreeItem[];
   isLoading: boolean;
   isSearchActive: boolean;
@@ -59,6 +60,7 @@ type LibraryTreePageProps = {
 
 export function LibraryTreePage({
   title,
+  tabs,
   tree,
   isLoading,
   isSearchActive,
@@ -117,6 +119,7 @@ export function LibraryTreePage({
       <SectionLayout>
         <PaneHeader
           breadcrumbs={<DataStudioBreadcrumbs>{title}</DataStudioBreadcrumbs>}
+          tabs={tabs}
           px="3.5rem"
           py={0}
         />

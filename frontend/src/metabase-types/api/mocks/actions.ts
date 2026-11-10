@@ -1,5 +1,6 @@
 import type {
   ActionFormSettings,
+  ActionSecret,
   CardId,
   FieldSettings,
   PublicWritebackAction,
@@ -132,6 +133,18 @@ export const createMockHttpAction = ({
   public_uuid: null,
   ...opts,
   type: "http",
+});
+
+export const createMockActionSecret = (
+  opts?: Partial<ActionSecret>,
+): ActionSecret => ({
+  id: 1,
+  name: "crm_token",
+  allowed_hosts: ["api.example.com"],
+  creator_id: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  ...opts,
 });
 
 export const createMockPublicAction = (

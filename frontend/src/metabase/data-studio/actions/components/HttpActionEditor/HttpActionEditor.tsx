@@ -31,6 +31,7 @@ import {
 
 const WHOLE_VALUE_SYNTAX = '"{{x}}"';
 const OPTIONAL_SYNTAX = "[[ … ]]";
+const SECRET_SYNTAX = "{{secrets.name}}";
 
 type HttpActionEditorProps = {
   request: HttpActionRequest;
@@ -170,6 +171,9 @@ function HttpActionVariables({ request }: HttpActionVariablesProps) {
           </Text>
           <Text size="sm" c="text-secondary">
             {jt`${<Code key="optional">{OPTIONAL_SYNTAX}</Code>} is left out when a variable in it is empty.`}
+          </Text>
+          <Text size="sm" c="text-secondary">
+            {jt`${<Code key="secret">{SECRET_SYNTAX}</Code>} inserts a secret, sent only to its allowed hosts.`}
           </Text>
         </Stack>
       </Stack>

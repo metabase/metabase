@@ -130,12 +130,23 @@ describe("ActionListPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("links admins to secrets", async () => {
+    setup({});
+
+    expect(
+      await screen.findByRole("link", { name: /Secrets/ }),
+    ).toHaveAttribute("href", "/data-studio/actions/secrets");
+  });
+
   it("does not offer non-admins to create anything", async () => {
     setup({ isAdmin: false });
 
     expect(
       await screen.findByText("Queries that change data"),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Secrets/ }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /New/ }),
     ).not.toBeInTheDocument();

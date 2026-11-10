@@ -5,6 +5,8 @@ import type { CollectionNamespace } from "metabase-types/api";
 
 export const ACTION_NAME_MAX_LENGTH = 254;
 
+export const ACTION_SECRET_NAME_REGEX = /^[A-Za-z0-9_]+$/;
+
 export const ACTION_COLLECTION_PICKER_OPTIONS: EntityPickerOptions = {
   hasSearch: false,
   hasRecents: false,

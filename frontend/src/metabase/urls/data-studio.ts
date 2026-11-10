@@ -388,6 +388,10 @@ export function dataStudioActionSettings(actionId: WritebackActionId) {
   return `${dataStudioAction(actionId)}/settings`;
 }
 
+export function dataStudioActionSecrets() {
+  return `${dataStudioActions()}/secrets`;
+}
+
 export function newDataStudioAction(type: WritebackActionType) {
   return `${dataStudioActions()}/new?type=${type}`;
 }

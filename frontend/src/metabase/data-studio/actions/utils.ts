@@ -325,11 +325,13 @@ export const HTTP_ACTION_METHODS: HttpActionMethod[] = [
   "DELETE",
 ];
 
+const SECRET_PREFIX = "secrets.";
+
 export function getTemplateVariableNames(template: string): string[] {
   const names = Array.from(
     template.matchAll(TEMPLATE_VARIABLE_REGEX),
     ([, name]) => name,
-  );
+  ).filter((name) => !name.startsWith(SECRET_PREFIX));
   return Array.from(new Set(names));
 }
 

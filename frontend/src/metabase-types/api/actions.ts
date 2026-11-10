@@ -163,6 +163,31 @@ export type WritebackHttpAction = WritebackActionBase & HttpAction;
 export type WritebackAction = WritebackActionBase &
   (QueryAction | ImplicitQueryAction | HttpAction);
 
+export type ActionSecretId = number;
+
+export interface ActionSecret {
+  id: ActionSecretId;
+  name: string;
+  allowed_hosts: string[];
+  creator_id: UserId | null;
+  creator?: UserInfo | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateActionSecretRequest {
+  name: string;
+  value: string;
+  allowed_hosts: string[];
+}
+
+export interface UpdateActionSecretRequest {
+  id: ActionSecretId;
+  name?: string;
+  value?: string | null;
+  allowed_hosts?: string[];
+}
+
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
 export type ParametersForActionExecution = {

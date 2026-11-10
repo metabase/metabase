@@ -217,6 +217,21 @@ describe("getHttpActionDefinition", () => {
     ).not.toContain("ignored");
   });
 
+  it("does not create parameters for secrets", () => {
+    const definition = getHttpActionDefinition(
+      {
+        ...REQUEST,
+        headers: [{ name: "Authorization", value: "Bearer {{secrets.token}}" }],
+      },
+      [],
+      {},
+    );
+
+    expect(
+      definition?.parameters.map((parameter) => parameter.slug),
+    ).not.toContain("secrets.token");
+  });
+
   it("has no body for blank body text", () => {
     expect(
       getHttpActionDefinition({ ...REQUEST, body: " " }, [], {}),
