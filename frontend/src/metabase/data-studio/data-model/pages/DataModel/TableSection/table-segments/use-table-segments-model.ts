@@ -312,16 +312,20 @@ export function useTableSegmentsModel(table: Table): TableSegmentsModel {
           signal: generationOffSignal,
           confidence: "high",
         };
-  // A default pointing at a deleted segment falls back to the inferred one
-  const defaultOverride =
-    overrides.defaultSegment?.type === "custom" &&
-    !customSegments.some(
-      ({ id }) =>
-        overrides.defaultSegment?.type === "custom" &&
-        id === overrides.defaultSegment.segmentId,
-    )
-      ? undefined
-      : overrides.defaultSegment;
+  // A default pointing at a deleted segment, or at a system segment that
+  // filters nothing, falls back to the inferred one
+  const savedDefault = overrides.defaultSegment;
+  const isSavedDefaultUsable =
+    savedDefault == null ||
+    savedDefault.type === "all" ||
+    (savedDefault.type === "custom"
+      ? customSegments.some(({ id }) => id === savedDefault.segmentId)
+      : systemSegments.some(
+          (segment) =>
+            segment.role === savedDefault.role &&
+            isUsableSystemSegment(segment),
+        ));
+  const defaultOverride = isSavedDefaultUsable ? savedDefault : undefined;
   const inferredDefaultSegment = syncDefaultInference.segment;
   const isInferredDefaultUsable =
     inferredDefaultSegment.type !== "system" ||

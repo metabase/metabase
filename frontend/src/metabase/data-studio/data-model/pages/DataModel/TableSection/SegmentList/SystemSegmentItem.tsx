@@ -77,7 +77,7 @@ function SystemSegmentStatusBadge({
 }) {
   return match(segment.status)
     .with("not-set-up", () => (
-      <Badge variant="outline" c="feedback-warning" flex="0 0 auto">
+      <Badge variant="light" c="text-secondary" flex="0 0 auto">
         {t`Not set up`}
       </Badge>
     ))

@@ -7,7 +7,10 @@ import {
   DetailsTable,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
-import type { DefaultSegment } from "metabase/metadata/table-segments";
+import type {
+  DefaultSegment,
+  SystemSegmentRole,
+} from "metabase/metadata/table-segments";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import {
   ActionIcon,
@@ -23,12 +26,12 @@ import type { Segment, Table } from "metabase-types/api";
 
 import { DETAILS_CELL_INPUT_CLASS_NAMES } from "../../DetailPanel";
 import { InferredValue } from "../InferenceReview";
+import { SystemSegmentSetupModal } from "../SystemSegmentSetup";
 import {
   type ResolvedDefaultSegment,
   type ResolvedRequiredFilter,
   type ResolvedSystemSegment,
   type TableSegmentsModel,
-  isUsableSystemSegment,
   useTableSegmentsModel,
 } from "../table-segments";
 
@@ -61,6 +64,7 @@ export function TableFiltering({ table, readOnly }: TableFilteringProps) {
           fillValue
           value={
             <DefaultSegmentValue
+              table={table}
               model={model}
               customSegments={table.segments ?? []}
               disabled={readOnly}
@@ -110,25 +114,35 @@ function isDefaultSegmentInferred({
 
 /** The default segment, or sync's guess to confirm or change */
 function DefaultSegmentValue({
+  table,
   model,
   customSegments,
   disabled,
 }: {
+  table: Table;
   model: TableSegmentsModel;
   customSegments: Segment[];
   disabled: boolean;
 }) {
   const [isMenuOpenOnMount, setIsMenuOpenOnMount] = useState(false);
+  // A system segment that isn't set up yet, while its setup is open
+  const [settingUpRole, setSettingUpRole] = useState<SystemSegmentRole>();
   const { defaultSegment, setDefaultSegment, systemSegments } = model;
-  const defaultValue = defaultSegment.segment;
-  const unusableDefault =
-    defaultValue.type === "system"
-      ? systemSegments.find(
-          (segment) =>
-            segment.role === defaultValue.role &&
-            !isUsableSystemSegment(segment),
-        )
-      : undefined;
+  const settingUpSegment = systemSegments.find(
+    ({ role }) => role === settingUpRole,
+  );
+
+  const handleChange = (segment: DefaultSegment) => {
+    const systemSegment =
+      segment.type === "system"
+        ? systemSegments.find(({ role }) => role === segment.role)
+        : undefined;
+    if (systemSegment?.status === "not-set-up") {
+      setSettingUpRole(systemSegment.role);
+    } else {
+      setDefaultSegment(segment);
+    }
+  };
 
   if (isDefaultSegmentInferred(defaultSegment)) {
     const inferredSegment = defaultSegment.inference.segment;
@@ -147,36 +161,44 @@ function DefaultSegmentValue({
     );
   }
 
-  const picker = (
-    <DefaultSegmentPicker
-      value={defaultValue}
-      label={defaultSegment.label}
-      systemSegments={systemSegments}
-      customSegments={customSegments}
-      disabled={disabled}
-      isOpenOnMount={isMenuOpenOnMount}
-      onChange={setDefaultSegment}
-    />
-  );
-
-  if (unusableDefault == null) {
-    return picker;
-  }
-
   return (
-    <Stack gap="xs" py="xs">
-      {picker}
-      <Text size="sm" c="feedback-warning" px="md">
-        {t`${unusableDefault.label} isn't set up, so questions still start from all records.`}
-      </Text>
-    </Stack>
+    <>
+      <DefaultSegmentPicker
+        value={defaultSegment.segment}
+        label={defaultSegment.label}
+        systemSegments={systemSegments}
+        customSegments={customSegments}
+        disabled={disabled}
+        isOpenOnMount={isMenuOpenOnMount}
+        onChange={handleChange}
+      />
+      {settingUpSegment && (
+        <SystemSegmentSetupModal
+          table={table}
+          segment={settingUpSegment}
+          baseQuery={model.baseQuery}
+          saveLabel={t`Save and make default`}
+          onSave={(condition) => {
+            model.setSystemSegmentCondition(settingUpSegment.role, condition);
+            setDefaultSegment({ type: "system", role: settingUpSegment.role });
+            setSettingUpRole(undefined);
+          }}
+          onClose={() => setSettingUpRole(undefined)}
+        />
+      )}
+    </>
   );
 }
 
-function getUnusableSystemSegmentHint({ status }: ResolvedSystemSegment) {
-  return status === "not-applicable"
-    ? t`Turned off for this table`
-    : t`Not set up: choose the column that marks its rows first`;
+function getSystemSegmentHint({ status }: ResolvedSystemSegment) {
+  switch (status) {
+    case "not-set-up":
+      return t`Not set up yet. Pick it to set it up.`;
+    case "not-applicable":
+      return t`Turned off for this table`;
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -204,15 +226,15 @@ function DefaultSegmentPicker({
   const builtInChoices: {
     segment: DefaultSegment;
     label: string;
-    disabledHint?: string;
+    hint?: string;
+    isDisabled?: boolean;
   }[] = [
     { segment: { type: "all" }, label: t`All records` },
     ...systemSegments.map((systemSegment) => ({
       segment: { type: "system" as const, role: systemSegment.role },
       label: systemSegment.label,
-      disabledHint: isUsableSystemSegment(systemSegment)
-        ? undefined
-        : getUnusableSystemSegmentHint(systemSegment),
+      hint: getSystemSegmentHint(systemSegment),
+      isDisabled: systemSegment.status === "not-applicable",
     })),
   ];
   const checkIfSelected = (segment: DefaultSegment) =>
@@ -279,14 +301,14 @@ function DefaultSegmentPicker({
               <Menu.Item
                 key={choice.label}
                 rightSection={checkIfSelected(choice.segment)}
-                disabled={choice.disabledHint != null}
+                disabled={choice.isDisabled}
                 onClick={() => onChange(choice.segment)}
               >
-                {choice.disabledHint != null ? (
+                {choice.hint != null ? (
                   <Stack gap={2}>
                     <Text c="inherit">{choice.label}</Text>
                     <Text size="sm" c="text-secondary">
-                      {choice.disabledHint}
+                      {choice.hint}
                     </Text>
                   </Stack>
                 ) : (
