@@ -9,8 +9,8 @@
 (set! *warn-on-reflection* true)
 
 (defn- retarget
-  "Point `target` at the workspace to-spec. Shared by [[resolve-transform-target]] and
-   [[workspace-transform-target]] so the existence check and the write cannot drift."
+  "Point `target` at the workspace to-spec. [[workspace-transform-target]] uses it for both the
+   existence check and the write, so the two cannot drift."
   [target {to-db :db to-schema :schema to-name :name}]
   ;; **Replace** `:db` and `:schema` on the target with the to-spec's values
   ;; — not just merge in the populated ones. The canonical target carries the
