@@ -1192,6 +1192,49 @@
       1
       nil)))
 
+(deftest ^:parallel current-timestamp-precision-test
+  (testing "without a precision, `current_timestamp` is unchanged"
+    (are [engine] (= ["current_timestamp"] (funnysql/format [:current-timestamp] engine))
+      :postgres :mysql :h2))
+  (testing "a precision asks for that many fractional-second digits, which MySQL otherwise truncates to whole seconds"
+    (are [engine] (= ["current_timestamp(6)"] (funnysql/format [:current-timestamp 6] engine))
+      :postgres :mysql :h2)
+    (is (= ["current_timestamp(0)"] (funnysql/format [:current-timestamp 0] :mysql))))
+  (testing "the precision is spliced, so it has to be an integer from 0 to 6"
+    (are [args] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"precision must be an integer from 0 to 6|takes at most a precision"
+                 (funnysql/format (into [:current-timestamp] args) :mysql))
+      [7]
+      [-1]
+      [1.5]
+      ["6"]
+      ["6) OR 1 = 1; --"]
+      [:col_a]
+      [6 6])))
+
+(deftest ^:parallel current-timestamp-plus-ms-test
+  (testing "the offset starts from a microsecond timestamp, like `[:current-timestamp 6]`"
+    (are [engine expected] (= [expected]
+                              (funnysql/format [:current-timestamp-plus-ms 1500] engine))
+      :postgres "(current_timestamp(6) + interval '1500 millisecond')"
+      :mysql    "timestampadd(microsecond, 1500000, current_timestamp(6))"
+      :h2       "dateadd(millisecond, 1500, current_timestamp(6))"))
+  (testing "a negative offset reaches into the past"
+    (is (= ["dateadd(millisecond, -1500, current_timestamp(6))"]
+           (funnysql/format [:current-timestamp-plus-ms -1500] :h2))))
+  (testing "the offset is spliced, so it has to be one integer"
+    (are [args] (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"takes one integer number of milliseconds"
+                 (funnysql/format (into [:current-timestamp-plus-ms] args) :postgres))
+      []
+      [1.5]
+      ["1500"]
+      ["1' millisecond') OR 1 = 1; --"]
+      [:col_a]
+      [1500 1500])))
+
 (deftest ^:parallel h2x-timestamp-diff-test
   (testing (str "metabase.util.honey-sql-2 is shared by Funny SQL (the app DB) and Honey SQL (warehouses, pgvector), "
                 "so its helpers have to produce working SQL under both")

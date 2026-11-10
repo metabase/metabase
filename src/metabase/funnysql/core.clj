@@ -927,8 +927,42 @@
   (compile! col-y context)
   (append-sql! context ")"))
 
-(defn- current-timestamp! [context]
-  (append-sql! context "current_timestamp"))
+(defn- current-timestamp-sql
+  "`current_timestamp`, with `precision` fractional-second digits when given. MySQL and MariaDB truncate a bare
+  `current_timestamp` to whole seconds."
+  [precision]
+  (when-not (or (nil? precision) (and (int? precision) (<= 0 precision 6)))
+    (throw (ex-info "`:current-timestamp` precision must be an integer from 0 to 6" {:precision precision})))
+  (cond-> "current_timestamp"
+    precision (str "(" precision ")")))
+
+(defn- current-timestamp!
+  "`[:current-timestamp]`, or `[:current-timestamp 6]` for microseconds."
+  [[precision :as args] context]
+  (when (< 1 (count args))
+    (throw (ex-info "`:current-timestamp` takes at most a precision" {:args args})))
+  (append-sql! context (current-timestamp-sql precision)))
+
+(defn- current-timestamp-plus-ms!
+  "The database's current timestamp, to the microsecond, plus a whole number of milliseconds:
+  `[:current-timestamp-plus-ms 5000]`. Reads the database clock, unlike a timestamp the app server computes and binds
+  as a parameter. Compare it with `[:current-timestamp 6]`, which has the same base."
+  [[millis :as args] context]
+  (when-not (and (= 1 (count args)) (int? millis))
+    (throw (ex-info "`:current-timestamp-plus-ms` takes one integer number of milliseconds" {:args args})))
+  (let [now (current-timestamp-sql 6)]
+    ;; Spliced, never bound, so it can sit inside the Postgres interval literal.
+    (case (engine context)
+      :postgres (do (append-sql! context (str "(" now " + interval '"))
+                    (splice-number! millis context)
+                    (append-sql! context " millisecond')"))
+      ;; MySQL and MariaDB have no millisecond unit for TIMESTAMPADD.
+      :mysql    (do (append-sql! context "timestampadd(microsecond, ")
+                    (splice-number! (* 1000 millis) context)
+                    (append-sql! context (str ", " now ")")))
+      :h2       (do (append-sql! context "dateadd(millisecond, ")
+                    (splice-number! millis context)
+                    (append-sql! context (str ", " now ")"))))))
 
 (defn- over! [[expr m & more :as args] context]
   ;; Honey SQL also accepts an alias inside the `:over` form, `[:over [expr window alias]]`. Don't silently drop it --
@@ -1103,7 +1137,7 @@
     :case              (case! args context)
     :cast              (cast! args context)
     :composite         (list! args context)
-    :current-timestamp (current-timestamp! context)
+    :current-timestamp (current-timestamp! args context)
     :escape            (escape! args context)
     :exists            (exists! "EXISTS " (first args) context)
     :in                (in! f args context)
@@ -1117,6 +1151,9 @@
     :param             (param! (first args) context)
     :position          (position! args context)
     :timestampdiff     (timestamp-diff! args context)
+
+    :current-timestamp-plus-ms
+    (current-timestamp-plus-ms! args context)
 
     (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
     (binary-operator! f args context)
