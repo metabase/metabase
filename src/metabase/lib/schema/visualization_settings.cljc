@@ -2,7 +2,6 @@
   "Schemas for the visualization settings the frontend authors for cards, dashboard cards and the like, normalizing
   them to the shape their columns store: keyword keys all the way down, but for the JSON-encoded column keys of
   `:column_settings`, with the legacy MBQL references that older settings give in place of column names normalized."
-  (:refer-clojure :exclude [update-keys])
   (:require
    #?(:clj [metabase.util.i18n :as i18n])
    #?@(:clj ([malli.core :as mc]
@@ -10,8 +9,9 @@
              [metabase.util.json :as json]
              [metabase.util.memoize :as u.memo]))
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [update-keys keywordize-keys]]))
+   [metabase.util.performance :as perf]))
 
 (mr/def ::legacy-reference
   "A legacy MBQL reference to a column, as older settings give it."
@@ -26,7 +26,8 @@
   "The `:dimension` a click behavior parameter maps to, with the legacy MBQL reference of its column."
   [:or
    [:tuple [:= {:decode/normalize lib.schema.common/normalize-string-key} "dimension"] [:maybe ::legacy-reference]]
-   [:tuple [:= {:decode/normalize lib.schema.common/normalize-string-key} "dimension"] [:maybe ::legacy-reference] :map]
+   [:tuple [:= {:decode/normalize lib.schema.common/normalize-string-key} "dimension"] [:maybe ::legacy-reference]
+    ::lib.schema.parameter/dimension.options]
    :any])
 
 (mr/def ::click-behavior
@@ -86,14 +87,31 @@
           column-settings)
     column-settings))
 
+(defn- keywordize-key
+  "The map key `k` as a keyword when it's a string."
+  [k]
+  (cond-> k (string? k) keyword))
+
+(defn- keywordize-keys
+  "`x` with the string keys of every map in it turned into keywords, keeping the order of the entries, which the
+  frontend reads some settings in, such as the columns of a visualizer card."
+  [x]
+  (perf/postwalk (fn [form]
+                   (if (and (map? form) (perf/some string? (keys form)))
+                     (into (empty form) (map (fn [[k v]] [(keywordize-key k) v])) form)
+                     form))
+                 x))
+
 (defn- keywordize-settings
   "The `settings` with keyword keys all the way down, as their column reads them back, but for the keys of
-  `:column_settings`."
+  `:column_settings`, keeping the order of the entries."
   [settings]
   (if (map? settings)
-    (let [settings (update-keys settings #(cond-> % (string? %) keyword))]
-      (cond-> (keywordize-keys (dissoc settings :column_settings))
-        (some? (:column_settings settings)) (assoc :column_settings (:column_settings settings))))
+    (into (empty settings)
+          (map (fn [[k v]]
+                 (let [k (keywordize-key k)]
+                   [k (cond-> v (not= k :column_settings) keywordize-keys)])))
+          settings)
     settings))
 
 (defn- drop-invalid-settings

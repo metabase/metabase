@@ -122,3 +122,19 @@
               :column_settings  {"[\"name\",\"A\"]" {:currency "USD"}}}
              normalized))
       (is (mr/validate ::lib.schema.visualization-settings/visualization-settings normalized)))))
+
+(deftest ^:parallel normalize-keeps-entry-order-test
+  (testing "normalizing keeps the order of the entries, which the frontend reads the visualizer columns in"
+    (let [normalized (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+                                    {"visualization" {"columnValuesMapping" (array-map "COLUMN_1" [] "COLUMN_2" []
+                                                                                       "COLUMN_3" [] "COLUMN_4" [])}})]
+      (is (= [:COLUMN_1 :COLUMN_2 :COLUMN_3 :COLUMN_4]
+             (keys (get-in normalized [:visualization :columnValuesMapping])))))))
+
+(deftest ^:parallel normalize-click-behavior-dimension-options-test
+  (testing "a click behavior dimension target keeps its options, such as the stage number"
+    (is (= ["dimension" [:field 3 nil] {:stage-number 0}]
+           (get-in (lib/normalize ::lib.schema.visualization-settings/visualization-settings
+                                  {"click_behavior" {"parameterMapping" {"abc" {"target" {"type"      "dimension"
+                                                                                          "dimension" ["dimension" ["field" 3 nil] {"stage-number" 0}]}}}}})
+                   [:click_behavior :parameterMapping :abc :target :dimension])))))
