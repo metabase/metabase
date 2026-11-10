@@ -4,6 +4,8 @@ import type { NotificationRunSummary } from "metabase-types/api";
 
 import { formatRelativeDate } from "../NotificationsAdminPage/utils";
 
+import S from "./NotificationSummary.module.css";
+
 type Props = {
   run: NotificationRunSummary | null;
   isCompact?: boolean;
@@ -34,7 +36,7 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
       {!isCompact && isFailing && (
         <Flex align="center" gap="xxs">
           {error && (
-            <Text size="sm" c="feedback-negative">
+            <Text size="sm" c="feedback-negative" className={S.ErrorText}>
               {error}
             </Text>
           )}
