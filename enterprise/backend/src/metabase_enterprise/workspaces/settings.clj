@@ -20,7 +20,7 @@
   :database-local :only)
 
 (defsetting workspaces-enabled
-  (deferred-tru "Whether this instance is a workspace: transforms on a database with a `database-workspace-schema` write there instead of to production, and later reads of their output follow. Not the per-database switch a parent uses to offer workspaces (`database-enable-workspaces`). Turning it off deletes every table remapping.")
+  (deferred-tru "Whether this instance is a workspace: transforms on a database with a `database-workspace-schema` write there instead of to production, and later reads of their output follow. Not the per-database switch a parent uses to offer workspaces (`database-enable-workspaces`). Turning it off through the settings API, `config.yml`, or `DELETE /api/ee/workspace-instance/current` deletes every table remapping; unsetting this env var does not.")
   :type       :boolean
   :default    false
   :visibility :admin

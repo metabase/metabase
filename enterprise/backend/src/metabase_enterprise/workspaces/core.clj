@@ -101,11 +101,10 @@
       (assoc :db schema))))
 
 (defn- database-workspace-schema
-  "The non-blank `database-workspace-schema` database-local setting of `database`, or nil."
+  "The trimmed, non-blank `database-workspace-schema` database-local setting of `database`,
+   or nil. `PUT /api/database/:id` stores the value untrimmed, so every reader trims here."
   [database]
-  (let [schema (get-in database [:settings :database-workspace-schema])]
-    (when-not (str/blank? schema)
-      schema)))
+  (some-> (get-in database [:settings :database-workspace-schema]) str/trim not-empty))
 
 (defn instance-workspace
   "The workspace this instance is, as `{:databases {<db-id> <schema>}}`, or nil when
@@ -153,14 +152,13 @@
   nil)
 
 (defn delete-stale-table-remappings!
-  "Delete the remap rows of `database` when its trimmed `database-workspace-schema`
+  "Delete the remap rows of `database` when its `database-workspace-schema`
    differs from that of `previous-database`, the same row before the write. Those rows
    point at the old schema and would keep redirecting reads there. For writes that skip
    [[set-instance-workspace!]]: `PUT /api/database/:id` and the `config.yml` loader."
   [previous-database database]
-  (let [schema (comp #(some-> % str/trim) database-workspace-schema)]
-    (when (not= (schema previous-database) (schema database))
-      (ws.db/delete-table-remappings-of-database! (:id database))))
+  (when (not= (database-workspace-schema previous-database) (database-workspace-schema database))
+    (ws.db/delete-table-remappings-of-database! (:id database)))
   nil)
 
 (defn clear-instance-workspace!

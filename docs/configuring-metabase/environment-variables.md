@@ -3122,7 +3122,7 @@ Set this when Metabase must reach a warehouse on a private network (allow-privat
 - Default: `false`
 - [Configuration file name](./config-file.md): `workspaces-enabled`
 
-Whether this instance is a workspace: transforms on a database with a `database-workspace-schema` write there instead of to production, and later reads of their output follow. Not the per-database switch a parent uses to offer workspaces (`database-enable-workspaces`). Turning it off deletes every table remapping.
+Whether this instance is a workspace: transforms on a database with a `database-workspace-schema` write there instead of to production, and later reads of their output follow. Not the per-database switch a parent uses to offer workspaces (`database-enable-workspaces`). Turning it off through the settings API, `config.yml`, or `DELETE /api/ee/workspace-instance/current` deletes every table remapping; unsetting this env var does not.
 
 ## Other environment variables
 
