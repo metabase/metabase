@@ -1108,3 +1108,73 @@
                  (is (re-find #"(?i)cancel" (str (ex-message result) (some-> result ex-cause ex-message)))))))
            (finally
              (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))))))
+
+(deftest ^:synchronized init-workspace-isolation-refuses-objects-created-after-the-check-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (let [db-ws   (workspace-for-test "ws-race-db")
+             user-ws (workspace-for-test "ws-race-user")
+             user    (-> user-ws :database_details :user)
+             other   {:user user :password "other-owner-pw"}
+             admin   (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
+             exists? (fn [table object-name]
+                       (boolean (seq (jdbc/query admin [(format "SELECT 1 FROM %s WHERE name = ?" table) object-name]))))]
+         (try
+           ;; the objects appear after the check: another init got there first, or the admin cannot see them
+           (mt/with-dynamic-fn-redefs [clickhouse/check-workspace-names-free! (constantly nil)]
+             (testing "a database that exists makes CREATE DATABASE fail with the 409 that skips teardown"
+               (jdbc/execute! admin [(format "CREATE DATABASE `%s`" (:schema db-ws))])
+               (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                    (driver/init-workspace-isolation! :clickhouse (mt/db) db-ws)))]
+                 (is (= {:status-code 409, :workspace/cleanup? false, :database (:schema db-ws)}
+                        (ex-data e))))
+               (is (exists? "system.databases" (:schema db-ws)))
+               (is (not (exists? "system.users" (-> db-ws :database_details :user)))))
+             (testing "a user that exists makes CREATE USER fail with the same 409, after init drops its own database"
+               (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" user (:password other))])
+               (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                    (driver/init-workspace-isolation! :clickhouse (mt/db) user-ws)))]
+                 (is (= {:status-code 409, :workspace/cleanup? false, :user user}
+                        (ex-data e))))
+               (is (not (exists? "system.databases" (:schema user-ws)))
+                   "the database this init created is gone")
+               (is (= [{:one 1}] (jdbc/query (workspace-user-spec (assoc user-ws :database_details other))
+                                             ["SELECT 1 AS one"]))
+                   "the other owner's user is unchanged")))
+           (finally
+             (driver/destroy-workspace-isolation! :clickhouse (mt/db) db-ws)
+             (driver/destroy-workspace-isolation! :clickhouse (mt/db) user-ws))))))))
+
+(deftest ^:synchronized destroy-workspace-isolation-drops-database-when-kill-fails-test
+  (mt/test-driver :clickhouse
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:workspaces}
+       (let [workspace  (workspace-for-test "ws-no-kill")
+             user       (-> workspace :database_details :user)
+             ;; an admin login that can drop users and databases but lacks KILL QUERY
+             no-kill    {:user (str "mb_test_no_kill_" (rand-int 100000000)) :password "no-kill-pw"}
+             admin      (sql-jdbc.conn/connection-details->spec :clickhouse (:details (mt/db)))
+             running?   #(seq (jdbc/query admin ["SELECT 1 FROM system.processes WHERE user = ?" user]))
+             db-exists? #(seq (jdbc/query admin ["SELECT 1 FROM system.databases WHERE name = ?" (:schema workspace)]))]
+         (try
+           (jdbc/execute! admin [(format "CREATE USER `%s` IDENTIFIED BY '%s'" (:user no-kill) (:password no-kill))])
+           (jdbc/execute! admin [(format "GRANT SHOW, DROP DATABASE, DROP USER ON *.* TO `%s`" (:user no-kill))])
+           (driver/init-workspace-isolation! :clickhouse (mt/db) workspace)
+           (future
+             (try
+               (jdbc/query (workspace-user-spec workspace)
+                           [(str "SELECT sleepEachRow(1) FROM numbers(120) "
+                                 "SETTINGS max_block_size = 1, function_sleep_max_microseconds_per_block = 1000000000")])
+               (catch Throwable t t)))
+           (is (u/poll {:thunk running? :done? some? :timeout-ms 10000 :interval-ms 100})
+               "the workspace user's query is running")
+           (testing "KILL QUERY fails without the grant, but teardown still drops the database, then reports the error"
+             (let [e (is (thrown? SQLException
+                                  (driver.conn/with-swapped-connection-details (mt/id) no-kill
+                                    (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))]
+               (is (= 497 (some-> ^SQLException e .getErrorCode)))) ; ACCESS_DENIED
+             (is (not (db-exists?))))
+           (finally
+             (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace)
+             (jdbc/execute! admin [(format "DROP USER IF EXISTS `%s`" (:user no-kill))]))))))))

@@ -679,6 +679,15 @@
 
 ;;; ------------------------------------------ Workspace Isolation ------------------------------------------
 
+(defn- workspace-object-exists-exception
+  "The 409 for a user or database that already has the workspace's name. It may belong to another workspace, so the
+  caller must not tear it down: `:workspace/cleanup? false`."
+  [kind object-name cause]
+  (ex-info (format "The warehouse already has a %s named %s. It may belong to another workspace, so it was left unchanged."
+                   (name kind) (quote-field object-name))
+           {:status-code 409, :workspace/cleanup? false, kind object-name}
+           cause))
+
 (defn- check-workspace-names-free!
   "Throws a 409 when the warehouse already has a user or a database with the workspace's name. Either may belong to
   another workspace, so init leaves it as it is and the caller must not tear it down. Runs before any DDL."
@@ -687,9 +696,26 @@
                                     ["system.databases" :database db-name]]
           :when (seq (jdbc/query {:connection conn}
                                  [(format "SELECT 1 FROM %s WHERE name = ?" table) object-name]))]
-    (throw (ex-info (format "The warehouse already has a %s named %s. It may belong to another workspace, so it was left unchanged."
-                            (name kind) (quote-field object-name))
-                    {:status-code 409, :workspace/cleanup? false, kind object-name}))))
+    (throw (workspace-object-exists-exception kind object-name nil))))
+
+(def ^:private already-exists-error-codes
+  "ClickHouse error codes for a CREATE whose object exists: DATABASE_ALREADY_EXISTS and ACCESS_ENTITY_ALREADY_EXISTS."
+  #{82 493})
+
+(defn- create-workspace-object!
+  "Runs the plain CREATE `sql`. The object can exist even after [[check-workspace-names-free!]]: another init created
+  it in between, or the admin cannot see it in `system.users`/`system.databases`. Then this runs `undo-sqls` to drop
+  what this init already created, and throws the same 409 as the check, so the caller does not tear down the object
+  init refused to adopt."
+  [^Statement stmt ^String sql kind object-name undo-sqls]
+  (try
+    (.execute stmt sql)
+    (catch SQLException e
+      (when-not (already-exists-error-codes (.getErrorCode e))
+        (throw e))
+      (doseq [^String undo undo-sqls]
+        (.execute stmt undo))
+      (throw (workspace-object-exists-exception kind object-name e)))))
 
 (defn- init-workspace-sqls
   "The statements that create the workspace database and user, and grant the user what it needs. Plain CREATEs: a
@@ -750,12 +776,15 @@
      (fn [^Connection conn]
        (check-workspace-names-free! conn user db-name)
        (with-open [stmt (.createStatement conn)]
-         (doseq [sql (init-workspace-sqls db-name user escaped-password canonical-db)]
-           (.addBatch ^Statement stmt ^String sql))
-         (try
-           (.executeBatch ^Statement stmt)
-           (catch Throwable t
-             (throw (driver.u/scrub-exceptions (driver.u/batch-exception t) [password escaped-password])))))))
+         (let [[create-db create-user & grants] (init-workspace-sqls db-name user escaped-password canonical-db)]
+           (try
+             (create-workspace-object! stmt create-db :database db-name [])
+             (create-workspace-object! stmt create-user :user user
+                                       [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))])
+             (doseq [^String grant grants]
+               (.execute stmt grant))
+             (catch Throwable t
+               (throw (driver.u/scrub-exceptions t [password escaped-password]))))))))
     ;; the workspace user connects with the database's own details, as workspace queries do
     (try
       (check-system-db-requires-grant! driver (merge (:details lib-db) (perf/select-keys read-user [:user :password])))
@@ -793,12 +822,28 @@
 
 (defn- destroy-workspace-sqls
   "The teardown statements. Dropping the user first stops it from starting queries; a query already running survives
-  DROP USER and DROP DATABASE, so KILL QUERY ... SYNC ends those, and waits for them, before the database goes."
+  DROP USER and DROP DATABASE, so KILL QUERY ... SYNC ends those, and waits for them, before the database goes.
+  [[destroy-workspace!]] drops the database even when KILL QUERY fails."
   [db-name user]
   [(format "DROP USER IF EXISTS %s" (quote-field user))
    (format "KILL QUERY WHERE user = '%s' SYNC" (sql.u/escape-sql user :ansi+backslashes))
    ;; DROP DATABASE cascades to all tables within it
    (format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))])
+
+(defn- destroy-workspace!
+  "Runs [[destroy-workspace-sqls]] one at a time. A failed KILL QUERY (the admin may lack the KILL QUERY grant, which
+  ClickHouse checks only when another user's query matches) does not stop DROP DATABASE; its error is rethrown after."
+  [^Statement stmt db-name user]
+  (let [[^String drop-user ^String kill ^String drop-db] (destroy-workspace-sqls db-name user)]
+    (.execute stmt drop-user)
+    (let [kill-error (try
+                       (.execute stmt kill)
+                       nil
+                       (catch SQLException e
+                         e))]
+      (.execute stmt drop-db)
+      (when kill-error
+        (throw kill-error)))))
 
 (defmethod driver/destroy-workspace-isolation! :clickhouse
   [driver database workspace]
@@ -806,12 +851,7 @@
    driver (driver.u/ensure-lib-database database) {:write? true}
    (fn [^Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (doseq [sql (destroy-workspace-sqls (:schema workspace) (-> workspace :database_details :user))]
-         (.addBatch ^Statement stmt ^String sql))
-       (try
-         (.executeBatch ^Statement stmt)
-         (catch Throwable t
-           (throw (driver.u/batch-exception t))))))))
+       (destroy-workspace! stmt (:schema workspace) (-> workspace :database_details :user))))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "metabot/prompts/dialects/clickhouse.md")
