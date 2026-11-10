@@ -971,6 +971,54 @@
                   (is (warns-about? "no_such_account" result))
                   (is (true? (:non-terminal? result))))))))))))
 
+(deftest referenced-card-and-snippet-tables-no-warning-test
+  (testing "a table that only a referenced card or snippet reads gets no warning: the model did not write it"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {native-id :id}     {:database_id   (mt/id)
+                                                        :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                         "SELECT * FROM unsynced_events")}
+                       :model/Card {model-id :id}      (venues-model)
+                       :model/NativeQuerySnippet _     {:name    "unsynced_venues"
+                                                        :content "id IN (SELECT venue_id FROM unsynced_events)"}
+                       :model/NativeQuerySnippet _     {:name    "unsynced_events"
+                                                        :content "id IN (SELECT venue_id FROM unsynced_events)"}]
+          (mt/with-temp [:model/Card {nested-id :id} {:database_id   (mt/id)
+                                                      :dataset_query (lib/native-query
+                                                                      (mt/metadata-provider)
+                                                                      (str "SELECT * FROM {{#" native-id "}} AS n"))}]
+            (doseq [[situation sql] [["a native card" (str "SELECT * FROM {{#" native-id "}} AS e")]
+                                     ["a native card in a CTE"
+                                      (str "WITH e AS {{#" native-id "}} SELECT count(*) FROM e")]
+                                     ["a native card that references a native card"
+                                      (str "SELECT * FROM {{#" nested-id "}} AS e")]
+                                     ["a snippet" "SELECT name FROM venues WHERE {{snippet: unsynced_venues}}"]
+                                     ["a snippet whose name is the name of the table"
+                                      "SELECT name FROM venues WHERE {{snippet: unsynced_events}}"]]]
+              (testing situation
+                (let [result (create-sql sql)]
+                  (is (nil? (:error result)))
+                  (is (= [] (warning-lines result)))
+                  (is (not (contains? result :non-terminal?)))))))
+          ;; The filter matches the table name that the parser gives against the model's SQL, so try each parser.
+          (sql-tools.tu/test-parser-backends
+           (testing "a table the model writes next to the card still gets a warning (BOT-1154)"
+             (let [result (create-sql (str "SELECT e.*, a.customer_name FROM {{#" native-id "}} AS e "
+                                           "JOIN {{#" model-id "}} AS v ON TRUE JOIN account a ON a.id = v.id"))]
+               (is (= [true] (mapv #(str/starts-with? % (table-warning "account")) (warning-lines result))))
+               (is (true? (:non-terminal? result)))))
+           (testing "a name that contains the card's table name does not keep the card's table"
+             (let [result (create-sql (str "SELECT * FROM {{#" native-id "}} AS e "
+                                           "JOIN my_unsynced_events m ON TRUE"))]
+               (is (= [true] (mapv #(str/starts-with? % (table-warning "my_unsynced_events"))
+                                   (warning-lines result)))))))
+          ;; With the default parser only: the :macaw backend gives no warning for this table, also before the filter.
+          (testing "a quoted, schema-qualified table the model writes next to the card still gets a warning"
+            (let [result (create-sql (str "SELECT * FROM {{#" native-id "}} AS e "
+                                          "JOIN \"public\".\"Account\" a ON TRUE"))]
+              (is (= [true] (mapv #(str/starts-with? % (table-warning "public.Account")) (warning-lines result))))
+              (is (true? (:non-terminal? result))))))))))
+
 (deftest create-sql-query-column-references-no-warning-test
   (testing "column names are not checked: checker false positives and a real wrong column get no warning"
     (mt/test-drivers #{:postgres}

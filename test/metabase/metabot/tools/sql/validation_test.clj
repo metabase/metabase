@@ -264,6 +264,20 @@
       (is (not (names-table? "public" {:schema nil :table "account"} {:schema "core" :table "account"})))
       (is (not (names-table? "public" {:schema "public" :table "account"} {:schema "public" :table "orders"}))))))
 
+;;;; written-in?
+
+(deftest ^:parallel written-in?-test
+  (let [written-in? #'metabot.tools.sql.validation/written-in?]
+    (testing "a table name outside the template tags is written, in any letter case and quoted or not"
+      (is (written-in? "SELECT * FROM {{#5}} AS e JOIN account a ON TRUE" {:table "account"}))
+      (is (written-in? "SELECT * FROM {{#5}} AS e JOIN \"core\".\"Account\" a ON TRUE" {:table "account"}))
+      (is (written-in? "SELECT * FROM analytics.events_* WHERE TRUE" {:table "events_*"})))
+    (testing "a name inside a template tag is not written"
+      (is (not (written-in? "SELECT * FROM {{#5-events}} AS e" {:table "events"})))
+      (is (not (written-in? "SELECT * FROM t WHERE {{snippet: events}}" {:table "events"}))))
+    (testing "a name that only contains the table name is not the table name"
+      (is (not (written-in? "SELECT * FROM my_events_2" {:table "events"}))))))
+
 ;;;; BigQuery wildcard tables
 
 (deftest ^:parallel existing-table?-wildcard-test

@@ -22,7 +22,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.quoting :as quoting]))
+   [metabase.util.quoting :as quoting])
+  (:import
+   (java.util.regex Pattern)))
+
+(set! *warn-on-reflection* true)
 
 (def dialect-mapping
   "Maps query dialect (Metabase driver name) to parser dialect. Matches ai-service
@@ -171,7 +175,8 @@
 ;;; references exist and can be read, and checks its table names against the database metadata.
 ;;;
 ;;; A table that does not resolve is a warning, not an error: it can exist in the warehouse but not be synced yet, so
-;;; an error would leave the agent stuck on valid SQL. Design from github.com/metabase/metabase/pull/83035.
+;;; an error would leave the agent stuck on valid SQL. Design from github.com/metabase/metabase/pull/83035. Only the
+;;; tables that the model wrote get a warning, not those that the SQL of a referenced card or snippet reads.
 ;;;
 ;;; Column names are not checked. The field checker of [[driver/validate-native-query-fields]] reports false positives
 ;;; on working SQL, such as the column list of a CTE, a column alias list, a qualifier in another letter case, or a
@@ -357,26 +362,46 @@
   [written]
   (->> written (map written-name) distinct sort))
 
+(defn- written-in?
+  "Whether `sql` names the table of the table reference `written` outside its template tags.
+
+    (written-in? \"SELECT * FROM {{#5-events}} AS e JOIN account a ON TRUE\" {:table \"account\"})
+    ;; => true
+    (written-in? \"SELECT * FROM {{#5-events}} AS e\" {:table \"events\"})
+    ;; => false"
+  [sql {:keys [table]}]
+  (let [outside-tags (str/replace sql #"(?s)\{\{.*?\}\}" " ")
+        identifier   (re-pattern (str "(?iu)(?<![\\p{L}\\p{N}_$])" (Pattern/quote table)
+                                      "(?![\\p{L}\\p{N}_$])"))]
+    (boolean (re-find identifier outside-tags))))
+
 (mu/defn- missing-tables :- [:sequential :string]
   "The sorted names, as the SQL writes them, of the tables that `query` reads and that do not exist. A table that
   exists but does not resolve, such as a hidden or catalog table, or a wildcard table that reads a synced table, is
-  not missing: [[existing-table?]] decides."
-  [driver :- :keyword
-   query  :- ::lib.schema/query]
+  not missing: [[existing-table?]] decides.
+
+  With `model-sql`, the SQL before its references were expanded, a table that only a referenced card or snippet
+  reads is not missing either: the model did not write it, so it cannot fix it."
+  [driver    :- :keyword
+   query     :- ::lib.schema/query
+   model-sql :- [:maybe :string]]
   ;; A resolved spec can carry the default schema of an unqualified name, so take the names from the raw references.
   (if-let [unresolved (seq (keep :unresolved-table (sql-tools/referenced-tables driver query)))]
     (let [{database-id :id :keys [default-schema]} (lib.metadata/database query)
-          written (filter (fn [written] (some #(names-table? default-schema written %) unresolved))
-                          (sql-tools/referenced-tables-raw driver (lib/raw-native-query query)))
+          written (cond->> (filter (fn [written] (some #(names-table? default-schema written %) unresolved))
+                                   (sql-tools/referenced-tables-raw driver (lib/raw-native-query query)))
+                    model-sql (filter #(written-in? model-sql %)))
           known   (when (seq written) (known-tables database-id written))]
       (table-names (remove #(existing-table? driver default-schema known %) written)))
     []))
 
 (mu/defn- table-check :- ::reference-check
-  "The check of the table references of `query`: a warning for each table that does not exist."
-  [query :- ::lib.schema/query]
+  "The check of the table references of `query`: a warning for each table that does not exist and that `model-sql`
+  names, when it is given."
+  [query     :- ::lib.schema/query
+   model-sql :- [:maybe :string]]
   {:status   :ran
-   :warnings (mapv table-warning (missing-tables (:engine (lib.metadata/database query)) query))})
+   :warnings (mapv table-warning (missing-tables (:engine (lib.metadata/database query)) query model-sql))})
 
 (mu/defn- run-reference-check :- ::reference-check
   "The [[check-references]] result for `query`, with template `tags`."
@@ -387,7 +412,8 @@
   (if-let [missing (missing-references database-id tags)]
     {:status :ran, :warnings [], :missing missing}
     (if-let [checkable (when check-tables? (checkable-query query tags))]
-      (table-check checkable)
+      ;; The compiled SQL of `checkable` also holds the SQL of the cards and snippets that `query` references.
+      (table-check checkable (when (seq tags) (lib/raw-native-query query)))
       {:status :skipped, :warnings []})))
 
 (defn- check-key
