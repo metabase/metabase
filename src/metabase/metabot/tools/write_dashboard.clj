@@ -62,9 +62,7 @@
    [:chart_id {:optional true}
     [:maybe chart-id-schema]]
    [:name {:optional true}
-    [:maybe [:string {:min         1
-                      :max         254
-                      :description "Name of the question a `chart_id` becomes. Required with `chart_id`."}]]]])
+    [:maybe (save-entity/name-schema "Name of the question a `chart_id` becomes. Required with `chart_id`.")]]])
 
 (defn- with-chart-source
   "An op entry of [[dashboard-op-schema/op-schema]], with its `card_id` replaced by [[chart-source-entries]]."
@@ -90,10 +88,8 @@
     [:maybe [:int {:min         1
                    :description "Id of the dashboard to change. Omit it to create a dashboard."}]]]
    [:name {:optional true}
-    [:maybe [:string {:min         1
-                      :max         254
-                      :description (str "Dashboard name. Required to create one: the user's name for it, or one you "
-                                        "choose.")}]]]
+    [:maybe (save-entity/name-schema (str "Dashboard name. Required to create one: the user's name for it, or one you"
+                                          " choose."))]]
    [:description {:optional true}
     [:maybe [:string {:description "Plain-text description of what the dashboard shows."}]]]
    [:collection_id {:optional true}

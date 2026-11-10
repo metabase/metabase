@@ -42,19 +42,26 @@
   []
   (= :h2 (mdb/db-type)))
 
+(defn name-schema
+  "The schema of a name Metabot gives a question or dashboard: not blank, and at most 254 characters as the app DB
+  counts them. The model sees `description`, when there is one."
+  [description]
+  [:and {:json-schema (cond-> {:type "string" :minLength 1 :maxLength 254}
+                        description (assoc :description description))}
+   :string
+   [:fn {:error/fn (fn [{:keys [value]} _]
+                     (if (mr/validate ms/NonBlankString value)
+                       (str "must contain 1 to 254 "
+                            (if (h2-app-db?) "UTF-16 code units" "Unicode code points"))
+                       "must be a non-blank string"))}
+    (fn [^String s]
+      (and (mr/validate ms/NonBlankString s)
+           (<= (if (h2-app-db?) (.length s) (.codePointCount s 0 (.length s))) 254)))]])
+
 (def ^:private save-entity-schema
   [:map {:closed true}
    [:chart_id chart-id-schema]
-   [:name [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
-           :string
-           [:fn {:error/fn (fn [{:keys [value]} _]
-                             (if (mr/validate ms/NonBlankString value)
-                               (str "must contain 1 to 254 "
-                                    (if (h2-app-db?) "UTF-16 code units" "Unicode code points"))
-                               "must be a non-blank string"))}
-            (fn [^String s]
-              (and (mr/validate ms/NonBlankString s)
-                   (<= (if (h2-app-db?) (.length s) (.codePointCount s 0 (.length s))) 254)))]]]
+   [:name (name-schema nil)]
    [:description :string]
    [:destination
     [:multi {:dispatch :target_type}

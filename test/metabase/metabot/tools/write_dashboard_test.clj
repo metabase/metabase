@@ -697,6 +697,20 @@
                   (binding [shared/*memory-atom* (chart-memory)]
                     (failure {:name "x", :ops [op]})))))))))
 
+(deftest ^:parallel blank-name-test
+  (letfn [(boundary-error [args]
+            (test-util/tool-boundary-error "write_dashboard" #'write-dashboard/write-dashboard-tool args))]
+    (testing "a blank dashboard name is refused, as save_entity refuses one"
+      (is (=? #"Invalid tool arguments: `name` must be a non-blank string.*"
+              (boundary-error {:name "   "}))))
+    (testing "so is a blank name for the question a chart becomes"
+      (is (=? #"Invalid tool arguments: `ops` .*must be a non-blank string.*"
+              (boundary-error {:dashboard_id 1
+                               :ops          [{:op "add_card", :id -1, :chart_id "A", :name "   "}]}))))
+    (testing "a name too long for the app DB is refused"
+      (is (=? #"Invalid tool arguments: `name` must contain 1 to 254 .*"
+              (boundary-error {:name (apply str (repeat 255 "x"))}))))))
+
 (deftest unknown-chart-test
   (mt/with-model-cleanup [:model/Dashboard]
     (mt/with-current-user (mt/user->id :crowberto)
