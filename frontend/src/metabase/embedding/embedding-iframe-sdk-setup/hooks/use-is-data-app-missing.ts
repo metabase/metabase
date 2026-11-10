@@ -1,4 +1,4 @@
-import { getEmbeddedAppNameFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getEmbeddedAppSlugFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { PLUGIN_DATA_APPS } from "metabase/plugins";
 
 import type { SdkIframeEmbedSetupSettings } from "../types";
@@ -18,8 +18,8 @@ export const useIsDataAppMissing = (
     return false;
   }
 
-  const appName = getEmbeddedAppNameFromPath(settings.path);
-  const selectedApp = apps?.find((app) => app.slug === appName);
+  const appSlug = getEmbeddedAppSlugFromPath(settings.path);
+  const selectedApp = apps?.find((app) => app.slug === appSlug);
 
   return (
     isLoading || !!appListError || !selectedApp?.enabled || selectedApp.outdated

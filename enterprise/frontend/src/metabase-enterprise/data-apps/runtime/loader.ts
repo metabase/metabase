@@ -80,12 +80,12 @@ export class DataAppBundleError extends Error {
 
 /**
  * Fetch a data-app bundle's raw JS source plus its fetch/XHR allowlist. Called
- * from the iframe-top `DataAppIframeApp` after it reads the `:name` from the
+ * from the iframe-top `DataAppIframeApp` after it reads the `:slug` from the
  * URL. Throws a [[DataAppBundleError]] on a transport failure or non-2xx
  * response.
  */
 export const fetchDataAppBundleCode = async (
-  name: string,
+  slug: string,
   { embedded = false }: { embedded?: boolean } = {},
 ): Promise<FetchedDataAppBundle> => {
   let res: Response;
@@ -93,7 +93,7 @@ export const fetchDataAppBundleCode = async (
     // Use metabase/client fetch for SDK auth headers.
     res = await api.fetch({
       method: "GET",
-      url: `/api/ee/apps/${encodeURIComponent(name)}/bundle`,
+      url: `/api/ee/apps/${encodeURIComponent(slug)}/bundle`,
       cache: "no-store",
     });
   } catch (e) {
@@ -113,7 +113,7 @@ export const fetchDataAppBundleCode = async (
       .with(
         { embedded: true, status: 404 },
         () =>
-          t`Data app "${name}" was not found or is disabled. Check the app name in path.`,
+          t`Data app "${slug}" was not found or is disabled. Check the app slug in the path.`,
       )
       .otherwise(
         ({ status }) => t`Failed to fetch data app bundle: HTTP ${status}`,

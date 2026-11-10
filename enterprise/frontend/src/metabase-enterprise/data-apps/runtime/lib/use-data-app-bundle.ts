@@ -23,7 +23,7 @@ export interface LoadedApp {
  * display inside the iframe. Internal apps report errors to the host's DataAppView.
  */
 export const useDataAppBundle = (
-  name: string,
+  slug: string,
   { embedded = false }: { embedded?: boolean } = {},
 ): {
   data: LoadedApp | null;
@@ -43,7 +43,7 @@ export const useDataAppBundle = (
 
     const load = async () => {
       const { code, allowedHosts, contentSecurityPolicy } =
-        await fetchDataAppBundleCode(name, { embedded });
+        await fetchDataAppBundleCode(slug, { embedded });
 
       if (cancelled) {
         return;
@@ -57,7 +57,7 @@ export const useDataAppBundle = (
 
       const { component, providerProps } = await instantiateDataAppBundle(
         code,
-        name,
+        slug,
         window,
         allowedHosts,
       );
@@ -91,7 +91,7 @@ export const useDataAppBundle = (
     return () => {
       cancelled = true;
     };
-  }, [name, embedded]);
+  }, [slug, embedded]);
 
   useEffect(() => {
     // The bundle runs in a Near-Membrane sandbox that can throw errors which

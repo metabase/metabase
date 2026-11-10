@@ -53,7 +53,7 @@ function setup({ action }: SetupOpts) {
 
   renderWithProviders(
     <Route
-      path="/data-studio/apps/:name/actions/:actionId"
+      path="/data-studio/apps/:slug/actions/:actionId"
       element={<DataAppActionDefinitionPage />}
     />,
     {

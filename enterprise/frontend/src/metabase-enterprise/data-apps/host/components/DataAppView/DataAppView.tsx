@@ -52,7 +52,7 @@ const CenteredEmptyState = ({
 );
 
 /**
- * /apps/:name(/*) — renders the requested data-app inside an isolated
+ * /apps/:slug(/*) — renders the requested data-app inside an isolated
  * iframe, mirroring the iframe's internal route into the parent's URL.
  *
  * Sync semantics:
@@ -68,19 +68,19 @@ const CenteredEmptyState = ({
  * it just uses React Router as if it were the top-level app.
  */
 type DataAppViewProps = {
-  name?: string;
+  slug?: string;
   enableUrlMirroring?: boolean;
   enableDrafts?: boolean;
 };
 
 export function DataAppView({
-  name: nameProp,
+  slug: slugProp,
   enableUrlMirroring = false,
   enableDrafts = false,
 }: DataAppViewProps = {}) {
-  const { name: nameParam = "" } = useParams<{ name: string }>();
-  const name = nameProp ?? nameParam;
-  const validName = name.length > 0;
+  const { slug: slugParam = "" } = useParams<{ slug: string }>();
+  const slug = slugProp ?? slugParam;
+  const validSlug = slug.length > 0;
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
@@ -103,11 +103,11 @@ export function DataAppView({
     setBundleError(null);
     setAppReady(false);
     setLoadError(null);
-  }, [name]);
+  }, [slug]);
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
   const src = useMemo(
-    () => (validName ? deriveIframeSrc(name) : ""),
+    () => (validSlug ? deriveIframeSrc(slug) : ""),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -116,10 +116,10 @@ export function DataAppView({
     data: meta,
     isLoading: metaLoading,
     error: metaError,
-  } = useGetDataAppQuery(name, { skip: !validName });
+  } = useGetDataAppQuery(slug, { skip: !validSlug });
 
   useEffect(() => {
-    if (!iframeEl || !validName || !enableUrlMirroring) {
+    if (!iframeEl || !validSlug || !enableUrlMirroring) {
       return undefined;
     }
 
@@ -137,7 +137,7 @@ export function DataAppView({
         const win = iframeEl.contentWindow;
 
         if (win) {
-          detach = attachIframeUrlMirror(win, name);
+          detach = attachIframeUrlMirror(win, slug);
         }
       } catch (error) {
         detach = null;
@@ -160,7 +160,7 @@ export function DataAppView({
       iframeEl.removeEventListener("load", onLoad);
       detach?.();
     };
-  }, [iframeEl, name, validName, enableUrlMirroring]);
+  }, [iframeEl, slug, validSlug, enableUrlMirroring]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -204,7 +204,7 @@ export function DataAppView({
   useEffect(() => {
     // Stop once anything resolves the wait — including a `loadError` already set
     // by the CSP signal — so the timeout can't clobber a more specific message.
-    if (!validName || appReady || bundleError || loadError) {
+    if (!validSlug || appReady || bundleError || loadError) {
       return undefined;
     }
 
@@ -233,9 +233,9 @@ export function DataAppView({
       document.removeEventListener("securitypolicyviolation", onViolation);
       window.clearTimeout(timer);
     };
-  }, [validName, appReady, bundleError, loadError]);
+  }, [validSlug, appReady, bundleError, loadError]);
 
-  if (!validName) {
+  if (!validSlug) {
     return (
       <NotFound
         title={t`Data app not found`}

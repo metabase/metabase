@@ -2,7 +2,7 @@ export type DataAppId = number;
 
 /**
  * A data app: its manifest fields, plus a bundle cached in the app DB and
- * served at `/apps/:name`.
+ * served at `/apps/:slug`.
  */
 export interface DataApp {
   id: DataAppId;
