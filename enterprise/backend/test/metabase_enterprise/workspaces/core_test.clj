@@ -193,6 +193,47 @@
                         :status        :provisioned}]
                       (:databases ws))))))))))
 
+(deftest refused-init-row-is-never-torn-down-by-a-concurrent-delete-test
+  (testing "a DELETE that runs once a refused init has released the per-row lock destroys nothing"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [destroyed   (atom 0)
+              refusing    (reify provisioning/Provisioner
+                            (details  [_ _ _ _]   {:schema "mb_iso_stub" :database_details {:user "stub_user"}})
+                            (init!    [_ _ _ _]   (throw (ex-info "user exists" {:status-code        409
+                                                                                 :workspace/cleanup? false})))
+                            (grant!   [_ _ _ _ _] nil)
+                            (destroy! [_ _ _ _]   (swap! destroyed inc)))
+              lock!       provisioning/do-with-workspace-database-lock
+              injected?   (atom false)
+              deleted     (promise)]
+          (with-redefs [provisioning/dispatching-provisioner           refusing
+                        provisioning/do-with-workspace-database-lock (fn [wsd-id thunk]
+                                                                       (try
+                                                                         (lock! wsd-id thunk)
+                                                                         (finally
+                                                                           (when (compare-and-set! injected? false true)
+                                                                             (let [ws-id (t2/select-one-pk :model/Workspace :name "Refused race")]
+                                                                               (deliver deleted
+                                                                                        (deref (future
+                                                                                                 (try
+                                                                                                   (ws/delete-workspace! ws-id)
+                                                                                                   :deleted
+                                                                                                   (catch Throwable t t)))
+                                                                                               90000
+                                                                                               :timeout)))))))]
+            (is (thrown-with-msg? ExceptionInfo #"user exists"
+                                  (ws/create-workspace! {:name         "Refused race"
+                                                         :creator_id   (mt/user->id :crowberto)
+                                                         :database_ids [db-id]}))))
+          (is (= :deleted (deref deleted 0 :not-run))
+              "the DELETE ran to completion after the lock was released")
+          (is (zero? @destroyed)
+              "destroy would drop the user init refused, which may belong to another parent"))))))
+
 (defn- add-database!
   "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
    (blocking). Replaces the removed production add-database! for test setup."

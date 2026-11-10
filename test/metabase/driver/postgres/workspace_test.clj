@@ -30,8 +30,9 @@
     (exec! spec [(format "DROP OWNED BY \"%s\"" role) (format "DROP ROLE \"%s\"" role)])))
 
 (defn- create-warehouse!
-  "A fresh database with an admin login that is not a superuser, and `sales`, an input schema owned by
-  `mb_ws_test_etl`, a role the admin login is a member of."
+  "In the database of `spec`, an admin login that is not a superuser, and `sales`, an input schema owned by
+  `mb_ws_test_etl`, a role the admin login is a member of. The roles and the schemas `sales` and `noselect` are made
+  again; [[do-with-warehouse!]] makes the database fresh."
   [spec]
   (exec! spec ["DROP SCHEMA IF EXISTS sales, noselect CASCADE"])
   (doseq [role ["mb_ws_test_etl" (:user admin-login)]]
@@ -322,7 +323,7 @@
        (provisioned! database workspace)
        (let [session (hold-session! workspace ["SELECT 1"])]
          (try
-           (testing "destroy throws a 409 naming the open session, after taking away the login and the input grants"
+           (testing "destroy throws a 409 counting the open sessions, after taking away the login and the input grants"
              (let [e (is (thrown? clojure.lang.ExceptionInfo
                                   ;; a session this login could not end, as when another role's membership was revoked
                                   (mt/with-dynamic-fn-redefs [postgres/end-sessions! (constantly nil)]
@@ -480,3 +481,75 @@
          (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
          (is (not (role-exists? spec user)))
          (is (nil? (schema-owner spec (:schema workspace)))))))))
+
+(deftest destroy-retries-the-lock-out-after-a-lock-timeout-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2303)
+           user      (-> workspace :database_details :user)
+           real-end  (mt/original-fn #'postgres/end-sessions!)
+           calls     (atom 0)]
+       (provisioned! database workspace)
+       (let [session (hold-session! workspace ["ALTER ROLE CURRENT_USER PASSWORD 'HeldOpenPassw0rd'"])]
+         (try
+           (testing "a lock timeout on NOLOGIN ends the sessions again and retries"
+             (with-redefs [postgres/workspace-lock-timeout "2s"]
+               ;; the first end of sessions misses the session, as when it starts just after
+               (mt/with-dynamic-fn-redefs [postgres/end-sessions! (fn [conn u]
+                                                                    (when (< 1 (swap! calls inc))
+                                                                      (real-end conn u)))]
+                 (is (nil? (within-a-minute #(provisioning (fn [] (driver/destroy-workspace-isolation! :postgres database workspace))))))))
+             (is (not (role-exists? spec user))))
+           (finally
+             (.close session))))))))
+
+(defn- spying-spec
+  "`spec` with a datasource whose connections record into `sent` the SQL text of every statement they prepare,
+  execute or batch."
+  [spec sent]
+  (let [^javax.sql.DataSource ds (:datasource spec)
+        record!    (fn [^objects args] (when (and args (string? (first args))) (swap! sent conj (first args))))
+        invoke     (fn [^java.lang.reflect.Method m real ^objects args]
+                     (try (.invoke m real args)
+                          (catch java.lang.reflect.InvocationTargetException e (throw (.getCause e)))))
+        stmt-proxy (fn [real]
+                     (java.lang.reflect.Proxy/newProxyInstance
+                      (.getClassLoader java.sql.Statement)
+                      (into-array Class [java.sql.Statement])
+                      (reify java.lang.reflect.InvocationHandler
+                        (invoke [_ _ m args]
+                          (when (#{"execute" "executeQuery" "executeUpdate" "executeLargeUpdate" "addBatch"} (.getName m))
+                            (record! args))
+                          (invoke m real args)))))
+        conn-proxy (fn [real]
+                     (java.lang.reflect.Proxy/newProxyInstance
+                      (.getClassLoader java.sql.Connection)
+                      (into-array Class [java.sql.Connection])
+                      (reify java.lang.reflect.InvocationHandler
+                        (invoke [_ _ m args]
+                          (when (#{"prepareStatement" "prepareCall" "nativeSQL"} (.getName m))
+                            (record! args))
+                          (let [result (invoke m real args)]
+                            (if (= "createStatement" (.getName m))
+                              (stmt-proxy result)
+                              result))))))]
+    (assoc spec :datasource (reify javax.sql.DataSource
+                              (getConnection [_] (conn-proxy (.getConnection ds)))
+                              (getConnection [_ u p] (conn-proxy (.getConnection ds u p)))))))
+
+(deftest init-sends-no-statement-with-the-password-test
+  (do-with-warehouse!
+   (fn [spec database]
+     (let [workspace (new-workspace! spec database 2304)
+           password  (-> workspace :database_details :password)
+           sent      (atom [])
+           real-spec (mt/original-fn #'sql-jdbc.conn/db->pooled-connection-spec)]
+       (mt/with-dynamic-fn-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [db] (spying-spec (real-spec db) sent))]
+         (provisioning #(driver/init-workspace-isolation! :postgres database workspace)))
+       (testing "control: the spy sees init's statements"
+         (is (some #(str/includes? % "CREATE USER") @sent)))
+       (testing "no statement init sends carries the password"
+         (is (not-any? #(str/includes? % password) @sent)))
+       (testing "the user logs in with that password"
+         (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
+       (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))

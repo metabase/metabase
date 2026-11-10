@@ -99,53 +99,69 @@
   [t]
   (false? (:workspace/cleanup? (ex-data t))))
 
-(defn provision-workspace-database!
-  "Provision an isolated output schema and user for a `:provisioning`
-  WorkspaceDatabase row. State transitions: `:provisioning` -> `:provisioned`
-  on success, or back to `:unprovisioned` on failure. An init failure that
-  leaves nothing to tear down deletes the row instead."
+(defn- provision-locked!
+  "The work of [[provision-workspace-database!]], under the per-row lock. When init's error says that it left nothing
+  to tear down, deletes the row and returns that error; that return commits the delete with the lock's transaction,
+  where a throw would roll it back. Throws any other failure, after tearing down what init and grant made."
   [workspace-database-id provisioner]
-  ;; only init's error can say that nothing is left to tear down: see [[driver/init-workspace-isolation!]]
-  (let [init-left-nothing? (volatile! false)]
-    (try
-      (with-workspace-database-lock workspace-database-id
-        (let [wsd (ws.db/workspace-database workspace-database-id)]
-          (when-not wsd
-            (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
-          (when-not (= :provisioning (:status wsd))
-            (throw (ex-info "WorkspaceDatabase must be :provisioning to provision"
-                            {:id workspace-database-id :status (:status wsd)})))
-          (let [db         (ws.db/database (:database_id wsd))
-                driver     (driver.u/database->driver db)
-                workspace  (wsd-iso-workspace workspace-database-id)
-                ws-details (merge workspace (details provisioner driver db workspace))
-                schemas    (vec (:input_schemas wsd))]
-            (try
-              (try
-                (init! provisioner driver db ws-details)
-                (catch Throwable t
-                  (vreset! init-left-nothing? (nothing-to-tear-down? t))
-                  (throw t)))
+  (let [wsd (ws.db/workspace-database workspace-database-id)]
+    (when-not wsd
+      (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
+    (when-not (= :provisioning (:status wsd))
+      (throw (ex-info "WorkspaceDatabase must be :provisioning to provision"
+                      {:id workspace-database-id :status (:status wsd)})))
+    (let [db         (ws.db/database (:database_id wsd))
+          driver     (driver.u/database->driver db)
+          workspace  (wsd-iso-workspace workspace-database-id)
+          ws-details (merge workspace (details provisioner driver db workspace))
+          schemas    (vec (:input_schemas wsd))
+          cleanup!   (fn []
+                       (try
+                         (destroy! provisioner driver db ws-details)
+                         (catch Throwable destroy-t
+                           (log/warnf destroy-t
+                                      "Failed to clean up after provisioning failure for WorkspaceDatabase %s"
+                                      workspace-database-id))))
+          ;; only init's error can say that nothing is left to tear down: see [[driver/init-workspace-isolation!]]
+          refusal    (try
+                       (init! provisioner driver db ws-details)
+                       nil
+                       (catch Throwable t
+                         (when-not (nothing-to-tear-down? t)
+                           (cleanup!)
+                           (throw t))
+                         t))]
+      (if refusal
+        ;; the row is the record that warehouse objects may exist; there are none, and a later teardown of the row
+        ;; would drop the user init refused
+        (do (ws.db/delete-workspace-database! workspace-database-id)
+            refusal)
+        (do (try
               (grant! provisioner driver db ws-details schemas)
               (catch Throwable t
-                (when-not @init-left-nothing?
-                  (try
-                    (destroy! provisioner driver db ws-details)
-                    (catch Throwable destroy-t
-                      (log/warnf destroy-t "Failed to clean up after provisioning failure for WorkspaceDatabase %s"
-                                 workspace-database-id))))
+                (cleanup!)
                 (throw t)))
             (ws.db/update-workspace-database! workspace-database-id
                                               {:output_namespace (:schema ws-details)
                                                :database_details (:database_details ws-details)
-                                               :status           :provisioned}))))
-      (catch Throwable t
-        (if @init-left-nothing?
-          ;; the row is the record that warehouse objects may exist; there are none, and a later teardown of the row
-          ;; would drop the user init refused
-          (ws.db/delete-workspace-database! workspace-database-id)
-          (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned}))
-        (throw t))))
+                                               :status           :provisioned})
+            nil)))))
+
+(defn provision-workspace-database!
+  "Provision an isolated output schema and user for a `:provisioning`
+  WorkspaceDatabase row. State transitions: `:provisioning` -> `:provisioned`
+  on success, or back to `:unprovisioned` on failure. An init failure that
+  leaves nothing to tear down deletes the row instead, before the per-row lock is
+  released: a teardown waiting on that lock then finds no row, and destroys
+  nothing."
+  [workspace-database-id provisioner]
+  (when-let [refusal (try
+                       (with-workspace-database-lock workspace-database-id
+                         (provision-locked! workspace-database-id provisioner))
+                       (catch Throwable t
+                         (ws.db/update-workspace-database! workspace-database-id {:status :unprovisioned})
+                         (throw t)))]
+    (throw refusal))
   (ws.db/workspace-database workspace-database-id))
 
 (defn deprovision-workspace-database!
